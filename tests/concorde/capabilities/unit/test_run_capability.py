@@ -79,6 +79,25 @@ class RunCapabilityLauncherTests(unittest.TestCase):
                 output = json.loads(process.stdout)
                 self.assertEqual("unknown_capability", output["errors"][0]["code"])
 
+    def test_runtime_check_reports_langgraph_and_python_identity_for_each_skill(self):
+        for name in SEVEN_SKILLS:
+            with self.subTest(skill=name):
+                process = _run([name, "--runtime-check"])
+                self.assertEqual(0, process.returncode, process.stderr or process.stdout)
+                payload = json.loads(process.stdout)
+                self.assertEqual(payload["capability"], name)
+                self.assertEqual(payload["status"], "ok")
+                self.assertTrue(payload["langgraph"])
+                self.assertTrue(payload["python_version"])
+
+    def test_runtime_check_refuses_a_stage_capability_and_extra_arguments(self):
+        for argv in (["concorde-plan", "--runtime-check"], ["concorde-main", "--runtime-check", "extra"]):
+            with self.subTest(argv=argv):
+                process = _run(argv)
+                self.assertEqual(3, process.returncode)
+                output = json.loads(process.stdout)
+                self.assertEqual("unknown_capability", output["errors"][0]["code"])
+
     def test_accepted_skill_actually_reaches_the_dispatcher(self):
         invocation = {
             "type_id": "concorde-operation-invocation", "schema_version": 2,

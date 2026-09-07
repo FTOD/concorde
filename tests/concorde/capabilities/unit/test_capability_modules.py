@@ -157,5 +157,62 @@ class CapabilityModuleContractTests(unittest.TestCase):
                 self.assertEqual(module.CLASS, "stage", module.EXTERNAL_NAME)
 
 
+class InProcessCompositionTests(unittest.TestCase):
+    """Every in-process nested dispatch the host can perform must match the declared USES graph.
+
+    ``resolve_child_capability`` is the one place the host resolves a nested capability call
+    (``Invocation.loop``'s stage graph, ``reflections_triage``'s composition of ``dev_loop``, and a
+    Domain's own recursive per-component review routing). This exhaustively compares its behavior,
+    for every ordered pair of capabilities, against each capability module's own declared ``USES``:
+    self-recursion (fan-out across component targets, never a composition edge) always resolves;
+    every other pair resolves if and only if the child is declared.
+    """
+
+    def test_resolution_exactly_matches_the_declared_uses_graph(self):
+        from concorde.capabilities.scoped_operations import resolve_child_capability
+        from concorde.specification.repository import SpecError
+
+        modules = _modules()
+        externals = {name: module.EXTERNAL_NAME for name, module in modules.items()}
+        for parent_name, parent_module in modules.items():
+            declared = {externals[used] for used in parent_module.USES}
+            for child_name, child_external in externals.items():
+                parent_external = externals[parent_name]
+                should_resolve = child_name == parent_name or child_external in declared
+                if should_resolve:
+                    resolved = resolve_child_capability(parent_external, child_external)
+                    self.assertIs(resolved, modules[child_name], (parent_external, child_external))
+                else:
+                    with self.assertRaises(SpecError, msg=(parent_external, child_external)) as failure:
+                        resolve_child_capability(parent_external, child_external)
+                    self.assertEqual(failure.exception.code, "undeclared_capability")
+
+    def test_undeclared_child_is_refused_with_the_stable_error_code(self):
+        from concorde.capabilities.scoped_operations import resolve_child_capability
+        from concorde.specification.repository import SpecError
+
+        with self.assertRaises(SpecError) as failure:
+            resolve_child_capability("concorde-specify", "concorde-plan")
+        self.assertEqual(failure.exception.code, "undeclared_capability")
+
+    def test_declared_dev_loop_and_reflections_triage_edges_resolve(self):
+        from concorde.capabilities.scoped_operations import resolve_child_capability
+
+        modules = _modules()
+        for child in ("specify", "review", "plan", "tasks", "implement", "validate"):
+            resolved = resolve_child_capability("concorde-dev-loop", modules[child].EXTERNAL_NAME)
+            self.assertIs(resolved, modules[child])
+        resolved = resolve_child_capability("concorde-reflections-triage", "concorde-dev-loop")
+        self.assertIs(resolved, modules["dev_loop"])
+
+    def test_self_recursion_never_requires_a_declared_edge(self):
+        from concorde.capabilities.scoped_operations import resolve_child_capability
+
+        modules = _modules()
+        for name, module in modules.items():
+            resolved = resolve_child_capability(module.EXTERNAL_NAME, module.EXTERNAL_NAME)
+            self.assertIs(resolved, module)
+
+
 if __name__ == "__main__":
     unittest.main()

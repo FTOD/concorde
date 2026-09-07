@@ -24,8 +24,8 @@ Spec incomplete, not a search for arbitrary files. See [the principles](protocol
 
 ## Install and initialize
 
-The installer distributes canonical runtime, 13 Operations (7 public wrappers plus 6 internal stage
-Operations reachable only through them), 9 internal roles and 7 Markdown templates to Codex or Claude.
+The installer distributes canonical runtime (13 capability modules behind 7 public skill wrappers,
+9 internal roles) and 7 Markdown templates to Codex or Claude.
 Check `python scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project, then invoke the paired init entry in an isolated worktree (or use the trusted host's explicit
@@ -44,7 +44,7 @@ the originating session does not follow the task into a different checkout.
 }
 ```
 
-Send the JSON on stdin to `python .concorde/framework/operations/concorde-init/operation.py`.
+Send the JSON on stdin to `python .concorde/framework/scripts/run-capability.py concorde-init`.
 Review the returned proposal, then send action apply and that complete proposal. Initialization creates
 an honest Domain stub; supply business rules and register Services/Modules before implementation.
 `.concorde/config.json` pins the Protocol and references `.concorde/specs.json`; that registry explicitly
@@ -82,8 +82,8 @@ Operations (`concorde-init`, `concorde-configure`,
 `concorde-validate`, `concorde-deliver`) are deterministic host behavior with no agent cognition.
 Every other Operation — `concorde-specify`, `concorde-review`, `concorde-context-solve`,
 `concorde-plan`, `concorde-tasks`, `concorde-implement` — is an internal stage: it receives an
-already bound target and one frozen context from its composing loop, is never projected as a user
-Skill, and the executable boundary rejects a direct invocation with error code `internal_operation`.
+already bound target and one frozen context from its composing loop, and is never projected as a
+user Skill; stage capabilities have no executable entry.
 No public Operation returns a context manifest; `describe-policy` mode previews the exact stage
 grants any Operation would receive without launching an agent or mutating project state. One change
 belongs to one linked worktree. `.concorde/worktree.json` records

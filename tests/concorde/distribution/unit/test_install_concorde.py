@@ -54,8 +54,6 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertEqual(self.package.version, "4.0.0")
         self.assertEqual(self.package.manifest["architecture_profile"], 8)
         self.assertEqual(self.package.manifest["workspace_protocol"], 14)
-        self.assertEqual(len(self.package.manifest["skills"]), 9)
-        self.assertEqual(len(self.package.manifest["operations"]), 13)
         self.assertEqual(len(self.package.manifest["templates"]), 7)
         self.assertEqual(
             self.package.manifest["operation_runtime"]["venv"],
@@ -95,18 +93,18 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertTrue(all(not path.startswith(".concorde/framework/docsite/tests/repository/") for path in outputs))
         self.assertIn(".agents/skills/concorde-validate/SKILL.md", outputs)
         self.assertIn(".agents/skills/concorde-dev-loop/SKILL.md", outputs)
-        self.assertIn(
-            ".concorde/framework/operations/concorde-dev-loop/operation.py",
-            outputs,
-        )
-        self.assertIn(".concorde/framework/operations/requirements.lock", outputs)
-        self.assertIn(".concorde/framework/scripts/run-operation.py", outputs)
+        self.assertIn(".concorde/framework/scripts/requirements.lock", outputs)
         self.assertIn(".concorde/framework/scripts/run-capability.py", outputs)
         self.assertIn(".concorde/framework/scripts/run-viewer.py", outputs)
         self.assertIn(".concorde/framework/viewer/package-lock.json", outputs)
-        self.assertIn(".codex/agents/reflection_implementer.toml", outputs)
-        # The build is the only instruction source for the consumer's own skill wrappers now;
-        # the framework still carries operations/*/operation.py for the B2-pending validator.
+        self.assertFalse(any(path.startswith((
+            ".concorde/framework/operations",
+            ".concorde/framework/roles",
+            ".concorde/framework/agent-assets",
+            ".codex/",
+        )) for path in outputs))
+        # The build is the only instruction source for the consumer's own skill wrappers and for
+        # the framework's own generated/** projections; consumers never run it themselves.
         self.assertIn(".concorde/framework/generated/build-manifest.json", outputs)
         plan = outputs[".agents/skills/concorde-validate/SKILL.md"][0].decode()
         self.assertIn('capability: "validate"', plan)
@@ -143,8 +141,8 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertEqual(receipt["integration"], "codex")
             self.assertEqual(receipt["runtime"]["path"], ".concorde/.venv")
             self.assertEqual(
-                receipt["runtime"]["verified_operations"],
-                self.package.manifest["operations"],
+                receipt["runtime"]["verified_skills"],
+                list(installer.concorde_build.SKILL_NAMES),
             )
             self.assertTrue((target / ".concorde/.venv/.concorde-runtime.json").is_file())
             viewer = target / ".concorde/.venv/share/concorde/understand-anything-viewer"
@@ -200,7 +198,7 @@ class NativeInstallerTests(unittest.TestCase):
             )
             runtime_action = next(item for item in rebuild if item["role"] == "runtime")
             self.assertEqual(runtime_action["action"], "rebuild")
-            real_verify = managed_runtime._verify_operations
+            real_verify = managed_runtime._verify_skills
 
             def verify_after_cleanup(*args, **kwargs):
                 self.assertFalse(obsolete.exists())
@@ -208,7 +206,7 @@ class NativeInstallerTests(unittest.TestCase):
 
             with mock.patch.object(
                 managed_runtime,
-                "_verify_operations",
+                "_verify_skills",
                 side_effect=verify_after_cleanup,
             ):
                 installer.apply_plan(
@@ -276,7 +274,7 @@ class NativeInstallerTests(unittest.TestCase):
                 elif failure == "smoke":
                     patcher = mock.patch.object(
                         managed_runtime,
-                        "_verify_operations",
+                        "_verify_skills",
                         side_effect=managed_runtime.ManagedRuntimeError(
                             "injected smoke failure"
                         ),
@@ -334,22 +332,6 @@ class NativeInstallerTests(unittest.TestCase):
             )
             runtime = next(item for item in rebuild if item["role"] == "runtime")
             self.assertEqual(runtime["action"], "rebuild")
-
-    def test_unmigrated_legacy_config_blocks_installation_instead_of_seeding_default(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            target = Path(temporary)
-            legacy = target / ".claude/reflections.config.json"
-            legacy.parent.mkdir(parents=True)
-            legacy.write_text('{"order": "newest-first"}\n')
-            actions, desired, _ = installer.installation_plan(target, self.package, "codex")
-            item = next(entry for entry in actions if entry["path"] == ".concorde/reflections/config.json")
-            self.assertEqual(item["action"], "conflict")
-            self.assertIn(".claude/reflections.config.json", item["reason"])
-            self.assertIn("agent-asset sync", item["reason"])
-            with self.assertRaises(installer.InstallError):
-                installer.apply_plan(target, self.package, "codex", actions, desired)
-            self.assertFalse((target / ".concorde/reflections/config.json").exists())
-            self.assertTrue(legacy.is_file())
 
     def test_exact_existing_desired_bytes_are_adopted(self):
         with tempfile.TemporaryDirectory() as temporary:

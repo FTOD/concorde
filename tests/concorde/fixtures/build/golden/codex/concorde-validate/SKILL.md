@@ -7,6 +7,7 @@ metadata:
   source: "skills/concorde-validate/SKILL.md"
   kind: "skill"
   capability: "validate"
+  entrypoint: "scripts/run-capability.py concorde-validate"
 ---
 # concorde-validate
 

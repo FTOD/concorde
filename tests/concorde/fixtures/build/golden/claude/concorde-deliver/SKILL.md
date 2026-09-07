@@ -8,6 +8,7 @@ metadata:
   source: "skills/concorde-deliver/SKILL.md"
   kind: "skill"
   capability: "deliver"
+  entrypoint: "scripts/run-capability.py concorde-deliver"
 user-invocable: true
 disable-model-invocation: false
 ---

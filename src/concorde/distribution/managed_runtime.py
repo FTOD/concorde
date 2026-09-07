@@ -55,7 +55,7 @@ class ManagedRuntimeSpec:
     runtime_sha256: str
     langgraph_version: str
     concorde_version: str
-    operations: tuple[str, ...]
+    skills: tuple[str, ...]
     viewer: ViewerSpec
 
 
@@ -190,11 +190,7 @@ def load_runtime_spec(
         raise ManagedRuntimeError("operation_runtime.python must be '>=3.11'")
     if venv != ".concorde/.venv":
         raise ManagedRuntimeError("operation_runtime.venv must be .concorde/.venv")
-    operations = manifest.get("operations")
-    if not isinstance(operations, list) or not operations or not all(
-        isinstance(item, str) for item in operations
-    ):
-        raise ManagedRuntimeError("manifest operations must be one non-empty string list")
+    from ..capabilities.build import SKILL_NAMES
     requirement_path = package_root / requirements
     launcher_path = package_root / launcher
     for label, path in (("requirements", requirement_path), ("launcher", launcher_path)):
@@ -223,7 +219,7 @@ def load_runtime_spec(
         runtime_sha256=runtime_sha256,
         langgraph_version=match.group(1),
         concorde_version=version,
-        operations=tuple(operations),
+        skills=SKILL_NAMES,
         viewer=viewer,
     )
 
@@ -483,7 +479,7 @@ def plan_runtime(
         and marker.get("requirements_sha256") == spec.requirements_sha256
         and marker.get("viewer_lock_sha256") == spec.viewer.lock_sha256
         and marker.get("viewer_version") == spec.viewer.version
-        and marker.get("verified_operations") == list(spec.operations)
+        and marker.get("verified_skills") == list(spec.skills)
     )
     if matches and _healthy(runtime, spec):
         return {**item, "action": "unchanged"}
@@ -503,7 +499,7 @@ def _checked(result: subprocess.CompletedProcess[str], label: str) -> str:
     raise ManagedRuntimeError(f"{label} failed with exit {result.returncode}: {detail}")
 
 
-def _verify_operations(
+def _verify_skills(
     target: Path,
     framework: Path,
     spec: ManagedRuntimeSpec,
@@ -513,36 +509,35 @@ def _verify_operations(
     environment = _offline_environment()
     observed_python: str | None = None
     verified: list[str] = []
-    for operation in spec.operations:
-        path = framework / "operations" / operation / "operation.py"
+    for skill in spec.skills:
         result = _run(
-            [bootstrap_python, str(launcher), str(path), "--runtime-check"],
+            [bootstrap_python, str(launcher), skill, "--runtime-check"],
             cwd=target,
             environment=environment,
         )
-        output = _checked(result, f"Operation runtime check for {operation}")
+        output = _checked(result, f"capability runtime check for {skill}")
         try:
             payload = json.loads(output)
         except json.JSONDecodeError as error:
             raise ManagedRuntimeError(
-                f"Operation runtime check for {operation} returned invalid JSON"
+                f"capability runtime check for {skill} returned invalid JSON"
             ) from error
-        if not isinstance(payload, dict) or payload.get("operation") != operation:
+        if not isinstance(payload, dict) or payload.get("capability") != skill:
             raise ManagedRuntimeError(
-                f"Operation runtime check for {operation} returned mismatched identity"
+                f"capability runtime check for {skill} returned mismatched identity"
             )
         if payload.get("langgraph") != spec.langgraph_version:
             raise ManagedRuntimeError(
-                f"Operation runtime check for {operation} returned mismatched LangGraph version"
+                f"capability runtime check for {skill} returned mismatched LangGraph version"
             )
         observed_python = payload.get("python_version")
         if not isinstance(observed_python, str) or not observed_python:
             raise ManagedRuntimeError(
-                f"Operation runtime check for {operation} omitted its Python version"
+                f"capability runtime check for {skill} omitted its Python version"
             )
-        verified.append(operation)
+        verified.append(skill)
     if observed_python is None:
-        raise ManagedRuntimeError("managed runtime verified no Operations")
+        raise ManagedRuntimeError("managed runtime verified no skills")
     return tuple(verified)
 
 
@@ -566,7 +561,7 @@ def _write_marker(
         "viewer_lock_sha256": spec.viewer.lock_sha256,
         "viewer_version": spec.viewer.version,
         "viewer_entrypoint": spec.viewer.entrypoint,
-        "verified_operations": list(spec.operations),
+        "verified_skills": list(spec.skills),
     }
     content = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
     marker = runtime / MARKER_NAME
@@ -644,9 +639,9 @@ def provision_runtime(
             _install_viewer(runtime, framework, spec, target)
         python = runtime_python(runtime)
         python_version = _python_version(python, target)
-        verified = _verify_operations(target, framework, spec, bootstrap)
-        if verified != spec.operations:
-            raise ManagedRuntimeError("managed runtime did not verify every Operation")
+        verified = _verify_skills(target, framework, spec, bootstrap)
+        if verified != spec.skills:
+            raise ManagedRuntimeError("managed runtime did not verify every skill")
         node_version, npm_version = _verify_viewer(runtime, spec, target)
         _write_marker(runtime, spec, python_version, node_version, npm_version)
     except Exception:
@@ -661,7 +656,7 @@ def provision_runtime(
         "requirements_sha256": spec.requirements_sha256,
         "runtime_sha256": spec.runtime_sha256,
         "launcher": spec.launcher,
-        "verified_operations": list(verified),
+        "verified_skills": list(verified),
         "viewer": {
             "provider": spec.viewer.provider,
             "version": spec.viewer.version,

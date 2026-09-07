@@ -19,8 +19,8 @@ uv run --locked --group studio langgraph dev --config generated/langgraph.json -
 Open <https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024> and select an assistant.
 `generated/langgraph.json` (build output; run the build before starting Studio) registers all 7
 public skills, derived from `skills/`. The 6 internal stage capabilities run through their
-composing public capability and remain visible in stage/process events; Studio does not bypass
-their `internal_operation` direct-call restriction or restore removed operation names. API health
+composing public capability and remain visible in stage/process events; stage capabilities have no
+executable entry, and Studio does not restore one. API health
 is available at <http://127.0.0.1:2024/ok> and API documentation at <http://127.0.0.1:2024/docs>.
 The local dev API works without model credentials for deterministic operations and policy previews.
 The hosted Studio UI requires a LangSmith account; follow the official
@@ -97,14 +97,13 @@ export CONCORDE_STUDIO_URL=http://127.0.0.1:2024
 Keep using the same JSON invocation on stdin, without the Studio `invocation` wrapper:
 
 ```bash
-python3 scripts/run-operation.py operations/concorde-main/operation.py <<'JSON'
+python3 scripts/run-capability.py concorde-main <<'JSON'
 {"type_id":"concorde-operation-invocation","schema_version":2,"operation_id":"concorde-main","mode":"describe-policy","configuration":null,"input":{"type_id":"concorde-main-request","schema_version":1,"data":{"task":"Explain Concorde's workflow host","target_id":"service.workflow-host"}}}
 JSON
 ```
 
-The paired `python operations/concorde-main/operation.py` entry works too. Skills already use the
-same paired launcher, so no Skill prompt or request-format change is needed. Set the variable in
-the environment inherited by the Skill's command runner (or on that command) before invoking it.
+Skills already use this same launcher, so no Skill prompt or request-format change is needed. Set
+the variable in the environment inherited by the Skill's command runner (or on that command) before invoking it.
 This monitors newly submitted calls by forwarding execution to the server. It does not attach to
 already-running processes or import historical runs.
 

@@ -8,6 +8,7 @@ metadata:
   source: "skills/concorde-validate/SKILL.md"
   kind: "skill"
   capability: "validate"
+  entrypoint: "scripts/run-capability.py concorde-validate"
 user-invocable: true
 disable-model-invocation: false
 ---

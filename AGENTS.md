@@ -65,9 +65,7 @@ them. Make the change in `prompts/`, `skills/` or `capabilities/` and rebuild. T
 run any capability on a stale build (error code `stale_build`), verified against
 `generated/build-manifest.json`. A freshly created worktree — including one this host creates for
 a candidate change — must be built once before an agent can load Concorde Skills; `verify-worktree`
-fails closed until it is. The same generated-only rule applies to `.codex/agents/reflection_*` and
-`.claude/agents/reflection-*`; their sources live under `agent-assets/reflections/` and are
-produced by the separate `python3 scripts/concorde.py agent-assets sync` mechanism, not the build.
+fails closed until it is.
 
 Do not invoke a project-local `concorde-*` Skill to govern a task that changes its own `prompts/`,
 `skills/`, `capabilities/`, or generated Skill surface. If such a Skill body is already loaded as

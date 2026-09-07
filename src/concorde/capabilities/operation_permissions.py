@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, replace
 from pathlib import PurePosixPath
 from typing import Any, Literal, Mapping
 
-from .skill_assets import EffectDeclaration, PATH_ROLES
+from .effects import EffectDeclaration, PATH_ROLES
 
 
 class PermissionPolicyError(ValueError):

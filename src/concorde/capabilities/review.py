@@ -286,7 +286,7 @@ def review_scope(run, mode: str) -> dict:
     if mode == "code" and not components:
         return run.response("unsupported", "This Domain has no recorded component work to route for code review.")
     outputs = [review(run, mode)["data"]] if mode == "spec" else []
-    from .scoped_operations import run_operation
+    from .scoped_operations import invoke_capability
     for target_id, record in components.items():
         target = run.repository.select(target_id)
         scopes = set(target.participates_in)
@@ -301,8 +301,8 @@ def review_scope(run, mode: str) -> dict:
                 "change_id": run.change_id, "constraints": run.task.get("constraints", [])}
         child_host = replace(run.host, routed_target=target_id, coordinated=True,
                              evidence=[], descriptions=run.host.descriptions)
-        result = run_operation("concorde-review", run.configuration, typed("concorde-review-request", task),
-                               host_context=child_host)
+        result = invoke_capability(run.operation, "concorde-review", run.configuration,
+                                   typed("concorde-review-request", task), child_host)
         run.host.evidence.extend(child_host.evidence)
         if result["output"] is None:
             outputs.append({"outcome": "failed", "answer": f"Review admission failed for {target_id}.",

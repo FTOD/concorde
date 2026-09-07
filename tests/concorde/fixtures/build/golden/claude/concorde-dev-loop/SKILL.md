@@ -8,6 +8,7 @@ metadata:
   source: "skills/concorde-dev-loop/SKILL.md"
   kind: "skill"
   capability: "dev_loop"
+  entrypoint: "scripts/run-capability.py concorde-dev-loop"
 user-invocable: true
 disable-model-invocation: false
 ---

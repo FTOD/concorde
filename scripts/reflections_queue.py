@@ -155,13 +155,8 @@ def find_root(explicit: str | None) -> Path:
 
 def load_config(root: Path) -> dict[str, Any]:
     path = root / ".concorde/reflections/config.json"
-    legacy = root / ".claude/reflections.config.json"
     if not path.is_file():
-        if legacy.is_file():
-            raise QueueError(
-                "legacy .claude/reflections.config.json exists; preview/adopt it through Concorde agent-asset sync"
-            )
-        raise QueueError("missing .concorde/reflections/config.json; run Concorde agent-asset sync")
+        raise QueueError("missing .concorde/reflections/config.json; reinstall Concorde or restore the default configuration")
     try:
         _require_real_file(root, path, "reflection-triage config")
         value = json.loads(path.read_text(encoding="utf-8"))

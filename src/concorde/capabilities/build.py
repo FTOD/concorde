@@ -16,12 +16,30 @@ import json
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from ..frontmatter import FrontMatterError, parse_document
+from .effects import EffectDeclaration
 from .operation_data import json_schema
 from .prompt_resolver import PromptResolverError, find_unreachable_prompts, resolve_role_prompt, resolve_skill_source
 from .roles import ROLES, role_key
-from .skill_assets import SkillPrompt
+
+
+@dataclass(frozen=True)
+class SkillPrompt:
+    """One role's rendered instructions and exact authority, resolved from the build.
+
+    ``load_role_prompt`` is the only place that constructs this. ``kind`` is always ``"skill"``:
+    every role is a host-launched agent identity, never a paired Operation (that kind no longer
+    exists after the package cutover).
+    """
+
+    name: str
+    description: str
+    source_path: str
+    kind: Literal["skill"]
+    body: str
+    effects: EffectDeclaration | None = None
 
 
 class BuildError(ValueError):
@@ -107,7 +125,7 @@ def render_role(project_root: Path, role: str) -> BuildOutput:
     return BuildOutput(path=f"generated/roles/{role}.md", content=content, sources=resolved.sources)
 
 
-def _skill_frontmatter(name: str, description: str, integration: str, capability: str) -> str:
+def _skill_frontmatter(name: str, description: str, integration: str, capability: str, entrypoint: str) -> str:
     values = ["---", f"name: {name}", f"description: {json.dumps(description)}"]
     if integration == "claude":
         values.append('argument-hint: "Optional capability guidance"')
@@ -119,6 +137,7 @@ def _skill_frontmatter(name: str, description: str, integration: str, capability
             f"  source: {json.dumps(SKILL_SOURCES[name])}",
             '  kind: "skill"',
             f"  capability: {json.dumps(capability)}",
+            f"  entrypoint: {json.dumps(entrypoint)}",
         ]
     )
     if integration == "claude":
@@ -137,6 +156,7 @@ def render_skill(project_root: Path, name: str, integration: str, *, framework_p
         raise BuildError(f"skill {name}: {error.rule_id}: {error}") from error
     prefix = framework_prefix.strip("/")
     launcher = f"{prefix}/scripts/run-capability.py" if prefix else "scripts/run-capability.py"
+    entrypoint = f"{launcher} {name}"
     body = resolved.body.replace("{OPERATION}", f"python3 {launcher} {name}")
     unresolved = [token for token in ("{SCRIPT}", "{FRAMEWORK}", "{OPERATION}") if token in body]
     if unresolved:
@@ -149,7 +169,7 @@ def render_skill(project_root: Path, name: str, integration: str, *, framework_p
         + json.dumps(json_schema(f"{name}-request"), indent=2)
         + "\n```\n"
     )
-    frontmatter = _skill_frontmatter(name, str(metadata["description"]), integration, str(metadata["capability"]))
+    frontmatter = _skill_frontmatter(name, str(metadata["description"]), integration, str(metadata["capability"]), entrypoint)
     content = (frontmatter + body.lstrip()).encode("utf-8")
     target = f"{INTEGRATION_ROOTS[integration]}/{name}/SKILL.md"
     return BuildOutput(path=target, content=content, sources=(*resolved.sources, SKILL_SOURCES[name]))
@@ -347,6 +367,5 @@ def load_role_prompt(package_root: str | Path, role_name: str) -> SkillPrompt:
         source_path=role.prompt,
         kind="skill",
         body=body,
-        exposure="internal",
         effects=role.effects,
     )

@@ -12,9 +12,6 @@ def validate_configuration(value: object) -> dict:
         raise ValueError("reflection-triage config must use schema_version 1")
     if value.get("order") not in ("newest-first", "oldest-first"):
         raise ValueError("config order must be newest-first or oldest-first")
-    for key in ("investigators", "implementers"):
-        if type(value.get(key)) is not int or value[key] < 1:
-            raise ValueError(f"config {key} must be a positive integer")
     if not isinstance(value.get("require_approval"), bool):
         raise ValueError("config require_approval must be boolean")
     skip = value.get("skip")

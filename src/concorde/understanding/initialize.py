@@ -220,7 +220,7 @@ None.
 
     settings_path = checked_path(project_root, ".concorde/reflections/config.json")
     reflection_settings = (settings_path.read_text(encoding="utf-8") if settings_path.is_file() else
-                           (Path(__file__).resolve().parents[3] / "agent-assets/reflections/config.default.json").read_text(encoding="utf-8"))
+                           (Path(__file__).resolve().parents[3] / "src/concorde/reflections/config.default.json").read_text(encoding="utf-8"))
     validate_configuration(decode(reflection_settings))
     files = (
         _proposal_file(".concorde/config.json", config),

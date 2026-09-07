@@ -7,6 +7,7 @@ metadata:
   source: "skills/concorde-configure/SKILL.md"
   kind: "skill"
   capability: "configure"
+  entrypoint: "scripts/run-capability.py concorde-configure"
 ---
 # concorde-configure
 

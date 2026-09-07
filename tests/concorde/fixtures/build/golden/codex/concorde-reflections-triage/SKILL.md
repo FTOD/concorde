@@ -7,6 +7,7 @@ metadata:
   source: "skills/concorde-reflections-triage/SKILL.md"
   kind: "skill"
   capability: "reflections_triage"
+  entrypoint: "scripts/run-capability.py concorde-reflections-triage"
 ---
 # concorde-reflections-triage
 

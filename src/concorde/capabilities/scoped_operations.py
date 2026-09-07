@@ -6,6 +6,7 @@ output never becomes a non-implementation agent input. Each stage starts a fresh
 from __future__ import annotations
 
 import copy
+import importlib
 import json
 import os
 import subprocess
@@ -22,9 +23,9 @@ from .operation_config import load_configuration
 from .operation_permissions import (PolicyBinding, compile_policy, render_codex_configuration,
     render_claude_configuration, build_launch_specification, OperationExecutionResult)
 from .build import BuildError, load_role_prompt, verify_fresh
-from .skill_assets import EffectDeclaration
+from .effects import EffectDeclaration
 from .protocol_contracts import (AGENT_OPERATIONS, TARGET_AGENT_STAGES,
-    MAIN_OPERATION, MAIN_ROUTED_OPERATIONS, INTERNAL_OPERATIONS, LIFECYCLE_OPERATIONS)
+    MAIN_OPERATION, MAIN_ROUTED_OPERATIONS, LIFECYCLE_OPERATIONS, load_capability_inventory)
 from .change_worktree import (STATE_PATH, WORK_PATH, bind_owner, create_worktree,
     ensure_change, progress, read_change, refresh_registry, save_change,
     save_target_state, snapshot_tree, target_state, work_path, workspace_context,
@@ -73,6 +74,54 @@ class OperationHost:
         object.__setattr__(self, "project_root", self.project_root.resolve())
         object.__setattr__(self, "package_root", self.package_root.resolve())
         object.__setattr__(self, "session_root", (self.session_root or self.project_root).resolve())
+
+
+def _capability_key(operation: str) -> str:
+    return operation[len("concorde-"):].replace("-", "_")
+
+
+def resolve_child_capability(parent_operation: str, child_operation: str):
+    """Return the child capability module for one in-process nested dispatch, or refuse it.
+
+    A parent may always invoke itself (recursive fan-out across component targets, as
+    ``review_scope`` and ``implement_scope`` do, is not capability composition and needs no
+    declared edge). Any other child must appear in the parent capability module's declared
+    ``USES``, or this raises ``SpecError(..., "undeclared_capability")``. Pure name resolution
+    with no side effect beyond importing the two modules; kept separate from ``invoke_capability``
+    so the declared composition graph can be checked exhaustively without executing anything.
+    """
+
+    inventory = load_capability_inventory()
+    parent_key, child_key = _capability_key(parent_operation), _capability_key(child_operation)
+    if parent_key != child_key:
+        try:
+            parent_module = importlib.import_module(f"{inventory.__name__}.{parent_key}")
+        except ImportError as error:
+            raise SpecError(f"unknown parent capability: {parent_operation}", "unknown_operation") from error
+        if child_key not in parent_module.USES:
+            raise SpecError(
+                f"{parent_operation} has no declared composition edge to {child_operation}",
+                "undeclared_capability",
+            )
+    try:
+        return importlib.import_module(f"{inventory.__name__}.{child_key}")
+    except ImportError as error:
+        raise SpecError(f"unknown capability: {child_operation}", "unknown_operation") from error
+
+
+def invoke_capability(parent_operation: str, child_operation: str, configuration: dict, payload: dict,
+                      host: OperationHost) -> dict:
+    """Invoke another capability module's ``run`` in-process (proposal section 6.3).
+
+    Used by every nested dispatch the host performs on a parent capability's behalf: the stage
+    graph inside ``dev_loop``'s ``Invocation.loop``, ``reflections_triage``'s composition of
+    ``dev_loop`` and a Domain's own recursive per-component review routing. ``run_operation``
+    remains the shared machinery every capability module's own ``run`` delegates to; this only
+    resolves which module owns the call (see ``resolve_child_capability``).
+    """
+
+    child_module = resolve_child_capability(parent_operation, child_operation)
+    return child_module.run(host, configuration, payload)
 
 
 def _worktree(host: OperationHost, mutation: bool, task: dict) -> tuple[OperationHost, dict | None]:
@@ -1562,8 +1611,8 @@ class Invocation:
                     payload["change_id"] = self.change_id
                 child_host = replace(self.host, evidence=[], descriptions=self.host.descriptions,
                                      track_gaps=True, defer_ready=name == "validate")
-                result = run_operation(operation, self.configuration,
-                    typed(OPERATION_CONTRACTS[operation][0], payload), host_context=child_host)
+                result = invoke_capability(self.operation, operation, self.configuration,
+                    typed(OPERATION_CONTRACTS[operation][0], payload), child_host)
                 self.host.evidence.extend(child_host.evidence)
                 if result["output"] is None:
                     raise SpecError(f"{operation} blocked: " + canonical(result["errors"]), "child_blocked")
@@ -1836,7 +1885,15 @@ def invocation_failure(operation: str | None, error: Exception) -> dict:
             "field": getattr(error, "field", ""), "message": str(error)}]}
 
 
-def json_main(package_root: Path, operation: str | None = None) -> int:
+def json_main(package_root: Path, operation: str, runner) -> int:
+    """Shared stdin/limit/envelope/result handling for every skill's executable boundary.
+
+    ``runner(host, configuration, request)`` is the skill's own capability module ``run`` function
+    (proposal section 6.3); this never dispatches by name itself. Only a skill has an executable
+    boundary at all, so every caller already knows and validates its own ``operation`` before
+    reaching here (``scripts/run-capability.py``); there is no internal/stage fallback to guard.
+    """
+
     host = None
     try:
         if sys.argv[1:]:
@@ -1845,10 +1902,6 @@ def json_main(package_root: Path, operation: str | None = None) -> int:
         if len(raw) > 1024 * 1024:
             raise SpecError("invocation exceeds 1 MiB", "invalid_input")
         value = validate_invocation(decode(raw.decode() if isinstance(raw, bytes) else raw), operation)
-        operation = operation or value["operation_id"]
-        if operation in INTERNAL_OPERATIONS:
-            raise SpecError("internal stage Operation is reachable only through a composing public Operation",
-                            "internal_operation")
         if os.environ.get("CONCORDE_STUDIO_URL"):
             from .studio_client import run_in_studio
             state = run_in_studio(os.environ["CONCORDE_STUDIO_URL"], value, Path.cwd(), package_root)
@@ -1857,7 +1910,7 @@ def json_main(package_root: Path, operation: str | None = None) -> int:
                 print(canonical({"policies": state["policies"]}), file=sys.stderr)
         else:
             host = OperationHost(Path.cwd(), package_root, mode=value["mode"])
-            result = run_operation(operation, value["configuration"], value["input"], host_context=host)
+            result = runner(host, value["configuration"], value["input"])
 
     except Exception as error:
         result = invocation_failure(operation, error)
@@ -1865,7 +1918,3 @@ def json_main(package_root: Path, operation: str | None = None) -> int:
         print(canonical({"policies": host.descriptions}), file=sys.stderr)
     print(canonical(result))
     return 0 if result["status"] in {"succeeded", "described"} else 3
-
-
-def operation_main(operation: str, package_root: Path) -> int:
-    return json_main(package_root, operation)

@@ -29,9 +29,9 @@ class ManifestContractTests(unittest.TestCase):
         self.assertEqual(
             manifest["operation_runtime"],
             {
-                "launcher": "scripts/run-operation.py",
+                "launcher": "scripts/run-capability.py",
                 "python": ">=3.11",
-                "requirements": "operations/requirements.lock",
+                "requirements": "scripts/requirements.lock",
                 "venv": ".concorde/.venv",
             },
         )
@@ -52,20 +52,22 @@ class ManifestContractTests(unittest.TestCase):
             sys.path.pop(0)
 
     def test_manifest_inventory_equals_root_capabilities_and_templates(self):
-        skills = sorted(path.name for path in (REPOSITORY_ROOT / "roles").iterdir())
-        operations = sorted(
-            path.name for path in (REPOSITORY_ROOT / "operations").iterdir() if path.is_dir()
-        )
+        sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
+        try:
+            from concorde.capabilities.roles import ROLES
+            from concorde.capabilities.build import SKILL_NAMES
+            from concorde.capabilities.protocol_contracts import load_capability_inventory
+        finally:
+            sys.path.pop(0)
+        capabilities = load_capability_inventory()
         templates = sorted(path.name for path in (REPOSITORY_ROOT / "templates").glob("*.md"))
-        self.assertEqual(sorted(self.manifest["skills"]), skills)
-        self.assertEqual(sorted(self.manifest["operations"]), operations)
         self.assertEqual(sorted(self.manifest["templates"]), templates)
-        self.assertEqual((len(skills), len(operations), len(templates)), (9, 13, 7))
+        self.assertEqual((len(ROLES), len(capabilities.CAPABILITIES), len(SKILL_NAMES), len(templates)), (9, 13, 7, 7))
         self.assertEqual(
-            (REPOSITORY_ROOT / "operations/requirements.lock").read_text(),
+            (REPOSITORY_ROOT / "scripts/requirements.lock").read_text(),
             "langgraph==1.2.11\n",
         )
-        self.assertTrue((REPOSITORY_ROOT / "scripts/run-operation.py").is_file())
+        self.assertTrue((REPOSITORY_ROOT / "scripts/run-capability.py").is_file())
         self.assertTrue((REPOSITORY_ROOT / "scripts/run-viewer.py").is_file())
         lock = json.loads((REPOSITORY_ROOT / "viewer/package-lock.json").read_text())
         viewer = lock["packages"]["node_modules/understand-anything-viewer"]
@@ -113,9 +115,10 @@ class ManifestContractTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
             self.assertEqual(json.loads(result.stdout)["status"], "installed")
             self.assertTrue((target / ".concorde/framework/concorde.json").is_file())
-            self.assertTrue((target / ".concorde/framework/src/concorde/capabilities/operation_runtime.py").is_file())
-            self.assertTrue((target / ".concorde/framework/operations/concorde-dev-loop/operation.py").is_file())
+            self.assertTrue((target / ".concorde/framework/src/concorde/capabilities/scoped_operations.py").is_file())
+            self.assertTrue((target / ".concorde/framework/scripts/run-capability.py").is_file())
             self.assertTrue((target / ".concorde/framework/generated/build-manifest.json").is_file())
+            self.assertFalse((target / ".concorde/framework/operations").exists())
             self.assertTrue((target / ".agents/skills/concorde-dev-loop/SKILL.md").is_file())
             self.assertTrue((target / ".agents/skills/concorde-main/SKILL.md").is_file())
             self.assertFalse((target / ".concorde/framework/docsite/sidebars.docs.ts").exists())

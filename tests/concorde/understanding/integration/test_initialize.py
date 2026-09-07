@@ -21,7 +21,7 @@ class InitializationTests(unittest.TestCase):
             root = Path(temporary)
             settings = root / ".concorde/reflections/config.json"
             settings.parent.mkdir(parents=True)
-            value = json.loads((REPOSITORY_ROOT / "agent-assets/reflections/config.default.json").read_text())
+            value = json.loads((REPOSITORY_ROOT / "src/concorde/reflections/config.default.json").read_text())
             value["require_approval"] = True
             settings.write_text(json.dumps(value) + "\n")
             before = settings.read_bytes()

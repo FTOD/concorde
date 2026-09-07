@@ -15,7 +15,6 @@ from .validation.freshness import validate_freshness
 from .validation.hierarchy import validate_hierarchy
 from .validation.layout import validate_layout
 from ..reflections.validation import validate_reflections
-from ..capabilities.validation import capability_source_paths, validate_capabilities
 
 
 FOCUSED_VALIDATORS = (
@@ -26,7 +25,6 @@ FOCUSED_VALIDATORS = (
     validate_diagrams,
     validate_reflections,
     validate_freshness,
-    validate_capabilities,
 )
 
 
@@ -38,7 +36,6 @@ def _target_artifacts(package, target: str | None) -> tuple[str, ...]:
     all_artifacts = sorted(
         [source.path for source in package.sources]
         + list(package.diagrams)
-        + list(capability_source_paths(package.project_root))
     )
     if not target or target in {package.specification_root, "."}:
         return tuple(all_artifacts)
@@ -92,7 +89,6 @@ def validate_project(project_root: str | Path, target: str | None = None) -> Too
         [source.path for source in package.sources]
         + list(package.diagrams)
         + list(package.auxiliary)
-        + list(capability_source_paths(package.project_root))
     )
     source_digest = digest_sources(package.project_root, digest_paths)
     return ToolResult(

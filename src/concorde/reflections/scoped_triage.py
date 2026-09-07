@@ -18,7 +18,7 @@ def queue_module(package):
 
 
 def triage(run):
-    from ..capabilities.scoped_operations import Invocation, run_operation, _implementation_digest
+    from ..capabilities.scoped_operations import Invocation, invoke_capability, _implementation_digest
     from ..capabilities.change_worktree import progress, read_change, target_state
     root=run.repository.root;queue=queue_module(run.host.package_root)
     action=run.task["action"];ids=run.task["reflection_ids"]
@@ -80,9 +80,9 @@ def triage(run):
             # Only intended behavior is a task input. Investigation prose, source, evidence and
             # logs must not contaminate specification/planning cognition.
             child_host=replace(run.host,routed_target=run.target.id,coordinated=True)
-            child=run_operation("concorde-dev-loop",run.configuration,
+            child=invoke_capability(run.operation,"concorde-dev-loop",run.configuration,
                 typed("concorde-dev-loop-request",{"target_id":run.target.id,"task":f["resolution"],
-                    "specify":True}),host_context=child_host)
+                    "specify":True}),child_host)
             if child["status"]!="succeeded":
                 if child["output"]:
                     data=child["output"]["data"]

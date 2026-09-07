@@ -155,7 +155,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         invocation = {"type_id": "concorde-operation-invocation", "schema_version": 2,
                       "operation_id": operation, "mode": "execute", "configuration": CONFIGURATION,
                       "input": typed(operation + "-request", task)}
-        process = subprocess.run([sys.executable, str(PACKAGE / "operations" / operation / "operation.py")],
+        process = subprocess.run([sys.executable, str(PACKAGE / "scripts/run-capability.py"), operation],
                                  cwd=self.primary, input=json.dumps(invocation), text=True,
                                  capture_output=True, env={**os.environ, "CONCORDE_STUDIO_URL": ""})
         result = json.loads(process.stdout)
@@ -274,7 +274,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         invocation = {"type_id": "concorde-operation-invocation", "schema_version": 2,
             "operation_id": "concorde-deliver", "mode": "execute", "configuration": None,
             "input": typed("concorde-deliver-request", {"change_id": change_id})}
-        command = [sys.executable, str(PACKAGE / "operations/concorde-deliver/operation.py")]
+        command = [sys.executable, str(PACKAGE / "scripts/run-capability.py"), "concorde-deliver"]
         secondary = subprocess.run(command, input=json.dumps(invocation), capture_output=True,
                                    text=True, cwd=self.change)
         self.assertEqual(0, secondary.returncode, secondary.stdout + secondary.stderr)

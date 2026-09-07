@@ -201,7 +201,6 @@ class BuildFreshnessTests(unittest.TestCase):
         prompt = load_role_prompt(self.root, "concorde-spec-author")
         self.assertEqual(prompt.name, "concorde-spec-author")
         self.assertEqual(prompt.kind, "skill")
-        self.assertEqual(prompt.exposure, "internal")
         self.assertIsNotNone(prompt.effects)
         self.assertTrue(prompt.body.strip())
 

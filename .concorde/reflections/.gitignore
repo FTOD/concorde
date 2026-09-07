@@ -2,4 +2,3 @@
 # control authorities; only triage scratch is ignored.
 plans/
 worktrees/
-legacy-*

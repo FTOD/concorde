@@ -27,7 +27,7 @@ from concorde.capabilities.operation_permissions import (  # noqa: E402
     runtime_bootstrap_file,
     verify_effective_subset,
 )
-from concorde.capabilities.skill_assets import EffectDeclaration  # noqa: E402
+from concorde.capabilities.effects import EffectDeclaration  # noqa: E402
 
 
 class OperationPermissionTests(unittest.TestCase):

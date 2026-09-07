@@ -171,6 +171,7 @@
       "implementation": [
         "src/concorde/reflections/reflections.py",
         "src/concorde/reflections/configuration.py",
+        "src/concorde/reflections/config.default.json",
         "src/concorde/reflections/investigation.py",
         "src/concorde/reflections/scoped_triage.py",
         "src/concorde/reflections/validation.py",
@@ -202,7 +203,6 @@
       "implementation": [
         "scripts/install-concorde.py",
         "scripts/install-concorde.sh",
-        "scripts/run-operation.py",
         "scripts/run-capability.py",
         "scripts/run-viewer.py",
         "scripts/concorde.py",
@@ -410,21 +410,16 @@
         "domain.installation"
       ],
       "implementation": [
-        "src/concorde/capabilities/skill_assets.py",
-        "src/concorde/capabilities/profile8_validation.py",
-        "src/concorde/capabilities/validation.py",
-        "src/concorde/reflections/agent_assets.py",
+        "src/concorde/capabilities/package_validation.py",
         "scripts/sync-protocol-assets.py",
         "src/concorde/capabilities/build.py",
         "src/concorde/capabilities/prompt_resolver.py",
         "src/concorde/capabilities/roles.py",
+        "src/concorde/capabilities/effects.py",
         "src/concorde/capabilities/contract_shapes.py",
         "capabilities",
         "prompts",
-        "skills",
-        "roles",
-        "operations",
-        "agent-assets"
+        "skills"
       ],
       "features": [],
       "apis": [

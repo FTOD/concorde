@@ -1,5 +1,6 @@
 """Transport failures must never duplicate an operation or contaminate JSON stdout."""
 import contextlib
+import importlib
 import io
 import json
 import os
@@ -9,6 +10,7 @@ from unittest.mock import Mock, patch
 from urllib.error import HTTPError, URLError
 from uuid import uuid4
 
+from concorde.capabilities.protocol_contracts import load_capability_inventory
 from concorde.capabilities.scoped_operations import json_main
 from concorde.capabilities.studio_client import run_in_studio, _NoRedirect
 from concorde.specification.repository import SpecError
@@ -55,7 +57,9 @@ class StudioClientTests(unittest.TestCase):
              patch.dict(os.environ, {"CONCORDE_STUDIO_URL": "http://127.0.0.1:2024"}), \
              patch("sys.stdin", io.StringIO(json.dumps(self.value))), patch("sys.argv", ["operation.py"]), \
              contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            code = json_main(PACKAGE, "concorde-reflections-triage")
+            inventory = load_capability_inventory()
+            module = importlib.import_module(f"{inventory.__name__}.reflections_triage")
+            code = json_main(PACKAGE, "concorde-reflections-triage", runner=module.run)
         local.assert_not_called()
         self.assertEqual(2, len(calls))
         self.assertEqual(3, code)

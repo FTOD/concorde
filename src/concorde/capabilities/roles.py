@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .skill_assets import EffectDeclaration
+from .effects import EffectDeclaration
 
 
 @dataclass(frozen=True)

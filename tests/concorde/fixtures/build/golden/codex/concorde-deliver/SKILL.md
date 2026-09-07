@@ -7,6 +7,7 @@ metadata:
   source: "skills/concorde-deliver/SKILL.md"
   kind: "skill"
   capability: "deliver"
+  entrypoint: "scripts/run-capability.py concorde-deliver"
 ---
 # concorde-deliver
 

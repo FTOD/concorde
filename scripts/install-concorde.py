@@ -15,12 +15,6 @@ from typing import Any, Mapping, NamedTuple, Sequence
 SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPT_ROOT / "src"))
 
-from concorde.reflections.agent_assets import (  # noqa: E402
-    CONFIG_PATH as REFLECTIONS_CONFIG_PATH,
-    LEGACY_CONFIG as LEGACY_REFLECTIONS_CONFIG,
-    AgentAssetError,
-    render_projection,
-)
 from concorde.autodocs.docsite_template import DocsiteTemplateError, template_files  # noqa: E402
 from concorde.distribution.managed_runtime import (  # noqa: E402
     ManagedRuntimeError,
@@ -28,21 +22,19 @@ from concorde.distribution.managed_runtime import (  # noqa: E402
     plan_runtime,
     provision_runtime,
 )
-from concorde.capabilities.skill_assets import SkillAssetError, render_capabilities  # noqa: E402
 from concorde.distribution import protocol_guidance as guidance  # noqa: E402
 
 
 FRAMEWORK_ROOT = ".concorde/framework"
 RECEIPT_PATH = ".concorde/install.json"
 INSTALL_SCHEMA = 1
+REFLECTIONS_CONFIG_PATH = ".concorde/reflections/config.json"
+REFLECTIONS_CONFIG_DEFAULT = "src/concorde/reflections/config.default.json"
 PACKAGE_ROOTS = [
-    "agent-assets",
     "capabilities",
     "docsite",
-    "operations",
     "prompts",
     "protocol",
-    "roles",
     "scripts",
     "skills",
     "src",
@@ -50,13 +42,10 @@ PACKAGE_ROOTS = [
     "viewer",
 ]
 from concorde.capabilities import build as concorde_build
-from concorde.capabilities.protocol_contracts import INTERNAL_SKILLS, OPERATIONS as ALL_OPERATIONS
-SKILLS = list(INTERNAL_SKILLS)
-OPERATIONS = list(ALL_OPERATIONS)
 OPERATION_RUNTIME = {
-    "launcher": "scripts/run-operation.py",
+    "launcher": "scripts/run-capability.py",
     "python": ">=3.11",
-    "requirements": "operations/requirements.lock",
+    "requirements": "scripts/requirements.lock",
     "venv": ".concorde/.venv",
 }
 VIEWER = {
@@ -125,8 +114,6 @@ def load_package(root: Path) -> Package:
         "version",
         "architecture_profile",
         "workspace_protocol",
-        "skills",
-        "operations",
         "operation_runtime",
         "viewer",
         "templates",
@@ -149,18 +136,6 @@ def load_package(root: Path) -> Package:
         raise InstallError("Concorde manifest must declare exactly claude and codex integrations")
     if manifest.get("package_roots") != PACKAGE_ROOTS:
         raise InstallError("Concorde manifest declares an unsupported root package inventory")
-    skills = manifest.get("skills")
-    if not isinstance(skills, list) or any(not isinstance(item, str) for item in skills):
-        raise InstallError("Concorde manifest Skills must be a string list")
-    if skills != SKILLS or len(skills) != len(set(skills)):
-        raise InstallError(
-            f"Concorde manifest must declare exactly these {len(SKILLS)} internal Skills: {SKILLS}"
-        )
-    operations = manifest.get("operations")
-    if operations != OPERATIONS:
-        raise InstallError(f"Concorde manifest must declare exactly these Operations: {OPERATIONS}")
-    if set(skills) & set(operations):
-        raise InstallError("Concorde Skill and Operation names must be globally unique")
     if manifest.get("operation_runtime") != OPERATION_RUNTIME:
         raise InstallError(
             f"Concorde manifest must declare the exact managed Operation runtime: {OPERATION_RUNTIME}"
@@ -195,10 +170,6 @@ def load_package(root: Path) -> Package:
         if (root / legacy_root).exists() or (root / legacy_root).is_symlink():
             raise InstallError(f"Concorde package contains removed legacy root: {legacy_root}")
     try:
-        render_capabilities(root, "codex", FRAMEWORK_ROOT)
-    except SkillAssetError as error:
-        raise InstallError(str(error)) from error
-    try:
         concorde_build.build(root, "all", framework_prefix=FRAMEWORK_ROOT)
     except concorde_build.BuildError as error:
         raise InstallError(str(error)) from error
@@ -212,7 +183,7 @@ def load_package(root: Path) -> Package:
         load_runtime_spec(root, manifest)
     except ManagedRuntimeError as error:
         raise InstallError(str(error)) from error
-    from concorde.capabilities.profile8_validation import validate_package
+    from concorde.capabilities.package_validation import validate_package
     findings = validate_package(root)
     if findings:
         raise InstallError("; ".join(f.message for f in findings))
@@ -224,8 +195,7 @@ def _package_files(package: Package) -> dict[str, bytes]:
     desired[f"{FRAMEWORK_ROOT}/concorde.json"] = (package.root / "concorde.json").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/LICENSE"] = (package.root / "LICENSE").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/README.md"] = (package.root / "README.md").read_bytes()
-    for directory in ("agent-assets", "capabilities", "operations", "prompts", "protocol", "roles",
-                      "skills", "src", "templates", "viewer"):
+    for directory in ("capabilities", "prompts", "protocol", "skills", "src", "templates", "viewer"):
         source_root = package.root / directory
         for path in sorted(source_root.rglob("*")):
             if path.is_symlink():
@@ -245,9 +215,9 @@ def _package_files(package: Package) -> dict[str, bytes]:
         "concorde.ps1",
         "concorde.sh",
         "reflections_queue.py",
+        "requirements.lock",
         "run-capability.py",
         "run-viewer.py",
-        "run-operation.py",
     )
     for name in scripts:
         source = package.root / "scripts" / name
@@ -261,10 +231,6 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
     if integration not in package.manifest["integrations"]:
         raise InstallError(f"unsupported integration: {integration}")
     outputs = {path: (content, "framework") for path, content in _package_files(package).items()}
-    try:
-        reflections = render_projection(package.root / "agent-assets/reflections", integration)
-    except AgentAssetError as error:
-        raise InstallError(str(error)) from error
     # The build is the only instruction source: it renders the framework's generated/**
     # (role bodies, the build manifest, the Studio graph list) and, for this integration,
     # the seven consumer-facing skill wrappers. Consumers never run this build themselves.
@@ -278,15 +244,9 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
         else:
             outputs[f"{FRAMEWORK_ROOT}/{output.path}"] = (output.content, "framework")
     outputs[f"{FRAMEWORK_ROOT}/generated/build-manifest.json"] = (build_result.manifest, "framework")
-    for path, content in reflections.items():
-        if path in outputs:
-            raise InstallError(f"agent output collision: {path}")
-        outputs[path] = (content.encode("utf-8"), "agent")
     defaults = {
-        REFLECTIONS_CONFIG_PATH: (
-            package.root / "agent-assets/reflections/config.default.json"
-        ).read_bytes(),
-        ".concorde/reflections/.gitignore": b"plans/\nworktrees/\nlegacy-*\n",
+        REFLECTIONS_CONFIG_PATH: (package.root / REFLECTIONS_CONFIG_DEFAULT).read_bytes(),
+        ".concorde/reflections/.gitignore": b"plans/\nworktrees/\n",
         ".concorde/topology-proposals/.gitignore": (
             b"# Exact topology applications are local, maintainer-reviewed host artifacts.\n"
             b"*\n!.gitignore\n"
@@ -364,7 +324,6 @@ def installation_plan(
         guidance_actions.append(item)
     if remove_protocol_guidance:
         return guidance_actions, guidance_desired, receipt
-    legacy_config = target / LEGACY_REFLECTIONS_CONFIG
     actions: list[dict[str, str]] = []
     for relative, (content, role) in desired.items():
         path = target / relative
@@ -377,20 +336,6 @@ def installation_plan(
             unsafe = str(error)
         if unsafe is not None:
             action = "conflict"
-        elif (
-            relative == REFLECTIONS_CONFIG_PATH
-            and role == "project-default"
-            and not path.exists()
-            and not path.is_symlink()
-            and (legacy_config.exists() or legacy_config.is_symlink())
-        ):
-            # Do not silently seed a default over an unmigrated legacy config: fail closed and
-            # point at agent-asset sync, which performs the reviewed, digest-bound adoption.
-            action = "conflict"
-            unsafe = (
-                f"legacy reflection-triage config exists at {LEGACY_REFLECTIONS_CONFIG}; "
-                "run Concorde agent-asset sync to adopt it before installing"
-            )
         elif role == "project-default" and path.exists() and observed is not None:
             action = "preserve"
         elif not path.exists() and not path.is_symlink():

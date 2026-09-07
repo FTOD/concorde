@@ -10,8 +10,6 @@ from typing import Sequence
 from ..diagnostics import canonical_json, envelope, exit_code, tool_envelope
 from ..model import Finding, ToolResult
 
-PACKAGE_ROOT = Path(__file__).resolve().parents[3]
-
 
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="concorde")
@@ -34,17 +32,6 @@ def create_parser() -> argparse.ArgumentParser:
     docsite.add_argument("--github-pages", action="store_true")
     docsite.add_argument("--allow-primary-worktree", action="store_true")
     docsite.add_argument("--format", choices=["json"], default="json")
-
-    agent_assets = subparsers.add_parser("agent-assets")
-    asset_tools = agent_assets.add_subparsers(dest="agent_asset_tool", required=True)
-    for name in ("preview", "sync", "verify", "remove"):
-        command = asset_tools.add_parser(name)
-        command.add_argument("--integration", choices=["claude", "codex"], required=True)
-        command.add_argument("--source-root")
-        command.add_argument("--concorde-version", default="source")
-        if name in {"sync", "remove"}:
-            command.add_argument("--allow-primary-worktree", action="store_true")
-        command.add_argument("--format", choices=["json"], default="json")
 
     build = subparsers.add_parser("build")
     build.add_argument("--integration", choices=["claude", "codex", "all"], default="all")
@@ -80,26 +67,6 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
             base_url=arguments.base_url,
             github_pages=arguments.github_pages,
         )
-    if arguments.tool == "agent-assets":
-        from ..reflections.agent_assets import (
-            preview_agent_assets,
-            remove_agent_assets,
-            sync_agent_assets,
-            verify_agent_assets,
-        )
-
-        source = (
-            Path(arguments.source_root)
-            if arguments.source_root
-            else PACKAGE_ROOT / "agent-assets/reflections"
-        )
-        if arguments.agent_asset_tool == "preview":
-            return preview_agent_assets(root, source, arguments.integration, arguments.concorde_version)
-        if arguments.agent_asset_tool == "sync":
-            return sync_agent_assets(root, source, arguments.integration, arguments.concorde_version)
-        if arguments.agent_asset_tool == "verify":
-            return verify_agent_assets(root, source, arguments.integration)
-        return remove_agent_assets(root, arguments.integration)
     if arguments.tool == "build":
         from .build import BuildError, check_build, write_build
 
@@ -174,9 +141,6 @@ def _verify_worktree(arguments: argparse.Namespace) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    if not (list(argv) if argv is not None else sys.argv[1:]):
-        from .scoped_operations import json_main
-        return json_main(PACKAGE_ROOT)
     parser = create_parser()
     arguments: argparse.Namespace | None = None
     try:
@@ -185,9 +149,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _verify_worktree(arguments)
         mutation = arguments.tool in {"init", "deliver", "docsite"} or (
             arguments.tool == "configure" and arguments.apply
-        ) or (
-            arguments.tool == "agent-assets"
-            and arguments.agent_asset_tool in {"sync", "remove"}
         )
         if mutation:
             from .worktree import require_isolated_worktree
@@ -204,7 +165,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         tool = arguments.tool if arguments is not None else (argv[0] if argv else "validate")
         payload = envelope(
             tool
-            if tool in {"init", "configure", "context", "explore", "validate", "deliver", "agent-assets", "docsite", "build"}
+            if tool in {"init", "configure", "context", "explore", "validate", "deliver", "docsite", "build"}
             else "validate",
             ".",
             "failed",

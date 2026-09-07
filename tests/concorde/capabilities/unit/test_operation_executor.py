@@ -27,7 +27,7 @@ from concorde.capabilities.operation_permissions import (  # noqa: E402
     render_codex_configuration,
     runtime_bootstrap_file,
 )
-from concorde.capabilities.skill_assets import EffectDeclaration  # noqa: E402
+from concorde.capabilities.effects import EffectDeclaration  # noqa: E402
 
 
 class OperationExecutorTests(unittest.TestCase):

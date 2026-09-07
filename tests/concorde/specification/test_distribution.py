@@ -8,8 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 from concorde.capabilities.protocol_contracts import OPERATIONS,INTERNAL_SKILLS
-from concorde.capabilities.profile8_validation import validate_package
-from concorde.capabilities.skill_assets import render_capabilities,load_skill_prompt
+from concorde.capabilities.package_validation import validate_package
+from concorde.capabilities.build import load_role_prompt
 from concorde.capabilities.operation_data import typed
 from concorde.specification.repository import SpecRepository
 from concorde.specification.validation import validate_repository
@@ -21,31 +21,25 @@ class DistributionTests(unittest.TestCase):
         self.assertEqual(13,len(OPERATIONS));self.assertEqual(9,len(INTERNAL_SKILLS))
         self.assertIn('concorde-main',OPERATIONS);self.assertNotIn('concorde-ask',OPERATIONS)
         self.assertIn('concorde-coordinator',INTERNAL_SKILLS);self.assertNotIn('concorde-main',INTERNAL_SKILLS)
-        for role in INTERNAL_SKILLS:self.assertEqual('internal',load_skill_prompt(PACKAGE,role).exposure)
-    def test_canonical_pairs_render_for_every_integration(self):
-        # The tracked .claude/skills/.agents/skills projections are now build output (untracked);
-        # this only proves the older roles/operations pairing still renders without error.
-        for integration in ('claude','codex'):
-            rendered = render_capabilities(PACKAGE,integration,"")
-            self.assertTrue(rendered)
-            for path,content in rendered.items():
-                self.assertTrue(content.strip())
-                self.assertIn(('.claude/' if integration=='claude' else '.agents/')+'skills/',path)
+        for role in INTERNAL_SKILLS:
+            prompt=load_role_prompt(PACKAGE,role)
+            self.assertEqual(role,prompt.name);self.assertTrue(prompt.body.strip());self.assertIsNotNone(prompt.effects)
     def test_self_architecture_uses_two_axes_and_local_operation_registry(self):
         repo=SpecRepository(PACKAGE);self.assertEqual('success',validate_repository(PACKAGE).status)
         self.assertEqual({'domain':4,'service':5,'module':8},{kind:sum(t.kind==kind for t in repo.targets.values()) for kind in ('domain','service','module')})
         text='\n'.join(d.body for d in repo.documents(repo.select('service.workflow-host')))
         for op in OPERATIONS:self.assertIn(op+'-request',text)
-    def test_paired_cli_rejects_direct_internal_stage_invocation_and_accepts_a_public_operation(self):
+    def test_launcher_refuses_a_stage_capability_name_and_accepts_a_public_skill(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);project(root)
-            internal_command=[sys.executable,str(PACKAGE/'operations/concorde-plan/operation.py')]
+            launcher=str(PACKAGE/'scripts/run-capability.py')
+            internal_command=[sys.executable,launcher,'concorde-plan']
             internal_value={'type_id':'concorde-operation-invocation','schema_version':2,'operation_id':'concorde-plan','mode':'execute','configuration':None,'input':typed('concorde-plan-request',{'target_id':'service.transfer','task':'Explain transfer'})}
             result=subprocess.run(internal_command,input=json.dumps(internal_value),capture_output=True,text=True,cwd=root)
             self.assertEqual(3,result.returncode,result.stdout+result.stderr)
             output=json.loads(result.stdout)
-            self.assertEqual('blocked',output['status']);self.assertEqual('internal_operation',output['errors'][0]['code'])
-            public_command=[sys.executable,str(PACKAGE/'operations/concorde-validate/operation.py')]
+            self.assertEqual('blocked',output['status']);self.assertEqual('unknown_capability',output['errors'][0]['code'])
+            public_command=[sys.executable,launcher,'concorde-validate']
             public_value={'type_id':'concorde-operation-invocation','schema_version':2,'operation_id':'concorde-validate','mode':'describe-policy','configuration':None,'input':typed('concorde-validate-request',{'target_id':'service.transfer','task':'Explain transfer'})}
             result=subprocess.run(public_command,input=json.dumps(public_value),capture_output=True,text=True,cwd=root)
             self.assertEqual(0,result.returncode,result.stdout+result.stderr)

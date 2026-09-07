@@ -11,36 +11,10 @@
   "delivery_proposal": 10,
   "skill_namespace": "concorde",
   "format_lineage": "Skill and Markdown template formatting was informed by GitHub Spec Kit; Concorde owns and executes every distributed asset.",
-  "skills": [
-    "concorde-code-reviewer",
-    "concorde-context-assessor",
-    "concorde-coordinator",
-    "concorde-implementation-worker",
-    "concorde-planner",
-    "concorde-reader",
-    "concorde-spec-author",
-    "concorde-spec-reviewer",
-    "concorde-task-author"
-  ],
-  "operations": [
-    "concorde-configure",
-    "concorde-context-solve",
-    "concorde-deliver",
-    "concorde-dev-loop",
-    "concorde-implement",
-    "concorde-init",
-    "concorde-main",
-    "concorde-plan",
-    "concorde-reflections-triage",
-    "concorde-review",
-    "concorde-specify",
-    "concorde-tasks",
-    "concorde-validate"
-  ],
   "operation_runtime": {
-    "launcher": "scripts/run-operation.py",
+    "launcher": "scripts/run-capability.py",
     "python": ">=3.11",
-    "requirements": "operations/requirements.lock",
+    "requirements": "scripts/requirements.lock",
     "venv": ".concorde/.venv"
   },
   "viewer": {
@@ -71,13 +45,10 @@
     "tasks-template.md"
   ],
   "package_roots": [
-    "agent-assets",
     "capabilities",
     "docsite",
-    "operations",
     "prompts",
     "protocol",
-    "roles",
     "scripts",
     "skills",
     "src",

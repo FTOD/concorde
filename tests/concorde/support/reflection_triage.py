@@ -12,15 +12,11 @@ from tests.concorde.support.feature_workspace import (
     reflection_entry,
     write_reflection_collection,
 )
-from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-CANONICAL_ASSETS = REPOSITORY_ROOT / "agent-assets" / "reflections"
 DEFAULT_CONFIG = {
     "schema_version": 1,
     "order": "newest-first",
-    "investigators": 1,
-    "implementers": 2,
     "require_approval": False,
     "skip": [],
     "plans_dir": ".concorde/reflections/plans",

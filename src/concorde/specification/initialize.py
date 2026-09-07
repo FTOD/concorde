@@ -57,7 +57,7 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
         files.append(file_change(root, index, json.dumps({"schema_version": 1, "high_water": "R-000"}, indent=2) + "\n"))
     settings = ".concorde/reflections/config.json"
     if not checked_path(root, settings).exists():
-        files.append(file_change(root, settings, read_file(package, "agent-assets/reflections/config.default.json").decode()))
+        files.append(file_change(root, settings, read_file(package, "src/concorde/reflections/config.default.json").decode()))
     if not checked_path(root, TOPOLOGY_IGNORE_PATH).exists():
         files.append(file_change(root, TOPOLOGY_IGNORE_PATH, TOPOLOGY_IGNORE))
     return {"type_id": "concorde-project-proposal", "schema_version": 1,
