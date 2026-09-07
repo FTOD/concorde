@@ -1,6 +1,6 @@
 ---
 name: concorde-deliver
-description: "Merge and clean up a verified change from an agent opened in the primary worktree."
+description: "Lifecycle: from the primary worktree, verify, merge and clean up one ready candidate change."
 exposure: public
 operation: operation.py
 capabilities: []

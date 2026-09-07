@@ -18,11 +18,11 @@
     },
     {
       "path": "protocol/principles.md",
-      "digest": "sha256:bac1137c219418fe35e52997793c93f50eb8b7e3324e37eb79318d0b3ce4a952"
+      "digest": "sha256:d4e3ad8c3bae697a4a238e069b9cb8c70d37b4224eca874dc43fd2e1b52fb9d7"
     },
     {
       "path": "protocol/schemas.json",
-      "digest": "sha256:90ced32de94dddd92a195df38c3f6bce7f6e131692a1ed9e6f13ad3e1cc1be2f"
+      "digest": "sha256:e7dca29a39d1998008673e4c5f97cf7ef5e5de1e15d5449645417880e701d9ba"
     }
   ]
 }

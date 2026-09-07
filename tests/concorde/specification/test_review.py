@@ -390,7 +390,7 @@ class ReviewTests(unittest.TestCase):
         blocked = self.review(callback=self.missing("spec-review"))
         self.assertEqual("blocked", blocked["status"], blocked)
         tasks = read_change(self.root)["targets"][self.task["target_id"]]["tasks"]
-        for operation in ("concorde-tasks", "concorde-implement", "concorde-checklist", "concorde-taskstoissues"):
+        for operation in ("concorde-tasks", "concorde-implement"):
             result = self.run_op(operation)
             self.assertEqual("blocked", result["status"], result)
             self.assertEqual("review_required", result["errors"][0]["code"])
@@ -407,12 +407,12 @@ class ReviewTests(unittest.TestCase):
                     self.assertEqual("succeeded", self.run_op("concorde-standard-dev-loop")["status"])
                     self.assertEqual("blocked", self.run_op("concorde-plan", callback=self.missing(phase))["status"])
                     gap = read_change(self.root)["gaps"][0]
-                    for operation in ("concorde-tasks", "concorde-implement", "concorde-checklist", "concorde-taskstoissues"):
+                    for operation in ("concorde-tasks", "concorde-implement"):
                         result = self.run_op(operation)
                         self.assertEqual("blocked", result["status"], result)
                         self.assertEqual([gap], result["output"]["data"]["gaps"])
                         self.assertEqual([], self.model.calls)
-                    self.assertEqual("succeeded", self.run_op("concorde-analyze")["status"])
+                    self.assertEqual("succeeded", self.run_op("concorde-context-solve")["status"])
                     self.assertEqual("open", read_change(self.root)["gap_history"][0]["status"])
                     spec = self.root / "specs/send-money.md"
                     spec.write_text(spec.read_text() + "\nThe daily-limit owner is transfer.\n")
@@ -541,26 +541,6 @@ class ReviewTests(unittest.TestCase):
         resumed = self.run_op("concorde-standard-dev-loop")
         self.assertEqual("succeeded", resumed["status"], resumed)
         self.assertIn("plan", [call["stage"] for call in self.model.calls])
-        self.assertEqual("resolved", read_change(self.root)["gap_history"][0]["status"])
-
-    def test_checklist_rejection_and_write_failure_preserve_gaps_until_acceptance(self):
-        from concorde.capabilities import scoped_operations
-        self.assertEqual("blocked", self.run_op("concorde-checklist", callback=self.missing("plan"))["status"])
-        spec = self.root / "specs/send-money.md"
-        spec.write_text(spec.read_text() + "\nThe daily-limit owner is transfer.\n")
-        def invalid(stage, snapshot, data, cwd):
-            data.update(plan="", answer="")
-        self.assertNotEqual("succeeded", self.run_op("concorde-checklist", callback=invalid)["status"])
-        self.assertEqual("open", read_change(self.root)["gap_history"][0]["status"])
-        original_apply = scoped_operations.apply_files
-        def reject_checklist(root, changes, allowed, **kwargs):
-            if any(item["path"].endswith("/checklist.md") for item in changes):
-                raise OSError("fixture checklist directory cannot be written")
-            return original_apply(root, changes, allowed, **kwargs)
-        with patch.object(scoped_operations, "apply_files", side_effect=reject_checklist):
-            self.assertNotEqual("succeeded", self.run_op("concorde-checklist")["status"])
-        self.assertEqual("open", read_change(self.root)["gap_history"][0]["status"])
-        self.assertEqual("succeeded", self.run_op("concorde-checklist")["status"])
         self.assertEqual("resolved", read_change(self.root)["gap_history"][0]["status"])
 
     def test_gap_capture_is_explicit_deduplicated_and_keeps_owner_and_blocker(self):

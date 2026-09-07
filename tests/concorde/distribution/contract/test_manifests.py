@@ -60,7 +60,7 @@ class ManifestContractTests(unittest.TestCase):
         self.assertEqual(sorted(self.manifest["skills"]), skills)
         self.assertEqual(sorted(self.manifest["operations"]), operations)
         self.assertEqual(sorted(self.manifest["templates"]), templates)
-        self.assertEqual((len(skills), len(operations), len(templates)), (9, 23, 9))
+        self.assertEqual((len(skills), len(operations), len(templates)), (9, 14, 7))
         self.assertEqual(
             (REPOSITORY_ROOT / "operations/requirements.lock").read_text(),
             "langgraph==1.2.11\n",
@@ -115,8 +115,8 @@ class ManifestContractTests(unittest.TestCase):
             self.assertTrue((target / ".concorde/framework/concorde.json").is_file())
             self.assertTrue((target / ".concorde/framework/src/concorde/capabilities/operation_runtime.py").is_file())
             self.assertTrue((target / ".concorde/framework/operations/concorde-standard-dev-loop/operation.py").is_file())
-            self.assertTrue((target / ".agents/skills/concorde-constitution/SKILL.md").is_file())
             self.assertTrue((target / ".agents/skills/concorde-standard-dev-loop/SKILL.md").is_file())
+            self.assertTrue((target / ".agents/skills/concorde-main/SKILL.md").is_file())
             self.assertFalse((target / ".concorde/framework/docsite/sidebars.docs.ts").exists())
             self.assertFalse((target / ".specify").exists())
 

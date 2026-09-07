@@ -18,7 +18,7 @@ from .support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
 class DistributionTests(unittest.TestCase):
     def test_catalog_roles_and_exported_schemas_are_executable_package_contracts(self):
         self.assertEqual([],validate_package(PACKAGE))
-        self.assertEqual(23,len(OPERATIONS));self.assertEqual(9,len(INTERNAL_SKILLS))
+        self.assertEqual(14,len(OPERATIONS));self.assertEqual(9,len(INTERNAL_SKILLS))
         self.assertIn('concorde-main',OPERATIONS);self.assertNotIn('concorde-ask',OPERATIONS)
         self.assertIn('concorde-coordinator',INTERNAL_SKILLS);self.assertNotIn('concorde-main',INTERNAL_SKILLS)
         for role in INTERNAL_SKILLS:self.assertEqual('internal',load_skill_prompt(PACKAGE,role).exposure)
@@ -30,18 +30,21 @@ class DistributionTests(unittest.TestCase):
         self.assertEqual({'domain':4,'service':5,'module':8},{kind:sum(t.kind==kind for t in repo.targets.values()) for kind in ('domain','service','module')})
         text='\n'.join(d.body for d in repo.documents(repo.select('service.workflow-host')))
         for op in OPERATIONS:self.assertIn(op+'-request',text)
-    def test_paired_cli_accepts_only_typed_stdin_and_rejects_old_arguments(self):
+    def test_paired_cli_rejects_direct_internal_stage_invocation_and_accepts_a_public_operation(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);project(root)
-            command=[sys.executable,str(PACKAGE/'operations/concorde-context/operation.py')]
-            value={'type_id':'concorde-operation-invocation','schema_version':2,'operation_id':'concorde-context','mode':'execute','configuration':None,'input':typed('concorde-context-request',{'target_id':'service.transfer','task':'Explain transfer'})}
-            result=subprocess.run(command,input=json.dumps(value),capture_output=True,text=True,cwd=root)
+            internal_command=[sys.executable,str(PACKAGE/'operations/concorde-plan/operation.py')]
+            internal_value={'type_id':'concorde-operation-invocation','schema_version':2,'operation_id':'concorde-plan','mode':'execute','configuration':None,'input':typed('concorde-plan-request',{'target_id':'service.transfer','task':'Explain transfer'})}
+            result=subprocess.run(internal_command,input=json.dumps(internal_value),capture_output=True,text=True,cwd=root)
+            self.assertEqual(3,result.returncode,result.stdout+result.stderr)
+            output=json.loads(result.stdout)
+            self.assertEqual('blocked',output['status']);self.assertEqual('internal_operation',output['errors'][0]['code'])
+            public_command=[sys.executable,str(PACKAGE/'operations/concorde-validate/operation.py')]
+            public_value={'type_id':'concorde-operation-invocation','schema_version':2,'operation_id':'concorde-validate','mode':'describe-policy','configuration':None,'input':typed('concorde-validate-request',{'target_id':'service.transfer','task':'Explain transfer'})}
+            result=subprocess.run(public_command,input=json.dumps(public_value),capture_output=True,text=True,cwd=root)
             self.assertEqual(0,result.returncode,result.stdout+result.stderr)
-            output=json.loads(result.stdout);manifest=output['output']['data']['manifest']['data']
-            self.assertEqual(2,len(manifest['document_order']))
-            self.assertEqual(2,len(manifest['target_spec'])+len(manifest['shared_specs']))
-            self.assertNotIn('content',json.dumps(manifest));self.assertNotIn('Transfer money',result.stdout)
-            result=subprocess.run(command+['--feature-path','specs/send-money.md'],input=json.dumps(value),capture_output=True,text=True,cwd=root)
+            self.assertEqual('described',json.loads(result.stdout)['status'])
+            result=subprocess.run(public_command+['--feature-path','specs/send-money.md'],input=json.dumps(public_value),capture_output=True,text=True,cwd=root)
             self.assertEqual(3,result.returncode);self.assertEqual('blocked',json.loads(result.stdout)['status'])
     def test_installed_framework_runs_complete_real_graph_and_checks_for_both_integrations(self):
         spec=importlib.util.spec_from_file_location('profile8_installer',PACKAGE/'scripts/install-concorde.py');module=importlib.util.module_from_spec(spec);sys.modules[spec.name]=module;spec.loader.exec_module(module)

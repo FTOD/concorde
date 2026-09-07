@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 OPERATION_NAME = 'concorde-review'
-OPERATION_CAPABILITIES = ('concorde-coordinator', 'concorde-spec-reviewer', 'concorde-code-reviewer')
+OPERATION_CAPABILITIES = ('concorde-spec-reviewer', 'concorde-code-reviewer')
 
 def package_root():
     return Path(__file__).resolve().parents[2]

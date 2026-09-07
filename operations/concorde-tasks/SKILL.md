@@ -1,23 +1,23 @@
 ---
 name: concorde-tasks
-description: "Run tasks through Concorde's enforced Spec context and JSON boundary."
-exposure: public
+description: "Internal stage: author acceptance tasks from the accepted plan."
+exposure: internal
 operation: operation.py
 capabilities: ["concorde-task-author"]
 ---
 
 # concorde-tasks
 
-Invoke this Operation to tasks. The host owns context
-resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
-input; do not perform it directly in this ambient conversation or inspect additional project files.
+This is an internal stage Operation. It receives an already routed `target_id` and one frozen
+context snapshot from its composing Operation (`concorde-standard-dev-loop` or `concorde-fast-loop`);
+it is never selected directly by a user or by main. It is not projected as a user-invocable Skill,
+and the executable boundary rejects a direct invocation of `operations/concorde-tasks/operation.py`
+with error code `internal_operation`.
 
-Send one concorde-operation-invocation@2 JSON object on stdin to `{OPERATION}`. Its exact fields
-are type_id, schema_version:2, operation_id:"concorde-tasks", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-tasks-request@1).
-Task requests select target_id and task, with optional focus_id, constraints, and change_id.
-Initialization/migration use their typed propose/apply requests; use the published request schema.
-No domain flags or positional task arguments are accepted. Configuration is never a context grant.
+A composing Operation invokes it in-process through `run_operation` with a
+`concorde-tasks-request@1` TypedValue; the request requires target_id and task and accepts optional
+focus_id, constraints and change_id, all supplied by the caller. Configuration is never a context
+grant.
 
 Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of
 searching other Specs. When a mutation starts in the primary worktree, the host prepares a committed-base linked

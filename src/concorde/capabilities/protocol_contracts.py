@@ -57,27 +57,27 @@ WORKSPACE_CONTEXT = obj({"kind": {"enum": ["primary", "change", "unversioned"]},
 
 AGENT_OPERATIONS = {
     "concorde-specify": ("specify", "concorde-spec-author"),
-    "concorde-clarify": ("specify", "concorde-spec-author"),
-    "concorde-constitution": ("specify", "concorde-spec-author"),
-    "concorde-checklist": ("plan", "concorde-planner"),
     "concorde-plan": ("plan", "concorde-planner"),
     "concorde-tasks": ("tasks", "concorde-task-author"),
     "concorde-implement": ("implementation", "concorde-implementation-worker"),
-    "concorde-converge": ("implementation", "concorde-implementation-worker"),
-    "concorde-analyze": ("context-solve", "concorde-context-assessor"),
     "concorde-context-solve": ("context-solve", "concorde-context-assessor"),
 }
 TARGET_AGENT_STAGES = {"concorde-read-target": ("ask", "concorde-reader")}
 REVIEW_STAGES = {"spec": ("spec-review", "concorde-spec-reviewer"),
                  "code": ("code-review", "concorde-code-reviewer")}
-DETERMINISTIC_OPERATIONS = ("concorde-resolve-context", "concorde-context", "concorde-init",
-    "concorde-configure", "concorde-migrate", "concorde-validate", "concorde-deliver", "concorde-taskstoissues")
-COMPOSITE_OPERATIONS = ("concorde-standard-dev-loop", "concorde-fast-loop", "concorde-reflections-triage")
 MAIN_OPERATION = "concorde-main"
-OPERATIONS = tuple(sorted((MAIN_OPERATION, "concorde-review", *AGENT_OPERATIONS, *DETERMINISTIC_OPERATIONS, *COMPOSITE_OPERATIONS)))
-MAIN_ROUTED_OPERATIONS = frozenset({"concorde-analyze", MAIN_OPERATION, "concorde-checklist",
-    "concorde-clarify", "concorde-constitution", "concorde-context-solve", "concorde-fast-loop",
-    "concorde-plan", "concorde-review", "concorde-specify", "concorde-standard-dev-loop"})
+GLOBAL_OPERATIONS = (MAIN_OPERATION, "concorde-standard-dev-loop", "concorde-fast-loop",
+                     "concorde-reflections-triage")
+DETERMINISTIC_OPERATIONS = ("concorde-init", "concorde-configure", "concorde-validate", "concorde-deliver")
+LIFECYCLE_OPERATIONS = DETERMINISTIC_OPERATIONS
+INTERNAL_OPERATIONS = ("concorde-specify", "concorde-review", "concorde-context-solve",
+                       "concorde-plan", "concorde-tasks", "concorde-implement")
+PUBLIC_OPERATIONS = tuple(sorted(GLOBAL_OPERATIONS + LIFECYCLE_OPERATIONS))
+OPERATIONS = tuple(sorted((*GLOBAL_OPERATIONS, *LIFECYCLE_OPERATIONS, *INTERNAL_OPERATIONS)))
+assert set(PUBLIC_OPERATIONS) | set(INTERNAL_OPERATIONS) == set(OPERATIONS), "Operation classes must partition OPERATIONS"
+assert not (set(PUBLIC_OPERATIONS) & set(INTERNAL_OPERATIONS)), "Operation classes must be disjoint"
+assert len(OPERATIONS) == len(set(OPERATIONS)), "OPERATIONS must not contain duplicates"
+MAIN_ROUTED_OPERATIONS = frozenset({MAIN_OPERATION, "concorde-standard-dev-loop", "concorde-fast-loop"})
 INTERNAL_SKILLS = tuple(sorted({"concorde-coordinator", *(role for _, role in AGENT_OPERATIONS.values()),
                                 *(role for _, role in REVIEW_STAGES.values()),
                                 *(role for _, role in TARGET_AGENT_STAGES.values())}))
@@ -88,7 +88,6 @@ INTERNAL_DATA_TYPES = (
     "concorde-review-stage-context",
     "concorde-review-stage-result",
     "concorde-review-result",
-    "concorde-context-manifest",
     "concorde-context-snapshot",
     "concorde-discovery-context",
     "concorde-main-stage-context",
@@ -165,22 +164,16 @@ def schemas() -> dict:
     result["concorde-deliver-request"] = obj({"change_id": STRING,
         "target_id": STRING, "task": STRING, "focus_id": STRING, "constraints": array(STRING)},
         ("target_id", "task", "focus_id", "constraints"))
-    for name in ("concorde-context", "concorde-resolve-context"):
-        result[f"{name}-request"] = obj({**TASK_FIELDS, "phase": {"enum": ["ask", "specify", "plan", "tasks", "implementation", "spec-review", "code-review", "validate", "deliver", "context-solve"]}}, (*TASK_OPTIONAL, "phase"))
-        result[f"{name}-response"] = obj({"manifest": typed_schema("concorde-context-manifest")})
     config = typed_schema("concorde-operation-configuration")
     proposal_file = obj({"path": PATH, "before_digest": {"anyOf": [DIGEST, {"type": "null"}]}, "content": {"type": "string"}})
-    result["concorde-project-proposal"] = obj({"action": {"enum": ["initialize", "migrate"]},
+    result["concorde-project-proposal"] = obj({"action": {"enum": ["initialize"]},
         "base_digest": {"anyOf": [DIGEST, {"type": "null"}]}, "files": array(proposal_file)})
     # Proposed registry is transported as exact JSON text and decoded/validated by the registry service.
     result["concorde-init-request"] = obj({"action": {"enum": ["propose", "apply"]},
         "name": STRING, "target_id": STRING, "configuration": config,
         "proposal": typed_schema("concorde-project-proposal")}, ("name", "target_id", "configuration", "proposal"))
-    result["concorde-migrate-request"] = obj({"action": {"enum": ["propose", "apply"]},
-        "registry_json": STRING, "documents": array(DOCUMENT_CHANGE), "configuration": config,
-        "proposal": typed_schema("concorde-project-proposal")}, ("registry_json", "documents", "configuration", "proposal"))
     result["concorde-configure-request"] = obj({"configuration": config})
-    for name in ("concorde-init", "concorde-migrate"):
+    for name in ("concorde-init",):
         result[f"{name}-response"] = obj({"status": {"enum": ["proposed", "applied"]},
             "proposal": {"anyOf": [typed_schema("concorde-project-proposal"), {"type": "null"}]}, "files": array(PATH)})
     result["concorde-configure-response"] = obj({"configuration": config, "status": {"const": "applied"}})
@@ -211,13 +204,6 @@ def schemas() -> dict:
         "shared_specs": array(document), "instructions": {"type": "string"},
         "stage_inputs": array(stage_input), "implementation_artifacts": array(ARTIFACT),
         "workspace": WORKSPACE_CONTEXT})
-    result["concorde-context-manifest"] = obj({"schema_version": {"const": 1},
-        "context_id": DIGEST, "target_id": STRING,
-        "kind": {"enum": ["domain", "service", "module"]}, "focus_id": NULLABLE_ID,
-        "phase": STRING, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
-        "protocol": array(obj({"path": PATH, "digest": DIGEST})),
-        "document_order": array(PATH, unique=True), "target_spec": array(document_ref),
-        "shared_specs": array(document_ref), "workspace": WORKSPACE_CONTEXT})
     result["concorde-agent-stage-context"] = obj({"snapshot": typed_schema("concorde-context-snapshot"),
         "change_id": NULLABLE_ID, "expected_artifacts": array(PATH)})
     revision = obj({"spec_digest": DIGEST,

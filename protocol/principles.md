@@ -244,6 +244,16 @@ but MUST NOT return the raw cognitive snapshot or document bodies to the ambient
 keeps complete snapshots private and supplies them only to the fresh invocation whose policy is
 bound to that context.
 
+Operations fall into three classes, distinguished by who selects the context. A global Operation
+receives only the user's intent, at most with routing hints, and lets the host's coordinator
+discover main-visible Specs and select the owning target; it may span several targets and stages. A
+lifecycle Operation is deterministic host behavior with no agent cognition and no context
+selection. Every other Operation is an internal stage: it receives an already bound target and one
+frozen snapshot, runs one role, never reselects or expands its context, and is admitted only from a
+composing public Operation. Internal stages MUST NOT be projected as user-invocable Skills, and the
+executable boundary MUST reject their direct invocation. Context selection therefore happens only
+inside global Operations.
+
 ### P8. System topology is main-designed and explicitly accepted
 
 `concorde-main` is the single public entry for global questions and system-structure design; there

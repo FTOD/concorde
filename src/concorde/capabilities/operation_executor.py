@@ -76,10 +76,6 @@ def _domain_type(specification: LaunchSpecification) -> str | None:
         return "concorde-main-stage-result"
     if runtime_type == "concorde-topology-author-context":
         return "concorde-topology-author-result"
-    if (specification.runtime_input_json is not None
-            and specification.operation == "concorde-reflections-triage"
-            and specification.capability == "concorde-analyze"):
-        return "concorde-reflection-investigation-result"
     return None
 
 

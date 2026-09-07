@@ -27,20 +27,17 @@ self-contained meaning and routing facts.
 
 ## feature.context.resolve
 
-Public concorde-context and concorde-resolve-context use the same deterministic boundary: one
-concorde-operation-invocation@2 on stdin, with operation_id, mode, configuration and input TypedValue.
-Configuration is concorde-operation-configuration@1 {integration: codex|claude, enforcement:
-native|outer}, or null to request the host's initialized settings. Runtime input is the matching
-<operation>-request@1 {target_id,task,focus_id?,constraints?,change_id?,phase?}. Strings are nonempty;
-constraints is an array of strings. Default phase is ask. Other phases are specify, plan, tasks,
-implementation, spec-review, code-review, validate, deliver and context-solve. Unknown fields/versions/IDs are rejected.
-Response <operation>-response@1 contains manifest: concorde-context-manifest@1. The manifest exposes
-target/kind/focus/phase, Protocol binding, document_order and separate target_spec/shared_specs
-references with document ID, path, digest, targets and main_visible; it never exposes
-document content, instructions, stage inputs, implementation locators or a reusable cognitive
-snapshot.
+The context Service is host-internal: `resolve_context` produces a private ContextSnapshot behind
+the executable boundary, and no public Operation returns it or a redacted projection of it. Its
+inputs are target_id, task, optional focus_id/constraints/phase (default ask). Other phases are
+specify, plan, tasks, implementation, spec-review, code-review, validate, deliver and context-solve.
+Unknown fields/versions/IDs are rejected by the host's own admission, never by an agent-facing
+schema. `describe-policy` mode on any Operation previews the exact grant an execution would receive —
+context_id, read/write paths and a policy digest, printed to stderr — without launching an agent,
+mutating project state, or exposing document content, instructions, stage inputs, implementation
+locators or the reusable cognitive snapshot itself.
 
-The manifest and private snapshots also carry declared `workspace` lifecycle metadata: current and
+The private snapshots also carry declared `workspace` lifecycle metadata: current and
 primary worktree identities/branches, current change phase/status/outcome, its reported gaps and
 component progress, and basic information about live linked worktrees. This contains no target plan,
 implementation body or hidden Spec document. Paths and task summaries identify candidate work, not
@@ -82,8 +79,9 @@ validation without exposing those bodies to the coordinator or changing project 
 Ordinary single-target authoring preserves the entire `concorde-document` declaration; document ID,
 reference and visibility changes are topology changes even for a currently local document.
 
-Context solving is a separate fresh context-assessor stage, invoked by concorde-context-solve or
-before planning. It returns sufficient, spec_incomplete, unsupported, conflicting or failed. A gap
+Context solving is a separate fresh context-assessor stage, run directly by the internal
+`concorde-context-solve` Operation or as `concorde-plan`'s preliminary sufficiency check. It returns
+sufficient, spec_incomplete, unsupported, conflicting or failed. A gap
 must name question, blocked_step and needed_contract. It cannot fetch missing context. Known missing
 runtime fields fail admission; semantic incompleteness is task-specific, never universally proven.
 Before launching that assessor for a Domain, the host deterministically compares the selected
@@ -96,12 +94,10 @@ into the worker snapshot.
 
 concorde-init request action:propose additionally requires name and configuration and optionally a
 target_id (default domain.project); action:apply requires the returned typed project proposal.
-A proposal records action initialize|migrate, nullable base_digest and files {path,before_digest,content}.
+A proposal records action initialize, nullable base_digest and files {path,before_digest,content}.
 Application validates every precondition and the complete resulting registry, then commits the file
-replacements or restores original bytes. New initialization never overwrites existing files.
-Migration requires Profile 7, an authored registry_json and documents {path,content}, optional replacement
-configuration and no active attempts. It preserves implementation/reflection history. A mismatched
-configuration digest or invalid target state blocks migration. The host can resolve metadata broadly;
+replacements or restores original bytes. New initialization never overwrites existing files. Profile
+7 is not agent-compatible and has no migration Operation. The host can resolve metadata broadly;
 no agent inherits its read authority. Local semantic authoring must make this collection sufficient.
 
 The following local provider contract repeats the common selection obligation independently of its

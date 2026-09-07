@@ -4,7 +4,7 @@ import re
 import tempfile
 import unittest
 from pathlib import Path
-from concorde.capabilities.operation_data import typed
+from concorde.capabilities.operation_data import typed, OperationDataError
 from concorde.capabilities.operation_service import OperationHost, run_operation
 from concorde.specification.repository import SpecRepository, SpecError
 from concorde.specification.context import (resolve_context, recheck_context,
@@ -63,7 +63,7 @@ class ScopedProtocolTests(unittest.TestCase):
         result=self.run_op('concorde-plan',{'target_id':'scope.bank','task':'Plan a banking change'},double)
         self.assertEqual('blocked',result['status'],result)
         self.assertEqual('spec_incomplete',result['output']['data']['outcome'])
-        self.assertEqual(['route'],[call['stage'] for call in double.calls])
+        self.assertEqual([],[call['stage'] for call in double.calls])
         self.assertTrue(all(gap['target_id']=='scope.bank' and gap['context_id']==result['output']['data']['context_id']
                             for gap in result['output']['data']['gaps']))
         self.assertFalse((self.root/'.concorde/attempts').exists())
@@ -83,7 +83,7 @@ class ScopedProtocolTests(unittest.TestCase):
         result=self.run_op('concorde-plan',{'target_id':'scope.bank','task':'Plan a banking change'},double)
         self.assertEqual('conflicting',result['output']['data']['outcome'])
         self.assertEqual([],result['output']['data']['gaps'])
-        self.assertEqual(['route'],[call['stage'] for call in double.calls])
+        self.assertEqual([],[call['stage'] for call in double.calls])
         path.write_text(original)
     def test_module_api_focus_is_local(self):
         repo=SpecRepository(self.root)
@@ -356,26 +356,31 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('blocked',result['status'],result);gap=result['output']['data']['gaps'][0]
         worker=result['output']['data']['worker_results'][0]['data']
         self.assertEqual('module.ledger',gap['target_id']);self.assertEqual(worker['context_id'],gap['context_id'])
-    def test_main_selects_the_single_owner_before_a_non_ask_worker(self):
+    def test_global_loop_routes_once_before_its_first_internal_stage(self):
         double=ModelProcessDouble()
-        result=self.run_op('concorde-plan',{'task':'Plan the transfer promise'},double)
+        result=self.run_op('concorde-fast-loop',{'task':'Plan the transfer promise'},double)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual('service.transfer',result['output']['data']['target_id'])
         self.assertEqual('concorde-coordinator-route',result['output']['data']['completed_operations'][0])
-        self.assertEqual(['route','route','context-solve','plan'],[call['stage'] for call in double.calls])
-        self.assertEqual(['concorde-coordinator','concorde-coordinator','concorde-context-assessor','concorde-planner'],
-                         [call['capability'] for call in double.calls])
+        self.assertEqual(['route','route','context-solve'],[call['stage'] for call in double.calls][:3])
+        self.assertEqual(['concorde-coordinator','concorde-coordinator','concorde-context-assessor'],
+                         [call['capability'] for call in double.calls][:3])
+    def test_internal_stage_operation_requires_target_id_at_the_top_level(self):
+        with self.assertRaises(OperationDataError) as caught:
+            typed('concorde-plan-request',{'task':'Plan the transfer promise'})
+        self.assertEqual('invalid_field',caught.exception.code)
+        self.assertIn('target_id',caught.exception.field)
     def test_non_ask_main_route_cannot_split_or_rewrite_user_intent(self):
         def split(stage,snapshot,data,cwd):
             if stage=='route':data.update(outcome='routed',expand_targets=[],gaps=[],routes=[
                 {'target_id':'service.transfer','focus_id':None,'task':snapshot['task'],'constraints':snapshot['constraints']},
                 {'target_id':'module.ledger','focus_id':None,'task':snapshot['task'],'constraints':snapshot['constraints']}])
-        result=self.run_op('concorde-plan',{'task':'Plan transfer'},ModelProcessDouble(split))
+        result=self.run_op('concorde-fast-loop',{'task':'Plan transfer'},ModelProcessDouble(split))
         self.assertEqual('blocked',result['status']);self.assertEqual('ambiguous_route',result['errors'][0]['code'])
         def rewrite(stage,snapshot,data,cwd):
             if stage=='route':data.update(outcome='routed',expand_targets=[],gaps=[],routes=[
                 {'target_id':'service.transfer','focus_id':None,'task':'Different intent','constraints':[]}])
-        result=self.run_op('concorde-plan',{'task':'Plan transfer','constraints':['Keep API stable']},ModelProcessDouble(rewrite))
+        result=self.run_op('concorde-fast-loop',{'task':'Plan transfer','constraints':['Keep API stable']},ModelProcessDouble(rewrite))
         self.assertEqual('blocked',result['status']);self.assertEqual('incompatible_handoff',result['errors'][0]['code'])
     def test_main_cannot_guess_an_unmentioned_discovery_or_route_target(self):
         path=self.root/'specs/how-money-moves.md';declaration=path.read_text().split('# Banking',1)[0]
@@ -450,7 +455,7 @@ class ScopedProtocolTests(unittest.TestCase):
         result=self.run_op('concorde-plan',{'target_id':'service.transfer','task':'Add a daily limit'},double)
         self.assertEqual('blocked',result['status'],result)
         self.assertEqual('spec_incomplete',result['output']['data']['outcome'])
-        self.assertEqual(['route','context-solve'],[call['stage'] for call in double.calls])
+        self.assertEqual(['context-solve'],[call['stage'] for call in double.calls])
         self.assertFalse((self.root/'.concorde/attempts').exists())
         state=json.loads((self.root/'.concorde/worktree.json').read_text())
         self.assertEqual('blocked',state['status']);self.assertEqual({},state['targets'])

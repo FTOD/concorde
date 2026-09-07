@@ -36,22 +36,6 @@ def configure(project: Path, configuration: dict | None = None) -> dict:
     return value
 
 
-def investigation_result(runtime_input: dict) -> dict:
-    data = runtime_input["data"]
-    task = data["task"]["data"]
-    return typed("concorde-reflection-investigation-result", {"findings": [
-        {"reflection_id": identifier, "verified_commit": data["head"], "observed_state": "reproduced",
-         "verification": "The process double reproduced the fixture behavior at the supplied HEAD.",
-         "analysis": "The fixture behavior differs from its declared feature contract.",
-         "resolution": "Apply the bounded fixture change and its verification.",
-         "intervention_rationale": "The explicit fixture task provides the required scope and authority.",
-         "human_intervention": "not-required", "route": task.get("route", "plan"),
-         "effort": "small", "files": [data["feature_path"]],
-         "steps": "Implement the selected fixture change.", "validation": "Run the fixture contract checks.",
-         "risks": "Preserve all unrelated fixture behavior.", "protocol_change": False}
-        for identifier in task["reflection_ids"]]})
-
-
 class ScriptedAgent:
     def __init__(self, callback=None, failure: str | None = None):
         self.callback = callback
@@ -72,8 +56,6 @@ class ScriptedAgent:
         domain_output = None
         if self.callback is not None and not failed:
             domain_output = self.callback(capability, runtime_input, Path(cwd))
-        if capability == "concorde-analyze" and not failed and domain_output is None:
-            domain_output = investigation_result(runtime_input)
         payload = {key: item["const"] for key, item in properties.items() if "const" in item}
         payload.update(status="failed" if failed else "success", output="fixture audit summary only",
                        limitations="injected failure" if failed else "none",

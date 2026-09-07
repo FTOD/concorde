@@ -248,8 +248,6 @@ def resolve_skill_prompt(
         if "{OPERATION}" in body:
             raise SkillAssetError(f"leaf Skill {name} may not use {{OPERATION}}")
     else:
-        if exposure != "public":
-            raise SkillAssetError(f"Operation {name} exposure must be public")
         if "effects" in metadata:
             raise SkillAssetError(f"Operation {name} may not declare leaf effects")
         allowed = {"name", "description", "exposure", "operation", "capabilities"}

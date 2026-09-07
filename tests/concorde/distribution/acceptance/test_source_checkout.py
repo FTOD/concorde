@@ -18,19 +18,19 @@ class SourceCheckoutDistributionAcceptance(unittest.TestCase):
         value = json.loads(result.stdout)
         self.assertEqual(value["status"], "current")
         self.assertEqual((value["schema_version"], value["tool"]), (2, "status"))
-        self.assertEqual(value["outputs"], 50)
-        self.assertEqual(len(list((REPOSITORY_ROOT / ".agents/skills").glob("concorde-*/SKILL.md"))), 23)
-        self.assertEqual(len(list((REPOSITORY_ROOT / ".claude/skills").glob("concorde-*/SKILL.md"))), 23)
+        self.assertEqual(value["outputs"], 20)
+        self.assertEqual(len(list((REPOSITORY_ROOT / ".agents/skills").glob("concorde-*/SKILL.md"))), 8)
+        self.assertEqual(len(list((REPOSITORY_ROOT / ".claude/skills").glob("concorde-*/SKILL.md"))), 8)
         self.assertFalse((REPOSITORY_ROOT / ".concorde/framework").exists())
         self.assertFalse((REPOSITORY_ROOT / ".specify").exists())
 
     def test_root_skills_are_the_projection_provenance(self):
         for integration_root in (".agents/skills", ".claude/skills"):
-            plan = (REPOSITORY_ROOT / integration_root / "concorde-plan/SKILL.md").read_text()
-            self.assertIn('source: "operations/concorde-plan/SKILL.md"', plan)
+            plan = (REPOSITORY_ROOT / integration_root / "concorde-validate/SKILL.md").read_text()
+            self.assertIn('source: "operations/concorde-validate/SKILL.md"', plan)
             self.assertIn('kind: "operation"', plan)
             self.assertIn(
-                "python3 scripts/run-operation.py operations/concorde-plan/operation.py",
+                "python3 scripts/run-operation.py operations/concorde-validate/operation.py",
                 plan,
             )
             self.assertNotIn(".concorde/framework", plan)

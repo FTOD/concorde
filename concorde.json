@@ -23,28 +23,19 @@
     "concorde-task-author"
   ],
   "operations": [
-    "concorde-analyze",
-    "concorde-checklist",
-    "concorde-clarify",
     "concorde-configure",
-    "concorde-constitution",
-    "concorde-context",
     "concorde-context-solve",
-    "concorde-converge",
     "concorde-deliver",
     "concorde-fast-loop",
     "concorde-implement",
     "concorde-init",
     "concorde-main",
-    "concorde-migrate",
     "concorde-plan",
     "concorde-reflections-triage",
-    "concorde-resolve-context",
     "concorde-review",
     "concorde-specify",
     "concorde-standard-dev-loop",
     "concorde-tasks",
-    "concorde-taskstoissues",
     "concorde-validate"
   ],
   "operation_runtime": {
@@ -72,8 +63,6 @@
     ]
   },
   "templates": [
-    "checklist-template.md",
-    "constitution-template.md",
     "domain-template.md",
     "feature-template.md",
     "module-template.md",

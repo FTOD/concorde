@@ -203,7 +203,6 @@
         "scripts/run-operation.py",
         "scripts/run-viewer.py",
         "scripts/concorde.py",
-        "scripts/workspace.py",
         "src/concorde/capabilities/cli.py",
         "scripts/development/sync-agent-surfaces.py",
         "tests/concorde/distribution/unit/test_agent_surface_sync.py",

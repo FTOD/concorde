@@ -1,4 +1,4 @@
-"""Initialize Profile 8 or explicitly migrate authored replacements from Profile 7."""
+"""Initialize Profile 8. Profile 7 projects are unsupported and have no migration path."""
 from __future__ import annotations
 
 import json
@@ -33,7 +33,7 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
     if not isinstance(name, str) or not name.strip():
         raise SpecError("project name is required", "invalid_input")
     if checked_path(root, ".concorde/config.json").exists():
-        raise SpecError("project already configured; use configure or an explicit migration", "already_initialized")
+        raise SpecError("project already configured; use configure to change settings", "already_initialized")
     path = "specs/project.md"
     registry = {"schema_version": 1, "project_id": "project.initialized", "entry_target": target_id,
         "targets": [empty_target(target_id, "domain", name, [path])], "checks": []}
@@ -64,37 +64,10 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
             "action": "initialize", "base_digest": None, "files": files}
 
 
-def migration_proposal(root: Path, package: Path, registry: dict, documents: list[dict],
-                       configuration: dict | None = None) -> dict:
-    old = read_file(root, ".concorde/config.json")
-    previous = decode(old.decode())
-    if previous.get("profile_version") != 7:
-        raise SpecError("migration requires Profile 7; runtime never interprets it as Profile 8", "invalid_migration")
-    attempts = checked_path(root, ".concorde/attempts")
-    if attempts.exists() and any(attempts.iterdir()):
-        raise SpecError("finish active attempts before migrating", "active_attempt")
-    # Classification and self-contained replacements are authored inputs. A deterministic migration
-    # cannot infer business scopes or claim that old ancestor-dependent prose is complete.
-    configuration = validate_typed(configuration or previous.get("operation_configuration"), "concorde-operation-configuration")
-    config = {"profile_version": 8, "registry": ".concorde/specs.json",
-              "protocol": protocol_binding(package), "operation_configuration": configuration}
-    allowed = {path for target in registry["targets"] for path in target["documents"]}
-    files = [file_change(root, ".concorde/config.json", json.dumps(config, indent=2) + "\n"),
-             file_change(root, ".concorde/specs.json", json.dumps(registry, indent=2) + "\n")]
-    for item in documents:
-        if set(item) != {"path", "content"} or item["path"] not in allowed:
-            raise SpecError("migration documents must belong to the proposed registry", "invalid_migration")
-        files.append(file_change(root, item["path"], item["content"]))
-    if not checked_path(root, TOPOLOGY_IGNORE_PATH).exists():
-        files.append(file_change(root, TOPOLOGY_IGNORE_PATH, TOPOLOGY_IGNORE))
-    return {"type_id": "concorde-project-proposal", "schema_version": 1,
-            "action": "migrate", "base_digest": digest(old), "files": files}
-
-
 def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
     if (set(proposal) != {"type_id", "schema_version", "action", "base_digest", "files"}
             or proposal["type_id"] != "concorde-project-proposal" or proposal["schema_version"] != 1
-            or proposal["action"] not in {"initialize", "migrate"}):
+            or proposal["action"] not in {"initialize"}):
         raise SpecError("invalid project proposal envelope", "invalid_proposal")
     files = proposal["files"]
     proposed = {item["path"]: item for item in files}
@@ -105,18 +78,10 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
     if config.get("registry") != ".concorde/specs.json" or config.get("protocol") != protocol_binding(package):
         raise SpecError("project proposal has a mismatched registry or Protocol binding", "invalid_proposal")
     allowed = {".concorde/config.json", ".concorde/specs.json", TOPOLOGY_IGNORE_PATH,
+               ".concorde/reflections/index.json", ".concorde/reflections/config.json",
                *(p for target in registry["targets"] for p in target["documents"])}
-    if proposal["action"] == "initialize":
-        allowed.update({".concorde/reflections/index.json", ".concorde/reflections/config.json"})
-        if proposal["base_digest"] is not None or any(item["before_digest"] is not None for item in files):
-            raise SpecError("initialization cannot replace existing files", "invalid_proposal")
-    else:
-        old = read_file(root, ".concorde/config.json")
-        if digest(old) != proposal["base_digest"] or decode(old.decode()).get("profile_version") != 7:
-            raise SpecError("migration base changed", "stale_proposal")
-        attempts = checked_path(root, ".concorde/attempts")
-        if attempts.exists() and any(attempts.iterdir()):
-            raise SpecError("migration cannot import an active attempt", "active_attempt")
+    if proposal["base_digest"] is not None or any(item["before_digest"] is not None for item in files):
+        raise SpecError("initialization cannot replace existing files", "invalid_proposal")
     def verify():
         report = validate_repository(root, package_root=package)
         if report.status != "success":

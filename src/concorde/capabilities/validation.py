@@ -362,7 +362,9 @@ def validate_capabilities(package: Any) -> list[Finding]:
     capability_set = set(skills) | set(operations)
     operation_set = set(operations)
     operation_graph: dict[str, tuple[str, ...]] = {}
+    operation_exposure: dict[str, str] = {}
     composed_leaves: set[str] = set()
+    composed_operations: set[str] = set()
     for name in operations:
         directory = root / "operations" / name
         source = f"operations/{name}"
@@ -386,30 +388,37 @@ def validate_capabilities(package: Any) -> list[Finding]:
             findings.append(_finding("CONCORDE-OPERATION-004", source, str(error), "Repair the paired Operation SKILL.md."))
             continue
         declared_capabilities = _names(metadata.get("capabilities"))
+        declared_exposure = metadata.get("exposure", "public")
         if (
             metadata.get("name") != name
             or metadata.get("operation") != "operation.py"
-            or metadata.get("exposure", "public") != "public"
             or not body.strip()
         ):
             findings.append(_finding(
-                "CONCORDE-CAPABILITY-EXPOSURE-001"
-                if metadata.get("exposure", "public") != "public"
-                else "CONCORDE-OPERATION-004",
+                "CONCORDE-OPERATION-004",
                 _relative(root, skill_path),
-                "Operation SKILL.md must be public and identify its name, paired graph, and complete prompt.",
-                "Declare matching name, public exposure, operation.py, capabilities, and a complete body.",
+                "Operation SKILL.md must identify its name, paired graph, and complete prompt.",
+                "Declare matching name, operation.py, capabilities, and a complete body.",
             ))
+        if declared_exposure not in {"public", "internal"}:
+            findings.append(_finding(
+                "CONCORDE-CAPABILITY-EXPOSURE-001",
+                _relative(root, skill_path),
+                "Operation exposure must be public or internal.",
+                "Declare exposure: public or exposure: internal.",
+            ))
+        else:
+            operation_exposure[name] = declared_exposure
         if (
             declared_capabilities is None
-            or len(declared_capabilities) < 2
+            or len(declared_capabilities) < 1
             or set(declared_capabilities) - capability_set
         ):
             findings.append(_finding(
                 "CONCORDE-OPERATION-003",
                 _relative(root, skill_path),
-                "Operation must declare at least two existing Skill or Operation capabilities.",
-                "Declare two or more ordered names from the global capability inventory.",
+                "Operation must declare at least one existing Skill or Operation capability.",
+                "Declare one or more ordered names from the global capability inventory.",
             ))
             declared_capabilities = declared_capabilities or ()
         operation_graph[name] = tuple(
@@ -417,6 +426,9 @@ def validate_capabilities(package: Any) -> list[Finding]:
         )
         composed_leaves.update(
             capability for capability in declared_capabilities if capability in set(skills)
+        )
+        composed_operations.update(
+            capability for capability in declared_capabilities if capability in operation_set
         )
         try:
             python_capabilities, flattened, _, build_keywords = _operation_python(python_path)
@@ -461,6 +473,14 @@ def validate_capabilities(package: Any) -> list[Finding]:
                 f"skills/{name}/SKILL.md",
                 f"Internal leaf Skill {name} is not composed by any Operation.",
                 "Compose the internal implementation leaf or remove it from the package.",
+            ))
+    for name, exposure in sorted(operation_exposure.items()):
+        if exposure == "internal" and name not in composed_operations:
+            findings.append(_finding(
+                "CONCORDE-CAPABILITY-EXPOSURE-001",
+                f"operations/{name}/SKILL.md",
+                f"Internal stage Operation {name} is not composed by any other Operation.",
+                "Compose the internal stage Operation from a composing Operation or remove it from the package.",
             ))
     for cycle in _operation_cycles(operations, operation_graph):
         findings.append(_finding(

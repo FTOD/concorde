@@ -55,8 +55,8 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertEqual(self.package.manifest["architecture_profile"], 8)
         self.assertEqual(self.package.manifest["workspace_protocol"], 14)
         self.assertEqual(len(self.package.manifest["skills"]), 9)
-        self.assertEqual(len(self.package.manifest["operations"]), 23)
-        self.assertEqual(len(self.package.manifest["templates"]), 9)
+        self.assertEqual(len(self.package.manifest["operations"]), 14)
+        self.assertEqual(len(self.package.manifest["templates"]), 7)
         self.assertEqual(
             self.package.manifest["operation_runtime"]["venv"],
             ".concorde/.venv",
@@ -93,7 +93,7 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertNotIn(".concorde/framework/docsite/sidebars.docs.ts", outputs)
         self.assertTrue(all("node_modules" not in path and "/build/" not in path for path in outputs if path.startswith(".concorde/framework/docsite/")))
         self.assertTrue(all(not path.startswith(".concorde/framework/docsite/tests/repository/") for path in outputs))
-        self.assertIn(".agents/skills/concorde-plan/SKILL.md", outputs)
+        self.assertIn(".agents/skills/concorde-validate/SKILL.md", outputs)
         self.assertIn(".agents/skills/concorde-standard-dev-loop/SKILL.md", outputs)
         self.assertIn(
             ".concorde/framework/operations/concorde-standard-dev-loop/operation.py",
@@ -104,11 +104,11 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertIn(".concorde/framework/scripts/run-viewer.py", outputs)
         self.assertIn(".concorde/framework/viewer/package-lock.json", outputs)
         self.assertIn(".codex/agents/reflection_implementer.toml", outputs)
-        plan = outputs[".agents/skills/concorde-plan/SKILL.md"][0].decode()
-        self.assertIn(".concorde/framework/operations/concorde-plan/operation.py", plan)
+        plan = outputs[".agents/skills/concorde-validate/SKILL.md"][0].decode()
+        self.assertIn(".concorde/framework/operations/concorde-validate/operation.py", plan)
         self.assertIn('kind: "operation"', plan)
-        self.assertNotIn("concorde-plan-context", outputs)
-        self.assertNotIn("concorde-plan-author", outputs)
+        self.assertNotIn("concorde-validate-context", outputs)
+        self.assertNotIn("concorde-validate-author", outputs)
         self.assertNotIn(".specify", plan)
         operation = outputs[".agents/skills/concorde-standard-dev-loop/SKILL.md"][0].decode()
         self.assertIn(
@@ -119,7 +119,7 @@ class NativeInstallerTests(unittest.TestCase):
             "python3 .concorde/framework/scripts/run-operation.py ",
             operation,
         )
-        self.assertEqual(outputs[".agents/skills/concorde-plan/SKILL.md"][1], "operation")
+        self.assertEqual(outputs[".agents/skills/concorde-validate/SKILL.md"][1], "operation")
         self.assertEqual(
             outputs[".agents/skills/concorde-standard-dev-loop/SKILL.md"][1],
             "operation",
@@ -354,7 +354,7 @@ class NativeInstallerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
             desired = installer.desired_outputs(self.package, "codex")
-            relative = ".agents/skills/concorde-plan/SKILL.md"
+            relative = ".agents/skills/concorde-validate/SKILL.md"
             path = target / relative
             path.parent.mkdir(parents=True)
             path.write_bytes(desired[relative][0])
@@ -365,7 +365,7 @@ class NativeInstallerTests(unittest.TestCase):
     def test_unowned_or_modified_owned_file_is_a_conflict(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
-            collision = target / ".agents/skills/concorde-plan/SKILL.md"
+            collision = target / ".agents/skills/concorde-validate/SKILL.md"
             collision.parent.mkdir(parents=True)
             collision.write_text("maintainer file\n")
             actions, _, _ = installer.installation_plan(target, self.package, "codex")
@@ -381,8 +381,8 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertTrue(any(item["action"] == "remove" and item["path"].startswith(".agents/skills/concorde-") for item in claude_actions))
             self.assertTrue(any(item["action"] == "create" and item["path"].startswith(".claude/skills/concorde-") for item in claude_actions))
             installer.apply_plan(target, self.package, "claude", claude_actions, claude_desired)
-            self.assertFalse((target / ".agents/skills/concorde-plan/SKILL.md").exists())
-            self.assertTrue((target / ".claude/skills/concorde-plan/SKILL.md").is_file())
+            self.assertFalse((target / ".agents/skills/concorde-validate/SKILL.md").exists())
+            self.assertTrue((target / ".claude/skills/concorde-validate/SKILL.md").is_file())
 
     def test_update_removes_only_unchanged_owned_legacy_capability_paths(self):
         with tempfile.TemporaryDirectory() as temporary:

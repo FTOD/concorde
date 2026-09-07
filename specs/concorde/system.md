@@ -24,7 +24,7 @@ that target without reducing its complete context.
 | Spec document | One stable physical Markdown truth with explicit target references and main visibility | Appears as Target Spec when local or Shared Specs when collectively referenced |
 | Resolved Spec context | Ordered Target Spec plus one-hop Shared Specs for one target | Must be self-contained without expanding any related entity's remaining collection |
 | Protocol | Versioned global principles and kind definitions | Is pinned by initialization and injected by the context service |
-| Operation | A public Skill paired with an executable host entry | Receives configuration and runtime input as distinct typed JSON values |
+| Operation | A public Skill paired with an executable host entry, or an internal stage reachable only through a composing public Operation | Receives configuration and runtime input as distinct typed JSON values |
 | Context snapshot | Immutable exact input to one agent invocation | Binds documents, Protocol, task, phase, instructions and typed stage artifacts |
 | Discovery context | Ordered append-only main-visible Domain/Service documents for the main coordinator | Expands on demand and changes identity on every admitted target |
 | Main coordinator | Global routing agent that never directly expands Module targets or reads code | Selects fresh target workers and later synthesizes only typed results |
@@ -94,9 +94,9 @@ recorded progress; repair resumes with current contexts and invalidated stale ev
 A Protocol change affects all consumers, not just Concorde's self-description. A maintainer authors
 principles and corresponding schemas, runtime admission, context grants, templates, installation
 and publication behavior together. The distributable Protocol is versioned and hashed. Existing
-projects do not silently acquire a new meaning: they must explicitly accept compatible bindings
-or migrate their authored registry and self-contained resolved document closures. Source Profile 8 rejects Profile 7
-for agent work. Legacy deterministic readers remain diagnostic utilities only.
+projects do not silently acquire a new meaning: they must explicitly accept compatible bindings.
+Source Profile 8 rejects Profile 7 for agent work, and there is no migration Operation; Profile 7
+projects are rejected outright. Legacy deterministic readers remain diagnostic utilities only.
 
 Changing the Protocol is an explicitly authorized version cutover, not ordinary work performed
 under the version being replaced. The previous Protocol remains authoritative for its published

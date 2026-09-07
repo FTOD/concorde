@@ -23,14 +23,14 @@ from .operation_permissions import (PolicyBinding, compile_policy, render_codex_
     render_claude_configuration, build_launch_specification, OperationExecutionResult)
 from .skill_assets import EffectDeclaration, resolve_skill_prompt
 from .protocol_contracts import (AGENT_OPERATIONS, TARGET_AGENT_STAGES,
-    MAIN_OPERATION, MAIN_ROUTED_OPERATIONS)
+    MAIN_OPERATION, MAIN_ROUTED_OPERATIONS, INTERNAL_OPERATIONS)
 from .change_worktree import (STATE_PATH, WORK_PATH, bind_owner, create_worktree,
     ensure_change, progress, read_change, refresh_registry, save_change,
     save_target_state, snapshot_tree, target_state, work_path, workspace_context,
     workspace_identity)
 from ..specification.repository import SpecRepository, SpecError, digest, read_file, identifier
 from ..specification.context import (DiscoveryContext, resolve_context,
-    public_context_manifest, recheck_context, resolve_discovery_context,
+    recheck_context, resolve_discovery_context,
     recheck_discovery_context, resolve_topology_author_context,
     recheck_topology_author_context)
 from ..specification.changes import file_change, apply_files
@@ -942,7 +942,7 @@ class Invocation:
             and change.get("review_intents", {}).get(self.target.id) == {"task": self.task["task"],
                 "focus_id": self.task.get("focus_id"), "constraints": self.task.get("constraints", [])})
         if self.host.track_gaps or required_review or self.operation not in {
-                "concorde-main", "concorde-analyze", "concorde-context-solve", "concorde-review"}:
+                "concorde-main", "concorde-context-solve", "concorde-review"}:
             from .change_worktree import record_task_gaps
             record_task_gaps(self.repository.root, self.target.id, self.task["task"], phase, gaps,
                              _target_revision(self.repository, self.target))
@@ -971,7 +971,7 @@ class Invocation:
             focus_id=self.task.get("focus_id"), constraints=tuple(self.task.get("constraints", [])),
             instructions=prompt.body, stage_inputs=inputs)
         self.last_context = snapshot.id
-        if self.operation not in {"concorde-main", "concorde-analyze", "concorde-context-solve"}:
+        if self.operation not in {"concorde-main", "concorde-context-solve"}:
             pending = self.pending_gaps(phase, snapshot, include_prerequisites=not readonly)
             if pending:
                 return {"context_id": snapshot.id, "outcome": "spec_incomplete",
@@ -1259,38 +1259,6 @@ class Invocation:
             raise SpecError("selected Spec or its registered authority changed; replan this change", "stale_context")
         if state.get("task") != self.task["task"] or state.get("constraints") != self.task.get("constraints", []):
             raise SpecError("change intent differs from the authored plan; replan explicitly", "incompatible_handoff")
-
-    def checklist(self):
-        self.require_spec_review()
-        inputs=()
-        change = read_change(self.repository.root)
-        if change and self.target.id in change["targets"]:
-            state=target_state(self.repository.root,self.target.id,self.task.get("focus_id")); self.check_state(state)
-            inputs=(typed("concorde-plan-artifact",{"plan":state["plan"]}),)
-        result=self.stage("concorde-checklist",inputs=inputs,defer_gap_resolution=True)
-        if result["outcome"] not in {"completed","sufficient"}: return self.response(result["outcome"],result["answer"],gaps=result["gaps"])
-        content=result["plan"] or result["answer"]
-        if not content.strip(): raise SpecError("checklist contains no acceptance criteria", "invalid_completion")
-        if not self.work_directory:
-            self.record_gaps("plan", [])
-            return self.response(answer=content)
-        path=work_path(self.target.id,"checklist.md")
-        apply_files(self.repository.root,[file_change(self.repository.root,path,content)],{path})
-        self.record_gaps("plan", [])
-        return self.response(answer=result["answer"],artifacts=[artifact(self.repository.root,"checklist",path)])
-
-    def issue_drafts(self):
-        self.require_spec_review()
-        pending = self.pending_gaps("tasks")
-        if pending:
-            return self.response("spec_incomplete", "Resolve the prerequisite task gaps before producing issue drafts.", gaps=pending)
-        if not self.work_directory:raise SpecError("issue drafts require authored tasks", "missing_change")
-        state=target_state(self.repository.root,self.target.id,self.task.get("focus_id"));self.check_state(state)
-        if not state["tasks"]:raise SpecError("issue drafts require tasks", "missing_tasks")
-        drafts=[{"task_id":t["id"],"target_id":t["target_id"],"title":t["description"],"body":"Acceptance:\n"+t["acceptance"]} for t in state["tasks"]]
-        path=work_path(self.target.id,"issue-drafts.json")
-        apply_files(self.repository.root,[file_change(self.repository.root,path,canonical({"schema_version":1,"issues":drafts})+"\n")],{path})
-        return self.response(answer="Local issue drafts prepared.",artifacts=[artifact(self.repository.root,"issues",path)])
 
     def implement_scope(self, state: dict) -> dict:
         """Retain resumable component drafts inside this one candidate worktree."""
@@ -1641,7 +1609,7 @@ class Invocation:
 
 
 def _project_operation(operation, configuration, task, host):
-    from ..specification.initialize import project_proposal, migration_proposal, apply_project_proposal
+    from ..specification.initialize import project_proposal, apply_project_proposal
     if operation == "concorde-configure":
         SpecRepository(host.project_root, host.package_root)
         value = decode(read_file(host.project_root, ".concorde/config.json").decode())
@@ -1656,14 +1624,9 @@ def _project_operation(operation, configuration, task, host):
         value = apply_project_proposal(host.project_root, host.package_root,
             {"type_id": proposal["type_id"], "schema_version": proposal["schema_version"], **proposal["data"]})
         return typed(OPERATION_CONTRACTS[operation][1], {"status": "applied", "proposal": None, "files": value["files"]})
-    if operation == "concorde-init":
-        if not {"name", "configuration"}.issubset(task):
-            raise SpecError("initialization proposal requires name and configuration", "invalid_input")
-        value = project_proposal(host.project_root, host.package_root, task["name"], task["configuration"], task.get("target_id", "domain.project"))
-    else:
-        if not {"registry_json", "documents"}.issubset(task):
-            raise SpecError("migration proposal requires an authored registry and documents", "invalid_input")
-        value = migration_proposal(host.project_root, host.package_root, decode(task["registry_json"]), task["documents"], task.get("configuration"))
+    if not {"name", "configuration"}.issubset(task):
+        raise SpecError("initialization proposal requires name and configuration", "invalid_input")
+    value = project_proposal(host.project_root, host.package_root, task["name"], task["configuration"], task.get("target_id", "domain.project"))
     proposal = typed("concorde-project-proposal", {key: value[key] for key in ("action", "base_digest", "files")})
     return typed(OPERATION_CONTRACTS[operation][1], {"status": "proposed", "proposal": proposal, "files": [x["path"] for x in value["files"]]})
 
@@ -1672,7 +1635,7 @@ def _dispatch(operation, configuration, task, host):
     if operation == "concorde-deliver":
         from .worktree_delivery import deliver
         return deliver(host, configuration, task)
-    if operation in {"concorde-init", "concorde-migrate", "concorde-configure"}:
+    if operation in {"concorde-init", "concorde-configure"}:
         if host.mode == "describe-policy":
             raise SpecError("project proposals are the deterministic preview for this Operation", "use_proposal")
         return _project_operation(operation, configuration, task, host)
@@ -1702,8 +1665,7 @@ def _dispatch(operation, configuration, task, host):
                 task.pop("focus_id", None)
             host = replace(host, routed_target=route["target_id"])
             main_completed = tuple(main.completed)
-    readonly = operation in {"concorde-main", "concorde-analyze", "concorde-context-solve",
-                             "concorde-context", "concorde-resolve-context", "concorde-review"}
+    readonly = operation in {"concorde-main", "concorde-context-solve", "concorde-review"}
     readonly = readonly or (operation == "concorde-reflections-triage" and task["action"] == "status")
     if (host.mode == "execute" and not readonly
             and not (operation == "concorde-reflections-triage" and task["action"] == "record-gaps")):
@@ -1713,11 +1675,6 @@ def _dispatch(operation, configuration, task, host):
     if operation == "concorde-review":
         from .review import review_scope
         return review_scope(run, task["review_mode"])
-    if operation in {"concorde-context", "concorde-resolve-context"}:
-        snapshot = resolve_context(run.repository, run.target.id, task=task["task"], phase=task.get("phase", "ask"),
-            focus_id=task.get("focus_id"), constraints=tuple(task.get("constraints", [])))
-        return typed(OPERATION_CONTRACTS[operation][1], {
-            "manifest": typed("concorde-context-manifest", public_context_manifest(snapshot))})
     if host.mode == "describe-policy":
         stages = [operation] if operation in AGENT_OPERATIONS else []
         if operation in {"concorde-standard-dev-loop", "concorde-fast-loop"}:
@@ -1739,15 +1696,13 @@ def _dispatch(operation, configuration, task, host):
     if operation == "concorde-reflections-triage":
         from ..reflections.scoped_triage import triage
         return triage(run)
-    if operation in {"concorde-specify", "concorde-clarify", "concorde-constitution"}:
+    if operation == "concorde-specify":
         return run.author(operation)
     if operation == "concorde-plan":
         return run.plan()
     if operation == "concorde-tasks":
         return run.tasks()
-    if operation == "concorde-checklist": return run.checklist()
-    if operation == "concorde-taskstoissues": return run.issue_drafts()
-    if operation in {"concorde-implement", "concorde-converge"}:
+    if operation == "concorde-implement":
         return run.implement()
     if operation == "concorde-validate":
         return run.validate(task.get("run_checks", True))
@@ -1778,9 +1733,8 @@ def run_operation(operation: str, configuration: dict | None, runtime_input: dic
                 and task.get("action") in {"accept-topology", "apply-topology"}):
             task.setdefault("constraints", [])
             task.setdefault("task", "Inspect the selected records")
-        mutation = operation not in {"concorde-main", "concorde-analyze", "concorde-context-solve",
-            "concorde-context", "concorde-resolve-context", "concorde-review"}
-        if operation in {"concorde-init", "concorde-migrate"}:
+        mutation = operation not in {"concorde-main", "concorde-context-solve", "concorde-review"}
+        if operation == "concorde-init":
             mutation = task["action"] == "apply"
         if operation == MAIN_OPERATION:
             mutation = task["action"] in {"accept-topology", "apply-topology"}
@@ -1803,7 +1757,7 @@ def run_operation(operation: str, configuration: dict | None, runtime_input: dic
                 record_progress = False
                 raise SpecError("this candidate is being delivered; resume from the primary agent session",
                                 "delivery_in_progress")
-        if operation not in {"concorde-init", "concorde-migrate"}:
+        if operation != "concorde-init":
             if configuration != load_configuration(host.project_root):
                 raise SpecError("invocation configuration differs from initialized project settings", "configuration_mismatch")
         if host.configuration_snapshot and host.configuration_snapshot != canonical(configuration):
@@ -1865,6 +1819,9 @@ def json_main(package_root: Path, operation: str | None = None) -> int:
             raise SpecError("invocation exceeds 1 MiB", "invalid_input")
         value = validate_invocation(decode(raw.decode() if isinstance(raw, bytes) else raw), operation)
         operation = operation or value["operation_id"]
+        if operation in INTERNAL_OPERATIONS:
+            raise SpecError("internal stage Operation is reachable only through a composing public Operation",
+                            "internal_operation")
         if os.environ.get("CONCORDE_STUDIO_URL"):
             from .studio_client import run_in_studio
             state = run_in_studio(os.environ["CONCORDE_STUDIO_URL"], value, Path.cwd(), package_root)
@@ -1874,6 +1831,7 @@ def json_main(package_root: Path, operation: str | None = None) -> int:
         else:
             host = OperationHost(Path.cwd(), package_root, mode=value["mode"])
             result = run_operation(operation, value["configuration"], value["input"], host_context=host)
+
     except Exception as error:
         result = invocation_failure(operation, error)
     if host and host.descriptions:
