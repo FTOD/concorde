@@ -16,7 +16,9 @@ uv run --locked --group studio langgraph dev --host 127.0.0.1 --port 2024 --n-jo
 ```
 
 Open <https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024> and select an assistant.
-The root `langgraph.json` registers all 23 public operation IDs. API health is available at
+The root `langgraph.json` registers all 8 public operation IDs. The 6 internal Operations run
+through their composing public operation and remain visible in stage/process events; Studio does
+not bypass their `internal_operation` direct-call restriction or restore removed operation names. API health is available at
 <http://127.0.0.1:2024/ok> and API documentation at <http://127.0.0.1:2024/docs>.
 The local dev API works without model credentials for deterministic operations and policy previews.
 The hosted Studio UI requires a LangSmith account; follow the official
@@ -144,9 +146,12 @@ before submitting again. An interrupted Studio run can be inspected/resumed from
 original CLI exits with code 3; resuming it does not retroactively deliver a new CLI result.
 
 Worktree handoff, change ownership, delivery authorization and native completion receipts continue
-to apply. In particular, selecting `concorde-deliver` on a secondary-worktree server cannot authorize
-primary delivery. A primary-worktree mutation can prepare a worktree and return a handoff; it cannot
-continue execution there through this server. Run each server with the authority of its own checkout.
+to apply. A `concorde-deliver` server session may belong to either the selected source or destination
+worktree; unrelated third-worktree and nested delivery remain rejected. It retains the source when
+that worktree hosts the session or `keep_worktree:true` is requested. The Studio client still checks
+its caller against the server's bound workspace; third-worktree forwarding cannot impersonate a
+participating session. A primary-worktree mutation can prepare a worktree and return a handoff; it
+cannot continue development there through this server. Run each server with its own checkout's authority.
 
 ## Consumer project setup
 
@@ -162,10 +167,10 @@ import sys
 PROJECT = Path(__file__).resolve().parent
 PACKAGE = PROJECT / ".concorde/framework"
 sys.path.insert(0, str(PACKAGE / "src"))
-from concorde.capabilities.operation_data import OPERATION_CONTRACTS
+from concorde.capabilities.protocol_contracts import PUBLIC_OPERATIONS
 from concorde.capabilities.studio import build_studio_graph
 
-for operation in OPERATION_CONTRACTS:
+for operation in PUBLIC_OPERATIONS:
     globals()[operation.replace("-", "_")] = build_studio_graph(operation, PROJECT, PACKAGE)
 ```
 
@@ -187,7 +192,7 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests/concorde -t . -p '
 ```
 
 The opt-in integration suite starts a real Agent Server on an available local port, exercises all
-23 assistants, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
+8 public assistants, internal-stage admission, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
 and rejection paths, then stops the server. It uses temporary consumer projects and deterministic
 model process responses through the real executor/admission pipeline; it does not require online
 model calls or mutate this checkout's primary-worktree registry.

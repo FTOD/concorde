@@ -10,7 +10,8 @@ from typing_extensions import NotRequired, TypedDict
 from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, StateGraph
 
-from .operation_data import OPERATION_CONTRACTS, decode
+from .operation_data import decode
+from .protocol_contracts import PUBLIC_OPERATIONS
 from .operation_executor import AgentProcessExecutor
 from .scoped_operations import OperationHost, invocation_failure, run_operation, validate_invocation
 from ..specification.repository import SpecError
@@ -37,8 +38,8 @@ def build_studio_graph(operation: str, project_root: Path, package_root: Path, *
     Hosts and event lists are fresh per invocation; only JSON enters checkpoints.
     The optional executor is a trusted, in-process test seam, never graph input.
     """
-    if operation not in OPERATION_CONTRACTS:
-        raise ValueError(f"Unknown Operation: {operation}")
+    if operation not in PUBLIC_OPERATIONS:
+        raise ValueError(f"Studio entry must be a public Operation: {operation}")
     # Preserve the host's symlink-root rejection before normalizing identities.
     bound = OperationHost(project_root, package_root)
     project_root, package_root = bound.project_root, bound.package_root

@@ -303,13 +303,15 @@ Managed secondary AGENTS.md and CLAUDE.md guidance supplements the host-enforced
 
 Creating a linked worktree from a primary mutation request is a handoff: a new agent MUST be opened in
 that worktree before project work continues. Development loops MUST stop at a verified ready candidate.
-Delivery MUST be requested in an agent whose initial working directory is the primary worktree.
-A secondary session MUST NOT deliver, change cwd, redirect the host or forward an invocation to bypass
-this requirement. Component completion never independently delivers the enclosing change.
+Delivery MUST be requested in an agent whose initial working directory is either the selected source
+worktree or the destination primary worktree. The host MUST reject unrelated third-worktree and
+nested delivery sessions; changing cwd or forwarding cannot grant participant membership. Component
+completion never independently delivers the enclosing change.
 
-The primary delivery host MUST bind validation to the exact candidate and actual integration result,
-merge into the primary worktree's checked-out branch, then remove the temporary worktree and its local
-state. Failed checks, conflicting merges or stale evidence preserve the candidate and the primary
+The delivery host MUST bind validation to the exact candidate and actual integration result and
+merge into the primary worktree's checked-out branch. It MUST retain the source when requested or
+when the source owns the active session; otherwise it removes the temporary worktree and local state.
+Failed checks, conflicting merges or stale evidence preserve the candidate and the primary
 revision. Local control files and managed worktree prompt blocks MUST NOT enter the delivered tree.
 Delivery evidence survives in the primary worktree. A completed merge with unfinished cleanup MUST be
 distinguishable and resumable without repeating the merge.

@@ -30,11 +30,10 @@ read another worktree's Specs, code, artifacts or conversation. A question answe
 this metadata may return `completed` during the ask route phase with an answer and no worker routes.
 Questions about target behavior still require the separate target readers below.
 
-Delivery requires the user to open a new agent whose initial working directory is the primary
-worktree and request `concorde-deliver` there. A secondary session must not change cwd, redirect
-the host or forward delivery to bypass this session boundary. Development loops end at ready;
-only the primary session can merge the verified change into its checked-out branch and remove
-the secondary worktree and local state.
+Delivery may be requested from an agent opened in either the selected source or destination
+worktree. Third-worktree and nested delivery remain forbidden. Development loops end at ready;
+the delivery host verifies the candidate and integration before merging into the primary worktree's
+checked-out branch. Retain the source if it owns the active session or keep_worktree:true is requested.
 
 During a `route` phase, understand the user's task and either:
 

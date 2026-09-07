@@ -7,17 +7,19 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from langgraph.checkpoint.memory import InMemorySaver
-from concorde.capabilities.operation_data import OPERATION_CONTRACTS, typed
+from concorde.capabilities.operation_data import typed
+from concorde.capabilities.protocol_contracts import PUBLIC_OPERATIONS, INTERNAL_OPERATIONS
 from concorde.capabilities.operation_service import OperationHost, run_operation
 from concorde.capabilities.studio import build_studio_graph
 from tests.concorde.specification.support import CONFIGURATION, PACKAGE, ModelProcessDouble, project
 
 
-def invocation(operation="concorde-context", mode="execute", data=None):
+def invocation(operation="concorde-reflections-triage", mode="execute", data=None):
     return {"type_id": "concorde-operation-invocation", "schema_version": 2,
             "operation_id": operation, "mode": mode, "configuration": None,
             "input": {"type_id": operation + "-request", "schema_version": 1, "data":
-                      data if data is not None else {"target_id": "service.transfer", "task": "Explain transfer"}}}
+                      data if data is not None else {"target_id": "service.transfer", "task": "Explain transfer",
+                          **({"action": "status", "reflection_ids": []} if operation == "concorde-reflections-triage" else {})}}}
 
 
 def stable(value):
@@ -36,15 +38,15 @@ class StudioTests(unittest.TestCase):
         self.double = ModelProcessDouble()
         self.addCleanup(self.double.runtime_directory.cleanup)
 
-    def graph(self, operation="concorde-context", executor=None):
+    def graph(self, operation="concorde-reflections-triage", executor=None):
         return build_studio_graph(operation, self.root, PACKAGE,
                                   executor=executor or self.double.executor)
 
     def test_inventory_and_all_entries_execute_the_shared_boundary(self):
         manifest = json.loads((PACKAGE / "langgraph.json").read_text())
-        self.assertEqual(set(OPERATION_CONTRACTS), set(manifest["graphs"]))
-        self.assertEqual(23, len(manifest["graphs"]))
-        for operation in OPERATION_CONTRACTS:
+        self.assertEqual(set(PUBLIC_OPERATIONS), set(manifest["graphs"]))
+        self.assertEqual(8, len(manifest["graphs"]))
+        for operation in PUBLIC_OPERATIONS:
             with self.subTest(operation=operation):
                 value = invocation(operation, data={"unrecognized": True})
                 actual = self.graph(operation).invoke({"invocation": value})
@@ -98,7 +100,7 @@ class StudioTests(unittest.TestCase):
         self.assertEqual("blocked", rejected["result"]["status"])
         self.assertEqual([], rejected["events"])
         self.assertIsNone(rejected["result"]["output"])
-        graph.invoke({"invocation": invocation()}, config, interrupt_before=["concorde-context"])
+        graph.invoke({"invocation": invocation()}, config, interrupt_before=["concorde-reflections-triage"])
         graph.update_state(config, {"expected_workspace": {"project_root": "/other", "package_root": str(PACKAGE)}})
         resumed = graph.invoke(None, config)
         self.assertEqual("workspace_mismatch", resumed["result"]["errors"][0]["code"])
@@ -152,7 +154,7 @@ class StudioTests(unittest.TestCase):
 
     def test_observer_failure_does_not_change_operation_result(self):
         value = invocation()
-        result = run_operation("concorde-context", None, value["input"], host_context=OperationHost(
+        result = run_operation("concorde-reflections-triage", None, value["input"], host_context=OperationHost(
             self.root, PACKAGE, observer=Mock(side_effect=RuntimeError("disconnected"))))
         self.assertEqual("succeeded", result["status"])
 
@@ -173,20 +175,26 @@ class StudioTests(unittest.TestCase):
         self.assertTrue(any(e.get("stage") == "implementation" and e["event"] == "agent_finished"
                             for e in actual["events"]))
 
-    def test_secondary_delivery_keeps_primary_session_restriction(self):
+    def test_source_studio_delivery_retains_its_worktree(self):
         from tests.concorde.specification.test_worktree_lifecycle import WorktreeLifecycleTests
         fixture = WorktreeLifecycleTests()
         fixture.setUp()
         self.addCleanup(fixture.doCleanups)
+        change_id = fixture.ready()
         result = build_studio_graph("concorde-deliver", fixture.change, PACKAGE,
                                     executor=self.double.executor).invoke({"invocation": invocation(
-            "concorde-deliver", data={"change_id": "change.example"})})
-        self.assertEqual("primary_session_required", result["result"]["errors"][0]["code"])
+            "concorde-deliver", data={"change_id": change_id})})
+        self.assertEqual("succeeded", result["result"]["status"], result)
         self.assertTrue(fixture.change.exists())
         self.assertEqual([], self.double.calls)
+
+    def test_internal_stages_cannot_be_published_as_direct_studio_entries(self):
+        for operation in INTERNAL_OPERATIONS:
+            with self.subTest(operation=operation), self.assertRaisesRegex(ValueError, "public Operation"):
+                build_studio_graph(operation, self.root, PACKAGE)
 
     def test_symlink_root_is_rejected(self):
         alias = self.root / "alias"
         alias.symlink_to(self.root, target_is_directory=True)
         with self.assertRaisesRegex(Exception, "symlinks"):
-            build_studio_graph("concorde-context", alias, PACKAGE)
+            build_studio_graph("concorde-reflections-triage", alias, PACKAGE)

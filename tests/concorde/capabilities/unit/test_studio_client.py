@@ -55,7 +55,7 @@ class StudioClientTests(unittest.TestCase):
              patch.dict(os.environ, {"CONCORDE_STUDIO_URL": "http://127.0.0.1:2024"}), \
              patch("sys.stdin", io.StringIO(json.dumps(self.value))), patch("sys.argv", ["operation.py"]), \
              contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            code = json_main(PACKAGE, "concorde-context")
+            code = json_main(PACKAGE, "concorde-reflections-triage")
         local.assert_not_called()
         self.assertEqual(2, len(calls))
         self.assertEqual(3, code)

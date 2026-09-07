@@ -98,13 +98,15 @@ metadata and change status. `concorde-main` receives this inventory and identifi
 session is in the primary or a candidate worktree. Secondary AGENTS.md/CLAUDE.md guidance also points
 to the local state and the primary worktree, without granting access to other worktrees' contents.
 
-To deliver, **open a new agent in the primary worktree** and request `concorde-deliver` there with the
-selected change_id. The destination is the primary worktree's current branch; it need not be named
-main. Secondary sessions cannot deliver by changing directories, redirecting a host or forwarding the
-request. The primary host verifies the actual merge result, merges it, then removes the temporary
-worktree and its local state. Managed prompt injection and control files are excluded from the merge.
-A primary-local delivery receipt records commits and checks; cleanup can be retried after a successful
-merge without merging again. Development loops never perform this delivery automatically.
+To deliver, request `concorde-deliver` from either the selected source worktree or the destination
+primary worktree with the selected change_id. The destination is the primary worktree's current
+branch; it need not be named main. Third-worktree and nested sessions cannot deliver that change.
+The host verifies the exact candidate and integration before merging. It retains the source when
+it owns the requesting session or `keep_worktree:true` is supplied; otherwise it removes the source
+and local state. Destination local edits are preserved: a dirty destination blocks delivery until
+those edits have been safely preserved outside the merge transaction. Delivery receipts distinguish
+completed merges from pending cleanup, so retries never merge twice. Development loops stop at ready.
+
 
 Reflection investigation is a separate, read-only implementation invocation; human
 approval/disposition remains governed by project settings.
@@ -139,7 +141,7 @@ source digests are checked before promotion. Human navigation does not grant age
 
 ## Development
 
-[LangGraph Studio setup and usage](scripts/development/STUDIO.md) covers all 23 operation entries,
+[LangGraph Studio setup and usage](scripts/development/STUDIO.md) covers all public operation entries and internal stage events,
 CLI/Skill forwarding, live execution events, debugging and worktree isolation. Studio is optional;
 existing JSON stdin/stdout calls continue to work without a server.
 
@@ -158,5 +160,6 @@ python3 scripts/development/sync-agent-surfaces.py check --project-root .
 ```
 
 Root `AGENTS.md`/`CLAUDE.md` bind an agent to the worktree that supplied its project Skills. If work
-targets another worktree, open a new agent there; do not update the primary checkout as a substitute.
+targets another worktree, open a new agent there. User-authorized delivery is the bounded exception:
+a session in either participating worktree can complete the integration while retaining its own Skills.
 See [source-checkout distribution](specs/concorde/services/install-boundary.md#featureinstallationself-distribute).

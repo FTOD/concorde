@@ -225,13 +225,13 @@ def _guidance_changes(root: Path, state: dict) -> list[dict]:
         f"The host records its lifecycle in `{STATE_PATH}`. `concorde-main` receives this worktree's\n"
         "identity, draft status and the primary worktree's live change inventory. Partial Spec and\n"
         "implementation edits are draft state; resume the recorded phase before claiming completion.\n\n"
-        "Do not invoke `concorde-deliver` from this session. Delivery requires opening a new agent\n"
-        f"whose initial working directory is the primary worktree: {state['primary_worktree']}.\n"
-        "Ask for delivery in that primary session. Changing cwd, using git -C, redirecting the host,\n"
-        "or forwarding an invocation does not turn this session into a primary-worktree session.\n"
-        "The primary worktree's checked-out branch is the delivery destination; its name need not\n"
-        "be main. Only the primary host merges a verified candidate and removes this worktree.\n"
-        "Keep this managed block and the local state available until that delivery completes.\n"
+        "You may invoke `concorde-deliver` from this source worktree or the destination worktree.\n"
+        f"The destination is the primary worktree: {state['primary_worktree']}.\n"
+        "The session's initial working directory must be one of those two participants; a third\n"
+        "worktree cannot deliver this change by redirecting or forwarding its invocation.\n"
+        "The destination's checked-out branch need not be main. The host verifies the integration\n"
+        "and retains this source when it owns the active session or keep_worktree:true is requested.\n"
+        "Development loops stop at a ready candidate and never deliver automatically.\n"
         + GUIDANCE_END)
     changes = []
     for relative in GUIDANCE_FILES:

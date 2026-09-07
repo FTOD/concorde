@@ -166,7 +166,7 @@ stateDiagram-v2
   Checked --> CodeReviewed: independent code review
   CodeReviewed --> Ready: required evidence current and no blockers
   CodeReviewed --> Tasks: code defect needs repair
-  Ready --> Delivered: primary agent verifies and merges
+  Ready --> Delivered: participating agent verifies and merges
   Implemented --> Tasks: failure needs implementation work
   Delivered --> [*]
 ```
@@ -230,13 +230,14 @@ worktrees. Primary main cognition sees that inventory; secondary main cognition 
 candidate identity and status. These are declared lifecycle inputs, not hidden reads of another
 worktree's Specs or code. Secondary AGENTS.md/CLAUDE.md blocks remind newly opened agents of this scope.
 
-Standard and fast loops end at ready. The user must open an agent in the primary worktree and request
-concorde-deliver with the selected change_id there. A secondary session cannot switch directories,
-redirect or forward delivery. Only the primary host merges the verified candidate into the branch
-currently checked out in the primary worktree, whose name need not be main. It verifies the actual
-integration result and then removes the secondary worktree and its local state. Local prompt injection
-and control files never enter the merged tree. A primary delivery receipt distinguishes an accepted
-merge from pending cleanup, allowing cleanup to resume without another merge.
+Standard and fast loops end at ready. Request concorde-deliver with the selected change_id from
+either its source worktree or the destination primary worktree. A third-worktree or nested session
+cannot initiate delivery for that pair. The host verifies the exact candidate and actual integration
+result, then merges into the primary worktree's checked-out branch, whose name need not be main.
+It retains the source when that worktree owns the active session or keep_worktree:true is requested;
+otherwise it removes the source and its local state. Local prompt injection and control files never
+enter the merged tree. A primary delivery receipt distinguishes an accepted merge from pending cleanup,
+allowing retries without another merge. Destination local edits block delivery and remain untouched.
 
 ## Independent review and task gaps
 

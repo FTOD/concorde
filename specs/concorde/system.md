@@ -85,8 +85,9 @@ local/shared contracts are valid, concrete task gaps are resolved and evidence s
 Spec, code and review inputs. The standard loop reviews Spec before planning and code after checks;
 fast loops explicitly record disabled review and cannot downgrade prior requirements. A review with
 no findings is bounded evidence, not proof of universal semantic completeness. Delivery is a separate
-primary-session action that verifies the actual merge, merges into the primary worktree's current
-branch, and removes the delivered candidate worktree. Failure preserves the candidate and its
+action available from either participating worktree that verifies the actual merge and merges into
+the primary worktree's current branch. It retains the source when requested or hosting the active
+session, and otherwise removes it. Failure preserves the candidate and its
 recorded progress; repair resumes with current contexts and invalidated stale evidence.
 
 ## feature.concorde.evolve-protocol

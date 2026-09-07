@@ -1434,11 +1434,11 @@ class Invocation:
         if not self.host.coordinated:
             change.update(phase="ready", status="ready", outcome="ready", validated_tree=before_tree)
         save_change(self.repository.root, change)
-        return self.response("ready", "Candidate verified. Request delivery from a new agent opened in the primary worktree.",
+        return self.response("ready", "Candidate verified. Request delivery from this source or the destination worktree.",
                              checks=evidence.get("checks", []))
 
     def verify_completion(self) -> dict:
-        """Read current target evidence; merging is exclusively a primary-host action."""
+        """Read current target evidence; delivery remains a separate top-level action."""
         from .review import verify_required
         verify_required(self)
         change = read_change(self.repository.root, required=True)
@@ -1741,8 +1741,8 @@ def run_operation(operation: str, configuration: dict | None, runtime_input: dic
         if operation == "concorde-reflections-triage" and task["action"] == "status":
             mutation = False
         if operation == "concorde-deliver":
-            from .worktree_delivery import require_primary_session
-            primary = require_primary_session(host)
+            from .worktree_delivery import require_delivery_session
+            primary = require_delivery_session(host, task["change_id"])
             workspace = {"path": primary["path"], "branch": primary["branch"]}
         else:
             host, workspace = _worktree(host, mutation, task)
@@ -1755,7 +1755,7 @@ def run_operation(operation: str, configuration: dict | None, runtime_input: dic
             change = read_change(host.project_root)
             if change and change["status"] in {"delivering", "cleanup_pending"}:
                 record_progress = False
-                raise SpecError("this candidate is being delivered; resume from the primary agent session",
+                raise SpecError("this candidate is being delivered; resume delivery from either participating worktree",
                                 "delivery_in_progress")
         if operation != "concorde-init":
             if configuration != load_configuration(host.project_root):

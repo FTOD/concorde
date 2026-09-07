@@ -35,7 +35,8 @@ A mutating request in the primary worktree creates an isolated branch from commi
 returns worktree_handoff_required with its path, branch, base commit and change_id. It does not copy
 uncommitted primary changes or continue the originating agent session in the new worktree. A new
 agent opened in the returned worktree continues the task. Host administrators may explicitly permit
-standalone development for controlled embedding, but that override never authorizes secondary delivery.
+standalone development for controlled embedding. Delivery separately requires a session in its
+selected source or destination worktree; third-worktree and nested sessions are rejected.
 
 The host resolves the complete selected Target Spec plus one-hop Shared Specs and Protocol/kind definition for every stage.
 Spec-only agents, including Spec reviewers, start in a private capsule containing only frozen input.
@@ -167,7 +168,7 @@ The primary worktree maintains `.concorde/worktrees.json` from Git's live worktr
 unmanaged worktrees. Each entry has its path, branch, head, managed/locked status and, when available,
 change_id, owning target, task summary, phase and status. A secondary worktree registers its own
 `.concorde/worktree.json` and receives managed AGENTS.md/CLAUDE.md instructions to treat partial work as
-a candidate and leave delivery to a new primary session. Host updates to these control files do not
+a candidate and request delivery from either participating worktree. Host updates to these control files do not
 change Spec authority or grant agent writes outside the selected target.
 
 Every discovery and worker snapshot admits `workspace` lifecycle metadata. Main can answer a pure

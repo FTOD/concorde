@@ -195,32 +195,49 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(state["change_id"], read_change(self.change)["change_id"])
         self.assertTrue(self.change.exists())
 
-    def test_secondary_redirected_and_nested_delivery_sessions_are_rejected(self):
+    def test_source_delivery_retains_active_worktree_and_retry_does_not_merge_twice(self):
         change_id = self.ready()
+        result = self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertTrue(self.change.exists())
+        self.assertEqual("delivered", read_change(self.change)["status"])
+        self.assertEqual("", git_value(self.change, "diff", "--cached", "--name-only"))
+        head = git_value(self.primary, "rev-parse", "HEAD")
+        again = self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
+        self.assertEqual("succeeded", again["status"], again)
+        self.assertEqual(head, git_value(self.primary, "rev-parse", "HEAD"))
+        self.assertIn("retained", again["output"]["data"]["answer"])
+        cleaned = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id, "keep_worktree": False})
+        self.assertEqual("succeeded", cleaned["status"], cleaned)
+        self.assertFalse(self.change.exists())
+        self.assertEqual(head, git_value(self.primary, "rev-parse", "HEAD"))
+
+    def test_third_worktree_redirected_runtime_and_nested_delivery_are_rejected(self):
+        change_id = self.ready()
+        third = self.directory / "third"
+        git(self.primary, "worktree", "add", "-b", "unrelated", str(third))
+        third_package = third / ".concorde/framework"
+        third_package.mkdir(parents=True, exist_ok=True)
         old_head = git_value(self.primary, "rev-parse", "HEAD")
-        hosts = [OperationHost(self.change, PACKAGE),
-                 OperationHost(self.change, PACKAGE, allow_primary_worktree=True),
-                 OperationHost(self.primary, PACKAGE, session_root=self.change),
+        hosts = [OperationHost(third, PACKAGE),
+                 OperationHost(self.primary, PACKAGE, session_root=third),
+                 OperationHost(self.primary, third_package),
                  OperationHost(self.primary, PACKAGE, depth=1)]
         for host in hosts:
             with self.subTest(root=host.project_root, origin=host.session_root, depth=host.depth):
                 result = self.run_op(host.project_root, "concorde-deliver", {"change_id": change_id}, host=host)
-                self.assertEqual("blocked", result["status"], result)
-                self.assertEqual("primary_session_required", result["errors"][0]["code"])
-                self.assertIn(str(self.primary), result["errors"][0]["message"])
+                self.assertEqual("delivery_session_required", result["errors"][0]["code"], result)
         self.assertEqual(old_head, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertTrue(self.change.exists())
 
-    def test_secondary_owned_runtime_cannot_deliver_after_changing_cwd(self):
+    def test_primary_delivery_can_explicitly_retain_source(self):
         change_id = self.ready()
-        secondary_package = self.change / ".concorde/framework"
-        secondary_package.mkdir()
-        host = OperationHost(self.primary, secondary_package)
-        result = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id}, host=host)
-        self.assertEqual("primary_session_required", result["errors"][0]["code"], result)
+        result = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id, "keep_worktree": True})
+        self.assertEqual("succeeded", result["status"], result)
         self.assertTrue(self.change.exists())
+        self.assertEqual("delivered", read_change(self.change)["status"])
 
-    def test_paired_cli_rejects_secondary_and_delivers_from_primary(self):
+    def test_paired_cli_delivers_from_source_and_primary_can_clean_up(self):
         change_id = self.ready()
         invocation = {"type_id": "concorde-operation-invocation", "schema_version": 2,
             "operation_id": "concorde-deliver", "mode": "execute", "configuration": None,
@@ -228,8 +245,10 @@ class WorktreeLifecycleTests(unittest.TestCase):
         command = [sys.executable, str(PACKAGE / "operations/concorde-deliver/operation.py")]
         secondary = subprocess.run(command, input=json.dumps(invocation), capture_output=True,
                                    text=True, cwd=self.change)
-        self.assertEqual(3, secondary.returncode, secondary.stdout + secondary.stderr)
-        self.assertEqual("primary_session_required", json.loads(secondary.stdout)["errors"][0]["code"])
+        self.assertEqual(0, secondary.returncode, secondary.stdout + secondary.stderr)
+        self.assertEqual("delivered", json.loads(secondary.stdout)["output"]["data"]["outcome"])
+        self.assertTrue(self.change.exists())
+        invocation["input"]["data"]["keep_worktree"] = False
         primary = subprocess.run(command, input=json.dumps(invocation), capture_output=True,
                                  text=True, cwd=self.primary)
         self.assertEqual(0, primary.returncode, primary.stdout + primary.stderr)

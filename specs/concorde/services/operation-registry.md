@@ -17,7 +17,7 @@ Operation classes below. Internal roles under `skills/` have no direct public in
 | --- | --- | --- | --- | --- |
 | concorde-configure | concorde-configure-request | concorde-configure-response | Deterministic host | Apply initialized operation configuration |
 | concorde-context-solve | concorde-context-solve-request | concorde-context-solve-response | concorde-context-assessor | Validate Domain participant routing, then assess information sufficiency without expanding worker context |
-| concorde-deliver | concorde-deliver-request | concorde-deliver-response | Deterministic host | From a primary agent session, verify, merge and clean up the selected change worktree |
+| concorde-deliver | concorde-deliver-request | concorde-deliver-response | Deterministic host | From either participating session, verify and merge; retain or clean up the selected source worktree |
 | concorde-fast-loop | concorde-fast-loop-request | concorde-fast-loop-response | concorde-coordinator, concorde-review, concorde-plan, concorde-tasks, concorde-implement, concorde-validate | Route, optionally review Spec, plan, tasks, implement, validate, optionally review code, then ready; skips are explicit |
 | concorde-implement | concorde-implement-request | concorde-implement-response | concorde-implementation-worker | Implement component tasks or coordinate participating components |
 | concorde-init | concorde-init-request | concorde-init-response | Deterministic host | Propose/apply explicit project initialization |

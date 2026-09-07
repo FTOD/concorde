@@ -35,15 +35,15 @@ class StudioServerTests(unittest.TestCase):
         source = directory / "graphs.py"
         source.write_text(
             "from pathlib import Path\n"
-            "from concorde.capabilities.operation_data import OPERATION_CONTRACTS\n"
+            "from concorde.capabilities.protocol_contracts import PUBLIC_OPERATIONS\n"
             "from concorde.capabilities.studio import build_studio_graph\n"
             "from tests.concorde.specification.support import ModelProcessDouble\n"
             "double = ModelProcessDouble()\n"
             "def executor(launch):\n"
-            "    if launch.operation == 'concorde-analyze':\n"
+            "    if launch.request == 'Trigger executor failure':\n"
             "        raise RuntimeError('fixture executor failure')\n"
             "    return double.executor(launch)\n"
-            "for op in OPERATION_CONTRACTS:\n"
+            "for op in PUBLIC_OPERATIONS:\n"
             f"    root = Path({str(cls.change_fixture.change)!r}) if op == 'concorde-fast-loop' else Path({str(cls.root)!r})\n"
             "    globals()[op.replace('-', '_')] = build_studio_graph(op, root, "
             f"Path({str(PACKAGE)!r}), executor=executor)\n"
@@ -64,7 +64,7 @@ class StudioServerTests(unittest.TestCase):
         environment.pop("CONCORDE_STUDIO_URL", None)
         cls.server = subprocess.Popen([sys.executable, "-m", "langgraph_cli", "dev", "--no-browser",
             "--no-reload", "--host", "127.0.0.1", "--port", str(port), "--config", str(config),
-            "--n-jobs-per-worker", "1"], cwd=PACKAGE, env=environment, stdout=cls.log, stderr=cls.log)
+            "--n-jobs-per-worker", "1"], cwd=directory, env=environment, stdout=cls.log, stderr=cls.log)
         cls.addClassCleanup(cls.stop_server)
         deadline = time.monotonic() + 45
         while time.monotonic() < deadline:
@@ -113,9 +113,9 @@ class StudioServerTests(unittest.TestCase):
         return subprocess.run(argv, input=json.dumps(value), text=True, capture_output=True,
                               cwd=self.root, env=env, timeout=30)
 
-    def test_all_23_registered_assistants_have_schemas_and_execute_validation(self):
+    def test_all_public_registered_assistants_have_schemas_and_execute_validation(self):
         assistants = self.request("/assistants/search", {"limit": 100})
-        self.assertEqual(23, len(assistants))
+        self.assertEqual(8, len(assistants))
         for assistant in assistants:
             operation = assistant["graph_id"]
             with self.subTest(operation=operation):
@@ -156,7 +156,7 @@ class StudioServerTests(unittest.TestCase):
         self.assertEqual("operation_finished", state["events"][-1]["event"])
 
     def test_describe_policy_stderr_and_error_exit_compatibility(self):
-        value = invocation("concorde-plan", "describe-policy")
+        value = invocation("concorde-main", "describe-policy")
         result = self.cli(value, launcher=True)
         self.assertEqual(0, result.returncode, result.stderr + result.stdout)
         self.assertEqual("described", json.loads(result.stdout)["status"])
@@ -174,7 +174,7 @@ class StudioServerTests(unittest.TestCase):
         self.assertEqual("workspace_mismatch", state["result"]["errors"][0]["code"])
         self.assertEqual([], state["events"])
         # Same CLI entry, but its cwd belongs to another workspace.
-        result = subprocess.run([sys.executable, str(PACKAGE / "operations/concorde-context/operation.py")],
+        result = subprocess.run([sys.executable, str(PACKAGE / "operations/concorde-reflections-triage/operation.py")],
             input=json.dumps(invocation()), text=True, capture_output=True, cwd=PACKAGE,
             env={**os.environ, "CONCORDE_STUDIO_URL": self.base}, timeout=30)
         self.assertEqual(3, result.returncode)
@@ -196,7 +196,7 @@ class StudioServerTests(unittest.TestCase):
                          (self.change_fixture.primary / "app/transfer.py").read_text())
 
     def test_executor_failure_survives_forwarding_with_events_and_exit_three(self):
-        value = invocation("concorde-analyze")
+        value = invocation("concorde-main", data={"task": "Trigger executor failure"})
         _, state = self.run_graph(value)
         self.assertEqual("failed", state["result"]["status"], state)
         self.assertTrue(any(event["event"] == "agent_failed" for event in state["events"]))
@@ -208,7 +208,7 @@ class StudioServerTests(unittest.TestCase):
     def test_invalid_envelope_resets_a_previously_successful_thread(self):
         thread, _ = self.run_graph(invocation())
         state = self.request(f"/threads/{thread}/runs/wait", {
-            "assistant_id": "concorde-context", "input": {"invocation": {}}})
+            "assistant_id": "concorde-reflections-triage", "input": {"invocation": {}}})
         self.assertEqual("invalid_input", state["result"]["errors"][0]["code"])
         self.assertIsNone(state["result"]["output"])
         self.assertEqual([], state["events"])

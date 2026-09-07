@@ -1,4 +1,4 @@
-"""Deliver an exact candidate from an agent session opened in the primary worktree."""
+"""Deliver an exact candidate from either participating worktree session."""
 from __future__ import annotations
 
 import copy
@@ -14,26 +14,37 @@ from ..specification.repository import SpecError, SpecRepository, identifier, re
 from ..specification.validation import validate_repository
 
 
-def require_primary_session(host) -> dict:
+def require_delivery_session(host, change_id: str) -> dict:
+    """Admit only the selected source or destination, preserving session provenance."""
     primary, current = workspace_identity(host.project_root)
-    if primary is None:
-        raise SpecError("delivery requires a Git primary worktree", "primary_session_required")
+    if primary is None or current is None:
+        raise SpecError("delivery requires linked Git worktrees", "delivery_session_required")
+    root = Path(primary["path"])
+    inventory = _inventory(root, persist=False)
+    selected = [item for item in inventory["worktrees"] if item["change_id"] == change_id]
+    if len(selected) == 1:
+        source = Path(selected[0]["path"])
+    else:
+        receipt_path = _receipt_path(change_id)
+        if selected or not checked_path(root, receipt_path).exists():
+            raise SpecError("delivery requires one registered change or delivery receipt", "unknown_change")
+        receipt = decode(read_file(root, receipt_path).decode())
+        if receipt.get("schema_version") != 1 or receipt.get("change_id") != change_id:
+            raise SpecError("delivery receipt has an invalid identity", "invalid_delivery")
+        source = Path(receipt["source_worktree"])
+    participants = {root, source}
     package_checkout = git(host.package_root, "rev-parse", "--show-toplevel", check=False)
     package_common = git(host.package_root, "rev-parse", "--path-format=absolute", "--git-common-dir", check=False)
-    primary_common = git_value(host.project_root, "rev-parse", "--path-format=absolute", "--git-common-dir")
-    secondary_entry = (package_checkout.returncode == 0 and package_common.returncode == 0
+    primary_common = git_value(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    unrelated_entry = (package_checkout.returncode == 0 and package_common.returncode == 0
         and package_common.stdout.strip() == primary_common
-        and Path(package_checkout.stdout.strip()).resolve() != host.project_root)
-    if (current["path"] != primary["path"] or host.session_root != host.project_root
-            or host.depth > 1 or secondary_entry):
-        raise SpecError(
-            "Open a new agent whose initial working directory is the primary worktree "
-            + primary["path"] + " and request concorde-deliver there. This secondary session "
-            "cannot deliver by changing cwd, using its secondary-owned entry point, or forwarding an invocation.",
-            "primary_session_required",
-        )
-    if not current["branch"]:
-        raise SpecError("the primary worktree must have an attached delivery branch", "detached_primary")
+        and Path(package_checkout.stdout.strip()).resolve() not in participants)
+    if (host.project_root not in participants or host.session_root not in participants
+            or host.depth > 1 or unrelated_entry):
+        raise SpecError("delivery session must belong to its selected source or destination worktree; "
+                        "third-worktree and nested delivery are not authorized", "delivery_session_required")
+    if not primary["branch"]:
+        raise SpecError("the destination worktree must have an attached delivery branch", "detached_primary")
     return primary
 
 
@@ -90,7 +101,7 @@ def _verify_merged_tree(host, commit: str, tree: str, change_id: str) -> list[di
             git(host.project_root, "worktree", "remove", "--force", str(root))
 
 
-def _cleanup(host, receipt: dict) -> bool:
+def _cleanup(host, receipt: dict, *, keep_worktree: bool = False) -> bool:
     """Retry only cleanup after a successful merge; never merge a second time."""
     root = host.project_root
     relative = _receipt_path(receipt["change_id"])
@@ -106,6 +117,13 @@ def _cleanup(host, receipt: dict) -> bool:
             state = read_change(source, required=True)
             if state["change_id"] != receipt["change_id"] or snapshot_tree(source, state) != receipt["candidate_tree"]:
                 raise SpecError("delivered worktree has new candidate changes; retain it for inspection", "stale_delivery")
+            if keep_worktree or host.session_root == source:
+                state.update(phase="delivered", status="delivered", outcome="delivered")
+                save_change(source, state, publish=False, locked=True)
+                receipt.update(status="delivered", cleanup_error=None, retained_worktree=True)
+                _write_json(root, relative, receipt)
+                _inventory(root, persist=True)
+                return True
             state.update(phase="cleanup", status="cleanup_pending", outcome="delivered")
             save_change(source, state, publish=False, locked=True)
         removal = git(root, "worktree", "remove", "--force", str(source), check=False)
@@ -116,14 +134,15 @@ def _cleanup(host, receipt: dict) -> bool:
             return False
     elif source.exists():
         raise SpecError("delivered path is no longer the registered worktree; retain it", "stale_delivery")
-    receipt.update(status="delivered", cleanup_error=None)
+    receipt.update(status="delivered", cleanup_error=None, retained_worktree=False)
     _write_json(root, relative, receipt)
     _inventory(root, persist=True)
     return True
 
 
 def deliver(host, configuration: dict, task: dict) -> dict:
-    require_primary_session(host)
+    primary = require_delivery_session(host, task["change_id"])
+    host = replace(host, project_root=Path(primary["path"]))
     try:
         return _deliver(host, configuration, task)
     except Exception as error:
@@ -160,7 +179,7 @@ def _remember_failure(host, change_id: str, error: Exception) -> None:
 def _deliver(host, configuration: dict, task: dict) -> dict:
     from .scoped_operations import Invocation
 
-    primary = require_primary_session(host)
+    primary = require_delivery_session(host, task["change_id"])
     change_id = task["change_id"]
     relative = _receipt_path(change_id)
     root = host.project_root
@@ -173,8 +192,8 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
         return typed("concorde-deliver-response", {
             "target_id": state["target_id"], "focus_id": state["focus_id"],
             "change_id": change_id, "context_id": None, "outcome": "described",
-            "answer": "The primary host verifies the candidate and integration, merges into "
-                + primary["branch"] + ", then removes the temporary worktree and local state.",
+            "answer": "The delivery host verifies the candidate and integration, merges into "
+                + primary["branch"] + ", and retains the source worktree when requested or hosting this session.",
             "gaps": [], "checks": [], "artifacts": [], "completed_operations": [],
         })
     with repository_lock(root):
@@ -184,7 +203,7 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
             if receipt.get("schema_version") != 1 or receipt.get("change_id") != change_id:
                 raise SpecError("delivery receipt has an invalid identity", "invalid_delivery")
             if _is_ancestor(root, receipt["merged_commit"], "refs/heads/" + receipt["target_branch"]):
-                complete = _cleanup(host, receipt)
+                complete = _cleanup(host, receipt, keep_worktree=task.get("keep_worktree", receipt.get("retained_worktree", False)))
                 return _response(root, receipt, complete)
 
         inventory = _inventory(root, persist=True)
@@ -209,8 +228,7 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
                    "constraints": evidence.get("constraints", []), "change_id": change_id}
         if state["focus_id"] is not None:
             payload["focus_id"] = state["focus_id"]
-        # The primary host reads evidence and runs deterministic checks. It never
-        # forwards delivery to a secondary agent or starts an agent in that tree.
+        # Delivery reads evidence and runs deterministic checks without starting agents.
         candidate_host = replace(host, project_root=source, coordinated=True)
         Invocation("concorde-validate", configuration, payload, candidate_host).verify_completion()
         source_head = git_value(source, "rev-parse", "HEAD")
@@ -252,6 +270,8 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
             # session can distinguish an unmerged candidate from pending cleanup.
             _write_json(root, relative, receipt)
             git(source, "update-ref", "refs/heads/" + source_branch, candidate, source_head)
+            # A retained source must not have an index staging the inverse of its new HEAD.
+            git(source, "read-tree", candidate)
             git(root, "merge", "--ff-only", "--no-edit", merged)
             receipt["status"] = "cleanup_pending"
             _write_json(root, relative, receipt)
@@ -261,14 +281,15 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
                 save_change(source, state, publish=False, locked=True)
                 _inventory(root, persist=True)
             raise
-        complete = _cleanup(host, receipt)
+        complete = _cleanup(host, receipt, keep_worktree=task.get("keep_worktree", receipt.get("retained_worktree", False)))
         return _response(root, receipt, complete)
 
 
 def _response(root: Path, receipt: dict, complete: bool) -> dict:
     answer = ("Merged the verified change into " + receipt["target_branch"]
-              + (" and removed its temporary worktree and local state." if complete else
-                 "; worktree cleanup is pending. Retry deliver from this primary agent session to finish cleanup."))
+              + (" and retained its source worktree." if complete and receipt.get("retained_worktree") else
+                 " and removed its temporary worktree and local state." if complete else
+                 "; worktree cleanup is pending. Retry deliver from either participating session."))
     return typed("concorde-deliver-response", {
         "target_id": receipt["target_id"], "focus_id": receipt["focus_id"],
         "change_id": receipt["change_id"], "context_id": None,

@@ -534,17 +534,17 @@
       "id": "check.publication-types",
       "target_id": "module.spec-publication",
       "argv": [
-        "node",
-        "docsite/node_modules/typescript/bin/tsc",
-        "--noEmit",
-        "--project",
-        "docsite/tsconfig.json"
+        "{python}",
+        "scripts/development/check-docsite-types.py"
       ],
       "timeout_seconds": 120,
       "inputs": [
         "docsite/tsconfig.json",
         "docsite/plugins/scoped-content",
-        "docsite/src"
+        "docsite/src",
+        "docsite/package.json",
+        "docsite/package-lock.json",
+        "scripts/development/check-docsite-types.py"
       ]
     }
   ]

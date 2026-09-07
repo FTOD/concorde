@@ -63,8 +63,9 @@ A worktree is a mutable candidate until its exact version is verified and delive
 partial drafts as the accepted primary revision. Read-only awareness does not authorize cross-worktree
 reads or a continuation of the same agent session in another checkout.
 
-`concorde-deliver` is available only from a new agent opened in the primary worktree. A secondary
-session must report that path and its change_id, then leave delivery to that primary session.
+`concorde-deliver` may be requested from either the selected source or destination worktree.
+Report the selected change_id and both participants; a third worktree cannot deliver that change.
+The source is retained when it owns the active session or keep_worktree:true is requested.
 
 ## Input TypedValue schema
 

@@ -162,8 +162,9 @@ def schemas() -> dict:
         "files": array(PATH, unique=True), "gaps": array(GAP), "completed_operations": array(STRING),
         "workspace": WORKSPACE_CONTEXT})
     result["concorde-deliver-request"] = obj({"change_id": STRING,
-        "target_id": STRING, "task": STRING, "focus_id": STRING, "constraints": array(STRING)},
-        ("target_id", "task", "focus_id", "constraints"))
+        "target_id": STRING, "task": STRING, "focus_id": STRING, "constraints": array(STRING),
+        "keep_worktree": {"type": "boolean"}},
+        ("target_id", "task", "focus_id", "constraints", "keep_worktree"))
     config = typed_schema("concorde-operation-configuration")
     proposal_file = obj({"path": PATH, "before_digest": {"anyOf": [DIGEST, {"type": "null"}]}, "content": {"type": "string"}})
     result["concorde-project-proposal"] = obj({"action": {"enum": ["initialize"]},

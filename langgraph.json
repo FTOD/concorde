@@ -4,28 +4,13 @@
     "."
   ],
   "graphs": {
-    "concorde-analyze": "./scripts/development/studio.py:concorde_analyze",
-    "concorde-checklist": "./scripts/development/studio.py:concorde_checklist",
-    "concorde-clarify": "./scripts/development/studio.py:concorde_clarify",
     "concorde-configure": "./scripts/development/studio.py:concorde_configure",
-    "concorde-constitution": "./scripts/development/studio.py:concorde_constitution",
-    "concorde-context": "./scripts/development/studio.py:concorde_context",
-    "concorde-context-solve": "./scripts/development/studio.py:concorde_context_solve",
-    "concorde-converge": "./scripts/development/studio.py:concorde_converge",
     "concorde-deliver": "./scripts/development/studio.py:concorde_deliver",
     "concorde-fast-loop": "./scripts/development/studio.py:concorde_fast_loop",
-    "concorde-implement": "./scripts/development/studio.py:concorde_implement",
     "concorde-init": "./scripts/development/studio.py:concorde_init",
     "concorde-main": "./scripts/development/studio.py:concorde_main",
-    "concorde-migrate": "./scripts/development/studio.py:concorde_migrate",
-    "concorde-plan": "./scripts/development/studio.py:concorde_plan",
     "concorde-reflections-triage": "./scripts/development/studio.py:concorde_reflections_triage",
-    "concorde-resolve-context": "./scripts/development/studio.py:concorde_resolve_context",
-    "concorde-review": "./scripts/development/studio.py:concorde_review",
-    "concorde-specify": "./scripts/development/studio.py:concorde_specify",
     "concorde-standard-dev-loop": "./scripts/development/studio.py:concorde_standard_dev_loop",
-    "concorde-tasks": "./scripts/development/studio.py:concorde_tasks",
-    "concorde-taskstoissues": "./scripts/development/studio.py:concorde_taskstoissues",
     "concorde-validate": "./scripts/development/studio.py:concorde_validate"
   },
   "env": {

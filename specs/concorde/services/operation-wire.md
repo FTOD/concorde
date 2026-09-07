@@ -1249,6 +1249,9 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         "type": "string",
         "minLength": 1
       }
+    },
+    "keep_worktree": {
+      "type": "boolean"
     }
   },
   "required": [
