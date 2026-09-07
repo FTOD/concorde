@@ -1,6 +1,6 @@
 # Concorde Workflow Principles
 
-Protocol 1.0.0. These principles apply to every Concorde project.
+Protocol 1.1.0. These principles apply to every Concorde project.
 
 ### P1. Business scope and implementation structure are separate dimensions
 
@@ -112,6 +112,14 @@ Project-specific rules MAY supplement the global principles but MUST NOT weaken 
 facts needed to understand a target must remain available in its Target Spec plus Shared Specs;
 an ancestor's or co-referencing entity's remaining Spec cannot become an implicit supplement.
 
+Outer user sessions MUST receive a project-root Protocol entry through the selected installed
+integration: Codex `AGENTS.md` explicitly directs reading these principles; Claude `CLAUDE.md`
+imports them. The installed Protocol asset is the rule source, not repeated Skill prose. Installing
+new assets MUST NOT silently accept a new project binding. This entry is workflow guidance for the
+outer session; it does not admit project Specs or change host-enforced execution permissions.
+Internal controlled agents MUST continue to receive Protocol through their bound context with
+ambient repository-instruction discovery disabled. They MUST NOT load the root entry instead.
+
 Concorde's own business decomposition is an application of these rules. It MUST NOT become a
 required Installation/Documentation/Workflow decomposition for other projects.
 
@@ -139,8 +147,9 @@ several target readers and combine only their typed results.
 
 The coordinator that selects a target and the worker that consumes that target's complete context
 MUST be different fresh agent invocations. The trusted host resolves and transfers the worker
-snapshot directly; raw target or Protocol bodies MUST NOT pass back through the coordinator or an
-ambient public Skill. Typed worker results MAY become declared coordinator inputs for synthesis.
+snapshot directly; raw target bodies and private context snapshots MUST NOT pass back through the
+coordinator or an ambient public Skill. The global Protocol entry specified in P4 is public workflow
+guidance, not a return channel for a worker snapshot. Typed worker results MAY become declared coordinator inputs for synthesis.
 
 The context manifest MUST identify the target and kind, document order, Target Spec and Shared Specs,
 each document's stable identity/reference set/main visibility and content digest,
@@ -315,3 +324,34 @@ Failed checks, conflicting merges or stale evidence preserve the candidate and t
 revision. Local control files and managed worktree prompt blocks MUST NOT enter the delivered tree.
 Delivery evidence survives in the primary worktree. A completed merge with unfinished cleanup MUST be
 distinguishable and resumable without repeating the merge.
+
+
+### P10. Copyable agent handoffs
+
+Whenever a Concorde workflow asks the user to open, reopen, or switch to another agent session,
+include a self-contained prompt in a fenced text block that the user can copy directly into that
+agent. This applies to every such handoff, including worktree changes, primary-worktree delivery
+when a new session is actually required, and same-worktree maintenance recovery. Write the prompt
+in the user's language and include:
+
+- The intended initial working directory as an absolute path and the branch, when known.
+- The original task, accepted scope, and user constraints or authorizations needed to continue.
+- What is complete, what remains, and which checks have or have not passed.
+- Exact paths to any saved patch or handoff artifacts, whether changes are already applied, and
+  whether any artifact is stored in a temporary location.
+- The next concrete steps, starting with this worktree's policy and affinity verification where
+  applicable; include patch review/application when needed and the expected completion criteria.
+
+Do not make the user reconstruct the task from earlier messages, supply known paths themselves,
+or ask a second time for a handoff prompt. State unknown information explicitly rather than
+inventing it. Preparing the prompt does not authorize entering or modifying the target worktree
+from the old session; the existing worktree and maintenance boundaries still apply.
+
+The runtime supplies facts it knows, including the actual worktree path, branch and change ID when
+available, through existing result/error channels. The outer session completes the original task,
+accepted scope, progress, checks and artifact details from its conversation before presenting the
+localized prompt. A runtime draft with unknown fields does not excuse omitting facts the session
+knows. Handoff text is for the new outer user session, not an input channel into controlled workers;
+those workers still require fresh host-bound contexts and declared artifact contracts (P5–P7).
+This clause does not create new handoff triggers, confirmations or authority. In particular, P9
+allows a delivery request from either participating worktree's initial session.

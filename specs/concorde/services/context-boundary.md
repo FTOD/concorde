@@ -52,6 +52,11 @@ document once. document_order preserves the registry order across both headings.
 not load any referencing entity's other documents and does not recurse through shared membership.
 The context identity covers all inputs apart from its own identity field. Protocol contains
 principles and the matching kind definition only.
+Protocol 1.1.0 includes P10 handoffs in the principles body. The resolver admits it from the exact
+project-bound assets without discovering root AGENTS.md/CLAUDE.md. The installed root entry serves
+outer user sessions only. Package update leaves an old binding unchanged and resolution rejects
+`protocol_mismatch` until the maintainer explicitly accepts the installed version and manifest
+digest in `.concorde/config.json`. Changed bindings require new contexts.
 Stage inputs must be versioned plan, implementation-task or reflection-selection values. Code bytes
 are not embedded in a snapshot; implementation and the dedicated read-only code-review phase have
 code references and separate host-issued implementation grants. Spec review has no code references.

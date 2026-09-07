@@ -1748,8 +1748,24 @@ def run_operation(operation: str, configuration: dict | None, runtime_input: dic
             host, workspace = _worktree(host, mutation, task)
         result["workspace"] = workspace
         if workspace and workspace.get("handoff"):
+            from .session_handoff import handoff_prompt
+            prompt = handoff_prompt(
+                workspace["path"], branch=workspace.get("branch"), change_id=workspace.get("change_id"),
+                task=runtime_input["data"].get("task"), constraints=runtime_input["data"].get("constraints"),
+                completed="The host prepared a linked worktree from the committed base and local change state. "
+                          "No task agent has run in it during this invocation.",
+                remaining=f"Resume {operation} for this change with the original task and constraints.",
+                checks="Worktree preparation succeeded; task implementation/review/validation have not run "
+                       "during this invocation.",
+                artifacts=[{"path": str(Path(workspace["path"]) / ".concorde/worktree.json"),
+                            "applied": True, "temporary": True,
+                            "storage": "create_worktree used a temporary directory; preserve it until completion"}],
+                next_steps=f"Resume {operation} with change_id {workspace.get('change_id')} in the initial "
+                           "directory after policy verification. The host must resolve fresh bounded contexts.",
+                completion="Complete the accepted task and its required checks; development loops stop at ready. "
+                           "Delivery requires the user's separate request from a participating worktree session.")
             raise SpecError("Change worktree prepared at " + workspace["path"]
-                + ". Open a new agent in that worktree to continue this task.", "worktree_handoff_required")
+                + ". Open a new agent in that worktree.\n\n" + prompt, "worktree_handoff_required")
         record_progress = mutation and operation != "concorde-deliver" and host.depth == 1
         if mutation and operation != "concorde-deliver":
             change = read_change(host.project_root)

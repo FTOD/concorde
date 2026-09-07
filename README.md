@@ -139,6 +139,67 @@ The docsite publishes explicit registry members with separate scope/component na
 relationship graph. Run the docsite's validate/build scripts to create a candidate whose routes and
 source digests are checked before promotion. Human navigation does not grant agent context access.
 
+## Protocol entry and upgrades
+
+Protocol 1.1.0 defines session handoffs in [P10](protocol/principles.md#p10-copyable-agent-handoffs).
+Root instructions and runtime drafts refer to that rule; public Skills do not carry another copy.
+The installer adds a receipt-owned `concorde-protocol` block at the start of the selected root file:
+
+- Codex: `AGENTS.md` explicitly tells the outer session to read
+  `.concorde/framework/protocol/principles.md`. A Markdown link is not treated as an automatic import.
+- Claude: `CLAUDE.md` uses the native `@.concorde/framework/protocol/principles.md` import outside a
+  code span or fence. The path is relative to that root file.
+
+These loading choices follow the [Codex instruction discovery documentation](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
+and [Claude import documentation](https://code.claude.com/docs/en/memory), checked on 2026-09-07.
+Codex overrides or instruction size settings and Claude exclusions can suppress project guidance;
+verify the active instruction sources in your client when using such custom settings. Installation
+tests verify entry bytes and asset resolution, not a model's compliance in a live conversation.
+Internal agents retain disabled ambient instruction discovery and receive the same Protocol through
+their controlled context; root guidance does not enlarge their permissions.
+
+Commit the installed root entry and framework with the consumer project so committed-base linked
+worktrees inherit them. Runtime `concorde-change-worktree` blocks remain local and are stripped at
+delivery; the installed `concorde-protocol` entry remains part of the project.
+The installer preserves root bytes outside its block, including later user edits and file mode.
+Reinstall is idempotent; integration changes remove only the previous receipt-owned entry.
+Modified/unowned blocks, ambiguous markers, symlinks and non-file roots conflict without replacement.
+To preview removal of root entries during uninstall, run:
+
+```bash
+python3 /path/to/concorde/scripts/install-concorde.py --target /absolute/project --remove-protocol-guidance
+```
+
+Add `--apply` to remove those entries and their receipt records. This cleanup keeps user text, empty
+root files, framework/runtime files and all other receipt records. It is not a full-package uninstaller.
+Remove the entry before separately removing the framework; do not delete whole user instruction files.
+
+Installing an updated package never rewrites `.concorde/config.json`. Existing projects remain bound
+to their accepted version/digest; execution rejects a mismatch with `protocol_mismatch`. The outer
+entry points at the installed rules, but does not accept them for project execution. After reviewing
+and explicitly accepting the new Protocol assets, a consumer maintainer can update only that binding
+from the project root:
+
+```python
+import hashlib
+import json
+from pathlib import Path
+
+manifest = Path(".concorde/framework/protocol/manifest.json").read_bytes()
+config_path = Path(".concorde/config.json")
+config = json.loads(config_path.read_text())
+config["protocol"] = {
+    "version": json.loads(manifest)["version"],
+    "digest": "sha256:" + hashlib.sha256(manifest).hexdigest(),
+}
+config_path.write_text(json.dumps(config, indent=2) + "\n")
+```
+
+Then run project validation and resolve fresh contexts; older context/check identities cannot be
+reused. In this source checkout, the equivalent explicit maintenance step is
+`python3 scripts/sync-protocol-assets.py --bind-project`. Without that flag, export refreshes the
+Protocol manifest digests but leaves the checkout's existing binding unchanged.
+
 ## Development
 
 [LangGraph Studio setup and usage](scripts/development/STUDIO.md) covers all public operation entries and internal stage events,

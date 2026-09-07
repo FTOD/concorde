@@ -38,6 +38,21 @@ class ScopedProtocolTests(unittest.TestCase):
         participants=repo.participants(repo.select('scope.bank'))
         self.assertEqual(['service.transfer','module.ledger'],[item['target_id'] for item in participants])
         self.assertEqual(['service','module'],[item['kind'] for item in participants])
+    def test_protocol_handoff_rules_are_bound_context_and_old_binding_is_rejected(self):
+        (self.root / 'AGENTS.md').write_text('UNTRUSTED_AMBIENT_GUIDANCE')
+        (self.root / 'CLAUDE.md').write_text('UNTRUSTED_AMBIENT_GUIDANCE')
+        context = resolve_context(SpecRepository(self.root), 'service.transfer').value
+        self.assertIn('### P10. Copyable agent handoffs', context['protocol'][0]['content'])
+        self.assertNotIn('UNTRUSTED_AMBIENT_GUIDANCE', json.dumps(context))
+        path = self.root / '.concorde/config.json'
+        config = json.loads(path.read_text())
+        config['protocol']['version'] = '1.0.0'
+        path.write_text(json.dumps(config))
+        with self.assertRaises(SpecError) as failure:
+            SpecRepository(self.root)
+        self.assertEqual('protocol_mismatch', failure.exception.code)
+        self.assertEqual('1.0.0', json.loads(path.read_text())['protocol']['version'])
+
     def test_document_identity_and_membership_are_validated(self):
         paths=['specs/send-money.md','specs/transfer-promises.md','specs/ledger-api.md']
         original={path:(self.root/path).read_text() for path in paths}

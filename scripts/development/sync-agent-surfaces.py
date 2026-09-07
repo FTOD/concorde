@@ -8,6 +8,7 @@ import hashlib
 import json
 import re
 import sys
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from concorde.capabilities.skill_assets import (  # noqa: E402
     render_capabilities,
 )
 from concorde.capabilities.worktree import inspect_worktree  # noqa: E402
+from concorde.capabilities.session_handoff import handoff_prompt  # noqa: E402
 from concorde.capabilities.protocol_contracts import PUBLIC_OPERATIONS  # noqa: E402
 
 
@@ -162,6 +164,20 @@ def _capability_manifest(root: Path, integration: str) -> dict[str, str]:
     return manifest
 
 
+
+def _handoff(root: Path, *, maintenance: bool = False) -> str:
+    branch = subprocess.run(("git", "-C", str(root), "branch", "--show-current"),
+                            capture_output=True, text=True, check=False)
+    return handoff_prompt(
+        root, branch=branch.stdout.strip() if branch.returncode == 0 else None,
+        checks="Source-checkout affinity verification failed; task checks are unknown to this verifier.",
+        next_steps=("Start a maintenance session without invoking project-local Concorde Skills. "
+                    "Inspect canonical sources and any saved patch, run this worktree's "
+                    "scripts/development/sync-agent-surfaces.py apply, then check. "
+                    if maintenance else "Verify affinity in this worktree, then resume the accepted task. ")
+                   + "Use this runtime's advertised absolute project-local Skill path for verify-worktree.",
+        completion="Affinity and required projection checks pass; complete the accepted task and its checks.")
+
 def verify_worktree_affinity(root: Path, loaded_skill_path: str | Path) -> dict[str, object]:
     """Require the active worktree to own the project Skill loaded by this conversation."""
 
@@ -191,7 +207,7 @@ def verify_worktree_affinity(root: Path, loaded_skill_path: str | Path) -> dict[
             f"this agent loaded Concorde Skills from {loaded_root}, but project work targets {root}. "
             + version_detail
             + f"Stop and explicitly ask the user to open a new agent in {root}; do not continue "
-            f"there and do not update Skills in {loaded_root}."
+            f"there and do not update Skills in {loaded_root}.\n\n" + _handoff(root)
         )
     desired = expected_outputs(root)
     drift = [
@@ -204,7 +220,8 @@ def verify_worktree_affinity(root: Path, loaded_skill_path: str | Path) -> dict[
         raise WorktreeAffinityError(
             f"the active worktree's generated agent surfaces are stale: {summary}. Run "
             "sync-agent-surfaces.py apply in this worktree from a maintenance session, then open a "
-            "fresh agent if any changed project Skill was already loaded as instructions."
+            "fresh agent if any changed project Skill was already loaded as instructions.\n\n"
+            + _handoff(root, maintenance=True)
         )
     return {
         "project_root": str(root),
@@ -299,7 +316,10 @@ def main() -> int:
                 print(f"  {item['action']}: {item['path']}")
         return 0 if arguments.tool == "status" or not drift else 1
     except WorktreeAffinityError as error:
-        print(f"error: {error}", file=sys.stderr)
+        detail = str(error)
+        if "Protocol P10 handoff draft:" not in detail:
+            detail += "\n\n" + _handoff(root)
+        print(f"error: {detail}", file=sys.stderr)
         return 1
     except (AgentAssetError, SkillAssetError, ValueError, OSError) as error:
         print(f"error: {error}", file=sys.stderr)

@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
@@ -62,6 +63,18 @@ class SourceCheckoutDistributionTests(unittest.TestCase):
         self.assertEqual(verified["project_root"], str(REPOSITORY_ROOT))
         self.assertEqual(verified["loaded_worktree"], str(REPOSITORY_ROOT))
         self.assertTrue(verified["surface_match"])
+
+    def test_projection_drift_supplies_same_worktree_maintenance_handoff(self):
+        with patch.object(sync, "inspect_checkout", return_value=[{"action": "update", "path": "fixture"}]):
+            with self.assertRaises(sync.WorktreeAffinityError) as failure:
+                sync.verify_worktree_affinity(REPOSITORY_ROOT,
+                    REPOSITORY_ROOT / ".agents/skills/concorde-main/SKILL.md")
+        message = str(failure.exception)
+        self.assertIn("```text", message)
+        self.assertIn(str(REPOSITORY_ROOT), message)
+        self.assertIn("without invoking project-local Concorde Skills", message)
+        self.assertIn("sync-agent-surfaces.py apply, then check", message)
+        self.assertIn("task checks are unknown", message)
 
     def test_loaded_skill_path_must_be_an_absolute_checkout_capability(self):
         with self.assertRaisesRegex(sync.WorktreeAffinityError, "absolute path"):

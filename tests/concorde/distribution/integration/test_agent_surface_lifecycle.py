@@ -173,6 +173,10 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
         self.assertIn("loaded Concorde Skills from", rejected.stderr)
         self.assertIn("open a new agent", rejected.stderr)
         self.assertIn("worktree identity still differs", rejected.stderr)
+        self.assertIn("```text", rejected.stderr)
+        self.assertIn(str(linked), rejected.stderr)
+        self.assertIn('"Branch": "agent/test"', rejected.stderr)
+        self.assertIn("Unknown to the runtime", rejected.stderr)
 
         changed = linked / "operations/concorde-validate/SKILL.md"
         changed.write_text(changed.read_text() + "\nLinked marker.\n")

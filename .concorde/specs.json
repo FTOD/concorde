@@ -139,7 +139,9 @@
         "src/concorde/capabilities/worktree_delivery.py",
         "src/concorde/capabilities/review.py",
         "tests/concorde/specification/test_review.py",
-        "src/concorde/capabilities/operation_config.py"
+        "src/concorde/capabilities/operation_config.py",
+        "src/concorde/capabilities/session_handoff.py",
+        "tests/concorde/capabilities/unit/test_session_handoff.py"
       ],
       "features": [
         {
@@ -208,7 +210,9 @@
         "tests/concorde/distribution/unit/test_agent_surface_sync.py",
         "tests/concorde/distribution/contract/test_agent_surface_contract.py",
         "tests/concorde/distribution/integration/test_agent_surface_lifecycle.py",
-        "tests/concorde/distribution/acceptance/test_source_checkout.py"
+        "tests/concorde/distribution/acceptance/test_source_checkout.py",
+        "src/concorde/distribution/protocol_guidance.py",
+        "tests/concorde/distribution/unit/test_protocol_guidance.py"
       ],
       "features": [
         {

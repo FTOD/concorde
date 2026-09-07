@@ -39,7 +39,7 @@ supplement an agent context. Construct a fresh repository after source, registry
 an instance caches documents already read and is not a live filesystem view. The constructor rejects
 unsafe roots, unsupported profiles/Protocol bindings, malformed registry/identity/relationship/check
 metadata and overlapping implementation grants. The root must contain `.concorde/config.json` with exactly
-`{profile_version: 8, registry: relative_path, protocol: {version: "1.0.0", digest: sha256},
+`{profile_version: 8, registry: relative_path, protocol: {version: "1.1.0", digest: sha256},
 operation_configuration: {type_id: "concorde-operation-configuration", schema_version: 1,
 data: {integration: "codex"|"claude", enforcement: "native"|"outer"}}}`. The referenced registry is
 `{schema_version: 1, project_id: stable_id, entry_target: target_id, targets: [SpecTarget records],
@@ -50,7 +50,7 @@ parents are acyclic. Domains have no code grants or component parent; components
 Component participation names existing Domains. Registered implementation path prefixes are disjoint
 and cannot contain control/configuration files or Spec documents. Check IDs belong to their target.
 
-The supplied package contains `protocol/manifest.json` with version `1.0.0` and an `assets` list of
+The supplied package contains `protocol/manifest.json` with version `1.1.0` and an `assets` list of
 `{path, digest}`. The project pins the manifest's exact byte digest, and each asset must match its own
 listed byte digest. Principles and all three kind definitions are mandatory assets. Missing or changed
 bindings/assets fail with `protocol_mismatch`; this repository never silently upgrades a binding.

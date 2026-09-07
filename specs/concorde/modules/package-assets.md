@@ -10,7 +10,7 @@
 
 ## api.assets.render
 
-resolve_skill_prompt(path,kind,framework_prefix) parses one canonical internal role or paired Operation. render_capabilities(package_root,integration,framework_prefix="") returns target-path to rendered public-wrapper text; only public paired Operations are projected. capability_projection_roles supplies exact receipt ownership roles. validate_package(root) checks Manifest 3 inventory, literal executable dependencies, prompt pairing and exported wire schemas without executing entrypoints. Reflection compatibility roles invoke the host and cannot investigate in ambient cognition. Protocol asset export is maintainer-only; changing a consumer binding requires explicit --bind-project.
+resolve_skill_prompt(path,kind,framework_prefix) parses one canonical internal role or paired Operation. render_capabilities(package_root,integration,framework_prefix="") returns target-path to rendered public-wrapper text; only public paired Operations are projected. capability_projection_roles supplies exact receipt ownership roles. validate_package(root) checks Manifest 3 inventory, literal executable dependencies, prompt pairing and exported wire schemas without executing entrypoints. Reflection compatibility roles invoke the host and cannot investigate in ambient cognition. Protocol asset export is maintainer-only; the source checkout accepts its new binding only with explicit --bind-project. Consumer maintainers separately accept the installed manifest version/digest in their project configuration; export and installation never rewrite a consumer binding.
 
 ## Interface signatures
 

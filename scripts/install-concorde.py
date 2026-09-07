@@ -29,6 +29,7 @@ from concorde.distribution.managed_runtime import (  # noqa: E402
     provision_runtime,
 )
 from concorde.capabilities.skill_assets import SkillAssetError, render_capabilities  # noqa: E402
+from concorde.distribution import protocol_guidance as guidance  # noqa: E402
 
 
 FRAMEWORK_ROOT = ".concorde/framework"
@@ -277,11 +278,14 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
     }
     for path, content in defaults.items():
         outputs[path] = (content, "project-default")
+    outputs[guidance.FILES[integration]] = (guidance.entry(integration), guidance.ROLE)
     return dict(sorted(outputs.items()))
 
 
 def _load_receipt(target: Path) -> dict[str, Any]:
-    path = target / RECEIPT_PATH
+    path = _check_parent(target, RECEIPT_PATH)
+    if path.is_symlink():
+        raise InstallError(f"Concorde installation receipt must not be a symlink: {path}")
     if not path.exists():
         return {"schema_version": INSTALL_SCHEMA, "outputs": []}
     if path.is_symlink() or not path.is_file():
@@ -300,7 +304,10 @@ def _prior_outputs(receipt: Mapping[str, Any]) -> dict[str, str]:
         relative = _safe_relative(item["path"], "receipt output")
         if relative in outputs:
             raise InstallError(f"Concorde installation receipt repeats output: {relative}")
-        outputs[relative] = item["sha256"]
+        if item.get("role") != guidance.ROLE:
+            if relative in guidance.FILES.values():
+                raise InstallError("root guidance cannot be owned as a whole file")
+            outputs[relative] = item["sha256"]
     return outputs
 
 
@@ -314,11 +321,33 @@ def installation_plan(
     target: Path,
     package: Package,
     integration: str,
+    *, remove_protocol_guidance: bool = False,
 ) -> tuple[list[dict[str, str]], dict[str, tuple[bytes, str]], dict[str, Any]]:
     target = target.resolve()
     receipt = _load_receipt(target)
     prior = _prior_outputs(receipt)
-    desired = desired_outputs(package, integration)
+    desired = {} if remove_protocol_guidance else desired_outputs(package, integration)
+    prior_guidance = {}
+    for item in receipt.get("outputs", []):
+        if item.get("role") == guidance.ROLE:
+            relative = item["path"]
+            if relative not in guidance.FILES.values() or relative in prior_guidance:
+                raise InstallError("invalid or duplicate Protocol guidance receipt")
+            prior_guidance[relative] = item["sha256"]
+    guidance_actions = []
+    guidance_desired = {}
+    roots = set(prior_guidance) | {p for p, (_, role) in desired.items() if role == guidance.ROLE}
+    for relative in sorted(roots):
+        wanted = desired.pop(relative, (None, None))[0]
+        try:
+            item, merged = guidance.plan(target, relative, wanted, prior_guidance.get(relative))
+            guidance_desired[relative] = (merged, item["role"])
+        except (guidance.GuidanceError, UnicodeError) as error:
+            item = {"path": relative, "action": "conflict", "role": guidance.ROLE,
+                    "sha256": "", "reason": str(error)}
+        guidance_actions.append(item)
+    if remove_protocol_guidance:
+        return guidance_actions, guidance_desired, receipt
     legacy_config = target / LEGACY_REFLECTIONS_CONFIG
     actions: list[dict[str, str]] = []
     for relative, (content, role) in desired.items():
@@ -394,6 +423,8 @@ def installation_plan(
                 "reason": str(error),
             }
         )
+    actions.extend(guidance_actions)
+    desired.update(guidance_desired)
     return sorted(actions, key=lambda item: item["path"]), desired, receipt
 
 
@@ -430,9 +461,10 @@ def _receipt(
         "workspace_protocol": package.manifest["workspace_protocol"],
         "runtime": dict(runtime),
         "outputs": [
-            {"path": path, "role": role, "sha256": _sha256(content)}
+            {"path": path, "role": role, "sha256": _sha256(
+                guidance.split(content)[1] if role == guidance.ROLE else content)}
             for path, (content, role) in sorted(desired.items())
-            if role != "project-default"
+            if role not in {"project-default", "protocol-guidance-cleanup"}
         ],
     }
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
@@ -444,19 +476,30 @@ def apply_plan(
     integration: str,
     actions: Sequence[Mapping[str, str]],
     desired: Mapping[str, tuple[bytes, str]],
+    *, remove_protocol_guidance: bool = False,
 ) -> str:
     conflicts = [item for item in actions if item["action"] == "conflict"]
     if conflicts:
         raise InstallError("installation plan has ownership conflicts")
+    # Recheck shared files immediately before any installation writes, including symlinks.
+    for item in actions:
+        if item["role"].startswith("protocol-guidance"):
+            path = target / item["path"]
+            if (path.is_symlink() or (path.exists() and not path.is_file())
+                    or ("yes" if path.exists() else "no") != item["before_exists"]
+                    or _sha256(path.read_bytes() if path.exists() else b"") != item["before_sha256"]):
+                raise InstallError("Protocol guidance changed since preview; create a fresh plan")
+    if remove_protocol_guidance and not actions:
+        return "unchanged"
     mutable = [
         item
         for item in actions
         if item["role"] != "runtime" and item["action"] in {"create", "update", "remove"}
     ]
     runtime_items = [item for item in actions if item["role"] == "runtime"]
-    if len(runtime_items) != 1:
+    if not remove_protocol_guidance and len(runtime_items) != 1:
         raise InstallError("installation plan must contain exactly one managed runtime action")
-    runtime_action = runtime_items[0]
+    runtime_action = runtime_items[0] if runtime_items else {"action": "unchanged"}
     receipt_path = target / RECEIPT_PATH
     previous_receipt = receipt_path.read_bytes() if receipt_path.is_file() and not receipt_path.is_symlink() else None
     previous_receipt_mode = receipt_path.stat().st_mode & 0o777 if previous_receipt is not None else None
@@ -493,17 +536,22 @@ def apply_plan(
             if relative.startswith(f"{FRAMEWORK_ROOT}/scripts/") and path.suffix in {".py", ".sh"}:
                 path.chmod(0o755)
             else:
-                path.chmod(0o644)
-        try:
-            runtime = provision_runtime(
-                target,
-                target / FRAMEWORK_ROOT,
-                load_runtime_spec(package.root, package.manifest),
-                runtime_action,
-            )
-        except ManagedRuntimeError as error:
-            raise InstallError(str(error)) from error
-        receipt_content = _receipt(package, integration, desired, runtime)
+                path.chmod(backups[relative][1] if relative in backups else 0o644)
+        if remove_protocol_guidance:
+            value = _load_receipt(target)
+            value["outputs"] = [item for item in value["outputs"] if item.get("role") != guidance.ROLE]
+            receipt_content = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
+        else:
+            try:
+                runtime = provision_runtime(
+                    target,
+                    target / FRAMEWORK_ROOT,
+                    load_runtime_spec(package.root, package.manifest),
+                    runtime_action,
+                )
+            except ManagedRuntimeError as error:
+                raise InstallError(str(error)) from error
+            receipt_content = _receipt(package, integration, desired, runtime)
         receipt_path.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(dir=receipt_path.parent, prefix=".concorde-receipt-", delete=False) as handle:
             staged_receipt = Path(handle.name)
@@ -567,6 +615,8 @@ def create_parser() -> argparse.ArgumentParser:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--apply", action="store_true")
     mode.add_argument("--preview", action="store_true")
+    parser.add_argument("--remove-protocol-guidance", action="store_true",
+                        help="preview/remove only receipt-owned root Protocol entry blocks")
     parser.add_argument("--format", choices=["text", "json"], default="text")
     return parser
 
@@ -580,11 +630,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         target = requested_target.resolve()
         _check_target(target)
         package = load_package(Path(arguments.checkout))
-        actions, desired, _ = installation_plan(target, package, arguments.integration)
+        actions, desired, _ = installation_plan(target, package, arguments.integration,
+            remove_protocol_guidance=arguments.remove_protocol_guidance)
         conflicts = [item for item in actions if item["action"] == "conflict"]
         status = "conflict" if conflicts else "preview"
         if arguments.apply and not conflicts:
-            status = apply_plan(target, package, arguments.integration, actions, desired)
+            status = apply_plan(target, package, arguments.integration, actions, desired,
+                remove_protocol_guidance=arguments.remove_protocol_guidance)
         result = {
             "schema_version": INSTALL_SCHEMA,
             "status": status,

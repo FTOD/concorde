@@ -32,8 +32,9 @@ around the boundary. Non-implementation agents never receive implementation code
 
 This loop ends at a verified `ready` candidate in the current change worktree. It never
 invokes deliver. Partial progress and gaps remain in `.concorde/worktree.json` and resume under
-the same worktree change. Delivery is a separate request from a new agent opened in the primary
-worktree; report its path and the change_id when the candidate is ready.
+the same worktree change. Delivery is a separate request from an agent whose initial working directory is either the
+source change worktree or the destination primary worktree; report the participating paths and
+change_id when the candidate is ready.
 
 The standard loop requires independent Spec review after authoring and before planning, then
 read-only code review after implementation/checks and before ready. Fast-loop run_reviews defaults

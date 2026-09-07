@@ -1,5 +1,6 @@
 """Real Git regressions for worktree ownership, awareness, recovery and primary delivery."""
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -132,11 +133,42 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("worktree_handoff_required", result["errors"][0]["code"])
         self.assertEqual([], self.last_double.calls)
         created = Path(result["workspace"]["path"])
+        message = result["errors"][0]["message"]
+        self.assertIn("```text", message)
+        for fact in (str(created), result["workspace"]["branch"], result["workspace"]["change_id"],
+                     self.task["task"], str(created / STATE_PATH), "have not run", "No task agent",
+                     '"temporary": true'):
+            self.assertIn(fact, message)
+        self.assertEqual(result, json.loads(json.dumps(result)))
         try:
             self.assertTrue((created / STATE_PATH).exists())
             self.assertEqual("created", read_change(created)["phase"])
             self.assertEqual("def transfer(balance, amount):\n    return balance\n",
                              (self.primary / "app/transfer.py").read_text())
+        finally:
+            git(self.primary, "worktree", "remove", "--force", str(created))
+            created.parent.rmdir()
+
+    def test_handoff_remains_one_json_response_on_the_paired_cli(self):
+        operation = "concorde-fast-loop"
+        task = {**self.task, "constraints": ["保留用户原文；不合并、不 push"]}
+        invocation = {"type_id": "concorde-operation-invocation", "schema_version": 2,
+                      "operation_id": operation, "mode": "execute", "configuration": CONFIGURATION,
+                      "input": typed(operation + "-request", task)}
+        process = subprocess.run([sys.executable, str(PACKAGE / "operations" / operation / "operation.py")],
+                                 cwd=self.primary, input=json.dumps(invocation), text=True,
+                                 capture_output=True, env={**os.environ, "CONCORDE_STUDIO_URL": ""})
+        result = json.loads(process.stdout)
+        created = Path(result["workspace"]["path"])
+        try:
+            self.assertEqual(3, process.returncode, process.stderr)
+            self.assertEqual("", process.stderr)
+            self.assertEqual("worktree_handoff_required", result["errors"][0]["code"])
+            message = result["errors"][0]["message"]
+            self.assertIn("```text", message)
+            self.assertIn(task["constraints"][0], message)
+            self.assertIn(str(created / STATE_PATH), message)
+            self.assertEqual("created", read_change(created)["phase"])
         finally:
             git(self.primary, "worktree", "remove", "--force", str(created))
             created.parent.rmdir()

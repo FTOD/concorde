@@ -4,6 +4,9 @@ This policy applies only while developing the Concorde repository itself. Projec
 `concorde-*` Skills are worktree-owned instructions: an agent session must not carry them from the
 worktree where the session started into another linked worktree.
 
+Read and follow `protocol/principles.md` as the canonical Concorde Protocol, including P10 for
+all session handoffs below. This file adds only source-checkout worktree and maintenance boundaries.
+
 ## Worktree affinity
 
 Before project work, identify one absolute project-local `concorde-*` `SKILL.md` path advertised by

@@ -34,7 +34,12 @@ Describe-policy does not launch agents or mutate project state; policy descripti
 A mutating request in the primary worktree creates an isolated branch from committed HEAD and
 returns worktree_handoff_required with its path, branch, base commit and change_id. It does not copy
 uncommitted primary changes or continue the originating agent session in the new worktree. A new
-agent opened in the returned worktree continues the task. Host administrators may explicitly permit
+agent opened in the returned worktree continues the task. The existing error message includes a
+Protocol P10 draft with real worktree identity, submitted task/constraints, preparation/check status
+and the absolute local state artifact path. Host-created worktrees live in temporary storage and the
+draft labels that lifetime explicitly. Unavailable conversation facts are marked unknown for the
+outer session to complete/localize; these drafts are never admitted as worker context or authority.
+Host administrators may explicitly permit
 standalone development for controlled embedding. Delivery separately requires a session in its
 selected source or destination worktree; third-worktree and nested sessions are rejected.
 
@@ -100,15 +105,18 @@ code changes before this agreement. Component fast loops report completion to th
 Validation is deterministic: global registry/local contract checks plus configured check argv with
 timeouts. Its raw logs stay host-private. Delivery requires current Spec/implementation identities, completed authored tasks and passing
 configured checks plus current required reviews and resolved task gaps. It is a separate deterministic request selecting change_id, issued only by an
-agent opened in the primary worktree. The host rejects secondary, redirected and nested invocations;
-changing cwd or forwarding a request cannot convert a secondary agent session into a primary one.
+agent whose initial working directory is either the selected source or destination primary worktree.
+The host rejects unrelated third-worktree and nested invocations; changing cwd or forwarding a
+request does not confer participating-session identity.
 The primary worktree's current attached branch is the destination, regardless of its name. Its local
 changes are preserved. The host freezes exact deliverable bytes, checks the actual merge result in a
 private deterministic verification checkout, and merges only that verified result. Conflicts, failed
 checks and stale bytes preserve both the accepted primary revision and the candidate worktree.
-After the merge, it removes the secondary worktree, its state and temporary prompt injection. Primary
+After the merge, it retains the source when it owns the session or `keep_worktree:true` is requested;
+otherwise it removes that worktree, its state and temporary prompt injection. Primary
 `.concorde/deliveries/` receipts preserve commit identities and checks; a cleanup failure is resumable
-without a second merge. Local control files and managed prompt blocks are excluded from the Git tree.
+without a second merge. Local control files and managed lifecycle prompt blocks are excluded from the Git tree.
+Installed root Protocol entries are project content and remain in the delivered tree.
 
 ```concorde-contract
 {

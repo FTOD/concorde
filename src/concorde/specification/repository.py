@@ -15,7 +15,7 @@ from .schema import ContractError, admit, validate
 
 
 PROFILE_VERSION = 8
-PROTOCOL_VERSION = "1.0.0"
+PROTOCOL_VERSION = "1.1.0"
 KINDS = frozenset({"domain", "service", "module"})
 IDENTITY = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$")
 CONTRACT_BLOCK = re.compile(r"^```concorde-contract\s*\n(.*?)^```\s*$", re.M | re.S)
