@@ -30,3 +30,29 @@ jobs:
             tests.concorde.distribution.contract.test_agent_surface_contract \
             tests.concorde.distribution.integration.test_agent_surface_lifecycle \
             tests.concorde.distribution.acceptance.test_source_checkout
+
+  studio:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install optional Studio development runtime
+        run: |
+          python3 -m pip install uv
+          uv sync --locked --group studio
+
+      - name: Test Studio graphs, transport and real Agent Server
+        env:
+          PYTHONPATH: src
+          CONCORDE_TEST_STUDIO: "1"
+        run: |
+          .venv/bin/python -m unittest \
+            tests.concorde.capabilities.unit.test_studio \
+            tests.concorde.capabilities.unit.test_studio_client \
+            tests.concorde.capabilities.integration.test_studio_server

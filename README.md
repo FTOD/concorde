@@ -132,6 +132,10 @@ source digests are checked before promotion. Human navigation does not grant age
 
 ## Development
 
+[LangGraph Studio setup and usage](scripts/development/STUDIO.md) covers all 23 operation entries,
+CLI/Skill forwarding, live execution events, debugging and worktree isolation. Studio is optional;
+existing JSON stdin/stdout calls continue to work without a server.
+
 Run Python tests with `PYTHONPATH=src python -m unittest discover -s tests/concorde -v` and docsite checks
 with `npm run typecheck`, `npm test`, `npm run validate`, `npm run build`. Regenerate canonical public
 projections after prompt changes. `scripts/sync-protocol-assets.py` exports executable wire schemas;

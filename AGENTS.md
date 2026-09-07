@@ -36,6 +36,18 @@ must stop after reporting its path and branch. Development in it belongs to a ne
 Never switch the current worktree in place to another branch or revision to avoid this handoff; a
 new target revision belongs in a linked worktree with its own agent session.
 
+## Delivery between participating worktrees
+
+For user-authorized delivery, the agent's initial worktree may be either the selected source
+worktree or the destination worktree. A session in a third worktree cannot initiate that delivery.
+Verify Skill affinity against the session-owned worktree as usual. Within this bounded delivery,
+inspect the other participant, merge its branch into the source to resolve integration conflicts,
+run integration checks, and update the destination without moving the session or loading that
+participant's Skills. These delivery actions are an exception to the cross-worktree handoff above;
+unrelated development and Skill projection maintenance remain bound to the original worktree.
+Preserve unrelated destination changes and retain the source worktree when the user requests it
+or when it owns the active session. No delivery request grants permission to discard local edits.
+
 ## Maintaining this worktree's Skill projections
 
 `scripts/development/sync-agent-surfaces.py` always operates on the worktree containing that script.

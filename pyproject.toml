@@ -10,6 +10,9 @@ dev = [
     "jsonschema>=4.26.0",
     "langgraph>=1.2,<2",
 ]
+studio = [
+    "langgraph-cli[inmem]>=0.4,<1",
+]
 
 [tool.uv]
 package = false

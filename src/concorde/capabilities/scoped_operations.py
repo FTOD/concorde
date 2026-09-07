@@ -56,6 +56,15 @@ class OperationHost:
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     descriptions: list[dict] = field(default_factory=list)
     evidence: list[Any] = field(default_factory=list)
+    observer: Any = None
+
+    def observe(self, event: str, **details) -> None:
+        # Observability must never turn a completed mutation into a retryable failure.
+        if self.observer is not None:
+            try:
+                self.observer(event, **details)
+            except Exception:
+                pass
 
     def __post_init__(self):
         if self.project_root.is_symlink() or self.package_root.is_symlink():
@@ -1597,7 +1606,20 @@ class Invocation:
                     review_artifacts.extend(item for item in data["artifacts"] if item["id"].startswith("review."))
                 self.repository = SpecRepository(self.host.project_root, self.host.package_root)
                 return {"output": data}
-            return node
+            def observed(state):
+                self.host.observe("stage_started", operation=self.operation, stage=name,
+                                  invocation_id=self.host.invocation_id)
+                try:
+                    result = node(state)
+                except Exception:
+                    self.host.observe("stage_failed", operation=self.operation, stage=name,
+                                      invocation_id=self.host.invocation_id)
+                    raise
+                self.host.observe("stage_finished", operation=self.operation, stage=name,
+                                  invocation_id=self.host.invocation_id,
+                                  outcome=result["output"].get("outcome"))
+                return result
+            return observed
         for index, stage in enumerate(stages):
             graph.add_node(stage, execute(stage))
             successor = stages[index + 1] if index + 1 < len(stages) else END
@@ -1739,6 +1761,7 @@ def _dispatch(operation, configuration, task, host):
 def run_operation(operation: str, configuration: dict | None, runtime_input: dict, *, host_context: OperationHost) -> dict:
     host = replace(host_context, invocation_id=str(uuid.uuid4()), evidence=[], depth=host_context.depth + 1)
     record_progress = False
+    host.observe("operation_started", operation=operation, invocation_id=host.invocation_id, depth=host.depth)
     result = {"type_id": "concorde-operation-result", "schema_version": 2,
               "operation_id": operation if operation in OPERATION_CONTRACTS else None,
               "invocation_id": host.invocation_id, "mode": host.mode, "status": "blocked",
@@ -1808,7 +1831,28 @@ def run_operation(operation: str, configuration: dict | None, runtime_input: dic
         except (ValueError, OSError) as error:
             result["errors"].append({"code": "state_persistence_failed", "field": "", "message": str(error)})
     host_context.evidence.extend(host.evidence)
+    host.observe("operation_finished", operation=operation, invocation_id=host.invocation_id,
+                 depth=host.depth, status=result["status"])
     return result
+
+
+def validate_invocation(value: Any, operation: str | None = None) -> dict:
+    """Validate the shared CLI/Studio envelope before selecting a trusted host."""
+    if not isinstance(value, dict) or set(value) != {"type_id", "schema_version", "operation_id", "mode", "configuration", "input"}:
+        raise SpecError("invocation fields do not match schema 2", "invalid_input")
+    if value["type_id"] != "concorde-operation-invocation" or type(value["schema_version"]) is not int or value["schema_version"] != 2:
+        raise SpecError("Profile 8 requires concorde-operation-invocation schema 2", "unsupported_version")
+    if operation is not None and value["operation_id"] != operation:
+        raise SpecError("invocation does not match this entry point", "incompatible_handoff")
+    return value
+
+
+def invocation_failure(operation: str | None, error: Exception) -> dict:
+    """The same pre-host failure envelope for paired CLI and Studio entries."""
+    return {"type_id": "concorde-operation-result", "schema_version": 2, "operation_id": operation,
+        "invocation_id": str(uuid.uuid4()), "mode": None, "status": "blocked", "workspace": None,
+        "output": None, "errors": [{"code": getattr(error, "code", "invalid_input"),
+            "field": getattr(error, "field", ""), "message": str(error)}]}
 
 
 def json_main(package_root: Path, operation: str | None = None) -> int:
@@ -1819,21 +1863,19 @@ def json_main(package_root: Path, operation: str | None = None) -> int:
         raw = getattr(sys.stdin, "buffer", sys.stdin).read(1024 * 1024 + 1)
         if len(raw) > 1024 * 1024:
             raise SpecError("invocation exceeds 1 MiB", "invalid_input")
-        value = decode(raw.decode() if isinstance(raw, bytes) else raw)
-        if not isinstance(value, dict) or set(value) != {"type_id", "schema_version", "operation_id", "mode", "configuration", "input"}:
-            raise SpecError("invocation fields do not match schema 2", "invalid_input")
-        if value["type_id"] != "concorde-operation-invocation" or type(value["schema_version"]) is not int or value["schema_version"] != 2:
-            raise SpecError("Profile 8 requires concorde-operation-invocation schema 2", "unsupported_version")
+        value = validate_invocation(decode(raw.decode() if isinstance(raw, bytes) else raw), operation)
         operation = operation or value["operation_id"]
-        if value["operation_id"] != operation:
-            raise SpecError("invocation does not match this entry point", "incompatible_handoff")
-        host = OperationHost(Path.cwd(), package_root, mode=value["mode"])
-        result = run_operation(operation, value["configuration"], value["input"], host_context=host)
+        if os.environ.get("CONCORDE_STUDIO_URL"):
+            from .studio_client import run_in_studio
+            state = run_in_studio(os.environ["CONCORDE_STUDIO_URL"], value, Path.cwd(), package_root)
+            result = state["result"]
+            if state.get("policies"):
+                print(canonical({"policies": state["policies"]}), file=sys.stderr)
+        else:
+            host = OperationHost(Path.cwd(), package_root, mode=value["mode"])
+            result = run_operation(operation, value["configuration"], value["input"], host_context=host)
     except Exception as error:
-        result = {"type_id": "concorde-operation-result", "schema_version": 2, "operation_id": operation,
-            "invocation_id": str(uuid.uuid4()), "mode": None, "status": "blocked", "workspace": None,
-            "output": None, "errors": [{"code": getattr(error, "code", "invalid_input"),
-                "field": getattr(error, "field", ""), "message": str(error)}]}
+        result = invocation_failure(operation, error)
     if host and host.descriptions:
         print(canonical({"policies": host.descriptions}), file=sys.stderr)
     print(canonical(result))
