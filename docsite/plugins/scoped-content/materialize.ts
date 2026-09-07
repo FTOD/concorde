@@ -11,6 +11,8 @@ export function scopedSidebar(registry: ScopedRegistry) {
 }
 export async function materializeScoped(registry:ScopedRegistry) {
   const generated=resolve(registry.projectRoot,'docsite/.generated');
+  const identity=resolve(generated,'scoped-materialization.json');
+  await rm(identity,{force:true});
   await rm(resolve(generated,'content'),{recursive:true,force:true});
   await rm(resolve(generated,'static'),{recursive:true,force:true});
   await mkdir(resolve(generated,'static/diagrams'),{recursive:true});
@@ -25,4 +27,5 @@ export async function materializeScoped(registry:ScopedRegistry) {
     await writeFile(path,matter.stringify(rewriteLinks(registry,page),{format:'md',slug:page.route.slice('/specs'.length),title:page.title,sidebar_label:page.title}));
   }
   await writeFile(resolve(generated,'specs-sidebar.json'),JSON.stringify(scopedSidebar(registry),null,2)+'\n');
+  await writeFile(identity,JSON.stringify({schema_version:1,sourceDigest:registry.sourceDigest})+'\n');
 }

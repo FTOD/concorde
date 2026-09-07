@@ -38,6 +38,15 @@ invokes deliver. Partial progress and gaps remain in `.concorde/worktree.json` a
 the same worktree change. Delivery is a separate request from a new agent opened in the primary
 worktree; report its path and the change_id when the candidate is ready.
 
+The standard loop requires independent Spec review after authoring and before planning, then
+read-only code review after implementation/checks and before ready. Fast-loop run_reviews defaults
+to false; both mode skips are recorded explicitly. A previously required review cannot be disabled
+on retry. Required review failure, incomplete coverage and blocking findings stop advancement;
+advisory findings remain in the review artifacts. Each mode and target uses a separate fresh
+session. Changed inputs invalidate older conclusions. Necessary contract gaps persist in the existing
+change state; repair the Spec and resume with a fresh context. No-finding review is not proof of
+semantic completeness.
+
 ## Input TypedValue schema
 
 This complete schema is the invocation's input field. It does not grant project reads.

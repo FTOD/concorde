@@ -50,6 +50,8 @@ class OperationHost:
     configuration_snapshot: str = ""
     session_root: Path | None = None
     coordinated: bool = False
+    track_gaps: bool = False
+    defer_ready: bool = False
     depth: int = 0
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     descriptions: list[dict] = field(default_factory=list)
@@ -197,6 +199,7 @@ class MainInvocation:
             "gaps": list(gaps),
             "checks": [],
             "completed_operations": list(self.completed),
+            **({"reviews": []} if self.operation == "concorde-review" else {}),
         })
 
     def stage(self, phase: str, occurrence: int, *, worker_results: tuple[dict, ...] = ()) -> dict:
@@ -904,25 +907,67 @@ class Invocation:
         self.repository = SpecRepository(host.project_root, host.package_root)
         self.target = self.repository.select(task["target_id"], task.get("focus_id"))
         change = read_change(host.project_root)
+        if task.get("change_id") is not None and (change is None or task["change_id"] != change["change_id"]):
+            raise SpecError("change identity does not belong to the current worktree", "incompatible_handoff")
         self.change_id = task.get("change_id") or (change["change_id"] if change else None)
         self.work_directory = f"{WORK_PATH}/{self.target.id}" if change else None
         self.last_context = None
         self.completed: list[str] = []
 
-    def response(self, outcome="completed", answer="", *, gaps=(), checks=(), artifacts=()) -> dict:
-        return typed(OPERATION_CONTRACTS[self.operation][1], {
+    def response(self, outcome="completed", answer="", *, gaps=(), checks=(), artifacts=(), reviews=()) -> dict:
+        data = {
             "target_id": self.target.id, "focus_id": self.task.get("focus_id"), "change_id": self.change_id,
             "context_id": self.last_context, "outcome": outcome, "answer": answer,
             "gaps": list(gaps), "checks": list(checks), "artifacts": list(artifacts),
-            "completed_operations": list(self.completed)})
+            "completed_operations": list(self.completed)}
+        if self.operation == "concorde-review":
+            data["reviews"] = list(reviews)
+        return typed(OPERATION_CONTRACTS[self.operation][1], data)
 
-    def stage(self, operation: str, *, inputs: tuple[dict, ...] = (), readonly=False) -> dict:
+    def record_gaps(self, phase, gaps):
+        if self.host.mode != "execute":
+            return
+        change = read_change(self.repository.root)
+        required_review = bool(phase in {"spec-review", "code-review"} and change
+            and change.get("review_requirements", {}).get(self.target.id, {}).get(phase.split("-")[0])
+            and change.get("review_intents", {}).get(self.target.id) == {"task": self.task["task"],
+                "focus_id": self.task.get("focus_id"), "constraints": self.task.get("constraints", [])})
+        if self.host.track_gaps or required_review or self.operation not in {
+                "concorde-main", "concorde-analyze", "concorde-context-solve", "concorde-review"}:
+            from .change_worktree import record_task_gaps
+            record_task_gaps(self.repository.root, self.target.id, self.task["task"], phase, gaps,
+                             _target_revision(self.repository, self.target))
+
+    def pending_gaps(self, phase, snapshot=None, *, include_prerequisites=True):
+        from .change_worktree import unchanged_task_gaps
+        if phase == "specify" or self.host.mode != "execute":
+            return []
+        gaps = unchanged_task_gaps(self.repository.root, self.target.id, self.task["task"], phase,
+                                  _target_revision(self.repository, self.target))
+        if include_prerequisites:
+            order = ("specify", "spec-review", "context-solve", "plan", "tasks", "implementation", "code-review")
+            prerequisites = set(order[:order.index(phase)]) if phase in order else set()
+            change = read_change(self.repository.root)
+            gaps.extend(dict(item["gap"]) for item in (change or {}).get("gap_history", [])
+                if item["status"] == "open" and item["target_id"] == self.target.id
+                and item["task"] == self.task["task"] and item["phase"] in prerequisites)
+        # No reviewer ran again. Retain the actual observation's provenance.
+        return gaps
+
+    def stage(self, operation: str, *, inputs: tuple[dict, ...] = (), readonly=False,
+              defer_gap_resolution=False) -> dict:
         phase, role = {**AGENT_OPERATIONS, **TARGET_AGENT_STAGES}[operation]
         prompt = resolve_skill_prompt(self.host.package_root / "skills" / role / "SKILL.md", "skill", "")
         snapshot = resolve_context(self.repository, self.target.id, phase=phase, task=self.task["task"],
             focus_id=self.task.get("focus_id"), constraints=tuple(self.task.get("constraints", [])),
             instructions=prompt.body, stage_inputs=inputs)
         self.last_context = snapshot.id
+        if self.operation not in {"concorde-main", "concorde-analyze", "concorde-context-solve"}:
+            pending = self.pending_gaps(phase, snapshot, include_prerequisites=not readonly)
+            if pending:
+                return {"context_id": snapshot.id, "outcome": "spec_incomplete",
+                    "answer": "Repair the recorded necessary contracts before resuming this step.",
+                    "gaps": pending, "documents": [], "plan": "", "tasks": []}
         implementation = phase == "implementation"
         if implementation and not self.target.implementation:
             raise SpecError("implementation requires an explicitly owned Service/Module code scope", "unsupported_target")
@@ -945,6 +990,7 @@ class Invocation:
                     "target_id": self.target.id,
                     "context_id": snapshot.id,
                 } for finding in participant_findings]
+                self.record_gaps(phase, gaps)
                 return {"context_id": snapshot.id, "outcome": "spec_incomplete",
                         "answer": "Domain participant routing is incomplete or inconsistent.",
                         "gaps": gaps, "documents": [], "plan": "", "tasks": []}
@@ -1006,6 +1052,8 @@ class Invocation:
             if (data["outcome"] == "spec_incomplete") != bool(data["gaps"]):
                 raise SpecError("Spec incomplete requires concrete gaps; other outcomes cannot carry gaps", "invalid_completion")
             for gap in data["gaps"]:
+                if any(not gap[key].strip() for key in ("question", "blocked_step", "needed_contract")):
+                    raise SpecError("task gaps require a concrete question, step and contract", "invalid_completion")
                 if gap.get("target_id",self.target.id)!=self.target.id or gap.get("context_id",snapshot.id)!=snapshot.id:
                     raise SpecError("gap provenance differs from the admitted context", "incompatible_handoff")
                 gap.update(target_id=self.target.id,context_id=snapshot.id)
@@ -1020,12 +1068,15 @@ class Invocation:
                 raise SpecError("this phase cannot author Spec documents", "permission_denied")
             self.host.evidence.append(result)
             self.completed.append(operation)
+            if (data["outcome"] == "spec_incomplete" or not defer_gap_resolution
+                    and data["outcome"] in {"completed", "sufficient"}):
+                self.record_gaps(phase, data["gaps"])
             return data
 
     def author(self, operation: str) -> dict:
         if not self.host.coordinated:
             progress(self.repository.root, phase="specify", status="active", invalidate=True)
-        result = self.stage(operation)
+        result = self.stage(operation, defer_gap_resolution=True)
         if result["outcome"] not in {"completed", "sufficient"}:
             return self.response(result["outcome"], result["answer"], gaps=result["gaps"])
         if self.host.mode == "describe-policy":
@@ -1083,15 +1134,32 @@ class Invocation:
             if changes:
                 apply_files(self.repository.root, changes, set(self.target.documents), verify=verify)
                 self.repository = SpecRepository(self.host.project_root, self.host.package_root)
+        self.record_gaps("specify", [])
+        change = read_change(self.repository.root)
+        if change is not None:
+            change.setdefault("authored_specs", {})[self.target.id] = {
+                "task": self.task["task"], "focus_id": self.task.get("focus_id"),
+                "constraints": self.task.get("constraints", []), "context_id": self.last_context,
+                "spec_digest": _target_revision(self.repository, self.target)}
+            save_change(self.repository.root, change)
         return self.response(answer=result["answer"])
 
+    def require_spec_review(self) -> None:
+        if self.host.mode != "execute":
+            return
+        from .review import current
+        change = read_change(self.repository.root)
+        if change and change.get("review_requirements", {}).get(self.target.id, {}).get("spec"):
+            current(self, "spec", required=True)
+
     def plan(self) -> dict:
+        self.require_spec_review()
         if not self.host.coordinated:
             progress(self.repository.root, phase="plan", status="active", invalidate=True)
         assessment = self.stage("concorde-context-solve")
         if assessment["outcome"] not in {"completed", "sufficient"}:
             return self.response(assessment["outcome"], assessment["answer"], gaps=assessment["gaps"])
-        result = self.stage("concorde-plan")
+        result = self.stage("concorde-plan", defer_gap_resolution=True)
         if result["outcome"] not in {"completed", "sufficient"}:
             return self.response(result["outcome"], result["answer"], gaps=result["gaps"])
         if self.host.mode == "describe-policy":
@@ -1108,12 +1176,14 @@ class Invocation:
                      task=self.task["task"], constraints=self.task.get("constraints", []),
                      implementation_digest=None, completed_operations=list(self.completed),
                      phase="plan", status="active")
-        save_target_state(self.repository.root, state)
         path = work_path(self.target.id, "plan.md")
         apply_files(self.repository.root, [file_change(self.repository.root, path, result["plan"])], {path})
+        save_target_state(self.repository.root, state)
+        self.record_gaps("plan", [])
         return self.response(answer=result["answer"], artifacts=[artifact(self.repository.root, "plan", path)])
 
     def tasks(self) -> dict:
+        self.require_spec_review()
         if not self.work_directory:
             raise SpecError("task authoring requires a managed change", "missing_change")
         if not self.host.coordinated:
@@ -1123,7 +1193,7 @@ class Invocation:
         if not state["plan"]:
             raise SpecError("tasks require an authored plan", "missing_plan")
         inputs = (typed("concorde-plan-artifact", {"plan":state["plan"]}),)
-        result = self.stage("concorde-tasks", inputs=inputs)
+        result = self.stage("concorde-tasks", inputs=inputs, defer_gap_resolution=True)
         if result["outcome"] not in {"completed", "sufficient"}:
             return self.response(result["outcome"], result["answer"], gaps=result["gaps"])
         if self.host.mode == "describe-policy":
@@ -1137,9 +1207,14 @@ class Invocation:
                 raise SpecError("component tasks must remain in their owning context", "permission_denied")
         state.update(tasks=tasks, checks=[], implementation_digest=None, phase="tasks", status="active")
         save_target_state(self.repository.root, state)
+        self.record_gaps("tasks", [])
         return self.response(answer=result["answer"], artifacts=[artifact(self.repository.root, "change", STATE_PATH)])
 
     def implement(self) -> dict:
+        self.require_spec_review()
+        pending = self.pending_gaps("implementation")
+        if pending:
+            return self.response("spec_incomplete", "Resolve the prerequisite task gaps before implementation.", gaps=pending)
         if not self.work_directory:
             raise SpecError("implementation requires a managed change and authored tasks", "missing_change")
         state = target_state(self.repository.root, self.target.id, self.task.get("focus_id"))
@@ -1153,7 +1228,7 @@ class Invocation:
         if not self.host.coordinated:
             progress(self.repository.root, phase="implementation", status="active", invalidate=True)
         inputs = (typed("concorde-implementation-task", {"plan":state["plan"],"tasks":state["tasks"]}),)
-        result = self.stage("concorde-implement", inputs=inputs)
+        result = self.stage("concorde-implement", inputs=inputs, defer_gap_resolution=True)
         if result["outcome"] not in {"completed", "sufficient"}:
             return self.response(result["outcome"], result["answer"], gaps=result["gaps"])
         if self.host.mode == "describe-policy":
@@ -1167,6 +1242,7 @@ class Invocation:
         state["checks"] = []
         state.update(phase="implementation", status="completed")
         save_target_state(self.repository.root, state)
+        self.record_gaps("implementation", [])
         return self.response(answer=result["answer"])
 
     def check_state(self, state: dict) -> None:
@@ -1176,21 +1252,29 @@ class Invocation:
             raise SpecError("change intent differs from the authored plan; replan explicitly", "incompatible_handoff")
 
     def checklist(self):
+        self.require_spec_review()
         inputs=()
         change = read_change(self.repository.root)
         if change and self.target.id in change["targets"]:
             state=target_state(self.repository.root,self.target.id,self.task.get("focus_id")); self.check_state(state)
             inputs=(typed("concorde-plan-artifact",{"plan":state["plan"]}),)
-        result=self.stage("concorde-checklist",inputs=inputs)
+        result=self.stage("concorde-checklist",inputs=inputs,defer_gap_resolution=True)
         if result["outcome"] not in {"completed","sufficient"}: return self.response(result["outcome"],result["answer"],gaps=result["gaps"])
         content=result["plan"] or result["answer"]
         if not content.strip(): raise SpecError("checklist contains no acceptance criteria", "invalid_completion")
-        if not self.work_directory:return self.response(answer=content)
+        if not self.work_directory:
+            self.record_gaps("plan", [])
+            return self.response(answer=content)
         path=work_path(self.target.id,"checklist.md")
         apply_files(self.repository.root,[file_change(self.repository.root,path,content)],{path})
+        self.record_gaps("plan", [])
         return self.response(answer=result["answer"],artifacts=[artifact(self.repository.root,"checklist",path)])
 
     def issue_drafts(self):
+        self.require_spec_review()
+        pending = self.pending_gaps("tasks")
+        if pending:
+            return self.response("spec_incomplete", "Resolve the prerequisite task gaps before producing issue drafts.", gaps=pending)
         if not self.work_directory:raise SpecError("issue drafts require authored tasks", "missing_change")
         state=target_state(self.repository.root,self.target.id,self.task.get("focus_id"));self.check_state(state)
         if not state["tasks"]:raise SpecError("issue drafts require tasks", "missing_tasks")
@@ -1202,6 +1286,7 @@ class Invocation:
     def implement_scope(self, state: dict) -> dict:
         """Retain resumable component drafts inside this one candidate worktree."""
         grouped = {}
+        review_artifacts = []
         for task in state["tasks"]:
             component = self.repository.select(task["target_id"])
             scopes = set(component.participates_in)
@@ -1280,19 +1365,29 @@ class Invocation:
             payload = {"target_id": target_id, "task": task_text, "change_id": self.change_id,
                        "constraints": self.task.get("constraints", [])}
             child_host = replace(self.host, routed_target=target_id, coordinated=True)
+            from .review import require_reviews
+            require_reviews(Invocation("concorde-review", self.configuration, payload, child_host), bool(
+                read_change(self.repository.root, required=True).get("review_requirements", {})
+                .get(self.target.id, {}).get("spec")))
             if (record["implementation_status"] == "completed"
                     and record["implementation_digest"] == _implementation_digest(self.repository, component)):
                 try:
                     Invocation("concorde-validate", self.configuration, payload, child_host).verify_completion()
+                    review_artifacts.extend(item["artifact"] for item in
+                        read_change(self.repository.root, required=True).get("reviews", {}).get(target_id, {}).values())
                     continue
                 except SpecError:
                     pass
             record.update(implementation_status="running", gaps=[], outcome=None)
             save_target_state(self.repository.root, state)
             result = run_operation("concorde-fast-loop", self.configuration,
-                typed("concorde-fast-loop-request", payload), host_context=child_host)
+                typed("concorde-fast-loop-request", {**payload, "run_reviews": bool(
+                    read_change(self.repository.root, required=True).get("review_requirements", {})
+                    .get(self.target.id, {}).get("spec"))}), host_context=child_host)
             if result["status"] != "succeeded":
                 return blocked(result, target_id, "implementation")
+            review_artifacts.extend(item for item in result["output"]["data"]["artifacts"]
+                                    if item["id"].startswith("review."))
             self.repository = SpecRepository(self.host.project_root, self.host.package_root)
             record.update(implementation_status="completed", outcome="completed",
                           implementation_digest=_implementation_digest(self.repository, self.repository.select(target_id)))
@@ -1305,7 +1400,7 @@ class Invocation:
         state["implementation_digest"] = _implementation_digest(self.repository, self.target)
         state.update(phase="implementation", status="completed")
         save_target_state(self.repository.root, state)
-        return self.response(answer="Participating components completed in the candidate worktree.")
+        return self.response(answer="Participating components completed in the candidate worktree.", artifacts=review_artifacts)
 
     def validate(self, run_checks: bool = True) -> dict:
         if not self.host.coordinated:
@@ -1342,26 +1437,37 @@ class Invocation:
                 "spec_digest": _target_revision(self.repository, self.target),
                 "source_digest": report.result["source_digest"], "checks": results}
             save_change(self.repository.root, change)
-            self.verify_completion()
-            change.update(phase="ready", status="ready", outcome="ready", gaps=[], validated_tree=before_tree)
-            save_change(self.repository.root, change)
-            return self.response("ready", "Directly authored candidate verified. Request delivery from an agent opened in the primary worktree.", checks=results)
+            if self.host.defer_ready:
+                return self.response(answer="Deterministic checks completed; required review precedes readiness.", checks=results)
+            return self.mark_ready()
         if state and state["tasks"] and all(task["complete"] for task in state["tasks"]):
-            self.verify_completion()
-            state.update(phase="ready", status="ready")
-            save_target_state(self.repository.root, state)
-            if not self.host.coordinated:
-                change = read_change(self.repository.root, required=True)
-                change.update(phase="ready", status="ready", outcome="ready", gaps=[],
-                              validated_tree=before_tree)
-                save_change(self.repository.root, change)
-            return self.response("ready", "Candidate verified. Request concorde-deliver from a new agent opened in the primary worktree.",
-                                 checks=results)
+            if self.host.defer_ready:
+                return self.response(answer="Deterministic checks completed; required review precedes readiness.", checks=results)
+            return self.mark_ready()
         return self.response(answer="Deterministic validation passed; semantic completeness is not proven.", checks=results)
+
+    def mark_ready(self) -> dict:
+        before_tree = snapshot_tree(self.repository.root)
+        evidence = self.verify_completion()
+        if snapshot_tree(self.repository.root) != before_tree:
+            raise SpecError("candidate changed during completion verification", "stale_evidence")
+        change = read_change(self.repository.root, required=True)
+        if self.target.id in change["targets"]:
+            change["targets"][self.target.id].update(phase="ready", status="ready")
+        if not self.host.coordinated:
+            change.update(phase="ready", status="ready", outcome="ready", validated_tree=before_tree)
+        save_change(self.repository.root, change)
+        return self.response("ready", "Candidate verified. Request delivery from a new agent opened in the primary worktree.",
+                             checks=evidence.get("checks", []))
 
     def verify_completion(self) -> dict:
         """Read current target evidence; merging is exclusively a primary-host action."""
+        from .review import verify_required
+        verify_required(self)
         change = read_change(self.repository.root, required=True)
+        if any(item["status"] == "open" and item["target_id"] == self.target.id
+                and item["task"] == self.task["task"] for item in change.get("gap_history", [])):
+            raise SpecError("current task still has unresolved contract gaps", "spec_incomplete")
         if not change["targets"]:
             validation = change.get("validation")
             if (not validation or validation["target_id"] != self.target.id
@@ -1406,35 +1512,77 @@ class Invocation:
         return state
 
     def loop(self, fast=False) -> dict:
+        from .review import current, require_reviews, skip
         from langgraph.graph import StateGraph, START, END
         from typing import TypedDict
         class State(TypedDict):
             output: dict
+        require_reviews(self, not fast or self.task.get("run_reviews", False))
         stages = (["plan", "tasks", "implement", "validate"] if fast else
                   ["specify", "plan", "tasks", "implement", "validate"])
         change = read_change(self.repository.root)
         existing = change["targets"].get(self.target.id) if change else None
-        if (existing and existing.get("plan")
+        blocked_phases = {item["phase"] for item in change.get("gap_history", [])
+            if item["status"] == "open" and item["target_id"] == self.target.id
+            and item["task"] == self.task["task"]}
+        authored = change.get("authored_specs", {}).get(self.target.id, {})
+        has_authored_spec = bool(authored and "specify" not in blocked_phases
+            and all(authored.get(key) == value for key, value in {
+            "task": self.task["task"], "focus_id": self.task.get("focus_id"),
+            "constraints": self.task.get("constraints", [])}.items()))
+        if not fast and has_authored_spec:
+            stages.remove("specify")
+        if ((fast or has_authored_spec) and existing and existing.get("plan")
+                and not blocked_phases.intersection({"context-solve", "plan"})
                 and existing.get("task") == self.task["task"]
+                and existing.get("focus_id") == self.task.get("focus_id")
                 and existing.get("constraints", []) == self.task.get("constraints", [])
                 and existing.get("spec_digest") == _target_revision(self.repository, self.target)):
             stages = ["tasks", "implement", "validate"]
-            if existing.get("tasks"):
+            if existing.get("tasks") and "tasks" not in blocked_phases:
                 stages = ["implement", "validate"]
-                if (all(item["complete"] for item in existing["tasks"])
+                if (self.target.kind != "domain" and all(item["complete"] for item in existing["tasks"])
+                        and "implementation" not in blocked_phases
                         and existing.get("implementation_digest") == _implementation_digest(self.repository, self.target)):
                     stages = ["validate"]
+        stages.insert(1 if stages[0] == "specify" else 0, "review_spec")
+        if self.target.implementation:
+            stages.append("review_code")
+        stages.append("ready")
+        review_artifacts = []
         graph = StateGraph(State)
         def execute(name):
             def node(state):
+                self.repository = SpecRepository(self.host.project_root, self.host.package_root)
+                if name == "ready":
+                    return {"output": self.mark_ready()["data"]}
+                is_review = name.startswith("review_")
+                if is_review:
+                    mode = name.removeprefix("review_")
+                    enabled = read_change(self.repository.root, required=True)["review_requirements"][self.target.id][mode]
+                    if not enabled:
+                        skip(self, mode)
+                        reference = read_change(self.repository.root, required=True)["reviews"][self.target.id][mode]["artifact"]
+                        review_artifacts.append(reference)
+                        return {"output": self.response(answer=f"{mode} review explicitly skipped.", artifacts=[reference])["data"]}
+                    if current(self, mode) is not None:
+                        review_artifacts.append(read_change(self.repository.root, required=True)["reviews"][self.target.id][mode]["artifact"])
+                        return {"output": self.response(answer=f"Current {mode} review retained.")["data"]}
+                    if not self.host.coordinated:
+                        progress(self.repository.root, phase=mode + "-review", status="active", invalidate=True)
                 operation = "concorde-" + name
+                if is_review:
+                    operation = "concorde-review"
                 payload = {"target_id": self.target.id, "task": self.task["task"],
                            "constraints": self.task.get("constraints", [])}
+                if is_review:
+                    payload["review_mode"] = mode
                 if self.task.get("focus_id"):
                     payload["focus_id"] = self.task["focus_id"]
                 if self.change_id:
                     payload["change_id"] = self.change_id
-                child_host = replace(self.host, evidence=[], descriptions=self.host.descriptions)
+                child_host = replace(self.host, evidence=[], descriptions=self.host.descriptions,
+                                     track_gaps=True, defer_ready=name == "validate")
                 result = run_operation(operation, self.configuration,
                     typed(OPERATION_CONTRACTS[operation][0], payload), host_context=child_host)
                 self.host.evidence.extend(child_host.evidence)
@@ -1445,6 +1593,8 @@ class Invocation:
                 self.work_directory = f"{WORK_PATH}/{self.target.id}" if self.change_id else None
                 self.last_context = data["context_id"] or self.last_context
                 self.completed.extend(data["completed_operations"])
+                if is_review or name == "implement":
+                    review_artifacts.extend(item for item in data["artifacts"] if item["id"].startswith("review."))
                 self.repository = SpecRepository(self.host.project_root, self.host.package_root)
                 return {"output": data}
             return node
@@ -1456,8 +1606,16 @@ class Invocation:
                 {successor: successor, END: END})
         graph.add_edge(START, stages[0])
         result = graph.compile().invoke({"output": {}})["output"]
-        return self.response(result["outcome"], result["answer"], gaps=result["gaps"],
-                             checks=result["checks"], artifacts=result["artifacts"])
+        artifacts = list({item["id"]: item for item in [*review_artifacts, *result["artifacts"]]}.values())
+        coverage = []
+        for reference in artifacts:
+            if reference["id"].startswith("review."):
+                verify_artifacts(self.repository.root, reference)
+                value = validate_typed(decode(read_file(self.repository.root, reference["path"]).decode()),
+                                       "concorde-review-result")["data"]
+                coverage.append(f"{value['target_id']}/{value['review_mode']}={value['status']}")
+        answer = result["answer"] + (" Review coverage: " + "; ".join(coverage) + "." if coverage else "")
+        return self.response(result["outcome"], answer, gaps=result["gaps"], checks=result["checks"], artifacts=artifacts)
 
 
 def _project_operation(operation, configuration, task, host):
@@ -1514,19 +1672,25 @@ def _dispatch(operation, configuration, task, host):
             route, blocked = main.select_one()
             if blocked is not None:
                 return blocked
-            task = {"target_id": route["target_id"], "task": route["task"],
+            task = {**task, "target_id": route["target_id"], "task": route["task"],
                     "constraints": route["constraints"]}
             if route["focus_id"] is not None:
                 task["focus_id"] = route["focus_id"]
+            else:
+                task.pop("focus_id", None)
             host = replace(host, routed_target=route["target_id"])
             main_completed = tuple(main.completed)
     readonly = operation in {"concorde-main", "concorde-analyze", "concorde-context-solve",
-                             "concorde-context", "concorde-resolve-context"}
+                             "concorde-context", "concorde-resolve-context", "concorde-review"}
     readonly = readonly or (operation == "concorde-reflections-triage" and task["action"] == "status")
-    if host.mode == "execute" and not readonly:
+    if (host.mode == "execute" and not readonly
+            and not (operation == "concorde-reflections-triage" and task["action"] == "record-gaps")):
         bind_owner(host.project_root, task, coordinated=host.coordinated)
     run = Invocation(operation, configuration, task, host)
     run.completed.extend(main_completed)
+    if operation == "concorde-review":
+        from .review import review_scope
+        return review_scope(run, task["review_mode"])
     if operation in {"concorde-context", "concorde-resolve-context"}:
         snapshot = resolve_context(run.repository, run.target.id, task=task["task"], phase=task.get("phase", "ask"),
             focus_id=task.get("focus_id"), constraints=tuple(task.get("constraints", [])))
@@ -1541,7 +1705,14 @@ def _dispatch(operation, configuration, task, host):
             if operation == "concorde-standard-dev-loop":
                 stages.insert(0, "concorde-specify")
         for stage in stages:
+            if stage == "concorde-context-solve" and (
+                    operation == "concorde-standard-dev-loop" or task.get("run_reviews", False)):
+                from .review import review
+                review(run, "spec")
             run.stage(stage)
+        if (operation == "concorde-standard-dev-loop" or task.get("run_reviews", False)) and run.target.implementation:
+            from .review import review
+            review(run, "code")
         return run.response("described")
     if operation == "concorde-reflections-triage":
         from ..reflections.scoped_triage import triage
@@ -1585,7 +1756,7 @@ def run_operation(operation: str, configuration: dict | None, runtime_input: dic
             task.setdefault("constraints", [])
             task.setdefault("task", "Inspect the selected records")
         mutation = operation not in {"concorde-main", "concorde-analyze", "concorde-context-solve",
-            "concorde-context", "concorde-resolve-context"}
+            "concorde-context", "concorde-resolve-context", "concorde-review"}
         if operation in {"concorde-init", "concorde-migrate"}:
             mutation = task["action"] == "apply"
         if operation == MAIN_OPERATION:

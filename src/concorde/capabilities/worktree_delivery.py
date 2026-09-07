@@ -150,7 +150,7 @@ def _remember_failure(host, change_id: str, error: Exception) -> None:
         merged = receipt is not None and _is_ancestor(host.project_root, receipt["merged_commit"],
                                                       "refs/heads/" + receipt["target_branch"])
         state.update(phase="cleanup" if merged else "deliver", status="cleanup_pending" if merged else "blocked",
-                     outcome=getattr(error, "code", "failed"), gaps=[])
+                     outcome=getattr(error, "code", "failed"))
         save_change(source, state, locked=True)
         if merged:
             receipt.update(status="cleanup_pending", cleanup_error=str(error))

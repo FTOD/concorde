@@ -10,7 +10,8 @@ A Module may compose components and participate in Domain scopes independently. 
 all business facts and collaborator promises required to understand and use its APIs. Shared
 membership admits only that physical document; it does not inherit a Service's, Domain's, parent's,
 provider's, or co-referencing entity's remaining Spec. Selecting one API retains the complete
-resolved context. Only an implementation invocation may expose authorized source code.
+resolved context. Only an implementation invocation or its dedicated read-only code-review role may
+expose authorized source code. Spec review never receives implementation.
 
 The main coordinator may design or route this Module from identity, responsibility and selection
 facts contained in admitted main-visible Domain/Service documents plus exact registry metadata. It

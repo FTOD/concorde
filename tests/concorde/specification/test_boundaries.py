@@ -102,7 +102,7 @@ class BoundaryTests(unittest.TestCase):
         result=self.run_op('concorde-standard-dev-loop',mode='describe-policy')
         self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
         for policy in self.host.descriptions:
-            if policy['phase']!='implementation':self.assertEqual(['context.json'],policy['read_paths']);self.assertEqual([],policy['write_paths'])
+            if policy['phase'] not in {'implementation','code-review'}:self.assertEqual(['context.json'],policy['read_paths']);self.assertEqual([],policy['write_paths'])
     def test_ask_policy_describes_separate_main_and_hinted_worker_without_launching(self):
         result=self.run_op('concorde-main',{'task':'Explain transfer','target_id':'service.transfer'},mode='describe-policy')
         self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)

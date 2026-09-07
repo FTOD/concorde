@@ -85,6 +85,22 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(workspace["active_worktrees"], stored["worktrees"])
         self.assertEqual("", git_value(self.primary, "status", "--porcelain"))
 
+    def test_failed_delivery_preserves_visible_unresolved_task_gaps(self):
+        def missing(stage, snapshot, data, cwd):
+            if stage == "plan":
+                data.update(outcome="spec_incomplete", gaps=[{
+                    "question": "Who owns transfer admission?", "blocked_step": "Plan admission",
+                    "needed_contract": "Transfer admission owner"}])
+        blocked = self.run_op(self.change, "concorde-plan", self.task, missing)
+        self.assertEqual("blocked", blocked["status"], blocked)
+        before = read_change(self.change, required=True)
+        rejected = self.run_op(self.primary, "concorde-deliver", {"change_id": before["change_id"]})
+        self.assertEqual("blocked", rejected["status"], rejected)
+        after = read_change(self.change, required=True)
+        self.assertEqual(before["gap_history"], after["gap_history"])
+        self.assertEqual(before["gaps"], after["gaps"])
+        self.assertTrue(after["gaps"])
+
     def test_main_answers_workspace_metadata_without_target_reader(self):
         def status(stage, snapshot, data, cwd):
             if stage == "route":

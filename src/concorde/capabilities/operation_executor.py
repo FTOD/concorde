@@ -70,6 +70,8 @@ def _domain_type(specification: LaunchSpecification) -> str | None:
                     if specification.runtime_input_json is not None else None)
     if runtime_type == "concorde-agent-stage-context":
         return "concorde-agent-stage-result"
+    if runtime_type == "concorde-review-stage-context":
+        return "concorde-review-stage-result"
     if runtime_type == "concorde-main-stage-context":
         return "concorde-main-stage-result"
     if runtime_type == "concorde-topology-author-context":
@@ -232,9 +234,26 @@ def _completion_schema(specification: LaunchSpecification) -> dict[str, Any]:
             definitions = domain.pop("$defs")
             domain.pop("$schema")
             properties["domain_output"] = {"anyOf": [domain, {"type": "null"}]}
+            if domain_type == "concorde-review-stage-result":
+                admitted = json.loads(specification.runtime_input_json)["data"]
+                snapshot = admitted["snapshot"]["data"]
+                review = admitted["review"]["data"]
+                fields = definitions[domain_type]["properties"]
+                for key, value in {"context_id": snapshot["context_id"],
+                        "input_digest": review["input_digest"], "review_mode": review["review_mode"]}.items():
+                    fields[key] = {"type": "string", "const": value}
+                finding = fields["findings"]["items"]["properties"]
+                finding["document"] = {"type": "string", "enum": snapshot["document_order"]}
+                finding["target_id"] = {"type": "string", "const": snapshot["target_id"]}
+                paths = [*snapshot["document_order"],
+                    *(item["path"] for item in snapshot["implementation_artifacts"]),
+                    *(item["path"] for item in review["changes"])]
+                finding["location"]["properties"]["path"] = {"type": "string", "enum": sorted(set(paths))}
+                for key in ("target_id", "context_id"):
+                    fields["gaps"]["items"]["properties"][key] = {"type": "string", "const": snapshot[key]}
         else:
             properties["domain_output"] = {"type": "null"}
-    return {
+    schema = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": properties,
@@ -242,6 +261,28 @@ def _completion_schema(specification: LaunchSpecification) -> dict[str, Any]:
         "additionalProperties": False,
         **({"$defs": definitions} if definitions else {}),
     }
+    if specification.integration == "codex":
+        # Native Structured Outputs requires every declared object property.
+        # The provider also rejects uniqueItems. Adapt generation only; the host
+        # still validates the original contracts, including array uniqueness.
+        def require_properties(value):
+            if isinstance(value, dict):
+                value.pop("uniqueItems", None)
+                if "type" not in value and ("const" in value or "enum" in value):
+                    literals = [value["const"]] if "const" in value else value["enum"]
+                    kinds = {type(None): "null", str: "string", bool: "boolean", int: "integer",
+                             float: "number", list: "array", dict: "object"}
+                    types = sorted({kinds[type(item)] for item in literals})
+                    value["type"] = types[0] if len(types) == 1 else types
+                if "properties" in value:
+                    value["required"] = list(value["properties"])
+                for child in value.values():
+                    require_properties(child)
+            elif isinstance(value, list):
+                for child in value:
+                    require_properties(child)
+        require_properties(schema)
+    return schema
 
 
 def _default_runner(
@@ -426,6 +467,39 @@ def _completion(stdout: str, specification: LaunchSpecification) -> CapabilityCo
 
 
 def _prompt(specification: LaunchSpecification) -> str:
+    if _domain_type(specification) == "concorde-review-stage-result":
+        return (
+            "Execute one independent Concorde review in a fresh session. You have no project write authority.\n"
+            f"Operation: {specification.operation}\nStage: {specification.stage}\n"
+            f"Host workspace grant:\n{specification.workspace_receipt_json}\n"
+            f"Configuration snapshot:\n{specification.operation_configuration_json}\n"
+            f"Complete admitted context and task:\n{specification.runtime_input_json}\n\n"
+            f"Review instructions:\n{specification.prompt}\n\n"
+            "Read the entire admitted Target Spec and Shared Specs, not just patches. Spec review must judge "
+            "whether these documents alone support representative tasks; it cannot inspect implementation. "
+            "Code review may read only granted target implementation files and compare their behavior with "
+            "the supplied contracts. Do not load repository guidance, other Skills, ancestor/provider/child "
+            "Specs, other worktrees, prior conversations, or remote sources. Do not run checks or modify "
+            "Spec, source, tests, or control files. The host owns result persistence.\n"
+            "Report concrete missing promises or behavior defects and affected tasks; avoid speculative "
+            "completeness claims. Each finding identifies its target, local contract document, contract, "
+            "location, problem, affected_task and blocking/advisory severity. The document field is the exact "
+            "admitted Markdown path from document_order. A blocking Spec finding needs "
+            "a gap whose blocked_step equals affected_task and needed_contract equals contract. Missing "
+            "contracts encountered during code review also use gaps. No raw source snippets, patches or "
+            "process logs may appear in answers or findings.\n"
+            "Return Capability Completion Envelope 2 with typed concorde-review-stage-result in domain_output. "
+            "For a valid bounded assessment, including findings, gaps or declared incomplete coverage, set "
+            "the envelope status to success, limitations to exactly 'none', and every envelope gate to passed. "
+            "The domain result status describes review coverage; findings are not process failures. A failed "
+            "envelope instead requires a nonempty limitation and at least one failed gate. "
+            "Bind context_id, input_digest and review_mode exactly to the supplied inputs. Use status=no_findings "
+            "only after covering nonempty representative_tasks with no findings/gaps; findings means a "
+            "completed review with concrete findings/gaps. If the review cannot complete, use incomplete and "
+            "explain why; never treat failure or skipped coverage as no_findings. Neither successful status "
+            "proves universal semantic completeness.\n"
+            f"Invocation: {specification.invocation_id}\nLaunch digest: {specification.digest}\n"
+        )
     if _domain_type(specification) == "concorde-topology-author-result":
         return (
             "Execute one Concorde topology Spec-author stage in a fresh target-local context.\n"
@@ -476,7 +550,10 @@ def _prompt(specification: LaunchSpecification) -> str:
             "and enforced paths. Do not load repository guidance, "
             "other Skills, ancestor/provider Specs, prior conversations, or remote sources. "
             "Only the implementation stage may inspect granted implementation code. "
-            "Report missing information as structured Spec gaps; do not broaden retrieval. "
+            "When the current task requires a missing or ambiguous contract, report question, blocked_step "
+            "and needed_contract as structured Spec gaps, and pause the judgments or steps that depend on it. "
+            "Do not silently supply a contract by convention or infer it from code. Independent reasoning may "
+            "continue in the answer; do not broaden retrieval or mark dependent tasks complete. "
             "Do not run framework resolvers or validation commands; the trusted host performs these.\n"
             "Return Capability Completion Envelope 2 matching the supplied schema, binding every identity "
             "and launch/context digest. Its status describes completion of this bounded role, including "

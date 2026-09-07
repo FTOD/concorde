@@ -1,5 +1,6 @@
 """Reflection coordination: code stays in a fresh implementation invocation."""
 import importlib.util
+import json
 import sys
 from dataclasses import replace
 from datetime import date
@@ -21,6 +22,10 @@ def triage(run):
     from ..capabilities.change_worktree import progress, read_change, target_state
     root=run.repository.root;queue=queue_module(run.host.package_root)
     action=run.task["action"];ids=run.task["reflection_ids"]
+    if action == "record-gaps":
+        return record_gaps(run, queue)
+    if run.task.get("gap_ids"):
+        raise SpecError("gap_ids are only accepted by record-gaps", "invalid_input")
     _,_,parsed,_,raw=queue._load_reflections(root,required=True)
     entries={entry.identifier:entry for entry in parsed.entries}
     local={run.target.id,*(x["id"] for x in (*run.target.features,*run.target.apis))}
@@ -36,6 +41,7 @@ def triage(run):
             "triage":entries[i].triage,"bucket":entries[i].bucket,
             "plan_status":plans[i]["status"] if i in plans else None,
             "verification":queue._verification_state(plans[i],head) if i in plans else None} for i in selected]
+        result["data"]["gap_records"] = gap_records(run)
         return result
     if action in {"close","merge"}:
         (queue.remove_closed if action=="close" else queue.remove_merged)(root,ids)
@@ -46,7 +52,7 @@ def triage(run):
     head=queue._captured_head(root);before=_implementation_digest(run.repository,run.target)
     selection=typed("concorde-reflection-selection",{"head":head,"records":[
         {"id":i,"path":entries[i].path,"digest":digest(raw[entries[i].path]),"content":raw[entries[i].path].decode()} for i in ids]})
-    result=run.stage("concorde-implement",inputs=(selection,),readonly=True)
+    result=run.stage("concorde-implement",inputs=(selection,),readonly=True,defer_gap_resolution=True)
     if result["outcome"] not in {"completed","sufficient"}:
         return run.response(result["outcome"],result["answer"],gaps=result["gaps"])
     if _implementation_digest(run.repository,run.target)!=before:
@@ -68,6 +74,7 @@ def triage(run):
         "artifacts":[artifact(root,i,entries[i].path) for i in ids]}}
     apply_investigation(root,queue,runtime,typed("concorde-reflection-investigation-result",{"findings":findings}),
                         entries,concorde_project=(root/"concorde.json").is_file())
+    run.record_gaps("implementation", [])
     if action=="implement":
         for f in findings:
             # Only intended behavior is a task input. Investigation prose, source, evidence and
@@ -93,3 +100,99 @@ def triage(run):
         return run.response(data["outcome"], "Reflection implementation completed in the candidate worktree. "
                             + data["answer"], checks=data["checks"], gaps=data["gaps"])
     return run.response(answer="Reflection investigation persisted"+(" and component implementation completed in the candidate worktree." if action=="implement" else "."))
+
+
+def record_gaps(run, queue):
+    """Explicitly promote selected existing gaps, preserving their actual owners."""
+    from ..capabilities.change_worktree import read_change, save_change
+    from ..specification.changes import apply_files, file_change
+    from .reflections import parse_reflection_document
+    ids = run.task.get("gap_ids", [])
+    if not ids or run.task["reflection_ids"]:
+        raise SpecError("record-gaps requires explicit gap_ids and empty reflection_ids", "invalid_input")
+    root = run.repository.root
+    state = read_change(root, required=True)
+    gaps = {item["id"]: item for item in state.get("gap_history", [])}
+    selected = []
+    for identifier in ids:
+        item = gaps.get(identifier)
+        if not item or item["status"] != "open":
+            raise SpecError("selected gap is missing or resolved", "stale_reference")
+        target = run.repository.select(item["target_id"])
+        scopes = set(target.participates_in)
+        for scope in tuple(scopes):
+            parent = run.repository.targets[scope].scope_parent
+            while parent:
+                scopes.add(parent)
+                parent = run.repository.targets[parent].scope_parent
+        if target.id != run.target.id and not (run.target.kind == "domain" and run.target.id in scopes):
+            raise SpecError("selected gap belongs to another target", "permission_denied")
+        selected.append((item, target))
+    _, _, parsed, _, _ = queue._load_reflections(root, required=True)
+    entries = {entry.identifier: entry for entry in parsed.entries}
+    reflections = []
+    for item, target in selected:
+        identifier = item.get("reflection_id")
+        if identifier:
+            if identifier not in entries or entries[identifier].feature != target.id:
+                raise SpecError("linked reflection is missing or has a different owner", "stale_reference")
+            entry = entries[identifier]
+            reflections.append({"id": identifier, "target_id": target.id, "status": entry.status,
+                "triage": entry.triage, "bucket": entry.bucket, "plan_status": None, "verification": None})
+            continue
+        allocated = queue.allocate_id(root)
+        identifier = allocated["allocated_id"]
+        path = allocated["reflection_path"]
+        gap = item["gap"]
+        phase = {"implementation": "implement", "spec-review": "analyze", "code-review": "analyze",
+                 "specify": "analyze", "context-solve": "analyze"}.get(item["phase"], item["phase"])
+        title = "Missing contract: " + gap["needed_contract"].replace("\n", " ")[:180]
+        today = date.today().isoformat()
+        metadata = {"id": identifier, "title": title, "phase": phase, "date": today,
+            "feature": target.id, "kind": "specification", "concerns": target.documents[0],
+            "status": "open", "triage": "pending"}
+        front = "\n".join(f"{key}: {json.dumps(value, ensure_ascii=False)}" for key, value in metadata.items())
+        content = (f"---\n{front}\n---\n\n# {identifier} · {title}\n\n"
+            f"## Context\n\nTask for {target.id}: {item['task']}\n\n"
+            f"## Expected\n\nThe admitted collection supplies: {gap['needed_contract']}\n\n"
+            f"## Observed\n\n{gap['question']}\n\n"
+            f"## Impact\n\nThe dependent step remains paused: {gap['blocked_step']}\n\n"
+            f"## Evidence\n\nCaptured gap {item['id']} from context {gap['context_id']}, "
+            f"phase {item['phase']}, change {state['change_id']}. This is a reported gap awaiting investigation.\n\n"
+            "## Triage Analysis\n\n## Proposed Resolution\n\n## Intervention Rationale\n\n"
+            "## User Comments\n\n## Occurrences\n\n"
+            f"- {phase} {today} {target.id} — {gap['blocked_step']}\n")
+        _, problems = parse_reflection_document(content, path)
+        if problems:
+            raise SpecError("captured gap does not form a valid reflection", "invalid_completion")
+        apply_files(root, [file_change(root, path, content)], {path})
+        item["reflection_id"] = identifier
+        # Save each link before another allocation, so retries retain identity.
+        state["validated_tree"] = None
+        state["validation"] = None
+        save_change(root, state)
+        reflections.append({"id": identifier, "target_id": target.id, "status": "open",
+            "triage": "pending", "bucket": "pending", "plan_status": None, "verification": None})
+    result = run.response(answer="Selected gaps recorded in the existing Reflection queue; dependent steps remain paused.")
+    result["data"]["reflections"] = reflections
+    result["data"]["gap_records"] = gap_records(run)
+    return result
+
+
+def gap_records(run):
+    """Public selection metadata around the existing gap contract, without source reads."""
+    from ..capabilities.change_worktree import read_change
+    state = read_change(run.repository.root)
+    result = []
+    for item in (state or {}).get("gap_history", []):
+        target = run.repository.select(item["target_id"])
+        scopes = set(target.participates_in)
+        for scope in tuple(scopes):
+            parent = run.repository.targets[scope].scope_parent
+            while parent:
+                scopes.add(parent)
+                parent = run.repository.targets[parent].scope_parent
+        if target.id == run.target.id or (run.target.kind == "domain" and run.target.id in scopes):
+            result.append({key: item[key] for key in ("id", "target_id", "task", "phase", "gap", "status")}
+                          | {"reflection_id": item.get("reflection_id")})
+    return result

@@ -55,3 +55,25 @@ Reflection record selection, status, investigation coordination, approval and di
 `service.reflections`; this Service has no separately registered child Module. When an approved
 resolution becomes ordinary product work, its typed route selects the responsible target named by
 the Reflection rather than granting this Service access to that target's Spec.
+
+## Explicit promotion of development gaps
+
+The `record-gaps` action selects nonempty gap_ids from the current change's open gap history and
+requires reflection_ids=[]. It creates pending specification Reflections using the existing allocator,
+record parser and buckets. Each record stores the validated gap target as feature ownership, its
+question/blocked step/needed contract and originating context/change/phase as evidence. The first
+registered document is the collection entry in concerns, not inferred ownership. The owning target
+or a coordinating Domain containing that component may capture it; foreign or resolved gaps are
+rejected. Repeating capture reuses the linked ID. The existing gap remains open and retains its
+history; capture is distinct from investigation, approval, implementation and human disposition.
+Pure read/assessment requests never trigger capture. Existing Feature/API-owned records are selected
+with the current owning target_id and optional focus_id, preserving their historical feature field.
+
+The read-only reflections-triage `status` response exposes `gap_records`, each with id (a digest),
+target_id, task, phase, the existing structured gap, status=open|resolved, and nullable reflection_id.
+It lists current change history owned by the selected target, including participating component gaps
+for a coordinating Domain. Use the returned id values as record-gaps gap_ids; IDs remain stable across
+context-only retries and are not calculated by the caller. Status without a managed change returns
+an empty list. record-gaps requires a nonempty explicit list and reflection_ids=[]: omitted/empty
+lists never mean all; unknown or resolved IDs fail as stale_reference. A repeated capture returns
+the existing link. The public metadata is sufficient for selection without reading control files.

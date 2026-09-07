@@ -463,9 +463,9 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertFalse((self.root/'.concorde/attempts').exists())
         state=json.loads((self.root/'.concorde/worktree.json').read_text())
         self.assertEqual('ready',state['status'])
-        self.assertEqual(['route','route','specify','context-solve','plan','tasks','implementation'],[c['stage'] for c in double.calls])
+        self.assertEqual(['route','route','specify','spec-review','context-solve','plan','tasks','implementation','code-review'],[c['stage'] for c in double.calls])
         for call in double.calls:
-            if call['stage']!='implementation':
+            if call['stage'] not in {'implementation','code-review'}:
                 self.assertNotEqual(self.root,call['cwd'])
                 self.assertNotIn('PRIVATE_CODE',call['prompt'])
                 self.assertNotIn('app/transfer.py',call['prompt'])

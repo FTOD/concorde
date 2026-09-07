@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-07",
+  "purpose": "Real independent reviewer evidence; exact input digests identify historical/current candidate bytes. No semantic completeness claim.",
+  "model_process": "Installed Codex CLI with native enforcement; no process double.",
+  "cases": [
+    {
+      "case": "service.workflow-host",
+      "task": "Review the current implementation of independent review and task-gap handling against the complete admitted Service and Shared Specs. Inspect the granted implementation files and scoped changes, prioritizing review.py, scoped_operations.py, change_worktree.py and test_review.py. Check separate read-only modes, input/version identity, result validation, required review gates, gap persistence/dedup/resume and Domain aggregation. Report concrete behavior or permission defects with reproducible triggers. Read relevant files by absolute path beneath /tmp/concorde-domain-scopes-edit. No edits or test execution. Distinguish coverage limits from missing necessary contracts; do not infer unadmitted provider behavior.",
+      "operation_status": "blocked",
+      "outcome": "conflicting",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "Found three blocking lifecycle defects. Assessment used the complete admitted contracts and granted implementation; no tests were executed.",
+          "context_id": "sha256:3198f2586aebeb54168fd850dc0ddebf34c91770eb8ac794ac6baf562edadc8c",
+          "findings": [
+            {
+              "affected_task": "Enable required reviews for a previously completed Domain fast loop",
+              "contract": "Required Domain development reviews must cover separately scoped participating components before readiness.",
+              "document": "specs/concorde/services/operation-boundary.md",
+              "id": "domain-review-upgrade-bypass",
+              "location": {
+                "line": 1492,
+                "path": "src/concorde/capabilities/scoped_operations.py"
+              },
+              "problem": "Complete a Domain fast loop with reviews disabled, then repeat the same task with run_reviews=true or the standard loop. Current completed tasks reduce the stages to validation, bypassing implement_scope where component review requirements are propagated. Only the Domain Spec review runs. Recursive completion verification still sees the components' false requirements, allowing ready with their Spec and code reviews still skipped. Propagate upgraded requirements and schedule missing component reviews before accepting completed component work.",
+              "severity": "blocking",
+              "target_id": "service.workflow-host"
+            },
+            {
+              "affected_task": "Start a standard development loop after a standalone review",
+              "contract": "The standard loop authors the Spec before review and dependent planning; unrelated review queries cannot substitute for lifecycle work.",
+              "document": "specs/concorde/services/operation-boundary.md",
+              "id": "review-record-skips-authoring",
+              "location": {
+                "line": 1483,
+                "path": "src/concorde/capabilities/scoped_operations.py"
+              },
+              "problem": "In a managed candidate without target plans or review intents, run a standalone review for the selected target, then start its standard loop. Any persisted review record causes specify to be removed, even when the review concerned another task or failed. No successful Spec authoring is required. The loop can therefore plan and implement without performing the requested authoring. Resume authoring based on successful, intent-bound lifecycle evidence rather than the existence of a review record.",
+              "severity": "blocking",
+              "target_id": "service.workflow-host"
+            },
+            {
+              "affected_task": "Retry Spec authoring that previously reported necessary gaps",
+              "contract": "Gap resolution requires a successful fresh assessment or Spec repair; failed authoring must preserve unresolved blockers.",
+              "document": "specs/concorde/services/operation-boundary.md",
+              "id": "gap-resolution-before-authoring-acceptance",
+              "location": {
+                "line": 1063,
+                "path": "src/concorde/capabilities/scoped_operations.py"
+              },
+              "problem": "After specify records a gap, retry with a completed, gap-free agent result whose document replacement is rejected by author(), such as an unauthorized shared-document change or invalid declaration. stage() resolves the specify history before author() validates and applies the replacements. The subsequent failure leaves the old gap resolved and absent from active gaps although the repair was rejected. Commit gap resolution only after host acceptance and successful application of the authoring result.",
+              "severity": "blocking",
+              "target_id": "service.workflow-host"
+            }
+          ],
+          "gaps": [],
+          "input_digest": "sha256:5895e61cf5cd5bcd44a266c749efda508e5fc961ac9ee7073550572ce7045f2d",
+          "representative_tasks": [
+            "Launch separate read-only Spec and code reviews with scoped changes",
+            "Validate review identities, findings, gaps and input freshness",
+            "Resume standard and fast loops with required review gates",
+            "Persist, deduplicate and resolve task gaps after authoring",
+            "Aggregate Domain component reviews and verify readiness and delivery"
+          ],
+          "review_mode": "code",
+          "status": "findings",
+          "target_id": "service.workflow-host",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:386d105441e17499f3a6f85d21952a2fc90484e18df502898a836fe00653a127",
+            "implementation_digest": "sha256:5dd6ace8661ed925fcd72986648a55195e565dfc1d0e07cb9fe6c7fef01f0caf",
+            "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+            "head": "d63af7f37d21b9988d72591fbdc381713455786c"
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "artifact": {
+        "id": "review.service.workflow-host.code",
+        "path": ".concorde/runs/d25bc0d1-5c7b-4803-92d9-369319d593a4/review-service.workflow-host-code.json",
+        "digest": "sha256:7315852742150d2d0173e4c36a1fe603a1187f80010953066c82119e4bc28e37"
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:19fe210776f8d2b19228d5223e6c7d6eeb6738b879e7126d3bd9dba34591c480",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:4646eac5be0ac51f3aa09d53350e273588b25fe2ae050f07246610bd14206f33",
+        "limitations": "none",
+        "policy_digest": "sha256:ac2f30d72966e72872be6d5eefa21cb87d1695f0b1ab38214eeef7f14fa91334",
+        "requested_launch_digest": "sha256:b167765e570734ec1088d534e9b595f5b431e7b9c5f8c9da43a69e7166b2cbbc",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Reviewed the complete supplied contract collection and traced relevant granted implementation paths without edits or check execution.",
+          "name": "bounded-review",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

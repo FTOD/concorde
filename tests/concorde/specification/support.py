@@ -92,9 +92,23 @@ class ModelProcessDouble:
         marker=next(item for item in markers if item in input_text)
         value=json.JSONDecoder().raw_decode(input_text.split(marker,1)[1])[0]
         snapshot=(value['data']['snapshot']['data'] if value['type_id'] in {
-            'concorde-main-stage-context','concorde-agent-stage-context'} else value['data'])
+            'concorde-main-stage-context','concorde-agent-stage-context','concorde-review-stage-context'} else value['data'])
         capability=properties['capability']['const']
         self.calls.append({'stage':stage,'capability':capability,'snapshot':snapshot,'cwd':Path(cwd),'prompt':input_text,'argv':argv})
+        if value['type_id']=='concorde-review-stage-context':
+            review=value['data']['review']['data']
+            self.calls[-1]['review']=review
+            data={'context_id':snapshot['context_id'],'input_digest':review['input_digest'],
+                  'review_mode':review['review_mode'],'status':'no_findings',
+                  'representative_tasks':[snapshot['task']],'findings':[],'gaps':[],
+                  'answer':'Explicit process double completed; model effectiveness is not measured.'}
+            if self.callback:self.callback(stage,snapshot,data,Path(cwd))
+            payload={key:item['const'] for key,item in properties.items() if 'const' in item}
+            payload.update(status='success',output='Explicit review-process double.',limitations='none',
+              gates=[{'name':'bounded-review','status':'passed','evidence':'Review process is substituted; host admission is real.'}],
+              domain_output=typed('concorde-review-stage-result',data))
+            stdout=json.dumps({'structured_output':payload}) if '--json-schema' in argv else '\n'.join(json.dumps(event) for event in [{'type':'item.completed','item':{'type':'agent_message','text':json.dumps(payload)}},{'type':'turn.completed'}])
+            return subprocess.CompletedProcess(argv,0,stdout,'')
         if value['type_id']=='concorde-topology-author-context':
             current={item['path']:item['content']
                      for section in ('target_spec','shared_specs') for item in snapshot[section]}

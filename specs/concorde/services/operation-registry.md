@@ -22,17 +22,25 @@ Every public Skill below has a paired executable. Configuration and runtime inpu
 | concorde-context-solve | concorde-context-solve-request | concorde-context-solve-response | concorde-coordinator, concorde-context-assessor | Validate Domain participant routing, then assess information sufficiency without expanding worker context |
 | concorde-converge | concorde-converge-request | concorde-converge-response | concorde-implementation-worker | Reconcile implementation with accepted tasks |
 | concorde-deliver | concorde-deliver-request | concorde-deliver-response | Deterministic host | From a primary agent session, verify, merge and clean up the selected change worktree |
-| concorde-fast-loop | concorde-fast-loop-request | concorde-fast-loop-response | concorde-coordinator, concorde-plan, concorde-tasks, concorde-implement, concorde-validate | Route, plan, tasks, implement, validate to ready |
+| concorde-fast-loop | concorde-fast-loop-request | concorde-fast-loop-response | concorde-coordinator, concorde-review, concorde-plan, concorde-tasks, concorde-implement, concorde-validate | Route, optionally review Spec, plan, tasks, implement, validate, optionally review code, then ready; skips are explicit |
 | concorde-implement | concorde-implement-request | concorde-implement-response | concorde-implementation-worker | Implement component tasks or coordinate participating components |
 | concorde-init | concorde-init-request | concorde-init-response | Deterministic host | Propose/apply explicit project initialization |
 | concorde-migrate | concorde-migrate-request | concorde-migrate-response | Deterministic host | Propose/apply authored Profile 7 to 8 replacements |
 | concorde-plan | concorde-plan-request | concorde-plan-response | concorde-coordinator, concorde-context-assessor, concorde-planner | Route, assess sufficiency, then create revision-bound plan |
-| concorde-reflections-triage | concorde-reflections-triage-request | concorde-reflections-triage-response | concorde-implementation-worker, concorde-standard-dev-loop | Select/status/investigate/implement/dispose owned reflections |
+| concorde-review | concorde-review-request | concorde-review-response | concorde-coordinator, concorde-spec-reviewer, concorde-code-reviewer | Independently review a complete Spec or its registered code read-only; retain version-bound findings and gaps |
+| concorde-reflections-triage | concorde-reflections-triage-request | concorde-reflections-triage-response | concorde-implementation-worker, concorde-standard-dev-loop | Select/status, explicitly record existing gaps, investigate/implement/dispose owned reflections |
 | concorde-resolve-context | concorde-resolve-context-request | concorde-resolve-context-response | Deterministic host | Resolve a redacted context manifest without bodies |
 | concorde-specify | concorde-specify-request | concorde-specify-response | concorde-coordinator, concorde-spec-author | Route then author local Spec replacements |
-| concorde-standard-dev-loop | concorde-standard-dev-loop-request | concorde-standard-dev-loop-response | concorde-coordinator, concorde-specify, concorde-plan, concorde-tasks, concorde-implement, concorde-validate | Route, specify, plan, tasks, implement, validate to ready |
+| concorde-standard-dev-loop | concorde-standard-dev-loop-request | concorde-standard-dev-loop-response | concorde-coordinator, concorde-specify, concorde-review, concorde-plan, concorde-tasks, concorde-implement, concorde-validate | Route, specify, review Spec, plan, tasks, implement, validate, review code, then ready |
 | concorde-tasks | concorde-tasks-request | concorde-tasks-response | concorde-task-author | Author acceptance tasks from the accepted plan |
 | concorde-taskstoissues | concorde-taskstoissues-request | concorde-taskstoissues-response | Deterministic host | Prepare local issue drafts from authored tasks |
 | concorde-validate | concorde-validate-request | concorde-validate-response | Deterministic host | Run deterministic Spec and configured code checks |
 
 Target workers use concorde-agent-stage-context/result @1 with explicit document order, Target Spec and Shared Specs. Coordinator routing, topology design and synthesis use concorde-main-stage-context/result with an append-only main-visible discovery context and typed concorde-main-worker-result handoffs. Accepted topology design uses topology-proposal, topology-author-context/result and a host-private topology-application artifact; shared replacements require every reference and identical bytes. Plan artifacts, implementation tasks and selected reflections have separate registered type identities. Fresh snapshots accompany every handoff. Deterministic outputs carry identities and digests, never non-visible Module collections/code/logs into main or unrelated cognition.
+
+Reviewers use `concorde-review-stage-context@1` containing a full `concorde-context-snapshot@1`
+and host-produced `concorde-review-input@1`; they return `concorde-review-stage-result@1`. The host
+publishes `concorde-review-result@1` with target/focus/revision identity and `semantic_completeness=not_proven`.
+Spec and code modes use different fresh roles, with no writes in either mode. Complete collections
+remain distinct from the scoped change patches. Domain candidate review aggregates separately scoped
+results for its recorded participating components; it never hands a project diff to one reviewer.

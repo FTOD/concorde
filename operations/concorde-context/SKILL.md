@@ -84,6 +84,8 @@ This complete schema is the invocation's input field. It does not grant project 
             "plan",
             "tasks",
             "implementation",
+            "spec-review",
+            "code-review",
             "validate",
             "deliver",
             "context-solve"

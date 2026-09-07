@@ -1817,6 +1817,8 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         "plan",
         "tasks",
         "implementation",
+        "spec-review",
+        "code-review",
         "validate",
         "deliver",
         "context-solve"
@@ -3193,6 +3195,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         "concorde-fast-loop",
         "concorde-main",
         "concorde-plan",
+        "concorde-review",
         "concorde-specify",
         "concorde-standard-dev-loop"
       ]
@@ -4034,6 +4037,9 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "change_id": {
       "type": "string",
       "minLength": 1
+    },
+    "run_reviews": {
+      "type": "boolean"
     }
   },
   "required": [
@@ -6135,6 +6141,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "action": {
       "enum": [
         "status",
+        "record-gaps",
         "investigate",
         "implement",
         "merge",
@@ -6146,6 +6153,15 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
       "items": {
         "type": "string",
         "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "gap_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^sha256:[0-9a-f]{64}$"
       },
       "uniqueItems": true
     }
@@ -6393,6 +6409,90 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         ],
         "additionalProperties": false
       }
+    },
+    "gap_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "task": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phase": {
+            "type": "string",
+            "minLength": 1
+          },
+          "gap": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 1
+              },
+              "blocked_step": {
+                "type": "string",
+                "minLength": 1
+              },
+              "needed_contract": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "context_id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "question",
+              "blocked_step",
+              "needed_contract"
+            ],
+            "additionalProperties": false
+          },
+          "status": {
+            "enum": [
+              "open",
+              "resolved"
+            ]
+          },
+          "reflection_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "target_id",
+          "task",
+          "phase",
+          "gap",
+          "status",
+          "reflection_id"
+        ],
+        "additionalProperties": false
+      }
     }
   },
   "required": [
@@ -6448,6 +6548,8 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         "plan",
         "tasks",
         "implementation",
+        "spec-review",
+        "code-review",
         "validate",
         "deliver",
         "context-solve"
@@ -6493,6 +6595,845 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
   },
   "required": [
     "manifest"
+  ],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-review-input
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "review_mode": {
+      "enum": [
+        "spec",
+        "code"
+      ]
+    },
+    "input_digest": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "revision": {
+      "type": "object",
+      "properties": {
+        "spec_digest": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "implementation_digest": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "baseline": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "head": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "spec_digest",
+        "implementation_digest",
+        "baseline",
+        "head"
+      ],
+      "additionalProperties": false
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "patch": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "patch"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "review_mode",
+    "input_digest",
+    "revision",
+    "changes"
+  ],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-review-request
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "target_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task": {
+      "type": "string",
+      "minLength": 1
+    },
+    "focus_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "change_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "review_mode": {
+      "enum": [
+        "spec",
+        "code"
+      ]
+    }
+  },
+  "required": [
+    "task",
+    "review_mode"
+  ],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-review-response
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "target_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "focus_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "change_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "context_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "ready",
+        "spec_incomplete",
+        "unsupported",
+        "conflicting",
+        "failed",
+        "described",
+        "delivered"
+      ]
+    },
+    "answer": {
+      "type": "string"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "digest": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "digest"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "blocked_step": {
+            "type": "string",
+            "minLength": 1
+          },
+          "needed_contract": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "context_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "question",
+          "blocked_step",
+          "needed_contract"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "check_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed",
+              "timeout"
+            ]
+          },
+          "exit_code": {
+            "type": "integer"
+          },
+          "source_digest": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "log_digest": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "check_id",
+          "target_id",
+          "status",
+          "exit_code",
+          "source_digest",
+          "log_digest"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "completed_operations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "reviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type_id": {
+            "const": "concorde-review-result"
+          },
+          "schema_version": {
+            "type": "integer",
+            "const": 1
+          },
+          "data": {
+            "$ref": "concorde-review-result"
+          }
+        },
+        "required": [
+          "type_id",
+          "schema_version",
+          "data"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "target_id",
+    "focus_id",
+    "change_id",
+    "context_id",
+    "outcome",
+    "answer",
+    "artifacts",
+    "gaps",
+    "checks",
+    "completed_operations",
+    "reviews"
+  ],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-review-result
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "context_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "input_digest": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "review_mode": {
+      "enum": [
+        "spec",
+        "code"
+      ]
+    },
+    "status": {
+      "enum": [
+        "no_findings",
+        "findings",
+        "incomplete",
+        "skipped",
+        "not_run"
+      ]
+    },
+    "representative_tasks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "enum": [
+              "blocking",
+              "advisory"
+            ]
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "document": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "contract": {
+            "type": "string",
+            "minLength": 1
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "format": "project-path"
+              },
+              "line": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "line"
+            ],
+            "additionalProperties": false
+          },
+          "problem": {
+            "type": "string",
+            "minLength": 1
+          },
+          "affected_task": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "severity",
+          "target_id",
+          "document",
+          "contract",
+          "location",
+          "problem",
+          "affected_task"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "blocked_step": {
+            "type": "string",
+            "minLength": 1
+          },
+          "needed_contract": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "context_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "question",
+          "blocked_step",
+          "needed_contract"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "answer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "focus_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "revision": {
+      "type": "object",
+      "properties": {
+        "spec_digest": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "implementation_digest": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "baseline": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "head": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "spec_digest",
+        "implementation_digest",
+        "baseline",
+        "head"
+      ],
+      "additionalProperties": false
+    },
+    "semantic_completeness": {
+      "const": "not_proven"
+    }
+  },
+  "required": [
+    "context_id",
+    "input_digest",
+    "review_mode",
+    "status",
+    "representative_tasks",
+    "findings",
+    "gaps",
+    "answer",
+    "target_id",
+    "focus_id",
+    "revision",
+    "semantic_completeness"
+  ],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-review-stage-context
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "snapshot": {
+      "type": "object",
+      "properties": {
+        "type_id": {
+          "const": "concorde-context-snapshot"
+        },
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "data": {
+          "$ref": "concorde-context-snapshot"
+        }
+      },
+      "required": [
+        "type_id",
+        "schema_version",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "review": {
+      "type": "object",
+      "properties": {
+        "type_id": {
+          "const": "concorde-review-input"
+        },
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "data": {
+          "$ref": "concorde-review-input"
+        }
+      },
+      "required": [
+        "type_id",
+        "schema_version",
+        "data"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "snapshot",
+    "review"
+  ],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-review-stage-result
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "context_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "input_digest": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "review_mode": {
+      "enum": [
+        "spec",
+        "code"
+      ]
+    },
+    "status": {
+      "enum": [
+        "no_findings",
+        "findings",
+        "incomplete"
+      ]
+    },
+    "representative_tasks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "enum": [
+              "blocking",
+              "advisory"
+            ]
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "document": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "contract": {
+            "type": "string",
+            "minLength": 1
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "format": "project-path"
+              },
+              "line": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "line"
+            ],
+            "additionalProperties": false
+          },
+          "problem": {
+            "type": "string",
+            "minLength": 1
+          },
+          "affected_task": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "severity",
+          "target_id",
+          "document",
+          "contract",
+          "location",
+          "problem",
+          "affected_task"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "blocked_step": {
+            "type": "string",
+            "minLength": 1
+          },
+          "needed_contract": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "context_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "question",
+          "blocked_step",
+          "needed_contract"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "answer": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "context_id",
+    "input_digest",
+    "review_mode",
+    "status",
+    "representative_tasks",
+    "findings",
+    "gaps",
+    "answer"
   ],
   "additionalProperties": false
 }

@@ -20,9 +20,9 @@ It seeds project-owned Reflection defaults and
 installation receipt and never overwritten on update.
 
 The distributable manifest is concorde.json schema 3, Concorde 4.0.0, Architecture Profile 8,
-Workspace Protocol 14 and Delivery Proposal 10. It contains exactly 7 internal Skills and 22 paired
+Workspace Protocol 14 and Delivery Proposal 10. It contains exactly 9 internal Skills and 23 paired
 public Operations, explicit package roots including protocol, and 9 templates. Codex .agents/skills
-and Claude .claude/skills expose the same 22 wrappers; canonical internal roles stay private.
+and Claude .claude/skills expose the same 23 wrappers; canonical internal roles stay private.
 Every wrapper sends typed invocation@2 to its paired executable and does not inspect project context.
 
 Owned content is hashed in the installation receipt. A local modification conflicts unless an

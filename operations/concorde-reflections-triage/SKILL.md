@@ -25,6 +25,14 @@ worktree and returns a handoff. Open a new agent in the returned worktree before
 never carry this conversation or its worktree-owned Skills across that boundary. Report Spec gaps or blocked execution as returned; do not work
 around the boundary. Non-implementation agents never receive implementation code or raw test logs.
 
+Use action=record-gaps with explicit gap_ids selected from the status response
+`gap_records[].id` and an empty
+reflection_ids array to preserve durable missing-contract reports in the existing queue. Each gap
+keeps its host-bound target owner; a Domain may capture gaps of its participating components.
+Repeated capture reuses the linked Reflection ID. Capture does not resolve gaps, investigate, approve
+or implement a fix. For existing records, target_id names the owning target and focus_id may name its
+Feature/API; a Feature/API ID is not itself a target and concerns is not ownership.
+
 ## Input TypedValue schema
 
 This complete schema is the invocation's input field. It does not grant project reads.
@@ -81,6 +89,7 @@ This complete schema is the invocation's input field. It does not grant project 
         "action": {
           "enum": [
             "status",
+            "record-gaps",
             "investigate",
             "implement",
             "merge",
@@ -92,6 +101,15 @@ This complete schema is the invocation's input field. It does not grant project 
           "items": {
             "type": "string",
             "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "gap_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
           },
           "uniqueItems": true
         }

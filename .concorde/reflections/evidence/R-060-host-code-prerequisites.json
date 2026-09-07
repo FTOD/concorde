@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-07",
+  "purpose": "Real independent reviewer evidence; exact input digests identify historical/current candidate bytes. No semantic completeness claim.",
+  "model_process": "Installed Codex CLI with native enforcement; no process double.",
+  "cases": [
+    {
+      "case": "service.workflow-host",
+      "task": "Review the current implementation of independent review and task-gap handling against the complete admitted Service and Shared Specs. Inspect the granted implementation files and scoped changes, prioritizing review.py, scoped_operations.py, change_worktree.py and test_review.py. Check separate read-only modes, input/version identity, result validation, required review gates, gap persistence/dedup/resume and Domain aggregation. Report concrete behavior or permission defects with reproducible triggers. Read relevant files by absolute path beneath /tmp/concorde-domain-scopes-edit. No edits or test execution. Distinguish coverage limits from missing necessary contracts; do not infer unadmitted provider behavior.",
+      "operation_status": "blocked",
+      "outcome": "conflicting",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "Found a blocking defect: standalone dependent operations can execute despite an unresolved upstream task gap. Review was limited to static inspection; no checks or edits were performed.",
+          "context_id": "sha256:e06279a6d4af460cf05ed4b7918ff3569d0b9836f1df19cb0f8a4b39901642a8",
+          "findings": [
+            {
+              "affected_task": "Resume standalone implementation after planning reports a necessary missing contract",
+              "contract": "Necessary contract gaps pause dependent steps until Spec repair and successful reassessment; standalone Operations obey the same lifecycle contracts as development loops.",
+              "document": "specs/concorde/services/operation-boundary.md",
+              "id": "upstream-gap-bypass",
+              "location": {
+                "line": 959,
+                "path": "src/concorde/capabilities/scoped_operations.py"
+              },
+              "problem": "The stage admission guard checks gaps only for the phase being launched. Reproduce by completing a loop, then running concorde-plan for the same intent and unchanged Spec with a context-solve or plan gap. The rejected planning attempt preserves the previously accepted plan/tasks and current Spec review. A subsequent standalone concorde-implement passes require_spec_review and check_state, finds no implementation-phase gap, and launches the writable implementation worker using those previous tasks. Standalone task generation can similarly proceed past the planning blocker. verify_completion eventually prevents readiness, but it runs too late to prevent these dependent actions. Admission must also enforce unresolved prerequisite gaps for the current task.",
+              "severity": "blocking",
+              "target_id": "service.workflow-host"
+            }
+          ],
+          "gaps": [],
+          "input_digest": "sha256:34556f07254a99c964d55d78f3ccd2b401e12929284cbf394ee3a6bcbd143b59",
+          "representative_tasks": [
+            "Launch separate Spec and code reviews with scoped inputs and empty write grants",
+            "Bind review results to input versions and reject invalid or stale conclusions",
+            "Require reviews before planning and readiness, including fast-loop retries",
+            "Persist, deduplicate and resolve task gaps after accepted repairs",
+            "Resume standalone dependent operations after an upstream task gap",
+            "Aggregate separately scoped Domain component reviews and verify component completion",
+            "Preserve candidate evidence and blockers through delivery failures"
+          ],
+          "review_mode": "code",
+          "status": "findings",
+          "target_id": "service.workflow-host",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:cfe3cea2633c0d2490b4ee1cc986f2a142ab21baaafa461e924894c3f6347ee7",
+            "implementation_digest": "sha256:e5aa340668474c16ef6ea93359b0c2d74183fa78d890b478ae0a9f4712ed448c",
+            "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+            "head": "d63af7f37d21b9988d72591fbdc381713455786c"
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "artifact": {
+        "id": "review.service.workflow-host.code",
+        "path": ".concorde/runs/40c0979c-629d-4e08-8447-7fa21b415b8c/review-service.workflow-host-code.json",
+        "digest": "sha256:53a3670aafe09bd926b495ea27e1932f6ca0c7acda2feae44fad9baa8a46e0cc"
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:9380a3db3cfcc96614b874ae43e0564bbbd7ccb3149800289d2fd487b9cae31c",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:4edc1b83acb696975d4db16985166a915be0c61c0b07130611d0f1791cdac77b",
+        "limitations": "none",
+        "policy_digest": "sha256:41dc6ca7ddc4ab521d1f883cc5d05ff4e9fe2f27966318375d275180272852d9",
+        "requested_launch_digest": "sha256:6fb8ee11866f29b5f27715c01554eb5aab0e44b17eb54a9cc405e16c80e6e5b2",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Compared the complete supplied Target Spec and Shared Specs with granted implementation and scoped changes.",
+          "name": "bounded-review",
+          "status": "passed"
+        },
+        {
+          "evidence": "Used only admitted context and granted source reads; performed no edits, test execution, or external searches.",
+          "name": "authority",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

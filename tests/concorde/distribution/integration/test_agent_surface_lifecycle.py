@@ -60,7 +60,7 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
         self.assertEqual(check_value["status"], "drift")
         _, applied = self.run_sync("apply")
         self.assertEqual(applied["status"], "current")
-        self.assertEqual(applied["outputs"], 48)
+        self.assertEqual(applied["outputs"], 50)
         checked, check_value = self.run_sync("check")
         self.assertEqual(checked.returncode, 0)
         self.assertEqual(check_value["status"], "current")

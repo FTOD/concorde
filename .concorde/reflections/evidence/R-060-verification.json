@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-07",
+  "change_id": "change.599d4ebe-7c52-4a3e-b130-4deb96fd0964",
+  "branch": "design/domain-scopes-and-spec-contexts",
+  "workflow": "Existing direct-maintenance candidate validation; no invented target plans or delivery.",
+  "validation_source_digest": "sha256:d2e9ef9fa2bf9a296fd418dd08dab1e10890900b7cc7eac6587a5739fd6847de",
+  "configured_checks": [
+    {
+      "check_id": "check.context-runtime",
+      "target_id": "service.spec-context",
+      "status": "passed",
+      "exit_code": 0,
+      "source_digest": "sha256:75774c43e3eeb31efcf1cb5df67bd352463a45f06b5b1ac3fa5dd239c3c032a8",
+      "log_digest": "sha256:e02c6472e6b005beab8b345e3bf52999e7b602c7a4ab40e7e260073a5dbeb219"
+    },
+    {
+      "check_id": "check.workflow-runtime",
+      "target_id": "service.workflow-host",
+      "status": "passed",
+      "exit_code": 0,
+      "source_digest": "sha256:848c4a27d1e62d8447bdc631bade2d2ecc113af77204645449b3df20df28c901",
+      "log_digest": "sha256:41a0a6c61b8509807c0765a58f0a64bc13f9c494c7379861ed7a28a5205e7d30"
+    },
+    {
+      "check_id": "check.publication-types",
+      "target_id": "module.spec-publication",
+      "status": "passed",
+      "exit_code": 0,
+      "source_digest": "sha256:44107e1d2ede9f6fb084761b2e3cddf5c3cb094c8ec35a995955df909e0f3380",
+      "log_digest": "sha256:01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    }
+  ],
+  "python_suite": {
+    "command": "PYTHONPATH=src .venv/bin/python -W ignore::ResourceWarning -m unittest discover -s tests -t . -p 'test_*.py'",
+    "status": "passed",
+    "tests": 474,
+    "skipped": 0,
+    "log": "R-060-python-tests.log",
+    "log_digest": "sha256:f7392e660cb2039263f49f4598d4e40b72fdfdf8f7f34878a4bad758aaba478b"
+  },
+  "docsite_suite": {
+    "command": "npm --prefix docsite test",
+    "status": "passed",
+    "tests": 119,
+    "test_files": 26,
+    "includes_production_build": true,
+    "log": "R-060-docsite-tests.log",
+    "log_digest": "sha256:f3f0fcae798d83de7f8cf9d0819e2d794cb628e05da05390b2e10a15c3d2677b"
+  },
+  "agent_surfaces": {
+    "status": "current",
+    "outputs": 50
+  },
+  "reviews": [
+    {
+      "target_id": "module.agent-execution",
+      "review_mode": "spec",
+      "input_digest": "sha256:c04232dc39945b90eae14c62a35034c492ee376de932ddedc577e633bbfbb96a",
+      "revision": {
+        "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+        "head": "d63af7f37d21b9988d72591fbdc381713455786c",
+        "implementation_digest": null,
+        "spec_digest": "sha256:88e288f850f9e2a298638c87f0533983cbd9c3095e40c77e3c206752894661ea"
+      },
+      "status": "no_findings"
+    },
+    {
+      "target_id": "module.registry",
+      "review_mode": "spec",
+      "input_digest": "sha256:3693781bea2e9591a8f3c89fd17b00d5a0e5fbc4a94d11acdbb5d93f9e510b6c",
+      "revision": {
+        "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+        "head": "d63af7f37d21b9988d72591fbdc381713455786c",
+        "implementation_digest": null,
+        "spec_digest": "sha256:78aaf0449632cae3c88d8c0e358578a9a184eed6d5ff373c54ab7abe40ddffda"
+      },
+      "status": "no_findings"
+    },
+    {
+      "target_id": "module.spec-publication",
+      "review_mode": "spec",
+      "input_digest": "sha256:305a31e7a778caab33b98ca98bdf8c5f81f76dd2080a2666f166de9c4a2717e0",
+      "revision": {
+        "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+        "head": "d63af7f37d21b9988d72591fbdc381713455786c",
+        "implementation_digest": null,
+        "spec_digest": "sha256:1f5e808d5f0cfc33d70f1448226794dabfed11765cc156a62f59b75bb7cbf2f3"
+      },
+      "status": "no_findings"
+    },
+    {
+      "target_id": "service.workflow-host",
+      "review_mode": "spec",
+      "input_digest": "sha256:9e19c148e417fa78954af379587ffac18d4f522867ddffc9404e75991ea7d51c",
+      "revision": {
+        "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+        "head": "d63af7f37d21b9988d72591fbdc381713455786c",
+        "implementation_digest": null,
+        "spec_digest": "sha256:cfe3cea2633c0d2490b4ee1cc986f2a142ab21baaafa461e924894c3f6347ee7"
+      },
+      "status": "no_findings"
+    },
+    {
+      "target_id": "service.workflow-host",
+      "review_mode": "code",
+      "input_digest": "sha256:ebacfc1eb4f8e509450a7c514a9cb199c8bfcfa634f0f4aa90a29465ff3041fc",
+      "revision": {
+        "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+        "head": "d63af7f37d21b9988d72591fbdc381713455786c",
+        "implementation_digest": "sha256:bb2ba0978c1ac9488c2da8a4d964623779906c947c985974477794a3ce97494f",
+        "spec_digest": "sha256:cfe3cea2633c0d2490b4ee1cc986f2a142ab21baaafa461e924894c3f6347ee7"
+      },
+      "status": "no_findings"
+    }
+  ],
+  "reflection": {
+    "id": "R-060",
+    "status": "open",
+    "triage": "complete",
+    "plan_status": "implemented",
+    "path": ".concorde/reflections/planned/R-060.md"
+  },
+  "semantic_completeness": "not_proven"
+}

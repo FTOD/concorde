@@ -1,0 +1,551 @@
+{
+  "schema_version": 1,
+  "purpose": "Real isolated Spec-review baseline before R-060 contract repairs; these historical inputs are not current readiness evidence.",
+  "date": "2026-09-07",
+  "model_process": "Real installed Codex CLI, native enforcement; no process double.",
+  "cases": [
+    {
+      "case": "module.agent-execution",
+      "task": "Review whether the complete Module Spec supports a consumer constructing the executor, invoking api.execution.execute with a host-built launch, and correctly handling successful completion, malformed completion and process failure. Use only the admitted Spec and identify necessary missing callable, type or behavior contracts.",
+      "outcome": "spec_incomplete",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "The complete admitted Module Spec does not support the requested consumer workflow. Executor construction and invocation, launch/result types, and observable failure handling lack necessary contracts. Dependent judgments stop at these gaps.",
+          "context_id": "sha256:b56a5ddb1a1bc5993448074c7b4b72fbec4e0270ed16f2ccfb0b6307d2020698",
+          "findings": [
+            {
+              "affected_task": "Construct the executor and invoke api.execution.execute.",
+              "contract": "Public executor construction and execution callable contract.",
+              "document": "specs/concorde/modules/agent-execution.md",
+              "id": "AE-SPEC-001",
+              "location": {
+                "line": 13,
+                "path": "specs/concorde/modules/agent-execution.md"
+              },
+              "problem": "AgentProcessExecutor is named, but no constructor or factory signature, required dependencies, configuration, or execution method signature is provided. The interface section declares only bootstrap functions. A consumer cannot determine how to create and call the executor.",
+              "severity": "blocking",
+              "target_id": "module.agent-execution"
+            },
+            {
+              "affected_task": "Supply a host-built launch and consume a successful execution result.",
+              "contract": "OperationLaunchSpecification and OperationExecutionResult types, including receipt and typed completion validity rules.",
+              "document": "specs/concorde/modules/agent-execution.md",
+              "id": "AE-SPEC-002",
+              "location": {
+                "line": 13,
+                "path": "specs/concorde/modules/agent-execution.md"
+              },
+              "problem": "The launch and result types have no field definitions, required values, or compatibility rules. Receipt and completion schemas are absent, and the listed identity validations lack defined sources and matching rules. Consumers cannot establish launch preconditions or identify and use a valid successful result.",
+              "severity": "blocking",
+              "target_id": "module.agent-execution"
+            },
+            {
+              "affected_task": "Handle malformed completion and process failure.",
+              "contract": "Observable executor failure outcomes and their completion, effects, and retry semantics.",
+              "document": "specs/concorde/modules/agent-execution.md",
+              "id": "AE-SPEC-003",
+              "location": {
+                "line": 26,
+                "path": "specs/concorde/modules/agent-execution.md"
+              },
+              "problem": "The Spec promises fail-closed handling but does not define failure result variants, structured finding types, or any declared exception. It does not specify how malformed completion, launch failure, or nonzero process exit reach the caller, whether partial completion or effects can remain, or when retry is permissible. The generic failure statement therefore cannot guide consumer error handling.",
+              "severity": "blocking",
+              "target_id": "module.agent-execution"
+            }
+          ],
+          "gaps": [
+            {
+              "blocked_step": "Construct the executor and invoke api.execution.execute.",
+              "context_id": "sha256:b56a5ddb1a1bc5993448074c7b4b72fbec4e0270ed16f2ccfb0b6307d2020698",
+              "needed_contract": "Public executor construction and execution callable contract.",
+              "question": "What public constructor or factory and execution signature must consumers use, with which dependencies, configuration, and preconditions?",
+              "target_id": "module.agent-execution"
+            },
+            {
+              "blocked_step": "Supply a host-built launch and consume a successful execution result.",
+              "context_id": "sha256:b56a5ddb1a1bc5993448074c7b4b72fbec4e0270ed16f2ccfb0b6307d2020698",
+              "needed_contract": "OperationLaunchSpecification and OperationExecutionResult types, including receipt and typed completion validity rules.",
+              "question": "What are the complete launch, result, receipt, and completion schemas, and which validity and identity-matching rules establish successful execution?",
+              "target_id": "module.agent-execution"
+            },
+            {
+              "blocked_step": "Handle malformed completion and process failure.",
+              "context_id": "sha256:b56a5ddb1a1bc5993448074c7b4b72fbec4e0270ed16f2ccfb0b6307d2020698",
+              "needed_contract": "Observable executor failure outcomes and their completion, effects, and retry semantics.",
+              "question": "Which typed outcomes or exceptions represent malformed completion and process failures, and what do they guarantee about partial completion, effects, and retry?",
+              "target_id": "module.agent-execution"
+            }
+          ],
+          "input_digest": "sha256:92d88fe44bd3df0958d3c7d379cc07769397dd32e7ac783aa9329b57620e79ac",
+          "representative_tasks": [
+            "Construct the executor and invoke api.execution.execute.",
+            "Supply a host-built launch and consume a successful execution result.",
+            "Handle malformed completion and process failure."
+          ],
+          "review_mode": "spec",
+          "status": "findings",
+          "target_id": "module.agent-execution",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:266101911897df198535f95e0f3e2a7e34808e75756e535f611a562a46697a02",
+            "implementation_digest": null,
+            "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+            "head": "d63af7f37d21b9988d72591fbdc381713455786c"
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:12d811b98fd07849818b6c8dece955a407df72f2be87cb8c2509a0fd14b503af",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:8721413c9814f47d271f2c2f4ebf289271387d6f6b913cf7df805ad5974c6bd9",
+        "limitations": "none",
+        "policy_digest": "sha256:107fcf467a1d302c0daa5b6021f0491a27cc2c2d25b4074f14689605e26c7c9d",
+        "requested_launch_digest": "sha256:a2e51586e1c93289d65fdb2aa9237c4d2d57b17f58b966ef1a6cc74472e399c1",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Reviewed the entire admitted Module document and supplied Protocol; no Shared Specs were admitted.",
+          "name": "admitted_context_coverage",
+          "status": "passed"
+        },
+        {
+          "evidence": "Assessed all requested representative tasks and supplied matching structured gaps for every blocking finding.",
+          "name": "review_completeness",
+          "status": "passed"
+        },
+        {
+          "evidence": "Used only supplied context; performed no external reads, checks, or mutations.",
+          "name": "scope_compliance",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "case": "module.registry",
+      "task": "Review whether the complete Module Spec supports constructing SpecRepository, selecting a target with an API focus, retrieving its full documents and contracts, and enumerating implementation files. Check callable signatures, returned types, errors and effects using only the admitted Spec.",
+      "outcome": "spec_incomplete",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "Completed review of the entire admitted Module Spec. Four blocking contract gaps prevent the requested tasks from being performed using this Spec alone. Dependent behavioral judgments stop at those gaps.",
+          "context_id": "sha256:3b8dc966c8daa9c68616b99d0ee95bb3c3545cd6c19321fde584783266a2f8f3",
+          "findings": [
+            {
+              "affected_task": "Construct SpecRepository from project and optional package roots.",
+              "contract": "Repository construction inputs, configuration, Protocol verification and failure contract.",
+              "document": "specs/concorde/modules/registry.md",
+              "id": "registry-spec-001",
+              "location": {
+                "line": 13,
+                "path": "specs/concorde/modules/registry.md"
+              },
+              "problem": "The constructor names its arguments but does not define their types, root requirements or package_root default behavior. Profile 8 configuration and pinned Protocol assets are referenced without their schemas, locations or verification requirements. Construction failures have no specified exception or structured finding shape. A caller cannot prepare admissible inputs or handle rejection from this collection alone.",
+              "severity": "blocking",
+              "target_id": "module.registry"
+            },
+            {
+              "affected_task": "Select a target with an API focus and retrieve its complete document collection.",
+              "contract": "Target selection, focus validation and returned target/document types.",
+              "document": "specs/concorde/modules/registry.md",
+              "id": "registry-spec-002",
+              "location": {
+                "line": 13,
+                "path": "specs/concorde/modules/registry.md"
+              },
+              "problem": "The Spec does promise complete document retrieval without reference expansion, but does not define how focus_id is resolved or rejected. Selection returns an undefined Target, while documents accepts an undefined SpecTarget; their relationship and usable fields are absent. SpecDocument also lacks a defined shape, so callers cannot determine how to consume document identities, contents or ordering. The scope of the missing/foreign identity error is ambiguous for API focus.",
+              "severity": "blocking",
+              "target_id": "module.registry"
+            },
+            {
+              "affected_task": "Retrieve and consume a selected target's contracts.",
+              "contract": "contracts callable signature, contract block schema, results and parsing failures.",
+              "document": "specs/concorde/modules/registry.md",
+              "id": "registry-spec-003",
+              "location": {
+                "line": 13,
+                "path": "specs/concorde/modules/registry.md"
+              },
+              "problem": "contracts(target) is only described as parsing local blocks. Its input and return types, block schema, inclusion of shared documents, and behavior for absent, malformed or duplicate contracts are unspecified. Consumers cannot retrieve or interpret API contracts deterministically.",
+              "severity": "blocking",
+              "target_id": "module.registry"
+            },
+            {
+              "affected_task": "Enumerate a selected target's implementation files.",
+              "contract": "implementation_files callable signature, ownership inputs, enumeration results and rejection behavior.",
+              "document": "specs/concorde/modules/registry.md",
+              "id": "registry-spec-004",
+              "location": {
+                "line": 13,
+                "path": "specs/concorde/modules/registry.md"
+              },
+              "problem": "The Spec promises explicit ownership and symlink rejection but does not define ownership declarations, accepted target type, returned collection or path representation. Missing-file behavior and how symlink or overlapping-grant rejection is reported are absent. A caller cannot determine the authorized enumeration or safely interpret its failures.",
+              "severity": "blocking",
+              "target_id": "module.registry"
+            }
+          ],
+          "gaps": [
+            {
+              "blocked_step": "Construct SpecRepository from project and optional package roots.",
+              "context_id": "sha256:3b8dc966c8daa9c68616b99d0ee95bb3c3545cd6c19321fde584783266a2f8f3",
+              "needed_contract": "Repository construction inputs, configuration, Protocol verification and failure contract.",
+              "question": "What root types, default package resolution, configuration schema and asset verification rules govern construction, and how are failures reported?",
+              "target_id": "module.registry"
+            },
+            {
+              "blocked_step": "Select a target with an API focus and retrieve its complete document collection.",
+              "context_id": "sha256:3b8dc966c8daa9c68616b99d0ee95bb3c3545cd6c19321fde584783266a2f8f3",
+              "needed_contract": "Target selection, focus validation and returned target/document types.",
+              "question": "How is API focus validated, what are the Target/SpecTarget and SpecDocument schemas, and what errors apply to invalid focus identities?",
+              "target_id": "module.registry"
+            },
+            {
+              "blocked_step": "Retrieve and consume a selected target's contracts.",
+              "context_id": "sha256:3b8dc966c8daa9c68616b99d0ee95bb3c3545cd6c19321fde584783266a2f8f3",
+              "needed_contract": "contracts callable signature, contract block schema, results and parsing failures.",
+              "question": "What typed results does contracts return, which documents contribute blocks, and how are absent, malformed and duplicate declarations handled?",
+              "target_id": "module.registry"
+            },
+            {
+              "blocked_step": "Enumerate a selected target's implementation files.",
+              "context_id": "sha256:3b8dc966c8daa9c68616b99d0ee95bb3c3545cd6c19321fde584783266a2f8f3",
+              "needed_contract": "implementation_files callable signature, ownership inputs, enumeration results and rejection behavior.",
+              "question": "What declarations establish file ownership, what paths and collection type are returned, and how are missing files, symlinks and conflicting grants reported?",
+              "target_id": "module.registry"
+            }
+          ],
+          "input_digest": "sha256:eb9485a899b22d7d30023356c4e4ec066440598e8d0cd2b358cf53524c57b81d",
+          "representative_tasks": [
+            "Construct SpecRepository from project and optional package roots.",
+            "Select a target with an API focus and retrieve its complete document collection.",
+            "Retrieve and consume a selected target's contracts.",
+            "Enumerate a selected target's implementation files."
+          ],
+          "review_mode": "spec",
+          "status": "findings",
+          "target_id": "module.registry",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:3ae1b027fd61ae32742b1f04ae2c3ed4a22fa40e0b8110ffdc86c3eea1ff8ece",
+            "implementation_digest": null,
+            "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+            "head": "d63af7f37d21b9988d72591fbdc381713455786c"
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:12d811b98fd07849818b6c8dece955a407df72f2be87cb8c2509a0fd14b503af",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:a84b48164eb8ab2aabf77f8d90df4c039d6ca956ea6f0bea349d625f1d70f7dd",
+        "limitations": "none",
+        "policy_digest": "sha256:107fcf467a1d302c0daa5b6021f0491a27cc2c2d25b4074f14689605e26c7c9d",
+        "requested_launch_digest": "sha256:9c469739ac1354ef7aa6d4bf48970cc42f1871deec2732257521993f3c6980dd",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Reviewed the entire admitted Target Spec and supplied Protocol; no additional sources were accessed.",
+          "name": "context_boundary",
+          "status": "passed"
+        },
+        {
+          "evidence": "Assessed every requested representative task; each blocking finding has a matching structured gap.",
+          "name": "review_coverage",
+          "status": "passed"
+        },
+        {
+          "evidence": "No files were modified and no validation commands were run.",
+          "name": "read_only_review",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "case": "module.spec-publication",
+      "task": "Review whether the complete Module Spec supports a consumer loading the registered publication model, materializing derived assets and validating a candidate build. Check callable interfaces, inputs, outputs, effects and failure handling using only the admitted Spec.",
+      "outcome": "spec_incomplete",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "The complete admitted Module Spec does not provide sufficient callable, data, effect, or failure contracts for the three requested consumer tasks. Review completed with three blocking findings; judgments requiring those contracts remain blocked.",
+          "context_id": "sha256:c91b7b0f5cfeba30290f421d2c99105cba0f58458d4b37fce0f941092565fce3",
+          "findings": [
+            {
+              "affected_task": "Load the registered publication model.",
+              "contract": "loadScopedRegistry input, result, and failure contract",
+              "document": "specs/concorde/modules/spec-publication.md",
+              "id": "SP-001",
+              "location": {
+                "line": 13,
+                "path": "specs/concorde/modules/spec-publication.md"
+              },
+              "problem": "The Spec names root and Workspace 14 but defines neither the root requirements, configuration and registry inputs, nor the returned target/page/edge schema. The listed rejection categories lack acceptance rules and an actionable failure representation. A consumer cannot construct supported inputs, interpret the returned model, or handle rejection using this collection alone.",
+              "severity": "blocking",
+              "target_id": "module.spec-publication"
+            },
+            {
+              "affected_task": "Materialize derived publication assets.",
+              "contract": "materializeScoped callable interface, output mapping, and mutation contract",
+              "document": "specs/concorde/modules/spec-publication.md",
+              "id": "SP-002",
+              "location": {
+                "line": 13,
+                "path": "specs/concorde/modules/spec-publication.md"
+              },
+              "problem": "materializeScoped has no parameter or return signature. The Spec does not define how the loaded model and caller-owned paths are supplied, how target/document identities map to output assets and shared-membership routes, or which existing files may be replaced or removed. Failure effects and retry preconditions are also absent. The consumer cannot invoke materialization or determine whether a failed attempt leaves usable or partial assets.",
+              "severity": "blocking",
+              "target_id": "module.spec-publication"
+            },
+            {
+              "affected_task": "Validate a candidate build before output promotion.",
+              "contract": "Publication plugin and validateScopedBuild artifact, freshness, and promotion contract",
+              "document": "specs/concorde/modules/spec-publication.md",
+              "id": "SP-003",
+              "location": {
+                "line": 13,
+                "path": "specs/concorde/modules/spec-publication.md"
+              },
+              "problem": "The plugin integration interface, emitted artifact schemas and locations, and validateScopedBuild parameters and results are unspecified. The Spec does not define what sourceDigest covers, the expected route inventory, or the conditions that pass validation. It references existing atomic promotion without defining its owner, validation-to-promotion handoff, or behavior when inputs change or validation fails. Consumers cannot establish that a candidate is current and eligible for promotion.",
+              "severity": "blocking",
+              "target_id": "module.spec-publication"
+            }
+          ],
+          "gaps": [
+            {
+              "blocked_step": "Load the registered publication model.",
+              "context_id": "sha256:c91b7b0f5cfeba30290f421d2c99105cba0f58458d4b37fce0f941092565fce3",
+              "needed_contract": "loadScopedRegistry input, result, and failure contract",
+              "question": "What are the supported root and configuration/registry inputs, the Workspace 14 result schema, the acceptance rules for the listed validations, and the structured finding or exception contract?",
+              "target_id": "module.spec-publication"
+            },
+            {
+              "blocked_step": "Materialize derived publication assets.",
+              "context_id": "sha256:c91b7b0f5cfeba30290f421d2c99105cba0f58458d4b37fce0f941092565fce3",
+              "needed_contract": "materializeScoped callable interface, output mapping, and mutation contract",
+              "question": "What arguments and results does materializeScoped expose, how are identities and shared memberships mapped to output paths, and what replacement, deletion, partial-failure, and retry guarantees govern its writes?",
+              "target_id": "module.spec-publication"
+            },
+            {
+              "blocked_step": "Validate a candidate build before output promotion.",
+              "context_id": "sha256:c91b7b0f5cfeba30290f421d2c99105cba0f58458d4b37fce0f941092565fce3",
+              "needed_contract": "Publication plugin and validateScopedBuild artifact, freshness, and promotion contract",
+              "question": "How is the plugin invoked, what are its artifact schemas and digest scope, and how does validateScopedBuild report eligibility and bind successful validation to atomic promotion of the same candidate and source state?",
+              "target_id": "module.spec-publication"
+            }
+          ],
+          "input_digest": "sha256:974fc1d6551c68e4e7596c45aa2b734f785c397582be7a729d1d95badad0bdd6",
+          "representative_tasks": [
+            "Load the registered publication model.",
+            "Materialize derived publication assets.",
+            "Validate a candidate build before output promotion."
+          ],
+          "review_mode": "spec",
+          "status": "findings",
+          "target_id": "module.spec-publication",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:dd7ed5ee0cb86f0dd4455ea01aa44598883f6cd934e776b4450dea4e20e045b8",
+            "implementation_digest": null,
+            "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+            "head": "d63af7f37d21b9988d72591fbdc381713455786c"
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:12d811b98fd07849818b6c8dece955a407df72f2be87cb8c2509a0fd14b503af",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:35fa20bb071ff281780140e25b9b251a19dbd7114fdc4023e3c0a61d5bdea6e8",
+        "limitations": "none",
+        "policy_digest": "sha256:107fcf467a1d302c0daa5b6021f0491a27cc2c2d25b4074f14689605e26c7c9d",
+        "requested_launch_digest": "sha256:eab06887203384662d349dfe134e4f6ecad8ed7e59eb7a007bf4d8a02aebb608",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Read the complete admitted Target Spec and both supplied Protocol assets; no Shared Specs were admitted.",
+          "name": "admitted_context_coverage",
+          "status": "passed"
+        },
+        {
+          "evidence": "Assessed all three requested representative tasks. Each blocking finding identifies its local contract and location and has a matching structured gap.",
+          "name": "review_contract",
+          "status": "passed"
+        },
+        {
+          "evidence": "Used only supplied context; accessed no implementation, external documents, or tools and made no project mutations.",
+          "name": "read_only_boundary",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "case": "service.workflow-host",
+      "task": "Review whether the complete Service Spec supports planning a new independent read-only review Operation with separate Spec and code modes, typed results, task gaps and required review gates in development loops. Assess the provided public boundary and the locally stated collaborator promises required to plan this change. Use only the complete admitted Spec, without provider Specs or implementation.",
+      "outcome": "spec_incomplete",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "Completed the review of all three admitted documents and the supplied Protocol. Four blocking contract gaps prevent planning the requested review Operation and loop integration without inventing behavior.",
+          "context_id": "sha256:e62068803a5f935f2b50f316e752f485853f160acd2872c95ec13c85dd3f2afc",
+          "findings": [
+            {
+              "affected_task": "Plan standalone Spec and code review admission and worker dispatch.",
+              "contract": "Public concorde-review registration and mode-specific execution contract",
+              "document": "specs/concorde/services/operation-registry.md",
+              "id": "review-001",
+              "location": {
+                "line": null,
+                "path": "specs/concorde/services/operation-registry.md"
+              },
+              "problem": "The wire collection introduces concorde-review request/response types and admits the Operation in discovery, but the public Operation registry omits it. Neither the registry nor boundary specifies its mode-specific reviewer roles, prerequisites, or standalone completion behavior. The registry's generic target-worker handoff also names only concorde-agent-stage-context/result, leaving the new review-stage handoff unintegrated.",
+              "severity": "blocking",
+              "target_id": "service.workflow-host"
+            },
+            {
+              "affected_task": "Plan review gates, skips, and recovery in development loops.",
+              "contract": "Development-loop review policy and advancement contract",
+              "document": "specs/concorde/services/operation-boundary.md",
+              "id": "review-002",
+              "location": {
+                "line": null,
+                "path": "specs/concorde/services/operation-boundary.md"
+              },
+              "problem": "The boundary and registry describe loops that proceed through validation to ready without integrating the Protocol-required review stages. The optional run_reviews boolean has no stated default or mode coverage. No local contract defines how blocking versus advisory findings affect advancement, how review requirements survive a fast-loop retry, or how skipped, failed, and current successful evidence are recorded and consulted during readiness and delivery.",
+              "severity": "blocking",
+              "target_id": "service.workflow-host"
+            },
+            {
+              "affected_task": "Plan reproducible review input construction and stale-result rejection.",
+              "contract": "Review revision, change selection, and input-digest semantics",
+              "document": "specs/concorde/services/operation-wire.md",
+              "id": "review-003",
+              "location": {
+                "line": null,
+                "path": "specs/concorde/services/operation-wire.md"
+              },
+              "problem": "concorde-review-request supplies no revision or changes, while concorde-review-input requires host-produced revisions, patches, and an input digest. The collection does not define baseline/head selection, treatment of uncommitted changes, null revision semantics, mode-specific change scoping, or the inputs covered by each digest. Consequently, the exact version reviewed and the conditions invalidating a stored conclusion cannot be determined from these contracts.",
+              "severity": "blocking",
+              "target_id": "service.workflow-host"
+            },
+            {
+              "affected_task": "Plan collaborator handoffs that enforce fresh read-only review sessions.",
+              "contract": "Required review policy-compilation and agent-execution collaborator contracts",
+              "document": "specs/concorde/services/operation-boundary.md",
+              "id": "review-004",
+              "location": {
+                "line": null,
+                "path": "specs/concorde/services/operation-boundary.md"
+              },
+              "problem": "The routing view identifies module.permissions and module.agent-execution responsibilities, but supplies no required interaction contracts for requesting a mode-specific read-only grant, launching a fresh reviewer with the review-stage payload, or receiving completion and enforcement failures. General host guarantees and routing IDs do not specify these collaborator inputs, results, and failure obligations. Planning those integrations would require ungranted provider contracts or invented promises.",
+              "severity": "blocking",
+              "target_id": "service.workflow-host"
+            }
+          ],
+          "gaps": [
+            {
+              "blocked_step": "Plan standalone Spec and code review admission and worker dispatch.",
+              "context_id": "sha256:e62068803a5f935f2b50f316e752f485853f160acd2872c95ec13c85dd3f2afc",
+              "needed_contract": "Public concorde-review registration and mode-specific execution contract",
+              "question": "What public registry entry, reviewer roles, mode-specific prerequisites, typed handoffs, and completion behavior govern concorde-review?",
+              "target_id": "service.workflow-host"
+            },
+            {
+              "blocked_step": "Plan review gates, skips, and recovery in development loops.",
+              "context_id": "sha256:e62068803a5f935f2b50f316e752f485853f160acd2872c95ec13c85dd3f2afc",
+              "needed_contract": "Development-loop review policy and advancement contract",
+              "question": "What are the run_reviews default and scope, review-stage ordering, severity-based advancement rules, and durable evidence rules for retries, skips, readiness, and delivery?",
+              "target_id": "service.workflow-host"
+            },
+            {
+              "blocked_step": "Plan reproducible review input construction and stale-result rejection.",
+              "context_id": "sha256:e62068803a5f935f2b50f316e752f485853f160acd2872c95ec13c85dd3f2afc",
+              "needed_contract": "Review revision, change selection, and input-digest semantics",
+              "question": "How does the host select and scope review changes, interpret nullable revisions and uncommitted bytes, and compute the digests used to invalidate conclusions?",
+              "target_id": "service.workflow-host"
+            },
+            {
+              "blocked_step": "Plan collaborator handoffs that enforce fresh read-only review sessions.",
+              "context_id": "sha256:e62068803a5f935f2b50f316e752f485853f160acd2872c95ec13c85dd3f2afc",
+              "needed_contract": "Required review policy-compilation and agent-execution collaborator contracts",
+              "question": "What locally admitted inputs, results, and failure promises does the host require from policy compilation and agent execution for each review mode?",
+              "target_id": "service.workflow-host"
+            }
+          ],
+          "input_digest": "sha256:f6032fd1982147e1fac22a5165cb8399463a86a530f37d96c7073b00479b0a23",
+          "representative_tasks": [
+            "Plan standalone Spec and code review admission and worker dispatch.",
+            "Plan review gates, skips, and recovery in development loops.",
+            "Plan reproducible review input construction and stale-result rejection.",
+            "Plan collaborator handoffs that enforce fresh read-only review sessions.",
+            "Represent review task coverage, findings, and target/context-bound gaps in typed results.",
+            "Expose review-phase context membership without exposing document bodies."
+          ],
+          "review_mode": "spec",
+          "status": "findings",
+          "target_id": "service.workflow-host",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:e48bbacc0f4b672127a72f85ab0d28e419f037d0b0541699bdb789963bfe0022",
+            "implementation_digest": null,
+            "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+            "head": "d63af7f37d21b9988d72591fbdc381713455786c"
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:12d811b98fd07849818b6c8dece955a407df72f2be87cb8c2509a0fd14b503af",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:bf51e62cbf29e21505f131c7ac0d21418ca6481905ef0da81d01e853c6ed9913",
+        "limitations": "none",
+        "policy_digest": "sha256:107fcf467a1d302c0daa5b6021f0491a27cc2c2d25b4074f14689605e26c7c9d",
+        "requested_launch_digest": "sha256:2871241313fa483e617b6491537a40ef7b3331565320fef3cda8ac8e75199b3c",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Reviewed the complete admitted boundary, registry, and wire documents against the supplied Protocol; dependent planning judgments stop at the reported gaps.",
+          "name": "bounded_spec_assessment",
+          "status": "passed"
+        },
+        {
+          "evidence": "Used only supplied context; no tools, implementation inspection, external sources, validation commands, or project writes.",
+          "name": "review_boundary",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

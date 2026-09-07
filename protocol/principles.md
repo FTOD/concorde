@@ -166,6 +166,13 @@ When the admitted context lacks information required to carry out a task, the ag
 Spec incomplete for that task. It MUST identify the unresolved question or missing contract,
 the step it blocks, the selected Spec target, and the context snapshot used for the judgment.
 It MUST NOT infer missing obligations from another Spec or from implementation code.
+This rule applies during explanation, planning, task decomposition and implementation, not only
+context solving. The agent MUST pause steps or judgments that depend on a necessary missing or
+ambiguous contract; it MAY continue independent work and MUST NOT silently invent the contract by
+convention. Pure queries return gaps without authoring project files. Development flows persist
+target/task/phase provenance and unresolved gaps in their existing change state. Unrelated progress
+MUST NOT erase them. A fresh successful assessment of the affected step may resolve its gaps while
+retaining history; durable issues can be explicitly promoted into the existing Reflection workflow.
 
 Concorde MUST distinguish missing information from an outcome already determined by an explicit
 rule, conflicting requirements, and a failed execution. A known prohibition does not establish a
@@ -182,6 +189,25 @@ changes require the affected local views to be reconciled.
 Structural validation MUST remain deterministic. A task-specific agent assessment can reveal a
 semantic gap, but MUST NOT claim to prove completeness for all possible future tasks.
 
+Independent review has two modes, each in a different fresh session with no project write
+authority. Spec review uses the complete admitted Target Spec and Shared Specs, task and scoped
+Spec changes to assess representative tasks, necessary public APIs, collaborator promises,
+behavior and errors. It MUST NOT inspect code or complete the collection with ungranted Specs.
+Code review uses that same target's admitted contracts and registered implementation files, with
+scoped code changes, to identify concrete behavioral defects. Blocking Spec findings MUST state
+the missing promise, affected judgment, owning target/document and a structured gap. General
+suggestions remain nonblocking findings. Reviewers MUST NOT modify source, Spec or tests.
+
+The host binds every review to its actual input version and records task coverage, findings, gaps
+and completion. Changed relevant Spec, code or review inputs invalidate prior conclusions. Failed
+or incomplete review, not-run/skipped review and a completed review with no findings MUST remain
+distinct. The standard development loop requires Spec review after authoring and before dependent
+planning, and code review after implementation/checks and before ready. A fast loop MAY disable
+review but MUST record the skip; it cannot downgrade an already required review. Required review
+failure blocks advancement. Cross-target changes use separately scoped fresh reviewers and only
+their authorized typed results for aggregation. Review does not create a second ready/delivery
+lifecycle and does not prove that all future tasks are possible.
+
 ### P7. Execution enforces the agent's cognitive boundary
 
 All Concorde agent entry points MUST execute through an Operation host that establishes and
@@ -189,10 +215,12 @@ enforces their context. This includes exploration, initialization, specification
 implementation, validation, fast loops, and reflection work. A public Skill can initiate an
 Operation; it MUST NOT bypass the host to perform the bounded task in an ambient conversation.
 
-Only the implementation phase may expose authorized implementation source to an agent. Code
-inspection, debugging, and code review therefore require an implementation invocation. Other
-phases consume the declared Spec context and contracted task/evidence inputs. Reflection
-investigation or initialization does not create an additional code-reading exception.
+The implementation phase may expose authorized implementation source to an agent. The dedicated
+code-review phase has the same target implementation visibility with all write authority removed;
+it is a read-only implementation role, not a grant to other non-implementation agents. Code
+inspection and debugging otherwise require an implementation invocation. Spec review and other
+phases consume only their declared Spec context and contracted inputs. Reflection investigation
+or initialization does not create an additional code-reading exception.
 
 The host MUST enforce reads, writes, searches, commands, network access, and tool outputs against
 the same task boundary. A context manifest is data; the execution grant is host-issued authority
@@ -206,8 +234,8 @@ automatically. A tool with broader execution access MUST NOT expose an arbitrary
 proxy to the agent. When interpreting a failure requires code inspection, Concorde dispatches an
 implementation task.
 
-Agent executions MUST start in fresh, controlled contexts. Changing a target or leaving an
-implementation phase MUST NOT reuse a conversation that has already seen now-excluded material.
+Agent executions MUST start in fresh, controlled contexts. Changing target or review mode, or leaving
+implementation/code-review cognition, MUST NOT reuse a conversation that has already seen now-excluded material.
 Removing file permissions cannot remove prior cognitive inputs. The guarantee covers admitted
 project information and tool access; it does not claim to erase a model's general prior knowledge.
 

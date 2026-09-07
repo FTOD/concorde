@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-07",
+  "purpose": "Real code-review effectiveness cases, not CI assertions or whole-candidate review.",
+  "fixture_source": "tests/concorde/specification/support.py project()",
+  "defective_implementation": "def transfer(balance, amount):\n    return balance\n",
+  "correct_implementation": "def transfer(balance, amount):\n    if amount <= 0 or amount > balance:\n        raise ValueError(\"invalid transfer\")\n    return balance - amount\n",
+  "cases": [
+    {
+      "case": "code-defect",
+      "expected": "Two concrete transfer behavior defects",
+      "operation_status": "blocked",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "Completed the bounded review. Found two blocking behavior defects: successful transfers do not subtract the amount, and invalid transfers do not raise ValueError. No necessary Spec gaps were identified.",
+          "context_id": "sha256:2869892df422964feee6ca5623b4a81f73a383b2ebe43ab6655bd7e0440256c2",
+          "findings": [
+            {
+              "affected_task": "Transfer a positive integer amount when the balance is sufficient, including transferring the full balance.",
+              "contract": "When amount is positive and balance is sufficient, transfer returns balance minus amount.",
+              "document": "specs/send-money.md",
+              "id": "transfer-result",
+              "location": {
+                "line": 2,
+                "path": "app/transfer.py"
+              },
+              "problem": "The function returns the original balance for every successful transfer. For balance 100 and amount 20, it returns 100 instead of 80; transferring the full balance also fails to return zero.",
+              "severity": "blocking",
+              "target_id": "service.transfer"
+            },
+            {
+              "affected_task": "Reject integer transfers with insufficient balance or a nonpositive amount.",
+              "contract": "transfer raises ValueError unless amount is positive and balance is sufficient.",
+              "document": "specs/send-money.md",
+              "id": "transfer-rejection",
+              "location": {
+                "line": 2,
+                "path": "app/transfer.py"
+              },
+              "problem": "The function returns normally without validating either condition. Insufficient balance, zero amount, and negative amount therefore all succeed instead of raising ValueError.",
+              "severity": "blocking",
+              "target_id": "service.transfer"
+            }
+          ],
+          "gaps": [],
+          "input_digest": "sha256:b7625c98c7379c6f026225cd41ac065cef0c65af5aacf20ecd40d3a3b607950d",
+          "representative_tasks": [
+            "Transfer a positive integer amount from a sufficient balance.",
+            "Transfer the full positive balance and return zero.",
+            "Reject a positive amount exceeding the balance.",
+            "Reject zero and negative integer amounts.",
+            "Preserve purity without stored-balance changes, network access, persistence, retries, or collaborators.",
+            "Inspect the granted check file for assertions covering successful transfers and specified error cases."
+          ],
+          "review_mode": "code",
+          "status": "findings",
+          "target_id": "service.transfer",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:eea7280487da5dd25da53441e36ab99a1ba1f3a57587873db256eafe80a6b987",
+            "implementation_digest": "sha256:7fd2ec6d5a2c85686dd63970f66520003bb57afe2916da4265079b04d5b581c6",
+            "baseline": null,
+            "head": null
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:475b4d51555990515781f461539ff9d8e3fda802d6177b08858a4d9fe151ec03",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:2539b624e8e031579233aa891604db87d794f3da75b1da597b639edae0f6367e",
+        "limitations": "none",
+        "policy_digest": "sha256:93668b501166aa262d47e6c594e5c53c64d27f615f194fbf7f326a40b494376f",
+        "requested_launch_digest": "sha256:a8615b6056229f0d1967a9651226505fa8f442e9df7cb14daae0c52fa6f80732",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Read both granted implementation files using their absolute paths and reviewed both complete admitted contract documents.",
+          "name": "coverage",
+          "status": "passed"
+        },
+        {
+          "evidence": "Assessment remained within the granted target and documented integer domain. No checks were run and no files were modified.",
+          "name": "scope",
+          "status": "passed"
+        }
+      ],
+      "private_transcript_digest": "sha256:3c486e53c5d44c17835bf4db6bd3a2ae9561d41a5f2bf2d75f19d6d263ed350c"
+    },
+    {
+      "case": "code-correct",
+      "expected": "No defects for the admitted integer-input transfer contract",
+      "operation_status": "succeeded",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "Both granted implementation files were read and assessed against the complete two-document contract. No concrete defects or necessary Spec gaps were found for integer inputs. Coverage was by static inspection; checks were not run.",
+          "context_id": "sha256:6c6f68b22001f8c55cde9598cba545b58e9b46eec2d0fdf4801c2bddcae1df48",
+          "findings": [],
+          "gaps": [],
+          "input_digest": "sha256:37c075ece432dd8f3272b6d0d572499cb2bb441d4253385dd741bf64f92eeb54",
+          "representative_tasks": [
+            "Transfer a positive integer amount below the balance and return the remainder.",
+            "Transfer the full positive balance and return zero.",
+            "Reject zero or negative integer amounts with ValueError.",
+            "Reject positive integer amounts exceeding the balance, including zero or negative balances, with ValueError.",
+            "Compute results without persistence, network access, collaborators, or stored-balance mutation.",
+            "Inspect the supplied check file for agreement with successful-transfer and specified-error contracts."
+          ],
+          "review_mode": "code",
+          "status": "no_findings",
+          "target_id": "service.transfer",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:eea7280487da5dd25da53441e36ab99a1ba1f3a57587873db256eafe80a6b987",
+            "implementation_digest": "sha256:80e588efac3f8ec9007a479c15790f955c7cb12625f531b80ff0ab1cdfa21b76",
+            "baseline": null,
+            "head": null
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:615c639c68432b44df7ec7d26a59f4b36db4866f435620ce99d54bd00a6b6f39",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:5cea4ed3d300354b2e118194f63defbad45507e3323c501628e1f4dc0b181766",
+        "limitations": "none",
+        "policy_digest": "sha256:43cc8b7438b63a952813d9cefa38bf3c19025ad944286653758a0978cc56a754",
+        "requested_launch_digest": "sha256:72206346b57eff5810394620c0fe1a8980bb7f8225d7ccb8b4337092192da361",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Read both granted implementation files by absolute path and reviewed both admitted contract documents.",
+          "name": "admitted_coverage",
+          "status": "passed"
+        },
+        {
+          "evidence": "Only authorized implementation files were accessed; no checks were run and no files were modified.",
+          "name": "review_boundary",
+          "status": "passed"
+        }
+      ],
+      "private_transcript_digest": "sha256:144cb15d21d5d0d602184623cc657d7d2daf0dba474eada0b00861e3b950c3b2"
+    }
+  ],
+  "limits": "One defective and one correct fixture run. Exact model not independently pinned by this evaluation; receipt records installed Codex version. No statistical reliability or semantic completeness claim."
+}

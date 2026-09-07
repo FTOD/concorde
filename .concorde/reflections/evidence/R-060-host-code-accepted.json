@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-07",
+  "purpose": "Real independent reviewer evidence; exact input digests identify historical/current candidate bytes. No semantic completeness claim.",
+  "model_process": "Installed Codex CLI with native enforcement; no process double.",
+  "cases": [
+    {
+      "case": "service.workflow-host",
+      "task": "Review the current implementation of independent review and task-gap handling against the complete admitted Service and Shared Specs. Inspect the granted implementation files and scoped changes, prioritizing review.py, scoped_operations.py, change_worktree.py and test_review.py. Check separate read-only modes, input/version identity, result validation, required review gates, gap persistence/dedup/resume and Domain aggregation. Report concrete behavior or permission defects with reproducible triggers. Read relevant files by absolute path beneath /tmp/concorde-domain-scopes-edit. No edits or test execution. Distinguish coverage limits from missing necessary contracts; do not infer unadmitted provider behavior.",
+      "operation_status": "succeeded",
+      "outcome": "completed",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "No concrete contract violations were established in the covered paths. Assessment used the admitted contracts, scoped changes and granted implementation reads. Tests were inspected but not executed; runtime enforcement and universal semantic completeness are not proven.",
+          "context_id": "sha256:cb384e58d609d776296c0986ddf9f84032ae449c383e2cc03d845a153d7a58ef",
+          "findings": [],
+          "gaps": [],
+          "input_digest": "sha256:ebacfc1eb4f8e509450a7c514a9cb199c8bfcfa634f0f4aa90a29465ff3041fc",
+          "representative_tasks": [
+            "Launch separate Spec and code reviews with scoped inputs and empty write grants.",
+            "Reject mismatched review identities, invalid coverage and foreign finding locations.",
+            "Invalidate retained reviews after relevant input changes and reject blocking or incomplete required reviews.",
+            "Resume standard and fast loops while preserving required reviews and explicit skips.",
+            "Persist and deduplicate task gaps, retain rejected repairs, and reassess affected phases after Spec repair.",
+            "Aggregate separately scoped Domain component reviews and propagate stronger review requirements on resumption.",
+            "Verify required reviews and unresolved task gaps before readiness and delivery."
+          ],
+          "review_mode": "code",
+          "status": "no_findings",
+          "target_id": "service.workflow-host",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:cfe3cea2633c0d2490b4ee1cc986f2a142ab21baaafa461e924894c3f6347ee7",
+            "implementation_digest": "sha256:bb2ba0978c1ac9488c2da8a4d964623779906c947c985974477794a3ce97494f",
+            "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+            "head": "d63af7f37d21b9988d72591fbdc381713455786c"
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "artifact": {
+        "id": "review.service.workflow-host.code",
+        "path": ".concorde/runs/31bc20b5-3b77-4363-a8fc-fa41028333c8/review-service.workflow-host-code.json",
+        "digest": "sha256:900c437c4dbb71bf5d33cfc21f4414b74d63acb604a77fd74c8f20235bf985b3"
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:0098a5f5c74d663c52c3dc5266e9d2bf6ff4d7c38c054d0e7ef56b88295ac8ad",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:18f24497d508c07b0bee474b8e20a4635e5079f9c3bdba0b2515ac54ff619c86",
+        "limitations": "none",
+        "policy_digest": "sha256:f88552c339233f2a809665ce5c6c47ad8614970fd0291e3611fc714ff47b9c4f",
+        "requested_launch_digest": "sha256:7020564ce5f426c1f8f74d145a71f9d4cb054abbeb7b65d9d2d5a425c645425a",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Reviewed the complete supplied Target Spec and Shared Specs against the scoped changes and granted implementation paths.",
+          "name": "admitted_contract_review",
+          "status": "passed"
+        },
+        {
+          "evidence": "Used only authorized read operations; performed no edits, test execution, remote access or delegated review.",
+          "name": "review_boundary",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

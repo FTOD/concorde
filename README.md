@@ -24,7 +24,7 @@ Spec incomplete, not a search for arbitrary files. See [the principles](protocol
 
 ## Install and initialize
 
-The installer distributes canonical runtime, 22 paired public Operations, 7 internal roles and 9
+The installer distributes canonical runtime, 23 paired public Operations, 9 internal roles and 9
 Markdown templates to Codex or Claude. Check `python scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project, then invoke the paired init entry in an isolated worktree (or use the trusted host's explicit

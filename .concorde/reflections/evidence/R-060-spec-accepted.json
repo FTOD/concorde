@@ -1,0 +1,289 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-07",
+  "purpose": "Real independent reviewer evidence; exact input digests identify historical/current candidate bytes. No semantic completeness claim.",
+  "model_process": "Installed Codex CLI with native enforcement; no process double.",
+  "cases": [
+    {
+      "case": "module.agent-execution",
+      "task": "Review whether the complete Module Spec supports a consumer constructing the executor, invoking api.execution.execute with a host-built launch, and correctly handling successful completion, malformed completion and process failure. Use only the admitted Spec and identify necessary missing callable, type or behavior contracts.",
+      "operation_status": "succeeded",
+      "outcome": "completed",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "The complete admitted Module and Shared Spec support the requested consumer tasks. Constructor defaults and injection contracts, host-built launch requirements, validated success results, and exception/receipt handling are specified. No necessary missing contract was identified for this coverage.",
+          "context_id": "sha256:9ccb048c755c8f1d8d9fc866baa680843fbd5ae709e5142dbbc3d0da476384c5",
+          "findings": [],
+          "gaps": [],
+          "input_digest": "sha256:c04232dc39945b90eae14c62a35034c492ee376de932ddedc577e633bbfbb96a",
+          "representative_tasks": [
+            "Construct AgentProcessExecutor with default behavior or trusted injected runner, version probe, bootstrap hooks and filtered environment.",
+            "Invoke api.execution.execute with a host-built LaunchSpecification satisfying identity, policy and enforcement preconditions.",
+            "Consume a successful validated completion and retain its receipt binding the requested and finalized launches.",
+            "Handle malformed, mismatched or failed completion through OperationExecutionError and available failure receipt.",
+            "Handle nonzero process exit and preflight or runner failure, including nullable receipts, stopping the transition and preserving any previously authorized edits."
+          ],
+          "review_mode": "spec",
+          "status": "no_findings",
+          "target_id": "module.agent-execution",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:88e288f850f9e2a298638c87f0533983cbd9c3095e40c77e3c206752894661ea",
+            "implementation_digest": null,
+            "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+            "head": "d63af7f37d21b9988d72591fbdc381713455786c"
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "artifact": {
+        "id": "review.module.agent-execution.spec",
+        "path": ".concorde/runs/a3c38c70-2dd5-41d0-a284-1a1221d1b7f9/review-module.agent-execution-spec.json",
+        "digest": "sha256:3cd07f2ea774659749c3fce3f29d6ad6a5cefb10409f47b764e95bce791fad13"
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:c8197bab7ba35c7f63e95b15f980aaaf2e83ba0ea987c1a70622c9f4e861d1ac",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:50f6c2b09733023bd7e84269727608868806f0e910b95d58d971b1edf06de3e6",
+        "limitations": "none",
+        "policy_digest": "sha256:107fcf467a1d302c0daa5b6021f0491a27cc2c2d25b4074f14689605e26c7c9d",
+        "requested_launch_digest": "sha256:71082694f7e8b81a3cebe729aeb5ee37657845a58385a979971ec356466761bc",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Read the complete admitted Target Spec and Shared Spec and assessed the requested consumer tasks.",
+          "name": "contract_coverage",
+          "status": "passed"
+        },
+        {
+          "evidence": "Used only supplied context; inspected no implementation or ungranted material, ran no checks and made no changes.",
+          "name": "review_boundary",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "case": "module.registry",
+      "task": "Review whether the complete Module Spec supports constructing SpecRepository, selecting a target with an API focus, retrieving its full documents and contracts, and enumerating implementation files. Check callable signatures, returned types, errors and effects using only the admitted Spec.",
+      "operation_status": "succeeded",
+      "outcome": "completed",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "The complete admitted collection supports the requested representative tasks through explicit call shapes, configuration and returned records, selection and document-membership rules, local contract validation, file enumeration, errors and read-only effects. No concrete blocking gaps or advisory findings were identified within this scope.",
+          "context_id": "sha256:dbdb0c871038d70f89fccde955f12e47a45c516f8bd48540e027fb81f4c0e89c",
+          "findings": [],
+          "gaps": [],
+          "input_digest": "sha256:3693781bea2e9591a8f3c89fd17b00d5a0e5fbc4a94d11acdbb5d93f9e510b6c",
+          "representative_tasks": [
+            "Construct SpecRepository from Profile 8 configuration and pinned package assets, including candidate overlays and reconstruction after source changes.",
+            "Select a complete target with an owned API focus and handle unknown targets or invalid focuses.",
+            "Retrieve the complete ordered document collection, verify declarations and byte digests, and abort on reading or parsing failures.",
+            "Retrieve local contracts across Target Spec and Shared Specs, validate schemas and examples, and handle declared failures without partial results or peer-Spec access.",
+            "Enumerate sorted, unique existing implementation files under explicit grants, accounting for exclusions, missing paths and symlink rejection without reading contents or granting writes."
+          ],
+          "review_mode": "spec",
+          "status": "no_findings",
+          "target_id": "module.registry",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:78aaf0449632cae3c88d8c0e358578a9a184eed6d5ff373c54ab7abe40ddffda",
+            "implementation_digest": null,
+            "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+            "head": "d63af7f37d21b9988d72591fbdc381713455786c"
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "artifact": {
+        "id": "review.module.registry.spec",
+        "path": ".concorde/runs/3eb68196-bd42-437f-8aec-d2fbf14ba0ee/review-module.registry-spec.json",
+        "digest": "sha256:8d0b0b38b941de94f1220c54469aa775f2d1f8920105001d5feed3202e509c35"
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:c8197bab7ba35c7f63e95b15f980aaaf2e83ba0ea987c1a70622c9f4e861d1ac",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:fae9f30abe199e82231ac8d494312b7bdfe96e6025b76b3a9578870c23c592d5",
+        "limitations": "none",
+        "policy_digest": "sha256:107fcf467a1d302c0daa5b6021f0491a27cc2c2d25b4074f14689605e26c7c9d",
+        "requested_launch_digest": "sha256:6aec29febb86105e743d7721e5fdaa665d222437116143ed5dcab14274343f68",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Reviewed both complete admitted documents and the supplied Protocol requirements against the requested representative tasks.",
+          "name": "admitted_spec_coverage",
+          "status": "passed"
+        },
+        {
+          "evidence": "Used only supplied context; accessed no implementation or additional Specs, ran no commands, and modified no files.",
+          "name": "review_boundary",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "case": "module.spec-publication",
+      "task": "Review whether the complete Module Spec supports a consumer loading the registered publication model, materializing derived assets and validating a candidate build. Check callable interfaces, inputs, outputs, effects and failure handling using only the admitted Spec.",
+      "operation_status": "succeeded",
+      "outcome": "completed",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "The complete admitted Module Spec supports the requested consumer workflow. It defines callable interfaces, model and artifact types, input preconditions, materialization effects, build collaborators, validation criteria, and failure/retry obligations. No concrete blocking gaps or advisory findings were identified for the representative tasks reviewed.",
+          "context_id": "sha256:d7b4fc976f16770b0204e700334444e67e0164d987d153b855106762ad76e900",
+          "findings": [],
+          "gaps": [],
+          "input_digest": "sha256:305a31e7a778caab33b98ca98bdf8c5f81f76dd2080a2666f166de9c4a2717e0",
+          "representative_tasks": [
+            "Select the Profile 8 branch and load a registered publication model, handling invalid configuration, paths, memberships and contracts.",
+            "Interpret page identities, shared-document routes, content digests and source identity.",
+            "Rewrite supported local links, including same-target shared destinations, ambiguous destinations and rejected relative assets.",
+            "Prepare diagrams and materialize derived content, static assets and sidebar data; recover from partial failure through fresh preparation.",
+            "Use the publication plugin to enforce materialization identity, source freshness and rendered route coverage.",
+            "Validate candidate manifests and architecture graphs, reject stale or incomplete artifacts, and promote a validated candidate under the declared ownership and recovery preconditions."
+          ],
+          "review_mode": "spec",
+          "status": "no_findings",
+          "target_id": "module.spec-publication",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:1f5e808d5f0cfc33d70f1448226794dabfed11765cc156a62f59b75bb7cbf2f3",
+            "implementation_digest": null,
+            "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+            "head": "d63af7f37d21b9988d72591fbdc381713455786c"
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "artifact": {
+        "id": "review.module.spec-publication.spec",
+        "path": ".concorde/runs/9b1faa53-df72-4f3a-89d7-10489d398e40/review-module.spec-publication-spec.json",
+        "digest": "sha256:efa71c7a548c434c1f6b20f74e64d37fd03bbf6b5b4ac3aa421b72222e094a9f"
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:c8197bab7ba35c7f63e95b15f980aaaf2e83ba0ea987c1a70622c9f4e861d1ac",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:b4ed6b5d7f11e51a6c8fb26d00b0dba6911fca1370e12c5b3e1d0abb31117886",
+        "limitations": "none",
+        "policy_digest": "sha256:107fcf467a1d302c0daa5b6021f0491a27cc2c2d25b4074f14689605e26c7c9d",
+        "requested_launch_digest": "sha256:e80e7397287eba778671dbfe021471e81e42bbd5d061deab822fc4d589dede70",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Reviewed the entire admitted Target Spec; the admitted Shared Specs collection is empty.",
+          "name": "complete-admitted-context",
+          "status": "passed"
+        },
+        {
+          "evidence": "Assessment used only supplied Spec and Protocol content; no implementation, external sources, commands or mutations were used.",
+          "name": "review-boundary",
+          "status": "passed"
+        },
+        {
+          "evidence": "Covered the requested loading, materialization and candidate-validation workflow, including effects and failure handling.",
+          "name": "representative-task-coverage",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "case": "service.workflow-host",
+      "task": "Review whether the complete Service Spec supports planning a new independent read-only review Operation with separate Spec and code modes, typed results, task gaps and required review gates in development loops. Assess the provided public boundary and the locally stated collaborator promises required to plan this change. Use only the complete admitted Spec, without provider Specs or implementation.",
+      "operation_status": "succeeded",
+      "outcome": "completed",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "The admitted collection supports planning the independent review Operation and its development-loop integration. It defines separate read-only roles, scoped inputs, collaborator interfaces, typed findings and gaps, review freshness, required gates, and recovery behavior. No necessary missing promise or concrete contract defect was identified in the representative tasks covered. This bounded assessment does not prove universal semantic completeness.",
+          "context_id": "sha256:0eb4aee9bcc769e4bfbab5b9126c5a063137d78ef72bb6dd5ee3addb07051934",
+          "findings": [],
+          "gaps": [],
+          "input_digest": "sha256:9e19c148e417fa78954af379587ffac18d4f522867ddffc9404e75991ea7d51c",
+          "representative_tasks": [
+            "Admit and route an independent Spec or code review request while preserving the selected target and complete document collection.",
+            "Construct separate fresh read-only reviewer launches using the locally defined registry, context, permission and executor interfaces.",
+            "Derive scoped changes and version identities for managed, unmanaged and unversioned candidates, including deleted and untracked owned files.",
+            "Validate and publish typed review coverage, findings and gaps while distinguishing advisory findings, blockers, incomplete coverage and execution failures.",
+            "Enforce standard and optional fast-loop review gates, preserve enabled requirements across retries, and invalidate stale review evidence before readiness or delivery.",
+            "Coordinate separately scoped Domain component reviews and reuse completed component work only after required reviews are current.",
+            "Preserve task-gap history, resolve affected gaps after accepted repair assessments, and explicitly capture selected gaps as durable Reflection links."
+          ],
+          "review_mode": "spec",
+          "status": "no_findings",
+          "target_id": "service.workflow-host",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:cfe3cea2633c0d2490b4ee1cc986f2a142ab21baaafa461e924894c3f6347ee7",
+            "implementation_digest": null,
+            "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+            "head": "d63af7f37d21b9988d72591fbdc381713455786c"
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "artifact": {
+        "id": "review.service.workflow-host.spec",
+        "path": ".concorde/runs/f9a4039a-4e6a-4831-a94a-05a13460afba/review-service.workflow-host-spec.json",
+        "digest": "sha256:1c5cde6e99c5737b617bb9ad731daaa54389112bc02587209ea5efd40a6a76b2"
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:c8197bab7ba35c7f63e95b15f980aaaf2e83ba0ea987c1a70622c9f4e861d1ac",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:1f1d2f1f26ce84b5962afbf1c7fb6b4718e8ff60415fc5ed87d31388705cf942",
+        "limitations": "none",
+        "policy_digest": "sha256:107fcf467a1d302c0daa5b6021f0491a27cc2c2d25b4074f14689605e26c7c9d",
+        "requested_launch_digest": "sha256:d8a3f75946c609041058366e12732e6f9e0a19cbb3f2efbd3bf4ce9545d9d4da",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Assessed all five admitted documents and the supplied Protocol principles and Service definition against the listed representative tasks.",
+          "name": "admitted_collection_coverage",
+          "status": "passed"
+        },
+        {
+          "evidence": "Used only supplied Spec context; accessed no implementation, other Specs, remote sources or repository guidance, and performed no writes or validation commands.",
+          "name": "review_boundary",
+          "status": "passed"
+        },
+        {
+          "evidence": "The typed result binds the supplied context ID, input digest and Spec review mode and includes nonempty representative coverage.",
+          "name": "result_binding",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

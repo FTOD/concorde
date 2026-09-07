@@ -128,6 +128,22 @@ Keep this user comment intact.
         def cb(*args):self.finding(*args);args[2]['reflection_findings'][0]['verified_commit']='0'*40
         result=self.run_op('concorde-reflections-triage',self.task('investigate'),cb)
         self.assertNotEqual('succeeded',result['status']);self.assertTrue((self.root/'.concorde/reflections/pending/R-001.md').exists())
+    def test_rejected_investigation_preserves_its_gap_until_host_acceptance(self):
+        self.record()
+        def missing(stage,snap,data,cwd):
+            if stage=='implementation':
+                data.update(outcome='spec_incomplete',gaps=[{'question':'Who owns admission?',
+                    'blocked_step':'Investigate transfer admission','needed_contract':'Admission ownership'}])
+        task=self.task('investigate')
+        self.assertEqual('blocked',self.run_op('concorde-reflections-triage',task,missing)['status'])
+        path=self.root/'specs/send-money.md';path.write_text(path.read_text()+'\nTransfer owns admission.\n')
+        def invalid(*args):self.finding(*args);args[2]['reflection_findings'][0]['verified_commit']='0'*40
+        result=self.run_op('concorde-reflections-triage',task,invalid)
+        self.assertNotEqual('succeeded',result['status'],result)
+        state=json.loads((self.root/'.concorde/worktree.json').read_text())
+        self.assertEqual('open',state['gap_history'][0]['status']);self.assertTrue(state['gaps'])
+        self.assertEqual('succeeded',self.run_op('concorde-reflections-triage',task,self.finding)['status'])
+        self.assertEqual('resolved',json.loads((self.root/'.concorde/worktree.json').read_text())['gap_history'][0]['status'])
     def test_reflection_implementation_restarts_spec_cognition_and_marks_plan(self):
         self.record();result=self.run_op('concorde-reflections-triage',self.task('implement'),self.finding)
         self.assertEqual('succeeded',result['status'],result)

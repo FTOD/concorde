@@ -70,7 +70,7 @@ class AlignmentExplorerContractTests(unittest.TestCase):
 
     def test_distribution_does_not_add_a_conversational_explorer_skill(self):
         manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
-        self.assertEqual(len(manifest["skills"]), 7)
+        self.assertEqual(len(manifest["skills"]), 9)
         self.assertIn("concorde-coordinator", manifest["skills"])
         self.assertIn("concorde-main", manifest["operations"])
         self.assertFalse(any("explore" in skill for skill in manifest["skills"]))

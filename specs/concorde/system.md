@@ -59,7 +59,7 @@ expansion.
 
 The Operation host uses the context Service before each agent stage. It executes a fresh process,
 receives typed completion, then either persists only authorized changes or reports the exact blocked
-outcome. Code is available only to implementation stages. Business facts missing from the Spec may
+outcome. Code is available to implementation stages and their dedicated read-only code-review role. Business facts missing from the Spec may
 not be reconstructed from code. The host runs separately configured checks and retains their logs;
 only bounded check status and revision identities can cross back to Spec-only work.
 
@@ -80,10 +80,14 @@ topology change tasks every affected reference and accepts a shared replacement 
 candidate referencing authors return identical bytes; the resulting transaction intentionally
 invalidates every referencing context.
 
-Delivery means all selected tasks are complete, required checks pass, local/shared contracts are
-valid and evidence still matches current Spec and implementation bytes. It removes the completed
-attempt. Delivery does not merge or publish a branch. Failure preserves an inspectable attempt;
-retry requires the same intent and current evidence, or an explicitly new change after Spec edits.
+A candidate becomes ready only when selected tasks, required checks and required reviews complete,
+local/shared contracts are valid, concrete task gaps are resolved and evidence still matches current
+Spec, code and review inputs. The standard loop reviews Spec before planning and code after checks;
+fast loops explicitly record disabled review and cannot downgrade prior requirements. A review with
+no findings is bounded evidence, not proof of universal semantic completeness. Delivery is a separate
+primary-session action that verifies the actual merge, merges into the primary worktree's current
+branch, and removes the delivered candidate worktree. Failure preserves the candidate and its
+recorded progress; repair resumes with current contexts and invalidated stale evidence.
 
 ## feature.concorde.evolve-protocol
 

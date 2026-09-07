@@ -68,19 +68,26 @@ AGENT_OPERATIONS = {
     "concorde-context-solve": ("context-solve", "concorde-context-assessor"),
 }
 TARGET_AGENT_STAGES = {"concorde-read-target": ("ask", "concorde-reader")}
+REVIEW_STAGES = {"spec": ("spec-review", "concorde-spec-reviewer"),
+                 "code": ("code-review", "concorde-code-reviewer")}
 DETERMINISTIC_OPERATIONS = ("concorde-resolve-context", "concorde-context", "concorde-init",
     "concorde-configure", "concorde-migrate", "concorde-validate", "concorde-deliver", "concorde-taskstoissues")
 COMPOSITE_OPERATIONS = ("concorde-standard-dev-loop", "concorde-fast-loop", "concorde-reflections-triage")
 MAIN_OPERATION = "concorde-main"
-OPERATIONS = tuple(sorted((MAIN_OPERATION, *AGENT_OPERATIONS, *DETERMINISTIC_OPERATIONS, *COMPOSITE_OPERATIONS)))
+OPERATIONS = tuple(sorted((MAIN_OPERATION, "concorde-review", *AGENT_OPERATIONS, *DETERMINISTIC_OPERATIONS, *COMPOSITE_OPERATIONS)))
 MAIN_ROUTED_OPERATIONS = frozenset({"concorde-analyze", MAIN_OPERATION, "concorde-checklist",
     "concorde-clarify", "concorde-constitution", "concorde-context-solve", "concorde-fast-loop",
-    "concorde-plan", "concorde-specify", "concorde-standard-dev-loop"})
+    "concorde-plan", "concorde-review", "concorde-specify", "concorde-standard-dev-loop"})
 INTERNAL_SKILLS = tuple(sorted({"concorde-coordinator", *(role for _, role in AGENT_OPERATIONS.values()),
+                                *(role for _, role in REVIEW_STAGES.values()),
                                 *(role for _, role in TARGET_AGENT_STAGES.values())}))
 INTERNAL_DATA_TYPES = (
     "concorde-agent-stage-context",
     "concorde-agent-stage-result",
+    "concorde-review-input",
+    "concorde-review-stage-context",
+    "concorde-review-stage-result",
+    "concorde-review-result",
     "concorde-context-manifest",
     "concorde-context-snapshot",
     "concorde-discovery-context",
@@ -100,10 +107,12 @@ def dependencies(operation: str) -> tuple[str, ...]:
         result = ("concorde-coordinator", "concorde-reader", "concorde-spec-author")
     elif operation == "concorde-plan":
         result = ("concorde-context-assessor", "concorde-planner")
+    elif operation == "concorde-review":
+        result = tuple(role for _, role in REVIEW_STAGES.values())
     elif operation == "concorde-standard-dev-loop":
-        result = tuple("concorde-"+x for x in ("specify","plan","tasks","implement","validate"))
+        result = tuple("concorde-"+x for x in ("specify","review","plan","tasks","implement","validate"))
     elif operation == "concorde-fast-loop":
-        result = tuple("concorde-"+x for x in ("plan","tasks","implement","validate"))
+        result = tuple("concorde-"+x for x in ("review","plan","tasks","implement","validate"))
     elif operation == "concorde-reflections-triage":
         result = ("concorde-implementation-worker", "concorde-standard-dev-loop")
     else:
@@ -133,6 +142,12 @@ def schemas() -> dict:
             "checks": array(CHECK_RESULT), "completed_operations": array(STRING)})
     for name in MAIN_ROUTED_OPERATIONS:
         result[f"{name}-request"] = obj(TASK_FIELDS, ("target_id", *TASK_OPTIONAL))
+    result["concorde-review-request"] = obj({**TASK_FIELDS,
+        "review_mode": {"enum": ["spec", "code"]}}, ("target_id", *TASK_OPTIONAL))
+    result["concorde-fast-loop-request"] = obj({**TASK_FIELDS,
+        "run_reviews": {"type": "boolean"}}, ("target_id", *TASK_OPTIONAL, "run_reviews"))
+    result["concorde-review-response"]["properties"]["reviews"] = array(typed_schema("concorde-review-result"))
+    result["concorde-review-response"]["required"].append("reviews")
     result["concorde-main-request"] = obj({"action": {"enum": ["ask", "design-topology", "accept-topology", "apply-topology"]},
         "task": STRING, "target_id": STRING, "focus_id": STRING, "constraints": array(STRING),
         "topology_proposal": typed_schema("concorde-topology-proposal"),
@@ -151,7 +166,7 @@ def schemas() -> dict:
         "target_id": STRING, "task": STRING, "focus_id": STRING, "constraints": array(STRING)},
         ("target_id", "task", "focus_id", "constraints"))
     for name in ("concorde-context", "concorde-resolve-context"):
-        result[f"{name}-request"] = obj({**TASK_FIELDS, "phase": {"enum": ["ask", "specify", "plan", "tasks", "implementation", "validate", "deliver", "context-solve"]}}, (*TASK_OPTIONAL, "phase"))
+        result[f"{name}-request"] = obj({**TASK_FIELDS, "phase": {"enum": ["ask", "specify", "plan", "tasks", "implementation", "spec-review", "code-review", "validate", "deliver", "context-solve"]}}, (*TASK_OPTIONAL, "phase"))
         result[f"{name}-response"] = obj({"manifest": typed_schema("concorde-context-manifest")})
     config = typed_schema("concorde-operation-configuration")
     proposal_file = obj({"path": PATH, "before_digest": {"anyOf": [DIGEST, {"type": "null"}]}, "content": {"type": "string"}})
@@ -171,8 +186,9 @@ def schemas() -> dict:
     result["concorde-configure-response"] = obj({"configuration": config, "status": {"const": "applied"}})
     result["concorde-validate-request"] = obj({**TASK_FIELDS, "run_checks": {"type": "boolean"}}, (*TASK_OPTIONAL, "run_checks"))
     result["concorde-reflections-triage-request"] = obj({**TASK_FIELDS,
-        "action": {"enum": ["status", "investigate", "implement", "merge", "close"]},
-        "reflection_ids": array(STRING, unique=True)}, (*TASK_OPTIONAL, "task"))
+        "action": {"enum": ["status", "record-gaps", "investigate", "implement", "merge", "close"]},
+        "reflection_ids": array(STRING, unique=True), "gap_ids": array(DIGEST, unique=True)},
+        (*TASK_OPTIONAL, "task", "gap_ids"))
     document_ref = obj({"document_id": STRING, "path": PATH, "digest": DIGEST,
         "targets": {**array(STRING, unique=True), "minItems": 1},
         "main_visible": {"type": "boolean"}})
@@ -183,6 +199,9 @@ def schemas() -> dict:
     result["concorde-reflection-selection"] = obj({"head": STRING, "records": array(obj({"id":STRING,"path":PATH,"digest":DIGEST,"content":STRING}))})
     stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-implementation-task","concorde-reflection-selection")]}
     result["concorde-reflections-triage-response"]["properties"]["reflections"] = array(obj({"id":STRING,"target_id":STRING,"status":STRING,"triage":STRING,"bucket":STRING,"plan_status":NULLABLE_ID,"verification":NULLABLE_ID}))
+    result["concorde-reflections-triage-response"]["properties"]["gap_records"] = array(obj({
+        "id": DIGEST, "target_id": STRING, "task": STRING, "phase": STRING, "gap": GAP,
+        "status": {"enum": ["open", "resolved"]}, "reflection_id": NULLABLE_ID}))
     result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 1},
         "target_id": STRING, "kind": {"enum": ["domain", "service", "module"]}, "focus_id": NULLABLE_ID,
         "phase": STRING, "task": STRING, "constraints": array(STRING),
@@ -201,6 +220,30 @@ def schemas() -> dict:
         "shared_specs": array(document_ref), "workspace": WORKSPACE_CONTEXT})
     result["concorde-agent-stage-context"] = obj({"snapshot": typed_schema("concorde-context-snapshot"),
         "change_id": NULLABLE_ID, "expected_artifacts": array(PATH)})
+    revision = obj({"spec_digest": DIGEST,
+        "implementation_digest": {"anyOf": [DIGEST, {"type": "null"}]},
+        "baseline": NULLABLE_ID, "head": NULLABLE_ID})
+    result["concorde-review-input"] = obj({"review_mode": {"enum": ["spec", "code"]},
+        "input_digest": DIGEST, "revision": revision,
+        "changes": array(obj({"path": PATH, "patch": {"type": "string"}}))})
+    result["concorde-review-stage-context"] = obj({"snapshot": typed_schema("concorde-context-snapshot"),
+        "review": typed_schema("concorde-review-input")})
+    review_fields = {"context_id": DIGEST, "input_digest": DIGEST,
+        "review_mode": {"enum": ["spec", "code"]},
+        "status": {"enum": ["no_findings", "findings", "incomplete"]},
+        "representative_tasks": array(STRING, unique=True),
+        "findings": array(obj({"id": STRING, "severity": {"enum": ["blocking", "advisory"]},
+            "target_id": STRING, "document": PATH, "contract": STRING,
+            "location": obj({"path": PATH, "line": {"anyOf": [
+                {"type": "integer", "minimum": 1}, {"type": "null"}]}}),
+            "problem": STRING, "affected_task": STRING})),
+        "gaps": array(GAP), "answer": STRING}
+    result["concorde-review-stage-result"] = obj(review_fields)
+    result["concorde-review-result"] = obj({**review_fields,
+        "context_id": {"anyOf": [DIGEST, {"type": "null"}]},
+        "status": {"enum": ["no_findings", "findings", "incomplete", "skipped", "not_run"]},
+        "target_id": STRING, "focus_id": NULLABLE_ID, "revision": revision,
+        "semantic_completeness": {"const": "not_proven"}})
     result["concorde-agent-stage-result"] = obj({"context_id": DIGEST,
         "outcome": {"enum": ["completed", "sufficient", "spec_incomplete", "unsupported", "conflicting", "failed"]},
         "answer": {"type": "string"}, "gaps": array(GAP), "documents": array(DOCUMENT_CHANGE),

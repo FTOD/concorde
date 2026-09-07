@@ -54,8 +54,8 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertEqual(self.package.version, "4.0.0")
         self.assertEqual(self.package.manifest["architecture_profile"], 8)
         self.assertEqual(self.package.manifest["workspace_protocol"], 14)
-        self.assertEqual(len(self.package.manifest["skills"]), 7)
-        self.assertEqual(len(self.package.manifest["operations"]), 22)
+        self.assertEqual(len(self.package.manifest["skills"]), 9)
+        self.assertEqual(len(self.package.manifest["operations"]), 23)
         self.assertEqual(len(self.package.manifest["templates"]), 9)
         self.assertEqual(
             self.package.manifest["operation_runtime"]["venv"],

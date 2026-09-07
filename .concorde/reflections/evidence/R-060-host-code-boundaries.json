@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-07",
+  "purpose": "Real independent reviewer evidence; exact input digests identify historical/current candidate bytes. No semantic completeness claim.",
+  "model_process": "Installed Codex CLI with native enforcement; no process double.",
+  "cases": [
+    {
+      "case": "service.workflow-host",
+      "task": "Review the current implementation of independent review and task-gap handling against the complete admitted Service and Shared Specs. Inspect the granted implementation files and scoped changes, prioritizing review.py, scoped_operations.py, change_worktree.py and test_review.py. Check separate read-only modes, input/version identity, result validation, required review gates, gap persistence/dedup/resume and Domain aggregation. Report concrete behavior or permission defects with reproducible triggers. Read relevant files by absolute path beneath /tmp/concorde-domain-scopes-edit. No edits or test execution. Distinguish coverage limits from missing necessary contracts; do not infer unadmitted provider behavior.",
+      "operation_status": "blocked",
+      "outcome": "conflicting",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "Found two concrete defects: failed policy previews persist review state, and standalone task generation can advance despite a failed required Spec review. Assessment used static inspection; no tests were executed.",
+          "context_id": "sha256:c5fe483ada95e429eda90e97d7b4a572b88bdaaee6c1e2d1cc17cd8e4473d25a",
+          "findings": [
+            {
+              "affected_task": "Preview review permissions without modifying project state",
+              "contract": "Describe-policy must not launch agents or mutate project state, including review persistence.",
+              "document": "specs/concorde/services/operation-boundary.md",
+              "id": "review-preview-persists-failure",
+              "location": {
+                "line": 266,
+                "path": "src/concorde/capabilities/review.py"
+              },
+              "problem": "The exception handler unconditionally persists an incomplete report, including during describe-policy. Request a review preview with initialized outer enforcement but no verified outer sandbox: rendering fails under the admitted renderer contract, then this handler writes review and execution artifacts. In a managed change it can also replace required review evidence and invalidate readiness. Guard failure persistence by execute mode.",
+              "severity": "blocking",
+              "target_id": "service.workflow-host"
+            },
+            {
+              "affected_task": "Generate tasks from an existing plan after a required Spec review becomes blocking",
+              "contract": "Required review failure blocks advancement; dependent planning and task steps must pause.",
+              "document": "specs/concorde/services/operation-boundary.md",
+              "id": "tasks-bypass-required-spec-review",
+              "location": {
+                "line": 1172,
+                "path": "src/concorde/capabilities/scoped_operations.py"
+              },
+              "problem": "Standalone tasks checks plan freshness but never checks the required Spec review. After a standard loop has saved a plan, run a same-intent standalone Spec review that reports a blocking gap, then invoke concorde-tasks with unchanged Spec bytes. The plan remains current, and stage checks only gaps in the tasks phase, so task generation runs and can save tasks despite the open spec-review blocker. The review gate in plan() does not protect this entry point. Enforce the required Spec review before dependent task generation.",
+              "severity": "blocking",
+              "target_id": "service.workflow-host"
+            }
+          ],
+          "gaps": [],
+          "input_digest": "sha256:a58fbd947acb1142b9e4017ec5cb9ea02ef0f7d9db1cfef14d96c0f493cba96d",
+          "representative_tasks": [
+            "Launch separate read-only Spec and code reviewers with scoped changes",
+            "Validate review identities, findings, gaps and completion status",
+            "Reuse reviews only for current inputs and intact artifacts",
+            "Preview review policy when enforcement admission fails",
+            "Resume standard and fast loops with persistent required reviews",
+            "Persist, deduplicate and resolve task gaps after accepted repairs",
+            "Generate standalone tasks after a required Spec review blocks",
+            "Aggregate Domain component reviews and verify readiness and delivery gates"
+          ],
+          "review_mode": "code",
+          "status": "findings",
+          "target_id": "service.workflow-host",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:cfe3cea2633c0d2490b4ee1cc986f2a142ab21baaafa461e924894c3f6347ee7",
+            "implementation_digest": "sha256:2d8c6c7ed17be569bdd8ad9b854b4049a8a2397daaec969e8cd83be5fb23cf91",
+            "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+            "head": "d63af7f37d21b9988d72591fbdc381713455786c"
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "artifact": {
+        "id": "review.service.workflow-host.code",
+        "path": ".concorde/runs/49465e3a-8656-4978-bcfc-02c382a64296/review-service.workflow-host-code.json",
+        "digest": "sha256:4e9d02e53bad7fdf4786d5a1d5c511e5577b361bb1892b2e2bbd1a2803623aaf"
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:b7d4e50f82ed41dc27135d60e88d20400503ce8ac969ac1258ca9dbf5ad68acd",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:5256559f04ab5c0d73f05ca33601689df6d0a5098cfe3c12139189f26d445959",
+        "limitations": "none",
+        "policy_digest": "sha256:729bd1e1598c924366b03ce1d59855b893460bba64419068f565869001daf1d0",
+        "requested_launch_digest": "sha256:aa8f1850d17d912bafba552e5b7ee2fd2d1519dff8df80310e9fa48289722dd6",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Reviewed the complete supplied document collection and traced relevant granted implementation and tests without edits or validation commands.",
+          "name": "bounded-review",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

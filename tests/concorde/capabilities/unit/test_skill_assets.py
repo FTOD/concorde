@@ -123,7 +123,7 @@ class SkillAssetTests(unittest.TestCase):
             operation.operation,
             "operations/concorde-standard-dev-loop/operation.py",
         )
-        self.assertEqual(operation.capabilities[:3], ("concorde-coordinator", "concorde-specify", "concorde-plan"))
+        self.assertEqual(operation.capabilities[:4], ("concorde-coordinator", "concorde-specify", "concorde-review", "concorde-plan"))
         self.assertIn(
             "python3 scripts/run-operation.py "
             "operations/concorde-standard-dev-loop/operation.py",
@@ -203,7 +203,7 @@ class SkillAssetTests(unittest.TestCase):
         manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
         for integration, prefix in (("codex", ".agents"), ("claude", ".claude")):
             rendered = render_capabilities(REPOSITORY_ROOT, integration, "")
-            self.assertEqual(len(rendered), 22)
+            self.assertEqual(len(rendered), 23)
             expected_public = set()
             self.assertEqual(
                 set(rendered),

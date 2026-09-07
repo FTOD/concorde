@@ -1,0 +1,90 @@
+---
+name: concorde-review
+description: "Review a complete admitted Spec or its target implementation in an independent read-only session."
+compatibility: "Requires a Concorde project"
+metadata:
+  author: "concorde"
+  source: "operations/concorde-review/SKILL.md"
+  kind: "operation"
+  exposure: "public"
+  entrypoint: "operations/concorde-review/operation.py"
+---
+# concorde-review
+
+Invoke this Operation with review_mode=spec or code. The host routes the task, resolves the complete Target Spec and Shared Specs, and starts a fresh reviewer with no project write authority. Spec review cannot read implementation. Code review reads only the target's registered implementation files. Neither mode can modify source, Spec or tests. The host captures structured results and receipts separately.
+
+Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-operation.py operations/concorde-review/operation.py`. Its exact fields are type_id, schema_version:2, operation_id:"concorde-review", mode:"execute" or "describe-policy", configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-review-request@1). Supply task and review_mode; target_id/focus_id are routing hints for a new request. A change_id selects the current worktree's bound change, never another worktree's contents.
+
+Use the executable boundary; do not perform the review in this ambient conversation or inspect project files to fill gaps. The full granted collection is reviewed against representative tasks. The host scopes changes to the selected target and binds results to the candidate's current bytes and its recorded committed base (HEAD for an unmanaged checkout). Cross-target work requires separately bound reviewers and only typed result aggregation.
+
+Report no_findings, findings, incomplete, and host-only not_run/skipped distinctly. A blocking contract gap pauses dependent work and carries question, blocked_step and needed_contract. Nonblocking suggestions remain findings. Input changes invalidate the conclusion; no review proves universal semantic completeness. Public output contains findings, gaps, version identities and result ArtifactRefs, never raw code or logs. This Operation does not repair files or deliver changes.
+
+## Input TypedValue schema
+
+This complete schema is the invocation's input field. It does not grant project reads.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "type_id": {
+      "const": "concorde-review-request"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "data": {
+      "$ref": "#/$defs/concorde-review-request"
+    }
+  },
+  "required": [
+    "type_id",
+    "schema_version",
+    "data"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "concorde-review-request": {
+      "type": "object",
+      "properties": {
+        "target_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task": {
+          "type": "string",
+          "minLength": 1
+        },
+        "focus_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "change_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "review_mode": {
+          "enum": [
+            "spec",
+            "code"
+          ]
+        }
+      },
+      "required": [
+        "task",
+        "review_mode"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
+```

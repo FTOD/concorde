@@ -386,6 +386,8 @@ def _codex_argv(
         "--ignore-user-config",
         "--strict-config",
         "-c",
+        "project_doc_max_bytes=0",
+        "-c",
         f"default_permissions={_toml_value(profile)}",
         "-c",
         'approval_policy="never"',
@@ -413,8 +415,9 @@ def render_codex_configuration(
         "filesystem": {
             ":root": "deny",
             ":minimal": "read",
-            ":tmpdir": "deny",
-            ":slash_tmp": "deny",
+            # There is no inherited temporary-directory grant. Root default-deny
+            # already excludes ungranted temporary files. An explicit ancestor
+            # /tmp deny hides legitimate descendant grants in native sandboxes.
             ":workspace_roots": _codex_rules(policy),
         },
         "network": {"enabled": policy.network_enabled, "domains": {}},
@@ -422,13 +425,16 @@ def render_codex_configuration(
     configuration = {
         "default_permissions": profile,
         "approval_policy": "never",
+        # Context is supplied by the host. Ambient AGENTS.md discovery both leaks
+        # ungranted instructions and fails to start under a default-deny profile.
+        "project_doc_max_bytes": 0,
         "permissions": {profile: profile_configuration},
         "features": {"network_proxy": policy.network_enabled},
     }
     argv = (
         _codex_argv(profile, profile_configuration, policy.network_enabled)
         if native_enforcement
-        else ("codex", "--ask-for-approval", "never", "exec", "--ephemeral", "--ignore-user-config", "--strict-config", "-")
+        else ("codex", "--ask-for-approval", "never", "exec", "--ephemeral", "--ignore-user-config", "--strict-config", "-c", "project_doc_max_bytes=0", "-")
     )
     bootstrap: tuple[RuntimeBootstrapFile, ...] = ()
     bootstrap_digest = runtime_bootstrap_digest(bootstrap)

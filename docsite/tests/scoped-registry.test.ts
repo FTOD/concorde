@@ -3,7 +3,9 @@ import {tmpdir} from 'node:os';
 import {resolve,dirname} from 'node:path';
 import {beforeEach,afterEach,it,expect} from 'vitest';
 import {loadScopedRegistry,rewriteLinks,type Target} from '../plugins/scoped-content/model';
-import {scopedSidebar} from '../plugins/scoped-content/materialize';
+import {materializeScoped,scopedSidebar} from '../plugins/scoped-content/materialize';
+import scopedContent from '../plugins/scoped-content';
+import type {LoadContext} from '@docusaurus/types';
 let root:string,targets:Target[];
 function put(path:string,text:string){mkdirSync(dirname(resolve(root,path)),{recursive:true});writeFileSync(resolve(root,path),text);}
 function target(id:string,kind:Target['kind'],documents:string[]):Target{return{id,kind,title:id,documents,scope_parent:null,component_parent:null,participates_in:[],implementation:[],features:[],apis:[],checks:[],diagrams:[]};}
@@ -34,3 +36,20 @@ it('binds source identity to content and membership order',()=>{const first=load
 it('rejects symlink path components',()=>{rmSync(resolve(root,'specs/arbitrary.md'));symlinkSync(resolve(root,'specs/promises.md'),resolve(root,'specs/arbitrary.md'));expect(()=>loadScopedRegistry(root)).toThrow(/Symlink/);});
 it('rewrites only registered navigation and leaves code examples intact',()=>{putSpec('specs/arbitrary.md',['service.transfer'],'# Use\n\n[Promise](promises.md)\n\n```md\n[Example](unknown.md)\n```');let r=loadScopedRegistry(root);let p=r.pages.find(p=>p.sourcePath==='specs/arbitrary.md')!;expect(rewriteLinks(r,p)).toContain('/specs/service.transfer/');expect(rewriteLinks(r,p)).toContain('[Example](unknown.md)');p.content+='\n[Wrong](unknown.md)';expect(()=>rewriteLinks(r,p)).toThrow(/Unregistered/);});
 it('exposes Module APIs directly and independent navigation trees',()=>{const r=loadScopedRegistry(root);expect(scopedSidebar(r).map(g=>g.label)).toEqual(['Domain scopes','Components']);targets[3].features=[{id:'feature.ledger',title:'Artificial',document:'specs/api.md'}];save();expect(()=>loadScopedRegistry(root)).toThrow(/APIs/);});
+it('rejects sources changed between materialization and plugin loading even when routes are unchanged',async()=>{
+ const original=loadScopedRegistry(root);await materializeScoped(original);
+ const plugin=()=>scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
+ expect((await plugin().loadContent!())?.sourceDigest).toBe(original.sourceDigest);
+ put('specs/promises.md',readFileSync(resolve(root,'specs/promises.md'),'utf8')+'\nNew promise.');
+ const changed=loadScopedRegistry(root);expect(changed.pages.map(p=>p.route)).toEqual(original.pages.map(p=>p.route));
+ await expect(plugin().loadContent!()).rejects.toThrow(/Materialized Spec source identity differs/);
+ await materializeScoped(changed);
+ expect((await plugin().loadContent!())?.sourceDigest).toBe(changed.sourceDigest);
+});
+it('invalidates the previous materialization identity before a failed preparation',async()=>{
+ await materializeScoped(loadScopedRegistry(root));
+ put('specs/promises.md',readFileSync(resolve(root,'specs/promises.md'),'utf8')+'\n[Missing](missing.md)');
+ await expect(materializeScoped(loadScopedRegistry(root))).rejects.toThrow(/Unregistered/);
+ const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
+ await expect(plugin.loadContent!()).rejects.toThrow(/ENOENT/);
+});

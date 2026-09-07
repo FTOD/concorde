@@ -1,0 +1,184 @@
+```concorde-document
+{
+  "id": "document.shared.agent-runtime-contracts",
+  "targets": ["service.workflow-host", "module.agent-execution", "module.permissions"],
+  "main_visible": false
+}
+```
+
+# Agent runtime value and collaborator contracts
+
+This registered Shared Spec defines the exact public value records used by the Operation host,
+permission compiler and executor. These are Python in-process contracts; they do not give an agent
+permission to construct its own grant. Strings called digests are canonical `sha256:` plus 64 lower-case
+hex digits. Paths in policies are project-relative POSIX paths without aliases or symlinks; an
+attested runtime bootstrap path is the explicitly distinguished absolute native-client file.
+
+## Policy construction
+
+```python
+EffectDeclaration(reads: tuple[str, ...] = (), writes: tuple[str, ...] = (),
+                  network: bool = False, credentials: Literal["none", "declared"] = "none")
+PolicyBinding(operation: str, stage: str, occurrence: int, capability: str, agent: str,
+              read_roles: tuple[str, ...] | None = None,
+              write_roles: tuple[str, ...] | None = None,
+              network: bool | None = None,
+              credentials: Literal["none", "declared"] | None = None)
+compile_policy(effects: EffectDeclaration, binding: PolicyBinding,
+               role_paths: Mapping[str, tuple[str, ...]], *, deny_paths: tuple[str, ...] = (),
+               outer_sandbox_required: bool = False) -> NormalizedPolicy
+```
+
+Effects declare the leaf role's maximum authority. A binding selects a subset; `None` retains that
+field's declared effect. Every selected role must have a host-provided concrete path tuple. Writes
+must also be readable. Unknown/duplicate roles, unsafe paths, widened reads/writes/network/credentials
+raise `PermissionPolicyError(ValueError)`. Compile does not launch a process or write project files.
+The default-deny result additionally denies common credential paths. Explicit path grants never
+turn a task string, file link, registry relationship or returned ArtifactRef into authority.
+
+`NormalizedPolicy` is a frozen record with these attributes:
+
+| Attribute | Type and meaning |
+|---|---|
+| operation, stage, capability, agent | str; the exact bound Operation and role identities |
+| occurrence | int; this stage occurrence |
+| read_paths, write_paths, deny_paths | tuple[str, ...]; sorted, deduplicated concrete grants/denies |
+| default_deny | bool; compiler results are true |
+| network_enabled | bool; cannot exceed effects |
+| credentials | Literal["none", "declared"]; cannot exceed effects |
+| outer_sandbox_required | bool; host requires verified outer enforcement |
+| digest | str; identity of this binding and effective policy |
+
+Spec workers and Spec reviewers receive only `spec-context`. Implementation workers additionally
+receive `implementation` with writes. Code reviewers receive the current target's enumerated
+implementation files for reading, with an empty write-role tuple. Native review grants cannot
+modify Spec, source, tests, context capsules, or lifecycle records.
+
+## Native launch configurations
+
+```python
+render_codex_configuration(policy: NormalizedPolicy, *, native_enforcement: bool,
+                           outer_sandbox: str | None = None) -> CodexLaunchConfiguration
+render_claude_configuration(policy: NormalizedPolicy, *, native_enforcement: bool,
+                            outer_sandbox: str | None = None) -> ClaudeLaunchConfiguration
+verify_effective_subset(declared: NormalizedPolicy, effective: NormalizedPolicy) -> None
+compare_effective_boundaries(first: NativeLaunchConfiguration,
+                             second: NativeLaunchConfiguration) -> bool
+```
+
+`NativeLaunchConfiguration = CodexLaunchConfiguration | ClaudeLaunchConfiguration`. Both are
+frozen records carrying `integration: Literal["codex", "claude"]`, `argv: tuple[str, ...]`,
+`effective_read_paths/effective_write_paths/effective_deny_paths: tuple[str, ...]`,
+`default_deny/network_enabled: bool`, `credentials: Literal["none", "declared"]`,
+`policy_digest: str`, `enforcement: str` (`native` or `outer`), `outer_sandbox: str | None`,
+`runtime_bootstrap: tuple[RuntimeBootstrapFile, ...]`, `runtime_bootstrap_digest: str`, and `digest: str`.
+Codex additionally carries `permission_profile: str`, `approval_policy: Literal["never"]`,
+`strict_config: bool` (true), and `configuration: Mapping[str, Any]`. Claude carries
+`settings_json: str` and `permission_mode: Literal["dontAsk"]`.
+
+Renderers preserve the normalized effective boundary. Native Codex uses a named default-deny
+filesystem/network profile, ignores user configuration, and sets `project_doc_max_bytes=0` so
+ambient AGENTS.md discovery neither supplements nor prevents the frozen host context. Claude
+receives a native permission policy and disabled ambient settings. If native enforcement is not
+available, rendering requires the trusted host's verified outer sandbox; otherwise it raises
+`PermissionPolicyError`. A string supplied by task JSON is never evidence of outer enforcement.
+`verify_effective_subset` rejects widening; `compare_effective_boundaries` compares effective grants.
+
+`RuntimeBootstrapFile(path: str, sha256: str, size: int, mode: int, owner: int | None, digest: str)`
+is a frozen attestation of one executable regular file. `size` is positive, `mode` records permissions,
+`owner` is the uid where available, and `digest` covers all these properties. Its read grant is a
+client bootstrap exception and grants neither its enclosing directory nor project knowledge.
+
+```python
+runtime_bootstrap_file(*, path: str, sha256: str, size: int, mode: int,
+                       owner: int | None) -> RuntimeBootstrapFile
+runtime_bootstrap_digest(files: tuple[RuntimeBootstrapFile, ...]) -> str
+finalize_codex_configuration(configuration: CodexLaunchConfiguration,
+                             runtime_bootstrap: tuple[RuntimeBootstrapFile, ...]) -> CodexLaunchConfiguration
+finalize_launch_specification(specification: LaunchSpecification,
+                              runtime_bootstrap: tuple[RuntimeBootstrapFile, ...]) -> LaunchSpecification
+```
+
+Attestations reject malformed digest/size/mode/owner fields. Native Codex finalization requires
+exactly one attested binary, adds only that file's read rule, selects its exact executable path and
+recomputes configuration/launch identities. Claude and verified outer configurations use no native
+Codex bootstrap. Finalization preserves every task read/write/deny/network/credential field.
+
+## Host-built launch
+
+```python
+build_launch_specification(*, operation: str, stage: str, occurrence: int, capability: str,
+    integration: Literal["codex", "claude"], agent: str, project_root: str, request: str,
+    prompt: str, prior_results: tuple[str, ...], workspace_receipt_json: str,
+    workspace_digest: str, policy: NormalizedPolicy,
+    native_configuration: NativeLaunchConfiguration, runtime_input_json: str | None = None,
+    operation_configuration_json: str | None = None,
+    invocation_id: str | None = None) -> LaunchSpecification
+```
+
+The returned frozen `LaunchSpecification` has exactly the parameters above as attributes plus
+`digest: str`. JSON arguments are serialized objects, not paths. The workspace receipt must bind
+`source_digest` to `workspace_digest` and contain the host role-path mapping. Typed Profile 8
+launches supply runtime input, configuration and a fresh invocation ID together, use an empty
+`prior_results` tuple and a context identity as the workspace digest. Input/configuration type and
+version admission remains the host's obligation. A configuration/policy/integration mismatch or
+unbound workspace receipt raises `PermissionPolicyError` before process execution.
+
+The host obtains these values in order: freeze context; compile its exact role/path policy; render
+for the selected integration; build the launch; then call the executor. Consumers of the executor
+may pass an already built launch and do not reconstruct its digest or grant. Bootstrap finalization
+returns another launch: the original requested digest and finalized digest are intentionally distinct.
+
+## Execution results and failure evidence
+
+`CompletionGate(name: str, status: Literal["passed", "failed"], evidence: str)` has a unique nonempty
+name and nonempty evidence. A `CapabilityCompletion` is a frozen record with:
+
+```python
+schema_version: int                       # 2 for typed Profile 8; legacy untyped launches use 1
+operation: str
+stage: str
+occurrence: int
+capability: str
+launch_digest: str                         # finalized launch
+workspace_digest: str
+runtime_bootstrap_digest: str
+status: Literal["success", "failed"]
+output: str                               # bounded audit summary, never a raw log channel
+limitations: str
+gates: tuple[CompletionGate, ...]          # nonempty
+# Optional Python attributes, required by the typed completion wire envelope:
+domain_output: dict[str, Any] | None = None
+invocation_id: str | None = None
+```
+
+Success has `limitations == "none"` and only passed gates; failure has a nonempty limitation other
+than `none` and a failed gate. A task gap is a valid bounded assessment, represented in typed
+`domain_output`, rather than a native process failure. Review coverage uses its own
+`no_findings|findings|incomplete` status. The executor validates the original wire schema even when
+its native generation schema requires optional fields, adds scalar types or omits provider-unsupported
+`uniqueItems`; duplicate arrays and invalid output remain rejected by host validation.
+
+`EnforcementReceipt` is a frozen record containing `requested_launch_digest`, `launch_digest`,
+`policy_digest`, `config_digest`, `integration`, `client_version`, `enforcement`, `exit_code: int`,
+`status: Literal["success", "failed"]`, `runtime_bootstrap_digest`, `completion_schema_version: int`,
+`completion_status: Literal["success", "failed"]`, and `limitations: str = "none"`. All unspecified
+field types in this list are strings. Receipt identities bind the native configuration and exact
+requested/finalized launch; an exit-zero subprocess without valid completion is still failure.
+
+```python
+OperationExecutionResult(output: str, receipt: EnforcementReceipt,
+                         completion: CapabilityCompletion,
+                         domain_output: dict[str, Any] | None = None)
+OperationExecutionError(message: str, receipt: EnforcementReceipt | None = None)
+```
+
+The executor returns `OperationExecutionResult` only for a successful native process and validated
+successful completion. Its `output` equals `completion.output`; consume typed results from
+`completion.domain_output`. The optional result-level `domain_output` is a compatibility slot and
+is not populated by `AgentProcessExecutor`. `OperationExecutionError` is a `RuntimeError`; `receipt`
+is available after a completed process fails exit/status/schema checks, and may be absent on
+preflight/launch failure. No executor failure silently retries with wider permissions or rolls back
+already authorized implementation edits. The host stops the affected transition and preserves the
+candidate for repair. Raw subprocess stdout/stderr remain host execution evidence, not downstream
+Spec-agent inputs or public review findings.

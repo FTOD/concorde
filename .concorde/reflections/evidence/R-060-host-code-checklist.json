@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-07",
+  "purpose": "Real independent reviewer evidence; exact input digests identify historical/current candidate bytes. No semantic completeness claim.",
+  "model_process": "Installed Codex CLI with native enforcement; no process double.",
+  "cases": [
+    {
+      "case": "service.workflow-host",
+      "task": "Review the current implementation of independent review and task-gap handling against the complete admitted Service and Shared Specs. Inspect the granted implementation files and scoped changes, prioritizing review.py, scoped_operations.py, change_worktree.py and test_review.py. Check separate read-only modes, input/version identity, result validation, required review gates, gap persistence/dedup/resume and Domain aggregation. Report concrete behavior or permission defects with reproducible triggers. Read relevant files by absolute path beneath /tmp/concorde-domain-scopes-edit. No edits or test execution. Distinguish coverage limits from missing necessary contracts; do not infer unadmitted provider behavior.",
+      "operation_status": "blocked",
+      "outcome": "conflicting",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "Found one blocking gap-recovery defect: rejected checklist results can resolve persisted blockers. Review was static; no checks were run or files modified.",
+          "context_id": "sha256:334bbac35ce902ae4ebcebf8115bccbaa546c9d01500c6a4940d3800b14c8725",
+          "findings": [
+            {
+              "affected_task": "Resume checklist authoring after repairing a recorded Spec gap.",
+              "contract": "Gap resolution is committed only after the host accepts returned artifacts; rejected or malformed results preserve previous blockers.",
+              "document": "specs/concorde/services/operation-boundary.md",
+              "id": "checklist-gap-resolution-before-acceptance",
+              "location": {
+                "line": 1251,
+                "path": "src/concorde/capabilities/scoped_operations.py"
+              },
+              "problem": "Checklist invokes stage without deferring gap resolution. Reproduce by recording a checklist gap in a managed change, repairing the Spec, then returning a completed checklist result with empty plan and answer. Stage resolves the previous gap before checklist rejects the empty acceptance criteria. A subsequent artifact-write failure has the same effect. The operation fails while its previous blocker remains resolved, and failure progress cannot restore that history entry. Defer resolution until content validation and required artifact persistence succeed.",
+              "severity": "blocking",
+              "target_id": "service.workflow-host"
+            }
+          ],
+          "gaps": [],
+          "input_digest": "sha256:fb62963b3f27952ec01ca3a6e416d24cb82b77387447219f61485390111bfb37",
+          "representative_tasks": [
+            "Launch separate Spec and code reviewers with scoped inputs and empty write grants.",
+            "Bind scoped changes and reusable reviews to current target, worktree, configuration and input versions.",
+            "Reject mismatched review identities, foreign findings and inconsistent completion statuses.",
+            "Enforce required reviews and explicit fast-loop skips before readiness and delivery.",
+            "Persist, deduplicate and resume task gaps after Spec repair, including rejected artifacts.",
+            "Aggregate separately scoped Domain component reviews and revisit component completion requirements."
+          ],
+          "review_mode": "code",
+          "status": "findings",
+          "target_id": "service.workflow-host",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:cfe3cea2633c0d2490b4ee1cc986f2a142ab21baaafa461e924894c3f6347ee7",
+            "implementation_digest": "sha256:ee589f7fa69b21368c7d567cc73f95d65d38949a31d7e668a2561726577ece8c",
+            "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+            "head": "d63af7f37d21b9988d72591fbdc381713455786c"
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "artifact": {
+        "id": "review.service.workflow-host.code",
+        "path": ".concorde/runs/8835f46b-43ff-4358-be94-30fbac3aa1b8/review-service.workflow-host-code.json",
+        "digest": "sha256:d07de4227941ba232f429b0213d41b676efbbfd476143a48482004a5a5b6fdb9"
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:da497f70a8cb988a1e1800925d0cebf1cdb013d74b5b4d9f7c10170e81b1fc27",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:84d98c14c29d652c15265c51728d3e366ac7fe201c3f11e118643b0cd472861a",
+        "limitations": "none",
+        "policy_digest": "sha256:bcb12d5b7aa697128aad79ea81dbccbbc218675b1bf7734e0669cbe83e480fec",
+        "requested_launch_digest": "sha256:ff9a1c03c8a53b0db3a153fc923bf26cc6d18ec9c6015c8dae9ce73043a207b4",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Reviewed the complete supplied Target Spec and Shared Specs and inspected only granted implementation files and scoped changes.",
+          "name": "admitted-scope-review",
+          "status": "passed"
+        },
+        {
+          "evidence": "Returned a concrete contract-bound defect with representative coverage and exact supplied identities; performed no edits or validation commands.",
+          "name": "bounded-assessment",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import errno
+import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import tomllib
 import unittest
 from dataclasses import FrozenInstanceError, replace
+from pathlib import Path
 
 from tests.concorde.support.paths import RUNTIME_ROOT
 
@@ -123,22 +127,27 @@ class OperationPermissionTests(unittest.TestCase):
         self.assertEqual(
             override_keys,
             (
+                "project_doc_max_bytes",
                 "default_permissions",
                 "approval_policy",
                 f"permissions.{codex.permission_profile}",
                 "features.network_proxy",
             ),
         )
-        profile_override = overrides[2].split("=", 1)[1]
+        self.assertEqual(codex.configuration["project_doc_max_bytes"], 0)
+        self.assertIn("project_doc_max_bytes=0", overrides)
+        profile_override = overrides[3].split("=", 1)[1]
         parsed_profile = tomllib.loads(f"profile={profile_override}")["profile"]
         expected_profile = codex.configuration["permissions"][codex.permission_profile]
         self.assertEqual(parsed_profile, expected_profile)
         self.assertEqual(expected_profile["workspace_roots"], {".": True})
         filesystem = expected_profile["filesystem"]
         self.assertEqual(
-            {key: filesystem[key] for key in (":root", ":minimal", ":tmpdir", ":slash_tmp")},
-            {":root": "deny", ":minimal": "read", ":tmpdir": "deny", ":slash_tmp": "deny"},
+            {key: filesystem[key] for key in (":root", ":minimal")},
+            {":root": "deny", ":minimal": "read"},
         )
+        self.assertNotIn(":tmpdir", filesystem)
+        self.assertNotIn(":slash_tmp", filesystem)
         workspace_rules = filesystem[":workspace_roots"]
         self.assertEqual(workspace_rules[".concorde/attempts/feature.example.change"], "write")
         self.assertEqual(workspace_rules["specs/consumer/architecture.md"], "read")
@@ -205,6 +214,72 @@ class OperationPermissionTests(unittest.TestCase):
         self.assertIn("No prompt provided via stdin", diagnostic)
         self.assertNotIn("Error loading config.toml", diagnostic)
         self.assertNotIn("invalid type", diagnostic)
+
+    @unittest.skipUnless(sys.platform == "linux" and shutil.which("codex") and Path("/usr/bin/python3").exists(),
+                         "Native Linux Codex sandbox is not installed")
+    def test_native_review_grants_allow_owned_reads_and_protect_host_files(self):
+        from concorde.capabilities.operation_executor import resolve_runtime_bootstrap
+        probe = '''import json, os, socket, sys
+from pathlib import Path
+root = Path(sys.argv[1]); result = {"cwd": os.getcwd()}
+for relative in ("context.json", "app/allowed.py", "app/sibling.py", "specs/provider.md", "../foreign.py"):
+    try:
+        (root / relative).read_bytes(); result["read:" + relative] = True
+    except OSError as error:
+        result["read:" + relative] = error.errno
+for relative in ("context.json", "app/allowed.py", "specs/provider.md", "app/new.py"):
+    try:
+        (root / relative).write_text("attempted write"); result["write:" + relative] = True
+    except OSError as error:
+        result["write:" + relative] = error.errno
+try:
+    connection = socket.socket(); connection.connect(("127.0.0.1", 9)); result["network"] = True
+except OSError as error:
+    result["network"] = error.errno
+print(json.dumps(result))
+'''
+        with tempfile.TemporaryDirectory(prefix="concorde-native-review-") as directory:
+            root = Path(directory) / "project"
+            root.mkdir()
+            (root.parent / "foreign.py").write_text("foreign fixture")
+            files = ("context.json", "app/allowed.py", "app/sibling.py", "specs/provider.md")
+            for relative in files:
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("original fixture")
+            for mode in ("spec", "code"):
+                with self.subTest(mode=mode):
+                    reads = ("spec-context",) if mode == "spec" else ("spec-context", "implementation")
+                    policy = compile_policy(EffectDeclaration(reads, (), False, "none"),
+                        PolicyBinding("concorde-review", mode + "-review", 0, "reviewer", "reviewer"),
+                        {"spec-context": ("context.json",), "implementation": ("app/allowed.py",)})
+                    native = finalize_codex_configuration(render_codex_configuration(policy, native_enforcement=True),
+                        resolve_runtime_bootstrap("codex", "codex", str(root), os.environ))
+                    options = [part for index, argument in enumerate(native.argv) if argument == "-c"
+                               for part in ("-c", native.argv[index + 1])]
+                    process = subprocess.run((native.argv[0], "sandbox", "-P", native.permission_profile,
+                        "-C", str(root), *options, "--", "/usr/bin/python3", "-c", probe, str(root)),
+                        cwd=root, capture_output=True, text=True, timeout=30)
+                    self.assertEqual(0, process.returncode, process.stderr)
+                    result = json.loads(process.stdout)
+                    self.assertEqual(str(root), result["cwd"])
+                    self.assertIs(result["read:context.json"], True)
+                    if mode == "code":
+                        self.assertIs(result["read:app/allowed.py"], True)
+                    else:
+                        self.assertIsNot(result["read:app/allowed.py"], True)
+                    for relative in ("app/sibling.py", "specs/provider.md", "../foreign.py"):
+                        self.assertIsNot(result["read:" + relative], True)
+                    for relative in ("context.json", "app/allowed.py", "specs/provider.md"):
+                        self.assertIsNot(result["write:" + relative], True)
+                    self.assertIsNot(result["network"], True)
+                    self.assertIn(result["network"], (errno.EPERM, errno.EACCES))
+                    for relative in files:
+                        self.assertEqual("original fixture", (root / relative).read_text())
+                    # A native private directory scaffold can host disposable scratch;
+                    # it must never create a file in the actual project filesystem.
+                    self.assertFalse((root / "app/new.py").exists())
+                    self.assertEqual("foreign fixture", (root.parent / "foreign.py").read_text())
 
     def test_unavailable_native_enforcement_requires_verified_outer_boundary(self):
         policy = compile_policy(self.effect, self.binding, self.roles)

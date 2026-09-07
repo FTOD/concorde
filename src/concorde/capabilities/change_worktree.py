@@ -343,7 +343,7 @@ def save_target_state(root: Path, value: dict) -> None:
 
 
 def progress(root: Path, *, phase: str | None = None, status: str | None = None,
-             outcome: str | None = None, gaps=(), invalidate: bool = False) -> None:
+             outcome: str | None = None, gaps=None, invalidate: bool = False) -> None:
     state = read_change(root)
     if state is None:
         return
@@ -352,11 +352,55 @@ def progress(root: Path, *, phase: str | None = None, status: str | None = None,
     if status is not None:
         state["status"] = status
     state["outcome"] = outcome
-    state["gaps"] = list(gaps)
+    if gaps is not None:
+        unresolved = [item["gap"] for item in state.get("gap_history", []) if item["status"] == "open"]
+        state["gaps"] = list({canonical(gap): gap for gap in [*unresolved, *gaps]}.values())
     if invalidate:
         state["validated_tree"] = None
         state["validation"] = None
     save_change(root, state)
+
+
+def record_task_gaps(root: Path, target_id: str, task: str, phase: str, gaps, spec_digest: str) -> None:
+    """Persist task-local blocking contracts; unrelated progress cannot erase them."""
+    from ..specification.repository import digest
+    state = read_change(root)
+    if state is None:
+        return
+    history = state.setdefault("gap_history", [])
+    existing = {item["id"]: item for item in history}
+    for gap in gaps:
+        key = digest({"target_id": target_id, "task": task, "phase": phase,
+                      **{field: gap[field] for field in ("question", "blocked_step", "needed_contract")}})
+        if key not in existing:
+            item = {"id": key, "target_id": target_id, "task": task, "phase": phase,
+                    "gap": dict(gap), "status": "open", "contexts": [], "spec_digest": spec_digest}
+            history.append(item)
+            existing[key] = item
+        item = existing[key]
+        item.update(gap=dict(gap), status="open", spec_digest=spec_digest)
+        if gap["context_id"] not in item["contexts"]:
+            item["contexts"].append(gap["context_id"])
+    for item in history:
+        if (item["target_id"] == target_id and item["task"] == task and item["phase"] == phase
+                and not gaps and (phase == "specify" or item.get("spec_digest") != spec_digest)):
+            item["status"] = "resolved"
+    state["gaps"] = [item["gap"] for item in history if item["status"] == "open"]
+    target = state["targets"].get(target_id)
+    if target is not None:
+        target["gaps"] = [item["gap"] for item in history
+                          if item["status"] == "open" and item["target_id"] == target_id]
+    if gaps:
+        state["validated_tree"] = None
+        state["validation"] = None
+    save_change(root, state)
+
+
+def unchanged_task_gaps(root: Path, target_id: str, task: str, phase: str, spec_digest: str) -> list[dict]:
+    state = read_change(root)
+    return [dict(item["gap"]) for item in (state or {}).get("gap_history", [])
+            if item["status"] == "open" and item["target_id"] == target_id and item["task"] == task
+            and item["phase"] == phase and item.get("spec_digest") == spec_digest]
 
 
 def work_path(target_id: str, name: str) -> str:

@@ -9,7 +9,8 @@ from ..capabilities.operation_data import canonical
 from .repository import SpecError, SpecRepository, digest, read_file
 
 
-PHASES = frozenset({"ask", "specify", "plan", "tasks", "implementation", "validate", "deliver", "context-solve"})
+PHASES = frozenset({"ask", "specify", "plan", "tasks", "implementation", "spec-review", "code-review",
+                    "validate", "deliver", "context-solve"})
 DISCOVERY_PHASES = frozenset({"route", "synthesize"})
 DISCOVERY_KINDS = frozenset({"domain", "service"})
 
@@ -116,7 +117,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
         "stage_inputs": list(stage_inputs),
         "implementation_artifacts": [{"id": path, "path": path,
             "digest": digest(read_file(repository.root, path))} for path in repository.implementation_files(target)]
-            if phase == "implementation" else [],
+            if phase in {"implementation", "code-review"} else [],
         "workspace": workspace if workspace is not None else workspace_context(repository.root)}
     return ContextSnapshot(canonical({**manifest, "context_id": digest(manifest)}))
 
@@ -277,7 +278,7 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, ch
     if (document_order != value["document_order"] or target_spec != value["target_spec"]
             or shared_specs != value["shared_specs"]):
         raise SpecError("context document membership, classification, or bytes changed", "stale_context")
-    if check_implementation and value["phase"] == "implementation":
+    if check_implementation and value["phase"] in {"implementation", "code-review"}:
         current_artifacts = [{"id": path, "path": path, "digest": digest(read_file(current.root, path))}
                              for path in current.implementation_files(target)]
         if current_artifacts != value["implementation_artifacts"]:

@@ -35,9 +35,9 @@ def main() -> int:
         roles = capability_projection_roles(
             package_root, arguments.integration, arguments.framework_prefix
         )
-        if set(rendered) != set(roles) or len(rendered) != 22:
+        if set(rendered) != set(roles) or len(rendered) != 23:
             raise SkillAssetError(
-                "Concorde 4.0.0 must render exactly 22 public Operations with owned roles"
+                "Concorde 4.0.0 must render exactly 23 public Operations with owned roles"
             )
     except SkillAssetError as error:
         parser.error(str(error))

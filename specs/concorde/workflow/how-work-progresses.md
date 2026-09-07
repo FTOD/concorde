@@ -20,7 +20,9 @@ integration and enforcement mode; it is project setup, not per-stage agent autho
 freezes the selected target's Target Spec plus one-hop Shared Specs, global principles and kind definition. A Stage is
 one fresh cognition session with a declared role. A candidate worktree owns one change and binds its plan, target tasks and progress to
 the intent and Spec revision. A Check measures implementation and returns status plus byte identities.
-A Gap is a concrete missing obligation or fact required by a stage. A Reflection is a reported
+An independent Review examines representative tasks against a complete Spec, or compares registered
+implementation with its contracts, in a separate read-only session. A Gap is a concrete missing
+obligation or fact required by a stage. A Reflection is a reported
 problem that may require investigation and, separately, human approval of a proposed resolution.
 A Topology design is a coordinator-authored candidate registry plus target-local Spec tasks. A
 Topology application is the host-private exact registry/document byte set produced only after that
@@ -147,16 +149,23 @@ from this routing view but their Specs remain unavailable to the main coordinato
 
 ## Conditions, states and recovery
 
+The standard loop follows these transitions; fast-loop skips remain explicit review records.
+
 ```mermaid
 stateDiagram-v2
   [*] --> Specified
-  Specified --> Gap: missing information
+  Specified --> SpecReviewed: independent Spec review
+  SpecReviewed --> Gap: necessary contract missing
   Gap --> Specified: explicitly author missing contract
-  Specified --> Planned: context sufficient
+  SpecReviewed --> Planned: review current and context sufficient
   Planned --> Tasks: plan accepted
   Tasks --> Implemented: acceptance fulfilled
-  Implemented --> Validated: checks pass on current bytes
-  Validated --> Delivered: evidence current
+  Tasks --> Gap: necessary contract missing
+  Implemented --> Checked: checks pass on current bytes
+  Checked --> CodeReviewed: independent code review
+  CodeReviewed --> Ready: required evidence current and no blockers
+  CodeReviewed --> Tasks: code defect needs repair
+  Ready --> Delivered: primary agent verifies and merges
   Implemented --> Tasks: failure needs implementation work
   Delivered --> [*]
 ```
@@ -227,3 +236,33 @@ currently checked out in the primary worktree, whose name need not be main. It v
 integration result and then removes the secondary worktree and its local state. Local prompt injection
 and control files never enter the merged tree. A primary delivery receipt distinguishes an accepted
 merge from pending cleanup, allowing cleanup to resume without another merge.
+
+## Independent review and task gaps
+
+`concorde-review` uses separate fresh Spec and code reviewers. Spec review sees the complete Target
+Spec and Shared Specs, task and scoped Spec patches; code review additionally sees only the owning
+target's registered implementation files and scoped code patches. Neither has project write authority.
+The host records input versions, coverage, concrete findings, gaps and completion. No-findings,
+findings, incomplete, not-run and skipped are distinct, and all conclusions remain task-specific.
+
+Standard development requires Spec review after authoring and before planning, and code review after
+implementation/checks and before ready. Fast-loop `run_reviews` defaults to false and records each
+skip. Once required, a review cannot be disabled by a resumed fast loop. Blocking contract gaps or
+behavior findings stop dependent steps; advisory findings remain available through result artifacts.
+Domain changes review their own Spec before planning, then each affected component's full Spec and
+code in that component's own session. Host aggregation carries only their typed results.
+
+Any necessary missing/ambiguous contract encountered during explanation, planning, task authoring or
+implementation uses the same gap fields. Queries report gaps; development records and deduplicates
+them by target/task/phase/question/blocked step/needed contract in the existing change state, with
+Spec revision and observed contexts. Unrelated work cannot erase unresolved gaps. Retrying an unchanged
+blocked step waits for its contract repair. After a Spec change, a fresh successful assessment resolves
+that step's old gaps and retains history. Spec authoring can itself supply the repair. A durable gap
+can be discovered through reflections-triage `status` gap_records and explicitly captured by
+`record-gaps` using those returned IDs; capture does not resolve the gap,
+change its owner, approve a fix or start implementation.
+
+Review results are invalidated by changed relevant Spec, registered code, task/focus/constraints,
+configuration, role instructions or host review runtime, candidate HEAD/base/change identity, or
+scoped patches. Required evidence is rechecked at readiness/delivery, using the same worktree
+lifecycle. A failed process or incomplete review never becomes an empty successful review.

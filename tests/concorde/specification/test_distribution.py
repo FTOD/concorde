@@ -18,7 +18,7 @@ from .support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
 class DistributionTests(unittest.TestCase):
     def test_catalog_roles_and_exported_schemas_are_executable_package_contracts(self):
         self.assertEqual([],validate_package(PACKAGE))
-        self.assertEqual(22,len(OPERATIONS));self.assertEqual(7,len(INTERNAL_SKILLS))
+        self.assertEqual(23,len(OPERATIONS));self.assertEqual(9,len(INTERNAL_SKILLS))
         self.assertIn('concorde-main',OPERATIONS);self.assertNotIn('concorde-ask',OPERATIONS)
         self.assertIn('concorde-coordinator',INTERNAL_SKILLS);self.assertNotIn('concorde-main',INTERNAL_SKILLS)
         for role in INTERNAL_SKILLS:self.assertEqual('internal',load_skill_prompt(PACKAGE,role).exposure)

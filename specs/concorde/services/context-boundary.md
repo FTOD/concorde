@@ -33,7 +33,7 @@ Configuration is concorde-operation-configuration@1 {integration: codex|claude, 
 native|outer}, or null to request the host's initialized settings. Runtime input is the matching
 <operation>-request@1 {target_id,task,focus_id?,constraints?,change_id?,phase?}. Strings are nonempty;
 constraints is an array of strings. Default phase is ask. Other phases are specify, plan, tasks,
-implementation, validate, deliver and context-solve. Unknown fields/versions/IDs are rejected.
+implementation, spec-review, code-review, validate, deliver and context-solve. Unknown fields/versions/IDs are rejected.
 Response <operation>-response@1 contains manifest: concorde-context-manifest@1. The manifest exposes
 target/kind/focus/phase, Protocol binding, document_order and separate target_spec/shared_specs
 references with document ID, path, digest, targets and main_visible; it never exposes
@@ -56,7 +56,10 @@ not load any referencing entity's other documents and does not recurse through s
 The context identity covers all inputs apart from its own identity field. Protocol contains
 principles and the matching kind definition only.
 Stage inputs must be versioned plan, implementation-task or reflection-selection values. Code bytes
-are not embedded; only implementation phase has code references and host-issued implementation grants.
+are not embedded in a snapshot; implementation and the dedicated read-only code-review phase have
+code references and separate host-issued implementation grants. Spec review has no code references.
+The review host adds a separately typed, target-scoped changes/revision input; ordinary stage_inputs
+cannot smuggle patches or arbitrary artifacts into a Spec worker.
 Membership, configuration, Protocol or admitted bytes changing after resolution invalidates reuse.
 
 The private main discovery context is a different contract. It starts with the entry Domain or
@@ -163,3 +166,11 @@ implementation-file enumeration. Select `module.file-transactions` for proposal 
 atomic replacement and rollback. Select `module.wire-contracts` for JSON/TypedValue/schema admission.
 These Module responsibilities and stable IDs let the main coordinator route work without expanding
 any Module target. Context resolution that orchestrates these APIs remains a `service.spec-context` task.
+
+All task roles use the same necessary-contract gap rule. Explanation, planning, tasks and
+implementation pause only dependent judgments when a required contract is missing or ambiguous;
+independent reasoning may continue. Development gaps retain target, task, phase and Spec revision
+until repair and a successful fresh assessment of that step. Pure queries do not create Reflections.
+The registered Shared Spec **Registry selection and value contracts** supplies this Service's local
+required constructor, selection, document/type, configuration and error promises without opening
+another target's remaining collection.

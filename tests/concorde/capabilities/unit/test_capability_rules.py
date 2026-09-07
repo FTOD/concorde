@@ -21,8 +21,8 @@ class CapabilityLayoutRuleTests(unittest.TestCase):
         operations = self.manifest["operations"]
         self.assertEqual(self.manifest["schema_version"], 3)
         self.assertEqual(self.manifest["skill_namespace"], "concorde")
-        self.assertEqual(len(skills), 7)
-        self.assertEqual(len(operations), 22)
+        self.assertEqual(len(skills), 9)
+        self.assertEqual(len(operations), 23)
         self.assertFalse(set(skills) & set(operations))
 
     def test_each_leaf_is_one_markdown_capability_without_python(self):

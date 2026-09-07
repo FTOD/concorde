@@ -79,7 +79,8 @@
       "kind": "service",
       "title": "Spec contexts",
       "documents": [
-        "specs/concorde/services/context-boundary.md"
+        "specs/concorde/services/context-boundary.md",
+        "specs/concorde/shared/registry-contracts.md"
       ],
       "scope_parent": null,
       "component_parent": null,
@@ -122,7 +123,9 @@
       "documents": [
         "specs/concorde/services/operation-boundary.md",
         "specs/concorde/services/operation-registry.md",
-        "specs/concorde/services/operation-wire.md"
+        "specs/concorde/services/operation-wire.md",
+        "specs/concorde/shared/agent-runtime-contracts.md",
+        "specs/concorde/shared/registry-contracts.md"
       ],
       "scope_parent": null,
       "component_parent": null,
@@ -133,7 +136,10 @@
         "src/concorde/capabilities/scoped_operations.py",
         "src/concorde/capabilities/operation_service.py",
         "src/concorde/capabilities/change_worktree.py",
-        "src/concorde/capabilities/worktree_delivery.py"
+        "src/concorde/capabilities/worktree_delivery.py",
+        "src/concorde/capabilities/review.py",
+        "tests/concorde/specification/test_review.py",
+        "src/concorde/capabilities/operation_config.py"
       ],
       "features": [
         {
@@ -254,7 +260,8 @@
       "kind": "module",
       "title": "Registry",
       "documents": [
-        "specs/concorde/modules/registry.md"
+        "specs/concorde/modules/registry.md",
+        "specs/concorde/shared/registry-contracts.md"
       ],
       "scope_parent": null,
       "component_parent": "service.spec-context",
@@ -338,7 +345,8 @@
       "kind": "module",
       "title": "Agent execution",
       "documents": [
-        "specs/concorde/modules/agent-execution.md"
+        "specs/concorde/modules/agent-execution.md",
+        "specs/concorde/shared/agent-runtime-contracts.md"
       ],
       "scope_parent": null,
       "component_parent": "service.workflow-host",
@@ -364,7 +372,8 @@
       "kind": "module",
       "title": "Execution permissions",
       "documents": [
-        "specs/concorde/modules/permissions.md"
+        "specs/concorde/modules/permissions.md",
+        "specs/concorde/shared/agent-runtime-contracts.md"
       ],
       "scope_parent": null,
       "component_parent": "service.workflow-host",
@@ -511,9 +520,11 @@
         "{python}",
         "-m",
         "unittest",
-        "tests.concorde.specification.test_scoped_protocol"
+        "tests.concorde.specification.test_scoped_protocol",
+        "tests.concorde.specification.test_review",
+        "tests.concorde.specification.test_worktree_lifecycle"
       ],
-      "timeout_seconds": 120,
+      "timeout_seconds": 180,
       "inputs": [
         "src",
         "protocol",

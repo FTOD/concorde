@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-07",
+  "purpose": "Real independent reviewer evidence; exact input digests identify historical/current candidate bytes. No semantic completeness claim.",
+  "model_process": "Installed Codex CLI with native enforcement; no process double.",
+  "cases": [
+    {
+      "case": "service.workflow-host",
+      "task": "Review the current implementation of independent review and task-gap handling against the complete admitted Service and Shared Specs. Inspect the granted implementation files and scoped changes, prioritizing review.py, scoped_operations.py, change_worktree.py and test_review.py. Check separate read-only modes, input/version identity, result validation, required review gates, gap persistence/dedup/resume and Domain aggregation. Report concrete behavior or permission defects with reproducible triggers. Read relevant files by absolute path beneath /tmp/concorde-domain-scopes-edit. No edits or test execution. Distinguish coverage limits from missing necessary contracts; do not infer unadmitted provider behavior.",
+      "operation_status": "blocked",
+      "outcome": "conflicting",
+      "review": {
+        "type_id": "concorde-review-result",
+        "schema_version": 1,
+        "data": {
+          "answer": "Found one defect in failed-review evidence retention. Review was static; no checks were executed.",
+          "context_id": "sha256:be8a9cd29d1d0f8d6d96b092cd15e84c79290839b63fadee12098e8b8da1d84f",
+          "findings": [
+            {
+              "affected_task": "Audit a review that fails native completion validation or host result validation.",
+              "contract": "Native receipts and failure diagnostics remain separate host records; execution failures may carry an EnforcementReceipt.",
+              "document": "specs/concorde/services/operation-boundary.md",
+              "id": "review-failure-receipt-loss",
+              "location": {
+                "line": 269,
+                "path": "src/concorde/capabilities/review.py"
+              },
+              "problem": "When the executor raises OperationExecutionError with a receipt, the exception handler persists only the error code and message, discarding the receipt. Likewise, when execution returns successfully but subsequent result or freshness validation fails, the available execution result is omitted. The saved execution record therefore contains no native attestation for either failure. Reproduce with an executor that raises the contracted error with a populated receipt, or returns a completion whose review input identity is rejected. Preserve the available receipt or execution result in the private failure record so the failed review remains auditable.",
+              "severity": "blocking",
+              "target_id": "service.workflow-host"
+            }
+          ],
+          "gaps": [],
+          "input_digest": "sha256:f4e7a1659fd888ee364bdfbf73934e9e48b04ba7dbe896c1105adc2d106c5129",
+          "representative_tasks": [
+            "Launch separate Spec and code reviews with scoped inputs and empty write grants.",
+            "Reject mismatched review identities, invalid findings, and changed inputs.",
+            "Require current reviews before planning, readiness, and delivery.",
+            "Persist, deduplicate, and resume task gaps after accepted Spec repairs.",
+            "Aggregate separately scoped Domain component reviews and propagate stronger requirements.",
+            "Retain private execution evidence when a review fails."
+          ],
+          "review_mode": "code",
+          "status": "findings",
+          "target_id": "service.workflow-host",
+          "focus_id": null,
+          "revision": {
+            "spec_digest": "sha256:cfe3cea2633c0d2490b4ee1cc986f2a142ab21baaafa461e924894c3f6347ee7",
+            "implementation_digest": "sha256:8f9b983543c1f02de3678f6632a86d26b20287a498c258bdbc307742ffa9ba77",
+            "baseline": "28a5b3af909e78cc74bafc89acfdc5c0d088f492",
+            "head": "d63af7f37d21b9988d72591fbdc381713455786c"
+          },
+          "semantic_completeness": "not_proven"
+        }
+      },
+      "artifact": {
+        "id": "review.service.workflow-host.code",
+        "path": ".concorde/runs/861cd2f3-ca9b-4652-bff1-d466c8faf08d/review-service.workflow-host-code.json",
+        "digest": "sha256:adb995087ea883787411320b71e37672972e26017efab4c3be2ade61b709e293"
+      },
+      "receipt": {
+        "client_version": "codex-cli 0.153.4",
+        "completion_schema_version": 2,
+        "completion_status": "success",
+        "config_digest": "sha256:36506ad0e97ba7a4f20398bcb2cda95bb85e0da732b9f70edcbb586c6b994877",
+        "enforcement": "native",
+        "exit_code": 0,
+        "integration": "codex",
+        "launch_digest": "sha256:143a4ff38f71274506c3de0bcb2ed9d2c75ca5d8270df00af9ab415c222d83e7",
+        "limitations": "none",
+        "policy_digest": "sha256:0b096a7a1ca3b9a4eecb8af54db22e1a0fd5555138911d0edc7781c71531eb1c",
+        "requested_launch_digest": "sha256:3d647a607e83b7e5a4f4350206727a1d37558b4a49c83fc07320c0f726f731eb",
+        "runtime_bootstrap_digest": "sha256:678252e773d6b6b3eb2428439ac6b1b9dcc3d1851063d20d7dd3a9d21cc5f293",
+        "status": "success"
+      },
+      "completion_gates": [
+        {
+          "evidence": "Reviewed the complete admitted contract collection and traced the granted implementation and supplied tests without edits or test execution.",
+          "name": "bounded-review",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}
