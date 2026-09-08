@@ -18,6 +18,8 @@ from concorde.host.agent_executor import (  # noqa: E402
     CapabilityExecutionError,
     resolve_runtime_bootstrap,
     verify_runtime_bootstrap,
+    _completion_schema,
+    _prompt,
 )
 from concorde.host.permissions import (  # noqa: E402
     PolicyBinding,
@@ -256,6 +258,80 @@ class AgentExecutorTests(unittest.TestCase):
         self.assertIn("--output-format", argv)
         self.assertIn("Use bounded context", input_text)
         self.assertEqual(result.output, "claude-result")
+
+    def test_every_role_receives_the_envelope_success_and_failure_contract(self):
+        base = self.specification("codex")
+        for context_type in (
+            None,
+            "concorde-main-stage-context",
+            "concorde-agent-stage-context",
+            "concorde-review-stage-context",
+            "concorde-topology-author-context",
+        ):
+            with self.subTest(context_type=context_type):
+                spec = replace(base, runtime_input_json=(
+                    json.dumps({"type_id": context_type}) if context_type else None
+                ))
+                prompt = _prompt(spec)
+                self.assertIn("limitations is exactly 'none'", prompt)
+                self.assertIn("never an empty string", prompt)
+                self.assertIn("at least one failed gate", prompt)
+                if context_type:
+                    self.assertIn("Set domain_output to null for status=failed", prompt)
+                    self.assertIn("does not by itself make the envelope fail", prompt)
+                else:
+                    self.assertNotIn("domain_output", prompt)
+                if context_type == "concorde-agent-stage-context":
+                    self.assertIn("unused domain_output fields", prompt)
+
+    def test_generation_schema_excludes_empty_limitations(self):
+        from jsonschema import Draft202012Validator
+
+        for integration in ("codex", "claude"):
+            with self.subTest(integration=integration):
+                schema = _completion_schema(self.specification(integration))
+                field = schema["properties"]["limitations"]
+                validator = Draft202012Validator(field)
+                self.assertFalse(validator.is_valid(""))
+                self.assertTrue(validator.is_valid("none"))
+                self.assertTrue(validator.is_valid("required tool unavailable"))
+                self.assertIn("exactly the lowercase string 'none'", field["description"])
+
+    def test_success_completion_rejects_wrong_limitations_and_failed_gates(self):
+        spec = self.specification("codex")
+        for limitation, failed_gate, expected_error in (
+            ("", False, "received an empty string"),
+            ("None", False, "received a different string"),
+            (" none ", False, "received a different string"),
+            ("required tool unavailable", False, "received a different string"),
+            ("none", True, "contains failed gates"),
+            ("none", False, None),
+        ):
+            with self.subTest(limitation=limitation, failed_gate=failed_gate):
+                def runner(argv, **kwargs):
+                    envelope = self.completion(argv, limitations=limitation)
+                    if failed_gate:
+                        envelope["gates"][0]["status"] = "failed"
+                    stdout = "\n".join((
+                        json.dumps({"type": "item.completed", "item": {
+                            "type": "agent_message", "text": json.dumps(envelope),
+                        }}),
+                        json.dumps({"type": "turn.completed"}),
+                    ))
+                    return subprocess.CompletedProcess(argv, 0, stdout=stdout, stderr="")
+
+                executor = AgentProcessExecutor(
+                    runner=runner,
+                    version_probe=lambda integration, executable: "codex-cli 9.1",
+                    runtime_bootstrap_resolver=self.runtime_bootstrap,
+                    environment={"PATH": "/bin"},
+                )
+                if expected_error:
+                    with self.assertRaisesRegex(CapabilityExecutionError, expected_error) as raised:
+                        executor(spec)
+                    self.assertEqual(raised.exception.receipt.status, "failed")
+                else:
+                    self.assertEqual(executor(spec).completion.limitations, "none")
 
     def test_zero_exit_semantic_failure_and_malformed_completion_fail_closed(self):
         spec = self.specification("codex")
