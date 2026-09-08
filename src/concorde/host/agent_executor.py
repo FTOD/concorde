@@ -68,6 +68,8 @@ def _completion_version(specification: LaunchSpecification) -> int:
 def _domain_type(specification: LaunchSpecification) -> str | None:
     runtime_type = (json.loads(specification.runtime_input_json).get("type_id")
                     if specification.runtime_input_json is not None else None)
+    if runtime_type == "concorde-agent-loop-context":
+        return "concorde-agent-loop-step"
     if runtime_type == "concorde-agent-stage-context":
         return "concorde-agent-stage-result"
     if runtime_type == "concorde-review-stage-context":
@@ -286,6 +288,10 @@ def _completion_schema(specification: LaunchSpecification) -> dict[str, Any]:
                 for child in value:
                     require_properties(child)
         require_properties(schema)
+    else:
+        # Claude's native schema compiler does not register the 2020-12 meta-schema.
+        # Omit the dialect declaration only in generation; host validation is unchanged.
+        schema.pop("$schema", None)
     return schema
 
 
@@ -502,6 +508,16 @@ def _prompt(specification: LaunchSpecification) -> str:
 
 
 def _role_prompt(specification: LaunchSpecification) -> str:
+    if _domain_type(specification) == "concorde-agent-loop-step":
+        return (
+            "Execute one fresh model-driven Agent decision. Use only the admitted context below.\n"
+            f"{specification.runtime_input_json}\nAgent responsibility Spec:\n{specification.prompt}\n"
+            "Return Completion Envelope 3 with concorde-agent-loop-step as domain_output. "
+            "Set source=model-driven. Delegate only through that typed action, never native sub-agent tools. "
+            "Only advertised child contracts are callable. Complete with the declared result schema, "
+            "or return typed gap/decision details for spec_incomplete/waiting. "
+            "No parent transcripts, project searches, ambient Skills or context expansion are admitted.\n"
+        )
     if _domain_type(specification) == "concorde-review-stage-result":
         return (
             "Execute one independent Concorde review in a fresh session. You have no project write authority.\n"

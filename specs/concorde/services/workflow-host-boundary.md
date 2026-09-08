@@ -199,6 +199,11 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | Type | Carried by | Promise |
 | --- | --- | --- |
 | `concorde-context-snapshot@1` | Every stage capability's frozen input | Carries `target_id`, `kind`, `focus_id`, `phase`, `task`, `constraints`, `protocol_binding`, `protocol`, `document_order`, `target_spec`, `shared_specs`, `diagram_sources`, `instructions`, `stage_inputs`, `implementation_artifacts` (populated only for implementation/code-review) and `workspace`. A changed membership or byte digest is rejected as `stale_context`. |
+| `concorde-agent-task@1` | Host or admitted parent to Agent | `{task, target_id}`; nonempty task and explicit target hint, validated against the host grant. |
+| `concorde-agent-answer@1` | Reader Agent to parent | `{answer}`; nonempty task-relevant answer, never a context snapshot. |
+| `concorde-agent-interruption@1` | Agent to parent | `{gaps, decision}`; gaps contain question, blocked_step, needed_contract, target_id and context_id. Spec incomplete requires nonempty bound gaps and null decision; waiting requires a nonempty decision question and no gaps. |
+| `concorde-agent-loop-context@1` | Host to fresh native decision | `{invocation_id, parent_id, agent_id, input_json, context_json, feedback, children, result_schema_json}`. JSON transport strings contain host-validated typed values. Each child descriptor has agent_id, input_type, result_type, input_schema_json and result_schema_json. Feedback has invocation_id, parent_id, agent_id, outcome, value_json, error and nullable typed details; no child private context. |
+| `concorde-agent-loop-step@1` | Native decision to host | `{source, action, agent_id, value_json, outcome, details}`. Source is code-driven or model-driven (native must use model-driven). Delegate requires a child ID and typed input, completed decision outcome and null details. Complete has no child ID and returns a typed result only for completed. Other outcomes are spec_incomplete, waiting, cancelled, failed, limit_exhausted or rejected; only gaps/waiting carry typed interruption details. |
 | `concorde-agent-stage-context@1` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@1, change_id, expected_artifacts}`. |
 | `concorde-agent-stage-result@1` | Worker to host, the completion | `{context_id, outcome, answer, gaps, documents, diagrams?, plan, tasks, reflection_findings?}`; `documents`/`diagrams`/`plan`/`tasks`/`reflection_findings` are populated only by the phase that produces them. A mismatched `context_id` is rejected as `incompatible_handoff`. |
 
@@ -560,3 +565,87 @@ stage/process events. Pausing or replaying a run does not waive permissions, che
 lifecycle, and replay may execute effects again. Ordinary local CLI and Skill calls do not require
 a Studio server. The source-checkout setup and debugging guide is scripts/development/STUDIO.md.
 This execution view participates in Developer view and feedback through the orchestration host.
+
+
+## Recursive Agent host entry
+
+The trusted Python host offers `CapabilityHost.invoke_agent(runtime, agent_id, input, grant)`. It
+requires an installed `AgentRuntime`, a named definition, that definition's typed input and an
+explicit `AgentGrant`; task JSON cannot construct these authority-bearing objects. It returns
+`AgentRun` and retains its events as host evidence. The runtime owns resolution of complete child
+contexts, explicit delegation edges, typed child feedback, fresh native decisions, shared finite
+call/decision/depth/time limits and cancellation propagation. This is in-process composition, not
+a public stage capability or a change to existing global routing. Default stage invocations retain
+their existing one-decision contract until an enclosing host explicitly composes an Agent loop.
+
+The execution collaborator supplies an already constructed `AgentRuntime` whose
+`invoke(agent_id: str, input: dict, grant: AgentGrant) -> AgentRun` performs admission and execution.
+This host entry accepts that runtime instance; it does not accept raw Agent definitions, discover
+Python modules or construct arbitrary Harnesses from task fields. A concrete supported construction
+path is the collaborator's factory:
+
+```python
+agents.reader.runtime(project_root, package_root, target_id, *, integration="codex", executor=None,
+                      executor_reference=None, limits=None, cancelled=lambda: False) -> AgentRuntime
+```
+
+The factory installs the named `concorde-recursive-reader` with its authored
+`prompts/agents/reader/spec.md`, an inspectable native Harness configuration, one fixed nonblank
+`target_id`, an explicit self-delegation edge and a local maximum of eight steps. It declares
+`concorde-agent-task@1` input (`{task: nonblank str, target_id: nonblank str}`) and
+`concorde-agent-answer@1` output (`{answer: nonblank str}`). Each value has the closed envelope
+`{type_id, schema_version: 1, data}`. The factory uses the existing context service to resolve the
+complete fixed target closure for every child and freshness check; a mismatched task target is
+rejected before context resolution. `integration` is codex or claude. An injected trusted executor
+requires a nonblank versioned `executor_reference` identifying its configuration. Its callable
+signature is `executor(launch: LaunchSpecification, *, deadline: float) -> CapabilityExecutionResult`;
+the launch/result records are defined in the admitted runtime Shared Spec. `deadline` is the exact
+absolute shared tree deadline on Python's `time.monotonic()` clock. The callable must honor the
+compiled native policy, reject an expired deadline, and limit all preflight and process work to
+`deadline - time.monotonic()`, raising a timeout exception on expiration. Once the shared deadline
+has elapsed, the runtime returns `limit_exhausted`; it never turns that timeout into successful
+completion. This adapter-specific hook can wrap the existing single-process executor with
+deadline-bound runner/probe callbacks; the legacy executor interface itself remains unchanged.
+The default adapter installs those callbacks and does not renew the deadline across continuations.
+The factory verifies build freshness and
+returns no execution grant. Custom Agent catalogs are installed by the trusted execution provider
+before this host call, under the same admission and result contract.
+
+`AgentGrant(targets: frozenset[str], agents: frozenset[str])` identifies the permitted project
+targets and the tree's Agent allowlist. The root ID must be admitted. Every child must satisfy its
+parent's explicit edge and the inherited host allowlist; effective targets intersect at every
+invocation. Installing a definition cannot add authority. `AgentLimits(max_calls=16, max_depth=4,
+max_decisions=64, timeout_seconds=300)` bounds the entire tree; the first three fields are integers,
+positive except depth may be zero, and timeout is a positive finite number. Root depth is zero.
+`limits=None` uses these defaults. A malformed grant or invalid factory/limit configuration raises
+`ValueError`. A valid but insufficient grant returns `rejected`, not a widened retry. The host
+entry itself rejects non-`AgentRuntime` inputs and non-execute mode with `ValueError`, and a stale
+package build with `BuildError(code="stale_build")`.
+
+The returned frozen `AgentRun` has `result: AgentResult` and `events: tuple[dict, ...]`.
+`AgentResult` has string `invocation_id`, nullable `parent_id`, string `agent_id` and `outcome`,
+nullable `value_json` and `error`, and nullable `details_json`. Only a completed result has a typed
+value serialized in `value_json`. Outcomes are `completed`, `spec_incomplete`, `waiting`,
+`cancelled`, `failed`, `limit_exhausted` and `rejected`. Gaps/waiting carry a serialized version-1
+`concorde-agent-interruption` with data `{gaps, decision}`: gaps have nonblank `question`,
+`blocked_step`, `needed_contract`, `target_id` and a sha256 `context_id`; waiting has only a nonblank
+decision question, while Spec incompleteness has nonempty gaps and a null decision. Other outcomes
+forbid details. Error is a stable host code rather than raw logs. `wire()` returns the same record
+with `details` decoded from `details_json`; no private child context is returned.
+
+Host events distinguish `admit` (invocation/parent/Agent IDs, depth, binding/context digests,
+Harness ID and canonical configuration), `decision` (invocation ID, code-driven/model-driven source,
+delegate/complete action and nullable child Agent ID), and `return` (the result's wire record).
+`CapabilityHost.invoke_agent` appends these events to `host.evidence` and returns the same run.
+They are host diagnostics, never implicit model input or a durable resume record. Unexpected runtime callback
+exceptions become `failed/execution_failed`; invalid actions become `rejected/invalid_step`.
+Failed/rejected children return typed feedback to the parent; cancellation or exhausted shared
+limits terminate ancestors. Synchronous trusted callbacks must return promptly or enforce their
+own interruption. Every root call has fresh identities and counters, with no persistent resume or
+parallel scheduling in this initial adapter.
+
+The initial read-only native adapter grants only its private context
+capsule. It offers typed yield/delegate/continue decisions, not arbitrary native CLI sub-agent tools.
+Hosts cannot translate a model-selected child ID into a public global capability or reuse a parent
+process with a child's private context. Existing context-service snapshot resolution supplies the
+actual task closure; installation of an Agent definition alone is not admission.

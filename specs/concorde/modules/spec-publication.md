@@ -142,6 +142,13 @@ Spec sources or promote `docsite/build`.
 A failed write/copy rejects the promise and can leave partial derived assets. Retry requires a
 fresh model and re-materializes these disposable directories; callers must not publish partial assets.
 
+The source-checkout check `python scripts/development/check-docsite-types.py` prepares the actual
+`scopedSidebar(loadScopedRegistry(projectRoot))` as `docsite/.generated/specs-sidebar.json`, then
+runs TypeScript with `--noEmit` against the docsite tsconfig. It installs the locked Node dependencies
+when their identity marker is absent or stale. This check must work in a fresh delivery worktree
+without pre-rendered diagram HTML; deriving its imported sidebar does not publish pages or establish
+publication readiness. Registry loading or TypeScript failure still fails the check.
+
 For Profile 8, `preparePublication(projectRoot)` resolves the root, loads the model, renders declared
 diagrams when present, materializes assets, clears the selected Docusaurus generated directory, and returns
 `{registry}`. Its required diagram renderer accepts the project root and produces each declared

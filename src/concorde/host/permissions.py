@@ -395,6 +395,8 @@ def _codex_argv(
         f"permissions.{profile}={_toml_value(profile_configuration)}",
         "-c",
         f"features.network_proxy={_toml_value(network)}",
+        "-c", "features.multi_agent=false",
+        "-c", "features.multi_agent_v2=false",
         "-",
     )
 
@@ -429,12 +431,12 @@ def render_codex_configuration(
         # ungranted instructions and fails to start under a default-deny profile.
         "project_doc_max_bytes": 0,
         "permissions": {profile: profile_configuration},
-        "features": {"network_proxy": policy.network_enabled},
+        "features": {"network_proxy": policy.network_enabled, "multi_agent": False, "multi_agent_v2": False},
     }
     argv = (
         _codex_argv(profile, profile_configuration, policy.network_enabled)
         if native_enforcement
-        else ("codex", "--ask-for-approval", "never", "exec", "--ephemeral", "--ignore-user-config", "--strict-config", "-c", "project_doc_max_bytes=0", "-")
+        else ("codex", "--ask-for-approval", "never", "exec", "--ephemeral", "--ignore-user-config", "--strict-config", "-c", "project_doc_max_bytes=0", "-c", "features.multi_agent=false", "-c", "features.multi_agent_v2=false", "-")
     )
     bootstrap: tuple[RuntimeBootstrapFile, ...] = ()
     bootstrap_digest = runtime_bootstrap_digest(bootstrap)
@@ -545,7 +547,7 @@ def render_claude_configuration(
     allow = [_claude_rule("Read", path) for path in policy.read_paths]
     for path in policy.write_paths:
         allow.extend((_claude_rule("Edit", path), _claude_rule("Write", path)))
-    deny: list[str] = []
+    deny: list[str] = ["Agent", "Task"]
     for path in policy.deny_paths:
         deny.extend(
             (

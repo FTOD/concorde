@@ -59,7 +59,7 @@ No separate report file is required for ordinary feedback, and a diagram click o
 not silently change a Spec or grant access to another target.
 
 [Feedback](feedback.md) describes this path and the distinction between an observation and an
-accepted change. The [Agent orchestration Domain](../workflow/ontology.md) owns execution, verification and
+accepted change. The [Agents Domain](../workflow/ontology.md) owns execution, verification and
 recovery. This Domain owns how developers encounter that work and provide input to it.
 
 ## Routing and dependencies

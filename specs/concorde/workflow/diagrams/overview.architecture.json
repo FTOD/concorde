@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Agent orchestration",
+    "title": "Agents",
     "locale": "en",
     "quality_profile": "showcase",
     "viewBox": [
@@ -100,7 +100,7 @@
       "id": "invocation",
       "type": "backend",
       "label": "Agent invocation",
-      "sublabel": "Bound context and effective permissions",
+      "sublabel": "Own context, loop and child calls",
       "pos": [
         740,
         380
@@ -113,8 +113,8 @@
     {
       "id": "model-client",
       "type": "external",
-      "label": "Model clients",
-      "sublabel": "Codex / Claude",
+      "label": "Codex / Claude clients",
+      "sublabel": "Resources used by Agent adapters",
       "pos": [
         1090,
         380
@@ -142,7 +142,7 @@
       "id": "agent-loop",
       "type": "backend",
       "label": "Agent Loop",
-      "sublabel": "Continue, revise, wait or stop",
+      "sublabel": "Code-driven and model-driven decisions",
       "pos": [
         390,
         640
@@ -155,8 +155,8 @@
     {
       "id": "reviewer",
       "type": "backend",
-      "label": "Reviewer agents",
-      "sublabel": "AI assessment and review feedback",
+      "label": "Child Agent invocation",
+      "sublabel": "May delegate again; typed return only",
       "pos": [
         740,
         640
@@ -184,7 +184,7 @@
   "boundaries": [
     {
       "kind": "region",
-      "label": "Agent orchestration: required design",
+      "label": "Agents: recursive invocation and control",
       "wraps": [
         "agent-definition",
         "harness",
@@ -264,7 +264,7 @@
     {
       "from": "invocation",
       "to": "reviewer",
-      "label": "Requests review",
+      "label": "Host-admitted delegation",
       "labelAt": [
         850,
         550
@@ -273,8 +273,9 @@
     {
       "from": "reviewer",
       "to": "agent-loop",
-      "label": "AI feedback",
-      "variant": "emphasis"
+      "label": "Typed child feedback",
+      "variant": "emphasis",
+      "labelDy": 30
     },
     {
       "from": "developer",
@@ -287,6 +288,11 @@
       "to": "agent-graph",
       "label": "Selects transition",
       "variant": "emphasis"
+    },
+    {
+      "from": "agent-loop",
+      "to": "invocation",
+      "label": "Next bounded decision"
     }
   ]
 }

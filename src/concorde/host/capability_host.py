@@ -60,6 +60,19 @@ class CapabilityHost:
     evidence: list[Any] = field(default_factory=list)
     observer: Any = None
 
+    def invoke_agent(self, runtime, agent_id, input, grant):
+        """Compose an explicitly installed recursive Agent under trusted host authority."""
+        from .agent_runtime import AgentRuntime
+        from .build import verify_fresh
+        verify_fresh(self.package_root)
+        if not isinstance(runtime, AgentRuntime):
+            raise ValueError("an installed AgentRuntime is required")
+        if self.mode != "execute":
+            raise ValueError("recursive Agent execution requires execute mode")
+        run = runtime.invoke(agent_id, input, grant)
+        self.evidence.extend(run.events)
+        return run
+
     def observe(self, event: str, **details) -> None:
         # Observability must never turn a completed mutation into a retryable failure.
         if self.observer is not None:

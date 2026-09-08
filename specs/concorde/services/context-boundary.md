@@ -40,6 +40,55 @@ context_id, read/write paths and a policy digest, printed to stderr — without 
 mutating project state, or exposing document content, instructions, stage inputs, implementation
 locators or the reusable cognitive snapshot itself.
 
+The host-internal Python call is:
+
+```python
+resolve_context(repository: SpecRepository, target_id: str, *, phase: str = "ask",
+                task: str = "Understand this Spec", focus_id: str | None = None,
+                constraints: tuple[str, ...] = (), instructions: str = "",
+                stage_inputs: tuple[dict, ...] = (), workspace: dict | None = None
+                ) -> ContextSnapshot
+```
+
+The caller supplies a fresh, successfully admitted repository and correctly typed arguments.
+An unsupported phase raises `SpecError/invalid_phase`; a blank task raises `invalid_input`;
+target/focus and repository/Protocol failures use the Shared Spec's declared errors. Unsupported
+stage-input IDs raise `SpecError/incompatible_handoff`, and malformed typed stage values raise
+`TypedDataError(ValueError)` with `code`, JSON-pointer `field` and message. The resolver returns no
+partial snapshot on failure. `instructions` is the caller's admitted role instruction text;
+`workspace=None` obtains current host lifecycle metadata. A supplied workspace is an explicit
+trusted-host frozen observation, not a caller task field or replacement authority.
+
+`ContextSnapshot(serialized: str)` is frozen; `.serialized` is canonical JSON, `.value` decodes a
+new dictionary and `.id` returns its `context_id`. The dictionary is the data of the private
+`concorde-context-snapshot@1` TypedValue; wrapping it adds the ordinary
+`{type_id, schema_version: 1, data}` envelope. Its exact fields are:
+
+- `schema_version: 1`, `context_id: sha256`, `target_id: str`, `kind: domain|service|module`,
+  `focus_id: str|null`, `phase: str`, `task: str`, `constraints: list[str]` and `instructions: str`.
+- `protocol_binding: {version: str, digest: sha256}` and
+  `protocol: list[{path, digest, content}]`, with the principles and kind documents in that order.
+- `document_order: list[path]`, `target_spec` and `shared_specs`: ordered lists of
+  `{document_id: str, path, digest: sha256, targets: list[str], main_visible: bool, content: str}`.
+- `diagram_sources: list[{path, digest, content, declaration}]`, where the declaration is the
+  selected target's registered `{source, kind, title, recipe?}` diagram record.
+- `stage_inputs: list[TypedValue]`, `implementation_artifacts: list[{id: str, path, digest: sha256}]`
+  and `workspace`, the lifecycle record described below. Implementation references are empty
+  outside `implementation` and `code-review`; code bytes are never embedded.
+
+Spec and artifact paths are canonical project-relative POSIX paths; workspace locations are
+absolute host identity paths. Sha256 values use the `sha256:` prefix and 64
+lowercase hexadecimal digits. Arrays may be empty except the admitted nonempty document closure
+and two Protocol records. Every listed snapshot field is required; unknown fields are rejected
+at typed host admission. The digest covers the complete canonical dictionary except `context_id`.
+
+The only permitted `stage_inputs` are version-1 TypedValues with these payloads:
+`concorde-plan-artifact` has `plan: nonblank str`; `concorde-implementation-task` has that same
+`plan` and `tasks: list[{id, target_id, description, acceptance, complete}]`, with nonblank strings
+and a boolean `complete`; `concorde-reflection-selection` has `head: nonblank str` and
+`records: list[{id: str, path, digest: sha256, content: str}]`, with nonblank string fields.
+These records are closed objects. A stage input conveys only its declared content, not authority.
+
 The private snapshots also carry declared `workspace` lifecycle metadata: current and
 primary worktree identities/branches, current change phase/status/outcome, its reported gaps and
 component progress, and basic information about live linked worktrees. This contains no target plan,
@@ -48,6 +97,14 @@ permission to read another worktree. A secondary context is explicitly a candida
 The host rechecks the current workspace identity and lifecycle after a stage; other worktrees' frozen
 summaries may advance independently. Topology proposals retain their originating workspace observation
 so a committed-base handoff can recheck the same admitted Spec and design inputs in its candidate.
+
+That closed record has `kind: primary|change|unversioned`, `current_worktree: str`, nullable string
+`current_branch`, `primary_worktree`, `primary_branch`, `change_id`, `phase`, `status` and `outcome`,
+plus arrays `gaps`, `components` and `active_worktrees`. A gap has nonblank `question`, `blocked_step`
+and `needed_contract`, and optional `target_id` and sha256 `context_id`. A component has nonblank
+`target_id`, `spec_status`, `implementation_status` and nullable `outcome`. Each active-worktree
+summary has `path: str`, nullable `branch`, `head`, `change_id`, `target_id`, `phase` and `outcome`,
+booleans `managed` and `locked`, `task: str` (possibly empty) and nonblank `status`.
 
 The snapshot data adds the content of each target_spec/shared_specs reference. Target Spec contains
 documents referenced only by the selected target; Shared Specs contains each multiply referenced
@@ -111,6 +168,17 @@ into the worker snapshot.
 
 ## feature.context.initialize
 
+The public input is `concorde-init-request@1`, an ordinary
+`{type_id, schema_version: 1, data}` envelope. `data` is a closed object with required
+`action: "propose"|"apply"` and optional `name`, `target_id`, `configuration` and `proposal`.
+`name` and `target_id`, when supplied, are nonblank strings. `configuration` is
+`concorde-capability-configuration@1` with exactly
+`{integration: "codex"|"claude", enforcement: "native"|"outer"}` in its data.
+`proposal` is `concorde-project-proposal@1` with exactly
+`{action: "initialize", base_digest: sha256|null, files: list[{path, before_digest: sha256|null,
+content: str}]}` in its data. File paths must be canonical project-relative paths and distinct;
+content may be empty. These nested records reject unknown properties.
+
 concorde-init request action:propose additionally requires name and configuration and optionally a
 target_id (default domain.project); action:apply requires the returned typed project proposal.
 A proposal records action initialize, nullable base_digest and files {path,before_digest,content}.
@@ -121,6 +189,41 @@ Application validates every precondition and the complete resulting registry, th
 replacements or restores original bytes. New initialization never overwrites existing files. Profile
 7 is not agent-compatible and has no migration capability. The host can resolve metadata broadly;
 no agent inherits its read authority. Local semantic authoring must make this collection sufficient.
+
+Success returns `concorde-init-response@1` with closed data
+`{status: "proposed"|"applied", proposal: TypedValue<concorde-project-proposal>|null,
+files: list[path]}`. Propose returns the exact typed proposal and its ordered paths, without
+changing project files; apply returns `status: "applied"`, `proposal: null` and the applied paths.
+Initialization requires `base_digest` and every `before_digest` to be null. It also initializes
+Reflection defaults and the topology-artifact ignore file only when absent. Missing action-specific
+inputs raise `invalid_input`; an already configured project raises `already_initialized`.
+Invalid proposal identity, forbidden replacement or mismatched registry/Protocol raises
+`invalid_proposal`; an out-of-bound path raises `permission_denied`; changed preconditions raise
+`stale_proposal`. Unsafe paths and typed-envelope errors use `TypedDataError`; filesystem or
+transaction failures propagate to the host after rollback of applied file replacements.
+Rollback I/O failure is itself a failure and cannot produce `applied`.
+
+Apply admits the complete proposal by its exact `concorde-project-proposal@1` envelope and
+`action: "initialize"`, not by an issuance token or lookup in a proposal store. Its files must
+include `.concorde/config.json` and `.concorde/specs.json`; the proposed configuration must name
+that registry and the currently installed Protocol version and exact manifest digest. The allowed
+file set is those two paths, `.concorde/topology-proposals/.gitignore`, the two Reflection defaults
+`.concorde/reflections/index.json` and `.concorde/reflections/config.json`, and the explicit document
+and diagram-source paths in the proposed registry. Every other destination is rejected even if its
+path is safe and absent. All proposed files have null before-digests and must still be absent at
+application. The host validates the complete resulting registry and documents after replacement
+within the rollback boundary; malformed, inconsistent or unsafe proposed structure cannot become
+an applied initialization. These structural rules do not replace the developer's acceptance of
+the concrete proposal or assert semantic completeness of an initialized stub.
+
+At the executable boundary these typed values travel inside a
+`concorde-capability-invocation@3` with `capability_id: "concorde-init"`, `mode: "execute"`,
+nullable typed outer `configuration`, and `input` containing the request. The returned
+`concorde-capability-result@3` has the same capability ID, fresh `invocation_id`, mode, nullable
+workspace/output, status and `errors: list[{code, field, message}]`. Successful initialization has
+`status: "succeeded"` and the typed output above; admission failures are blocked and execution
+failures are failed, with no successful output. A required worktree handoff is a blocked result,
+not an applied initialization. The host may not silently retry a rejected proposal against new bytes.
 
 The following local provider contract repeats the common selection obligation independently of its
 consumer's Spec. Schema equality is checked deterministically; prose semantics still need review.
@@ -194,3 +297,29 @@ until repair and a successful fresh assessment of that step. Pure queries do not
 The registered Shared Spec **Registry selection and value contracts** supplies this Service's local
 required constructor, selection, document/type, configuration and error promises without opening
 another target's remaining collection.
+
+## Required reader and asset composition promises
+
+The stage reader consumes the authored fragment `prompts/agents/reader/spec.md` provided by
+`module.agent-execution`, through the asset builder's explicit `@include` expansion. The required
+fragment contract is: read the complete admitted target collection; return task-relevant answers
+and local references without private context or unrelated bodies; report concrete gaps or required
+human decisions; and never invoke provider-native delegation. When the supplied input is
+`concorde-agent-loop-context`, the fragment permits one typed loop action with host-advertised
+children and typed feedback. With a legacy stage context it must honor that stage's declared typed
+result, emit no loop action and request no children. Including this fragment does not make the
+ordinary one-decision reader a recursive runtime or grant it a child-call interface.
+
+The required `module.package-assets` builder expands the explicit include's worker body, retains
+its source identity in build provenance and rejects stale rendered instructions. The fragment's
+implementation belongs to its provider; this Service's local contract specifies its required
+behavior and how the stage reader composes it.
+
+The Protocol manifest consumes `generated/protocol/schemas.json` as an asset produced from the
+wire provider's registered schemas. Its required `module.wire-contracts` producer contract is
+stable type IDs, exact versioned closed payload/envelope schemas and self-contained local
+definitions, with additive recursive Agent transport types at version 1. Schema export belongs to
+that provider. This Service binds and verifies the complete manifest and asset byte digests via
+the admitted repository constructor; it does not synthesize or reinterpret the schema inventory.
+A missing or mismatched generated schema asset must therefore prevent context construction with
+`protocol_mismatch`, even though its raw bytes are not part of every target's cognitive snapshot.

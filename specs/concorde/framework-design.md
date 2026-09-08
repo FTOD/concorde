@@ -30,7 +30,7 @@ currently distributes them in one rule bundle for complete invocation context. P
 Framework execution, topology changes, reviews, worktrees and handoffs; they do not turn these runtime
 records into Concorde Spec Protocol file categories.
 
-## Agent definitions and Harnesses
+## Agents
 
 Each Agent is defined by its authored `spec.md`, a Harness reference and Constraints/Permissions.
 One Python module binds those parts. The responsibility Spec defines expected behavior; the Harness
@@ -63,7 +63,10 @@ separate publication and viewer interfaces.
 
 Agent Graphs declare participating Agent definitions, capability calls, state and control transitions.
 An Agent's Harness provides its local loop; a Graph can additionally coordinate feedback loops across
-Agents. Each transition distinguishes deterministic conditions, AI assessments and human decisions.
+Agents. Code-driven rules and model-driven decisions can alternate in the same loop and nest across
+Agents in either direction. Codex/Claude Agents can delegate through the host to other Concorde
+Agents; their native clients remain implementation resources. Leaf status belongs to an invocation,
+not an Agent type. Each transition records its decision source and any required human decision.
 A loop defines when to continue, revise, wait, stop or report exhausted limits.
 
 The [Graph and Loop contract](workflow/agent-graphs-and-loops.md) defines these requirements. The

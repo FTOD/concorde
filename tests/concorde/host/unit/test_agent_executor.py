@@ -255,6 +255,7 @@ class AgentExecutorTests(unittest.TestCase):
         self.assertIn('"failIfUnavailable":true', "".join(argv))
         self.assertIn('"allowUnsandboxedCommands":false', "".join(argv))
         self.assertIn("--json-schema", argv)
+        self.assertNotIn("$schema", json.loads(argv[argv.index("--json-schema") + 1]))
         self.assertIn("--output-format", argv)
         self.assertIn("Use bounded context", input_text)
         self.assertEqual(result.output, "claude-result")

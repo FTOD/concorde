@@ -83,7 +83,7 @@ select a new task or authorize a specific transition. Feedback never silently ex
 permissions. Checks and review evidence support readiness; delivery remains a separately authorized
 capability. Developer views expose the relevant Specs, results and code knowledge for further input.
 
-The [Agent orchestration Domain](workflow/ontology.md) defines [Agents and Harnesses](workflow/agents-and-harnesses.md)
+The [Agents Domain](workflow/ontology.md) defines [Agents and Harnesses](workflow/agents-and-harnesses.md)
 and [Agent Graphs, Loops and feedback](workflow/agent-graphs-and-loops.md). [Framework design](framework-design.md)
 connects those requirements to supporting component responsibilities and existing compatibility
 bindings. Detailed project-Spec organization is defined by the [Concorde Spec Protocol](spec-protocol.md).
@@ -92,7 +92,7 @@ bindings. Detailed project-Spec organization is defined by the [Concorde Spec Pr
 
 | Domain | Responsibility and relationships |
 | --- | --- |
-| [Agent orchestration](workflow/ontology.md) | Defines Agents and Harnesses, composes capabilities, and controls Graphs and Loops through AI and human feedback |
+| [Agents](workflow/ontology.md) | Defines Agents and Harnesses, composes capabilities, and controls Graphs and Loops through AI and human feedback |
 | [Installation](installation/ontology.md) | Distributes and configures the Framework, Skills, runtime and Concorde Spec Protocol for a consumer project |
 | [Developer view and feedback](developer-view/ontology.md) | Helps developers inspect Specs, diagrams and code graphs, then clarify feedback and direct further work |
 

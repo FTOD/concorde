@@ -84,8 +84,8 @@
     {
       "id": "workflow-host",
       "type": "backend",
-      "label": "Agent orchestration",
-      "sublabel": "Graphs, Loops and Agent invocations",
+      "label": "Agents",
+      "sublabel": "Code-driven and model-driven loops",
       "pos": [
         740,
         480

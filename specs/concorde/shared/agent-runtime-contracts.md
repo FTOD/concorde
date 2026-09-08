@@ -76,7 +76,10 @@ Codex additionally carries `permission_profile: str`, `approval_policy: Literal[
 `strict_config: bool` (true), and `configuration: Mapping[str, Any]`. Claude carries
 `settings_json: str` and `permission_mode: Literal["dontAsk"]`.
 
-Renderers preserve the normalized effective boundary. Native Codex uses a named default-deny
+Renderers preserve the normalized effective boundary. Codex explicitly disables `multi_agent` and
+`multi_agent_v2`; Claude denies the `Agent` and legacy `Task` tools. These native tools cannot bypass
+the host's explicit Agent delegation protocol. Code-driven and model-driven Agent adapters request
+children through the host, while the process executor remains a single-decision client interface. Native Codex uses a named default-deny
 filesystem/network profile, ignores user configuration, and sets `project_doc_max_bytes=0` so
 ambient AGENTS.md discovery neither supplements nor prevents the frozen host context. Claude
 receives a native permission policy and disabled ambient settings. If native enforcement is not

@@ -14,3 +14,5 @@ answer needs an unspecified fact. Return no document replacements, plan, or task
 @include prompts/workflow-host/host-bound-invocation.md
 
 @include prompts/workflow-host/gap-reporting.md
+
+@include prompts/agents/reader/spec.md

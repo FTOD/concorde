@@ -85,8 +85,8 @@
     {
       "id": "workflows",
       "type": "external",
-      "label": "Agent orchestration",
-      "sublabel": "Graphs, Loops and human decisions",
+      "label": "Agents",
+      "sublabel": "Code-driven and model-driven loops",
       "pos": [
         1090,
         120

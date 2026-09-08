@@ -16,6 +16,16 @@ Agent orchestration coordinates Agent invocations, Capability calls and control 
 a declared goal. A Graph describes the structure of that coordination; a Loop describes feedback
 driven execution. They are related concepts, not interchangeable names.
 
+## Dispatch terminology
+
+**Code-driven** dispatch uses explicit code rules to choose the next action, target Agent and
+continue/stop condition. **Model-driven** dispatch uses a model's task and feedback assessment to
+choose the next action or delegation. These name the source of a decision. They may alternate
+within one Agent loop and nest in either direction across child invocations. Human decisions remain
+separate, explicit inputs. Code-driven control does not guarantee reproducible overall output:
+models, tools and external state may still vary. Determinism is a property to document where it
+applies, not the primary classification of Agents or dispatch.
+
 ## G1. Agent Graph
 
 An Agent Graph MUST declare its participating Agent definitions, Capability calls, control nodes,
@@ -25,7 +35,7 @@ define selection, completion and failure behavior. A sequence of deterministic i
 does not become an Agent Graph merely because it has several steps.
 
 The Graph MUST identify which Agent makes each model-assisted decision, which transitions are
-deterministic, and which require a human decision. It MUST preserve invocation-local context and
+code-driven, and which require a human decision. It MUST preserve invocation-local context and
 permissions across every handoff. A coordinator receives only admitted results; dispatching an
 Agent does not grant access to that Agent's complete private context.
 
@@ -40,8 +50,10 @@ cancellation, failure and execution-limit conditions. Limits may be time, iterat
 budgets or an explicit bounded host policy; an unbounded retry is not an implicit default.
 
 An Agent's Harness supplies its local control-loop mechanism. An Agent Graph may additionally
-coordinate loops across several Agents, such as author → reviewer → author. The local model loop
-and the outer multi-agent loop MUST have distinguishable state and completion conditions.
+coordinate loops across several Agents, such as author → reviewer → author. Each invocation's local loop and its enclosing loop MUST have distinguishable state and completion
+conditions. There is no fixed outer-Concorde/inner-provider hierarchy: a Codex or Claude Agent can
+delegate to a Python-controlled Agent, which can invoke another model-driven Agent. All such edges
+use the same host admission, typed feedback and shared tree limits defined in A5.
 
 A retry or revision MUST identify what changed or what recovery condition permits another attempt.
 Unchanged blocking feedback MUST not cause endless retries. Stale task, context, policy or result

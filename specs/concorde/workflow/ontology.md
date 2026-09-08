@@ -8,7 +8,7 @@
 }
 ```
 
-# Agent orchestration
+# Agents
 
 This Domain defines how Agents are assembled and how their invocations, capabilities and feedback
 are coordinated. **Agent = `spec.md` + Harness + Constraints/Permissions.** An Agent Graph defines
@@ -17,9 +17,12 @@ registry ID `domain.workflow` and existing `workflow/` paths remain compatibilit
 
 ## Architecture overview
 
-The embedded **Agent orchestration** System overview shows Python Agent definitions binding Agent
+The embedded **Agents** System overview shows Python Agent definitions binding Agent
 Specs and Harnesses, project context entering a Graph, and separate invocations using model clients.
-AI review and human feedback enter a control loop that determines the next Graph transition.
+Code-driven and model-driven decisions may alternate in each loop. An invocation can delegate to
+another Agent, whose loop can delegate again; typed feedback returns through the host. Codex/Claude
+Agent adapters use native clients as resources and are not fixed leaves. AI review and human
+feedback can affect the next admitted transition.
 The diagram describes the required design; implementation conformance requires checking the
 bindings and control paths, not just matching node names.
 
@@ -39,7 +42,7 @@ bindings and control paths, not just matching node names.
 | Candidate and evidence | Retained work, checks and reviews that bind progress to exact inputs and results |
 | Gap and Reflection | A missing promise blocking dependent work, or a separately retained problem requiring disposition |
 
-[Agents and Harnesses](agents-and-harnesses.md) defines A1–A4: responsibility Specs, Python bindings,
+[Agents and Harnesses](agents-and-harnesses.md) defines A1–A5: responsibility Specs, Python bindings,
 Harness composition, capability references and enforced invocation boundaries.
 [Agent Graphs, Agent Loops and feedback](agent-graphs-and-loops.md) defines G1–G4: directed
 coordination, local and cross-agent loops, AI/human feedback and resumable evidence.

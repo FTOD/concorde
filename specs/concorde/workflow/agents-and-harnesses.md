@@ -35,6 +35,11 @@ registered Spec structure.
 | Skill | Instructions and methods for carrying out a class of work | Can be admitted into a Harness; may describe how to use Capabilities and Tools |
 | Constraints/Permissions | Limits on information, operations, effects and execution | Restrict the Agent's effective Harness and are enforced outside model discretion |
 
+An Agent is a uniform abstraction, including Agents implemented with Python control logic and
+Agents using Codex or Claude. A Codex/Claude Agent adapter binds behavior, loop and permissions;
+the underlying native client is an execution resource. Neither provider integration is inherently
+a leaf. A leaf is an invocation that makes no child calls in a particular execution.
+
 A model is a resource used through the Harness. Responsibilities, task information and admitted
 Capability or Skill descriptions may all be presented as model context, while retaining distinct
 identities and contracts. Loading an instruction, mentioning a Tool or installing a Skill does not
@@ -116,6 +121,37 @@ decision, cancellation, an execution failure and exhaustion of the configured ex
 Failure MUST NOT cause an automatic retry with broader permissions. Feedback that requests a new
 goal, different context or additional authority MUST pass admission again before dependent work.
 
+## A5. Recursive delegation
+
+Any Agent MAY request another admitted Agent, including itself, through a host-controlled
+sub-agent/delegation interface. Python control logic and model decisions use the same admission
+boundary. A child may run its own loop and request further children. No provider or implementation
+language implies leaf status or gives an implicit delegation grant.
+
+The host MUST resolve the child definition, validate its typed input, check an explicit parent-to-child
+edge and the invocation's delegation grant, and independently bind its complete target context and
+permissions before execution. Self-calls require an explicit edge too. The installed Agent catalog,
+parent context, caller-supplied paths and native sub-agent names do not grant child authority.
+Cross-target delegation uses host-selected contexts within the enclosing task's explicit grant;
+it never copies another target's private snapshot through the parent.
+
+The child returns only its declared typed result, invocation identity and outcome. Context bodies,
+raw transcripts, exception messages and native logs are not child results. A continuation admits
+only the original task/context and declared typed feedback; each native model decision starts a
+fresh process. The host records parent/child identities and the source of each control decision.
+
+The invocation tree MUST share finite call and decision budgets, a depth limit and cancellation.
+A child cannot reset them. Host limits override local continuation requests. Cancellation and limit
+exhaustion stop dependent ancestors; execution/admission failures are typed feedback and a parent
+may recover only under its declared bounded loop. A missing-information or human-decision outcome
+remains distinct from execution failure. There is no implicit retry or permission widening.
+
+A native integration without a verified callback transport MAY yield a typed delegation request to
+the host and continue in a fresh decision invocation after receiving typed child feedback. This is
+a supported model-driven loop, not a claim that arbitrary provider-native sub-agent tools are safe.
+Unmediated native delegation MUST remain disabled. The current read-only adapter supports this
+yield/delegate/continue path; it grants only a private context capsule, not project file effects.
+
 ## Responsibilities and implementation boundaries
 
 The orchestration host resolves Agent definitions and schedules invocations. Agent execution
@@ -126,4 +162,4 @@ knowledge. Package assets render and distribute instruction views with source id
 Existing wire fields such as `role`, `agent`, `protocol` and `LaunchSpecification` remain their
 documented compatibility contracts. They MUST NOT be reinterpreted as a complete Agent or Harness
 binding without an explicit mapping and the required validation. Missing bindings are implementation
-gaps against A1–A4, not permission to weaken these requirements.
+gaps against A1–A5, not permission to weaken these requirements.

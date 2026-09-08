@@ -62,6 +62,11 @@ INTERNAL_SKILLS = tuple(sorted({"concorde-coordinator", *(role for _, role in ST
                                 *(role for _, role in REVIEW_STAGES.values()),
                                 *(role for _, role in TARGET_AGENT_STAGES.values())}))
 INTERNAL_DATA_TYPES = (
+    "concorde-agent-task",
+    "concorde-agent-answer",
+    "concorde-agent-interruption",
+    "concorde-agent-loop-context",
+    "concorde-agent-loop-step",
     "concorde-agent-stage-context",
     "concorde-agent-stage-result",
     "concorde-review-input",
@@ -147,6 +152,23 @@ def _capability_schemas() -> dict:
 
 def schemas() -> dict:
     result = {}
+    outcomes = {"enum": ["completed", "spec_incomplete", "waiting", "cancelled", "failed", "limit_exhausted", "rejected"]}
+    interruption = obj({"gaps": array(obj(GAP["properties"])), "decision": NULLABLE_ID})
+    result["concorde-agent-task"] = obj({"task": STRING, "target_id": STRING})
+    result["concorde-agent-answer"] = obj({"answer": STRING})
+    result["concorde-agent-interruption"] = interruption
+    details = {"anyOf": [typed_schema("concorde-agent-interruption"), {"type": "null"}]}
+    feedback = obj({"invocation_id": STRING, "parent_id": NULLABLE_ID, "agent_id": STRING,
+        "outcome": outcomes, "value_json": NULLABLE_ID, "error": NULLABLE_ID, "details": details})
+    child = obj({"agent_id": STRING, "input_type": STRING, "result_type": STRING,
+        "input_schema_json": STRING, "result_schema_json": STRING})
+    result["concorde-agent-loop-context"] = obj({"invocation_id": STRING,
+        "parent_id": NULLABLE_ID, "agent_id": STRING, "input_json": STRING,
+        "context_json": STRING, "feedback": array(feedback), "children": array(child),
+        "result_schema_json": STRING})
+    result["concorde-agent-loop-step"] = obj({"source": {"enum": ["code-driven", "model-driven"]},
+        "action": {"enum": ["delegate", "complete"]}, "agent_id": NULLABLE_ID,
+        "value_json": NULLABLE_ID, "outcome": outcomes, "details": details})
     document_ref = obj({"document_id": STRING, "path": PATH, "digest": DIGEST,
         "targets": {**array(STRING, unique=True), "minItems": 1},
         "main_visible": {"type": "boolean"}})

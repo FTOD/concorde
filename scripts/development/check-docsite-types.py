@@ -22,11 +22,15 @@ def main() -> int:
         subprocess.run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"],
                        cwd=DOCSITE, check=True)
         marker.write_text(identity)
-    # Generate the Profile 8 sidebar that sidebars.specs.ts imports.
+    # TypeScript imports the sidebar, not published pages or rendered diagram HTML.
+    # Derive the real sidebar in a fresh checkout without requiring publication first.
     prepare = (
+        "const {mkdirSync,writeFileSync}=require('node:fs');"
         "const {loadScopedRegistry}=require('./plugins/scoped-content/model.ts');"
-        "const {materializeScoped}=require('./plugins/scoped-content/materialize.ts');"
-        "materializeScoped(loadScopedRegistry('..')).catch(error=>{console.error(error);process.exitCode=1;});"
+        "const {scopedSidebar}=require('./plugins/scoped-content/materialize.ts');"
+        "const sidebar=scopedSidebar(loadScopedRegistry('..'));"
+        "mkdirSync('.generated',{recursive:true});"
+        "writeFileSync('.generated/specs-sidebar.json',JSON.stringify(sidebar,null,2)+'\\n');"
     )
     subprocess.run(["node", "--import", "tsx", "-e", prepare], cwd=DOCSITE, check=True)
     return subprocess.run(["node", str(compiler), "--noEmit", "--project", str(DOCSITE / "tsconfig.json")],

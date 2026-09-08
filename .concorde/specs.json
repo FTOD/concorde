@@ -40,7 +40,7 @@
     {
       "id": "domain.workflow",
       "kind": "domain",
-      "title": "Agent orchestration",
+      "title": "Agents",
       "documents": [
         "specs/concorde/workflow/ontology.md",
         "specs/concorde/workflow/routing.md",
@@ -65,7 +65,7 @@
         {
           "source": "specs/concorde/workflow/diagrams/overview.architecture.json",
           "kind": "architecture",
-          "title": "Agent orchestration",
+          "title": "Agents",
           "recipe": "system-overview"
         }
       ]
@@ -478,13 +478,22 @@
         "domain.workflow"
       ],
       "implementation": [
-        "src/concorde/host/agent_executor.py"
+        "src/concorde/host/agent_executor.py",
+        "src/concorde/host/agent_runtime.py",
+        "src/concorde/host/native_agent.py",
+        "src/concorde/agents",
+        "prompts/agents/reader/spec.md"
       ],
       "features": [],
       "apis": [
         {
           "id": "api.execution.execute",
           "title": "Agent execution",
+          "document": "specs/concorde/modules/agent-execution.md"
+        },
+        {
+          "id": "api.execution.invoke-agent",
+          "title": "Recursive Agent invocation",
           "document": "specs/concorde/modules/agent-execution.md"
         }
       ],
@@ -603,7 +612,8 @@
         "docsite/tsconfig.json",
         "docsite/sidebars.specs.ts",
         "docsite/sidebars.architecture.ts",
-        "docsite/sidebars.features.ts"
+        "docsite/sidebars.features.ts",
+        "scripts/development/check-docsite-types.py"
       ],
       "features": [],
       "apis": [

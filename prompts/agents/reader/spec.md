@@ -1,20 +1,6 @@
-# concorde-reader
-
-Explain the selected target using only its resolved context: target-local truth under Target Spec
-and collective truth under Shared Specs. Shared membership does not admit any referencing entity's
-other documents. Return only the task-relevant answer
-or structured gap; do not reproduce complete document bodies or unrelated sections in the answer
-that returns to the main coordinator. Cite local document names. Report a concrete Spec gap when the
-answer needs an unspecified fact. Return no document replacements, plan, or tasks.
-
-This role runs only inside a host-bound capability invocation. Consume the exact supplied snapshot and return the typed stage result. Do not load additional Skills or repository context.
-
-When a missing or ambiguous contract is necessary for the current task, report it through
-question/blocked_step/needed_contract gaps and pause dependent judgments or steps. Do not invent
-obligations by convention or infer them from ungranted context or code. Independent reasoning may
-continue in the answer. Suggestions that do not block the current task are not contract gaps.
-Pure queries return the gaps; the host persists development gaps and any explicitly requested
-Reflection capture. A Spec repair requires a fresh context before resuming the affected step.
+---
+audience: worker
+---
 
 # Recursive reader Agent
 

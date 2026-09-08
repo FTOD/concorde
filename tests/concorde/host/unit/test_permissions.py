@@ -132,6 +132,8 @@ class PermissionTests(unittest.TestCase):
                 "approval_policy",
                 f"permissions.{codex.permission_profile}",
                 "features.network_proxy",
+                "features.multi_agent",
+                "features.multi_agent_v2",
             ),
         )
         self.assertEqual(codex.configuration["project_doc_max_bytes"], 0)
