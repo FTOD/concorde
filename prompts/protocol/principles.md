@@ -144,7 +144,7 @@ It MAY route work to a Module only when an admitted Domain or Service supplies t
 ID, responsibility and selection condition. Missing routing facts are a Spec gap in the admitted
 Domain or Service that should supply them.
 
-An Operation with one owning lifecycle or mutation result receives exactly one main route and keeps
+A capability with one owning lifecycle or mutation result receives exactly one main route and keeps
 the user's task and constraints unchanged. Cross-target mutation is routed to a Domain that
 coordinates separately bound component work. The read-only `ask` action of `concorde-main` may route
 several target readers and combine only their typed results.
@@ -157,7 +157,7 @@ guidance, not a return channel for a worker snapshot. Typed worker results MAY b
 
 The context manifest MUST identify the target and kind, document order, Target Spec and Shared Specs,
 each document's stable identity/reference set/main visibility and content digest,
-Protocol and kind-definition versions, Operation instructions, task input, phase, and any admitted
+Protocol and kind-definition versions, rendered role instructions, task input, phase, and any admitted
 stage artifacts or structured tool results. A context identity MUST cover membership as well as
 content. A change to admitted inputs produces a new snapshot rather than silently changing the
 meaning of an existing identity.
@@ -193,7 +193,7 @@ Spec gap. An execution or model failure alone does not prove missing information
 A missing runtime value whose requirement and missing-value behavior are already specified is
 an input/admission failure, rather than evidence that the Spec's semantics are incomplete.
 
-A context-solving Operation MUST assess the task using its admitted collection. It MUST NOT
+A context-solving capability MUST assess the task using its admitted collection. It MUST NOT
 expand that collection to make the task appear answerable. A gap is resolved by supplying and
 reconciling the missing information through an explicit Spec-authoring task, producing a new Spec
 revision, and resolving a new context before the blocked task resumes. Cross-target contract
@@ -223,10 +223,10 @@ lifecycle and does not prove that all future tasks are possible.
 
 ### P7. Execution enforces the agent's cognitive boundary
 
-All Concorde agent entry points MUST execute through an Operation host that establishes and
+All Concorde agent entry points MUST execute through a capability host that establishes and
 enforces their context. This includes exploration, initialization, specification, planning,
-implementation, validation, fast loops, and reflection work. A public Skill can initiate an
-Operation; it MUST NOT bypass the host to perform the bounded task in an ambient conversation.
+implementation, validation, development loops, and reflection work. A Skill can initiate a
+capability; it MUST NOT bypass the host to perform the bounded task in an ambient conversation.
 
 The implementation phase may expose authorized implementation source to an agent. The dedicated
 code-review phase has the same target implementation visibility with all write authority removed;
@@ -257,20 +257,26 @@ but MUST NOT return the raw cognitive snapshot or document bodies to the ambient
 keeps complete snapshots private and supplies them only to the fresh invocation whose policy is
 bound to that context.
 
-Operations fall into three classes, distinguished by who selects the context. A global Operation
+Capabilities fall into three classes, distinguished by who selects the context. A global capability
 receives only the user's intent, at most with routing hints, and lets the host's coordinator
 discover main-visible Specs and select the owning target; it may span several targets and stages. A
-lifecycle Operation is deterministic host behavior with no agent cognition and no context
-selection. Every other Operation is an internal stage: it receives an already bound target and one
-frozen snapshot, runs one role, never reselects or expands its context, and is admitted only from a
-composing public Operation. Internal stages MUST NOT be projected as user-invocable Skills, and the
-executable boundary MUST reject their direct invocation. Context selection therefore happens only
-inside global Operations.
+lifecycle capability is deterministic host behavior with no agent cognition and no context
+selection. Every other capability is a stage: it receives an already bound target and one frozen
+snapshot, runs one role, never reselects or expands its context, and is composed only in-process by
+a capability that declares it. Only Skills have an executable boundary, and each Skill exposes
+exactly one global or lifecycle capability. Stage capabilities MUST NOT be projected as Skills and
+have no direct invocation. Context selection therefore happens only inside global capabilities.
+
+Role and Skill instructions are rendered from versioned prompt sources by a deterministic build. A
+rendered instruction is a projection: it is never an authoring source, its exact bytes enter the
+context identity of every invocation that uses it, and the host MUST refuse to run on a build whose
+sources have changed since it was rendered. Spec documents are never assembled from prompts; shared
+Spec truth uses registry-declared Shared Specs.
 
 ### P8. System topology is main-designed and explicitly accepted
 
 `concorde-main` is the single public entry for global questions and system-structure design; there
-is no separate ask Operation. For a topology change, its internal coordinator MAY receive the exact
+is no separate ask capability. For a topology change, its internal coordinator MAY receive the exact
 registry metadata and every global kind definition in addition to its append-only, main-visible
 Domain/Service discovery collections. Registry metadata supplies current structure, not hidden
 business meaning. The coordinator still MUST NOT directly expand a Module or receive implementation

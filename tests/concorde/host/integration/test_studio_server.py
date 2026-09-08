@@ -101,11 +101,8 @@ class StudioServerTests(unittest.TestCase):
         self.assertNotIn("__error__", state, state)
         return thread, state
 
-    def cli(self, value, forwarded=True, launcher=False):
-        entry = PACKAGE / "operations" / value["operation_id"] / "operation.py"
-        argv = [sys.executable, str(entry)]
-        if launcher:
-            argv = [sys.executable, str(PACKAGE / "scripts/run-operation.py"), str(entry)]
+    def cli(self, value, forwarded=True):
+        argv = [sys.executable, str(PACKAGE / "scripts/run-capability.py"), value["capability_id"]]
         env = {**os.environ}
         env.pop("CONCORDE_STUDIO_URL", None)
         if forwarded:
@@ -117,20 +114,20 @@ class StudioServerTests(unittest.TestCase):
         assistants = self.request("/assistants/search", {"limit": 100})
         self.assertEqual(7, len(assistants))
         for assistant in assistants:
-            operation = assistant["graph_id"]
-            with self.subTest(operation=operation):
+            capability = assistant["graph_id"]
+            with self.subTest(capability=capability):
                 schema = self.request(f"/assistants/{assistant['assistant_id']}/schemas")
                 self.assertIn("invocation", schema["input_schema"]["properties"])
-                _, state = self.run_graph(invocation(operation, data={"invalid_field": True}))
+                _, state = self.run_graph(invocation(capability, data={"invalid_field": True}))
                 self.assertEqual("blocked", state["result"]["status"], state)
 
     def test_direct_execution_and_cli_skill_launcher_json_parity(self):
         value = invocation()
         _, direct = self.run_graph(value)
         self.assertEqual("succeeded", direct["result"]["status"], direct)
-        for forwarded, launcher in [(False, False), (True, False), (True, True)]:
-            with self.subTest(forwarded=forwarded, launcher=launcher):
-                result = self.cli(value, forwarded, launcher)
+        for forwarded in (False, True):
+            with self.subTest(forwarded=forwarded):
+                result = self.cli(value, forwarded)
                 self.assertEqual(0, result.returncode, result.stderr + result.stdout)
                 self.assertEqual(stable(direct["result"]), stable(json.loads(result.stdout)))
                 if forwarded:
@@ -157,7 +154,7 @@ class StudioServerTests(unittest.TestCase):
 
     def test_describe_policy_stderr_and_error_exit_compatibility(self):
         value = invocation("concorde-main", "describe-policy")
-        result = self.cli(value, launcher=True)
+        result = self.cli(value)
         self.assertEqual(0, result.returncode, result.stderr + result.stdout)
         self.assertEqual("described", json.loads(result.stdout)["status"])
         policies = [json.loads(line) for line in result.stderr.splitlines() if line.startswith('{"policies"')]
@@ -174,7 +171,8 @@ class StudioServerTests(unittest.TestCase):
         self.assertEqual("workspace_mismatch", state["result"]["errors"][0]["code"])
         self.assertEqual([], state["events"])
         # Same CLI entry, but its cwd belongs to another workspace.
-        result = subprocess.run([sys.executable, str(PACKAGE / "operations/concorde-reflections-triage/operation.py")],
+        result = subprocess.run([sys.executable, str(PACKAGE / "scripts/run-capability.py"),
+            "concorde-reflections-triage"],
             input=json.dumps(invocation()), text=True, capture_output=True, cwd=PACKAGE,
             env={**os.environ, "CONCORDE_STUDIO_URL": self.base}, timeout=30)
         self.assertEqual(3, result.returncode)

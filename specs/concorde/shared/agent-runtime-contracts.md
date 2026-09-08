@@ -8,7 +8,7 @@
 
 # Agent runtime value and collaborator contracts
 
-This registered Shared Spec defines the exact public value records used by the Operation host,
+This registered Shared Spec defines the exact public value records used by the capability host,
 permission compiler and executor. These are Python in-process contracts; they do not give an agent
 permission to construct its own grant. Strings called digests are canonical `sha256:` plus 64 lower-case
 hex digits. Paths in policies are project-relative POSIX paths without aliases or symlinks; an
@@ -19,7 +19,7 @@ attested runtime bootstrap path is the explicitly distinguished absolute native-
 ```python
 EffectDeclaration(reads: tuple[str, ...] = (), writes: tuple[str, ...] = (),
                   network: bool = False, credentials: Literal["none", "declared"] = "none")
-PolicyBinding(operation: str, stage: str, occurrence: int, capability: str, agent: str,
+PolicyBinding(capability: str, stage: str, occurrence: int, role: str, agent: str,
               read_roles: tuple[str, ...] | None = None,
               write_roles: tuple[str, ...] | None = None,
               network: bool | None = None,
@@ -40,7 +40,7 @@ turn a task string, file link, registry relationship or returned ArtifactRef int
 
 | Attribute | Type and meaning |
 |---|---|
-| operation, stage, capability, agent | str; the exact bound Operation and role identities |
+| capability, stage, role, agent | str; the exact bound capability and role identities |
 | occurrence | int; this stage occurrence |
 | read_paths, write_paths, deny_paths | tuple[str, ...]; sorted, deduplicated concrete grants/denies |
 | default_deny | bool; compiler results are true |
@@ -107,12 +107,12 @@ Codex bootstrap. Finalization preserves every task read/write/deny/network/crede
 ## Host-built launch
 
 ```python
-build_launch_specification(*, operation: str, stage: str, occurrence: int, capability: str,
+build_launch_specification(*, capability: str, stage: str, occurrence: int, role: str,
     integration: Literal["codex", "claude"], agent: str, project_root: str, request: str,
     prompt: str, prior_results: tuple[str, ...], workspace_receipt_json: str,
     workspace_digest: str, policy: NormalizedPolicy,
     native_configuration: NativeLaunchConfiguration, runtime_input_json: str | None = None,
-    operation_configuration_json: str | None = None,
+    capability_configuration_json: str | None = None,
     invocation_id: str | None = None) -> LaunchSpecification
 ```
 
@@ -135,11 +135,11 @@ returns another launch: the original requested digest and finalized digest are i
 name and nonempty evidence. A `CapabilityCompletion` is a frozen record with:
 
 ```python
-schema_version: int                       # 2 for typed Profile 8; legacy untyped launches use 1
-operation: str
+schema_version: int                       # 3 for typed Profile 8; legacy untyped launches use 1
+capability: str
 stage: str
 occurrence: int
-capability: str
+role: str
 launch_digest: str                         # finalized launch
 workspace_digest: str
 runtime_bootstrap_digest: str
@@ -167,16 +167,16 @@ field types in this list are strings. Receipt identities bind the native configu
 requested/finalized launch; an exit-zero subprocess without valid completion is still failure.
 
 ```python
-OperationExecutionResult(output: str, receipt: EnforcementReceipt,
+CapabilityExecutionResult(output: str, receipt: EnforcementReceipt,
                          completion: CapabilityCompletion,
                          domain_output: dict[str, Any] | None = None)
-OperationExecutionError(message: str, receipt: EnforcementReceipt | None = None)
+CapabilityExecutionError(message: str, receipt: EnforcementReceipt | None = None)
 ```
 
-The executor returns `OperationExecutionResult` only for a successful native process and validated
+The executor returns `CapabilityExecutionResult` only for a successful native process and validated
 successful completion. Its `output` equals `completion.output`; consume typed results from
 `completion.domain_output`. The optional result-level `domain_output` is a compatibility slot and
-is not populated by `AgentProcessExecutor`. `OperationExecutionError` is a `RuntimeError`; `receipt`
+is not populated by `AgentProcessExecutor`. `CapabilityExecutionError` is a `RuntimeError`; `receipt`
 is available after a completed process fails exit/status/schema checks, and may be absent on
 preflight/launch failure. No executor failure silently retries with wider permissions or rolls back
 already authorized implementation edits. The host stops the affected transition and preserves the

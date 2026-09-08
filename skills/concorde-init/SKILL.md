@@ -6,7 +6,7 @@ capability: init
 
 # concorde-init
 
-@include prompts/workflow-host/invoke-operation-opener.md ACTION=init
+@include prompts/workflow-host/invoke-capability-opener.md ACTION=init
 @include prompts/workflow-host/lifecycle-no-cognition.md
 
 @include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-init

@@ -11,7 +11,7 @@ metadata:
 ---
 # concorde-dev-loop
 
-Invoke this Operation to run the development loop. The host owns context
+Invoke this capability to run the development loop. The host owns context
 resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
 input; do not perform it directly in this ambient conversation or inspect additional project files.
 
@@ -29,7 +29,7 @@ Initialization uses its typed propose/apply request; use the published request s
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
 Main may inspect Domain/Service Specs on demand but cannot read Module Specs or code. It returns one
-typed route for this Operation; the host then starts a different target worker.
+typed route for this capability; the host then starts a different target worker.
 When a mutation starts in the primary worktree, the host prepares a committed-base linked
 worktree and returns a handoff. Open a new agent in the returned worktree before continuing;
 never carry this conversation or its worktree-owned Skills across that boundary. Report Spec gaps

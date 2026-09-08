@@ -33,9 +33,9 @@ During a `route` phase, understand the user's task and either:
 - return `spec_incomplete`, `unsupported`, or `conflicting` with precise evidence from the admitted
   Specs.
 
-The discovery snapshot identifies the requested public Operation. For the `ask` action of
+The discovery snapshot identifies the requested capability. For the `ask` action of
 `concorde-main`, you may return
-several routes so separate readers can answer distinct targets. Every other routed Operation requires
+several routes so separate readers can answer distinct targets. Every other routed capability requires
 exactly one owning target; select a Domain when one mutation must coordinate several components.
 
 Expand only as needed. Never request a Module Spec. You may route a task to a Module target when an

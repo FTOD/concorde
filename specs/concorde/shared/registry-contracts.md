@@ -9,7 +9,7 @@
 # Registry selection and value contracts
 
 This registered Shared Spec defines the in-process registry interface required by the context and
-Operation hosts. It is part of each listed target's admitted collection; callers need no provider,
+capability hosts. It is part of each listed target's admitted collection; callers need no provider,
 parent or co-referencing entity's other documents. Python paths below are relative to the supplied
 project root unless explicitly typed as project/package roots. No method grants an agent authority.
 
@@ -40,7 +40,7 @@ an instance caches documents already read and is not a live filesystem view. The
 unsafe roots, unsupported profiles/Protocol bindings, malformed registry/identity/relationship/check
 metadata and overlapping implementation grants. The root must contain `.concorde/config.json` with exactly
 `{profile_version: 8, registry: relative_path, protocol: {version: "1.1.0", digest: sha256},
-operation_configuration: {type_id: "concorde-operation-configuration", schema_version: 1,
+capability_configuration: {type_id: "concorde-capability-configuration", schema_version: 1,
 data: {integration: "codex"|"claude", enforcement: "native"|"outer"}}}`. The referenced registry is
 `{schema_version: 1, project_id: stable_id, entry_target: target_id, targets: [SpecTarget records],
 checks: [Check records]}`; tuple fields below are JSON arrays in that file. Entry target is a registered
@@ -64,7 +64,7 @@ For example, `feature.concorde.evolve-protocol` is a focus of `domain.concorde`,
 
 `document` accepts only a registered document path, reads UTF-8 Markdown (or its explicit overlay),
 and verifies exactly one document declaration with valid ID, exact reference set and boolean
-`main_visible`. `documents` returns that operation for every registered path in target order, once
+`main_visible`. `documents` performs that same read for every registered path in target order, once
 each. It does not follow links or include another referencing target's remaining documents.
 Read/parse/declaration failures raise `SpecError`, Unicode/JSON parsing errors, or the declared safe-path
 error; callers abort context construction rather than use an incomplete collection.
@@ -126,7 +126,7 @@ canonical JSON serialization of another value and returns a `sha256:` identity. 
 validates `[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*` and returns the string. `strings` accepts a list of unique
 nonblank strings and returns a tuple, requiring at least one only when `nonempty=True`.
 `SpecError` is a `ValueError` exposing stable `code` and `field`; messages explain diagnostics and
-are not a compatibility key. Safe-path admission may raise `OperationDataError(ValueError)` with
+are not a compatibility key. Safe-path admission may raise `TypedDataError(ValueError)` with
 its own code/field. OS read failures propagate without fallback to broader sources.
 
 ```python

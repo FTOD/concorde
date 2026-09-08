@@ -28,11 +28,11 @@ self-contained meaning and routing facts.
 ## feature.context.resolve
 
 The context Service is host-internal: `resolve_context` produces a private ContextSnapshot behind
-the executable boundary, and no public Operation returns it or a redacted projection of it. Its
+the executable boundary, and no Skill returns it or a redacted projection of it. Its
 inputs are target_id, task, optional focus_id/constraints/phase (default ask). Other phases are
 specify, plan, tasks, implementation, spec-review, code-review, validate, deliver and context-solve.
 Unknown fields/versions/IDs are rejected by the host's own admission, never by an agent-facing
-schema. `describe-policy` mode on any Operation previews the exact grant an execution would receive —
+schema. `describe-policy` mode on any capability previews the exact grant an execution would receive —
 context_id, read/write paths and a policy digest, printed to stderr — without launching an agent,
 mutating project state, or exposing document content, instructions, stage inputs, implementation
 locators or the reusable cognitive snapshot itself.
@@ -52,8 +52,9 @@ document once. document_order preserves the registry order across both headings.
 not load any referencing entity's other documents and does not recurse through shared membership.
 The context identity covers all inputs apart from its own identity field. Protocol contains
 principles and the matching kind definition only.
-Protocol 1.1.0 includes P10 handoffs in the principles body. The resolver admits it from the exact
-project-bound assets without discovering root AGENTS.md/CLAUDE.md. The installed root entry serves
+Protocol 1.1.0 includes P10 handoffs in the principles body. The resolver verifies the build is
+fresh, then admits Protocol assets rendered into `generated/protocol/` from the exact project-bound
+manifest, without discovering root AGENTS.md/CLAUDE.md. The installed root entry serves
 outer user sessions only. Package update leaves an old binding unchanged and resolution rejects
 `protocol_mismatch` until the maintainer explicitly accepts the installed version and manifest
 digest in `.concorde/config.json`. Changed bindings require new contexts.
@@ -84,8 +85,8 @@ validation without exposing those bodies to the coordinator or changing project 
 Ordinary single-target authoring preserves the entire `concorde-document` declaration; document ID,
 reference and visibility changes are topology changes even for a currently local document.
 
-Context solving is a separate fresh context-assessor stage, run directly by the internal
-`concorde-context-solve` Operation or as `concorde-plan`'s preliminary sufficiency check. It returns
+Context solving is a separate fresh context-assessor stage, run directly by the
+`concorde-context-solve` stage capability or as `concorde-plan`'s preliminary sufficiency check. It returns
 sufficient, spec_incomplete, unsupported, conflicting or failed. A gap
 must name question, blocked_step and needed_contract. It cannot fetch missing context. Known missing
 runtime fields fail admission; semantic incompleteness is task-specific, never universally proven.
@@ -102,7 +103,7 @@ target_id (default domain.project); action:apply requires the returned typed pro
 A proposal records action initialize, nullable base_digest and files {path,before_digest,content}.
 Application validates every precondition and the complete resulting registry, then commits the file
 replacements or restores original bytes. New initialization never overwrites existing files. Profile
-7 is not agent-compatible and has no migration Operation. The host can resolve metadata broadly;
+7 is not agent-compatible and has no migration capability. The host can resolve metadata broadly;
 no agent inherits its read authority. Local semantic authoring must make this collection sufficient.
 
 The following local provider contract repeats the common selection obligation independently of its

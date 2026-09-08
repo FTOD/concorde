@@ -9,9 +9,9 @@
 # How a specified change progresses
 
 This Domain concerns turning intended behavior into a completed, evidenced change. It includes
-Spec contexts, the Operation host, agent execution, permissions, reflection triage and file transactions.
-The Operation inventory in this collection lists every Operation and its class (global, lifecycle or
-internal stage); only global and lifecycle Operations are public commands.
+Spec contexts, the capability host, agent execution, permissions, reflection triage and file transactions.
+The capability registry in this collection lists every capability and its class (global, lifecycle or
+stage); only global and lifecycle capabilities are exposed as Skills.
 
 ## Business entities and responsibility
 
@@ -42,7 +42,7 @@ that plan/tasks TypedValue plus explicitly owned code. It cannot edit Specs, reg
 
 The main coordinator may expand this Domain after `domain.concorde` identifies a workflow task. It
 selects `service.spec-context` for target registration, Protocol binding, context resolution and
-Spec structural validation; `service.workflow-host` for public Operation admission, routing,
+Spec structural validation; `service.workflow-host` for Skill admission, routing,
 agent-stage execution and lifecycle state; and `service.reflections` for Reflection selection,
 investigation or disposition. It selects `module.registry` for the in-process registry API,
 `module.wire-contracts` for TypedValue/schema validation, `module.file-transactions` for atomic file
@@ -67,8 +67,8 @@ from this routing view but their Specs remain unavailable to the main coordinato
   {
     "target_id": "service.workflow-host",
     "kind": "service",
-    "responsibility": "Admit public Operations and coordinate their bounded lifecycle transitions.",
-    "selection_condition": "Select for Operation routing, agent-stage orchestration, worktree changes, checks, or delivery behavior.",
+    "responsibility": "Admit Skill invocations and coordinate capabilities' bounded lifecycle transitions.",
+    "selection_condition": "Select for capability routing, agent-stage orchestration, worktree changes, checks, or delivery behavior.",
     "relied_upon_promises": [
       "Every agent stage is a fresh invocation bound to typed input, context identity, policy, and completion evidence."
     ]
@@ -95,7 +95,7 @@ from this routing view but their Specs remain unavailable to the main coordinato
     "target_id": "module.wire-contracts",
     "kind": "module",
     "responsibility": "Validate versioned TypedValues and JSON boundary schemas.",
-    "selection_condition": "Select when an Operation or internal handoff needs deterministic data admission.",
+    "selection_condition": "Select when a capability or internal handoff needs deterministic data admission.",
     "relied_upon_promises": [
       "Unknown fields, incompatible type identities, unsupported versions, and unsafe project paths are rejected."
     ]
@@ -130,10 +130,10 @@ from this routing view but their Specs remain unavailable to the main coordinato
   {
     "target_id": "module.package-assets",
     "kind": "module",
-    "responsibility": "Render and validate canonical public Operation surfaces used by the workflow.",
+    "responsibility": "Render prompts, Skills, roles and Protocol assets by a deterministic build and validate the package.",
     "selection_condition": "Select for capability inventory, dependencies, projected wrappers, or exported schemas.",
     "relied_upon_promises": [
-      "Projected public surfaces preserve the canonical executable and typed Operation boundary."
+      "Rendered Skills preserve the canonical launcher and typed capability boundary, and the host refuses stale builds."
     ]
   },
   {

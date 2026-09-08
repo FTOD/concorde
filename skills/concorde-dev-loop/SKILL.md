@@ -6,7 +6,7 @@ capability: dev_loop
 
 # concorde-dev-loop
 
-@include prompts/workflow-host/invoke-operation-opener.md ACTION="run the development loop"
+@include prompts/workflow-host/invoke-capability-opener.md ACTION="run the development loop"
 
 @include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-dev-loop
 @include prompts/workflow-host/stdin-invocation-config-input.md NAME=concorde-dev-loop

@@ -7,9 +7,9 @@ describe('Explicit Concorde self specification',()=>{
   const r=loadScopedRegistry(root);expect(r.pages.map(p=>p.sourcePath)).toEqual(r.targets.flatMap(t=>t.documents));
   expect(r.pages.some(p=>p.sourcePath==='README.md'||p.sourcePath.startsWith('.concorde/'))).toBe(false);
  });
- it('contains independently complete public Operation and business scope descriptions',()=>{
+ it('contains independently complete public Skill and business scope descriptions',()=>{
   const r=loadScopedRegistry(root);const host=r.pages.filter(p=>p.targetId==='service.workflow-host').map(p=>p.content).join('\n');
-  expect(host).toContain('concorde-context-solve-request');expect(host).toContain('concorde-operation-invocation');
+  expect(host).toContain('concorde-context-solve-request');expect(host).toContain('concorde-capability-invocation');
   const domain=r.pages.find(p=>p.targetId==='domain.workflow')!;expect(domain.content).toContain('Spec incomplete');
  });
 });

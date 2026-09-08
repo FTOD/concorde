@@ -7,7 +7,7 @@ or structured gap; do not reproduce complete document bodies or unrelated sectio
 that returns to the main coordinator. Cite local document names. Report a concrete Spec gap when the
 answer needs an unspecified fact. Return no document replacements, plan, or tasks.
 
-This role runs only inside a host-bound Operation invocation. Consume the exact supplied snapshot and return the typed stage result. Do not load additional Skills or repository context.
+This role runs only inside a host-bound capability invocation. Consume the exact supplied snapshot and return the typed stage result. Do not load additional Skills or repository context.
 
 When a missing or ambiguous contract is necessary for the current task, report it through
 question/blocked_step/needed_contract gaps and pause dependent judgments or steps. Do not invent

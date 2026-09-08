@@ -31,7 +31,7 @@
       "title": "Workflow",
       "documents": [
         "specs/concorde/workflow/how-work-progresses.md",
-        "specs/concorde/services/operation-registry.md"
+        "specs/concorde/services/capability-registry.md"
       ],
       "scope_parent": "domain.concorde",
       "component_parent": null,
@@ -93,7 +93,8 @@
         "src/concorde/specification/initialize.py",
         "src/concorde/specification/validation.py",
         "prompts/protocol",
-        "protocol/manifest.json"
+        "protocol/manifest.json",
+        "prompts/spec-context"
       ],
       "features": [
         {
@@ -121,11 +122,10 @@
     {
       "id": "service.workflow-host",
       "kind": "service",
-      "title": "Operation host",
+      "title": "Workflow host",
       "documents": [
-        "specs/concorde/services/operation-boundary.md",
-        "specs/concorde/services/operation-registry.md",
-        "specs/concorde/services/operation-wire.md",
+        "specs/concorde/services/workflow-host-boundary.md",
+        "specs/concorde/services/capability-registry.md",
         "specs/concorde/shared/agent-runtime-contracts.md",
         "specs/concorde/shared/registry-contracts.md"
       ],
@@ -143,13 +143,28 @@
         "tests/concorde/specification/test_review.py",
         "src/concorde/host/configuration.py",
         "src/concorde/host/session_handoff.py",
-        "tests/concorde/host/unit/test_session_handoff.py"
+        "tests/concorde/host/unit/test_session_handoff.py",
+        "capabilities/main.py",
+        "capabilities/dev_loop.py",
+        "capabilities/specify.py",
+        "capabilities/review.py",
+        "capabilities/context_solve.py",
+        "capabilities/plan.py",
+        "capabilities/tasks.py",
+        "capabilities/implement.py",
+        "capabilities/validate.py",
+        "capabilities/deliver.py",
+        "prompts/workflow-host",
+        "src/concorde/host/roles.py",
+        "src/concorde/host/studio.py",
+        "src/concorde/host/studio_client.py",
+        "scripts/development/studio.py"
       ],
       "features": [
         {
           "id": "feature.workflow.execute",
-          "title": "Operation host",
-          "document": "specs/concorde/services/operation-boundary.md"
+          "title": "Workflow host",
+          "document": "specs/concorde/services/workflow-host-boundary.md"
         }
       ],
       "apis": [],
@@ -177,7 +192,8 @@
         "src/concorde/reflections/investigation.py",
         "src/concorde/reflections/scoped_triage.py",
         "src/concorde/reflections/validation.py",
-        "scripts/reflections_queue.py"
+        "scripts/reflections_queue.py",
+        "capabilities/reflections_triage.py"
       ],
       "features": [
         {
@@ -212,7 +228,9 @@
         "src/concorde/host/worktree_affinity.py",
         "tests/concorde/host/unit/test_worktree_affinity.py",
         "src/concorde/distribution/protocol_guidance.py",
-        "tests/concorde/distribution/unit/test_protocol_guidance.py"
+        "tests/concorde/distribution/unit/test_protocol_guidance.py",
+        "capabilities/init.py",
+        "capabilities/configure.py"
       ],
       "features": [
         {
@@ -303,7 +321,8 @@
         "src/concorde/host/typed_data.py",
         "src/concorde/host/contracts.py",
         "src/concorde/host/wire_shapes.py",
-        "src/concorde/specification/schema.py"
+        "src/concorde/specification/schema.py",
+        "src/concorde/host/contract_shapes.py"
       ],
       "features": [],
       "apis": [
@@ -415,13 +434,9 @@
         "src/concorde/host/package_validation.py",
         "src/concorde/host/build.py",
         "src/concorde/host/prompt_resolver.py",
-        "src/concorde/host/roles.py",
         "src/concorde/host/effects.py",
-        "src/concorde/host/contract_shapes.py",
-        "capabilities",
-        "prompts/spec-context",
-        "prompts/workflow-host",
-        "skills"
+        "skills",
+        "capabilities/__init__.py"
       ],
       "features": [],
       "apis": [

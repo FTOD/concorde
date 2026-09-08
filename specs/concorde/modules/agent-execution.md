@@ -11,10 +11,10 @@
 ## api.execution.execute
 
 `AgentProcessExecutor` executes one host-built `LaunchSpecification` in a fresh Codex or Claude
-process and returns a validated `OperationExecutionResult`, or raises `OperationExecutionError`.
+process and returns a validated `CapabilityExecutionResult`, or raises `CapabilityExecutionError`.
 The registered Shared Spec **Agent runtime value and collaborator contracts** in this collection
 defines the complete launch, policy, native configuration, bootstrap, receipt and completion records.
-`LaunchSpecification` is the public type name; no separate `OperationLaunchSpecification` type exists.
+`LaunchSpecification` is the public type name; no separate `CapabilityLaunchSpecification` type exists.
 
 ## Interface signatures
 
@@ -34,12 +34,12 @@ AgentProcessExecutor(
     runtime_bootstrap_resolver: RuntimeBootstrapResolver = resolve_runtime_bootstrap,
     runtime_bootstrap_verifier: RuntimeBootstrapVerifier = verify_runtime_bootstrap,
     environment: Mapping[str, str] | None = None)
-AgentProcessExecutor.__call__(specification: LaunchSpecification) -> OperationExecutionResult
+AgentProcessExecutor.__call__(specification: LaunchSpecification) -> CapabilityExecutionResult
 
 resolve_runtime_bootstrap(integration: str, executable: str, project_root: str,
                           environment: Mapping[str, str]) -> tuple[RuntimeBootstrapFile, ...]
 verify_runtime_bootstrap(files: tuple[RuntimeBootstrapFile, ...]) -> None
-OperationExecutionError(message: str, receipt: EnforcementReceipt | None = None)
+CapabilityExecutionError(message: str, receipt: EnforcementReceipt | None = None)
 ```
 
 `host_subprocess_runner` and `host_version_probe` label default behavior, not exported Python symbols.
@@ -60,7 +60,7 @@ agent file or network grant.
 
 ## Preconditions, outcomes and effects
 
-The launch must be produced from matching Operation/role/integration/policy/context identities.
+The launch must be produced from matching capability/role/integration/policy/context identities.
 The executor rejects mismatched effective read/write/deny/default-deny/network/credential fields,
 missing enforcement, absent outer-sandbox evidence, an unexpected executable or stale policy digest.
 Native Codex/Claude versions below 0.138.0/2.1.248 are rejected when their version text parses; an
@@ -79,12 +79,12 @@ instructions; Profile 8 never passes predecessor transcripts. Spec review uses o
 capsule. Code review uses a distinct read-only implementation grant. Codex automatic AGENTS.md
 loading is disabled, and its generation schema is adapted to supported strict syntax while the host
 continues to validate the original typed contracts. The executor parses the native lifecycle output
-and requires an actual completed turn plus a valid completion envelope. Schema 2 domain-output type
+and requires an actual completed turn plus a valid completion envelope. Schema 3 domain-output type
 is determined by the admitted stage-context type, including the separate review-stage context/result.
 A successful process exit alone is not success.
 
 Only a matching successful completion is returned. Invalid JSON/lifecycle, wrong role/invocation/
-launch/workspace/bootstrap identity, wrong domain-output type, failed gates, a success limitations value other than `none`, nonzero exit or a reported failed completion raises `OperationExecutionError`. It has
+launch/workspace/bootstrap identity, wrong domain-output type, failed gates, a success limitations value other than `none`, nonzero exit or a reported failed completion raises `CapabilityExecutionError`. It has
 `.receipt` after a process supplies exit/invalid completion evidence; preflight/runner failure may
 have `receipt=None`. Callers stop the affected transition. A new call is a new execution, not replay
 of a prior completion. Authorized implementation edits made before failure can remain in the
@@ -97,7 +97,7 @@ The permission compiler/renderer/finalizer contracts and value types are fully d
 registered Shared Spec. The wire collaborator provides `json_schema(type_id: str) -> dict` for a
 self-contained typed result schema and `validate_typed(value: Any, expected: str | None = None,
 field: str = "") -> dict` for strict type/version/property/uniqueness validation. Unknown type/version,
-unsafe paths, invalid fields and mismatched expected types raise `OperationDataError(ValueError)`
+unsafe paths, invalid fields and mismatched expected types raise `TypedDataError(ValueError)`
 with `code` and `field`. The executor must treat these as invalid completion, not successful output.
 These calls perform no project mutation or remote schema resolution.
 
@@ -106,7 +106,7 @@ executor = AgentProcessExecutor()
 # launch is already built by the trusted host using the local Shared Spec's builder contract.
 try:
     result = executor(launch)
-except OperationExecutionError as failure:
+except CapabilityExecutionError as failure:
     failed_receipt = failure.receipt  # nullable; retain host diagnostics and stop the transition
 else:
     assessment = result.completion.domain_output

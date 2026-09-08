@@ -11,10 +11,10 @@ metadata:
 ---
 # concorde-validate
 
-Invoke this Operation to validate. The host owns context
+Invoke this capability to validate. The host owns context
 resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
 input; do not perform it directly in this ambient conversation or inspect additional project files.
-This is a deterministic lifecycle Operation: it runs no agent cognition and selects no context.
+This is a deterministic lifecycle capability: it runs no agent cognition and selects no context.
 
 Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-validate`. Its exact fields
 are type_id, schema_version:3, capability_id:"concorde-validate", mode:"execute" or "describe-policy",

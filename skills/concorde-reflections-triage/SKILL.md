@@ -6,7 +6,7 @@ capability: reflections_triage
 
 # concorde-reflections-triage
 
-@include prompts/workflow-host/invoke-operation-opener.md ACTION="reflections triage"
+@include prompts/workflow-host/invoke-capability-opener.md ACTION="reflections triage"
 
 @include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-reflections-triage
 @include prompts/workflow-host/stdin-invocation-config-input.md NAME=concorde-reflections-triage

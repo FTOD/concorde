@@ -28,7 +28,7 @@ that document declarations and reverse registry memberships agree.
 
 The publisher may read the registry and many collections because it is a deterministic human-view
 Tool. Navigation does not define an agent's cognitive permissions. Graph selection links to the target's
-registered collection; traversing an edge never changes Operation context membership.
+registered collection; traversing an edge never changes an agent invocation's admitted context membership.
 
 Only declared diagram sources are rendered. Their declared kind/title must match their source, and
 rendering failures stop publication. Unregistered nearby Markdown and diagram files are not discovered

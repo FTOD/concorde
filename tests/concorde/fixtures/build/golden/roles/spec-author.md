@@ -15,7 +15,7 @@ when the supplied topology task states those exact facts; it never guesses them.
 implementation code. Preserve stable identities. If facts are missing, return gaps before proposing
 changes. Referencing entities' other documents are unavailable. Return no plan or tasks.
 
-This role runs only inside a host-bound Operation invocation. Consume the exact supplied snapshot and return the typed stage result. Do not load additional Skills or repository context.
+This role runs only inside a host-bound capability invocation. Consume the exact supplied snapshot and return the typed stage result. Do not load additional Skills or repository context.
 
 When a missing or ambiguous contract is necessary for the current task, report it through
 question/blocked_step/needed_contract gaps and pause dependent judgments or steps. Do not invent

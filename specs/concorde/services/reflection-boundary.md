@@ -23,7 +23,7 @@ human_intervention required|not-required. Buckets are pending, needs-comments or
 triage/intervention state. The host owns relocation. Resolved/dismissed records need a human disposition
 and resolution_note before deterministic removal; Git history preserves the record.
 
-Public concorde-reflections-triage takes the common invocation@2 envelope and a request@1 containing
+Public concorde-reflections-triage takes the common invocation@3 envelope and a request@1 containing
 target_id, action status|investigate|implement|merge|close, reflection_ids (unique string array), and
 optional task,focus_id,constraints,change_id. Mutations require explicit nonempty reflection_ids, all
 attributed to the selected target or its local focus IDs. Status returns only typed metadata: id,
@@ -44,8 +44,8 @@ intervention; fast-loop requires small effort. Section values may not inject doc
 
 The host preserves reports and writes evidence-bound plans in configured plans_dir. Config controls
 require_approval; new or changed resolutions do not inherit stale approval. Implementation requires
-reproduction, no outstanding human intervention and an approved route/plan. It runs a fresh standard
-loop with intended behavior only; investigation text/code/logs are excluded from Spec-stage inputs.
+reproduction, no outstanding human intervention and an approved route/plan. It composes a fresh
+`concorde-dev-loop` with intended behavior only; investigation text/code/logs are excluded from Spec-stage inputs.
 Success marks the plan implemented while leaving human disposition of the report independent.
 Protocol changes in Concorde require the explicit evolve-protocol workflow.
 

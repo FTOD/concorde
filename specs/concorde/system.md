@@ -24,7 +24,9 @@ that target without reducing its complete context.
 | Spec document | One stable physical Markdown truth with explicit target references and main visibility | Appears as Target Spec when local or Shared Specs when collectively referenced |
 | Resolved Spec context | Ordered Target Spec plus one-hop Shared Specs for one target | Must be self-contained without expanding any related entity's remaining collection |
 | Protocol | Versioned global principles and kind definitions | Is pinned by initialization and injected by the context service |
-| Operation | A public Skill paired with an executable host entry, or an internal stage reachable only through a composing public Operation | Receives configuration and runtime input as distinct typed JSON values |
+| Capability | A Python module the host executes; it declares the roles it launches, their authority, the capabilities it composes and its typed request and response | Receives configuration and runtime input as distinct typed JSON values |
+| Skill | A user-facing entry rendered from prompts; it exposes exactly one global or lifecycle capability through the launcher | Is the only executable boundary; stage capabilities have none |
+| Prompt | A Markdown snippet under prompts/ that may include other prompts through one explicit directive | Is rendered by the deterministic build into role and Skill instructions and the Protocol assets; the host refuses a stale build |
 | Context snapshot | Immutable exact input to one agent invocation | Binds documents, Protocol, task, phase, instructions and typed stage artifacts |
 | Discovery context | Ordered append-only main-visible Domain/Service documents for the main coordinator | Expands on demand and changes identity on every admitted target |
 | Main coordinator | Global routing agent that never directly expands Module targets or reads code | Selects fresh target workers and later synthesizes only typed results |
@@ -36,7 +38,7 @@ that target without reducing its complete context.
 | Reflection | A retained problem report with independent human disposition | Enters code investigation only through an implementation phase |
 
 Workflow scopes the change lifecycle and the relationship between context, agent execution,
-validation and delivery. Installation scopes distributing the same Protocol and public Operations
+validation and delivery. Installation scopes distributing the same Protocol and Skills
 to every project. Publication scopes a human-readable projection of registered source documents.
 These three scopes narrow Concorde's problem space. They are not three implementation containers.
 The context Service participates in Workflow and Installation. Package assets participates in both
@@ -49,7 +51,7 @@ without reading the registry or component Specs; deterministic validation keeps 
 ## Main routing view
 
 The main coordinator starts with this complete collection. It selects `domain.workflow` for tasks
-about Spec contexts, Operations, planning, implementation, validation, delivery or Reflections;
+about Spec contexts, capabilities, planning, implementation, validation, delivery or Reflections;
 `domain.installation` for package, installation, initialization, configuration, upgrade or runtime
 provisioning behavior; and `domain.docsite` for documentation publication, navigation, diagrams or
 the architecture graph. A task that changes the universal Protocol itself remains on
@@ -57,7 +59,7 @@ the architecture graph. A task that changes the universal Protocol itself remain
 conditions are routing facts only; opening a child Domain requires an explicit main-context
 expansion.
 
-The Operation host uses the context Service before each agent stage. It executes a fresh process,
+The capability host uses the context Service before each agent stage. It executes a fresh process,
 receives typed completion, then either persists only authorized changes or reports the exact blocked
 outcome. Code is available to implementation stages and their dedicated read-only code-review role. Business facts missing from the Spec may
 not be reconstructed from code. The host runs separately configured checks and retains their logs;
@@ -68,7 +70,7 @@ only main-visible Domain and Service Target Spec/Shared Specs, but never directl
 the host privately resolves each target and starts a different worker. Typed worker results may
 return for synthesis; raw target snapshots do not.
 
-The public `concorde-main` replaces the former standalone ask Operation. Its topology design action
+The public `concorde-main` replaces the former standalone ask capability. Its topology design action
 may additionally inspect exact registry metadata and all global kind definitions, but no Module
 target expansion or code. The coordinator produces structure; fresh target-local authors produce complete Spec bytes
 privately; the host validates an overlay and exposes only an application ArtifactRef. Maintainer
@@ -96,7 +98,7 @@ A Protocol change affects all consumers, not just Concorde's self-description. A
 principles and corresponding schemas, runtime admission, context grants, templates, installation
 and publication behavior together. The distributable Protocol is versioned and hashed. Existing
 projects do not silently acquire a new meaning: they must explicitly accept compatible bindings.
-Source Profile 8 rejects Profile 7 for agent work, and there is no migration Operation; Profile 7
+Source Profile 8 rejects Profile 7 for agent work, and there is no migration capability; Profile 7
 projects are rejected outright. Legacy deterministic readers remain diagnostic utilities only.
 
 Changing the Protocol is an explicitly authorized version cutover, not ordinary work performed

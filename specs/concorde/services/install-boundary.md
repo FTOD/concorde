@@ -40,25 +40,25 @@ It seeds project-owned Reflection defaults and
 installation receipt and never overwritten on update.
 
 The distributable manifest is concorde.json schema 3, Concorde 4.0.0, Architecture Profile 8,
-Workspace Protocol 14 and Delivery Proposal 10. It contains exactly 9 internal Skills and 14
-Operations, of which 8 are public wrappers (global or lifecycle) and 6 are internal stages reachable
-only through a composing public Operation, explicit package roots including protocol, and 7
-templates. Codex .agents/skills and Claude .claude/skills expose the same 8 public wrappers;
-canonical internal roles and internal stage Operations stay private.
-Every wrapper sends typed invocation@2 to its paired executable and does not inspect project context.
+Workspace Protocol 14 and Delivery Proposal 10. It contains exactly 9 roles and 13
+capabilities, of which 7 are Skills (global or lifecycle) and 6 are stages reachable
+only through a composing capability, explicit package roots including prompts/capabilities/protocol, and 7
+templates. Codex .agents/skills and Claude .claude/skills expose the same 7 Skills;
+canonical roles and stage capabilities stay private.
+Every Skill sends a typed invocation@3 to `scripts/run-capability.py` and does not inspect project context.
 
 Owned content is hashed in the installation receipt. A local modification conflicts unless an
 explicit supported ownership transition authorizes replacement. Staging/provisioning/verification
 must finish before installation is accepted; failure restores replaced outputs and receipts. The
-locked managed Python runtime runs actual Operations; viewer provisioning is separate and versioned.
+locked managed Python runtime runs actual capabilities; viewer provisioning is separate and versioned.
 Check verifies receipt hashes and required runtime identity without changing project behavior.
 
-Initialization is a distinct typed concorde-init Operation: propose returns a complete file proposal;
+Initialization is a distinct typed concorde-init capability: propose returns a complete file proposal;
 apply validates exact before-digests and target state. It pins the packaged global principles and kind
 definitions, configures integration/enforcement, and writes an explicit Domain stub with missing
 business requirements stated honestly. The stub declares document identity, target membership and
 main visibility. Configuration changes use concorde-configure with a typed
-configuration. Profile 7 is not agent-compatible and has no migration Operation.
+configuration. Profile 7 is not agent-compatible and has no migration capability.
 
 Install/update cannot silently rewrite a consumer's Protocol binding. A package with changed Protocol
 assets requires the consumer's explicit binding decision before execution. Templates and
@@ -66,74 +66,76 @@ prompts enforce the same architectural principles for all consumer projects.
 
 ## feature.installation.self-distribute
 
-Concorde's source checkout projects its canonical public paired Operations and internal reflection
-agents into that same worktree's Codex and Claude surfaces. Canonical internal Skills remain private.
-It does not install a duplicate `.concorde/framework` into the repository. The inputs are the root
-`concorde.json`, canonical `skills/`, `operations/`, `agent-assets/`, and the integration renderers;
-generated files never become authoring sources. Repository agent policy stays in `AGENTS.md`, with
-`CLAUDE.md` directing Claude to it; the projector does not inject checkout policy into Skill bodies.
+Concorde's source checkout builds its own canonical Skill and role surfaces into that same
+worktree's Codex and Claude surfaces. It does not install a duplicate `.concorde/framework` into the
+repository. The inputs are the root `concorde.json`, canonical `prompts/`, `skills/`,
+`capabilities/`, and the contract modules under `src/concorde/host`; rendered files under
+`generated/`, `.claude/skills/concorde-*` and `.agents/skills/concorde-*` are untracked build output
+and never become authoring sources. Repository agent policy stays in `AGENTS.md`, with `CLAUDE.md`
+directing Claude to it; the build does not inject checkout policy into Skill bodies.
 
 From the worktree being maintained, the deterministic entry points are:
 
 ```bash
-python3 scripts/development/sync-agent-surfaces.py status --project-root . --format json
-python3 scripts/development/sync-agent-surfaces.py check --project-root . --format json
-python3 scripts/development/sync-agent-surfaces.py apply --project-root . --format json
-python3 scripts/development/sync-agent-surfaces.py verify-worktree --project-root . \
-  --loaded-skill-path /absolute/runtime/path/to/.agents/skills/concorde-main/SKILL.md
+python3 scripts/concorde.py build --format json
+python3 scripts/concorde.py build --check --format json
+python3 scripts/concorde.py verify-worktree --project-root . \
+  --loaded-skill-path /absolute/runtime/path/to/.claude/skills/concorde-main/SKILL.md
 ```
 
-Every mode must execute the script belonging to the worktree named by `--project-root`; a checker/root
-mismatch fails before mutation. `status`, `check`, and `apply` return capability-surface schema 2 with
-`schema_version`, `tool`, `status`, `outputs`, and sorted `actions`. Each action has a relative `path`,
-an `action`, and a `sha256` digest. Actions classify `current`, `create`, `update`, `replace-symlink`,
-`conflict`, and `unexpected`. The desired output count is twice the manifested public Operation count
-plus four specialist-agent projections. Public wrappers retain Operation provenance and checkout
-runtime paths; both integrations derive from the same canonical sources.
+Every invocation operates on the worktree containing the sources named by `--project-root`; it never
+points one worktree's build at another worktree's outputs. `build` renders every role, Skill and
+Studio-graph projection deterministically from `prompts/`, `skills/` and `capabilities/`, writes them
+under `generated/`, `.claude/skills/*` and `.agents/skills/*`, and records their exact source digests
+in `generated/build-manifest.json`. `build --check` renders into a temporary directory and reports
+every stale or drifted output without writing anything; a current result requires the recorded
+outputs and the tracked `protocol/manifest.json` digests to match a fresh render exactly.
 
-`status` is read-only and reports drift without a failing exit code. `check` is also read-only and
-returns nonzero for any drift. `apply` refreshes only desired generated outputs as regular files,
-including replacing legacy generated symlinks. A non-file target conflict prevents apply; an
-unexpected Concorde-owned projection remains untouched and prevents both check and apply from
-reporting current. Invalid canonical sources, missing pairs, and output collisions fail without a
-false current result. Unrelated assets and canonical source bytes remain unchanged. Repeating apply
-against current inputs is idempotent, and the following check must report current.
+`build` and `build --check` are idempotent and byte-identical across repeated runs, and never perform
+network or process I/O. Rebuilding after an unrelated source change leaves unrelated outputs
+byte-identical. The host refuses to run any capability on a stale build (error code `stale_build`),
+verified against `generated/build-manifest.json` before every top-level invocation except a
+lifecycle capability; editing a prompt without rebuilding therefore fails closed rather than serving
+stale instructions.
 
 `verify-worktree` takes an absolute project-local Skill path exactly as advertised by the agent
 runtime. It accepts regular `.agents/skills/concorde-*/SKILL.md` or
 `.claude/skills/concorde-*/SKILL.md` files, derives the owning Git root and integration, and requires
-the active worktree's generated surfaces to be current. A successful schema-1 result identifies
-`tool`, `status`, `project_root`, `loaded_worktree`, `integration`, `capability`, `surface_match`,
-and `worktree_head`. Unsafe or missing paths, stale active projections, or different loaded/active
-roots return nonzero. Different roots are rejected even when their generated bytes match. The
-failure names both worktrees and asks the user to open a new agent in the target worktree; updating
-the loaded/primary checkout is not a substitute. Its existing diagnostic channel includes a P10
-handoff draft with the target path/branch and explicit unknown task/progress fields for the outer
-session to complete. Same-worktree projection drift supplies a maintenance draft; it does not allow
-a session with the affected Skill body loaded to edit that Skill. The verifier does not read task,
-patch or conversation artifacts to invent a continuation.
+the active worktree both to own that loaded Skill and to have a fresh build. A successful schema-1
+result identifies `tool`, `status`, `project_root`, `loaded_worktree`, `integration`, `capability`,
+`surface_match`, and `worktree_head`. An unsafe or missing path, a stale active build, or different
+loaded/active worktree roots return nonzero. Different roots are rejected even when their generated
+bytes currently match. The failure names both worktrees and asks the user to open a new agent in the
+target worktree; updating the loaded/primary checkout is not a substitute. Its existing diagnostic
+channel includes a P10 handoff draft with the target path/branch and explicit unknown task/progress
+fields for the outer session to complete. A stale build in the same worktree instead asks a
+maintenance session to rebuild; it does not allow a session with the affected Skill body already
+loaded to edit that Skill. The verifier does not read task, patch or conversation artifacts to invent
+a continuation.
 
 Repository policy requires this verification before project work and after changing worktrees, for
 each distinct owning worktree represented by project Skill paths retained in the conversation.
 An agent that creates a requested linked worktree hands work to a new agent opened there under
-Protocol P10, with the known path and branch. The policy forbids direct edits to generated capability and reflection-agent
-files: maintain canonical sources, run apply in their own worktree, then require check to pass.
-A project-local Skill cannot govern maintenance of its own surface. A maintenance session that has
-not loaded that Skill body may update sources and projections; a session that has loaded it must
-reopen before editing. Discovery metadata alone does not load a Skill body.
+Protocol P10, with the known path and branch. A freshly created worktree, including one the host
+creates for a candidate change, must be built once before an agent can load Concorde Skills; the
+policy forbids direct edits to `generated/`, `.claude/skills/concorde-*` or `.agents/skills/concorde-*`:
+maintain `prompts/`, `skills/` or `capabilities/` sources, rebuild in their own worktree, then require
+`build --check` to pass. A project-local Skill cannot govern maintenance of its own prompts, Skills,
+capabilities, or generated surface. A maintenance session that has not loaded that Skill body may
+update sources and rebuild; a session that has loaded it must reopen before editing. Discovery
+metadata alone does not load a Skill body.
 
-Pull-request CI requires the worktree-local check and source projection/worktree-affinity tests.
-Behavioral coverage must show exact drift detection without writes, both integrations refreshed
-together, non-file conflicts and unexpected projections preserved, and a second check becoming
-current after a valid apply. With two linked worktrees, verification must reject a Skill loaded from
-the other root both before and after their canonical sources diverge. Applying within one worktree
-must leave the other's generated bytes unchanged, while verification with its own current Skill
-path succeeds.
+Pull-request CI requires `build --check`, the package validator, and the worktree-affinity tests to
+pass. Behavioral coverage must show exact staleness detection without writes, both integrations
+rendered together, and byte-identical repeated builds. With two linked worktrees, verification must
+reject a Skill loaded from the other root both before and after their canonical sources diverge.
+Building within one worktree must leave the other's generated bytes unchanged, while verification
+with its own current Skill path succeeds after that worktree rebuilds.
 
 ## Main routing view
 
-Select `module.package-assets` for manifest inventory, canonical Skill/Operation rendering and agent
-surface ownership. Select `module.managed-runtime` for managed Python or viewer provisioning. Select
+Select `module.package-assets` for manifest inventory, canonical Skill/role rendering and the build's
+agent surface ownership. Select `module.managed-runtime` for managed Python or viewer provisioning. Select
 `service.spec-context` when the requested behavior is project initialization or Protocol
 binding rather than installation ownership. These IDs are sufficient to route Module work without
 expanding the Module targets.

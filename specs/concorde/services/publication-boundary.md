@@ -30,7 +30,7 @@ during generation or missing pages invalidate the candidate and preserve the pre
 Declared diagrams are validated/rendered from exact registry sources, never inferred from filenames.
 Local links resolve only registered document membership; unknown or ambiguous links fail validation.
 
-These generated views are human navigation, not Operation context grants. The publication Tool may
+These generated views are human navigation, not agent context grants. The publication Tool may
 read multiple registered collections deterministically; an agent still receives one host-bound target
 snapshot. Legacy Profile 7 publication readers remain isolated diagnostics and do not admit agent work.
 

@@ -11,7 +11,7 @@ metadata:
 ---
 # concorde-main
 
-This is Concorde's public main entry. It replaces the former ask Operation. The internal coordinator
+This is Concorde's public main entry. It replaces the former ask capability. The internal coordinator
 starts from the project's entry Domain or Service and may expand only registered Domain and Service
 main-visible Target Spec and Shared Specs. Shared membership never expands another entity's remaining
 documents. It understands every global kind definition but cannot directly expand a Module target or read
@@ -32,7 +32,7 @@ and constraints. Accept-topology requires the exact topology_proposal returned b
 topology requires only the exact application ArtifactRef returned by accept.
 The hint never grants Spec access to the coordinator. The global development loop
 (`concorde-dev-loop`) accepts the same task, with optional target_id, focus_id, constraints, and
-change_id, and routes through main exactly like this Operation's own ask action; its internal
+change_id, and routes through main exactly like this capability's own ask action; its internal
 stages are bound to one target by the loop and are never invoked directly.
 Initialization uses its typed propose/apply request; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
@@ -41,7 +41,7 @@ The coordinator expands main-visible Domain/Service documents only as needed and
 Target Spec/Shared Specs membership and digests in every discovery identity. A Module may be selected
 from visible responsibilities, but its remaining Spec is visible only to the fresh target reader.
 Topology design receives exact registry metadata but does not expand Module targets. Target authors' complete output
-is never returned through this Operation; it stays in the ignored host application artifact. Report
+is never returned through this capability; it stays in the ignored host application artifact. Report
 Spec gaps or blocked execution as returned and do not work around the boundary. Non-implementation
 agents never receive implementation code or raw test logs.
 

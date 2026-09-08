@@ -16,7 +16,7 @@ typed(type_id,data,schema_version=1) produces a validated TypedValue; validate_t
 
 These signatures identify public call shapes; bodies and private helpers are outside this Spec.
 
-Public functions of operation_data:
+Public functions of typed_data:
 
 ```text
 canonical(value: Any) -> str
@@ -34,12 +34,13 @@ verify_artifacts(project: Path, value: Any, field: str='') -> None
 json_schema(type_id: str) -> dict
 ```
 
-Public functions of protocol_contracts:
+Public functions of contracts:
 
 ```text
-dependencies(operation: str) -> tuple[str, ...]
+dependencies(capability: str) -> tuple[str, ...]
 contracts() -> dict[str, tuple[str, str]]
 schemas() -> dict
+exported_types() -> tuple[str, ...]
 ```
 
 Public functions of wire_shapes:

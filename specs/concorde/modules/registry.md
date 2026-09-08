@@ -35,7 +35,7 @@ strings(value: Any, label: str, *, nonempty: bool = False) -> tuple[str, ...]
 identifier(value: Any) -> str
 ```
 
-No operation above writes project files. Host candidate overlays stay in memory. A repository is a
+No call above writes project files. Host candidate overlays stay in memory. A repository is a
 snapshot-oriented reader with document caching; reconstruct it after source changes. Selection
 returns the full target descriptor even with a focus. Target and Shared Spec membership is exactly
 registered and one-hop; paths, links and participation never add another target's remaining body.
@@ -46,7 +46,7 @@ The wire boundary's `decode(text: str) -> Any` rejects duplicate JSON keys and n
 `canonical(value: Any) -> str` produces stable sorted-key compact JSON. Its
 `safe_path(value: str, field: str = "") -> str` and
 `checked_path(project: Path, relative: str, field: str = "") -> Path` reject absolute paths, traversal,
-backslashes and symlink components. Failures raise `OperationDataError(ValueError)` carrying `code`
+backslashes and symlink components. Failures raise `TypedDataError(ValueError)` carrying `code`
 and `field`; they never retry through a different path. The offline schema boundary provides
 `admit(schema: Any, root: dict | None = None) -> None` and
 `validate(value: Any, schema: Any, field: str = "", *, root: dict | None = None, depth: int = 0) -> None`.
@@ -68,7 +68,7 @@ types, unresolved references and malformed rule values fail admission; schema/va
 
 Schema admission or example-validation failures raise `ContractError(ValueError)` with a `field`
 JSON pointer (empty for an admission/root error). Invalid `project-path` values instead propagate
-`OperationDataError` from the path boundary. `contracts()` propagates both without wrapping, returns
+`TypedDataError` from the path boundary. `contracts()` propagates both without wrapping, returns
 no partial tuple on any error, and separately raises `SpecError` for malformed contract metadata.
 It rejects unknown keywords, remote references, invalid schemas and invalid examples without network
 access. Local `contracts` includes every block from Target Spec plus Shared Specs, returns an empty

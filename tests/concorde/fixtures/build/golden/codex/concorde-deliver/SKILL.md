@@ -14,7 +14,7 @@ metadata:
 Invoke delivery from an agent whose initial working directory is either the selected source
 worktree or the destination (primary) Git worktree. The primary worktree is a location, not a
 branch named main; its checked-out branch remains the merge destination. A third worktree or a
-nested Operation cannot initiate delivery for this pair. Keep the session and its loaded Skills
+nested invocation cannot initiate delivery for this pair. Keep the session and its loaded Skills
 bound to their original participant while the deterministic host operates on the integration.
 Do not redirect a third-worktree session or forward its invocation to bypass the participant check.
 
