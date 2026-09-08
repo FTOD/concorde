@@ -24,8 +24,8 @@ Spec incomplete, not a search for arbitrary files. See [the principles](protocol
 
 ## Install and initialize
 
-The installer distributes canonical runtime (13 capability modules behind 7 public skill wrappers,
-9 internal roles) and 7 Markdown templates to Codex or Claude.
+The installer distributes a deterministic build's output — seven Skills exposing thirteen
+capabilities, nine rendered role instructions, and seven Markdown templates — to Codex or Claude.
 Check `python scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project, then invoke the paired init entry in an isolated worktree (or use the trusted host's explicit
@@ -35,12 +35,12 @@ the originating session does not follow the task into a different checkout.
 
 ```json
 {
-  "type_id": "concorde-operation-invocation",
-  "schema_version": 2,
-  "operation_id": "concorde-init",
+  "type_id": "concorde-capability-invocation",
+  "schema_version": 3,
+  "capability_id": "concorde-init",
   "mode": "execute",
-  "configuration": {"type_id":"concorde-operation-configuration","schema_version":1,"data":{"integration":"codex","enforcement":"native"}},
-  "input": {"type_id":"concorde-init-request","schema_version":1,"data":{"action":"propose","name":"My project","configuration":{"type_id":"concorde-operation-configuration","schema_version":1,"data":{"integration":"codex","enforcement":"native"}}}}
+  "configuration": {"type_id":"concorde-capability-configuration","schema_version":1,"data":{"integration":"codex","enforcement":"native"}},
+  "input": {"type_id":"concorde-init-request","schema_version":1,"data":{"action":"propose","name":"My project","configuration":{"type_id":"concorde-capability-configuration","schema_version":1,"data":{"integration":"codex","enforcement":"native"}}}}
 }
 ```
 
@@ -55,12 +55,13 @@ Document declarations are likewise checked against reverse registry membership.
 
 ## Run a change
 
-Send this invocation on stdin to the matching installed paired executable:
+Send this invocation on stdin to `scripts/run-capability.py concorde-dev-loop` (or
+`.concorde/framework/scripts/run-capability.py` in an installed consumer project):
 
 ```json
 {
-  "type_id":"concorde-operation-invocation","schema_version":2,
-  "operation_id":"concorde-dev-loop","mode":"execute","configuration":null,
+  "type_id":"concorde-capability-invocation","schema_version":3,
+  "capability_id":"concorde-dev-loop","mode":"execute","configuration":null,
   "input":{"type_id":"concorde-dev-loop-request","schema_version":1,
     "data":{"target_id":"service.transfer","task":"Implement the specified transfer contract"}}
 }
@@ -72,20 +73,20 @@ target readers, then synthesizes only their typed results. A supplied target_id 
 not a context grant. The loop executes specification,
 context assessment, plan, tasks, implementation and checks, ending at a ready candidate.
 
-Operations fall into three classes, distinguished by who selects context. Global Operations
+Capabilities fall into three classes, distinguished by who selects context. Global capabilities
 (`concorde-main`, the development loop `concorde-dev-loop`, and `concorde-reflections-triage`)
 receive only intent, at most with routing hints, and let main select the target. `concorde-dev-loop`
 takes optional `specify`/`run_reviews` flags: `specify=false` skips Spec authoring (the former fast
 loop) and `run_reviews=false` records an explicit skip for each review mode instead of running it; a
 review already required for a change cannot be disabled by a later `run_reviews=false`. Lifecycle
-Operations (`concorde-init`, `concorde-configure`,
+capabilities (`concorde-init`, `concorde-configure`,
 `concorde-validate`, `concorde-deliver`) are deterministic host behavior with no agent cognition.
-Every other Operation — `concorde-specify`, `concorde-review`, `concorde-context-solve`,
-`concorde-plan`, `concorde-tasks`, `concorde-implement` — is an internal stage: it receives an
-already bound target and one frozen context from its composing loop, and is never projected as a
-user Skill; stage capabilities have no executable entry.
-No public Operation returns a context manifest; `describe-policy` mode previews the exact stage
-grants any Operation would receive without launching an agent or mutating project state. One change
+Every other capability — `concorde-specify`, `concorde-review`, `concorde-context-solve`,
+`concorde-plan`, `concorde-tasks`, `concorde-implement` — is a stage: it receives an
+already bound target and one frozen context from its composing capability, and is never projected as a
+Skill; stage capabilities have no executable entry.
+No Skill returns a context manifest; `describe-policy` mode previews the exact stage
+grants any capability would receive without launching an agent or mutating project state. One change
 belongs to one linked worktree. `.concorde/worktree.json` records
 its task, phase/status, per-target plans and progress, gaps and verified revision. Auxiliary artifacts
 live under `.concorde/work/`; there is no separate attempt lifecycle.
@@ -125,23 +126,27 @@ candidate registry and target-local Spec tasks without writing. Send the exact r
 stores exact registry/document bytes in an ignored application artifact, returning only its path and
 digest. Review that artifact outside agent cognition, then send its ArtifactRef with
 `action:apply-topology`. Stale inputs or invalid target state prevent writes; successful application
-updates the registry and documents atomically. The former standalone ask Operation does not exist.
+updates the registry and documents atomically. The former standalone ask capability does not exist.
 Shared truth has no unique owner and cannot be changed by an ordinary single-target author. A
 topology change tasks every affected reference and proceeds only when all candidate referencing
 authors return identical shared bytes.
 
-[Operation inventory](specs/concorde/services/operation-registry.md) ·
-[Complete wire contracts](specs/concorde/services/operation-wire.md)
+[Capability registry](specs/concorde/services/capability-registry.md) ·
+[Workflow host boundary](specs/concorde/services/workflow-host-boundary.md)
 
 ## Documentation
 
 Concorde 4 uses Package Manifest 3, Architecture Profile 8, Workspace Protocol 14 and Delivery Proposal
-10. Profile 7 is rejected for agent execution and has no migration Operation. Legacy readers
+10. Profile 7 is rejected for agent execution and has no migration capability. Legacy readers
 remain deterministic diagnostic utilities only.
 
 The docsite publishes explicit registry members with separate scope/component navigation and a typed
-relationship graph. Run the docsite's validate/build scripts to create a candidate whose routes and
-source digests are checked before promotion. Human navigation does not grant agent context access.
+relationship graph. It also publishes "Agent instructions" and "Wire contracts" pages under a
+Projections group, rendered directly from the current build's `generated/docs/*.json` outputs; both
+are explicitly labelled projections, never agent context authority, and `npm run validate` fails
+when the Concorde build behind them is stale. Run the docsite's validate/build scripts to create a
+candidate whose routes and source digests are checked before promotion. Human navigation does not
+grant agent context access.
 
 ## Protocol entry and upgrades
 
@@ -201,34 +206,47 @@ config_path.write_text(json.dumps(config, indent=2) + "\n")
 
 Then run project validation and resolve fresh contexts; older context/check identities cannot be
 reused. In this source checkout, the equivalent explicit maintenance step is
-`python3 scripts/sync-protocol-assets.py --bind-project`. Without that flag, export refreshes the
-Protocol manifest digests but leaves the checkout's existing binding unchanged.
+`python3 scripts/concorde.py protocol-manifest --write --bind-project`. Without `--bind-project`,
+`protocol-manifest` only reports whether the tracked manifest matches the current build, or (with
+`--write` alone) accepts the current build's digests into that tracked manifest, leaving the
+checkout's existing binding unchanged.
 
 ## Development
 
-[LangGraph Studio setup and usage](scripts/development/STUDIO.md) covers all public operation entries and internal stage events,
-CLI/Skill forwarding, live execution events, debugging and worktree isolation. Studio is optional;
-existing JSON stdin/stdout calls continue to work without a server.
+[LangGraph Studio setup and usage](scripts/development/STUDIO.md) covers all Skill entries and
+stage events, CLI/Skill forwarding, live execution events, debugging and worktree isolation. Studio
+is optional; existing JSON stdin/stdout calls continue to work without a server.
 
 Run Python tests with `PYTHONPATH=src python -m unittest discover -s tests/concorde -v` and docsite checks
-with `npm run typecheck`, `npm test`, `npm run validate`, `npm run build`. `scripts/sync-protocol-assets.py`
-exports executable wire schemas; `--bind-project` is an explicit maintainer decision to accept that
-Protocol in this checkout.
+with `npm run typecheck`, `npm test`, `npm run validate`, `npm run build`.
 
 `prompts/`, `skills/`, and the top-level `capabilities/` package produce this checkout's agent
 surfaces. Never edit `generated/`, `.agents/skills/concorde-*`, `.claude/skills/concorde-*`, or
 generated reflection agents directly; they are untracked build output. After changing their
-sources, run the build in the same primary or linked worktree:
+sources, run the build and the deterministic checks in the same primary or linked worktree:
 
 ```bash
 python3 scripts/concorde.py build --check
 python3 scripts/concorde.py build
+python3 scripts/concorde.py validate
 ```
 
-The host refuses to run any capability on a stale build; a freshly created worktree must be built
-once before an agent can load Concorde Skills.
+`build` renders every role, Skill, Protocol and docs-projection output deterministically from
+`prompts/`, `skills/` and `capabilities/`; `build --check` verifies those outputs and
+`protocol/manifest.json` are current without writing anything; `validate` runs the complete Spec,
+capability-module, contract, Spec-alignment and build-output checks. The host refuses to run any
+capability on a stale build; a freshly created worktree must be built once before an agent can load
+Concorde Skills. After changing `prompts/protocol/principles.md` or a kind definition, accept the
+new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-project` (see above).
 
 Root `AGENTS.md`/`CLAUDE.md` bind an agent to the worktree that supplied its project Skills. If work
-targets another worktree, open a new agent there. User-authorized delivery is the bounded exception:
-a session in either participating worktree can complete the integration while retaining its own Skills.
+targets another worktree, open a new agent there; verify affinity explicitly with:
+
+```bash
+python3 scripts/concorde.py verify-worktree --project-root . \
+  --loaded-skill-path <absolute-runtime-advertised-SKILL.md-path>
+```
+
+User-authorized delivery is the bounded exception: a session in either participating worktree can
+complete the integration while retaining its own Skills.
 See [source-checkout distribution](specs/concorde/services/install-boundary.md#featureinstallationself-distribute).

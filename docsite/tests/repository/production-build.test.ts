@@ -19,3 +19,9 @@ it('publishes the same typed relationship graph as the human navigation',async()
  expect(graph.nodes).toEqual(r.targets);expect(graph.edges).toEqual(r.edges);
  const html=await readFile(resolve(output,'graph.html'),'utf8');expect(html).toContain('Architecture relationships');expect(html).toContain('service.workflow-host');
 });
+it('publishes the Agent instructions and Wire contracts projection pages as rendered projections',async()=>{
+ const instructions=await readFile(resolve(output,'specs/projections/instructions.html'),'utf8');
+ expect(instructions).toContain('concorde-main');expect(instructions).toContain('rendered projection');
+ const wire=await readFile(resolve(output,'specs/projections/wire.html'),'utf8');
+ expect(wire).toContain('concorde-main-request');expect(wire).toContain('rendered projection');
+});

@@ -1,4 +1,6 @@
 import {isScoped,loadScopedRegistry,rewriteLinks} from '../plugins/scoped-content/model';
+import {verifyConcordeBuildFresh} from '../plugins/scoped-content/build-freshness';
+import {hasDocsProjections} from '../plugins/scoped-content/projections';
 import {resolve} from 'node:path';
 
 import {buildRegistry} from '../plugins/concorde-content/registry';
@@ -13,6 +15,10 @@ function projectRoot(): string {
 async function main() {
   const root = projectRoot();
   if (isScoped(root)) {
+    // The Agent instructions/Wire contracts pages are rendered from generated/docs/*.json, itself
+    // a Concorde build output; only check its freshness when this project actually produces it
+    // (today, only this repository's own dogfood docsite — see plugins/scoped-content/projections.ts).
+    if (hasDocsProjections(root)) verifyConcordeBuildFresh(root);
     const registry=loadScopedRegistry(root);registry.pages.forEach(p=>rewriteLinks(registry,p));
     await discoverDiagramDeclarations(root);
     process.stdout.write(`Validated Profile 8: ${registry.targets.length} targets, ${registry.pages.length} document memberships.\n`);

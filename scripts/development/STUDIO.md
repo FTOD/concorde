@@ -1,7 +1,7 @@
 # LangGraph Studio for Concorde
 
-Studio can start every public Concorde operation and inspect operations submitted by the existing
-CLI or Skill launcher. Both paths execute the same `OperationHost`, typed request validation,
+Studio can start every Concorde Skill and inspect capabilities submitted by the existing
+CLI or Skill launcher. Both paths execute the same `CapabilityHost`, typed request validation,
 configuration binding, native agent permission checks and worktree lifecycle as local CLI runs.
 Studio is an optional development interface; ordinary CLI and Skill calls need no Agent Server.
 
@@ -17,12 +17,12 @@ uv run --locked --group studio langgraph dev --config generated/langgraph.json -
 ```
 
 Open <https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024> and select an assistant.
-`generated/langgraph.json` (build output; run the build before starting Studio) registers all 7
-public skills, derived from `skills/`. The 6 internal stage capabilities run through their
-composing public capability and remain visible in stage/process events; stage capabilities have no
+`generated/langgraph.json` (build output; run the build before starting Studio) registers all seven
+graphs, one per Skill, derived from `skills/`. The six stage capabilities run through their
+composing Skill and remain visible in stage/process events; stage capabilities have no
 executable entry, and Studio does not restore one. API health
 is available at <http://127.0.0.1:2024/ok> and API documentation at <http://127.0.0.1:2024/docs>.
-The local dev API works without model credentials for deterministic operations and policy previews.
+The local dev API works without model credentials for deterministic capabilities and policy previews.
 The hosted Studio UI requires a LangSmith account; follow the official
 [Studio setup](https://docs.langchain.com/oss/python/langgraph/studio) for its authentication setup.
 Actual agent execution still requires the project's configured Codex or Claude runtime and credentials.
@@ -37,16 +37,16 @@ independently of request input. Start a separate server on a different port for 
 Starting this config from another directory does not retarget it. This source-checkout launcher is
 not installed into consumer projects; see the consumer setup below.
 
-## Start and debug an operation in Studio
+## Start and debug a capability in Studio
 
 Select `concorde-main`, create a new thread, and enter this complete input in Graph mode:
 
 ```json
 {
   "invocation": {
-    "type_id": "concorde-operation-invocation",
-    "schema_version": 2,
-    "operation_id": "concorde-main",
+    "type_id": "concorde-capability-invocation",
+    "schema_version": 3,
+    "capability_id": "concorde-main",
     "mode": "describe-policy",
     "configuration": null,
     "input": {
@@ -59,16 +59,16 @@ Select `concorde-main`, create a new thread, and enter this complete input in Gr
 ```
 
 This previews the admitted policies without starting an agent. Switch `mode` to `execute` to run it.
-For another operation, select its assistant and change both `operation_id` and the inner request
-`type_id`; use that operation's existing request data contract. Null configuration loads the
+For another capability, select its assistant and change both `capability_id` and the inner request
+`type_id`; use that capability's existing request data contract. Null configuration loads the
 project's initialized settings. A supplied configuration must match those settings. The invocation
 has the same six fields and 1 MiB size limit as CLI stdin. Optional `expected_workspace` alongside
 `invocation` asserts exact absolute `project_root` and `package_root` identities; it never selects them.
 
-The visible graph has a `validate_invocation` node followed by the named operation node. Use Studio
-interrupt-before on the operation node to inspect the invocation before executing it. The execution
+The visible graph has a `validate_invocation` node followed by the named capability node. Use Studio
+interrupt-before on the capability node to inspect the invocation before executing it. The execution
 node rechecks the envelope and workspace assertion when resumed. Inspect `result`, `policies` and
-`events` in the final state. `result` is the unchanged `concorde-operation-result` schema 2 envelope.
+`events` in the final state. `result` is the unchanged `concorde-capability-result` schema 3 envelope.
 Input or workspace rejection clears previous output and returns a blocked result without execution.
 Always submit a complete invocation for a new run; LangGraph merges partial input into thread state.
 Use a new thread for an independent request. Hosts, permission descriptions and event lists are fresh
@@ -81,14 +81,14 @@ uv run --locked --group studio --with debugpy langgraph dev --config generated/l
 ```
 
 Attach your Python debugger to localhost:5678. See the official
-[CLI reference](https://docs.langchain.com/langsmith/cli) for debug and server options. Replaying an
-operation checkpoint executes the operation again: filesystem writes, external checks and agent
+[CLI reference](https://docs.langchain.com/langsmith/cli) for debug and server options. Replaying a
+capability checkpoint executes the capability again: filesystem writes, external checks and agent
 processes are not rolled back by LangGraph. Inspect the existing worktree state before replaying a
 mutation. A paused/interrupted Agent Server run is not an authorization to bypass Concorde checks.
 
 ## Monitor CLI and Skill calls
 
-Start the server above. In the shell or agent environment that launches operations, set:
+Start the server above. In the shell or agent environment that launches capabilities, set:
 
 ```bash
 export CONCORDE_STUDIO_URL=http://127.0.0.1:2024
@@ -98,7 +98,7 @@ Keep using the same JSON invocation on stdin, without the Studio `invocation` wr
 
 ```bash
 python3 scripts/run-capability.py concorde-main <<'JSON'
-{"type_id":"concorde-operation-invocation","schema_version":2,"operation_id":"concorde-main","mode":"describe-policy","configuration":null,"input":{"type_id":"concorde-main-request","schema_version":1,"data":{"task":"Explain Concorde's workflow host","target_id":"service.workflow-host"}}}
+{"type_id":"concorde-capability-invocation","schema_version":3,"capability_id":"concorde-main","mode":"describe-policy","configuration":null,"input":{"type_id":"concorde-main-request","schema_version":1,"data":{"task":"Explain Concorde's workflow host","target_id":"service.workflow-host"}}}
 JSON
 ```
 
@@ -109,11 +109,11 @@ already-running processes or import historical runs.
 
 Each call creates a Studio thread and prints its thread ID, server URL and run ID to **stderr**.
 Open that thread in Studio while the command waits. Policy descriptions remain on stderr. **stdout
-contains exactly the original JSON operation result**, with exit code 0 for `succeeded`/`described`
+contains exactly the original JSON capability result**, with exit code 0 for `succeeded`/`described`
 and 3 for `blocked`/`failed`. Unset `CONCORDE_STUDIO_URL` to use ordinary local execution.
 
 The client sends both caller roots; a server belonging to another project, package checkout or
-linked worktree returns `workspace_mismatch` before running any operation. Only loopback HTTP URLs
+linked worktree returns `workspace_mismatch` before running any capability. Only loopback HTTP URLs
 are accepted; redirects and environment HTTP proxies are disabled. Environment variables do not
 grant primary-worktree or outer-sandbox authorization. Server-side agent subprocesses retain the
 original environment allowlist and native enforcement; they do not inherit this transport switch.
@@ -124,15 +124,15 @@ Custom stream events are emitted live and retained as JSON in final `events`:
 
 | Event | Meaning |
 | --- | --- |
-| `operation_started`, `operation_finished` | Top-level and nested host operation, with invocation ID, depth and final status |
-| `stage_started`, `stage_finished`, `stage_failed` | Development-loop phase, including deterministic validation, review skips and readiness |
-| `agent_started`, `agent_finished`, `agent_failed` | Agent executor handoff with operation, stage, capability and invocation ID |
+| `capability_started`, `capability_finished` | Top-level and nested host capability invocation, with invocation ID, depth and final status |
+| `stage_started`, `stage_finished`, `stage_failed` | Development-loop stage, including deterministic validation, review skips and readiness |
+| `agent_started`, `agent_finished`, `agent_failed` | Agent executor handoff with capability, stage, role and invocation ID |
 
 Use API streaming with `stream_mode: ["custom", "updates"]` to receive these events while a run is
 active. Studio can inspect persisted `events` and `policies` on completion. Agent events describe
 process handoffs, not token-level traces, internal tool calls or proof that a completion passed
-admission. The final operation result reports completion/admission failures. Ordinary host graph
-nodes encapsulate their internal stages; loop events do not create independently replayable phase
+admission. The final capability result reports completion/admission failures. Ordinary host graph
+nodes encapsulate their stages; loop events do not create independently replayable phase
 checkpoints. Abrupt server/process termination may leave only the events already streamed.
 
 A successful Agent Server run can contain a Concorde `blocked` or `failed` result: inspect
@@ -142,7 +142,7 @@ Concorde error results. Server infrastructure failures/interruption instead prod
 `studio_run_failed`; network and HTTP failures produce `studio_transport_failed` on the CLI.
 
 The client never retries run creation and never falls back to local execution. If it loses the
-connection or is interrupted, the server operation may still be active. Inspect the printed thread
+connection or is interrupted, the server-side run may still be active. Inspect the printed thread
 before submitting again. An interrupted Studio run can be inspected/resumed from Studio, but the
 original CLI exits with code 3; resuming it does not retroactively deliver a new CLI result.
 
@@ -171,8 +171,8 @@ sys.path.insert(0, str(PACKAGE / "src"))
 from concorde.host.contracts import SKILL_NAMES
 from concorde.host.studio import build_studio_graph
 
-for operation in SKILL_NAMES:
-    globals()[operation.replace("-", "_")] = build_studio_graph(operation, PROJECT, PACKAGE)
+for capability in SKILL_NAMES:
+    globals()[capability.replace("-", "_")] = build_studio_graph(capability, PROJECT, PACKAGE)
 ```
 
 Register those variables in that project's `langgraph.json` (for example,
@@ -193,7 +193,7 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests/concorde -t . -p '
 ```
 
 The opt-in integration suite starts a real Agent Server on an available local port, exercises all
-7 public assistants, internal-stage admission, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
+seven assistants, stage admission, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
 and rejection paths, then stops the server. It uses temporary consumer projects and deterministic
 model process responses through the real executor/admission pipeline; it does not require online
 model calls or mutate this checkout's primary-worktree registry.

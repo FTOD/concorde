@@ -228,6 +228,57 @@ def render_protocol_schemas(project_root: Path) -> BuildOutput:
     return BuildOutput(path="generated/protocol/schemas.json", content=content, sources=())
 
 
+def render_docs_instructions(project_root: Path) -> BuildOutput:
+    """Publish every Skill's rendered body and every role's rendered instructions (proposal §12).
+
+    A read-only projection for the docsite's "Agent instructions" page: rendered bytes for human
+    browsing, never a second authoring source or an agent-context channel. Each role entry's
+    ``sources`` names the contributing prompt paths straight from its own build manifest entry.
+    """
+
+    all_sources: set[str] = set()
+    skills = []
+    for name in SKILL_NAMES:
+        metadata = _skill_metadata(project_root, name)
+        rendered = render_skill(project_root, name, "claude")
+        skills.append({
+            "name": name,
+            "description": str(metadata["description"]),
+            "capability": str(metadata["capability"]),
+            "body": rendered.content.decode("utf-8"),
+        })
+        all_sources.update(rendered.sources)
+    roles = []
+    for role in sorted(ROLE_ROOTS):
+        rendered = render_role(project_root, role)
+        roles.append({
+            "name": f"concorde-{role}",
+            "instructions": rendered.content.decode("utf-8"),
+            "sources": sorted(rendered.sources),
+        })
+        all_sources.update(rendered.sources)
+    payload = {"skills": skills, "roles": roles}
+    content = (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
+    return BuildOutput(path="generated/docs/instructions.json", content=content, sources=tuple(sorted(all_sources)))
+
+
+def render_docs_wire(project_root: Path) -> BuildOutput:
+    """Publish the exported wire schemas for the docsite's "Wire contracts" page (proposal §12).
+
+    Deliberately separate from ``generated/protocol/schemas.json`` (a Protocol-manifest-tracked
+    runtime asset): this is a docsite-facing publication projection, not a distributed asset. No
+    recorded ``sources``, matching ``render_protocol_schemas`` (derived from Python contracts, not
+    a fixed file set); freshness is verified by value in ``package_validation``.
+    """
+
+    from .contracts import exported_types
+
+    names = list(exported_types())
+    payload = {name: json_schema(name) for name in names}
+    content = (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
+    return BuildOutput(path="generated/docs/wire.json", content=content, sources=())
+
+
 def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
     all_sources: set[str] = set()
     for output in outputs:
@@ -263,6 +314,8 @@ def build(project_root: str | Path, integration: str = "all", *, framework_prefi
     for kind in PROTOCOL_KINDS:
         outputs.append(render_protocol_kind(root, kind))
     outputs.append(render_protocol_schemas(root))
+    outputs.append(render_docs_instructions(root))
+    outputs.append(render_docs_wire(root))
 
     roots = (list(ROLE_ROOTS.values()) + list(SKILL_SOURCES.values()) + ["prompts/protocol/principles.md"]
              + [f"prompts/protocol/kinds/{kind}.md" for kind in PROTOCOL_KINDS])
