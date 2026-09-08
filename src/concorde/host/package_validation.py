@@ -1,13 +1,14 @@
-"""One package validator over prompts, capability modules, contracts and build outputs.
+"""One package validator over prompts, capability modules, contracts, build outputs and Spec alignment.
 
 Replaces the former ``profile8_validation.py`` (deleted) and the capability-graph checks that used
 to live in ``validation.py`` (also deleted): those validated the retired ``roles/``/``operations/``
-package layout. This module implements proposal section 11 rules 1, 2, 3 and 5 (rule 4, Spec
-alignment, is Stage C). Every finding carries a stable ``CONCORDE-…`` rule id.
+package layout. This module implements proposal section 11 rules 1, 2, 3, 4 and 5. Every finding
+carries a stable ``CONCORDE-…`` rule id.
 """
 
 from __future__ import annotations
 
+import ast
 import importlib
 import json
 import re
@@ -42,8 +43,8 @@ _PROTOCOL_VOCABULARY = frozenset(
 )
 
 
-def _finding(rule: str, source: str, message: str, remediation: str) -> Finding:
-    return Finding(rule, "error", source, message, remediation, subject_id=_SUBJECT)
+def _finding(rule: str, source: str, message: str, remediation: str, *, severity: str = "error") -> Finding:
+    return Finding(rule, severity, source, message, remediation, subject_id=_SUBJECT)
 
 
 def _prompt_roots() -> tuple[str, ...]:
@@ -297,6 +298,255 @@ def _validate_contracts(root: Path) -> list[Finding]:
     return findings
 
 
+_CAPABILITIES_BLOCK = re.compile(r"^```concorde-capabilities\s*\n(.*?)^```\s*$", re.M | re.S)
+_DOCUMENT_HEADER_BLOCK = re.compile(r"^```concorde-document\s*\n(.*?)^```\s*$", re.M | re.S)
+_SPEC_TYPE_TOKEN = re.compile(r"concorde-[a-z][a-z0-9-]*@[0-9]+")
+_ERROR_TABLE_ROW = re.compile(r"^\|\s*`([a-z][a-z0-9_]*)`\s*\|", re.M)
+_CODE_SHAPE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+# The wire envelope types are validated ad hoc (never through contracts.schemas()/exported_types(),
+# see _PROTOCOL_VOCABULARY above) but are still real versioned identities the boundary document must
+# describe; their versions are not derivable from schemas() the way every other type's is.
+_ENVELOPE_VERSIONS = {
+    "concorde-capability-invocation": 3,
+    "concorde-capability-configuration": 1,
+    "concorde-capability-result": 3,
+}
+
+_WORKFLOW_HOST_BOUNDARY_ID = "document.workflow-host.boundary"
+
+
+def _registered_documents(root: Path) -> dict[str, str] | None:
+    """``{relative_path: text}`` for every unique Markdown path any registry target declares.
+
+    Returns ``None`` when no readable registry exists at the conventional ``.concorde/specs.json``
+    path, distinguishing "no registry" from "registry exists but is otherwise invalid" (already
+    reported by the deterministic Spec/registry validator, not this module).
+    """
+
+    registry_path = root / ".concorde/specs.json"
+    if registry_path.is_symlink() or not registry_path.is_file():
+        return None
+    try:
+        registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(registry, dict) or not isinstance(registry.get("targets"), list):
+        return None
+    paths: set[str] = set()
+    for target in registry["targets"]:
+        if isinstance(target, dict) and isinstance(target.get("documents"), list):
+            paths.update(path for path in target["documents"] if isinstance(path, str))
+    documents: dict[str, str] = {}
+    for relative in sorted(paths):
+        path = root / relative
+        if path.is_symlink() or not path.is_file():
+            continue
+        try:
+            documents[relative] = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            continue
+    return documents
+
+
+def _document_header_id(text: str) -> str | None:
+    match = _DOCUMENT_HEADER_BLOCK.search(text)
+    if not match:
+        return None
+    try:
+        value = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return None
+    return value.get("id") if isinstance(value, dict) else None
+
+
+def _find_boundary_document(documents: dict[str, str]) -> tuple[str, str] | None:
+    for path, text in documents.items():
+        if _document_header_id(text) == _WORKFLOW_HOST_BOUNDARY_ID:
+            return path, text
+    return None
+
+
+def _capability_code_inventory(root: Path) -> dict[str, dict[str, object]] | None:
+    """``{external-id-without-prefix: {"class": ..., "skill": ...}}`` from the actual code.
+
+    Mirrors ``_validate_capability_modules``'s own reads of the capability package and the skill
+    sources, so this rule and rule 2 agree on what "the code" declares without a second inventory
+    concept.
+    """
+
+    inventory, modules = _capability_modules(root)
+    if inventory is None:
+        return None
+    skill_capabilities = _skill_capabilities(root)
+    result: dict[str, dict[str, object]] = {}
+    for name in inventory.CAPABILITIES:
+        module = modules.get(name)
+        if module is None or not hasattr(module, "CLASS"):
+            continue
+        skills = skill_capabilities.get(name, [])
+        result[name.replace("_", "-")] = {"class": module.CLASS, "skill": skills[0] if len(skills) == 1 else None}
+    return result
+
+
+def _validate_spec_capabilities_block(root: Path, documents: dict[str, str]) -> list[Finding]:
+    """Rule 4a: exactly one registered ``concorde-capabilities`` block, equal to the code inventory."""
+
+    findings: list[Finding] = []
+    matches = [(path, match.group(1)) for path, text in documents.items()
+               for match in _CAPABILITIES_BLOCK.finditer(text)]
+    if len(matches) != 1:
+        findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", ".concorde/specs.json",
+            f"exactly one registered document must contain a concorde-capabilities block; found {len(matches)}.",
+            "Keep the machine-readable capability inventory in exactly one registered Spec document."))
+        return findings
+    path, raw = matches[0]
+    try:
+        entries = json.loads(raw)
+    except json.JSONDecodeError as error:
+        findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
+            f"concorde-capabilities block is not valid JSON: {error}",
+            "Fix the JSON array of {id, class, skill} entries."))
+        return findings
+    valid_shape = (isinstance(entries, list)
+        and all(isinstance(item, dict) and set(item) == {"id", "class", "skill"} for item in entries))
+    if not valid_shape:
+        findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
+            "concorde-capabilities block must be a JSON array of {id, class, skill} objects.",
+            "Match exactly the three fields id/class/skill for every entry."))
+        return findings
+    declared: dict[str, tuple[object, object]] = {}
+    for entry in entries:
+        declared[entry["id"]] = (entry["class"], entry["skill"])
+    if len(declared) != len(entries):
+        findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
+            "concorde-capabilities entries must have unique id values.",
+            "Remove the duplicate capability id."))
+    code = _capability_code_inventory(root)
+    if code is None:
+        findings.append(_finding("CONCORDE-CAPABILITY-INVENTORY-001", "capabilities/__init__.py",
+            "capabilities/__init__.py is missing, unsafe, or declares no CAPABILITIES tuple.",
+            "Add capabilities/__init__.py with an explicit CAPABILITIES inventory."))
+        return findings
+    expected = {capability_id: (data["class"], data["skill"]) for capability_id, data in code.items()}
+    for capability_id in sorted(set(expected) - set(declared)):
+        findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
+            f"concorde-capabilities block is missing capability {capability_id!r}.",
+            "Add its {id, class, skill} entry to the block."))
+    for capability_id in sorted(set(declared) - set(expected)):
+        findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
+            f"concorde-capabilities block declares unknown capability {capability_id!r}.",
+            "Remove the entry, or add the matching capabilities/<name>.py module."))
+    for capability_id in sorted(set(declared) & set(expected)):
+        if declared[capability_id] != expected[capability_id]:
+            findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
+                f"concorde-capabilities entry {capability_id!r} is {declared[capability_id]!r}, "
+                f"code declares {expected[capability_id]!r}.",
+                "Match class and skill exactly to the capability module and its skill."))
+    return findings
+
+
+def _validate_spec_types(root: Path, documents: dict[str, str]) -> list[Finding]:
+    """Rule 4b: every ``concorde-…@N`` token in the boundary document is an exported identity with
+    that exact version, and every exported identity appears there at least once."""
+
+    boundary = _find_boundary_document(documents)
+    if boundary is None:
+        return [_finding("CONCORDE-SPEC-TYPES-001", ".concorde/specs.json",
+            f"no registered document declares id {_WORKFLOW_HOST_BOUNDARY_ID}.",
+            "Register the workflow-host boundary document with that document id.")]
+    path, text = boundary
+    findings: list[Finding] = []
+    expected: dict[str, int] = {name: 1 for name in schemas()}
+    expected.update(_ENVELOPE_VERSIONS)
+    found: dict[str, set[int]] = {}
+    for token in _SPEC_TYPE_TOKEN.findall(text):
+        name, _, version_text = token.rpartition("@")
+        found.setdefault(name, set()).add(int(version_text))
+    for name in sorted(found):
+        for version in sorted(found[name]):
+            if name not in expected:
+                findings.append(_finding("CONCORDE-SPEC-TYPES-001", path,
+                    f"{name}@{version} names no exported identity.",
+                    "Correct the identifier, or export it from the wire contracts."))
+            elif version != expected[name]:
+                findings.append(_finding("CONCORDE-SPEC-TYPES-001", path,
+                    f"{name}@{version} does not match its exported version @{expected[name]}.",
+                    f"Use {name}@{expected[name]}, the version the host actually exports."))
+    for name in sorted(set(expected) - set(found)):
+        findings.append(_finding("CONCORDE-SPEC-TYPES-001", path,
+            f"exported identity {name}@{expected[name]} does not appear in this document.",
+            "Describe every exported identity's promise in the Wire contracts section."))
+    return findings
+
+
+def _raised_error_codes(root: Path) -> set[str]:
+    """Every ``code``-shaped literal passed to a ``*Error(...)`` call or an inline ``{"code": ...}``
+    dict under ``src/concorde/host``, using the AST so message text (which always contains spaces
+    or interpolation) is never mistaken for a code."""
+
+    codes: set[str] = set()
+    host_dir = root / "src/concorde/host"
+    if not host_dir.is_dir():
+        return codes
+    for path in sorted(host_dir.rglob("*.py")):
+        if path.is_symlink() or not path.is_file():
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        except (OSError, UnicodeError, SyntaxError):
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                name = (node.func.id if isinstance(node.func, ast.Name)
+                       else node.func.attr if isinstance(node.func, ast.Attribute) else None)
+                if not name or not name.endswith("Error"):
+                    continue
+                for argument in (*node.args, *(keyword.value for keyword in node.keywords)):
+                    if (isinstance(argument, ast.Constant) and isinstance(argument.value, str)
+                            and _CODE_SHAPE.fullmatch(argument.value)):
+                        codes.add(argument.value)
+            elif isinstance(node, ast.Dict):
+                for key, value in zip(node.keys, node.values):
+                    if (isinstance(key, ast.Constant) and key.value == "code"
+                            and isinstance(value, ast.Constant) and isinstance(value.value, str)
+                            and _CODE_SHAPE.fullmatch(value.value)):
+                        codes.add(value.value)
+    return codes
+
+
+def _validate_spec_errors(root: Path, documents: dict[str, str]) -> list[Finding]:
+    """Advisory rule 4c: every host error code literal appears in the boundary's error table."""
+
+    boundary = _find_boundary_document(documents)
+    if boundary is None:
+        return []
+    path, text = boundary
+    documented = set(_ERROR_TABLE_ROW.findall(text))
+    missing = sorted(_raised_error_codes(root) - documented)
+    return [
+        _finding("CONCORDE-SPEC-ERRORS-001", path,
+            f"error code {code!r} is raised under src/concorde/host but missing from the error table.",
+            "Add a row describing this error code's meaning.", severity="advisory")
+        for code in missing
+    ]
+
+
+def _validate_spec_alignment(root: Path) -> list[Finding]:
+    """Rule 4: the capability registry and wire promises agree with the executable code."""
+
+    documents = _registered_documents(root)
+    if documents is None:
+        return [_finding("CONCORDE-SPEC-CAPABILITIES-001", ".concorde/specs.json",
+            "no readable Spec registry was found.",
+            "Register the capability registry and workflow-host boundary documents.")]
+    findings: list[Finding] = []
+    findings.extend(_validate_spec_capabilities_block(root, documents))
+    findings.extend(_validate_spec_types(root, documents))
+    findings.extend(_validate_spec_errors(root, documents))
+    return findings
+
+
 def _validate_build_outputs(root: Path) -> list[Finding]:
     findings: list[Finding] = []
     try:
@@ -319,12 +569,13 @@ def _validate_build_outputs(root: Path) -> list[Finding]:
 
 
 def validate_package(root: Path) -> list[Finding]:
-    """Validate the Concorde package: prompts, capability modules, contracts, build outputs."""
+    """Validate the Concorde package: prompts, capability modules, contracts, Spec alignment, build outputs."""
 
     root = Path(root)
     findings: list[Finding] = []
     findings.extend(_validate_prompts(root))
     findings.extend(_validate_capability_modules(root))
     findings.extend(_validate_contracts(root))
+    findings.extend(_validate_spec_alignment(root))
     findings.extend(_validate_build_outputs(root))
     return findings

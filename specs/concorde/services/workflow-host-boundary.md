@@ -173,17 +173,17 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | --- | --- | --- |
 | `concorde-main-request@1` / `concorde-main-response@1` | main | Every request field is optional at the wire level. Request adds `action` (ask\|design-topology\|accept-topology\|apply-topology, default ask), `topology_proposal` (a `concorde-topology-proposal@1` TypedValue, required for accept-topology) and `application` (an ArtifactRef, required for apply-topology). Response adds `entry_target`, `discovered_targets`, `routes`, `worker_results` (`concorde-main-worker-result@1` TypedValues), nullable `topology_proposal`/`application`, `files` and `workspace`. |
 | `concorde-dev-loop-request@1` / `concorde-dev-loop-response@1` | dev-loop | Only `task` is required. Request adds `specify` (default true; false skips Spec authoring) and `run_reviews` (default true; false records an explicit per-mode skip). Response is the common shape only. |
-| `concorde-reflections-triage-request@1` / `-response@1` | reflections-triage | Requires `target_id`, `action` (status\|record-gaps\|investigate\|implement\|merge\|close) and `reflection_ids` (a unique array, possibly empty); `task` is optional here, unlike other capabilities, because status and record-gaps need none. Adds optional `gap_ids`. Response adds `reflections` and `gap_records`. |
+| `concorde-reflections-triage-request@1` / `concorde-reflections-triage-response@1` | reflections-triage | Requires `target_id`, `action` (status\|record-gaps\|investigate\|implement\|merge\|close) and `reflection_ids` (a unique array, possibly empty); `task` is optional here, unlike other capabilities, because status and record-gaps need none. Adds optional `gap_ids`. Response adds `reflections` and `gap_records`. |
 | `concorde-init-request@1` / `concorde-init-response@1` | init | Requires only `action` (propose\|apply); adds optional `name`, `target_id`, `configuration` and `proposal` (a `concorde-project-proposal@1` TypedValue). Response replaces the common shape with `status` (proposed\|applied), a nullable `proposal` and `files`. |
-| `concorde-configure-request@1` / `-response@1` | configure | Requires `configuration`. Response requires `configuration` and `status: "applied"`; the only capability whose response does not use the common stage shape. |
-| `concorde-validate-request@1` / `-response@1` | validate | Requires `target_id` and `task`; adds optional `run_checks`. Response is the common shape only. |
-| `concorde-deliver-request@1` / `-response@1` | deliver | Requires only `change_id`; adds optional `target_id`, `task`, `focus_id`, `constraints` and `keep_worktree`. Response is the common shape only. |
-| `concorde-specify-request@1` / `-response@1` | specify (stage) | Requires `target_id` and `task`. Response is the common shape only. |
-| `concorde-review-request@1` / `-response@1` | review (stage) | Requires `task` and `review_mode` (spec\|code); `target_id` is optional at the wire level but always supplied by the composing capability. Response adds `reviews` (`concorde-review-result@1` TypedValues). |
-| `concorde-context-solve-request@1` / `-response@1` | context-solve (stage) | Requires `target_id` and `task`. Response is the common shape only. |
-| `concorde-plan-request@1` / `-response@1` | plan (stage) | Requires `target_id` and `task`. Response is the common shape only. |
-| `concorde-tasks-request@1` / `-response@1` | tasks (stage) | Requires `target_id` and `task`. Response is the common shape only. |
-| `concorde-implement-request@1` / `-response@1` | implement (stage) | Requires `target_id` and `task`. Response is the common shape only. |
+| `concorde-configure-request@1` / `concorde-configure-response@1` | configure | Requires `configuration`. Response requires `configuration` and `status: "applied"`; the only capability whose response does not use the common stage shape. |
+| `concorde-validate-request@1` / `concorde-validate-response@1` | validate | Requires `target_id` and `task`; adds optional `run_checks`. Response is the common shape only. |
+| `concorde-deliver-request@1` / `concorde-deliver-response@1` | deliver | Requires only `change_id`; adds optional `target_id`, `task`, `focus_id`, `constraints` and `keep_worktree`. Response is the common shape only. |
+| `concorde-specify-request@1` / `concorde-specify-response@1` | specify (stage) | Requires `target_id` and `task`. Response is the common shape only. |
+| `concorde-review-request@1` / `concorde-review-response@1` | review (stage) | Requires `task` and `review_mode` (spec\|code); `target_id` is optional at the wire level but always supplied by the composing capability. Response adds `reviews` (`concorde-review-result@1` TypedValues). |
+| `concorde-context-solve-request@1` / `concorde-context-solve-response@1` | context-solve (stage) | Requires `target_id` and `task`. Response is the common shape only. |
+| `concorde-plan-request@1` / `concorde-plan-response@1` | plan (stage) | Requires `target_id` and `task`. Response is the common shape only. |
+| `concorde-tasks-request@1` / `concorde-tasks-response@1` | tasks (stage) | Requires `target_id` and `task`. Response is the common shape only. |
+| `concorde-implement-request@1` / `concorde-implement-response@1` | implement (stage) | Requires `target_id` and `task`. Response is the common shape only. |
 
 ### Stage handoffs
 

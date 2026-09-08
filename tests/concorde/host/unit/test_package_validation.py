@@ -1,9 +1,10 @@
-"""One package validator over prompts, capability modules, contracts, build outputs (proposal §11,
-Stage B2 item 5). One test class per rule, using temporary fixture packages, plus an end-to-end run
-against the real package.
+"""One package validator over prompts, capability modules, contracts, Spec alignment and build
+outputs (proposal §11). One test class per rule, using temporary fixture packages, plus an
+end-to-end run against the real package.
 """
 from __future__ import annotations
 
+import json
 import shutil
 import sys
 import tempfile
@@ -250,6 +251,211 @@ class BuildOutputRuleTests(unittest.TestCase):
     def test_fresh_build_has_no_findings(self) -> None:
         write_build(self.root, "all")
         self.assertEqual([], package_validation._validate_build_outputs(self.root))
+
+
+def _registry(root: Path, *, documents: list[str]) -> None:
+    registry = {
+        "schema_version": 1, "project_id": "project.fixture", "entry_target": "service.alpha",
+        "targets": [{
+            "id": "service.alpha", "kind": "service", "title": "Alpha",
+            "documents": documents, "scope_parent": None, "component_parent": None,
+            "participates_in": [], "implementation": [], "features": [], "apis": [],
+            "checks": [], "diagrams": [],
+        }],
+        "checks": [],
+    }
+    registry_path = root / ".concorde/specs.json"
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(json.dumps(registry), encoding="utf-8")
+
+
+def _document(root: Path, relative: str, document_id: str, body: str) -> None:
+    path = root / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    header = json.dumps({"id": document_id, "targets": ["service.alpha"], "main_visible": True})
+    path.write_text(f"```concorde-document\n{header}\n```\n\n# Fixture\n\n{body}\n", encoding="utf-8")
+
+
+class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
+    """Rule 4a: exactly one registered concorde-capabilities block, equal to the code inventory."""
+
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+
+    def test_missing_registry_is_reported(self) -> None:
+        findings = package_validation._validate_spec_alignment(self.root)
+        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
+
+    def test_no_capabilities_block_is_reported(self) -> None:
+        _capabilities_package(self.root)
+        _document(self.root, "specs/doc.md", "document.doc", "No block here.")
+        _registry(self.root, documents=["specs/doc.md"])
+        findings = package_validation._validate_spec_capabilities_block(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
+
+    def test_two_capabilities_blocks_is_reported(self) -> None:
+        _capabilities_package(self.root)
+        block = '```concorde-capabilities\n[{"id": "alpha", "class": "stage", "skill": null}]\n```'
+        _document(self.root, "specs/one.md", "document.one", block)
+        _document(self.root, "specs/two.md", "document.two", block)
+        _registry(self.root, documents=["specs/one.md", "specs/two.md"])
+        findings = package_validation._validate_spec_capabilities_block(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
+
+    def test_malformed_json_is_reported(self) -> None:
+        _capabilities_package(self.root)
+        _document(self.root, "specs/one.md", "document.one", "```concorde-capabilities\nnot json\n```")
+        _registry(self.root, documents=["specs/one.md"])
+        findings = package_validation._validate_spec_capabilities_block(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
+
+    def test_matching_capabilities_block_has_no_findings(self) -> None:
+        global_alpha = VALID_ALPHA.replace('CLASS = "stage"', 'CLASS = "global"')
+        _capabilities_package(self.root, alpha_source=global_alpha)
+        _skill(self.root)
+        block = "```concorde-capabilities\n" + json.dumps(
+            [{"id": "alpha", "class": "global", "skill": "concorde-alpha"}]) + "\n```"
+        _document(self.root, "specs/one.md", "document.one", block)
+        _registry(self.root, documents=["specs/one.md"])
+        findings = package_validation._validate_spec_capabilities_block(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertEqual([], findings)
+
+    def test_mismatched_class_is_reported(self) -> None:
+        global_alpha = VALID_ALPHA.replace('CLASS = "stage"', 'CLASS = "global"')
+        _capabilities_package(self.root, alpha_source=global_alpha)
+        _skill(self.root)
+        block = "```concorde-capabilities\n" + json.dumps(
+            [{"id": "alpha", "class": "lifecycle", "skill": "concorde-alpha"}]) + "\n```"
+        _document(self.root, "specs/one.md", "document.one", block)
+        _registry(self.root, documents=["specs/one.md"])
+        findings = package_validation._validate_spec_capabilities_block(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
+
+    def test_missing_capability_entry_is_reported(self) -> None:
+        _capabilities_package(self.root)
+        _document(self.root, "specs/one.md", "document.one", "```concorde-capabilities\n[]\n```")
+        _registry(self.root, documents=["specs/one.md"])
+        findings = package_validation._validate_spec_capabilities_block(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertTrue(any("missing capability" in f.message for f in findings), findings)
+
+    def test_extra_capability_entry_is_reported(self) -> None:
+        _capabilities_package(self.root)
+        block = "```concorde-capabilities\n" + json.dumps([
+            {"id": "alpha", "class": "stage", "skill": None},
+            {"id": "ghost", "class": "stage", "skill": None},
+        ]) + "\n```"
+        _document(self.root, "specs/one.md", "document.one", block)
+        _registry(self.root, documents=["specs/one.md"])
+        findings = package_validation._validate_spec_capabilities_block(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertTrue(any("unknown capability" in f.message for f in findings), findings)
+
+
+class SpecAlignmentTypesRuleTests(unittest.TestCase):
+    """Rule 4b: every concorde-...@N token in the workflow-host boundary document is an exported
+    identity with that exact version, and every exported identity appears there at least once."""
+
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+
+    def test_missing_boundary_document_is_reported(self) -> None:
+        _document(self.root, "specs/other.md", "document.other", "Nothing relevant.")
+        _registry(self.root, documents=["specs/other.md"])
+        findings = package_validation._validate_spec_types(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-TYPES-001" for f in findings), findings)
+
+    def test_unknown_type_token_is_reported(self) -> None:
+        _document(self.root, "specs/boundary.md", "document.workflow-host.boundary",
+            "Mentions `concorde-not-a-real-type@1` here.")
+        _registry(self.root, documents=["specs/boundary.md"])
+        findings = package_validation._validate_spec_types(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertTrue(any("names no exported identity" in f.message for f in findings), findings)
+
+    def test_wrong_version_is_reported(self) -> None:
+        _document(self.root, "specs/boundary.md", "document.workflow-host.boundary",
+            "Mentions `concorde-capability-invocation@2` here.")
+        _registry(self.root, documents=["specs/boundary.md"])
+        findings = package_validation._validate_spec_types(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertTrue(any("does not match its exported version" in f.message for f in findings), findings)
+
+    def test_missing_exported_identity_is_reported(self) -> None:
+        _document(self.root, "specs/boundary.md", "document.workflow-host.boundary", "Nothing about types here.")
+        _registry(self.root, documents=["specs/boundary.md"])
+        findings = package_validation._validate_spec_types(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertTrue(any("does not appear in this document" in f.message for f in findings), findings)
+
+    def test_the_real_boundary_document_has_no_findings(self) -> None:
+        findings = package_validation._validate_spec_types(
+            REPOSITORY_ROOT, package_validation._registered_documents(REPOSITORY_ROOT))
+        self.assertEqual([], findings)
+
+
+class SpecAlignmentErrorsRuleTests(unittest.TestCase):
+    """Advisory rule 4c: every error code literal raised under src/concorde/host appears in the
+    workflow-host boundary document's error table."""
+
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+
+    def _host_module(self, filename: str, source: str) -> None:
+        path = self.root / "src/concorde/host" / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(source, encoding="utf-8")
+
+    def test_missing_error_code_is_reported_as_advisory(self) -> None:
+        self._host_module("fixture.py",
+            'class FixtureError(ValueError):\n    pass\n\n\n'
+            'def raise_it():\n    raise FixtureError("something went wrong", "fixture_missing_code")\n')
+        _document(self.root, "specs/boundary.md", "document.workflow-host.boundary", "No error table here.")
+        _registry(self.root, documents=["specs/boundary.md"])
+        findings = package_validation._validate_spec_errors(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-ERRORS-001" and "fixture_missing_code" in f.message
+                            and f.severity == "advisory" for f in findings), findings)
+
+    def test_message_text_is_never_mistaken_for_a_code(self) -> None:
+        self._host_module("fixture.py",
+            'class FixtureError(ValueError):\n    pass\n\n\n'
+            'def raise_it():\n    raise FixtureError("a plain message with spaces")\n')
+        _document(self.root, "specs/boundary.md", "document.workflow-host.boundary", "No error table here.")
+        _registry(self.root, documents=["specs/boundary.md"])
+        findings = package_validation._validate_spec_errors(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertEqual([], findings)
+
+    def test_documented_error_code_has_no_findings(self) -> None:
+        self._host_module("fixture.py",
+            'class FixtureError(ValueError):\n    pass\n\n\n'
+            'def raise_it():\n    raise FixtureError("something went wrong", "fixture_code")\n')
+        _document(self.root, "specs/boundary.md", "document.workflow-host.boundary",
+            "| Error code | Meaning |\n| --- | --- |\n| `fixture_code` | Something. |")
+        _registry(self.root, documents=["specs/boundary.md"])
+        findings = package_validation._validate_spec_errors(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertEqual([], findings)
+
+    def test_missing_boundary_document_has_no_findings(self) -> None:
+        _document(self.root, "specs/other.md", "document.other", "Nothing relevant.")
+        _registry(self.root, documents=["specs/other.md"])
+        findings = package_validation._validate_spec_errors(
+            self.root, package_validation._registered_documents(self.root))
+        self.assertEqual([], findings)
 
 
 class EndToEndPackageValidationTests(unittest.TestCase):
