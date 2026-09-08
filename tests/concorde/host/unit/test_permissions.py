@@ -12,22 +12,26 @@ import unittest
 from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 
-from tests.concorde.support.paths import RUNTIME_ROOT
+from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.host.permissions import (  # noqa: E402
     PermissionPolicyError,
     PolicyBinding,
+    build_launch_specification,
     compare_effective_boundaries,
     compile_policy,
     finalize_codex_configuration,
+    finalize_launch_specification,
     render_claude_configuration,
     render_codex_configuration,
     runtime_bootstrap_file,
     verify_effective_subset,
 )
+from concorde.host.agent_model import binding_json, resolve_agent  # noqa: E402
 from concorde.host.effects import EffectDeclaration  # noqa: E402
+from concorde.host.typed_data import canonical, typed  # noqa: E402
 
 
 class PermissionTests(unittest.TestCase):
@@ -314,6 +318,82 @@ print(json.dumps(result))
                 declared,
                 replace(declared, read_paths=(*declared.read_paths, "src/provider/private.py")),
             )
+
+
+class AgentBindingLaunchTests(unittest.TestCase):
+    """A structured launch must carry the resolved Agent binding that authorized it (P2)."""
+
+    def setUp(self) -> None:
+        self.binding = resolve_agent(REPOSITORY_ROOT, "spec_author")
+        self.effect = EffectDeclaration(reads=("spec-context",), writes=(), network=False, credentials="none")
+        self.roles = {"spec-context": ("context.json",)}
+        self.policy = compile_policy(
+            self.effect,
+            PolicyBinding(
+                capability="concorde-specify", stage="specify", occurrence=0,
+                role="concorde-spec-author", agent="concorde-spec-author", write_roles=(),
+            ),
+            self.roles,
+        )
+        self.native = render_claude_configuration(self.policy, native_enforcement=True)
+        self.configuration = typed("concorde-capability-configuration", {"integration": "claude", "enforcement": "native"})
+
+    def build(self, **overrides):
+        kwargs = dict(
+            capability="concorde-specify",
+            stage="specify",
+            occurrence=0,
+            role="concorde-spec-author",
+            integration="claude",
+            agent="concorde-spec-author",
+            project_root="/fixture/project",
+            request="Author the Spec",
+            prompt="# fixture spec-author instructions",
+            prior_results=(),
+            workspace_receipt_json=json.dumps(
+                {"source_digest": "sha256:" + "1" * 64}, sort_keys=True, separators=(",", ":")
+            ),
+            workspace_digest="sha256:" + "1" * 64,
+            policy=self.policy,
+            native_configuration=self.native,
+            runtime_input_json=canonical(self.configuration),
+            capability_configuration_json=canonical(self.configuration),
+            invocation_id="fixture-invocation",
+        )
+        kwargs.update(overrides)
+        return build_launch_specification(**kwargs)
+
+    def test_structured_launch_without_agent_binding_is_refused(self):
+        with self.assertRaisesRegex(PermissionPolicyError, "resolved Agent binding"):
+            self.build()
+
+    def test_narrative_launch_cannot_carry_an_agent_binding(self):
+        with self.assertRaises(PermissionPolicyError):
+            self.build(
+                agent_binding_json=binding_json(self.binding),
+                runtime_input_json=None,
+                capability_configuration_json=None,
+                invocation_id=None,
+            )
+
+    def test_agent_binding_field_set_and_canonical_serialization_are_enforced(self):
+        with self.assertRaisesRegex(PermissionPolicyError, "AgentBinding fields"):
+            self.build(agent_binding_json=json.dumps({"agent": "spec_author"}, sort_keys=True, separators=(",", ":")))
+        with self.assertRaisesRegex(PermissionPolicyError, "canonical serialization"):
+            self.build(agent_binding_json=binding_json(self.binding) + " ")
+
+    def test_agent_binding_participates_in_the_launch_digest(self):
+        with_binding = self.build(agent_binding_json=binding_json(self.binding))
+        other_binding = resolve_agent(REPOSITORY_ROOT, "reader")
+        different_binding = self.build(agent_binding_json=binding_json(other_binding))
+        self.assertNotEqual(with_binding.digest, different_binding.digest)
+        self.assertEqual(with_binding.agent_binding_json, binding_json(self.binding))
+
+    def test_finalize_launch_specification_preserves_the_agent_binding(self):
+        spec = self.build(agent_binding_json=binding_json(self.binding))
+        finalized = finalize_launch_specification(spec, ())
+        self.assertEqual(spec.agent_binding_json, finalized.agent_binding_json)
+        self.assertEqual(spec.digest, finalized.digest)
 
 
 if __name__ == "__main__":

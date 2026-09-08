@@ -139,6 +139,26 @@ def binding_digest(binding: AgentBinding) -> str:
     return "sha256:" + hashlib.sha256(canonical_binding(binding).encode("utf-8")).hexdigest()
 
 
+def binding_json(binding: AgentBinding) -> str:
+    """Canonical (sorted-key, compact) JSON of the complete resolved binding, INCLUDING its own
+    ``digest`` field -- for embedding one launch's Agent identity into ``LaunchSpecification``.
+    Unlike ``canonical_binding`` (which excludes ``digest`` because it is the digest's own input),
+    this is the wire form a launch carries and the executor independently reverifies."""
+
+    payload = dataclasses.asdict(binding)
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+def binding_from_json(text: str) -> AgentBinding:
+    """Reconstruct one ``AgentBinding`` (with its nested ``LoopPolicy``) from ``binding_json``
+    output. Raises ``TypeError``/``KeyError`` for a malformed payload; callers verify
+    ``binding_digest(binding) == binding.digest`` separately to detect tampering."""
+
+    payload = json.loads(text)
+    loop_payload = payload["effective_loop"]
+    return AgentBinding(**{**payload, "effective_loop": LoopPolicy(**loop_payload)})
+
+
 def _sha256_bytes(data: bytes) -> str:
     return "sha256:" + hashlib.sha256(data).hexdigest()
 

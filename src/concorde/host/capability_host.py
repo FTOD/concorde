@@ -20,10 +20,11 @@ from typing import Any
 from .typed_data import (CAPABILITY_CONTRACTS, TypedDataError, canonical, checked_path,
     decode, typed, validate_typed, artifact, verify_artifacts)
 from .configuration import load_configuration
-from .permissions import (PolicyBinding, compile_policy, render_codex_configuration,
+from .agent_model import agent_definition, binding_json, external_agent_name
+from .agent_executor import CapabilityExecutionError
+from .permissions import (PolicyBinding, PermissionPolicyError, compile_policy, render_codex_configuration,
     render_claude_configuration, build_launch_specification, CapabilityExecutionResult)
 from .build import BuildError, load_role_prompt, verify_fresh
-from .effects import EffectDeclaration
 from .contracts import (STAGE_ROLES, TARGET_AGENT_STAGES,
     MAIN_CAPABILITY, MAIN_ROUTED_CAPABILITIES, LIFECYCLE_CAPABILITIES, load_capability_inventory)
 from .change_worktree import (STATE_PATH, WORK_PATH, bind_owner, create_worktree,
@@ -58,6 +59,7 @@ class CapabilityHost:
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     descriptions: list[dict] = field(default_factory=list)
     evidence: list[Any] = field(default_factory=list)
+    lifecycle: dict = field(default_factory=dict)
     observer: Any = None
 
     def observe(self, event: str, **details) -> None:
@@ -283,16 +285,21 @@ class MainInvocation:
         before_registry = self.repository.registry_bytes
         with tempfile.TemporaryDirectory(prefix="concorde-discovery-") as directory:
             capsule = Path(directory)
+            project_workspace = agent_definition(prompt.binding.agent).harness.workspace == "project"
+            project = self.host.project_root if project_workspace else capsule
             context_file = capsule / "context.json"
             if self.host.mode != "describe-policy":
                 context_file.write_text(snapshot.serialized + "\n")
-            roles = {"discovery-context": ("context.json",)}
-            policy = compile_policy(
-                EffectDeclaration(("discovery-context",), (), False, "none"),
-                PolicyBinding(self.capability, phase, occurrence, role, role),
-                roles,
-                outer_sandbox_required=self.configuration["data"]["enforcement"] == "outer",
-            )
+            roles = {prompt.effects.reads[0]: ("context.json",)}
+            try:
+                policy = compile_policy(
+                    prompt.effects,
+                    PolicyBinding(self.capability, phase, occurrence, role, role, write_roles=()),
+                    roles,
+                    outer_sandbox_required=self.configuration["data"]["enforcement"] == "outer",
+                )
+            except PermissionPolicyError as error:
+                raise SpecError(str(error), "permission_denied") from error
             integration = self.configuration["data"]["integration"]
             renderer = render_codex_configuration if integration == "codex" else render_claude_configuration
             native = renderer(
@@ -321,7 +328,7 @@ class MainInvocation:
                 role=role,
                 integration=integration,
                 agent=role,
-                project_root=str(capsule),
+                project_root=str(project),
                 request=self.task["task"],
                 prompt=prompt.body,
                 prior_results=(),
@@ -332,18 +339,24 @@ class MainInvocation:
                 runtime_input_json=canonical(value),
                 capability_configuration_json=canonical(self.configuration),
                 invocation_id=invocation_id,
+                agent_binding_json=binding_json(prompt.binding),
             )
             self.host.descriptions.append({
                 "capability": self.capability,
                 "phase": phase,
                 "context_id": snapshot.id,
-                "project_root": str(capsule),
+                "project_root": str(project),
                 "read_paths": list(policy.read_paths),
                 "write_paths": [],
                 "network": False,
                 "fresh_session": True,
                 "policy_digest": policy.digest,
                 "discovered_targets": list(self.discovered),
+                "agent": external_agent_name(prompt.binding.agent),
+                "harness": prompt.binding.harness,
+                "agent_binding_digest": prompt.binding.digest,
+                "instructions_digest": prompt.binding.instructions_digest,
+                "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds,
             })
             if self.host.mode == "describe-policy":
                 return {"context_id": snapshot.id, "outcome": "described", "answer": "",
@@ -356,7 +369,8 @@ class MainInvocation:
             evidence = result.receipt
             if (evidence.requested_launch_digest != launch.digest or evidence.policy_digest != policy.digest
                     or evidence.status != "success" or result.completion.invocation_id != invocation_id
-                    or result.completion.workspace_digest != snapshot.id):
+                    or result.completion.workspace_digest != snapshot.id
+                    or evidence.agent_binding_digest != prompt.binding.digest):
                 raise SpecError("main completion evidence is not bound to this invocation", "invalid_completion")
             data = validate_typed(result.completion.domain_output, "concorde-main-stage-result")["data"]
             self._validate_result(snapshot, phase, data)
@@ -696,16 +710,21 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
     before_registry = repository.registry_bytes
     with tempfile.TemporaryDirectory(prefix="concorde-topology-author-") as directory:
         capsule = Path(directory)
+        project_workspace = agent_definition(prompt.binding.agent).harness.workspace == "project"
+        project = host.project_root if project_workspace else capsule
         context_file = capsule / "context.json"
         if host.mode != "describe-policy":
             context_file.write_text(snapshot.serialized + "\n")
-        roles = {"spec-context": ("context.json",)}
-        policy = compile_policy(
-            EffectDeclaration(("spec-context",), (), False, "none"),
-            PolicyBinding(MAIN_CAPABILITY, "topology-author", occurrence, role, role),
-            roles,
-            outer_sandbox_required=configuration["data"]["enforcement"] == "outer",
-        )
+        roles = {prompt.effects.reads[0]: ("context.json",)}
+        try:
+            policy = compile_policy(
+                prompt.effects,
+                PolicyBinding(MAIN_CAPABILITY, "topology-author", occurrence, role, role, write_roles=()),
+                roles,
+                outer_sandbox_required=configuration["data"]["enforcement"] == "outer",
+            )
+        except PermissionPolicyError as error:
+            raise SpecError(str(error), "permission_denied") from error
         integration = configuration["data"]["integration"]
         renderer = render_codex_configuration if integration == "codex" else render_claude_configuration
         native = renderer(policy,
@@ -718,14 +737,19 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
         invocation_id = str(uuid.uuid4())
         launch = build_launch_specification(capability=MAIN_CAPABILITY, stage="topology-author",
             occurrence=occurrence, role=role, integration=integration, agent=role,
-            project_root=str(capsule), request=task, prompt=prompt.body, prior_results=(),
+            project_root=str(project), request=task, prompt=prompt.body, prior_results=(),
             workspace_receipt_json=canonical(receipt), workspace_digest=snapshot.id, policy=policy,
             native_configuration=native, runtime_input_json=canonical(runtime),
-            capability_configuration_json=canonical(configuration), invocation_id=invocation_id)
+            capability_configuration_json=canonical(configuration), invocation_id=invocation_id,
+            agent_binding_json=binding_json(prompt.binding))
         host.descriptions.append({"capability": MAIN_CAPABILITY, "phase": "topology-author",
-            "target_id": target["id"], "context_id": snapshot.id, "project_root": str(capsule),
+            "target_id": target["id"], "context_id": snapshot.id, "project_root": str(project),
             "read_paths": list(policy.read_paths), "write_paths": [], "network": False,
-            "fresh_session": True, "policy_digest": policy.digest})
+            "fresh_session": True, "policy_digest": policy.digest,
+            "agent": external_agent_name(prompt.binding.agent), "harness": prompt.binding.harness,
+            "agent_binding_digest": prompt.binding.digest,
+            "instructions_digest": prompt.binding.instructions_digest,
+            "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds})
         if host.mode == "describe-policy":
             return {"context_id": snapshot.id, "target_id": target["id"], "outcome": "completed",
                     "answer": "", "gaps": [], "documents": []}
@@ -737,7 +761,8 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
         evidence = result.receipt
         if (evidence.requested_launch_digest != launch.digest or evidence.policy_digest != policy.digest
                 or evidence.status != "success" or result.completion.invocation_id != invocation_id
-                or result.completion.workspace_digest != snapshot.id):
+                or result.completion.workspace_digest != snapshot.id
+                or evidence.agent_binding_digest != prompt.binding.digest):
             raise SpecError("topology author evidence is not bound to this invocation", "invalid_completion")
         data = validate_typed(result.completion.domain_output, "concorde-topology-author-result")["data"]
         if data["context_id"] != snapshot.id or data["target_id"] != target["id"]:
@@ -1063,8 +1088,9 @@ class Invocation:
         with tempfile.TemporaryDirectory(prefix="concorde-context-") as directory:
             capsule = Path(directory)
             # Spec-only tasks see a private capsule, not a repository or inherited conversation.
-            project = self.host.project_root if implementation else capsule
-            if implementation:
+            project_workspace = agent_definition(prompt.binding.agent).harness.workspace == "project"
+            project = self.host.project_root if project_workspace else capsule
+            if project_workspace:
                 relative = f".concorde/runs/{self.host.invocation_id}/{uuid.uuid4()}/context.json"
                 context_file = checked_path(project, relative)
             else:
@@ -1072,12 +1098,15 @@ class Invocation:
             if self.host.mode != "describe-policy":
                 context_file.parent.mkdir(parents=True, exist_ok=True)
                 context_file.write_text(snapshot.serialized + "\n")
-            roles = {"spec-context": (relative,), "implementation": self.target.implementation if implementation else ()}
-            read_roles = ("spec-context", "implementation") if implementation else ("spec-context",)
+            roles = ({"spec-context": (relative,), "implementation": self.target.implementation}
+                      if project_workspace else {"spec-context": (relative,)})
             write_roles = ("implementation",) if implementation and not readonly else ()
-            policy = compile_policy(EffectDeclaration(read_roles, write_roles, False, "none"),
-                PolicyBinding(capability, phase, 0, role, role), roles,
-                outer_sandbox_required=self.configuration["data"]["enforcement"] == "outer")
+            try:
+                policy = compile_policy(prompt.effects,
+                    PolicyBinding(capability, phase, 0, role, role, write_roles=write_roles), roles,
+                    outer_sandbox_required=self.configuration["data"]["enforcement"] == "outer")
+            except PermissionPolicyError as error:
+                raise SpecError(str(error), "permission_denied") from error
             integration = self.configuration["data"]["integration"]
             renderer = render_codex_configuration if integration == "codex" else render_claude_configuration
             native = renderer(policy, native_enforcement=self.configuration["data"]["enforcement"] == "native",
@@ -1093,11 +1122,15 @@ class Invocation:
                 prompt=prompt.body, prior_results=(), workspace_receipt_json=canonical(receipt),
                 workspace_digest=snapshot.id, policy=policy, native_configuration=native,
                 runtime_input_json=canonical(value), capability_configuration_json=canonical(self.configuration),
-                invocation_id=invocation_id)
+                invocation_id=invocation_id, agent_binding_json=binding_json(prompt.binding))
             self.host.descriptions.append({"capability": capability, "phase": phase, "context_id": snapshot.id,
                 "project_root": str(project), "read_paths": list(policy.read_paths),
                 "write_paths": list(policy.write_paths), "network": False, "fresh_session": True,
-                "policy_digest": policy.digest})
+                "policy_digest": policy.digest,
+                "agent": external_agent_name(prompt.binding.agent), "harness": prompt.binding.harness,
+                "agent_binding_digest": prompt.binding.digest,
+                "instructions_digest": prompt.binding.instructions_digest,
+                "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds})
             if self.host.mode == "describe-policy":
                 return {"context_id": snapshot.id, "outcome": "completed", "answer": "", "gaps": [],
                         "documents": [], "plan": "", "tasks": []}
@@ -1109,7 +1142,8 @@ class Invocation:
             evidence = result.receipt
             if (evidence.requested_launch_digest != launch.digest or evidence.policy_digest != policy.digest
                     or evidence.status != "success" or result.completion.invocation_id != invocation_id
-                    or result.completion.workspace_digest != snapshot.id):
+                    or result.completion.workspace_digest != snapshot.id
+                    or evidence.agent_binding_digest != prompt.binding.digest):
                 raise SpecError("completion evidence is not bound to this invocation", "invalid_completion")
             data = validate_typed(result.completion.domain_output, "concorde-agent-stage-result")["data"]
             if data["context_id"] != snapshot.id:
@@ -1634,11 +1668,15 @@ class Invocation:
                 if self.change_id:
                     payload["change_id"] = self.change_id
                 child_host = replace(self.host, evidence=[], descriptions=self.host.descriptions,
-                                     track_gaps=True, defer_ready=name == "validate")
+                                     lifecycle=self.host.lifecycle, track_gaps=True, defer_ready=name == "validate")
                 result = invoke_capability(self.capability, child_capability, self.configuration,
                     typed(CAPABILITY_CONTRACTS[child_capability][0], payload), child_host)
                 self.host.evidence.extend(child_host.evidence)
                 if result["output"] is None:
+                    first_code = result["errors"][0]["code"] if result["errors"] else None
+                    if first_code in {"execution_cancelled", "execution_limit"}:
+                        self.host.lifecycle["status"] = (
+                            "cancelled" if first_code == "execution_cancelled" else "limit_exhausted")
                     raise SpecError(f"{child_capability} blocked: " + canonical(result["errors"]), "child_blocked")
                 data = result["output"]["data"]
                 self.change_id = data["change_id"] or self.change_id
@@ -1867,6 +1905,13 @@ def run_capability(capability: str, configuration: dict | None, runtime_input: d
             "succeeded" if outcome in {"completed", "ready", "delivered", "topology_proposed",
                                        "topology_prepared", "topology_applied"}
             else "failed" if outcome == "failed" else "blocked")
+    except CapabilityExecutionError as error:
+        lifecycle_status = ("cancelled" if error.outcome == "cancelled" else
+                            "limit_exhausted" if error.outcome == "limit_exhausted" else "failed")
+        code = ("execution_cancelled" if error.outcome == "cancelled" else
+               "execution_limit" if error.outcome == "limit_exhausted" else "execution_failed")
+        host.lifecycle["status"] = lifecycle_status
+        result.update(status="failed", errors=[{"code": code, "field": "", "message": str(error)}])
     except (SpecError, TypedDataError) as error:
         result["errors"] = [{"code": error.code, "field": error.field, "message": str(error)}]
     except BuildError as error:
@@ -1879,7 +1924,8 @@ def run_capability(capability: str, configuration: dict | None, runtime_input: d
     if record_progress and host.mode == "execute" and result["status"] not in {"succeeded", "described"}:
         data = result["output"]["data"] if result["output"] else {}
         try:
-            progress(host.project_root, status="blocked" if result["status"] == "blocked" else "failed",
+            progress(host.project_root,
+                     status=host.lifecycle.get("status") or ("blocked" if result["status"] == "blocked" else "failed"),
                      outcome=data.get("outcome") or (result["errors"][0]["code"] if result["errors"] else "failed"),
                      gaps=data.get("gaps", []))
         except (ValueError, OSError) as error:

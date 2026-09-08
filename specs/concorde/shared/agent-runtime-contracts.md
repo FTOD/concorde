@@ -104,6 +104,30 @@ exactly one attested binary, adds only that file's read rule, selects its exact 
 recomputes configuration/launch identities. Claude and verified outer configurations use no native
 Codex bootstrap. Finalization preserves every task read/write/deny/network/credential field.
 
+## Agent binding
+
+`AgentBinding` (module `agent_model`) is the reproducible identity of one resolved Agent definition
+(the registered Shared Spec **Agents and Harnesses** defines A1/A4, the Agent/Harness/Constraints
+model this binding resolves). It is a frozen record with `agent: str`, `spec_path: str`,
+`spec_digest: str`, `instructions_path: str`, `instructions_digest: str`, `harness: str`,
+`harness_digest: str`, `constraints_digest: str`, `build_manifest_digest: str`,
+`effective_loop: LoopPolicy`, and `digest: str`.
+
+```python
+canonical_binding(binding: AgentBinding) -> str   # sorted-key, compact JSON, digest field excluded
+binding_digest(binding: AgentBinding) -> str      # sha256 of canonical_binding(binding)
+binding_json(binding: AgentBinding) -> str        # sorted-key, compact JSON, digest field INCLUDED
+binding_from_json(text: str) -> AgentBinding      # inverse of binding_json
+```
+
+`canonical_binding`/`binding_digest` follow the same self-referential-digest pattern as
+`Harness.digest`: the digest is computed over every field except itself. `binding_json` is the
+different, wire-facing form: it includes the already-computed `digest` field, because this is the
+serialized identity a `LaunchSpecification` carries and an executor independently reverifies
+(recomputing `binding_digest` over the decoded fields and comparing it against the carried `digest`
+detects a tampered or substituted binding). `binding_from_json` reconstructs the frozen dataclass,
+including its nested `LoopPolicy`, from that wire form.
+
 ## Host-built launch
 
 ```python
@@ -113,7 +137,8 @@ build_launch_specification(*, capability: str, stage: str, occurrence: int, role
     workspace_digest: str, policy: NormalizedPolicy,
     native_configuration: NativeLaunchConfiguration, runtime_input_json: str | None = None,
     capability_configuration_json: str | None = None,
-    invocation_id: str | None = None) -> LaunchSpecification
+    invocation_id: str | None = None,
+    agent_binding_json: str | None = None) -> LaunchSpecification
 ```
 
 The returned frozen `LaunchSpecification` has exactly the parameters above as attributes plus
@@ -123,6 +148,17 @@ launches supply runtime input, configuration and a fresh invocation ID together,
 `prior_results` tuple and a context identity as the workspace digest. Input/configuration type and
 version admission remains the host's obligation. A configuration/policy/integration mismatch or
 unbound workspace receipt raises `PermissionPolicyError` before process execution.
+
+A structured (typed) launch additionally requires `agent_binding_json`: the canonical JSON of one
+resolved `AgentBinding` (`agent_model.binding_json`), including its own `digest` field -- unlike
+`canonical_binding`, which excludes `digest` because it is that digest's own input. It must decode
+to an object with exactly the `AgentBinding` field names (`dataclasses.fields(AgentBinding)`) and
+use canonical serialization; a missing binding, wrong field set or non-canonical encoding raises
+`PermissionPolicyError` before process execution. The decoded binding participates in the launch's
+own digest, so a tampered or substituted binding changes the launch identity. A legacy untyped
+launch (no `runtime_input_json`) carries no Agent binding. `agent_model.binding_from_json` is the
+executor's inverse of `binding_json`, reconstructing the frozen `AgentBinding` (with its nested
+`LoopPolicy`) from this wire form.
 
 The host obtains these values in order: freeze context; compile its exact role/path policy; render
 for the selected integration; build the launch; then call the executor. Consumers of the executor
@@ -162,15 +198,19 @@ its native generation schema requires optional fields, adds scalar types or omit
 `EnforcementReceipt` is a frozen record containing `requested_launch_digest`, `launch_digest`,
 `policy_digest`, `config_digest`, `integration`, `client_version`, `enforcement`, `exit_code: int`,
 `status: Literal["success", "failed"]`, `runtime_bootstrap_digest`, `completion_schema_version: int`,
-`completion_status: Literal["success", "failed"]`, and `limitations: str = "none"`. All unspecified
-field types in this list are strings. Receipt identities bind the native configuration and exact
-requested/finalized launch; an exit-zero subprocess without valid completion is still failure.
+`completion_status: Literal["success", "failed"]`, `limitations: str = "none"`, and
+`agent_binding_digest: str = ""` (last field; empty for a legacy untyped launch that carries no
+Agent binding, otherwise the bound `AgentBinding.digest`). All unspecified field types in this list
+are strings. Receipt identities bind the native configuration and exact requested/finalized launch;
+an exit-zero subprocess without valid completion is still failure.
 
 ```python
 CapabilityExecutionResult(output: str, receipt: EnforcementReceipt,
                          completion: CapabilityCompletion,
                          domain_output: dict[str, Any] | None = None)
-CapabilityExecutionError(message: str, receipt: EnforcementReceipt | None = None)
+CapabilityExecutionError(message: str, receipt: EnforcementReceipt | None = None,
+                         outcome: Literal["failed", "cancelled",
+                                          "limit_exhausted", "invalid_completion"] = "failed")
 ```
 
 The executor returns `CapabilityExecutionResult` only for a successful native process and validated
@@ -178,10 +218,18 @@ successful completion. Its `output` equals `completion.output`; consume typed re
 `completion.domain_output`. The optional result-level `domain_output` is a compatibility slot and
 is not populated by `AgentProcessExecutor`. `CapabilityExecutionError` is a `RuntimeError`; `receipt`
 is available after a completed process fails exit/status/schema checks, and may be absent on
-preflight/launch failure. No executor failure silently retries with wider permissions or rolls back
-already authorized implementation edits. The host stops the affected transition and preserves the
-candidate for repair. Raw subprocess stdout/stderr remain host execution evidence, not downstream
-Spec-agent inputs or public review findings.
+preflight/launch failure. Its `outcome` classifies why, for a host that must distinguish these
+cases rather than treat every executor failure alike: `failed` (default) for a nonzero exit or a
+launch/preflight failure; `cancelled` when the injected runner raised `KeyboardInterrupt` (the
+subprocess is already terminated by the time this is raised); `limit_exhausted` when the runner
+raised `subprocess.TimeoutExpired` -- the Agent's effective loop timeout was exceeded; and
+`invalid_completion` when a zero-exit process returned an invalid or domain-reported-failed
+completion. The default runner enforces the Agent's effective loop timeout; an injected runner
+receives `timeout` and must raise `subprocess.TimeoutExpired` when it expires. No executor failure
+silently retries with wider permissions or rolls back already authorized implementation edits. The
+host stops the affected transition and preserves the candidate for repair. Raw subprocess
+stdout/stderr remain host execution evidence, not downstream Spec-agent inputs or public review
+findings.
 
 ## Declared architecture sources
 

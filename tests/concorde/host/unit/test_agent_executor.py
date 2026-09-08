@@ -9,7 +9,9 @@ import unittest
 from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 
-from tests.concorde.support.paths import RUNTIME_ROOT
+from dataclasses import replace as dataclass_replace
+
+from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
@@ -19,7 +21,13 @@ from concorde.host.agent_executor import (  # noqa: E402
     resolve_runtime_bootstrap,
     verify_runtime_bootstrap,
 )
+from concorde.host.agent_model import (  # noqa: E402
+    binding_digest,
+    binding_json,
+    resolve_agent,
+)
 from concorde.host.permissions import (  # noqa: E402
+    LaunchSpecification,
     PolicyBinding,
     build_launch_specification,
     compile_policy,
@@ -188,7 +196,7 @@ class AgentExecutorTests(unittest.TestCase):
     def test_codex_process_handoff_is_injectable_scrubbed_and_receipted(self):
         calls = []
 
-        def runner(argv, *, cwd, env, input_text):
+        def runner(argv, *, cwd, env, input_text, timeout=None):
             calls.append((argv, cwd, env, input_text))
             return subprocess.CompletedProcess(argv, 0, stdout=self.codex_stdout(argv), stderr="")
 
@@ -235,7 +243,7 @@ class AgentExecutorTests(unittest.TestCase):
     def test_claude_process_handoff_uses_inline_strict_settings_and_no_retry(self):
         calls = []
 
-        def runner(argv, *, cwd, env, input_text):
+        def runner(argv, *, cwd, env, input_text, timeout=None):
             calls.append((argv, input_text))
             envelope = self.completion(argv, output="claude-result")
             stdout = json.dumps({"type": "result", "subtype": "success", "is_error": False, "structured_output": envelope})
@@ -407,6 +415,220 @@ class AgentExecutorTests(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertEqual(raised.exception.receipt.exit_code, 7)
         self.assertIn("sandbox unavailable", raised.exception.receipt.limitations)
+
+
+class AgentBindingPreflightTests(unittest.TestCase):
+    """P2: the executor independently reverifies a structured launch's declared Agent binding,
+    the harness loop timeout it receives, and the distinct cancelled/limit_exhausted/
+    invalid_completion outcomes (A1, A4)."""
+
+    def binding_and_prompt(self, agent_name):
+        binding = resolve_agent(REPOSITORY_ROOT, agent_name)
+        prompt_body = (REPOSITORY_ROOT / binding.instructions_path).read_text(encoding="utf-8")
+        return binding, prompt_body
+
+    def structured_specification(self, *, agent_name="planner", role=None,
+                                  context_type="concorde-agent-stage-context",
+                                  prompt_override=None, binding_override=None,
+                                  write_roles=(), policy_effect=None):
+        binding, prompt_body = self.binding_and_prompt(agent_name)
+        role = role or f"concorde-{agent_name.replace('_', '-')}"
+        effect = policy_effect or EffectDeclaration(
+            reads=("spec-context",), writes=(), network=False, credentials="none")
+        policy = compile_policy(
+            effect,
+            PolicyBinding(capability="concorde-plan", stage="plan", occurrence=0,
+                          role=role, agent=role, write_roles=write_roles),
+            {"spec-context": ("context.json",)},
+        )
+        native = render_claude_configuration(policy, native_enforcement=True)
+        agent_binding_json = binding_override if binding_override is not None else binding_json(binding)
+        if context_type == "concorde-agent-stage-context":
+            runtime_input_json = self._valid_agent_stage_context_json()
+        else:
+            # Only used by the wrong-context-type check, which raises inside the Agent-binding
+            # preflight before the launch's own full typed-data revalidation is ever reached.
+            runtime_input_json = json.dumps({"type_id": context_type}, sort_keys=True, separators=(",", ":"))
+        capability_configuration_json = json.dumps(
+            {"type_id": "concorde-capability-configuration", "schema_version": 1,
+             "data": {"integration": "claude", "enforcement": "native"}},
+            sort_keys=True, separators=(",", ":"),
+        )
+        receipt_json = json.dumps({"source_digest": "sha256:" + "1" * 64}, sort_keys=True, separators=(",", ":"))
+        return LaunchSpecification(
+            capability="concorde-plan", stage="plan", occurrence=0, role=role,
+            integration="claude", agent=role, project_root="/fixture/project",
+            request="Plan the selected change",
+            prompt=prompt_override if prompt_override is not None else prompt_body,
+            prior_results=(), workspace_receipt_json=receipt_json,
+            workspace_digest="sha256:" + "1" * 64, policy=policy, native_configuration=native,
+            digest="sha256:" + "9" * 64,
+            runtime_input_json=runtime_input_json,
+            capability_configuration_json=capability_configuration_json,
+            invocation_id="fixture-invocation",
+            agent_binding_json=agent_binding_json,
+        )
+
+    @staticmethod
+    def _unreachable_runner(test_case):
+        def runner(*args, **kwargs):
+            test_case.fail("runner must not be called when Agent-binding preflight fails")
+        return runner
+
+    @staticmethod
+    def _valid_agent_stage_context_json():
+        """A structurally complete, schema-valid ``concorde-agent-stage-context`` fixture, so a
+        test can reach the launch's own full typed-data revalidation (inside
+        ``finalize_launch_specification``) rather than stopping at Agent-binding preflight."""
+
+        snapshot_data = {
+            "context_id": "sha256:" + "3" * 64,
+            "schema_version": 1,
+            "target_id": "service.fixture",
+            "kind": "service",
+            "focus_id": None,
+            "phase": "plan",
+            "task": "Plan the selected change",
+            "constraints": [],
+            "protocol_binding": {"version": "1.2.0", "digest": "sha256:" + "4" * 64},
+            "protocol": [],
+            "document_order": ["specs/fixture.md"],
+            "target_spec": [{
+                "document_id": "document.fixture", "path": "specs/fixture.md",
+                "digest": "sha256:" + "5" * 64, "targets": ["service.fixture"],
+                "main_visible": True, "content": "# Fixture\n",
+            }],
+            "shared_specs": [],
+            "diagram_sources": [],
+            "instructions": "Fixture role instructions.",
+            "stage_inputs": [],
+            "implementation_artifacts": [],
+            "workspace": {
+                "kind": "unversioned", "current_worktree": "/fixture/project", "current_branch": None,
+                "primary_worktree": None, "primary_branch": None, "change_id": None, "phase": None,
+                "status": None, "outcome": None, "gaps": [], "components": [], "active_worktrees": [],
+            },
+        }
+        runtime_value = {
+            "type_id": "concorde-agent-stage-context", "schema_version": 1,
+            "data": {
+                "snapshot": {"type_id": "concorde-context-snapshot", "schema_version": 1, "data": snapshot_data},
+                "change_id": None, "expected_artifacts": [],
+            },
+        }
+        return json.dumps(runtime_value, sort_keys=True, separators=(",", ":"))
+
+    def test_tampered_prompt_fails_instructions_digest_check(self):
+        spec = self.structured_specification(prompt_override="tampered instructions text")
+        executor = AgentProcessExecutor(runner=self._unreachable_runner(self),
+            version_probe=lambda *a: "claude-code 4.2", environment={"PATH": "/bin"})
+        with self.assertRaisesRegex(CapabilityExecutionError, "rendered instructions"):
+            executor(spec)
+
+    def test_wrong_context_and_result_type_is_refused(self):
+        spec = self.structured_specification(agent_name="reader", role="concorde-reader",
+            context_type="concorde-topology-author-context")
+        executor = AgentProcessExecutor(runner=self._unreachable_runner(self),
+            version_probe=lambda *a: "claude-code 4.2", environment={"PATH": "/bin"})
+        with self.assertRaisesRegex(CapabilityExecutionError, "not declared by the bound Agent"):
+            executor(spec)
+
+    def test_policy_writes_beyond_a_no_write_agent_are_refused(self):
+        spec = self.structured_specification(agent_name="planner", role="concorde-planner",
+            write_roles=("spec-context",),
+            policy_effect=EffectDeclaration(reads=("spec-context",), writes=("spec-context",),
+                                            network=False, credentials="none"))
+        executor = AgentProcessExecutor(runner=self._unreachable_runner(self),
+            version_probe=lambda *a: "claude-code 4.2", environment={"PATH": "/bin"})
+        with self.assertRaisesRegex(CapabilityExecutionError, "writes the bound Agent does not declare"):
+            executor(spec)
+
+    def test_unknown_agent_is_refused(self):
+        binding, _ = self.binding_and_prompt("planner")
+        tampered = dataclass_replace(binding, agent="not-a-real-agent")
+        tampered = dataclass_replace(tampered, digest=binding_digest(tampered))
+        spec = self.structured_specification(binding_override=binding_json(tampered))
+        executor = AgentProcessExecutor(runner=self._unreachable_runner(self),
+            version_probe=lambda *a: "claude-code 4.2", environment={"PATH": "/bin"})
+        with self.assertRaisesRegex(CapabilityExecutionError, "unknown Agent"):
+            executor(spec)
+
+    def test_wrong_harness_digest_is_refused(self):
+        binding, _ = self.binding_and_prompt("planner")
+        tampered = dataclass_replace(binding, harness_digest="sha256:" + "0" * 64)
+        tampered = dataclass_replace(tampered, digest=binding_digest(tampered))
+        spec = self.structured_specification(binding_override=binding_json(tampered))
+        executor = AgentProcessExecutor(runner=self._unreachable_runner(self),
+            version_probe=lambda *a: "claude-code 4.2", environment={"PATH": "/bin"})
+        with self.assertRaisesRegex(CapabilityExecutionError, "Harness identity"):
+            executor(spec)
+
+    def test_tampered_binding_digest_is_refused(self):
+        binding, _ = self.binding_and_prompt("planner")
+        payload = json.loads(binding_json(binding))
+        payload["digest"] = "sha256:" + "f" * 64
+        tampered_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        spec = self.structured_specification(binding_override=tampered_json)
+        executor = AgentProcessExecutor(runner=self._unreachable_runner(self),
+            version_probe=lambda *a: "claude-code 4.2", environment={"PATH": "/bin"})
+        with self.assertRaisesRegex(CapabilityExecutionError, "digest does not match"):
+            executor(spec)
+
+    def test_runner_timeout_yields_limit_exhausted_outcome_with_binding_digest_and_no_retry(self):
+        binding, _ = self.binding_and_prompt("planner")
+        spec = self.structured_specification()
+        calls = []
+
+        def runner(argv, *, cwd, env, input_text, timeout):
+            calls.append(timeout)
+            raise subprocess.TimeoutExpired(cmd=argv, timeout=timeout)
+
+        executor = AgentProcessExecutor(runner=runner, version_probe=lambda *a: "claude-code 4.2",
+            environment={"PATH": "/bin"})
+        with self.assertRaisesRegex(CapabilityExecutionError, "loop limit") as raised:
+            executor(spec)
+        self.assertEqual("limit_exhausted", raised.exception.outcome)
+        self.assertEqual("failed", raised.exception.receipt.status)
+        self.assertEqual(-1, raised.exception.receipt.exit_code)
+        self.assertEqual(binding.digest, raised.exception.receipt.agent_binding_digest)
+        self.assertEqual([binding.effective_loop.timeout_seconds], calls)
+
+    def test_runner_keyboard_interrupt_yields_cancelled_outcome(self):
+        spec = self.structured_specification()
+
+        def runner(argv, *, cwd, env, input_text, timeout):
+            raise KeyboardInterrupt()
+
+        executor = AgentProcessExecutor(runner=runner, version_probe=lambda *a: "claude-code 4.2",
+            environment={"PATH": "/bin"})
+        with self.assertRaisesRegex(CapabilityExecutionError, "cancelled") as raised:
+            executor(spec)
+        self.assertEqual("cancelled", raised.exception.outcome)
+        self.assertIsNone(raised.exception.receipt)
+
+    def test_successful_structured_run_carries_agent_binding_digest(self):
+        binding, _ = self.binding_and_prompt("planner")
+        spec = self.structured_specification()
+        result_data = {"context_id": "sha256:" + "2" * 64, "outcome": "completed",
+            "answer": "fixture answer", "gaps": [], "documents": [], "plan": "", "tasks": []}
+        domain_output = {"type_id": "concorde-agent-stage-result", "schema_version": 1, "data": result_data}
+
+        def runner(argv, *, cwd, env, input_text, timeout):
+            self.assertEqual(binding.effective_loop.timeout_seconds, timeout)
+            schema = json.loads(argv[argv.index("--json-schema") + 1])
+            payload = {key: item["const"] for key, item in schema["properties"].items() if "const" in item}
+            payload.update(status="success", output="fixture output", limitations="none",
+                gates=[{"name": "workspace", "status": "passed", "evidence": "fixture evidence"}],
+                domain_output=domain_output)
+            stdout = json.dumps({"type": "result", "subtype": "success", "is_error": False,
+                                 "structured_output": payload})
+            return subprocess.CompletedProcess(argv, 0, stdout=stdout, stderr="")
+
+        executor = AgentProcessExecutor(runner=runner, version_probe=lambda *a: "claude-code 4.2",
+            environment={"PATH": "/bin"})
+        result = executor(spec)
+        self.assertEqual(binding.digest, result.receipt.agent_binding_digest)
+        self.assertEqual(domain_output, result.completion.domain_output)
 
 
 if __name__ == "__main__":

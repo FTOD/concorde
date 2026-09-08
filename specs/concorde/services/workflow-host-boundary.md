@@ -91,8 +91,11 @@ replacement is admitted only when every candidate referencing target author retu
 
 No Skill returns context manifests; the context Service is host-internal and
 `describe-policy` mode already previews the exact grants a capability would receive without
-launching an agent or mutating project state. Complete cognitive snapshots never cross the Skill
-result boundary.
+launching an agent or mutating project state. Each previewed stage's description also names the
+bound Agent and Harness identity (`agent`, `harness`, `agent_binding_digest`, `instructions_digest`,
+`loop_timeout_seconds`), so a caller can audit which Agent definition and effective loop timeout a
+launch would use without reading its rendered instructions. Complete cognitive snapshots never cross
+the Skill result boundary.
 
 Authoring returns local document replacements; the host alone applies them. A single-target author
 cannot change a multiply referenced document. Planning runs a separate
@@ -249,6 +252,7 @@ invocation envelope, and every exported identity appears here at least once with
 | Error code | Meaning |
 | --- | --- |
 | `ambiguous_route` | Main routing found more than one owning target for a capability that requires exactly one; route cross-target work through a Domain instead. |
+| `cancelled` | `CapabilityExecutionError.outcome` when the injected runner raised `KeyboardInterrupt`; the host maps this to the `execution_cancelled` result error code. |
 | `child_blocked` | A composed child capability returned a blocked or otherwise non-successful outcome and stopped the composing capability. |
 | `configuration_mismatch` | The invocation's, a child's, or a native launch's configuration differs from the initialized project settings or the host's own snapshot. |
 | `context_limit` | Main discovery exceeded its bounded expansion-step limit. |
@@ -257,6 +261,8 @@ invocation envelope, and every exported identity appears here at least once with
 | `detached_primary` | The destination (primary) worktree has no attached branch to deliver onto. |
 | `detached_worktree` | A change worktree has no attached branch. |
 | `dirty_primary` | The primary worktree has uncommitted local changes that delivery must preserve rather than discard. |
+| `execution_cancelled` | `run_capability` caught a `CapabilityExecutionError` with `outcome == "cancelled"`; the change status becomes `cancelled` and the candidate is preserved. |
+| `execution_limit` | `run_capability` caught a `CapabilityExecutionError` with `outcome == "limit_exhausted"`; the change status becomes `limit_exhausted` and the candidate is preserved. |
 | `failed_merge_checks` | The verified merge of the candidate into the destination branch failed its configured checks. |
 | `incompatible_contracts` | Shared contracts between participating components disagree and must be reconciled before implementation. |
 | `incompatible_handoff` | A returned identity (context, target, gap, route, or configuration) does not match what the host issued or expects. |
@@ -275,6 +281,7 @@ invocation envelope, and every exported identity appears here at least once with
 | `invalid_spec` | An authored Spec document's `concorde-document` context declaration is invalid. |
 | `invalid_worktree_state` | `.concorde/worktree.json` has an invalid identity or schema. |
 | `legacy_attempt` | The worktree still carries an unsupported legacy `.concorde/attempts/` state that must be removed before it can be adopted. |
+| `limit_exhausted` | `CapabilityExecutionError.outcome` when the injected runner raised `subprocess.TimeoutExpired`; the host maps this to the `execution_limit` result error code. |
 | `merge_conflict` | The candidate conflicts with the current destination branch; resolve it in the candidate's own worktree and revalidate. |
 | `missing_change` | Task authoring was requested without a managed change. |
 | `missing_plan` | Task authoring was requested without an authored plan. |
@@ -333,6 +340,10 @@ Every discovery and worker snapshot admits `workspace` lifecycle metadata. Main 
 workspace-status question directly from this metadata; target-behavior answers still use separate
 readers. The current workspace identity and status are rechecked after a stage. Other live worktree
 summaries are frozen observations and their progress does not invalidate unrelated main cognition.
+A change's `status` may also become `cancelled` or `limit_exhausted` after an executor outcome of
+the same name (`execution_cancelled`/`execution_limit`), distinguishing a cancelled or time-limited
+agent process from an ordinary `blocked`/`failed` outcome; the candidate is preserved for repair or
+resumption in every case.
 
 ## Independent review contract
 

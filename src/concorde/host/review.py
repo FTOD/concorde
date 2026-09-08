@@ -17,8 +17,9 @@ from pathlib import Path, PurePosixPath
 from .change_worktree import git, git_value, read_change, save_change, workspace_identity
 from .typed_data import artifact, canonical, checked_path, typed, validate_typed, verify_artifacts
 from .configuration import load_configuration
-from .permissions import (EnforcementReceipt, CapabilityExecutionResult, PolicyBinding, build_launch_specification,
-    compile_policy, render_claude_configuration, render_codex_configuration)
+from .agent_model import agent_definition, binding_json, external_agent_name
+from .permissions import (EnforcementReceipt, CapabilityExecutionResult, PermissionPolicyError, PolicyBinding,
+    build_launch_specification, compile_policy, render_claude_configuration, render_codex_configuration)
 from .contracts import REVIEW_STAGES
 from .build import load_role_prompt
 from ..specification.context import resolve_context, recheck_context
@@ -196,9 +197,10 @@ def review(run, mode: str) -> dict:
     result = None
     try:
         with tempfile.TemporaryDirectory(prefix="concorde-review-") as directory:
-            project = run.repository.root if mode == "code" else Path(directory)
+            project_workspace = agent_definition(prompt.binding.agent).harness.workspace == "project"
+            project = run.repository.root if project_workspace else Path(directory)
             relative = (f".concorde/runs/{run.host.invocation_id}/{uuid.uuid4()}/context.json"
-                        if mode == "code" else "context.json")
+                        if project_workspace else "context.json")
             capsule = checked_path(project, relative)
             value = typed("concorde-review-stage-context", {
                 "snapshot": typed("concorde-context-snapshot", snapshot.value),
@@ -207,11 +209,15 @@ def review(run, mode: str) -> dict:
             if run.host.mode != "describe-policy":
                 capsule.parent.mkdir(parents=True, exist_ok=True)
                 capsule.write_text(serialized)
-            roles = {"spec-context": (relative,),
-                     "implementation": tuple(run.repository.implementation_files(run.target)) if mode == "code" else ()}
+            roles = ({"spec-context": (relative,),
+                      "implementation": tuple(run.repository.implementation_files(run.target))}
+                     if project_workspace else {"spec-context": (relative,)})
             binding = PolicyBinding("concorde-review", phase, 0, role, role, write_roles=())
-            policy = compile_policy(prompt.effects, binding, roles,
-                outer_sandbox_required=run.configuration["data"]["enforcement"] == "outer")
+            try:
+                policy = compile_policy(prompt.effects, binding, roles,
+                    outer_sandbox_required=run.configuration["data"]["enforcement"] == "outer")
+            except PermissionPolicyError as error:
+                raise SpecError(str(error), "permission_denied") from error
             if policy.write_paths:
                 raise SpecError("review role must have no write authority", "permission_denied")
             integration = run.configuration["data"]["integration"]
@@ -227,11 +233,16 @@ def review(run, mode: str) -> dict:
                 request=run.task["task"], prompt=prompt.body, prior_results=(),
                 workspace_receipt_json=canonical(receipt), workspace_digest=snapshot.id,
                 policy=policy, native_configuration=native, runtime_input_json=canonical(value),
-                capability_configuration_json=canonical(run.configuration), invocation_id=invocation_id)
+                capability_configuration_json=canonical(run.configuration), invocation_id=invocation_id,
+                agent_binding_json=binding_json(prompt.binding))
             run.host.descriptions.append({"capability": "concorde-review", "phase": phase,
                 "context_id": snapshot.id, "input_digest": info["input_digest"],
                 "project_root": str(project), "read_paths": list(policy.read_paths), "write_paths": [],
-                "network": False, "fresh_session": True, "policy_digest": policy.digest})
+                "network": False, "fresh_session": True, "policy_digest": policy.digest,
+                "agent": external_agent_name(prompt.binding.agent), "harness": prompt.binding.harness,
+                "agent_binding_digest": prompt.binding.digest,
+                "instructions_digest": prompt.binding.instructions_digest,
+                "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds})
             if run.host.mode == "describe-policy":
                 return run.response("described", reviews=[_empty(run, info, "not_run", "Policy described; review not run.")])
             from .agent_executor import AgentProcessExecutor
@@ -241,7 +252,8 @@ def review(run, mode: str) -> dict:
             if (result.receipt.requested_launch_digest != launch.digest
                     or result.receipt.policy_digest != policy.digest or result.receipt.status != "success"
                     or result.completion.invocation_id != invocation_id
-                    or result.completion.workspace_digest != snapshot.id):
+                    or result.completion.workspace_digest != snapshot.id
+                    or result.receipt.agent_binding_digest != prompt.binding.digest):
                 raise SpecError("review evidence is not bound to this launch", "invalid_completion")
             data = validate_typed(result.completion.domain_output, "concorde-review-stage-result")["data"]
             _validate(run, snapshot, info, data)

@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from . import agent_model
+from .harness import HARNESSES, SAFE_ENVIRONMENT
 from .permissions import (
     CapabilityCompletion,
     CompletionGate,
@@ -28,11 +30,23 @@ from .permissions import (
 
 
 class CapabilityExecutionError(RuntimeError):
-    """Agent process preflight or execution failed without a permissive retry."""
+    """Agent process preflight or execution failed without a permissive retry.
 
-    def __init__(self, message: str, receipt: EnforcementReceipt | None = None):
+    ``outcome`` classifies why: ``failed`` (default) for a nonzero exit or a launch/preflight
+    failure, ``cancelled`` when the runner raised ``KeyboardInterrupt``, ``limit_exhausted`` when
+    the runner raised ``subprocess.TimeoutExpired`` (the Agent's Harness loop timeout), and
+    ``invalid_completion`` when a zero-exit process returned an invalid or domain-failed
+    completion. The host maps these to distinct result error codes; none retries automatically."""
+
+    def __init__(
+        self,
+        message: str,
+        receipt: EnforcementReceipt | None = None,
+        outcome: Literal["failed", "cancelled", "limit_exhausted", "invalid_completion"] = "failed",
+    ):
         super().__init__(message)
         self.receipt = receipt
+        self.outcome = outcome
 
 
 ProcessRunner = Callable[..., subprocess.CompletedProcess[str]]
@@ -40,24 +54,8 @@ VersionProbe = Callable[[str, str], str]
 RuntimeBootstrapResolver = Callable[[str, str, str, Mapping[str, str]], tuple[RuntimeBootstrapFile, ...]]
 RuntimeBootstrapVerifier = Callable[[tuple[RuntimeBootstrapFile, ...]], None]
 
-_SAFE_ENVIRONMENT = frozenset(
-    {
-        "COMSPEC",
-        "HOME",
-        "LANG",
-        "LC_ALL",
-        "LC_CTYPE",
-        "LOGNAME",
-        "PATH",
-        "PATHEXT",
-        "SYSTEMROOT",
-        "TEMP",
-        "TMP",
-        "TMPDIR",
-        "USER",
-        "WINDIR",
-    }
-)
+# Alias retained for existing internal references; the canonical definition is harness.SAFE_ENVIRONMENT.
+_SAFE_ENVIRONMENT = frozenset(SAFE_ENVIRONMENT)
 _VERSION = re.compile(r"(?<!\d)(\d+)\.(\d+)(?:\.(\d+))?")
 
 
@@ -287,6 +285,7 @@ def _default_runner(
     cwd: str,
     env: Mapping[str, str],
     input_text: str,
+    timeout: float | None,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         argv,
@@ -296,6 +295,7 @@ def _default_runner(
         text=True,
         capture_output=True,
         check=False,
+        timeout=timeout,
     )
 
 
@@ -648,7 +648,7 @@ class AgentProcessExecutor:
         self,
         specification: LaunchSpecification,
         environment: Mapping[str, str],
-    ) -> tuple[str, LaunchSpecification]:
+    ) -> tuple[str, LaunchSpecification, "agent_model.AgentBinding | None"]:
         config = specification.native_configuration
         if config.integration != specification.integration:
             raise CapabilityExecutionError("launch integration differs from native configuration")
@@ -666,6 +666,9 @@ class AgentProcessExecutor:
             raise CapabilityExecutionError(
                 f"native executable {executable!r} does not match {specification.integration}"
             )
+        binding = None
+        if specification.runtime_input_json is not None:
+            binding = self._preflight_agent_binding(specification)
         try:
             bootstrap = (
                 ()
@@ -699,7 +702,50 @@ class AgentProcessExecutor:
                 raise CapabilityExecutionError(
                     f"client version preflight requires {expected}>={'.'.join(map(str, minimum))}"
                 )
-        return version, finalized
+        return version, finalized, binding
+
+    @staticmethod
+    def _preflight_agent_binding(specification: LaunchSpecification) -> "agent_model.AgentBinding":
+        """Reconstruct and verify the launch's declared Agent binding, failing closed on any
+        mismatch between the launched prompt/policy/context/result and the admitted Agent (A1, A4)."""
+
+        if not specification.agent_binding_json:
+            raise CapabilityExecutionError("structured launch has no Agent binding")
+        try:
+            parsed = json.loads(specification.agent_binding_json)
+            binding = agent_model.binding_from_json(specification.agent_binding_json)
+        except Exception as error:
+            raise CapabilityExecutionError(f"agent binding preflight failed: {error}") from error
+        if not isinstance(parsed, dict) or agent_model.binding_digest(binding) != parsed.get("digest"):
+            raise CapabilityExecutionError("agent binding digest does not match its own recorded fields")
+        try:
+            agent = agent_model.agent_definition(binding.agent)
+        except Exception as error:
+            raise CapabilityExecutionError(f"launch names an unknown Agent: {error}") from error
+        if not (agent_model.external_agent_name(agent.name) == specification.role == specification.agent):
+            raise CapabilityExecutionError("launch role/agent identity does not match the bound Agent")
+        expected_instructions_digest = "sha256:" + hashlib.sha256(specification.prompt.encode("utf-8")).hexdigest()
+        if binding.instructions_digest != expected_instructions_digest:
+            raise CapabilityExecutionError("launch prompt does not match the bound Agent's rendered instructions")
+        registered_harness = HARNESSES.get(binding.harness)
+        if (binding.harness != agent.harness.name or registered_harness is None
+                or registered_harness.digest != binding.harness_digest):
+            raise CapabilityExecutionError("launch Harness identity does not match the bound Agent")
+        result_type = _domain_type(specification)
+        if result_type is None or result_type not in agent.constraints.results:
+            raise CapabilityExecutionError("launch result type is not declared by the bound Agent")
+        runtime_type = json.loads(specification.runtime_input_json).get("type_id")
+        if runtime_type not in agent.constraints.contexts:
+            raise CapabilityExecutionError("launch context type is not declared by the bound Agent")
+        effects = agent.constraints.effects
+        policy = specification.policy
+        if effects.writes == () and policy.write_paths != ():
+            raise CapabilityExecutionError("launch policy grants writes the bound Agent does not declare")
+        if policy.network_enabled and not effects.network:
+            raise CapabilityExecutionError("launch policy grants network access the bound Agent does not declare")
+        if policy.credentials != "none" and effects.credentials != "declared":
+            raise CapabilityExecutionError("launch policy grants credentials the bound Agent does not declare")
+        return binding
 
     def __call__(self, specification: LaunchSpecification) -> CapabilityExecutionResult:
         source_environment = os.environ if self.environment is None else self.environment
@@ -708,12 +754,33 @@ class AgentProcessExecutor:
             for key, value in sorted(source_environment.items())
             if key in _SAFE_ENVIRONMENT and isinstance(value, str)
         }
-        version, finalized = self._preflight(specification, environment)
+        version, finalized, binding = self._preflight(specification, environment)
         config = finalized.native_configuration
         prompt = _prompt(finalized)
         argv = config.argv
         schema = _completion_schema(finalized)
         schema_json = json.dumps(schema, sort_keys=True, separators=(",", ":"))
+        bootstrap_digest = config.runtime_bootstrap_digest
+        agent_binding_digest = binding.digest if binding is not None else ""
+        timeout = binding.effective_loop.timeout_seconds if binding is not None else None
+
+        def receipt(status: Literal["success", "failed"], limitations: str, *, exit_code: int) -> EnforcementReceipt:
+            return EnforcementReceipt(
+                requested_launch_digest=specification.digest,
+                launch_digest=finalized.digest,
+                policy_digest=finalized.policy.digest,
+                config_digest=config.digest,
+                integration=finalized.integration,
+                client_version=version,
+                enforcement=config.enforcement,
+                exit_code=exit_code,
+                status=status,
+                runtime_bootstrap_digest=bootstrap_digest,
+                completion_schema_version=_completion_version(finalized),
+                completion_status=status,
+                limitations=limitations,
+                agent_binding_digest=agent_binding_digest,
+            )
         try:
             with tempfile.TemporaryDirectory(prefix="concorde-completion-") as temporary:
                 if finalized.integration == "codex":
@@ -735,32 +802,24 @@ class AgentProcessExecutor:
                     cwd=finalized.project_root,
                     env=environment,
                     input_text=prompt,
+                    timeout=timeout,
                 )
+        except subprocess.TimeoutExpired as error:
+            raise CapabilityExecutionError(
+                f"{finalized.integration} process exceeded the Harness loop limit of {timeout}s",
+                receipt("failed", f"execution limit exhausted: {timeout}s wall clock", exit_code=-1),
+                outcome="limit_exhausted",
+            ) from error
+        except KeyboardInterrupt:
+            # subprocess.run already terminated the child before propagating the interrupt.
+            raise CapabilityExecutionError("agent process cancelled", None, outcome="cancelled")
         except Exception as error:
             raise CapabilityExecutionError(f"agent process launch failed: {error}") from error
         if not isinstance(completed, subprocess.CompletedProcess):
             raise CapabilityExecutionError("agent process runner returned an invalid result")
-        bootstrap_digest = config.runtime_bootstrap_digest
-
-        def receipt(status: Literal["success", "failed"], limitations: str) -> EnforcementReceipt:
-            return EnforcementReceipt(
-                requested_launch_digest=specification.digest,
-                launch_digest=finalized.digest,
-                policy_digest=finalized.policy.digest,
-                config_digest=config.digest,
-                integration=finalized.integration,
-                client_version=version,
-                enforcement=config.enforcement,
-                exit_code=completed.returncode,
-                status=status,
-                runtime_bootstrap_digest=bootstrap_digest,
-                completion_schema_version=_completion_version(finalized),
-                completion_status=status,
-                limitations=limitations,
-            )
         if completed.returncode:
             limitations = (completed.stderr or completed.stdout or "process failed without diagnostics").strip()
-            failed_receipt = receipt("failed", limitations)
+            failed_receipt = receipt("failed", limitations, exit_code=completed.returncode)
             raise CapabilityExecutionError(
                 f"{finalized.integration} process exited with exit {completed.returncode}: {limitations}",
                 failed_receipt,
@@ -769,13 +828,17 @@ class AgentProcessExecutor:
             completion = _completion((completed.stdout or "").strip(), finalized)
         except ValueError as error:
             limitations = f"invalid capability completion: {error}"
-            raise CapabilityExecutionError(limitations, receipt("failed", limitations)) from error
+            raise CapabilityExecutionError(
+                limitations, receipt("failed", limitations, exit_code=completed.returncode),
+                outcome="invalid_completion",
+            ) from error
         if completion.status == "failed":
             raise CapabilityExecutionError(
                 f"{finalized.capability} reported failed completion: {completion.limitations}",
-                receipt("failed", completion.limitations),
+                receipt("failed", completion.limitations, exit_code=completed.returncode),
+                outcome="invalid_completion",
             )
-        success_receipt = receipt("success", "none")
+        success_receipt = receipt("success", "none", exit_code=completed.returncode)
         return CapabilityExecutionResult(
             output=completion.output,
             receipt=success_receipt,

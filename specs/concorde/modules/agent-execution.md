@@ -47,15 +47,22 @@ AgentProcessExecutor.__call__(specification: LaunchSpecification) -> CapabilityE
 resolve_runtime_bootstrap(integration: str, executable: str, project_root: str,
                           environment: Mapping[str, str]) -> tuple[RuntimeBootstrapFile, ...]
 verify_runtime_bootstrap(files: tuple[RuntimeBootstrapFile, ...]) -> None
-CapabilityExecutionError(message: str, receipt: EnforcementReceipt | None = None)
+CapabilityExecutionError(message: str, receipt: EnforcementReceipt | None = None,
+                         outcome: Literal["failed", "cancelled",
+                                          "limit_exhausted", "invalid_completion"] = "failed")
 ```
 
 `host_subprocess_runner` and `host_version_probe` label default behavior, not exported Python symbols.
 An injected runner is called as `runner(argv: tuple[str, ...], *, cwd: str,
-env: Mapping[str,str], input_text: str) -> subprocess.CompletedProcess[str]`. It must honor the exact
-native enforcement arguments, use the supplied cwd/environment/stdin, capture text stdout/stderr,
-and return the actual return code. The default uses a synchronous subprocess without shell expansion
-or an automatic timeout. Hosts needing a time limit supply a runner that raises on timeout.
+env: Mapping[str,str], input_text: str, timeout: float | None) -> subprocess.CompletedProcess[str]`.
+It must honor the exact native enforcement arguments, use the supplied cwd/environment/stdin, capture
+text stdout/stderr, and return the actual return code. The default uses a synchronous subprocess
+without shell expansion; it passes `timeout` straight through to `subprocess.run`, which raises
+`subprocess.TimeoutExpired` when the process runs longer. `timeout` is the bound Agent's effective
+loop timeout (`AgentBinding.effective_loop.timeout_seconds`) for a structured (typed) launch, or
+`None` for a legacy untyped launch that carries no Agent binding. An injected runner receives the
+same `timeout` value and must raise `subprocess.TimeoutExpired` when it expires, so the executor can
+distinguish a limit-exhausted execution from an ordinary failure.
 The version probe receives `(integration, selected_executable)` and returns nonempty version text;
 the default invokes that executable's `--version`. These injection hooks are trusted host interfaces,
 not fields exposed to task JSON or agent-controlled tool proxies.
@@ -98,6 +105,21 @@ have `receipt=None`. Callers stop the affected transition. A new call is a new e
 of a prior completion. Authorized implementation edits made before failure can remain in the
 candidate; the executor does not promise rollback. Read-only reviewers cannot edit project files.
 Raw stdout/stderr are host diagnostics and cannot substitute for typed downstream inputs.
+
+## Local loop policy and outcomes
+
+A structured launch's control-loop timeout is the bound Agent's effective loop (`AgentBinding.
+effective_loop.timeout_seconds`, itself never wider than its Harness's declared loop); a legacy
+untyped launch has no bound Agent and passes no timeout, so the default runner waits without a
+limit. `CapabilityExecutionError.outcome` distinguishes four cases so a caller need not parse
+message text: `failed` (default) for a nonzero exit or a launch/preflight failure; `cancelled` when
+the injected runner raised `KeyboardInterrupt`, with the child process already terminated by
+`subprocess.run` before the interrupt propagates; `limit_exhausted` when the runner raised
+`subprocess.TimeoutExpired`, meaning the bound Agent's loop timeout was exceeded; and
+`invalid_completion` when a zero-exit process returned a completion that failed validation or was
+itself reported as a domain failure. None of these outcomes triggers an automatic retry, with the
+same or any wider permissions; native provider turn limits are not attested by either integration's
+lifecycle output, so `LoopPolicy.max_turns` stays `None` unless a caller explicitly narrows it.
 
 ## Required collaborator promises and representative use
 
