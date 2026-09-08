@@ -5,12 +5,13 @@ validate and review code to a ready candidate.
 explicit skip for each review mode instead of running it. A review requirement already recorded
 for a change cannot be disabled by a later ``run_reviews=false``.
 """
-from concorde.host import contract_shapes as shapes, roles
+from concorde.host import contract_shapes as shapes
+from agents import coordinator
 
 from . import external_name
 
 CLASS = "global"
-ROLES = (roles.COORDINATOR,)
+AGENTS = (coordinator.AGENT,)
 USES = ("specify", "review", "plan", "tasks", "implement", "validate")
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 

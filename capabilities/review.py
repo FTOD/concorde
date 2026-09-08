@@ -1,12 +1,13 @@
 """Internal stage: independent read-only Spec or code review of the bound target.
 
 Never projected as a user-invocable Skill; the executable boundary has no direct entry for it."""
-from concorde.host import contract_shapes as shapes, roles
+from concorde.host import contract_shapes as shapes
+from agents import code_reviewer, spec_reviewer
 
 from . import external_name
 
 CLASS = "stage"
-ROLES = (roles.SPEC_REVIEWER, roles.CODE_REVIEWER)
+AGENTS = (spec_reviewer.AGENT, code_reviewer.AGENT)
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 

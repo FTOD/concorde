@@ -1804,9 +1804,9 @@ def run_capability(capability: str, configuration: dict | None, runtime_input: d
             raise SpecError("unknown capability mode", "invalid_input")
         if host.depth == 1 and capability not in LIFECYCLE_CAPABILITIES:
             # The build is the only instruction source. Lifecycle capabilities run no agent
-            # cognition and load no role, so they never consume generated/; every other
-            # top-level invocation is verified once here, and load_role_prompt verifies it
-            # again independently before trusting any generated/roles/*.md body.
+            # cognition and load no Agent, so they never consume generated/; every other
+            # top-level invocation is verified once here, and load_agent verifies it
+            # again independently before trusting any generated/agents/*.md body.
             verify_fresh(host.package_root)
         configuration = validate_typed(configuration if configuration is not None else load_configuration(host.project_root), "concorde-capability-configuration")
         task = validate_typed(runtime_input, CAPABILITY_CONTRACTS[capability][0])["data"]

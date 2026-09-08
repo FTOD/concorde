@@ -1,12 +1,13 @@
 """Internal stage: plan a change from one complete Spec without implementation access.
 
 Never projected as a user-invocable Skill; the executable boundary has no direct entry for it."""
-from concorde.host import contract_shapes as shapes, roles
+from concorde.host import contract_shapes as shapes
+from agents import context_assessor, planner
 
 from . import external_name
 
 CLASS = "stage"
-ROLES = (roles.CONTEXT_ASSESSOR, roles.PLANNER)
+AGENTS = (context_assessor.AGENT, planner.AGENT)
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 

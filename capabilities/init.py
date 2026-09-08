@@ -5,7 +5,7 @@ from concorde.host import contract_shapes as shapes
 from . import external_name
 
 CLASS = "lifecycle"
-ROLES = ()
+AGENTS = ()
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 

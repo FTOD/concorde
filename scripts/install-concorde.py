@@ -31,6 +31,7 @@ INSTALL_SCHEMA = 1
 REFLECTIONS_CONFIG_PATH = ".concorde/reflections/config.json"
 REFLECTIONS_CONFIG_DEFAULT = "src/concorde/reflections/config.default.json"
 PACKAGE_ROOTS = [
+    "agents",
     "capabilities",
     "docsite",
     "prompts",
@@ -195,7 +196,7 @@ def _package_files(package: Package) -> dict[str, bytes]:
     desired[f"{FRAMEWORK_ROOT}/concorde.json"] = (package.root / "concorde.json").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/LICENSE"] = (package.root / "LICENSE").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/README.md"] = (package.root / "README.md").read_bytes()
-    for directory in ("capabilities", "prompts", "protocol", "skills", "src", "templates", "viewer"):
+    for directory in ("agents", "capabilities", "prompts", "protocol", "skills", "src", "templates", "viewer"):
         source_root = package.root / directory
         for path in sorted(source_root.rglob("*")):
             if path.is_symlink():

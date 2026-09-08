@@ -32,7 +32,8 @@ Spec incomplete, not a search for arbitrary files. See [the authored Concorde Sp
 ## Install and initialize
 
 The installer distributes a deterministic build's output — seven Skills exposing thirteen
-capabilities, nine rendered role instructions, and seven Markdown templates — to Codex or Claude.
+capabilities, nine rendered Agent instructions (from `agents/<name>/spec.md`), and seven Markdown
+templates — to Codex or Claude.
 Check `python scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project, then invoke the paired init entry in an isolated worktree (or use the trusted host's explicit

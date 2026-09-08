@@ -1,10 +1,11 @@
 """Global entry: answer questions, route work, and design or apply system topology."""
-from concorde.host import contract_shapes as shapes, roles
+from concorde.host import contract_shapes as shapes
+from agents import coordinator, reader, spec_author
 
 from . import external_name
 
 CLASS = "global"
-ROLES = (roles.COORDINATOR, roles.READER, roles.SPEC_AUTHOR)
+AGENTS = (coordinator.AGENT, reader.AGENT, spec_author.AGENT)
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 

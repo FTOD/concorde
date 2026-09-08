@@ -21,8 +21,8 @@ export const PROJECTION_NOTE =
   'schemas actually keep.';
 
 export interface SkillProjection {name: string; description: string; capability: string; body: string}
-export interface RoleProjection {name: string; instructions: string; sources: string[]}
-export interface InstructionsProjection {skills: SkillProjection[]; roles: RoleProjection[]}
+export interface AgentProjection {name: string; spec: string; harness: string; instructions: string; sources: string[]}
+export interface InstructionsProjection {skills: SkillProjection[]; agents: AgentProjection[]}
 export type WireProjection = Record<string, unknown>;
 
 /** Whether this project root's Concorde build produced the docs projections at all. */
@@ -49,10 +49,10 @@ export function renderInstructionsPage(doc: InstructionsProjection): string {
   for (const skill of doc.skills) {
     lines.push(`### ${skill.name}`, '', `Capability: \`${skill.capability}\`. ${skill.description}`, '', fence(skill.body, 'text'), '');
   }
-  lines.push('## Roles', '', 'Each role is one launchable agent identity with one rendered instruction file, contributed by the listed prompts.', '');
-  for (const role of doc.roles) {
-    const sources = role.sources.map((source) => `\`${source}\``).join(', ');
-    lines.push(`### ${role.name}`, '', `Contributing prompts: ${sources}`, '', fence(role.instructions, 'text'), '');
+  lines.push('## Agents', '', 'Each Agent binds an authored `spec.md`, a registered Harness, and its effective Constraints/Permissions; its rendered instruction file is contributed by the listed prompts.', '');
+  for (const agent of doc.agents) {
+    const sources = agent.sources.map((source) => `\`${source}\``).join(', ');
+    lines.push(`### ${agent.name}`, '', `Spec: \`${agent.spec}\``, '', `Harness: \`${agent.harness}\``, '', `Contributing prompts: ${sources}`, '', fence(agent.instructions, 'text'), '');
   }
   return lines.join('\n');
 }

@@ -86,6 +86,7 @@ class BoundaryTests(unittest.TestCase):
         package=self.root/'package'
         shutil.copytree(PACKAGE/'prompts',package/'prompts')
         shutil.copytree(PACKAGE/'skills',package/'skills')
+        shutil.copytree(PACKAGE/'agents',package/'agents')
         (package/'protocol').mkdir(parents=True)
         shutil.copy2(PACKAGE/'protocol/manifest.json',package/'protocol/manifest.json')
         write_build(package,'all')

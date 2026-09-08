@@ -21,7 +21,7 @@ fields do not by themselves establish the required Agent or Harness bindings.
 
 A Capability provides usable or composable functionality under the Agent and Harness contract.
 The existing host adapter implements each registered entry as a Python module declaring launched
-roles, effects, composed entries and typed request/response contracts. In this adapter, rendered
+Agents, effects, composed entries and typed request/response contracts. In this adapter, rendered
 public Skills expose exactly one global or lifecycle capability. Stage capabilities have no Skill and no direct invocation. Every request
 passes through this host. The capability registry is a member of this complete Spec; exact wire
 schemas are code, exported by the build and published by the docsite, and this document states
@@ -262,6 +262,7 @@ invocation envelope, and every exported identity appears here at least once with
 | `incompatible_handoff` | A returned identity (context, target, gap, route, or configuration) does not match what the host issued or expects. |
 | `incomplete_change` | Delivery was requested before every authored task for the change was complete. |
 | `incomplete_tasks` | Implementation did not report every exact task as complete. |
+| `invalid_agent_binding` | A named Agent's definition, Harness reference, or Constraints is inconsistent with its registered Harness or the current build manifest. |
 | `invalid_completion` | An agent's or main's returned completion is internally inconsistent with its own declared context or outcome. |
 | `invalid_delivery` | A delivery receipt has an invalid or mismatched identity. |
 | `invalid_entry_target` | The registry's `entry_target` is not a Domain or Service, so main discovery cannot start there. |
@@ -291,9 +292,9 @@ invocation envelope, and every exported identity appears here at least once with
 | `studio_run_failed` | A Studio-driven capability run did not complete successfully. |
 | `studio_transport_failed` | The Studio client could not reach or exchange messages with the Studio server. |
 | `undeclared_capability` | A capability tried to compose another capability that its own module does not declare in `USES`. |
+| `unknown_agent` | The named Agent has no matching `agents/<name>/` definition. |
 | `unknown_capability` | The named capability is not registered, or a parent capability referenced a capability that does not exist. |
 | `unknown_change` | Delivery named a `change_id` with no registered live worktree or delivery receipt. |
-| `unknown_role` | The named role has no rendered `generated/roles/*.md` projection. |
 | `unknown_type` | A TypedValue's `type_id` does not name a schema the wire module recognizes. |
 | `unsafe_path` | A path escapes the project root, aliases a control path, or crosses a symlink. |
 | `unsupported_target` | The selected target has no registered implementation for the requested code-owning behavior. |
@@ -487,19 +488,20 @@ the host relies on, independently of implementation imports.
   Ordinary invocations and child stages must equal that snapshot; mismatch stops the transition.
   It neither grants permissions nor silently falls back to caller-provided settings.
 - Package assets (`module.package-assets`): `build(project_root, integration="all", *,
-  framework_prefix="") -> BuildResult` renders every role, Skill and Studio-graph projection from
-  `prompts/`/`skills/`/`capabilities/`; `write_build(...)` also writes them, including
+  framework_prefix="") -> BuildResult` renders every Agent, Skill and Studio-graph projection from
+  `agents/`/`prompts/`/`skills/`/`capabilities/`; `write_build(...)` also writes them, including
   `generated/build-manifest.json`. `check_build(project_root, integration="all") -> (bool,
   tuple[str,...])` renders into a temporary directory and reports every stale or drifted output
   without writing. `verify_fresh(project_root) -> None` raises `BuildError` with code `stale_build`
   when a recorded source has changed since the last build; the host calls it before every top-level
-  invocation except a lifecycle capability. `load_role_prompt(package_root, role_name) -> SkillPrompt`
-  returns one role's rendered body and effect declaration from the current build.
-  `resolve_role_prompt`/`resolve_skill_source(project_root, relative_path) -> ResolvedPrompt` and
+  invocation except a lifecycle capability. `load_agent(package_root, name) -> SkillPrompt` returns
+  one Agent's rendered body, effect declaration, and complete `AgentBinding` from the current build
+  (`load_role_prompt` remains as a compatibility alias). `resolve_agent_spec`/`resolve_role_prompt`/
+  `resolve_skill_source(project_root, relative_path) -> ResolvedPrompt` and
   `find_unreachable_prompts(project_root, roots) -> tuple[str,...]` resolve and check `@include`
   prompt sources, raising `PromptResolverError` on a malformed, unresolved or unreachable source.
-  `validate_package(root: Path) -> list[Finding]` runs the prompt/capability-module/contract/Spec-
-  alignment/build-output checks behind `python -m concorde validate` and `build --check`.
+  `validate_package(root: Path) -> list[Finding]` runs the prompt/capability-module/Agent/contract/
+  Spec-alignment/build-output checks behind `python -m concorde validate` and `build --check`.
   `python -m concorde protocol-manifest [--write] [--bind-project]` reports, accepts, or binds the
   tracked Protocol digest to the current build. The host supplies rendered bodies inline and admits
   only role-specific paths; it does not let the worker reopen the source package.

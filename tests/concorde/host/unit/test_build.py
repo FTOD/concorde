@@ -12,12 +12,14 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.host.build import (  # noqa: E402
+    AGENT_ROOTS,
     INTEGRATION_ROOTS,
     ROLE_ROOTS,
     SKILL_NAMES,
     BuildError,
     build,
     check_build,
+    load_agent,
     load_role_prompt,
     verify_fresh,
     write_build,
@@ -38,11 +40,11 @@ class BuildGoldenTests(unittest.TestCase):
         cls.result = build(REPOSITORY_ROOT, "all")
         cls.by_path = {output.path: output for output in cls.result.outputs}
 
-    def test_role_bodies_match_golden_bytes_exactly(self):
-        for role in ROLE_ROOTS:
-            with self.subTest(role=role):
-                golden = (GOLDEN / "roles" / f"{role}.md").read_bytes()
-                mine = self.by_path[f"generated/roles/{role}.md"].content
+    def test_agent_bodies_match_golden_bytes_exactly(self):
+        for agent in AGENT_ROOTS:
+            with self.subTest(agent=agent):
+                golden = (GOLDEN / "agents" / f"{agent}.md").read_bytes()
+                mine = self.by_path[f"generated/agents/{agent}.md"].content
                 self.assertEqual(mine, golden)
 
     def test_skill_projections_match_golden_modulo_source_line(self):
@@ -58,14 +60,14 @@ class BuildGoldenTests(unittest.TestCase):
             mine = self.by_path[f"{INTEGRATION_ROOTS[integration]}/concorde-main/SKILL.md"].content.decode("utf-8")
             self.assertIn('source: "skills/concorde-main/SKILL.md"', mine)
 
-    def test_exactly_fourteen_skill_outputs_nine_role_outputs_and_one_langgraph_config(self):
+    def test_exactly_fourteen_skill_outputs_nine_agent_outputs_and_one_langgraph_config(self):
         skill_outputs = [
             path for path in self.by_path
             if path.startswith(".claude/skills/") or path.startswith(".agents/skills/")
         ]
-        role_outputs = [path for path in self.by_path if path.startswith("generated/roles/")]
+        agent_outputs = [path for path in self.by_path if path.startswith("generated/agents/")]
         self.assertEqual(len(skill_outputs), 14)
-        self.assertEqual(len(role_outputs), 9)
+        self.assertEqual(len(agent_outputs), 9)
         self.assertIn("generated/langgraph.json", self.by_path)
 
     def test_langgraph_config_names_one_graph_per_skill(self):
@@ -92,6 +94,21 @@ class BuildGoldenTests(unittest.TestCase):
         for output in self.result.outputs:
             self.assertIn(output.path, payload["outputs"])
             self.assertEqual(payload["outputs"][output.path]["sources"], sorted(output.sources))
+
+    def test_docs_instructions_projection_has_agent_entries_with_spec_and_harness(self):
+        import json
+
+        payload = json.loads(self.by_path["generated/docs/instructions.json"].content)
+        self.assertEqual(
+            {entry["name"] for entry in payload["agents"]},
+            {f"concorde-{agent}" for agent in AGENT_ROOTS},
+        )
+        for entry in payload["agents"]:
+            self.assertTrue(entry["spec"].startswith("agents/"))
+            self.assertTrue(entry["spec"].endswith("/spec.md"))
+            self.assertTrue(entry["harness"])
+            self.assertTrue(entry["instructions"].strip())
+            self.assertTrue(entry["sources"])
 
 
 class BuildDeterminismTests(unittest.TestCase):
@@ -122,6 +139,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
+        shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
 
     def test_check_fails_before_build_and_passes_after(self):
         current, differences = check_build(self.root, "all")
@@ -177,18 +195,18 @@ class BuildCheckLifecycleTests(unittest.TestCase):
 
     def test_check_reports_an_unexpected_file_in_an_owned_directory(self):
         write_build(self.root, "all")
-        (self.root / "generated/roles/extra.md").write_text("not a build output\n", encoding="utf-8")
+        (self.root / "generated/agents/extra.md").write_text("not a build output\n", encoding="utf-8")
         current, differences = check_build(self.root, "all")
         self.assertFalse(current)
-        self.assertIn("generated/roles/extra.md", differences)
+        self.assertIn("generated/agents/extra.md", differences)
 
     def test_check_reports_a_modified_owned_file(self):
         write_build(self.root, "all")
-        target = self.root / "generated/roles/coordinator.md"
+        target = self.root / "generated/agents/coordinator.md"
         target.write_text(target.read_text(encoding="utf-8") + "tampered\n", encoding="utf-8")
         current, differences = check_build(self.root, "all")
         self.assertFalse(current)
-        self.assertIn("generated/roles/coordinator.md", differences)
+        self.assertIn("generated/agents/coordinator.md", differences)
 
 
 class BuildFreshnessTests(unittest.TestCase):
@@ -198,6 +216,7 @@ class BuildFreshnessTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
+        shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
 
     def test_verify_fresh_fails_closed_with_no_manifest(self):
         with self.assertRaises(BuildError) as failure:
@@ -223,26 +242,35 @@ class BuildFreshnessTests(unittest.TestCase):
             verify_fresh(self.root)
         self.assertEqual(failure.exception.code, "stale_build")
 
-    def test_load_role_prompt_verifies_freshness_and_returns_effects(self):
+    def test_load_agent_verifies_freshness_and_returns_effects_and_binding(self):
         write_build(self.root, "all")
-        prompt = load_role_prompt(self.root, "concorde-spec-author")
+        prompt = load_agent(self.root, "concorde-spec-author")
         self.assertEqual(prompt.name, "concorde-spec-author")
         self.assertEqual(prompt.kind, "skill")
         self.assertIsNotNone(prompt.effects)
         self.assertTrue(prompt.body.strip())
+        self.assertIsNotNone(prompt.binding)
+        self.assertEqual(prompt.binding.agent, "spec_author")
+        self.assertEqual(prompt.binding.spec_path, "agents/spec_author/spec.md")
 
-        edited = self.root / "prompts/spec-context/spec-author.md"
+        edited = self.root / "agents/spec_author/spec.md"
         edited.write_text(edited.read_text(encoding="utf-8") + "\nChanged.\n", encoding="utf-8")
         with self.assertRaises(BuildError) as failure:
-            load_role_prompt(self.root, "concorde-spec-author")
+            load_agent(self.root, "concorde-spec-author")
         self.assertEqual(failure.exception.code, "stale_build")
 
-    def test_load_role_prompt_accepts_underscore_and_hyphenated_names(self):
+    def test_load_agent_accepts_underscore_and_hyphenated_names(self):
         write_build(self.root, "all")
-        by_external = load_role_prompt(self.root, "concorde-context-assessor")
-        by_underscore = load_role_prompt(self.root, "context_assessor")
+        by_external = load_agent(self.root, "concorde-context-assessor")
+        by_underscore = load_agent(self.root, "context_assessor")
         self.assertEqual(by_external.body, by_underscore.body)
         self.assertEqual(by_external.name, "concorde-context-assessor")
+
+    def test_load_role_prompt_is_a_compatibility_alias_for_load_agent(self):
+        write_build(self.root, "all")
+        self.assertIs(load_role_prompt, load_agent)
+        prompt = load_role_prompt(self.root, "concorde-coordinator")
+        self.assertEqual(prompt.name, "concorde-coordinator")
 
 
 class BuildErrorTests(unittest.TestCase):
@@ -251,6 +279,7 @@ class BuildErrorTests(unittest.TestCase):
             root = Path(temporary)
             shutil.copytree(REPOSITORY_ROOT / "prompts", root / "prompts")
             shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills")
+            shutil.copytree(REPOSITORY_ROOT / "agents", root / "agents")
             main = root / "skills/concorde-main/SKILL.md"
             main.write_text(main.read_text(encoding="utf-8") + "\nUnbound {SOMETHING}.\n", encoding="utf-8")
             with self.assertRaises(BuildError):

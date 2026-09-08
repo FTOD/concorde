@@ -17,16 +17,12 @@ composition and authority contract.
 ## Current host adapter
 
 The following inventory describes the existing Python host adapter. Each entry is implemented by a
-module under `capabilities/`, declaring launched roles, effects, composed entries and typed requests
+module under `capabilities/`, declaring launched Agents, effects, composed entries and typed requests
 and responses. The Python module is an implementation of functionality, not the definition of the
 Capability concept. Host-declared composition is distinct from capabilities available to an Agent.
 
 Current public Skill files expose exactly one global or lifecycle entry through
-`scripts/run-capability.py <skill>`. Stage entries have no public Skill. The nine existing role
-identifiers are coordinator, reader, spec-author, context-assessor, planner, task-author,
-implementation-worker, spec-reviewer and code-reviewer. Their rendered instructions and effect
-declarations are compatibility bindings; role identity alone does not satisfy the required
-`spec.md` + Harness + Constraints/Permissions Agent model.
+`scripts/run-capability.py <skill>`. Stage entries have no public Skill.
 
 | Capability | Class | Skill | Launches | Uses | Behavior |
 | --- | --- | --- | --- | --- | --- |
@@ -47,6 +43,49 @@ declarations are compatibility bindings; role identity alone does not satisfy th
 Request and response types are `concorde-<capability>-request@1` and
 `concorde-<capability>-response@1`; their promise-level meaning is defined in the workflow-host
 boundary document.
+
+## Agents and Harnesses
+
+The nine identifiers a capability "Launches" above are its named Agents: each one Python module
+under the top-level `agents/` package, binding an authored `agents/<name>/spec.md`, a registered
+Harness, and its effective Constraints/Permissions (`spec.md` + Harness + Constraints/Permissions,
+per [Agents and Harnesses](../workflow/agents-and-harnesses.md)). `agents/__init__.py` declares the
+inventory; each `agents/<name>/` directory belongs to the Service that launches it. A rendered
+`generated/agents/<hyphenated>.md` projection remains traceable to its `spec.md` source; role
+identity alone no longer stands in for this complete Agent model.
+
+Every Agent is bound to exactly one of three registered Harnesses:
+
+| Harness | Workspace | Reads | Writes | Admitted contexts | Loop timeout |
+| --- | --- | --- | --- | --- | --- |
+| discovery-capsule | capsule | discovery-context | — | concorde-main-stage-context | 900s |
+| spec-capsule | capsule | spec-context | — | concorde-agent-stage-context, concorde-review-stage-context, concorde-topology-author-context | 1800s |
+| implementation-workspace | project | spec-context, implementation | implementation | concorde-agent-stage-context, concorde-review-stage-context | 3600s |
+
+`coordinator` binds `discovery-capsule`; `reader`, `spec-author`, `context-assessor`, `planner`,
+`task-author` and `spec-reviewer` bind `spec-capsule`; `implementation-worker` and `code-reviewer`
+bind `implementation-workspace`. Each Agent's own Constraints/Permissions never widen its bound
+Harness.
+
+```concorde-agents
+[
+  {"id": "coordinator", "harness": "discovery-capsule", "capabilities": ["dev-loop", "main"]},
+  {"id": "reader", "harness": "spec-capsule", "capabilities": ["main"]},
+  {"id": "spec-author", "harness": "spec-capsule", "capabilities": ["main", "specify"]},
+  {"id": "context-assessor", "harness": "spec-capsule", "capabilities": ["context-solve", "plan"]},
+  {"id": "planner", "harness": "spec-capsule", "capabilities": ["plan"]},
+  {"id": "task-author", "harness": "spec-capsule", "capabilities": ["tasks"]},
+  {"id": "implementation-worker", "harness": "implementation-workspace", "capabilities": ["implement", "reflections-triage"]},
+  {"id": "spec-reviewer", "harness": "spec-capsule", "capabilities": ["review"]},
+  {"id": "code-reviewer", "harness": "implementation-workspace", "capabilities": ["review"]}
+]
+```
+
+Deterministic validation requires this block to equal the Agent inventory declared in code: the
+same identifiers, bound Harness names, and the sorted hyphenated names of every capability module
+whose `AGENTS` includes that Agent. The block is intentional redundancy so that this Spec explains
+the Agent/Harness binding without reading Python; it never adds an Agent that code does not
+implement.
 
 ## Capability classes
 
