@@ -163,6 +163,33 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.assertTrue(current)
         self.assertEqual(differences, ())
 
+    def test_check_ignores_an_unrelated_file_under_generated(self):
+        """`generated/` is a shared, ignored root; a file another tool writes there (for example
+        the legacy initializer's diagram renders under `generated/architecture/`) is not a
+        build-owned location and must never be reported as drift."""
+        write_build(self.root, "all")
+        other = self.root / "generated/architecture"
+        other.mkdir(parents=True)
+        (other / "example.html").write_text("unrelated diagram render\n", encoding="utf-8")
+        current, differences = check_build(self.root, "all")
+        self.assertTrue(current)
+        self.assertEqual(differences, ())
+
+    def test_check_reports_an_unexpected_file_in_an_owned_directory(self):
+        write_build(self.root, "all")
+        (self.root / "generated/roles/extra.md").write_text("not a build output\n", encoding="utf-8")
+        current, differences = check_build(self.root, "all")
+        self.assertFalse(current)
+        self.assertIn("generated/roles/extra.md", differences)
+
+    def test_check_reports_a_modified_owned_file(self):
+        write_build(self.root, "all")
+        target = self.root / "generated/roles/coordinator.md"
+        target.write_text(target.read_text(encoding="utf-8") + "tampered\n", encoding="utf-8")
+        current, differences = check_build(self.root, "all")
+        self.assertFalse(current)
+        self.assertIn("generated/roles/coordinator.md", differences)
+
 
 class BuildFreshnessTests(unittest.TestCase):
     def setUp(self) -> None:

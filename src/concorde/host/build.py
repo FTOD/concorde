@@ -75,6 +75,14 @@ SCHEMA_INTRO = "This complete schema is the invocation's input field. It does no
 PROTOCOL_KINDS = ("domain", "module", "service")
 PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 
+# The build owns exactly these locations under `generated/`; every recorded BuildOutput path
+# lands inside one of them, and `generated/build-manifest.json` is written alongside them even
+# though it is not itself a BuildOutput. `generated/` is a shared, ignored root -- another tool
+# may write its own files there (for example diagram renders under `generated/architecture/`),
+# and check_build must never judge locations it does not own.
+GENERATED_OWNED_DIRS: tuple[str, ...] = ("generated/roles", "generated/protocol", "generated/docs")
+GENERATED_OWNED_FILES: tuple[str, ...] = ("generated/build-manifest.json", "generated/langgraph.json")
+
 
 @dataclass(frozen=True)
 class BuildOutput:
@@ -324,6 +332,14 @@ def build(project_root: str | Path, integration: str = "all", *, framework_prefi
         raise BuildError(f"unreachable prompt files (no root includes them): {list(unreachable)}")
 
     ordered = tuple(sorted(outputs, key=lambda item: item.path))
+    for output in ordered:
+        if output.path.startswith("generated/"):
+            assert output.path in GENERATED_OWNED_FILES or any(
+                output.path.startswith(f"{owned_dir}/") for owned_dir in GENERATED_OWNED_DIRS
+            ), (
+                f"build output {output.path!r} is outside GENERATED_OWNED_DIRS/GENERATED_OWNED_FILES; "
+                "update those declarations so check_build keeps judging every real output"
+            )
     manifest = _manifest(root, ordered)
     return BuildResult(outputs=ordered, manifest=manifest)
 
@@ -368,14 +384,30 @@ def _tree(directory: Path) -> dict[str, bytes]:
     return contents
 
 
+def _owned_generated_tree(root: Path) -> dict[str, bytes]:
+    """Read every build-owned path under ``generated/`` at ``root``, keyed by path from ``root``."""
+    contents: dict[str, bytes] = {}
+    for owned_dir in GENERATED_OWNED_DIRS:
+        for relative, data in _tree(root / owned_dir).items():
+            contents[f"{owned_dir}/{relative}"] = data
+    for owned_file in GENERATED_OWNED_FILES:
+        path = root / owned_file
+        if path.is_file() and not path.is_symlink():
+            contents[owned_file] = path.read_bytes()
+    return contents
+
+
 def check_build(project_root: str | Path, integration: str = "all") -> tuple[bool, tuple[str, ...]]:
     """Render into a temporary directory and diff against every project_root output location.
 
-    Returns (is_current, differences) where differences names every relative path (under
-    ``generated/`` and, for our own seven skills, ``.claude/skills``/``.agents/skills``) that is
-    missing, unexpected, or byte-different. Nothing under project_root is written or modified. A
-    third party's own Skill directories (for example ``.claude/skills/archify``) are never
-    inspected or reported.
+    Returns (is_current, differences) where differences names every relative path (under the
+    build-owned locations in ``generated/`` -- see ``GENERATED_OWNED_DIRS``/``GENERATED_OWNED_FILES``
+    -- and, for our own seven skills, ``.claude/skills``/``.agents/skills``) that is missing,
+    unexpected, or byte-different. Nothing under project_root is written or modified. A third
+    party's own Skill directories (for example ``.claude/skills/archify``) are never inspected or
+    reported, and neither is any other path under ``generated/`` that the build does not own (for
+    example diagram renders under ``generated/architecture/``): ``generated/`` is a shared, ignored
+    root and this check only judges what the build itself produces there.
     """
 
     root = Path(project_root)
@@ -389,12 +421,12 @@ def check_build(project_root: str | Path, integration: str = "all") -> tuple[boo
         manifest_path = temporary / "generated/build-manifest.json"
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         manifest_path.write_bytes(result.manifest)
-        fresh_generated = _tree(temporary / "generated")
-    current_generated = _tree(root / "generated")
+        fresh_owned = _owned_generated_tree(temporary)
+    current_owned = _owned_generated_tree(root)
     diffs = [
-        f"generated/{relative}"
-        for relative in set(fresh_generated) | set(current_generated)
-        if fresh_generated.get(relative) != current_generated.get(relative)
+        relative
+        for relative in set(fresh_owned) | set(current_owned)
+        if fresh_owned.get(relative) != current_owned.get(relative)
     ]
     for prefix in INTEGRATION_ROOTS.values():
         for name in SKILL_NAMES:
@@ -420,8 +452,7 @@ def check_build(project_root: str | Path, integration: str = "all") -> tuple[boo
         else:
             for item in assets:
                 relative = item.get("path", "")
-                inner = relative.removeprefix("generated/") if relative.startswith("generated/") else None
-                content = fresh_generated.get(inner) if inner is not None else None
+                content = fresh_owned.get(relative)
                 if content is None or _sha256_bytes(content) != item.get("digest"):
                     diffs.append(f"{PROTOCOL_MANIFEST_PATH}:{relative}")
     return (not diffs, tuple(sorted(diffs)))

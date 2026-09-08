@@ -252,6 +252,22 @@ class BuildOutputRuleTests(unittest.TestCase):
         write_build(self.root, "all")
         self.assertEqual([], package_validation._validate_build_outputs(self.root))
 
+    def test_unrelated_file_under_generated_has_no_findings(self) -> None:
+        """`generated/` is a shared, ignored root; a file another tool writes there (for example
+        the legacy initializer's diagram renders under `generated/architecture/`) must never be
+        reported as drift."""
+        write_build(self.root, "all")
+        other = self.root / "generated/architecture"
+        other.mkdir(parents=True)
+        (other / "example.html").write_text("unrelated diagram render\n", encoding="utf-8")
+        self.assertEqual([], package_validation._validate_build_outputs(self.root))
+
+    def test_unexpected_file_in_an_owned_directory_is_reported(self) -> None:
+        write_build(self.root, "all")
+        (self.root / "generated/roles/extra.md").write_text("not a build output\n", encoding="utf-8")
+        findings = package_validation._validate_build_outputs(self.root)
+        self.assertTrue(any(f.rule_id == "CONCORDE-BUILD-DRIFT-001" for f in findings), findings)
+
 
 def _registry(root: Path, *, documents: list[str]) -> None:
     registry = {
