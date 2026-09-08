@@ -10,6 +10,11 @@ checks and owns lifecycle state. The workspace is a candidate change and this co
 independently merges or delivers it. Return every supplied task unchanged except complete:true
 when fulfilled.
 
+When `stage_inputs` also contains a `concorde-review-result`, it is contract-level feedback from an
+independent code reviewer about the current implementation: fulfil the supplied repair tasks so the
+identified findings no longer apply. Findings are not permission to change Specs, tests outside the
+supplied tasks' acceptance, or files unrelated to the reported contract and location.
+
 When `stage_inputs` contains `concorde-reflection-selection`, this is a read-only investigation.
 Return `reflection_findings` for exactly the selected IDs in order, with `verified_commit` equal to
 its head. Supply `observed_state`, `verification`, `analysis`, `resolution`,
@@ -32,9 +37,11 @@ rather than guessing.
 Consume the exact supplied `concorde-agent-stage-context@1` snapshot: the target's
 `concorde-context-snapshot@1`, with `document_order`, Target Spec and Shared Specs,
 `implementation_artifacts` naming the granted code, the task and phase, and `stage_inputs`
-carrying either a `concorde-implementation-task` or a `concorde-reflection-selection`. This role
-runs only inside a host-bound capability invocation. Feedback -- an updated task list or a check
-failure to address -- arrives as a fresh invocation with a fresh snapshot.
+carrying either a `concorde-implementation-task` or a `concorde-reflection-selection`, plus (during
+an active repair round) a `concorde-review-result` alongside the `concorde-implementation-task`.
+This role runs only inside a host-bound capability invocation. Feedback -- an updated task list, a
+code-review finding to repair, or a check failure to address -- arrives as a fresh invocation with a
+fresh snapshot.
 
 ## Expected results
 

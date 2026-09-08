@@ -99,7 +99,8 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
     target = repository.select(target_id, focus_id)
     from ..host.typed_data import validate_typed
     for item in stage_inputs:
-        if item.get("type_id") not in {"concorde-plan-artifact","concorde-implementation-task","concorde-reflection-selection"}:
+        if item.get("type_id") not in {"concorde-plan-artifact","concorde-implementation-task",
+                                       "concorde-reflection-selection","concorde-review-result"}:
             raise SpecError("unknown stage input type", "incompatible_handoff")
         validate_typed(item, item["type_id"])
     document_order, target_spec, shared_specs = _spec_sections(repository.documents(target))

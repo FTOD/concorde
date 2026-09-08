@@ -28,8 +28,8 @@ from .build import BuildError, load_role_prompt, verify_fresh
 from .contracts import (STAGE_ROLES, TARGET_AGENT_STAGES,
     MAIN_CAPABILITY, MAIN_ROUTED_CAPABILITIES, LIFECYCLE_CAPABILITIES, load_capability_inventory)
 from .change_worktree import (STATE_PATH, WORK_PATH, bind_owner, create_worktree,
-    ensure_change, progress, read_change, refresh_registry, save_change,
-    save_target_state, snapshot_tree, target_state, work_path, workspace_context,
+    ensure_change, graph_state, progress, read_change, record_transition, refresh_registry,
+    save_change, save_target_state, snapshot_tree, target_state, work_path, workspace_context,
     workspace_identity)
 from ..specification.repository import SpecRepository, SpecError, digest, read_file, identifier
 from ..specification.context import (DiscoveryContext, resolve_context,
@@ -1253,10 +1253,19 @@ class Invocation:
         self.record_gaps("specify", [])
         change = read_change(self.repository.root)
         if change is not None:
+            revision = _target_revision(self.repository, self.target)
             change.setdefault("authored_specs", {})[self.target.id] = {
                 "task": self.task["task"], "focus_id": self.task.get("focus_id"),
                 "constraints": self.task.get("constraints", []), "context_id": self.last_context,
-                "spec_digest": _target_revision(self.repository, self.target)}
+                "spec_digest": revision}
+            if self.target.id in change.get("graph", {}):
+                # Keep the graph's own baseline in sync with every real (admitted) authoring, so
+                # the next loop() invocation's reset check only fires for an out-of-band (human)
+                # Spec edit, mirroring how implement() tracks last_implementation_digest. This
+                # covers both the dev-loop's own "specify" node (which reaches here through the
+                # same "concorde-specify" child dispatch) and a standalone concorde-specify call
+                # for a target that already has a graph record from an earlier dev-loop run.
+                change["graph"][self.target.id]["spec_digest"] = revision
             save_change(self.repository.root, change)
         return self.response(answer=result["answer"])
 
@@ -1308,21 +1317,46 @@ class Invocation:
         self.check_state(state)
         if not state["plan"]:
             raise SpecError("tasks require an authored plan", "missing_plan")
-        inputs = (typed("concorde-plan-artifact", {"plan":state["plan"]}),)
+        change = read_change(self.repository.root, required=True)
+        repair = change.get("graph", {}).get(self.target.id, {}).get("repair")
+        inputs = (typed("concorde-plan-artifact", {"plan": state["plan"]}),)
+        if repair is not None:
+            verify_artifacts(self.repository.root, repair["artifact"])
+            review_value = validate_typed(decode(
+                read_file(self.repository.root, repair["artifact"]["path"]).decode()), "concorde-review-result")
+            review_data = review_value["data"]
+            if (review_data["review_mode"] != "code" or review_data["target_id"] != self.target.id
+                    or review_data["status"] != "findings"):
+                raise SpecError("repair review artifact does not match this target's blocking code-review findings",
+                                "incompatible_handoff")
+            inputs = (*inputs,
+                      typed("concorde-implementation-task", {"plan": state["plan"], "tasks": state["tasks"]}),
+                      review_value)
         result = self.stage("concorde-tasks", inputs=inputs, defer_gap_resolution=True)
         if result["outcome"] not in {"completed", "sufficient"}:
             return self.response(result["outcome"], result["answer"], gaps=result["gaps"])
         if self.host.mode == "describe-policy":
             return self.response("described")
         tasks = result["tasks"]
-        if not tasks or len({t["id"] for t in tasks}) != len(tasks) or any(t["complete"] for t in tasks):
-            raise SpecError("tasks must be nonempty, uniquely identified and initially incomplete", "invalid_completion")
+        historical_ids = {t["id"] for entry in state.get("task_history", []) for t in entry["tasks"]}
+        if (not tasks or len({t["id"] for t in tasks}) != len(tasks) or any(t["complete"] for t in tasks)
+                or {t["id"] for t in tasks} & historical_ids):
+            raise SpecError("tasks must be nonempty, uniquely identified (including across repair history) "
+                            "and initially incomplete", "invalid_completion")
         for task in tasks:
             self.repository.select(task["target_id"])
             if self.target.kind != "domain" and task["target_id"] != self.target.id:
                 raise SpecError("component tasks must remain in their owning context", "permission_denied")
+        if repair is not None:
+            state.setdefault("task_history", []).append({"iteration": repair["iteration"],
+                "tasks": state["tasks"], "implementation_digest": state.get("implementation_digest")})
+            state["repair_review"] = repair["artifact"]
         state.update(tasks=tasks, checks=[], implementation_digest=None, phase="tasks", status="active")
         save_target_state(self.repository.root, state)
+        if repair is not None:
+            change = read_change(self.repository.root, required=True)
+            change["graph"][self.target.id]["repair"] = None
+            save_change(self.repository.root, change)
         self.record_gaps("tasks", [])
         return self.response(answer=result["answer"], artifacts=[artifact(self.repository.root, "change", STATE_PATH)])
 
@@ -1343,7 +1377,13 @@ class Invocation:
             raise SpecError("reconcile all shared contracts before implementation", "incompatible_contracts")
         if not self.host.coordinated:
             progress(self.repository.root, phase="implementation", status="active", invalidate=True)
-        inputs = (typed("concorde-implementation-task", {"plan":state["plan"],"tasks":state["tasks"]}),)
+        inputs = (typed("concorde-implementation-task", {"plan": state["plan"], "tasks": state["tasks"]}),)
+        repair_review = state.get("repair_review")
+        if repair_review:
+            verify_artifacts(self.repository.root, repair_review)
+            review_value = validate_typed(decode(
+                read_file(self.repository.root, repair_review["path"]).decode()), "concorde-review-result")
+            inputs = (*inputs, review_value)
         result = self.stage("concorde-implement", inputs=inputs, defer_gap_resolution=True)
         if result["outcome"] not in {"completed", "sufficient"}:
             return self.response(result["outcome"], result["answer"], gaps=result["gaps"])
@@ -1356,8 +1396,15 @@ class Invocation:
         state["tasks"] = returned
         state["implementation_digest"] = _implementation_digest(self.repository, self.target)
         state["checks"] = []
+        state.pop("repair_review", None)
         state.update(phase="implementation", status="completed")
         save_target_state(self.repository.root, state)
+        change = read_change(self.repository.root)
+        if change is not None and self.target.id in change.get("graph", {}):
+            # Keep the graph's own baseline in sync with every real implementation, so the next
+            # loop() invocation's reset check only fires for an out-of-band (human) code edit.
+            change["graph"][self.target.id]["last_implementation_digest"] = state["implementation_digest"]
+            save_change(self.repository.root, change)
         self.record_gaps("implementation", [])
         return self.response(answer=result["answer"])
 
@@ -1596,6 +1643,11 @@ class Invocation:
         return state
 
     def loop(self) -> dict:
+        """The development Graph (G1-G4): a bounded ``review_code -> tasks`` repair edge is the
+        only automatic revision; every other non-advancing outcome stops the Graph for a human,
+        with the stopping status recorded on the change and the transition recorded under
+        ``graph`` in ``.concorde/worktree.json`` (development.md's "AI and human feedback").
+        """
         from .review import current, require_reviews, skip
         from langgraph.graph import StateGraph, START, END
         from typing import TypedDict
@@ -1604,6 +1656,11 @@ class Invocation:
         specify = self.task.get("specify", True)
         run_reviews = self.task.get("run_reviews", True)
         require_reviews(self, run_reviews)
+        policy = importlib.import_module(f"{load_capability_inventory().__name__}.dev_loop").GRAPH
+        graph_state(self.repository.root, self.target.id, policy=policy,
+            spec_digest=_target_revision(self.repository, self.target),
+            implementation_digest=_implementation_digest(self.repository, self.target)
+                if self.target.implementation else None)
         stages = (["specify", "plan", "tasks", "implement", "validate"] if specify else
                   ["plan", "tasks", "implement", "validate"])
         change = read_change(self.repository.root)
@@ -1631,18 +1688,81 @@ class Invocation:
                         and "implementation" not in blocked_phases
                         and existing.get("implementation_digest") == _implementation_digest(self.repository, self.target)):
                     stages = ["validate"]
-        stages.insert(1 if stages[0] == "specify" else 0, "review_spec")
+
+        # Resume trimming (above) only decides where the traversed path *enters*; every node from
+        # "tasks" onward is still declared below so a repair can re-enter "tasks" even when this
+        # run resumed past it (e.g. straight at "validate").
+        include_specify = stages[0] == "specify"
+        entry = stages[1] if include_specify else stages[0]
+        chain = ["review_spec", "plan", "tasks", "implement", "validate"]
         if self.target.implementation:
-            stages.append("review_code")
-        stages.append("ready")
+            chain.append("review_code")
+        chain.append("ready")
+        all_nodes = ["specify", *chain] if include_specify else chain
+        successor = {all_nodes[index]: all_nodes[index + 1] for index in range(len(all_nodes) - 1)}
+        successor["review_spec"] = entry  # the old resume shortcut: skip straight to the entry stage
+        start_node = "specify" if include_specify else "review_spec"
+
         review_artifacts = []
         graph = StateGraph(State)
+
+        def current_iteration() -> int:
+            record = read_change(self.repository.root, required=True).get("graph", {}).get(self.target.id, {})
+            return record.get("repair_iteration", 0)
+
+        def stop(name: str, outcome: str) -> str:
+            """A non-advancing, non-repairable outcome: record it and end the Graph for a human."""
+            status = ("waiting" if outcome == "spec_incomplete" else
+                      "failed" if outcome == "failed" else "blocked")
+            self.host.lifecycle["status"] = status
+            trigger = ("ai-review" if name in {"review_spec", "review_code"} else
+                      "deterministic" if name == "validate" else "ai-assessment")
+            record_transition(self.repository.root, self.target.id, iteration=current_iteration(),
+                **{"from": name, "to": "END"}, trigger=trigger, outcome=outcome,
+                artifact=None, input_digest=None, finding_ids=[], status=status)
+            return END
+
+        def route_review_code(data: dict) -> str:
+            """Blocking code-review findings without a gap: repair once, unless unchanged
+            feedback or the declared iteration limit says otherwise (G2/G3 "AI review")."""
+            if data["outcome"] != "conflicting":
+                return stop("review_code", data["outcome"])
+            reference = next(item for item in data["artifacts"] if item["id"].startswith("review."))
+            verify_artifacts(self.repository.root, reference)
+            reviewed = validate_typed(decode(read_file(self.repository.root, reference["path"]).decode()),
+                                      "concorde-review-result")["data"]
+            blocking = [f for f in reviewed["findings"] if f["severity"] == "blocking"]
+            feedback_digest = digest(sorted((f["contract"], f["problem"], f["location"]["path"],
+                -1 if f["location"]["line"] is None else f["location"]["line"]) for f in blocking))
+            finding_ids = sorted(f["id"] for f in blocking)
+            change = read_change(self.repository.root, required=True)
+            record = change["graph"][self.target.id]
+            common = dict(**{"from": "review_code", "to": "tasks"}, trigger="ai-review", outcome="conflicting",
+                artifact=reference, input_digest=reviewed["input_digest"], finding_ids=finding_ids)
+            if feedback_digest == record["last_feedback_digest"]:
+                self.host.lifecycle["status"] = "waiting"
+                record_transition(self.repository.root, self.target.id, iteration=record["repair_iteration"],
+                    **{**common, "to": "END"}, status="waiting")
+                return END
+            if record["repair_iteration"] >= record["policy"]["max_repair_iterations"]:
+                self.host.lifecycle["status"] = "limit_exhausted"
+                record_transition(self.repository.root, self.target.id, iteration=record["repair_iteration"],
+                    **{**common, "to": "END"}, status="limit_exhausted")
+                return END
+            iteration = record["repair_iteration"] + 1
+            record.update(repair_iteration=iteration, last_feedback_digest=feedback_digest,
+                          repair={"artifact": reference, "iteration": iteration})
+            save_change(self.repository.root, change)
+            record_transition(self.repository.root, self.target.id, iteration=iteration, **common, status=None)
+            return "tasks"
+
         def execute(name):
             def node(state):
                 self.repository = SpecRepository(self.host.project_root, self.host.package_root)
                 if name == "ready":
                     return {"output": self.mark_ready()["data"]}
                 is_review = name.startswith("review_")
+                data = None
                 if is_review:
                     mode = name.removeprefix("review_")
                     enabled = read_change(self.repository.root, required=True)["review_requirements"][self.target.id][mode]
@@ -1650,46 +1770,55 @@ class Invocation:
                         skip(self, mode)
                         reference = read_change(self.repository.root, required=True)["reviews"][self.target.id][mode]["artifact"]
                         review_artifacts.append(reference)
-                        return {"output": self.response(answer=f"{mode} review explicitly skipped.", artifacts=[reference])["data"]}
-                    if current(self, mode) is not None:
+                        data = self.response(answer=f"{mode} review explicitly skipped.", artifacts=[reference])["data"]
+                    elif current(self, mode) is not None:
                         review_artifacts.append(read_change(self.repository.root, required=True)["reviews"][self.target.id][mode]["artifact"])
-                        return {"output": self.response(answer=f"Current {mode} review retained.")["data"]}
-                    if not self.host.coordinated:
+                        data = self.response(answer=f"Current {mode} review retained.")["data"]
+                    elif not self.host.coordinated:
                         progress(self.repository.root, phase=mode + "-review", status="active", invalidate=True)
-                child_capability = "concorde-" + name
-                if is_review:
-                    child_capability = "concorde-review"
-                payload = {"target_id": self.target.id, "task": self.task["task"],
-                           "constraints": self.task.get("constraints", [])}
-                if is_review:
-                    payload["review_mode"] = mode
-                if self.task.get("focus_id"):
-                    payload["focus_id"] = self.task["focus_id"]
-                if self.change_id:
-                    payload["change_id"] = self.change_id
-                child_host = replace(self.host, evidence=[], descriptions=self.host.descriptions,
-                                     lifecycle=self.host.lifecycle, track_gaps=True, defer_ready=name == "validate")
-                result = invoke_capability(self.capability, child_capability, self.configuration,
-                    typed(CAPABILITY_CONTRACTS[child_capability][0], payload), child_host)
-                self.host.evidence.extend(child_host.evidence)
-                if result["output"] is None:
-                    first_code = result["errors"][0]["code"] if result["errors"] else None
-                    if first_code in {"execution_cancelled", "execution_limit"}:
-                        self.host.lifecycle["status"] = (
-                            "cancelled" if first_code == "execution_cancelled" else "limit_exhausted")
-                    raise SpecError(f"{child_capability} blocked: " + canonical(result["errors"]), "child_blocked")
-                data = result["output"]["data"]
-                self.change_id = data["change_id"] or self.change_id
-                self.work_directory = f"{WORK_PATH}/{self.target.id}" if self.change_id else None
-                self.last_context = data["context_id"] or self.last_context
-                self.completed.extend(data["completed_capabilities"])
-                if is_review or name == "implement":
-                    review_artifacts.extend(item for item in data["artifacts"] if item["id"].startswith("review."))
-                self.repository = SpecRepository(self.host.project_root, self.host.package_root)
-                return {"output": data}
+                if data is None:
+                    child_capability = "concorde-" + name
+                    if is_review:
+                        child_capability = "concorde-review"
+                    payload = {"target_id": self.target.id, "task": self.task["task"],
+                               "constraints": self.task.get("constraints", [])}
+                    if is_review:
+                        payload["review_mode"] = mode
+                    if self.task.get("focus_id"):
+                        payload["focus_id"] = self.task["focus_id"]
+                    if self.change_id:
+                        payload["change_id"] = self.change_id
+                    child_host = replace(self.host, evidence=[], descriptions=self.host.descriptions,
+                                         lifecycle=self.host.lifecycle, track_gaps=True, defer_ready=name == "validate")
+                    result = invoke_capability(self.capability, child_capability, self.configuration,
+                        typed(CAPABILITY_CONTRACTS[child_capability][0], payload), child_host)
+                    self.host.evidence.extend(child_host.evidence)
+                    if result["output"] is None:
+                        first_code = result["errors"][0]["code"] if result["errors"] else None
+                        if first_code in {"execution_cancelled", "execution_limit"}:
+                            self.host.lifecycle["status"] = (
+                                "cancelled" if first_code == "execution_cancelled" else "limit_exhausted")
+                        raise SpecError(f"{child_capability} blocked: " + canonical(result["errors"]), "child_blocked")
+                    data = result["output"]["data"]
+                    self.change_id = data["change_id"] or self.change_id
+                    self.work_directory = f"{WORK_PATH}/{self.target.id}" if self.change_id else None
+                    self.last_context = data["context_id"] or self.last_context
+                    self.completed.extend(data["completed_capabilities"])
+                    if is_review or name == "implement":
+                        review_artifacts.extend(item for item in data["artifacts"] if item["id"].startswith("review."))
+                    self.repository = SpecRepository(self.host.project_root, self.host.package_root)
+                if data["outcome"] in {"completed", "ready"}:
+                    route = successor[name]
+                elif name == "review_code":
+                    route = route_review_code(data)
+                else:
+                    route = stop(name, data["outcome"])
+                return {"output": {**data, "_route": route}}
             def observed(state):
+                iteration = current_iteration()
                 self.host.observe("stage_started", capability=self.capability, stage=name,
-                                  invocation_id=self.host.invocation_id)
+                                  invocation_id=self.host.invocation_id, iteration=iteration,
+                                  trigger="ai-review" if name == "tasks" and iteration else "deterministic")
                 try:
                     result = node(state)
                 except Exception:
@@ -1698,16 +1827,24 @@ class Invocation:
                     raise
                 self.host.observe("stage_finished", capability=self.capability, stage=name,
                                   invocation_id=self.host.invocation_id,
-                                  outcome=result["output"].get("outcome"))
+                                  outcome=result["output"].get("outcome"), iteration=current_iteration(),
+                                  trigger="ai-review" if name == "review_code" else "deterministic")
                 return result
             return observed
-        for index, stage in enumerate(stages):
-            graph.add_node(stage, execute(stage))
-            successor = stages[index + 1] if index + 1 < len(stages) else END
-            graph.add_conditional_edges(stage, lambda state, next_stage=successor:
-                next_stage if state["output"]["outcome"] in {"completed", "ready"} else END,
-                {successor: successor, END: END})
-        graph.add_edge(START, stages[0])
+        for name in all_nodes:
+            graph.add_node(name, execute(name))
+        graph.add_edge(START, start_node)
+        for name in all_nodes:
+            if name == "ready":
+                graph.add_edge(name, END)
+            elif name == "review_code":
+                destination = successor["review_code"]
+                graph.add_conditional_edges(name, lambda state: state["output"]["_route"],
+                    {"tasks": "tasks", destination: destination, END: END})
+            else:
+                destination = successor[name]
+                graph.add_conditional_edges(name, lambda state: state["output"]["_route"],
+                    {destination: destination, END: END})
         result = graph.compile().invoke({"output": {}})["output"]
         artifacts = list({item["id"]: item for item in [*review_artifacts, *result["artifacts"]]}.values())
         coverage = []
@@ -1828,7 +1965,12 @@ def _dispatch(capability, configuration, task, host):
 
 
 def run_capability(capability: str, configuration: dict | None, runtime_input: dict, *, host_context: CapabilityHost) -> dict:
-    host = replace(host_context, invocation_id=str(uuid.uuid4()), evidence=[], depth=host_context.depth + 1)
+    # A depth-1 (top-level) invocation never inherits a lifecycle status a prior invocation on
+    # this same host object left behind; nested calls still share the one dict by reference so a
+    # child's cancelled/limit_exhausted outcome keeps propagating to its enclosing loop.
+    lifecycle = {} if host_context.depth == 0 else host_context.lifecycle
+    host = replace(host_context, invocation_id=str(uuid.uuid4()), evidence=[], depth=host_context.depth + 1,
+                  lifecycle=lifecycle)
     record_progress = False
     host.observe("capability_started", capability=capability, invocation_id=host.invocation_id, depth=host.depth)
     result = {"type_id": "concorde-capability-result", "schema_version": 3,

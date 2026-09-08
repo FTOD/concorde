@@ -113,8 +113,24 @@ validation and code review, then verifies readiness. It uses the same public con
 capabilities. `run_reviews` defaults to `true`; `run_reviews=false` records an explicit skip for each
 review mode instead of running it, and cannot cancel a review already required for this change. Every
 invocation ends at ready and never invokes deliver.
-It stops on the first non-successful outcome and preserves the change worktree. A repeat resumes a
-current plan/tasks/implementation phase instead of discarding completed component work.
+It stops on the first non-successful outcome and preserves the change worktree, except that a
+code-owning target's blocking code review first attempts a declared, bounded repair. The only
+automatic revision edge is `review_code -> tasks`: task authoring receives the current completed
+tasks and the blocking `concorde-review-result` as `stage_inputs`, and the resulting repair tasks
+and their implementation are checked and code-reviewed again like any other change. This repair is
+bounded by a declared `max_repair_iterations` policy recorded per target under
+`change["graph"][target_id]["policy"]` in `.concorde/worktree.json`; the same record keeps the
+current `repair_iteration`, the last blocking-feedback fingerprint and an attributed history of
+selected transitions (development.md's "AI and human feedback", G4). Repeated unchanged blocking
+feedback across a repair attempt, or exhausting the declared limit, stops the Graph instead of
+retrying forever: the change `status` becomes `waiting` (a human decision or a Spec/code change is
+needed) or `limit_exhausted` respectively, and the wire `outcome` remains `conflicting`. Elsewhere, a
+Spec gap (`spec_incomplete`) stops the Graph with status `waiting`, a failed deterministic check
+stops it with status `failed`, and another blocking/unsupported outcome stops it with status
+`blocked`. A human directly changing the Spec or the implementation between invocations resets the
+recorded repair count instead of silently continuing a stale repair attempt. Preserving the change
+worktree on a stop and resuming a current plan/tasks/implementation phase on a repeat instead of
+discarding completed component work otherwise remain unchanged.
 Domain implementation coordinates independently selected participating component contexts. The host
 records each author before launch and after success or blocking. Already authored draft Spec bytes
 remain in the candidate when a later component blocks. Cross-component validation runs after every
@@ -241,6 +257,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | `concorde-plan-artifact@1` | A `stage_inputs` entry: produced by plan, consumed by tasks | `{plan}`. |
 | `concorde-implementation-task@1` | A `stage_inputs` entry: produced by tasks, consumed by implement | `{plan, tasks: [{id,target_id,description,acceptance,complete}]}`; implement must return every task with the same identity, marked complete only when its acceptance is met. |
 | `concorde-reflection-selection@1` | A `stage_inputs` entry: produced by reflections-triage, consumed by dev-loop implementation | `{head, records: [{id,path,digest,content}]}`. |
+| `concorde-review-result@1` | A `stage_inputs` entry: produced by code review, consumed by the repair `tasks`/`implement` iteration | The same value published in `concorde-review-response@1.reviews` (see Review types below), re-verified from its stored artifact before reuse; only accompanies a dev-loop's bounded `review_code -> tasks` repair round. |
 
 Unknown fields, an incompatible `type_id`, an unsupported `schema_version`, and an unsafe or
 non-project-relative path are all rejected before any agent launches, with the `TypedDataError`
@@ -343,7 +360,10 @@ summaries are frozen observations and their progress does not invalidate unrelat
 A change's `status` may also become `cancelled` or `limit_exhausted` after an executor outcome of
 the same name (`execution_cancelled`/`execution_limit`), distinguishing a cancelled or time-limited
 agent process from an ordinary `blocked`/`failed` outcome; the candidate is preserved for repair or
-resumption in every case.
+resumption in every case. A development loop stopping for a necessary Spec gap, or for blocking
+code-review feedback that repeats unchanged across a bounded repair attempt, records status
+`waiting` instead of the generic `blocked`: both name a concrete point where a human decision or a
+Spec/code change is needed before the loop can usefully resume.
 
 ## Independent review contract
 

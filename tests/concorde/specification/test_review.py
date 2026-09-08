@@ -563,3 +563,207 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(1, len(list((self.root / ".concorde/reflections/pending").glob("R-*.md"))))
         rejected = self.run_op("concorde-reflections-triage", {**request, "target_id": "module.ledger"})
         self.assertEqual("permission_denied", rejected["errors"][0]["code"])
+
+
+class RepairLoopTests(unittest.TestCase):
+    """R-069: the dev-loop's only automatic revision edge is review_code -> tasks, bounded by
+    the declared max_repair_iterations policy (see capabilities/dev_loop.GRAPH)."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.registry = project(self.root)
+        self.configuration = CONFIGURATION
+        self.task = {"target_id": "service.transfer", "task": "Implement the pure transfer contract"}
+
+    def double(self, callback=None):
+        double = ModelProcessDouble(callback)
+        self.addCleanup(double.runtime_directory.cleanup)
+        return double
+
+    def run_op(self, operation, data=None, callback=None, *, mode="execute", double=None):
+        self.model = double or self.double(callback)
+        self.host = CapabilityHost(self.root, PACKAGE, executor=self.model.executor,
+            allow_primary_worktree=True, mode=mode, routed_target=(data or self.task)["target_id"])
+        return run_capability(operation, self.configuration, typed(operation + "-request", data or self.task),
+                             host_context=self.host)
+
+    @staticmethod
+    def finding(problem="A required daily-limit check is missing.", finding_id="daily-limit-check"):
+        return {"id": finding_id, "severity": "blocking", "target_id": "service.transfer",
+                "document": "specs/send-money.md", "contract": "Pure transfer",
+                "location": {"path": "app/transfer.py", "line": 1},
+                "problem": problem, "affected_task": "Reject invalid amounts"}
+
+    @staticmethod
+    def repair_tasks(counter, snapshot, data):
+        """Give the repair round a task id that never repeats an earlier (historical) id."""
+        if any(item["type_id"] == "concorde-review-result" for item in snapshot["stage_inputs"]):
+            data["tasks"] = [{"id": f"task.transfer.repair.{counter[0]}", "target_id": snapshot["target_id"],
+                "description": "Repair the reported daily-limit defect.",
+                "acceptance": "Valid transfer subtracts; invalid amount or insufficient funds raises ValueError.",
+                "complete": False}]
+
+    def test_blocking_then_clean_repairs_once_and_reaches_ready(self):
+        counter = [0]
+        reviews = {"count": 0}
+        def callback(stage, snapshot, data, cwd):
+            if stage == "code-review":
+                reviews["count"] += 1
+                if reviews["count"] == 1:
+                    data.update(status="findings", findings=[self.finding()], gaps=[])
+            if stage == "tasks":
+                counter[0] += 1
+                self.repair_tasks(counter, snapshot, data)
+        result = self.run_op("concorde-dev-loop", callback=callback)
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("ready", result["output"]["data"]["outcome"])
+        stages = [c["stage"] for c in self.model.calls]
+        self.assertEqual(2, stages.count("implementation"))
+        self.assertEqual(2, stages.count("code-review"))
+        tasks_calls = [c for c in self.model.calls if c["stage"] == "tasks"]
+        self.assertEqual(2, len(tasks_calls))
+        second_inputs = tasks_calls[1]["snapshot"]["stage_inputs"]
+        types = {item["type_id"] for item in second_inputs}
+        self.assertIn("concorde-implementation-task", types)
+        self.assertIn("concorde-review-result", types)
+        implementation_task_input = next(item for item in second_inputs
+            if item["type_id"] == "concorde-implementation-task")
+        self.assertTrue(implementation_task_input["data"]["tasks"])
+        self.assertTrue(all(t["complete"] for t in implementation_task_input["data"]["tasks"]))
+        implement_calls = [c for c in self.model.calls if c["stage"] == "implementation"]
+        self.assertEqual(2, len(implement_calls))
+        repair_implement_types = {item["type_id"] for item in implement_calls[1]["snapshot"]["stage_inputs"]}
+        self.assertIn("concorde-review-result", repair_implement_types)
+        state = read_change(self.root)
+        transitions = state["graph"]["service.transfer"]["transitions"]
+        repairs = [t for t in transitions if t["trigger"] == "ai-review" and t["to"] == "tasks"]
+        self.assertEqual(1, len(repairs))
+        self.assertEqual(["daily-limit-check"], repairs[0]["finding_ids"])
+        self.assertIsNotNone(repairs[0]["artifact"])
+        self.assertEqual(1, len(state["targets"]["service.transfer"]["task_history"]))
+
+    def _reach_unchanged_feedback_waiting(self):
+        counter = [0]
+        def callback(stage, snapshot, data, cwd):
+            if stage == "code-review":
+                data.update(status="findings", findings=[self.finding()], gaps=[])
+            if stage == "tasks":
+                counter[0] += 1
+                self.repair_tasks(counter, snapshot, data)
+        result = self.run_op("concorde-dev-loop", callback=callback)
+        self.assertEqual("blocked", result["status"], result)
+        return result
+
+    def test_unchanged_blocking_feedback_stops_waiting_after_one_repair(self):
+        result = self._reach_unchanged_feedback_waiting()
+        self.assertEqual("conflicting", result["output"]["data"]["outcome"])
+        self.assertEqual("waiting", read_change(self.root)["status"])
+        stages = [c["stage"] for c in self.model.calls]
+        self.assertEqual(2, stages.count("implementation"))
+        self.assertEqual(2, stages.count("code-review"))
+
+    def test_repeated_different_blocking_feedback_stops_at_the_declared_limit(self):
+        review_counter = [0]
+        counter = [0]
+        def callback(stage, snapshot, data, cwd):
+            if stage == "code-review":
+                review_counter[0] += 1
+                data.update(status="findings", gaps=[], findings=[self.finding(
+                    problem=f"Distinct defect variant {review_counter[0]}.",
+                    finding_id=f"defect-{review_counter[0]}")])
+            if stage == "tasks":
+                counter[0] += 1
+                self.repair_tasks(counter, snapshot, data)
+        result = self.run_op("concorde-dev-loop", callback=callback)
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual("conflicting", result["output"]["data"]["outcome"])
+        state = read_change(self.root)
+        self.assertEqual("limit_exhausted", state["status"])
+        stages = [c["stage"] for c in self.model.calls]
+        self.assertEqual(3, stages.count("implementation"))
+        self.assertEqual(3, stages.count("code-review"))
+        self.assertEqual(2, state["graph"]["service.transfer"]["repair_iteration"])
+        self.assertEqual(2, state["graph"]["service.transfer"]["policy"]["max_repair_iterations"])
+
+    def test_spec_gap_in_spec_review_stops_waiting_before_planning(self):
+        def callback(stage, snapshot, data, cwd):
+            if stage == "spec-review":
+                data.update(status="findings", gaps=[{
+                    "question": "Who owns the daily limit?", "blocked_step": "Decide daily-limit admission",
+                    "needed_contract": "The transfer daily-limit owner and admission rule"}],
+                    findings=[{"id": "missing-limit", "severity": "blocking", "target_id": snapshot["target_id"],
+                        "document": "specs/send-money.md",
+                        "contract": "The transfer daily-limit owner and admission rule",
+                        "location": {"path": "specs/send-money.md", "line": 12},
+                        "problem": "A required daily-limit promise is absent.",
+                        "affected_task": "Decide daily-limit admission"}])
+        result = self.run_op("concorde-dev-loop", callback=callback)
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual("spec_incomplete", result["output"]["data"]["outcome"])
+        self.assertEqual("waiting", read_change(self.root)["status"])
+        self.assertNotIn("plan", [c["stage"] for c in self.model.calls])
+
+    def test_admitted_specify_spec_change_does_not_spuriously_reset_the_graph_record(self):
+        def callback(stage, snapshot, data, cwd):
+            if stage == "specify" and snapshot["target_id"] == "service.transfer":
+                document = next(d for d in snapshot["target_spec"] if d["path"] == "specs/send-money.md")
+                data["documents"] = [{"path": "specs/send-money.md",
+                    "content": document["content"] + "\nThe transfer capability documents an additional promise.\n"}]
+        result = self.run_op("concorde-dev-loop", callback=callback)
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("ready", result["output"]["data"]["outcome"])
+        self.assertIn("The transfer capability documents an additional promise.",
+                      (self.root / "specs/send-money.md").read_text())
+        self.assertEqual([], read_change(self.root)["graph"]["service.transfer"]["transitions"])
+        # A second dev-loop resumes without re-authoring; the first run's own admitted Spec change
+        # must not be mistaken for an out-of-band human edit and spuriously reset the record.
+        second = self.run_op("concorde-dev-loop")
+        self.assertEqual("succeeded", second["status"], second)
+        self.assertNotIn("specify", [c["stage"] for c in self.model.calls])
+        record = read_change(self.root)["graph"]["service.transfer"]
+        self.assertEqual([], [t for t in record["transitions"] if t["trigger"] == "human"])
+        # A genuinely human Spec edit between runs still resets the record.
+        spec = self.root / "specs/send-money.md"
+        spec.write_text(spec.read_text() + "\nA human directly edited this Spec.\n")
+        third = self.run_op("concorde-dev-loop")
+        self.assertEqual("succeeded", third["status"], third)
+        record = read_change(self.root)["graph"]["service.transfer"]
+        human_transitions = [t for t in record["transitions"] if t["trigger"] == "human"]
+        self.assertEqual(1, len(human_transitions))
+        self.assertEqual("spec_changed", human_transitions[0]["outcome"])
+
+    def test_human_implementation_edit_resets_the_repair_record(self):
+        self._reach_unchanged_feedback_waiting()
+        before = read_change(self.root)
+        self.assertEqual(1, before["graph"]["service.transfer"]["repair_iteration"])
+        code = self.root / "app/transfer.py"
+        code.write_text(code.read_text() + "\n# a human edited this directly\n")
+        result = self.run_op("concorde-dev-loop")
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("ready", result["output"]["data"]["outcome"])
+        record = read_change(self.root)["graph"]["service.transfer"]
+        self.assertEqual(0, record["repair_iteration"])
+        human_transitions = [t for t in record["transitions"] if t["trigger"] == "human"]
+        self.assertEqual(1, len(human_transitions))
+        self.assertEqual("implementation_changed", human_transitions[0]["outcome"])
+
+    def test_capability_execution_error_during_standalone_code_review_maps_to_execution_limit(self):
+        from concorde.host.agent_executor import CapabilityExecutionError
+        from concorde.host.change_worktree import ensure_change
+        ensure_change(self.root, task=self.task, allow_primary=True)
+        double = self.double()
+        def fail(launch):
+            raise CapabilityExecutionError(
+                "codex process exceeded the Harness loop limit of 10s", None, outcome="limit_exhausted")
+        double.executor = fail
+        result = self.run_op("concorde-review", {**self.task, "review_mode": "code"}, double=double)
+        self.assertEqual("failed", result["status"], result)
+        reviewed = result["output"]["data"]["reviews"][0]["data"]
+        self.assertEqual("incomplete", reviewed["status"])
+        reference = result["output"]["data"]["artifacts"][0]
+        private = json.loads((self.root / reference["path"]).with_suffix(".execution.json").read_text())
+        self.assertEqual("execution_limit", private["failure"]["code"])
+        self.assertIsNone(private["execution"])
+        self.assertEqual("limit_exhausted", read_change(self.root)["status"])

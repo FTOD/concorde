@@ -14,10 +14,11 @@ import uuid
 from dataclasses import asdict, replace
 from pathlib import Path, PurePosixPath
 
-from .change_worktree import git, git_value, read_change, save_change, workspace_identity
+from .change_worktree import git, git_value, progress, read_change, save_change, workspace_identity
 from .typed_data import artifact, canonical, checked_path, typed, validate_typed, verify_artifacts
 from .configuration import load_configuration
 from .agent_model import agent_definition, binding_json, external_agent_name
+from .agent_executor import CapabilityExecutionError
 from .permissions import (EnforcementReceipt, CapabilityExecutionResult, PermissionPolicyError, PolicyBinding,
     build_launch_specification, compile_policy, render_claude_configuration, render_codex_configuration)
 from .contracts import REVIEW_STAGES
@@ -279,7 +280,19 @@ def review(run, mode: str) -> dict:
             # A failed preview has no execution or persistence authority.
             raise
         # Failures remain failures even when the model supplied no findings.
-        code = error.code if isinstance(error, SpecError) else "execution_failed"
+        if isinstance(error, CapabilityExecutionError):
+            code = ("execution_cancelled" if error.outcome == "cancelled" else
+                   "execution_limit" if error.outcome == "limit_exhausted" else "execution_failed")
+            lifecycle_status = ("cancelled" if error.outcome == "cancelled" else
+                                "limit_exhausted" if error.outcome == "limit_exhausted" else "failed")
+            run.host.lifecycle["status"] = lifecycle_status
+            # concorde-review is never mutation-classified (record_progress excludes it), so a
+            # standalone review's own executor failure would otherwise leave the change status
+            # untouched; a cancelled/limit-exhausted executor outcome is host bookkeeping, not a
+            # content judgment a read-only query should withhold.
+            progress(run.repository.root, status=lifecycle_status)
+        else:
+            code = error.code if isinstance(error, SpecError) else "execution_failed"
         reviewed = _empty(run, info, "incomplete", f"Review could not complete ({code}).")
         receipt = getattr(error, "receipt", None)
         reference = _persist(run, reviewed,

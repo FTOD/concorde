@@ -10,6 +10,12 @@ components identified by valid local `concorde-participants` entries, using thei
 IDs, Domain-local responsibilities, selection conditions and relied-upon promises. Define
 observable acceptance rather than guessed implementation details.
 
+When `stage_inputs` contains a `concorde-implementation-task` with completed tasks alongside a
+`concorde-review-result`, this is a bounded repair round: the prior tasks are already fulfilled and
+a code reviewer found blocking defects against them. Return repair tasks that address each blocking
+finding by its contract and location, with new ids that do not repeat any id from the prior task
+list, and do not re-author unrelated already-completed work.
+
 ## Goals
 
 A good task list turns the accepted plan into acceptance tasks an implementation worker can
@@ -20,9 +26,10 @@ component the local `concorde-participants` declarations actually identify.
 
 Consume the exact supplied `concorde-agent-stage-context@1` snapshot: the target's
 `concorde-context-snapshot@1`, with `document_order`, Target Spec and Shared Specs, the task and
-phase, and `stage_inputs` carrying the accepted `concorde-plan-artifact`. This role runs only
-inside a host-bound capability invocation. A revised task list after a rejected proposal arrives as
-a fresh invocation with a fresh snapshot.
+phase, and `stage_inputs` carrying the accepted `concorde-plan-artifact`, plus (for a repair round)
+a `concorde-implementation-task` and a `concorde-review-result`. This role runs only inside a
+host-bound capability invocation. A revised task list after a rejected proposal arrives as a fresh
+invocation with a fresh snapshot.
 
 ## Expected results
 

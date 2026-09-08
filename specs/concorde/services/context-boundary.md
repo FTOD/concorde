@@ -67,7 +67,9 @@ manifest, without discovering root AGENTS.md/CLAUDE.md. The installed root entry
 outer user sessions only. Package update leaves an old binding unchanged and resolution rejects
 `protocol_mismatch` until the developer explicitly accepts the installed version and manifest
 digest in `.concorde/config.json`. Changed bindings require new contexts.
-Stage inputs must be versioned plan, implementation-task or reflection-selection values. Code bytes
+Stage inputs must be versioned plan, implementation-task, reflection-selection or review-result
+values (the last only accompanies a bounded dev-loop code-review repair round: see
+`concorde-dev-loop` in the workflow-host boundary Spec). Code bytes
 are not embedded in a snapshot; implementation and the dedicated read-only code-review phase have
 code references and separate host-issued implementation grants. Spec review has no code references.
 The review host adds a separately typed, target-scoped changes/revision input; ordinary stage_inputs
