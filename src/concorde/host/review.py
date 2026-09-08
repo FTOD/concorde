@@ -227,7 +227,7 @@ def review(run, mode: str) -> dict:
                 workspace_receipt_json=canonical(receipt), workspace_digest=snapshot.id,
                 policy=policy, native_configuration=native, runtime_input_json=canonical(value),
                 capability_configuration_json=canonical(run.configuration), invocation_id=invocation_id)
-            run.host.descriptions.append({"operation": "concorde-review", "phase": phase,
+            run.host.descriptions.append({"capability": "concorde-review", "phase": phase,
                 "context_id": snapshot.id, "input_digest": info["input_digest"],
                 "project_root": str(project), "read_paths": list(policy.read_paths), "write_paths": [],
                 "network": False, "fresh_session": True, "policy_digest": policy.digest})

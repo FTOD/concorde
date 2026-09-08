@@ -20,6 +20,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install Python development dependencies
+        run: |
+          python3 -m pip install uv
+          uv sync --locked --group dev
+
       - name: Build
         run: python3 scripts/concorde.py build
 
@@ -29,13 +34,32 @@ jobs:
       - name: Validate the Spec and package
         run: python3 scripts/concorde.py validate
 
-      - name: Test build, resolver and worktree-affinity contracts
-        run: |
-          python3 -m unittest \
-            tests.concorde.host.unit.test_build \
-            tests.concorde.host.unit.test_prompt_resolver \
-            tests.concorde.host.unit.test_worktree_affinity \
-            tests.concorde.host.unit.test_capability_modules
+      - name: Run the full Python test suite
+        env:
+          PYTHONPATH: src
+        run: .venv/bin/python -m unittest discover -s tests/concorde -t . -p test_*.py
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: docsite/package-lock.json
+
+      - name: Install docsite dependencies
+        run: npm ci --prefix docsite
+
+      - name: Typecheck the docsite
+        run: npm --prefix docsite run typecheck
+
+      - name: Test the docsite
+        run: npm test --prefix docsite
+
+      # Publishes rendered Agent instructions/Wire contracts from generated/docs/*.json and fails
+      # when generated/build-manifest.json is missing or stale, so the docsite never lags the
+      # Concorde build above.
+      - name: Validate the docsite against the current build
+        run: npm --prefix docsite run validate
 
   studio:
     runs-on: ubuntu-latest

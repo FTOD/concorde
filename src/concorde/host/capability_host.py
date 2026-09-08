@@ -333,7 +333,7 @@ class MainInvocation:
                 invocation_id=invocation_id,
             )
             self.host.descriptions.append({
-                "operation": self.capability,
+                "capability": self.capability,
                 "phase": phase,
                 "context_id": snapshot.id,
                 "project_root": str(capsule),
@@ -721,7 +721,7 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
             workspace_receipt_json=canonical(receipt), workspace_digest=snapshot.id, policy=policy,
             native_configuration=native, runtime_input_json=canonical(runtime),
             capability_configuration_json=canonical(configuration), invocation_id=invocation_id)
-        host.descriptions.append({"operation": MAIN_CAPABILITY, "phase": "topology-author",
+        host.descriptions.append({"capability": MAIN_CAPABILITY, "phase": "topology-author",
             "target_id": target["id"], "context_id": snapshot.id, "project_root": str(capsule),
             "read_paths": list(policy.read_paths), "write_paths": [], "network": False,
             "fresh_session": True, "policy_digest": policy.digest})
@@ -1087,7 +1087,7 @@ class Invocation:
                 workspace_digest=snapshot.id, policy=policy, native_configuration=native,
                 runtime_input_json=canonical(value), capability_configuration_json=canonical(self.configuration),
                 invocation_id=invocation_id)
-            self.host.descriptions.append({"operation": capability, "phase": phase, "context_id": snapshot.id,
+            self.host.descriptions.append({"capability": capability, "phase": phase, "context_id": snapshot.id,
                 "project_root": str(project), "read_paths": list(policy.read_paths),
                 "write_paths": list(policy.write_paths), "network": False, "fresh_session": True,
                 "policy_digest": policy.digest})
@@ -1626,15 +1626,15 @@ class Invocation:
                 self.repository = SpecRepository(self.host.project_root, self.host.package_root)
                 return {"output": data}
             def observed(state):
-                self.host.observe("stage_started", operation=self.capability, stage=name,
+                self.host.observe("stage_started", capability=self.capability, stage=name,
                                   invocation_id=self.host.invocation_id)
                 try:
                     result = node(state)
                 except Exception:
-                    self.host.observe("stage_failed", operation=self.capability, stage=name,
+                    self.host.observe("stage_failed", capability=self.capability, stage=name,
                                       invocation_id=self.host.invocation_id)
                     raise
-                self.host.observe("stage_finished", operation=self.capability, stage=name,
+                self.host.observe("stage_finished", capability=self.capability, stage=name,
                                   invocation_id=self.host.invocation_id,
                                   outcome=result["output"].get("outcome"))
                 return result
@@ -1768,7 +1768,7 @@ def _dispatch(capability, configuration, task, host):
 def run_capability(capability: str, configuration: dict | None, runtime_input: dict, *, host_context: CapabilityHost) -> dict:
     host = replace(host_context, invocation_id=str(uuid.uuid4()), evidence=[], depth=host_context.depth + 1)
     record_progress = False
-    host.observe("capability_started", operation=capability, invocation_id=host.invocation_id, depth=host.depth)
+    host.observe("capability_started", capability=capability, invocation_id=host.invocation_id, depth=host.depth)
     result = {"type_id": "concorde-capability-result", "schema_version": 3,
               "capability_id": capability if capability in CAPABILITY_CONTRACTS else None,
               "invocation_id": host.invocation_id, "mode": host.mode, "status": "blocked",
@@ -1861,7 +1861,7 @@ def run_capability(capability: str, configuration: dict | None, runtime_input: d
         except (ValueError, OSError) as error:
             result["errors"].append({"code": "state_persistence_failed", "field": "", "message": str(error)})
     host_context.evidence.extend(host.evidence)
-    host.observe("capability_finished", operation=capability, invocation_id=host.invocation_id,
+    host.observe("capability_finished", capability=capability, invocation_id=host.invocation_id,
                  depth=host.depth, status=result["status"])
     return result
 
