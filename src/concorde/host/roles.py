@@ -1,88 +1,39 @@
-"""Frozen role identities and their exact effect declarations (proposal section 5).
+"""Derived compatibility projection of the Agent inventory onto the former Role shape.
 
-A ``Role`` names one launchable agent identity: a repository-relative root prompt under
-``prompts/`` plus its exact ``EffectDeclaration``. Roles are Python data, not Markdown front
-matter: the policy compiler consumes ``Role.effects`` directly, and nothing about authority is
-parsed from a Skill body at run time. A role's rendered instructions live at
-``generated/roles/<hyphenated-name>.md``; ``build.load_role_prompt`` is the only host-facing way
-to obtain a role's instructions and effects together, and it verifies build freshness first.
+``roles.py`` used to be the frozen source of role identities and their exact effect declarations.
+Since the Agent model (workflow/agents-and-harnesses.md A1-A4, ``agent_model.py``, the top-level
+``agents/`` package) now owns that identity -- ``Agent = spec.md + Harness + Constraints`` -- this
+module is a thin, derived read-only projection: ``ROLES`` is rebuilt from ``agent_model.load_agents()``
+on every import, one ``Role`` per Agent, so existing importers (``capabilities/*.py`` historically,
+now migrated to import ``agents.<name>`` directly; ``package_validation.py``; test fixtures) keep
+working without change. New code should use ``agent_model.load_agents``/``agent_definition``/
+``resolve_agent`` directly instead of this projection.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .agent_model import agent_key, load_agents
 from .effects import EffectDeclaration
 
 
 @dataclass(frozen=True)
 class Role:
-    """One launchable agent identity: its root prompt and exact authority."""
+    """One launchable agent identity: its root prompt and exact authority.
+
+    Derived from one ``agent_model.Agent``: ``prompt`` is that Agent's ``spec`` path and
+    ``effects`` is its ``constraints.effects``.
+    """
 
     name: str
     prompt: str
     effects: EffectDeclaration
 
 
-COORDINATOR = Role(
-    name="coordinator",
-    prompt="prompts/workflow-host/coordinator.md",
-    effects=EffectDeclaration(("discovery-context",), (), False, "none"),
-)
-READER = Role(
-    name="reader",
-    prompt="prompts/spec-context/reader.md",
-    effects=EffectDeclaration(("spec-context",), (), False, "none"),
-)
-SPEC_AUTHOR = Role(
-    name="spec_author",
-    prompt="prompts/spec-context/spec-author.md",
-    effects=EffectDeclaration(("spec-context",), (), False, "none"),
-)
-CONTEXT_ASSESSOR = Role(
-    name="context_assessor",
-    prompt="prompts/spec-context/context-assessor.md",
-    effects=EffectDeclaration(("spec-context",), (), False, "none"),
-)
-PLANNER = Role(
-    name="planner",
-    prompt="prompts/workflow-host/planner.md",
-    effects=EffectDeclaration(("spec-context",), (), False, "none"),
-)
-TASK_AUTHOR = Role(
-    name="task_author",
-    prompt="prompts/workflow-host/task-author.md",
-    effects=EffectDeclaration(("spec-context",), (), False, "none"),
-)
-IMPLEMENTATION_WORKER = Role(
-    name="implementation_worker",
-    prompt="prompts/workflow-host/implementation-worker.md",
-    effects=EffectDeclaration(("spec-context", "implementation"), ("implementation",), False, "none"),
-)
-SPEC_REVIEWER = Role(
-    name="spec_reviewer",
-    prompt="prompts/workflow-host/spec-reviewer.md",
-    effects=EffectDeclaration(("spec-context",), (), False, "none"),
-)
-CODE_REVIEWER = Role(
-    name="code_reviewer",
-    prompt="prompts/workflow-host/code-reviewer.md",
-    effects=EffectDeclaration(("spec-context", "implementation"), (), False, "none"),
-)
-
 ROLES: dict[str, Role] = {
-    role.name: role
-    for role in (
-        COORDINATOR,
-        READER,
-        SPEC_AUTHOR,
-        CONTEXT_ASSESSOR,
-        PLANNER,
-        TASK_AUTHOR,
-        IMPLEMENTATION_WORKER,
-        SPEC_REVIEWER,
-        CODE_REVIEWER,
-    )
+    name: Role(name=agent.name, prompt=agent.spec, effects=agent.constraints.effects)
+    for name, agent in load_agents().items()
 }
 ROLE_NAMES: tuple[str, ...] = tuple(ROLES)
 
@@ -96,5 +47,4 @@ def external_role_name(role_name: str) -> str:
 def role_key(name: str) -> str:
     """Normalize an external (``concorde-spec-author``) or bare (``spec-author``) role name."""
 
-    key = name[len("concorde-"):] if name.startswith("concorde-") else name
-    return key.replace("-", "_")
+    return agent_key(name)

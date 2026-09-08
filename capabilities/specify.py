@@ -1,12 +1,13 @@
 """Internal stage: author the selected target's complete Spec documents.
 
 Never projected as a user-invocable Skill; the executable boundary has no direct entry for it."""
-from concorde.host import contract_shapes as shapes, roles
+from concorde.host import contract_shapes as shapes
+from agents import spec_author
 
 from . import external_name
 
 CLASS = "stage"
-ROLES = (roles.SPEC_AUTHOR,)
+AGENTS = (spec_author.AGENT,)
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 

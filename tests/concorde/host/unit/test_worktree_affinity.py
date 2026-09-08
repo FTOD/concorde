@@ -109,6 +109,7 @@ class CreateWorktreeBuildsTests(unittest.TestCase):
         self.root.mkdir()
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
+        shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
         _git(self.root, "init", "-q", "-b", "main")
         _git(self.root, "add", "-A")
         _git(self.root, "-c", "user.name=Test", "-c", "user.email=test@example.invalid",

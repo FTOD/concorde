@@ -87,6 +87,11 @@ admitted feedback and selected transitions. It MUST distinguish completed, waiti
 cancelled, failed and limit-exhausted outcomes. A supported resume operation MUST revalidate the
 saved state and feedback against the current task and authority before choosing the next transition.
 
+New development-graph transition records use `source: code-driven|model-driven` for this
+classification. A review-selected repair is model-driven; host stops for unchanged feedback,
+exhausted repair limits or failed checks/execution are code-driven. Existing `trigger` strings
+remain descriptive compatibility labels for historical records, not a second dispatch taxonomy.
+
 Review and check results are evidence about the bound revision. They do not remain valid after
 relevant Agent Specs, Harness configurations, capability contracts, project inputs or policies
 change. Raw logs and native transcripts remain diagnostics unless explicitly admitted as typed
@@ -101,6 +106,5 @@ repair or human-clarification loops. Reflection handling may select an investiga
 graph after a human disposition. Delivery remains a separately authorized deterministic capability.
 
 Existing topic Specs retain their task and authority contracts. The global/lifecycle/stage adapter
-and existing Skill names remain compatible identifiers. A current one-pass stage sequence satisfies
-only the transitions it implements; the presence of a graph library or a function named `loop` does
-not prove compliance with G1–G4.
+and existing Skill names remain compatible identifiers. A stage sequence satisfies only the
+transitions it implements and records; a graph library or a function name proves nothing by itself.

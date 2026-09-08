@@ -229,7 +229,7 @@ prove structural conformance; they do not prove that a Domain's Ontology is sema
 
 The renderer's Profile 8 transaction owns only generated/diagrams/. It validates all sources and
 exact delivery receipts in a candidate directory, then atomically replaces that subdirectory.
-Framework build outputs under generated/protocol, generated/roles and generated/docs survive both
+Framework build outputs under generated/protocol, generated/agents and generated/docs survive both
 success and failure. Legacy diagnostic rendering retains its existing output-root contract.
 Profile 8 follows Archify's automatic legend by default; the legacy hidden-legend convention does
 not constrain new Domain overviews. Rendering requires the project's pinned Archify package.

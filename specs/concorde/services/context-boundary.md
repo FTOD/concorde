@@ -82,12 +82,20 @@ lowercase hexadecimal digits. Arrays may be empty except the admitted nonempty d
 and two Protocol records. Every listed snapshot field is required; unknown fields are rejected
 at typed host admission. The digest covers the complete canonical dictionary except `context_id`.
 
-The only permitted `stage_inputs` are version-1 TypedValues with these payloads:
+Ordinary `stage_inputs` are version-1 TypedValues with these payloads:
 `concorde-plan-artifact` has `plan: nonblank str`; `concorde-implementation-task` has that same
 `plan` and `tasks: list[{id, target_id, description, acceptance, complete}]`, with nonblank strings
 and a boolean `complete`; `concorde-reflection-selection` has `head: nonblank str` and
 `records: list[{id: str, path, digest: sha256, content: str}]`, with nonblank string fields.
 These records are closed objects. A stage input conveys only its declared content, not authority.
+Only `tasks` and `implementation` additionally admit `concorde-review-result@1`, carrying a typed
+review's target/focus, context/input identities, spec/code mode, status, representative tasks,
+findings, gaps, answer, revision and `semantic_completeness: "not_proven"`. Findings have ID,
+blocking/advisory severity, owning target/document, path and nullable line location, contract,
+problem and affected task. Revisions bind Spec/implementation digests and nullable base/head commits.
+The context Service enforces the declared type and phase; the workflow host independently verifies
+current, target-bound code-review repair evidence and the bounded repair policy before supplying
+it. This addition preserves the existing review-driven repair edge without granting raw code reads.
 
 The private snapshots also carry declared `workspace` lifecycle metadata: current and
 primary worktree identities/branches, current change phase/status/outcome, its reported gaps and
@@ -124,7 +132,9 @@ manifest, without discovering root AGENTS.md/CLAUDE.md. The installed root entry
 outer user sessions only. Package update leaves an old binding unchanged and resolution rejects
 `protocol_mismatch` until the developer explicitly accepts the installed version and manifest
 digest in `.concorde/config.json`. Changed bindings require new contexts.
-Stage inputs must be versioned plan, implementation-task or reflection-selection values. Code bytes
+Stage inputs must be versioned plan, implementation-task, reflection-selection or review-result
+values (the last only accompanies a bounded dev-loop code-review repair round: see
+`concorde-dev-loop` in the workflow-host boundary Spec). Code bytes
 are not embedded in a snapshot; implementation and the dedicated read-only code-review phase have
 code references and separate host-issued implementation grants. Spec review has no code references.
 The review host adds a separately typed, target-scoped changes/revision input; ordinary stage_inputs
@@ -222,7 +232,13 @@ nullable typed outer `configuration`, and `input` containing the request. The re
 `concorde-capability-result@3` has the same capability ID, fresh `invocation_id`, mode, nullable
 workspace/output, status and `errors: list[{code, field, message}]`. Successful initialization has
 `status: "succeeded"` and the typed output above; admission failures are blocked and execution
-failures are failed, with no successful output. A required worktree handoff is a blocked result,
+failures are failed, with no successful output. The outer configuration controls this invocation's host
+settings; the propose request's configuration controls the project settings written into the
+proposal. Initialization accepts different valid values for those two roles. Apply uses the
+accepted proposal's configuration bytes, not a replacement from either invocation field. A null
+outer configuration loads existing project settings; before initialization no such settings
+exist, so callers must supply a valid outer configuration or receive `configuration_mismatch`.
+There is no fallback from a null outer value to the request's project configuration. A required worktree handoff is a blocked result,
 not an applied initialization. The host may not silently retry a rejected proposal against new bytes.
 
 The following local provider contract repeats the common selection obligation independently of its
@@ -298,28 +314,62 @@ The registered Shared Spec **Registry selection and value contracts** supplies t
 required constructor, selection, document/type, configuration and error promises without opening
 another target's remaining collection.
 
-## Required reader and asset composition promises
+## Reader Agent and recursive factory
 
-The stage reader consumes the authored fragment `prompts/agents/reader/spec.md` provided by
-`module.agent-execution`, through the asset builder's explicit `@include` expansion. The required
-fragment contract is: read the complete admitted target collection; return task-relevant answers
-and local references without private context or unrelated bodies; report concrete gaps or required
-human decisions; and never invoke provider-native delegation. When the supplied input is
-`concorde-agent-loop-context`, the fragment permits one typed loop action with host-advertised
-children and typed feedback. With a legacy stage context it must honor that stage's declared typed
-result, emit no loop action and request no children. Including this fragment does not make the
-ordinary one-decision reader a recursive runtime or grant it a child-call interface.
+This Service owns `agents/reader/AGENT` in the Python package `agents.reader` and its single authored
+`agents/reader/spec.md`. The same canonical Agent supports an ordinary one-decision stage and an
+explicitly assembled recursive invocation. Legacy stage input receives only its stage result and
+no child interface. `concorde-agent-loop-context@1` admits one typed loop action, advertised child
+contracts and typed feedback. Neither path enables provider-native delegation. The registered
+reader declares `allow_delegation=True`; effective child edges and target access still come from
+the host's graph binding and invocation grant.
 
-The required `module.package-assets` builder expands the explicit include's worker body, retains
-its source identity in build provenance and rejects stale rendered instructions. The fragment's
-implementation belongs to its provider; this Service's local contract specifies its required
-behavior and how the stage reader composes it.
+```python
+agents.reader.runtime(project_root, package_root, target_id, *, integration="codex", executor=None,
+                      executor_reference=None, limits=None, cancelled=lambda: False) -> AgentRuntime
+```
 
-The Protocol manifest consumes `generated/protocol/schemas.json` as an asset produced from the
-wire provider's registered schemas. Its required `module.wire-contracts` producer contract is
-stable type IDs, exact versioned closed payload/envelope schemas and self-contained local
-definitions, with additive recursive Agent transport types at version 1. Schema export belongs to
-that provider. This Service binds and verifies the complete manifest and asset byte digests via
-the admitted repository constructor; it does not synthesize or reinterpret the schema inventory.
-A missing or mismatched generated schema asset must therefore prevent context construction with
-`protocol_mismatch`, even though its raw bytes are not part of every target's cognitive snapshot.
+The factory requires a nonblank target ID and codex/claude integration. It loads the reader through
+`module.package-assets.load_agent(package_root, "reader")`, whose result supplies `.body: str`
+and an immutable, current `.binding: AgentBinding` (the admitted runtime Shared Spec defines that
+record). It creates a fixed-target, explicit self-edge graph node named `reader`, with eight local
+steps. It accepts typed `concorde-agent-task@1` data `{task: nonblank str, target_id: nonblank str}`
+and returns `concorde-agent-answer@1` data `{answer: nonblank str}`. A mismatched task target is
+rejected before target context resolution. The resolver passes the loaded instruction body and
+actual task to the existing complete-context service and rechecks build freshness on every call.
+No authority or execution is created by constructing this factory result.
+
+The required execution collaborator supplies
+`RuntimeAgent(agent: Agent, decide, package_root: Path, targets: frozenset[str],
+delegates: frozenset[str], decision_reference: str, input_type="concorde-agent-task",
+result_type="concorde-agent-answer", max_steps=8, binding: AgentBinding|None=None)` and
+`AgentRuntime(nodes, resolver, *, limits=AgentLimits(), cancelled=callback)`. The node is a graph
+binding of the canonical Agent, not a new definition model; the callback reference identifies the
+native integration and executor configuration. The native adapter consumes one private frame and
+returns a typed loop decision. It uses the supplied canonical binding and rendered prompt in the
+existing process executor, verifies native receipts, and restricts execution to a private
+read-only context capsule. The callback interface for an injected executor is
+`executor(launch: LaunchSpecification, *, deadline: float) -> CapabilityExecutionResult`; deadline
+is absolute on `time.monotonic()` and must bound its preflight and execution. Injection requires a
+nonblank versioned `executor_reference`; omission or invalid configuration raises `ValueError`.
+The default executor uses deadline-bound runner/probe callbacks, never a permissive retry.
+
+`AgentLimits(max_calls=16, max_depth=4, max_decisions=64, timeout_seconds=300)` has positive integer
+counts except depth may be zero, and a positive finite timeout; `limits=None` uses these defaults.
+An enclosing host invokes the returned runtime with `AgentGrant(targets: frozenset[str],
+agents: frozenset[str])`; its `invoke(agent_id, typed_input, grant)` returns `AgentRun(result, events)`.
+The frozen result has invocation/parent/Agent identities, outcome, nullable serialized typed
+`value_json`, stable nullable `error` and nullable serialized typed interruption `details_json`.
+Outcomes distinguish completed, spec_incomplete, waiting, cancelled, failed, limit_exhausted and
+rejected. Only completed has a value. Gaps/waiting use `concorde-agent-interruption@1`
+`{gaps, decision}`; each gap has question/blocked_step/needed_contract/target_id/context_id matching
+its snapshot, and waiting has only a nonblank decision. Events are host-only admission/decision/
+return evidence. The execution collaborator enforces explicit edges, inherited target/Agent
+allowlists, immutable contexts, and shared and per-Agent deadlines. Failed/rejected children are
+bounded feedback; cancellation or exhaustion terminates ancestors. Native cancellation and timeout
+classifications are retained. No persistent resume or parallel scheduling is implied.
+
+The Protocol schema asset is produced by the wire provider from its registered schemas: stable
+IDs, exact closed versioned payloads and self-contained local definitions. This Service verifies
+manifest/asset byte binding through the repository constructor rather than reconstructing schema
+export. Missing assets prevent construction; digest mismatches report `protocol_mismatch`.

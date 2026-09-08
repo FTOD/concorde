@@ -13,8 +13,9 @@
 The registered Shared Spec **Agents and Harnesses** defines A4 for this Module. Effective authority
 MUST be a subset of the Agent definition's constraints and the host's invocation grant, including
 admitted capability and tool use as well as file, process, network and credential effects. Resource
-availability in a Harness is not permission. The native policy APIs below remain compatibility
-contracts and must be evaluated against that complete boundary.
+availability in a Harness is not permission. `compile_policy` compiles the Agent's declared
+`EffectDeclaration` against a host-supplied, narrowing `PolicyBinding`, so the native policy APIs
+below can only produce a policy at or under that complete Agent authority boundary, never beyond it.
 
 The trusted calling host, rather than `compile_policy`, admits an Agent definition against an
 invocation grant. The compiler does not accept `AgentGrant` or select a child Agent. For the initial
@@ -55,7 +56,7 @@ render_codex_configuration(policy: NormalizedPolicy, *, native_enforcement: bool
 finalize_codex_configuration(configuration: CodexLaunchConfiguration, runtime_bootstrap: tuple[RuntimeBootstrapFile, ...]) -> CodexLaunchConfiguration
 render_claude_configuration(policy: NormalizedPolicy, *, native_enforcement: bool, outer_sandbox: str | None=None) -> ClaudeLaunchConfiguration
 compare_effective_boundaries(first: NativeLaunchConfiguration, second: NativeLaunchConfiguration) -> bool
-build_launch_specification(*, capability: str, stage: str, occurrence: int, role: str, integration: Literal['codex', 'claude'], agent: str, project_root: str, request: str, prompt: str, prior_results: tuple[str, ...], workspace_receipt_json: str, workspace_digest: str, policy: NormalizedPolicy, native_configuration: NativeLaunchConfiguration, runtime_input_json: str | None=None, capability_configuration_json: str | None=None, invocation_id: str | None=None) -> LaunchSpecification
+build_launch_specification(*, capability: str, stage: str, occurrence: int, role: str, integration: Literal['codex', 'claude'], agent: str, project_root: str, request: str, prompt: str, prior_results: tuple[str, ...], workspace_receipt_json: str, workspace_digest: str, policy: NormalizedPolicy, native_configuration: NativeLaunchConfiguration, runtime_input_json: str | None=None, capability_configuration_json: str | None=None, invocation_id: str | None=None, agent_binding_json: str | None=None) -> LaunchSpecification
 finalize_launch_specification(specification: LaunchSpecification, runtime_bootstrap: tuple[RuntimeBootstrapFile, ...]) -> LaunchSpecification
 ```
 

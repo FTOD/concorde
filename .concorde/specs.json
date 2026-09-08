@@ -150,7 +150,8 @@
       "title": "Spec contexts",
       "documents": [
         "specs/concorde/services/context-boundary.md",
-        "specs/concorde/shared/registry-contracts.md"
+        "specs/concorde/shared/registry-contracts.md",
+        "specs/concorde/shared/agent-runtime-contracts.md"
       ],
       "scope_parent": null,
       "component_parent": null,
@@ -164,7 +165,10 @@
         "src/concorde/specification/validation.py",
         "prompts/protocol",
         "protocol/manifest.json",
-        "prompts/spec-context"
+        "prompts/spec-context",
+        "agents/reader",
+        "agents/spec_author",
+        "agents/context_assessor"
       ],
       "features": [
         {
@@ -231,7 +235,14 @@
         "src/concorde/host/roles.py",
         "src/concorde/host/studio.py",
         "src/concorde/host/studio_client.py",
-        "scripts/development/studio.py"
+        "scripts/development/studio.py",
+        "agents/coordinator",
+        "agents/planner",
+        "agents/task_author",
+        "agents/implementation_worker",
+        "agents/spec_reviewer",
+        "agents/code_reviewer",
+        "src/concorde/host/agent_model.py"
       ],
       "features": [
         {
@@ -481,8 +492,7 @@
         "src/concorde/host/agent_executor.py",
         "src/concorde/host/agent_runtime.py",
         "src/concorde/host/native_agent.py",
-        "src/concorde/agents",
-        "prompts/agents/reader/spec.md"
+        "src/concorde/host/harness.py"
       ],
       "features": [],
       "apis": [
@@ -548,7 +558,8 @@
         "src/concorde/host/prompt_resolver.py",
         "src/concorde/host/effects.py",
         "skills",
-        "capabilities/__init__.py"
+        "capabilities/__init__.py",
+        "agents/__init__.py"
       ],
       "features": [],
       "apis": [

@@ -27,34 +27,35 @@ describe('hasDocsProjections', () => {
     expect(hasDocsProjections(root)).toBe(false);
   });
   it('is true once both generated/docs files exist', () => {
-    putDocs({skills: [], roles: []}, {});
+    putDocs({skills: [], agents: []}, {});
     expect(hasDocsProjections(root)).toBe(true);
   });
 });
 
 describe('loadInstructionsProjection and loadWireProjection', () => {
   it('read exactly the generated/docs JSON files, rejecting unsafe paths like every other safeRead call', () => {
-    putDocs({skills: [{name: 'concorde-main', description: 'Global entry.', capability: 'main', body: 'Body text.'}], roles: []},
+    putDocs({skills: [{name: 'concorde-main', description: 'Global entry.', capability: 'main', body: 'Body text.'}], agents: []},
       {'concorde-main-request': {type: 'object'}});
     expect(loadInstructionsProjection(root)).toEqual({
-      skills: [{name: 'concorde-main', description: 'Global entry.', capability: 'main', body: 'Body text.'}], roles: [],
+      skills: [{name: 'concorde-main', description: 'Global entry.', capability: 'main', body: 'Body text.'}], agents: [],
     });
     expect(loadWireProjection(root)).toEqual({'concorde-main-request': {type: 'object'}});
   });
 });
 
 describe('renderInstructionsPage', () => {
-  it('opens with the projection note and renders every Skill and role', () => {
+  it('opens with the projection note and renders every Skill and Agent', () => {
     const page = renderInstructionsPage({
       skills: [{name: 'concorde-main', description: 'Global entry.', capability: 'main', body: 'Invoke this capability.'}],
-      roles: [{name: 'concorde-coordinator', instructions: 'Act only as the coordinator.', sources: ['prompts/workflow-host/coordinator.md']}],
+      agents: [{name: 'concorde-coordinator', spec: 'agents/coordinator/spec.md', harness: 'discovery-capsule', instructions: 'Act only as the coordinator.', sources: ['agents/coordinator/spec.md']}],
     });
     expect(page.startsWith('# Agent instructions')).toBe(true);
     expect(page).toContain(PROJECTION_NOTE);
     expect(page).toContain('concorde-main');
     expect(page).toContain('Invoke this capability.');
     expect(page).toContain('concorde-coordinator');
-    expect(page).toContain('prompts/workflow-host/coordinator.md');
+    expect(page).toContain('agents/coordinator/spec.md');
+    expect(page).toContain('discovery-capsule');
     expect(page).toContain('Act only as the coordinator.');
   });
 });

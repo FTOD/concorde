@@ -1,9 +1,9 @@
-"""Deterministic rendering of prompt-sourced roles and skills (proposal section 8).
+"""Deterministic rendering of prompt-sourced Agents and skills (proposal section 8).
 
-The build renders the role and skill projections from ``prompts/``/``skills/`` sources into
-``generated/`` and, for skills, directly into ``.claude/skills/<name>/SKILL.md`` and
+The build renders the Agent and skill projections from ``agents/``/``prompts/``/``skills/``
+sources into ``generated/`` and, for skills, directly into ``.claude/skills/<name>/SKILL.md`` and
 ``.agents/skills/<name>/SKILL.md``. After Stage B1 these rendered files are the only instruction
-source the host and the agent runtimes consume: ``run_capability`` and ``load_role_prompt`` verify
+source the host and the agent runtimes consume: ``run_capability`` and ``load_agent`` verify
 build freshness before using them and fail closed with ``BuildError(code="stale_build")`` when the
 recorded sources have drifted. The build must be byte-identical across repeated runs and must not
 perform any network or process I/O.
@@ -17,22 +17,33 @@ import json
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from ..frontmatter import FrontMatterError, parse_document
 from .effects import EffectDeclaration
 from .typed_data import json_schema
-from .prompt_resolver import PromptResolverError, find_unreachable_prompts, resolve_role_prompt, resolve_skill_source
-from .roles import ROLES, role_key
+from .prompt_resolver import (
+    PromptResolverError,
+    find_unreachable_prompts,
+    resolve_agent_spec,
+    resolve_role_prompt,
+    resolve_skill_source,
+)
+from .agent_model import agent_definition, load_agents, resolve_agent
+
+if TYPE_CHECKING:
+    from .agent_model import AgentBinding
 
 
 @dataclass(frozen=True)
 class SkillPrompt:
-    """One role's rendered instructions and exact authority, resolved from the build.
+    """One Agent's rendered instructions and exact authority, resolved from the build.
 
-    ``load_role_prompt`` is the only place that constructs this. ``kind`` is always ``"skill"``:
-    every role is a host-launched agent identity, never a paired capability (that kind no longer
-    exists after the package cutover).
+    ``load_agent`` is the only place that constructs this. ``kind`` is always ``"skill"``: every
+    Agent is a host-launched identity, never a paired capability (that kind no longer exists after
+    the package cutover). ``binding`` carries the complete reproducible ``AgentBinding`` (A1, A4)
+    when constructed by ``load_agent``; it is ``None`` for a plain ``SkillPrompt`` built elsewhere
+    (for example a rendered Skill, which has no Agent binding).
     """
 
     name: str
@@ -41,6 +52,7 @@ class SkillPrompt:
     kind: Literal["skill"]
     body: str
     effects: EffectDeclaration | None = None
+    binding: "AgentBinding | None" = None
 
 
 class BuildError(ValueError):
@@ -54,9 +66,11 @@ class BuildError(ValueError):
 INTEGRATIONS = ("claude", "codex")
 INTEGRATION_ROOTS = {"claude": ".claude/skills", "codex": ".agents/skills"}
 
-ROLE_ROOTS: dict[str, str] = {
-    role.name.replace("_", "-"): role.prompt for role in ROLES.values()
+AGENT_ROOTS: dict[str, str] = {
+    agent.name.replace("_", "-"): agent.spec for agent in load_agents().values()
 }
+# Compatibility alias for one release: new code should read AGENT_ROOTS.
+ROLE_ROOTS: dict[str, str] = AGENT_ROOTS
 
 SKILL_NAMES: tuple[str, ...] = (
     "concorde-main",
@@ -80,7 +94,7 @@ PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 # though it is not itself a BuildOutput. `generated/` is a shared, ignored root -- another tool
 # may write its own files there (for example diagram renders under `generated/architecture/`),
 # and check_build must never judge locations it does not own.
-GENERATED_OWNED_DIRS: tuple[str, ...] = ("generated/roles", "generated/protocol", "generated/docs")
+GENERATED_OWNED_DIRS: tuple[str, ...] = ("generated/agents", "generated/protocol", "generated/docs")
 GENERATED_OWNED_FILES: tuple[str, ...] = ("generated/build-manifest.json", "generated/langgraph.json")
 
 
@@ -128,13 +142,17 @@ def _skill_metadata(project_root: Path, name: str) -> dict[str, object]:
     return metadata
 
 
-def render_role(project_root: Path, role: str) -> BuildOutput:
+def render_agent(project_root: Path, agent: str) -> BuildOutput:
     try:
-        resolved = resolve_role_prompt(project_root, ROLE_ROOTS[role])
+        resolved = resolve_agent_spec(project_root, AGENT_ROOTS[agent])
     except PromptResolverError as error:
-        raise BuildError(f"role {role}: {error.rule_id}: {error}") from error
+        raise BuildError(f"agent {agent}: {error.rule_id}: {error}") from error
     content = resolved.body.encode("utf-8")
-    return BuildOutput(path=f"generated/roles/{role}.md", content=content, sources=resolved.sources)
+    return BuildOutput(path=f"generated/agents/{agent}.md", content=content, sources=resolved.sources)
+
+
+# Compatibility alias for one release: new code should call render_agent.
+render_role = render_agent
 
 
 def _skill_frontmatter(name: str, description: str, integration: str, capability: str, entrypoint: str) -> str:
@@ -237,11 +255,12 @@ def render_protocol_schemas(project_root: Path) -> BuildOutput:
 
 
 def render_docs_instructions(project_root: Path) -> BuildOutput:
-    """Publish every Skill's rendered body and every role's rendered instructions (proposal §12).
+    """Publish every Skill's rendered body and every Agent's rendered instructions (proposal §12).
 
     A read-only projection for the docsite's "Agent instructions" page: rendered bytes for human
-    browsing, never a second authoring source or an agent-context channel. Each role entry's
-    ``sources`` names the contributing prompt paths straight from its own build manifest entry.
+    browsing, never a second authoring source or an agent-context channel. Each Agent entry's
+    ``sources`` names the contributing prompt paths straight from its own build manifest entry, and
+    ``spec``/``harness`` identify its authored Spec path and bound Harness name (A1, A2).
     """
 
     all_sources: set[str] = set()
@@ -256,16 +275,20 @@ def render_docs_instructions(project_root: Path) -> BuildOutput:
             "body": rendered.content.decode("utf-8"),
         })
         all_sources.update(rendered.sources)
-    roles = []
-    for role in sorted(ROLE_ROOTS):
-        rendered = render_role(project_root, role)
-        roles.append({
-            "name": f"concorde-{role}",
+    agent_definitions = load_agents()
+    agents = []
+    for hyphenated in sorted(AGENT_ROOTS):
+        rendered = render_agent(project_root, hyphenated)
+        definition = agent_definitions[hyphenated.replace("-", "_")]
+        agents.append({
+            "name": f"concorde-{hyphenated}",
+            "spec": definition.spec,
+            "harness": definition.harness.name,
             "instructions": rendered.content.decode("utf-8"),
             "sources": sorted(rendered.sources),
         })
         all_sources.update(rendered.sources)
-    payload = {"skills": skills, "roles": roles}
+    payload = {"skills": skills, "agents": agents}
     content = (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
     return BuildOutput(path="generated/docs/instructions.json", content=content, sources=tuple(sorted(all_sources)))
 
@@ -301,7 +324,7 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
 
 
 def build(project_root: str | Path, integration: str = "all", *, framework_prefix: str = "") -> BuildResult:
-    """Render every role, skill and Studio-graph projection; raise BuildError on any failure."""
+    """Render every Agent, skill and Studio-graph projection; raise BuildError on any failure."""
 
     root = Path(project_root)
     if integration == "all":
@@ -312,8 +335,8 @@ def build(project_root: str | Path, integration: str = "all", *, framework_prefi
         raise BuildError(f"unsupported integration: {integration}")
 
     outputs: list[BuildOutput] = []
-    for role in sorted(ROLE_ROOTS):
-        outputs.append(render_role(root, role))
+    for agent in sorted(AGENT_ROOTS):
+        outputs.append(render_agent(root, agent))
     for name in SKILL_NAMES:
         for one_integration in integrations:
             outputs.append(render_skill(root, name, one_integration, framework_prefix=framework_prefix))
@@ -325,7 +348,7 @@ def build(project_root: str | Path, integration: str = "all", *, framework_prefi
     outputs.append(render_docs_instructions(root))
     outputs.append(render_docs_wire(root))
 
-    roots = (list(ROLE_ROOTS.values()) + list(SKILL_SOURCES.values()) + ["prompts/protocol/principles.md"]
+    roots = (list(AGENT_ROOTS.values()) + list(SKILL_SOURCES.values()) + ["prompts/protocol/principles.md"]
              + [f"prompts/protocol/kinds/{kind}.md" for kind in PROTOCOL_KINDS])
     unreachable = find_unreachable_prompts(root, roots)
     if unreachable:
@@ -510,32 +533,31 @@ def verify_fresh(project_root: str | Path) -> None:
             raise BuildError(f"build source changed since the last build: {relative}", "stale_build")
 
 
-def load_role_prompt(package_root: str | Path, role_name: str) -> SkillPrompt:
-    """Load one role's rendered instructions from the build; verifies freshness first.
+def load_agent(package_root: str | Path, name: str) -> SkillPrompt:
+    """Load one Agent's rendered instructions and complete binding from the build.
 
-    ``role_name`` accepts either the external ``concorde-<hyphenated>`` identity used throughout
-    the host (for example ``concorde-spec-author``) or the bare hyphenated/underscored role key.
+    Verifies freshness first (via ``resolve_agent``). ``name`` accepts either the external
+    ``concorde-<hyphenated>`` identity used throughout the host (for example
+    ``concorde-spec-author``) or the bare hyphenated/underscored Agent name.
     """
 
-    verify_fresh(package_root)
-    key = role_key(role_name)
-    role = ROLES.get(key)
-    if role is None:
-        raise BuildError(f"unknown role: {role_name!r}", "unknown_role")
+    binding = resolve_agent(package_root, name)
     root = Path(package_root)
-    hyphenated = role.name.replace("_", "-")
-    path = root / "generated/roles" / f"{hyphenated}.md"
-    if path.is_symlink() or not path.is_file():
-        raise BuildError(f"no build found at {root}; run the build before using this package", "stale_build")
     try:
-        body = path.read_text(encoding="utf-8")
+        body = (root / binding.instructions_path).read_text(encoding="utf-8")
     except (OSError, UnicodeError) as error:
-        raise BuildError(f"cannot read rendered role {path}: {error}", "stale_build") from error
+        raise BuildError(f"cannot read rendered agent {binding.instructions_path}: {error}", "stale_build") from error
+    hyphenated = binding.agent.replace("_", "-")
     return SkillPrompt(
         name=f"concorde-{hyphenated}",
-        description=f"Concorde {hyphenated} role.",
-        source_path=role.prompt,
+        description=f"Concorde {hyphenated} agent.",
+        source_path=binding.spec_path,
         kind="skill",
         body=body,
-        effects=role.effects,
+        effects=agent_definition(binding.agent).constraints.effects,
+        binding=binding,
     )
+
+
+# Compatibility alias for one release: new code should call load_agent.
+load_role_prompt = load_agent

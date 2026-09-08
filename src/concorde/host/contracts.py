@@ -180,7 +180,7 @@ def schemas() -> dict:
     result["concorde-plan-artifact"] = obj({"plan": STRING})
     result["concorde-implementation-task"] = obj({"plan": STRING, "tasks": array(TASK_ITEM)})
     result["concorde-reflection-selection"] = obj({"head": STRING, "records": array(obj({"id":STRING,"path":PATH,"digest":DIGEST,"content":STRING}))})
-    stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-implementation-task","concorde-reflection-selection")]}
+    stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-implementation-task","concorde-reflection-selection","concorde-review-result")]}
     result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 1},
         "target_id": STRING, "kind": {"enum": ["domain", "service", "module"]}, "focus_id": NULLABLE_ID,
         "phase": STRING, "task": STRING, "constraints": array(STRING),

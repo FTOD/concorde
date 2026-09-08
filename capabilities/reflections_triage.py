@@ -1,11 +1,12 @@
 """Global reflection queue: report status, capture recorded gaps, and investigate, implement,
 merge or close owned reflections."""
-from concorde.host import contract_shapes as shapes, roles
+from concorde.host import contract_shapes as shapes
+from agents import implementation_worker
 
 from . import external_name
 
 CLASS = "global"
-ROLES = (roles.IMPLEMENTATION_WORKER,)
+AGENTS = (implementation_worker.AGENT,)
 USES = ("dev_loop",)
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 

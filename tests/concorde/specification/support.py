@@ -92,7 +92,7 @@ class ModelProcessDouble:
         from concorde.host.permissions import runtime_bootstrap_file
         path=self.runtime_executable;info=path.stat()
         return (runtime_bootstrap_file(path=str(path),sha256='sha256:'+hashlib.sha256(path.read_bytes()).hexdigest(),size=info.st_size,mode=info.st_mode & 0o777,owner=info.st_uid),)
-    def run(self, argv, *, cwd, env, input_text):
+    def run(self, argv, *, cwd, env, input_text, timeout=None):
         schema=json.loads(argv[argv.index('--json-schema')+1]) if '--json-schema' in argv else json.loads(Path(argv[argv.index('--output-schema')+1]).read_text()); properties=schema['properties']
         stage=properties['stage']['const']
         markers=('Complete admitted discovery context and task:\n','Complete provisional target context:\n','Complete admitted context and task:\n')
@@ -101,7 +101,7 @@ class ModelProcessDouble:
         snapshot=(value['data']['snapshot']['data'] if value['type_id'] in {
             'concorde-main-stage-context','concorde-agent-stage-context','concorde-review-stage-context'} else value['data'])
         capability=properties['role']['const']
-        self.calls.append({'stage':stage,'capability':capability,'snapshot':snapshot,'cwd':Path(cwd),'prompt':input_text,'argv':argv})
+        self.calls.append({'stage':stage,'capability':capability,'snapshot':snapshot,'cwd':Path(cwd),'prompt':input_text,'argv':argv,'timeout':timeout})
         if value['type_id']=='concorde-review-stage-context':
             review=value['data']['review']['data']
             self.calls[-1]['review']=review

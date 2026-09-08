@@ -160,6 +160,8 @@ module compiles and checks effective boundaries. Context resolution supplies adm
 knowledge. Package assets render and distribute instruction views with source identity.
 
 Existing wire fields such as `role`, `agent`, `protocol` and `LaunchSpecification` remain their
-documented compatibility contracts. They MUST NOT be reinterpreted as a complete Agent or Harness
-binding without an explicit mapping and the required validation. Missing bindings are implementation
-gaps against A1–A5, not permission to weaken these requirements.
+documented compatibility contracts. The explicit mapping is `agent_binding_json`: a `LaunchSpecification`
+carries the launched Agent's complete resolved `AgentBinding` in this field, and the executor
+verifies it against the actual prompt, Harness, admitted context/result types and policy before
+executing anything. A launch with no binding, or one the executor cannot verify, is refused rather
+than executed.

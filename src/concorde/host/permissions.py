@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 from dataclasses import asdict, dataclass, replace
 from pathlib import PurePosixPath
 from typing import Any, Literal, Mapping
 
+from .agent_model import AgentBinding
 from .effects import EffectDeclaration, PATH_ROLES
 
 
@@ -122,6 +124,7 @@ class LaunchSpecification:
     runtime_input_json: str | None = None
     capability_configuration_json: str | None = None
     invocation_id: str | None = None
+    agent_binding_json: str | None = None
 
 
 @dataclass(frozen=True)
@@ -139,6 +142,7 @@ class EnforcementReceipt:
     completion_schema_version: int
     completion_status: Literal["success", "failed"]
     limitations: str = "none"
+    agent_binding_digest: str = ""
 
 
 @dataclass(frozen=True)
@@ -670,6 +674,7 @@ def build_launch_specification(
     runtime_input_json: str | None = None,
     capability_configuration_json: str | None = None,
     invocation_id: str | None = None,
+    agent_binding_json: str | None = None,
 ) -> LaunchSpecification:
     if native_configuration.integration != integration:
         raise PermissionPolicyError("native configuration integration differs from launch integration")
@@ -721,9 +726,20 @@ def build_launch_specification(
             raise PermissionPolicyError("structured launches cannot carry narrative prior results")
         if not isinstance(invocation_id, str) or not invocation_id:
             raise PermissionPolicyError("structured launch requires a host-issued invocation identity")
+        if not isinstance(agent_binding_json, str) or not agent_binding_json:
+            raise PermissionPolicyError("structured launch requires the resolved Agent binding")
+        decoded_binding = decode(agent_binding_json)
+        expected_fields = {field.name for field in dataclasses.fields(AgentBinding)}
+        if not isinstance(decoded_binding, dict) or set(decoded_binding) != expected_fields:
+            raise PermissionPolicyError("Agent binding does not match the AgentBinding fields")
+        if agent_binding_json != canonical(decoded_binding):
+            raise PermissionPolicyError("structured launch data must use canonical serialization")
         payload["runtime_input"] = runtime_input
         payload["capability_configuration"] = configuration
         payload["invocation_id"] = invocation_id
+        payload["agent_binding"] = decoded_binding
+    elif agent_binding_json is not None:
+        raise PermissionPolicyError("only a structured launch carries an Agent binding")
     return LaunchSpecification(
         capability=capability,
         stage=stage,
@@ -743,6 +759,7 @@ def build_launch_specification(
         runtime_input_json=runtime_input_json,
         capability_configuration_json=capability_configuration_json,
         invocation_id=invocation_id,
+        agent_binding_json=agent_binding_json,
     )
 
 
@@ -777,4 +794,5 @@ def finalize_launch_specification(
         runtime_input_json=specification.runtime_input_json,
         capability_configuration_json=specification.capability_configuration_json,
         invocation_id=specification.invocation_id,
+        agent_binding_json=specification.agent_binding_json,
     )

@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from .agent_executor import AgentProcessExecutor
 from .agent_runtime import AgentFrame, AgentStep, InvalidAgentStep
+from .agent_model import binding_from_json, external_agent_name
 from .effects import EffectDeclaration
 from .permissions import (CapabilityExecutionResult, PolicyBinding, build_launch_specification,
                           compile_policy, render_claude_configuration, render_codex_configuration)
@@ -19,6 +20,7 @@ from ..specification.repository import digest
 
 @dataclass(frozen=True)
 class NativeAgentAdapter:
+    requires_binding = True
     integration: str = "codex"
     executor: object = None
 
@@ -27,6 +29,10 @@ class NativeAgentAdapter:
             raise ValueError("unsupported Agent integration")
 
     def __call__(self, frame: AgentFrame) -> AgentStep:
+        if frame.agent_binding_json is None:
+            raise ValueError("native decisions require the canonical Agent binding")
+        binding = binding_from_json(frame.agent_binding_json)
+        native_agent = external_agent_name(binding.agent)
         deadline = frame.deadline
 
         def remaining():
@@ -43,9 +49,9 @@ class NativeAgentAdapter:
         context_digest = digest(runtime)
         decision_id = str(uuid4())
 
-        def runner(argv, *, cwd, env, input_text):
+        def runner(argv, *, cwd, env, input_text, timeout=None):
             return subprocess.run(argv, cwd=cwd, env=dict(env), input=input_text, text=True,
-                capture_output=True, check=False, timeout=remaining())
+                capture_output=True, check=False, timeout=min(remaining(), timeout) if timeout is not None else remaining())
 
         def probe(integration, executable):
             completed = subprocess.run((executable, "--version"), text=True, capture_output=True,
@@ -57,19 +63,20 @@ class NativeAgentAdapter:
             serialized = canonical(runtime) + "\n"
             (root / "context.json").write_text(serialized, encoding="utf-8")
             policy = compile_policy(EffectDeclaration(("spec-context",), (), False, "none"),
-                PolicyBinding("concorde-agent-loop", "ask", len(frame.feedback), frame.agent_id, frame.agent_id),
+                PolicyBinding("concorde-agent-loop", "ask", len(frame.feedback), native_agent, native_agent),
                 {"spec-context": ("context.json",)})
             renderer = render_codex_configuration if self.integration == "codex" else render_claude_configuration
             native = renderer(policy, native_enforcement=True)
             launch = build_launch_specification(capability="concorde-agent-loop", stage="ask",
-                occurrence=len(frame.feedback), role=frame.agent_id, integration=self.integration,
-                agent=frame.agent_id, project_root=str(root), request="Choose one bounded Agent loop action.",
+                occurrence=len(frame.feedback), role=native_agent, integration=self.integration,
+                agent=native_agent, project_root=str(root), request="Choose one bounded Agent loop action.",
                 prompt=frame.spec, prior_results=(), workspace_receipt_json=canonical({
                     "context_id": context_digest, "source_digest": context_digest, "role_paths": {"spec-context": ["context.json"]}}),
                 workspace_digest=context_digest, policy=policy, native_configuration=native,
                 runtime_input_json=canonical(runtime), invocation_id=decision_id,
                 capability_configuration_json=canonical(typed("concorde-capability-configuration",
-                    {"integration": self.integration, "enforcement": "native"})))
+                    {"integration": self.integration, "enforcement": "native"})),
+                agent_binding_json=frame.agent_binding_json)
             remaining()
             result = (AgentProcessExecutor(runner=runner, version_probe=probe)(launch)
                       if self.executor is None else self.executor(launch, deadline=deadline))
@@ -82,6 +89,7 @@ class NativeAgentAdapter:
                     or receipt.launch_digest != completion.launch_digest
                     or receipt.runtime_bootstrap_digest != completion.runtime_bootstrap_digest
                     or receipt.integration != self.integration or receipt.exit_code != 0
+                    or receipt.agent_binding_digest != binding.digest
                     or receipt.completion_status != "success" or completion.schema_version != 3
                     or completion.capability != launch.capability or completion.stage != launch.stage
                     or completion.occurrence != launch.occurrence or completion.role != launch.role

@@ -147,6 +147,8 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
            for value in state["guidance"].values()) or any(
                not isinstance(value, dict) for value in state["targets"].values()):
         raise SpecError("worktree progress or guidance has an invalid shape", "invalid_worktree_state")
+    if "graph" in state and not isinstance(state["graph"], dict):
+        raise SpecError("worktree graph state has an invalid shape", "invalid_worktree_state")
     return state
 
 
@@ -364,6 +366,52 @@ def progress(root: Path, *, phase: str | None = None, status: str | None = None,
         state["validated_tree"] = None
         state["validation"] = None
     save_change(root, state)
+
+
+def graph_state(root: Path, target_id: str, *, policy: dict, spec_digest: str,
+                implementation_digest: str | None) -> dict:
+    """Create or return this target's dev-loop repair-graph record.
+
+    A human editing the Spec or the implementation directly (outside an admitted repair)
+    invalidates any pending repair count and feedback fingerprint: the record resets to
+    iteration zero and a ``human`` transition is appended, so a stale repair state never
+    silently controls a re-run driven by new human input.
+    """
+
+    change = read_change(root, required=True)
+    graph = change.setdefault("graph", {})
+    record = graph.get(target_id)
+    if record is None:
+        record = {"policy": dict(policy), "spec_digest": spec_digest, "repair_iteration": 0,
+                  "last_feedback_digest": None, "last_implementation_digest": implementation_digest,
+                  "repair": None, "transitions": []}
+        graph[target_id] = record
+    else:
+        spec_changed = record["spec_digest"] != spec_digest
+        implementation_changed = (record["last_implementation_digest"] is not None
+            and implementation_digest is not None
+            and record["last_implementation_digest"] != implementation_digest)
+        if spec_changed or implementation_changed:
+            record.update(spec_digest=spec_digest, repair_iteration=0,
+                          last_feedback_digest=None, repair=None)
+            record["transitions"].append({
+                "iteration": 0, "from": "human", "to": "reset", "trigger": "human",
+                "outcome": "spec_changed" if spec_changed else "implementation_changed",
+                "artifact": None, "input_digest": None, "finding_ids": [], "status": None})
+        record["last_implementation_digest"] = implementation_digest
+    save_change(root, change)
+    return copy.deepcopy(record)
+
+
+def record_transition(root: Path, target_id: str, **fields) -> None:
+    """Append one Graph transition record for this target (G4: attributed selected transitions)."""
+
+    change = read_change(root, required=True)
+    graph = change.setdefault("graph", {})
+    record = graph.setdefault(target_id, {"policy": {}, "spec_digest": None, "repair_iteration": 0,
+        "last_feedback_digest": None, "last_implementation_digest": None, "repair": None, "transitions": []})
+    record["transitions"].append(dict(fields))
+    save_change(root, change)
 
 
 def record_task_gaps(root: Path, target_id: str, task: str, phase: str, gaps, spec_digest: str) -> None:

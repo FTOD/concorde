@@ -8,18 +8,14 @@ from typing import Callable
 from uuid import uuid4
 
 from .typed_data import canonical, decode, json_schema, typed, validate_typed
+from .agent_model import Agent, AgentBinding, agent_definition, binding_json, resolve_agent
+from .harness import HARNESSES
+from .agent_executor import CapabilityExecutionError
 from ..specification.repository import digest
 
 
 class InvalidAgentStep(ValueError):
     """An attested decision cannot be decoded into the Agent step contract."""
-
-
-@dataclass(frozen=True)
-class AgentConstraints:
-    targets: frozenset[str]
-    delegates: frozenset[str]
-    max_steps: int = 8
 
 
 @dataclass(frozen=True)
@@ -86,39 +82,38 @@ class AgentFrame:
     result_schema_json: str
     remaining_seconds: float
     deadline: float
+    agent_binding_json: str | None = None
 
 
 @dataclass(frozen=True)
-class Harness:
-    id: str
+class RuntimeAgent:
+    """A host graph binding to the canonical Agent model, not another Agent definition."""
+
+    agent: Agent
     decide: Callable[[AgentFrame], AgentStep]
-    configuration_json: str
+    package_root: Path
+    targets: frozenset[str]
+    delegates: frozenset[str]
+    decision_reference: str
+    input_type: str = "concorde-agent-task"
+    result_type: str = "concorde-agent-answer"
+    max_steps: int = 8
+    binding: AgentBinding | None = None
 
-    def __post_init__(self):
-        if not isinstance(self.configuration_json, str):
-            raise ValueError("Harness configuration must be serialized JSON")
-        configuration = decode(self.configuration_json)
-        references = {"model_integration", "context_assembly", "control_loop", "state_handling",
-                      "system_environment", "implementation"}
-        catalogs = {"capabilities", "tools", "skills"}
-        if (not isinstance(configuration, dict) or set(configuration) != references | catalogs
-                or any(not isinstance(configuration[key], str) or not configuration[key].strip()
-                       for key in references)
-                or any(not isinstance(configuration[key], list)
-                       or any(not isinstance(item, str) or not item.strip() for item in configuration[key])
-                       or len(configuration[key]) != len(set(configuration[key])) for key in catalogs)):
-            raise ValueError("Harness requires complete configuration references")
-        object.__setattr__(self, "configuration_json", canonical(configuration))
+    @property
+    def id(self) -> str:
+        return self.agent.name
 
+    @property
+    def spec_path(self) -> Path:
+        return self.package_root / self.agent.spec
 
-@dataclass(frozen=True)
-class AgentDefinition:
-    id: str
-    spec_path: Path
-    harness: Harness
-    constraints: AgentConstraints
-    input_type: str
-    result_type: str
+    @property
+    def timeout_seconds(self) -> float:
+        values = [self.agent.harness.loop.timeout_seconds]
+        if self.agent.constraints.limits is not None:
+            values.append(self.agent.constraints.limits.timeout_seconds)
+        return min(values)
 
 
 @dataclass(frozen=True)
@@ -145,14 +140,32 @@ class AgentRuntime:
             raise ValueError("Agent IDs must be unique and nonempty")
         self._specs = {}
         for definition in definitions:
-            constraints = definition.constraints
+            constraints = definition
             if (not isinstance(definition.id, str) or not definition.id.strip()
-                    or not definition.harness.id or not callable(definition.harness.decide)
+                    or not isinstance(definition.agent, Agent) or not callable(definition.decide)
+                    or not isinstance(definition.decision_reference, str) or not definition.decision_reference.strip()
                     or not _names(constraints.targets) or not constraints.targets
                     or not _names(constraints.delegates)
                     or not constraints.delegates <= self._definitions.keys()
                     or type(constraints.max_steps) is not int or constraints.max_steps < 1):
                 raise ValueError("invalid Agent definition or unresolved child binding")
+            agent = definition.agent
+            if (HARNESSES.get(agent.harness.name) != agent.harness
+                    or agent.constraints.effects.writes or agent.constraints.effects.network
+                    or agent.constraints.effects.credentials != "none"
+                    or set(agent.constraints.effects.reads) - set(agent.harness.effects.reads)
+                    or set(agent.constraints.contexts) - set(agent.harness.contexts)
+                    or set(agent.constraints.results) - set(agent.harness.results)
+                    or type(agent.constraints.allow_delegation) is not bool
+                    or definition.input_type not in agent.constraints.contexts
+                    or definition.result_type not in agent.constraints.results
+                    or (definition.delegates and not agent.constraints.allow_delegation)):
+                raise ValueError("runtime binding exceeds the canonical Agent contract")
+            if definition.binding is not None and (agent_definition(agent.name) != agent
+                    or resolve_agent(definition.package_root, agent.name) != definition.binding):
+                raise ValueError("native Agent binding is stale")
+            if getattr(definition.decide, "requires_binding", False) and definition.binding is None:
+                raise ValueError("native decisions require a registered Agent binding")
             path = Path(definition.spec_path)
             if path.name != "spec.md" or path.is_symlink():
                 raise ValueError("Agent requires an authored spec.md")
@@ -181,14 +194,16 @@ class _Tree:
         self.calls = self.decisions = 0
         self.events = []
 
-    def stopped(self):
+    def stopped(self, deadline=None):
         if self.runtime._cancelled():
             return "cancelled"
-        if monotonic() >= self.deadline:
+        if monotonic() >= min(self.deadline, deadline if deadline is not None else self.deadline):
             return "limit_exhausted"
         return None
 
-    def call(self, agent_id, input, grant, parent_id, depth):
+    def call(self, agent_id, input, grant, parent_id, depth, deadline=None):
+        deadline = self.deadline if deadline is None else min(self.deadline, deadline)
+        stopped = lambda: self.stopped(deadline)
         invocation_id = str(uuid4())
 
         def finish(outcome, value=None, error=None, details=None):
@@ -198,7 +213,7 @@ class _Tree:
             self.events.append({"event": "return", **result.wire()})
             return result
 
-        stop = self.stopped()
+        stop = stopped()
         if stop:
             return finish(stop, error=stop)
         limits = self.runtime._limits
@@ -207,7 +222,8 @@ class _Tree:
         definition = self.runtime._definitions.get(agent_id)
         if definition is None or agent_id not in grant.agents:
             return finish("rejected", error="agent_not_admitted")
-        effective = AgentGrant(grant.targets & definition.constraints.targets, grant.agents)
+        deadline = min(deadline, monotonic() + definition.timeout_seconds)
+        effective = AgentGrant(grant.targets & definition.targets, grant.agents)
         try:
             if not effective.targets:
                 raise ValueError("empty target grant")
@@ -231,38 +247,40 @@ class _Tree:
                     and snapshot["target_id"] != admitted_input["data"]["target_id"]):
                 raise ValueError("context target differs from admitted task")
         except Exception:
-            stop = self.stopped()
+            stop = stopped()
             return finish(stop or "rejected", error=stop or "admission_failed")
-        stop = self.stopped()
+        stop = stopped()
         if stop:
             return finish(stop, error=stop)
         self.calls += 1
         input_json, context_json = canonical(admitted_input), canonical(context)
         binding = {"agent_id": agent_id, "spec": self.runtime._specs[agent_id],
-            "harness": definition.harness.id, "harness_configuration": definition.harness.configuration_json,
+            "agent_definition": asdict(definition.agent),
+            "decision_reference": definition.decision_reference,
+            "native_binding": definition.binding.digest if definition.binding else None,
             "input_json": input_json, "context_json": context_json,
             "targets": sorted(effective.targets), "agents": sorted(effective.agents),
-            "delegates": sorted(definition.constraints.delegates),
-            "max_steps": definition.constraints.max_steps,
+            "delegates": sorted(definition.delegates),
+            "max_steps": definition.max_steps,
             "limits": asdict(limits),
             "input_type": definition.input_type, "result_type": definition.result_type}
         self.events.append({"event": "admit", "invocation_id": invocation_id,
             "parent_id": parent_id, "agent_id": agent_id, "depth": depth,
             "binding_digest": digest(binding), "context_id": snapshot["context_id"],
-            "harness_id": definition.harness.id,
-            "harness_configuration_json": definition.harness.configuration_json})
+            "harness_id": definition.agent.harness.name,
+            "harness_configuration_json": canonical(asdict(definition.agent.harness))})
         children = []
-        for child_id in sorted(definition.constraints.delegates & effective.agents):
+        for child_id in sorted(definition.delegates & effective.agents):
             child = self.runtime._definitions[child_id]
-            if not child.constraints.targets & effective.targets:
+            if not child.targets & effective.targets:
                 continue
             children.append({"agent_id": child_id, "input_type": child.input_type,
                 "result_type": child.result_type,
                 "input_schema_json": canonical(json_schema(child.input_type)),
                 "result_schema_json": canonical(json_schema(child.result_type))})
         feedback = []
-        for _ in range(definition.constraints.max_steps):
-            stop = self.stopped()
+        for _ in range(definition.max_steps):
+            stop = stopped()
             if stop or self.decisions >= limits.max_decisions:
                 return finish(stop or "limit_exhausted", error=stop or "decision_limit")
             try:
@@ -270,24 +288,45 @@ class _Tree:
                     return finish("rejected", error="stale_definition")
                 current = validate_typed(self.runtime._resolve_context(definition,
                     decode(input_json), effective), "concorde-context-snapshot")
-                stop = self.stopped()
+                stop = stopped()
                 if stop:
                     return finish(stop, error=stop)
                 if canonical(current) != context_json:
                     return finish("rejected", error="stale_context")
+                if definition.binding is not None:
+                    try:
+                        current_binding = resolve_agent(definition.package_root, definition.agent.name)
+                    except ValueError:
+                        return finish("rejected", error="stale_definition")
+                    if current_binding != definition.binding:
+                        return finish("rejected", error="stale_definition")
+                    instructions = (definition.package_root / definition.binding.instructions_path).read_text()
+                    native_binding = binding_json(definition.binding)
+                else:
+                    instructions, native_binding = self.runtime._specs[agent_id], None
                 frame = AgentFrame(invocation_id, parent_id, agent_id, input_json, context_json,
-                    self.runtime._specs[agent_id], tuple(feedback), canonical(children),
-                    canonical(json_schema(definition.result_type)), self.deadline - monotonic(), self.deadline)
+                    instructions, tuple(feedback), canonical(children),
+                    canonical(json_schema(definition.result_type)), deadline - monotonic(), deadline, native_binding)
                 self.decisions += 1
                 try:
-                    step = definition.harness.decide(frame)
+                    step = definition.decide(frame)
                 except InvalidAgentStep:
-                    stop = self.stopped()
+                    stop = stopped()
                     return finish(stop or "rejected", error=stop or "invalid_step")
+                except CapabilityExecutionError as error:
+                    stop = stopped()
+                    if stop:
+                        return finish(stop, error=stop)
+                    if error.outcome in {"cancelled", "limit_exhausted"}:
+                        return finish(error.outcome, error=error.outcome)
+                    return finish("failed", error="invalid_completion" if error.outcome == "invalid_completion"
+                                  else "execution_failed")
+                except KeyboardInterrupt:
+                    return finish("cancelled", error="cancelled")
             except Exception:
-                stop = self.stopped()
+                stop = stopped()
                 return finish(stop or "failed", error=stop or "execution_failed")
-            stop = self.stopped()
+            stop = stopped()
             if stop:
                 return finish(stop, error=stop)
             try:
@@ -315,12 +354,12 @@ class _Tree:
                 "source": step.source, "action": step.action, "child_agent": step.agent_id})
             if step.action == "complete":
                 return finish(step.outcome, step.value, details=step.details)
-            if step.agent_id not in definition.constraints.delegates or step.agent_id not in effective.agents:
+            if step.agent_id not in definition.delegates or step.agent_id not in effective.agents:
                 feedback.append(AgentResult(str(uuid4()), invocation_id, step.agent_id,
                                             "rejected", None, "delegation_denied"))
                 self.events.append({"event": "return", **feedback[-1].wire()})
             else:
-                feedback.append(self.call(step.agent_id, step.value, effective, invocation_id, depth + 1))
+                feedback.append(self.call(step.agent_id, step.value, effective, invocation_id, depth + 1, deadline))
             if feedback[-1].outcome in {"cancelled", "limit_exhausted"}:
                 return finish(feedback[-1].outcome, error=feedback[-1].error)
         return finish("limit_exhausted", error="step_limit")

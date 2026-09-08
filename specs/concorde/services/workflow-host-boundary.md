@@ -14,14 +14,18 @@ The registered Shared Specs **Agents and Harnesses** and **Agent Graphs, Agent L
 define A1–A4 and G1–G4 for this Service. The host MUST resolve Python Agent definitions, Agent
 `spec.md` sources, Harness configurations and effective constraints before execution. It MUST
 coordinate declared Graph transitions and bounded loops with attributed AI feedback and explicit
-human decisions. Existing role, capability and launch records are adapter contracts; their current
-fields do not by themselves establish the required Agent or Harness bindings.
+human decisions. Agent definitions live under `agents/<name>/`; `resolve_agent` binds each one's
+`spec.md`, registered Harness and Constraints into a reproducible `AgentBinding` that every
+structured launch carries as `agent_binding_json`, and the executor's preflight independently
+reconstructs and verifies that binding — including its declared-effects policy, compiled through a
+narrowing `PolicyBinding` — before any process starts. The wire `role` and `agent` fields remain
+compatibility identifiers derived from the bound Agent's name.
 
 ## feature.workflow.execute
 
 A Capability provides usable or composable functionality under the Agent and Harness contract.
 The existing host adapter implements each registered entry as a Python module declaring launched
-roles, effects, composed entries and typed request/response contracts. In this adapter, rendered
+Agents, effects, composed entries and typed request/response contracts. In this adapter, rendered
 public Skills expose exactly one global or lifecycle capability. Stage capabilities have no Skill and no direct invocation. Every request
 passes through this host. The capability registry is a member of this complete Spec; exact wire
 schemas are code, exported by the build and published by the docsite, and this document states
@@ -91,8 +95,11 @@ replacement is admitted only when every candidate referencing target author retu
 
 No Skill returns context manifests; the context Service is host-internal and
 `describe-policy` mode already previews the exact grants a capability would receive without
-launching an agent or mutating project state. Complete cognitive snapshots never cross the Skill
-result boundary.
+launching an agent or mutating project state. Each previewed stage's description also names the
+bound Agent and Harness identity (`agent`, `harness`, `agent_binding_digest`, `instructions_digest`,
+`loop_timeout_seconds`), so a caller can audit which Agent definition and effective loop timeout a
+launch would use without reading its rendered instructions. Complete cognitive snapshots never cross
+the Skill result boundary.
 
 Authoring returns local document replacements; the host alone applies them. A single-target author
 cannot change a multiply referenced document. Planning runs a separate
@@ -110,8 +117,27 @@ validation and code review, then verifies readiness. It uses the same public con
 capabilities. `run_reviews` defaults to `true`; `run_reviews=false` records an explicit skip for each
 review mode instead of running it, and cannot cancel a review already required for this change. Every
 invocation ends at ready and never invokes deliver.
-It stops on the first non-successful outcome and preserves the change worktree. A repeat resumes a
-current plan/tasks/implementation phase instead of discarding completed component work.
+It stops on the first non-successful outcome and preserves the change worktree, except that a
+code-owning target's blocking code review first attempts a declared, bounded repair. The only
+automatic revision edge is `review_code -> tasks`: task authoring receives the current completed
+tasks and the blocking `concorde-review-result` as `stage_inputs`, and the resulting repair tasks
+and their implementation are checked and code-reviewed again like any other change. This repair is
+bounded by a declared `max_repair_iterations` policy recorded per target under
+`change["graph"][target_id]["policy"]` in `.concorde/worktree.json`; the same record keeps the
+current `repair_iteration`, the last blocking-feedback fingerprint and an attributed history of
+selected transitions (development.md's "AI and human feedback", G4). Repeated unchanged blocking
+feedback is guarded by code: new records carry the formal `source` value `code-driven` or
+`model-driven`, while retaining their descriptive legacy `trigger` label. A repair selected from
+review findings is model-driven; unchanged-feedback and limit stops are code-driven. Repeated unchanged blocking
+feedback across a repair attempt, or exhausting the declared limit, stops the Graph instead of
+retrying forever: the change `status` becomes `waiting` (a human decision or a Spec/code change is
+needed) or `limit_exhausted` respectively, and the wire `outcome` remains `conflicting`. Elsewhere, a
+Spec gap (`spec_incomplete`) stops the Graph with status `waiting`, a failed deterministic check
+stops it with status `failed`, and another blocking/unsupported outcome stops it with status
+`blocked`. A human directly changing the Spec or the implementation between invocations resets the
+recorded repair count instead of silently continuing a stale repair attempt. Preserving the change
+worktree on a stop and resuming a current plan/tasks/implementation phase on a repeat instead of
+discarding completed component work otherwise remain unchanged.
 Domain implementation coordinates independently selected participating component contexts. The host
 records each author before launch and after success or blocking. Already authored draft Spec bytes
 remain in the candidate when a later component blocks. Cross-component validation runs after every
@@ -243,6 +269,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | `concorde-plan-artifact@1` | A `stage_inputs` entry: produced by plan, consumed by tasks | `{plan}`. |
 | `concorde-implementation-task@1` | A `stage_inputs` entry: produced by tasks, consumed by implement | `{plan, tasks: [{id,target_id,description,acceptance,complete}]}`; implement must return every task with the same identity, marked complete only when its acceptance is met. |
 | `concorde-reflection-selection@1` | A `stage_inputs` entry: produced by reflections-triage, consumed by dev-loop implementation | `{head, records: [{id,path,digest,content}]}`. |
+| `concorde-review-result@1` | A `stage_inputs` entry: produced by code review, consumed by the repair `tasks`/`implement` iteration | The same value published in `concorde-review-response@1.reviews` (see Review types below), re-verified from its stored artifact before reuse; only accompanies a dev-loop's bounded `review_code -> tasks` repair round. |
 
 Unknown fields, an incompatible `type_id`, an unsupported `schema_version`, and an unsafe or
 non-project-relative path are all rejected before any agent launches, with the `TypedDataError`
@@ -254,6 +281,7 @@ invocation envelope, and every exported identity appears here at least once with
 | Error code | Meaning |
 | --- | --- |
 | `ambiguous_route` | Main routing found more than one owning target for a capability that requires exactly one; route cross-target work through a Domain instead. |
+| `cancelled` | `CapabilityExecutionError.outcome` when the injected runner raised `KeyboardInterrupt`; the host maps this to the `execution_cancelled` result error code. |
 | `child_blocked` | A composed child capability returned a blocked or otherwise non-successful outcome and stopped the composing capability. |
 | `configuration_mismatch` | The invocation's, a child's, or a native launch's configuration differs from the initialized project settings or the host's own snapshot. |
 | `context_limit` | Main discovery exceeded its bounded expansion-step limit. |
@@ -262,11 +290,14 @@ invocation envelope, and every exported identity appears here at least once with
 | `detached_primary` | The destination (primary) worktree has no attached branch to deliver onto. |
 | `detached_worktree` | A change worktree has no attached branch. |
 | `dirty_primary` | The primary worktree has uncommitted local changes that delivery must preserve rather than discard. |
+| `execution_cancelled` | `run_capability` caught a `CapabilityExecutionError` with `outcome == "cancelled"`; the change status becomes `cancelled` and the candidate is preserved. |
+| `execution_limit` | `run_capability` caught a `CapabilityExecutionError` with `outcome == "limit_exhausted"`; the change status becomes `limit_exhausted` and the candidate is preserved. |
 | `failed_merge_checks` | The verified merge of the candidate into the destination branch failed its configured checks. |
 | `incompatible_contracts` | Shared contracts between participating components disagree and must be reconciled before implementation. |
 | `incompatible_handoff` | A returned identity (context, target, gap, route, or configuration) does not match what the host issued or expects. |
 | `incomplete_change` | Delivery was requested before every authored task for the change was complete. |
 | `incomplete_tasks` | Implementation did not report every exact task as complete. |
+| `invalid_agent_binding` | A named Agent's definition, Harness reference, or Constraints is inconsistent with its registered Harness or the current build manifest. |
 | `invalid_completion` | An agent's or main's returned completion is internally inconsistent with its own declared context or outcome. |
 | `invalid_delivery` | A delivery receipt has an invalid or mismatched identity. |
 | `invalid_entry_target` | The registry's `entry_target` is not a Domain or Service, so main discovery cannot start there. |
@@ -279,6 +310,7 @@ invocation envelope, and every exported identity appears here at least once with
 | `invalid_spec` | An authored Spec document's `concorde-document` context declaration is invalid. |
 | `invalid_worktree_state` | `.concorde/worktree.json` has an invalid identity or schema. |
 | `legacy_attempt` | The worktree still carries an unsupported legacy `.concorde/attempts/` state that must be removed before it can be adopted. |
+| `limit_exhausted` | `CapabilityExecutionError.outcome` when the injected runner raised `subprocess.TimeoutExpired`; the host maps this to the `execution_limit` result error code. |
 | `merge_conflict` | The candidate conflicts with the current destination branch; resolve it in the candidate's own worktree and revalidate. |
 | `missing_change` | Task authoring was requested without a managed change. |
 | `missing_plan` | Task authoring was requested without an authored plan. |
@@ -296,9 +328,9 @@ invocation envelope, and every exported identity appears here at least once with
 | `studio_run_failed` | A Studio-driven capability run did not complete successfully. |
 | `studio_transport_failed` | The Studio client could not reach or exchange messages with the Studio server. |
 | `undeclared_capability` | A capability tried to compose another capability that its own module does not declare in `USES`. |
+| `unknown_agent` | The named Agent has no matching `agents/<name>/` definition. |
 | `unknown_capability` | The named capability is not registered, or a parent capability referenced a capability that does not exist. |
 | `unknown_change` | Delivery named a `change_id` with no registered live worktree or delivery receipt. |
-| `unknown_role` | The named role has no rendered `generated/roles/*.md` projection. |
 | `unknown_type` | A TypedValue's `type_id` does not name a schema the wire module recognizes. |
 | `unsafe_path` | A path escapes the project root, aliases a control path, or crosses a symlink. |
 | `unsupported_target` | The selected target has no registered implementation for the requested code-owning behavior. |
@@ -337,6 +369,13 @@ Every discovery and worker snapshot admits `workspace` lifecycle metadata. Main 
 workspace-status question directly from this metadata; target-behavior answers still use separate
 readers. The current workspace identity and status are rechecked after a stage. Other live worktree
 summaries are frozen observations and their progress does not invalidate unrelated main cognition.
+A change's `status` may also become `cancelled` or `limit_exhausted` after an executor outcome of
+the same name (`execution_cancelled`/`execution_limit`), distinguishing a cancelled or time-limited
+agent process from an ordinary `blocked`/`failed` outcome; the candidate is preserved for repair or
+resumption in every case. A development loop stopping for a necessary Spec gap, or for blocking
+code-review feedback that repeats unchanged across a bounded repair attempt, records status
+`waiting` instead of the generic `blocked`: both name a concrete point where a human decision or a
+Spec/code change is needed before the loop can usefully resume.
 
 ## Independent review contract
 
@@ -492,19 +531,20 @@ the host relies on, independently of implementation imports.
   Ordinary invocations and child stages must equal that snapshot; mismatch stops the transition.
   It neither grants permissions nor silently falls back to caller-provided settings.
 - Package assets (`module.package-assets`): `build(project_root, integration="all", *,
-  framework_prefix="") -> BuildResult` renders every role, Skill and Studio-graph projection from
-  `prompts/`/`skills/`/`capabilities/`; `write_build(...)` also writes them, including
+  framework_prefix="") -> BuildResult` renders every Agent, Skill and Studio-graph projection from
+  `agents/`/`prompts/`/`skills/`/`capabilities/`; `write_build(...)` also writes them, including
   `generated/build-manifest.json`. `check_build(project_root, integration="all") -> (bool,
   tuple[str,...])` renders into a temporary directory and reports every stale or drifted output
   without writing. `verify_fresh(project_root) -> None` raises `BuildError` with code `stale_build`
   when a recorded source has changed since the last build; the host calls it before every top-level
-  invocation except a lifecycle capability. `load_role_prompt(package_root, role_name) -> SkillPrompt`
-  returns one role's rendered body and effect declaration from the current build.
-  `resolve_role_prompt`/`resolve_skill_source(project_root, relative_path) -> ResolvedPrompt` and
+  invocation except a lifecycle capability. `load_agent(package_root, name) -> SkillPrompt` returns
+  one Agent's rendered body, effect declaration, and complete `AgentBinding` from the current build
+  (`load_role_prompt` remains as a compatibility alias). `resolve_agent_spec`/`resolve_role_prompt`/
+  `resolve_skill_source(project_root, relative_path) -> ResolvedPrompt` and
   `find_unreachable_prompts(project_root, roots) -> tuple[str,...]` resolve and check `@include`
   prompt sources, raising `PromptResolverError` on a malformed, unresolved or unreachable source.
-  `validate_package(root: Path) -> list[Finding]` runs the prompt/capability-module/contract/Spec-
-  alignment/build-output checks behind `python -m concorde validate` and `build --check`.
+  `validate_package(root: Path) -> list[Finding]` runs the prompt/capability-module/Agent/contract/
+  Spec-alignment/build-output checks behind `python -m concorde validate` and `build --check`.
   `python -m concorde protocol-manifest [--write] [--bind-project]` reports, accepts, or binds the
   tracked Protocol digest to the current build. The host supplies rendered bodies inline and admits
   only role-specific paths; it does not let the worker reopen the source package.
@@ -570,7 +610,7 @@ This execution view participates in Developer view and feedback through the orch
 ## Recursive Agent host entry
 
 The trusted Python host offers `CapabilityHost.invoke_agent(runtime, agent_id, input, grant)`. It
-requires an installed `AgentRuntime`, a named definition, that definition's typed input and an
+requires an installed `AgentRuntime` graph over canonical Agent definitions, a named node, that definition's typed input and an
 explicit `AgentGrant`; task JSON cannot construct these authority-bearing objects. It returns
 `AgentRun` and retains its events as host evidence. The runtime owns resolution of complete child
 contexts, explicit delegation edges, typed child feedback, fresh native decisions, shared finite
@@ -589,9 +629,10 @@ agents.reader.runtime(project_root, package_root, target_id, *, integration="cod
                       executor_reference=None, limits=None, cancelled=lambda: False) -> AgentRuntime
 ```
 
-The factory installs the named `concorde-recursive-reader` with its authored
-`prompts/agents/reader/spec.md`, an inspectable native Harness configuration, one fixed nonblank
-`target_id`, an explicit self-delegation edge and a local maximum of eight steps. It declares
+The factory installs the canonical `reader` with its authored
+`agents/reader/spec.md`, an inspectable native Harness configuration, one fixed nonblank
+`target_id`, an explicit self-delegation edge and a local maximum of eight steps. This is the same registered Agent used by ordinary reader stages;
+its canonical `Constraints.allow_delegation` permits only the host graph's explicit edges. It declares
 `concorde-agent-task@1` input (`{task: nonblank str, target_id: nonblank str}`) and
 `concorde-agent-answer@1` output (`{answer: nonblank str}`). Each value has the closed envelope
 `{type_id, schema_version: 1, data}`. The factory uses the existing context service to resolve the

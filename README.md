@@ -32,7 +32,8 @@ Spec incomplete, not a search for arbitrary files. See [the authored Concorde Sp
 ## Install and initialize
 
 The installer distributes a deterministic build's output — seven Skills exposing thirteen
-capabilities, nine rendered role instructions, and seven Markdown templates — to Codex or Claude.
+capabilities, nine rendered Agent instructions (from `agents/<name>/spec.md`), and seven Markdown
+templates — to Codex or Claude.
 Check `python scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project, then invoke the paired init entry in an isolated worktree (or use the trusted host's explicit
@@ -261,6 +262,13 @@ capability-module, contract, Spec-alignment and build-output checks. The host re
 capability on a stale build; a freshly created worktree must be built once before an agent can load
 Concorde Skills. After changing `prompts/protocol/principles.md` or a kind definition, accept the
 new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-project` (see above).
+
+Each named Agent is defined under `agents/<name>/`: an authored `spec.md` plus a Python
+`__init__.py` binding it to a registered Harness and its effective Constraints (Agent = `spec.md` +
+Harness + Constraints). The build renders each Agent's instruction view to
+`generated/agents/<hyphenated-name>.md`, traceable back to its `spec.md` source through the build
+manifest; `describe-policy` mode (see above) shows the bound agent, harness and effective loop
+timeout for every stage it previews, alongside its read/write grants.
 
 Root `AGENTS.md`/`CLAUDE.md` bind an agent to the worktree that supplied its project Skills. If work
 targets another worktree, open a new agent there; verify affinity explicitly with:

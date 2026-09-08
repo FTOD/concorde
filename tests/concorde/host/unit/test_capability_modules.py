@@ -65,21 +65,21 @@ class CapabilityModuleContractTests(unittest.TestCase):
             {name for name in capabilities.CAPABILITIES if capabilities.external_name(name) in GLOBAL_CAPABILITIES},
         )
 
-    def test_roles_and_uses_match_dependencies_exactly(self):
-        # dependencies() is the deterministic policy source, historically a flattened mix of role
+    def test_agents_and_uses_match_dependencies_exactly(self):
+        # dependencies() is the deterministic policy source, historically a flattened mix of Agent
         # identities and (for a composing capability) the external names of the capabilities it
-        # composes. A module's own declared (ROLES, USES) must reconstruct it exactly: the roles
+        # composes. A module's own declared (AGENTS, USES) must reconstruct it exactly: the Agents
         # it launches itself, plus the external name of every capability it USES, plus (for a
-        # main-routed capability other than main itself) the coordinator role main already grants.
+        # main-routed capability other than main itself) the coordinator Agent main already grants.
         modules = _modules()
         for name, module in modules.items():
             external = module.EXTERNAL_NAME
-            declared_roles = {"concorde-" + role.name.replace("_", "-") for role in module.ROLES}
+            declared_agents = {"concorde-" + agent.name.replace("_", "-") for agent in module.AGENTS}
             used_names = {capabilities.external_name(used) for used in module.USES}
-            expected = declared_roles | used_names
+            expected = declared_agents | used_names
             if external in MAIN_ROUTED_CAPABILITIES and external != "concorde-main":
                 expected = expected | {"concorde-coordinator"}
-            self.assertEqual(set(dependencies(external)), expected, f"{external}: (ROLES, USES) do not reconstruct dependencies()")
+            self.assertEqual(set(dependencies(external)), expected, f"{external}: (AGENTS, USES) do not reconstruct dependencies()")
 
     def test_uses_matches_the_declared_composition(self):
         expected = {
