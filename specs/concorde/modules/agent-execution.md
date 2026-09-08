@@ -13,8 +13,10 @@
 The registered Shared Spec **Agents and Harnesses** defines A1–A4 for this Module. Execution MUST
 receive a resolved Agent definition binding `spec.md`, Harness and Constraints/Permissions, and
 operate the admitted model integration and local loop. It MUST preserve identity and effective
-resource limits through Capability calls and feedback. The launch APIs below are existing native
-adapter contracts; their presence alone does not establish a complete Agent/Harness implementation.
+resource limits through Capability calls and feedback. The executor's preflight
+reconstructs and verifies the launch's declared `AgentBinding` — prompt, Harness, admitted
+context/result types and policy — before starting any process, so the launch APIs below execute
+only within a complete, checked Agent/Harness implementation.
 
 ## api.execution.execute
 

@@ -89,6 +89,5 @@ repair or human-clarification loops. Reflection handling may select an investiga
 graph after a human disposition. Delivery remains a separately authorized deterministic capability.
 
 Existing topic Specs retain their task and authority contracts. The global/lifecycle/stage adapter
-and existing Skill names remain compatible identifiers. A current one-pass stage sequence satisfies
-only the transitions it implements; the presence of a graph library or a function named `loop` does
-not prove compliance with G1–G4.
+and existing Skill names remain compatible identifiers. A stage sequence satisfies only the
+transitions it implements and records; a graph library or a function name proves nothing by itself.

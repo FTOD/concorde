@@ -13,8 +13,9 @@
 The registered Shared Spec **Agents and Harnesses** defines A4 for this Module. Effective authority
 MUST be a subset of the Agent definition's constraints and the host's invocation grant, including
 admitted capability and tool use as well as file, process, network and credential effects. Resource
-availability in a Harness is not permission. The native policy APIs below remain compatibility
-contracts and must be evaluated against that complete boundary.
+availability in a Harness is not permission. `compile_policy` compiles the Agent's declared
+`EffectDeclaration` against a host-supplied, narrowing `PolicyBinding`, so the native policy APIs
+below can only produce a policy at or under that complete Agent authority boundary, never beyond it.
 
 ## api.permissions.compile
 

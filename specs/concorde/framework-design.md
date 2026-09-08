@@ -37,7 +37,8 @@ One Python module binds those parts. The responsibility Spec defines expected be
 integrates capabilities, tools, Skills, model access, context assembly, control loops, state and
 system environment. The host resolves those bindings for a specific invocation and enforces the
 effective permissions before allowing effects. A rendered prompt is an instruction view of the
-Agent Spec; a role string alone is not the complete Agent definition.
+Agent Spec, produced through `resolve_agent`'s reproducible `AgentBinding`; the wire `role` string
+remains a compatibility identifier derived from that Agent, not the complete Agent definition.
 
 The [Agent and Harness contract](workflow/agents-and-harnesses.md) is authoritative for this required
 model. Agent execution and the permissions module implement its invocation boundary; context
@@ -56,8 +57,9 @@ Current `capabilities/` Python modules and their global/lifecycle/stage classifi
 adapter described by the [orchestration inventory](workflow/ontology.md#graphs-and-supporting-capabilities). Current public
 `SKILL.md` entries expose global and lifecycle capabilities through the project integration. These
 existing mappings remain explicit compatibility contracts; they do not define the whole Capability
-concept or demonstrate that per-Agent Harness bindings already exist. Developer views retain their
-separate publication and viewer interfaces.
+concept. Per-Agent Harness bindings are established separately: each Agent under `agents/` resolves
+through `resolve_agent` into an `AgentBinding`, and the executor's preflight verifies that binding
+before every launch. Developer views retain their separate publication and viewer interfaces.
 
 ## Graphs, Loops and feedback
 

@@ -263,6 +263,13 @@ capability on a stale build; a freshly created worktree must be built once befor
 Concorde Skills. After changing `prompts/protocol/principles.md` or a kind definition, accept the
 new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-project` (see above).
 
+Each named Agent is defined under `agents/<name>/`: an authored `spec.md` plus a Python
+`__init__.py` binding it to a registered Harness and its effective Constraints (Agent = `spec.md` +
+Harness + Constraints). The build renders each Agent's instruction view to
+`generated/agents/<hyphenated-name>.md`, traceable back to its `spec.md` source through the build
+manifest; `describe-policy` mode (see above) shows the bound agent, harness and effective loop
+timeout for every stage it previews, alongside its read/write grants.
+
 Root `AGENTS.md`/`CLAUDE.md` bind an agent to the worktree that supplied its project Skills. If work
 targets another worktree, open a new agent there; verify affinity explicitly with:
 

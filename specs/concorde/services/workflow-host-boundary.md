@@ -14,8 +14,12 @@ The registered Shared Specs **Agents and Harnesses** and **Agent Graphs, Agent L
 define A1–A4 and G1–G4 for this Service. The host MUST resolve Python Agent definitions, Agent
 `spec.md` sources, Harness configurations and effective constraints before execution. It MUST
 coordinate declared Graph transitions and bounded loops with attributed AI feedback and explicit
-human decisions. Existing role, capability and launch records are adapter contracts; their current
-fields do not by themselves establish the required Agent or Harness bindings.
+human decisions. Agent definitions live under `agents/<name>/`; `resolve_agent` binds each one's
+`spec.md`, registered Harness and Constraints into a reproducible `AgentBinding` that every
+structured launch carries as `agent_binding_json`, and the executor's preflight independently
+reconstructs and verifies that binding — including its declared-effects policy, compiled through a
+narrowing `PolicyBinding` — before any process starts. The wire `role` and `agent` fields remain
+compatibility identifiers derived from the bound Agent's name.
 
 ## feature.workflow.execute
 

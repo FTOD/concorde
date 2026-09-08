@@ -125,8 +125,8 @@ Custom stream events are emitted live and retained as JSON in final `events`:
 | Event | Meaning |
 | --- | --- |
 | `capability_started`, `capability_finished` | Top-level and nested host capability invocation, with invocation ID, depth and final status |
-| `stage_started`, `stage_finished`, `stage_failed` | Development-loop stage, including deterministic validation, review skips and readiness |
-| `agent_started`, `agent_finished`, `agent_failed` | Agent executor handoff with capability, stage, role and invocation ID |
+| `stage_started`, `stage_finished`, `stage_failed` | Development-loop stage, including deterministic validation, review skips and readiness; carries `trigger` (`deterministic` or `ai-review` on these events; the persisted `.concorde/worktree.json` graph record also distinguishes `ai-assessment` and `human`) and `iteration`, the repair-loop cycle number for that stage |
+| `agent_started`, `agent_finished`, `agent_failed` | Agent executor handoff with capability, stage, role and invocation ID; the same launch's `agent`, `harness` and `agent_binding_digest` identity is available in the run's persisted `policies` (policy descriptions) |
 
 Use API streaming with `stream_mode: ["custom", "updates"]` to receive these events while a run is
 active. Studio can inspect persisted `events` and `policies` on completion. Agent events describe
