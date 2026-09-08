@@ -28,8 +28,11 @@ No domain flags or positional task arguments are accepted. Configuration is neve
 Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of
 searching other Specs.
 When a mutation starts in the primary worktree, the host prepares a committed-base linked
-worktree and returns a handoff. Open a new agent in the returned worktree before continuing;
-never carry this conversation or its worktree-owned Skills across that boundary. Report Spec gaps
+worktree and returns its identity and a handoff draft; it does not launch the next outer session.
+Follow P10 to start that session automatically with the returned worktree as its initial directory,
+fresh context and its own Skills. Only if automatic startup is unavailable or cannot establish these
+conditions, ask the user to open it manually with the complete copyable prompt. Stop development in
+this conversation; never carry it or its worktree-owned Skill bodies across that boundary. Report Spec gaps
 or blocked execution as returned; do not work around the boundary. Non-implementation agents never
 receive implementation code or raw test logs.
 

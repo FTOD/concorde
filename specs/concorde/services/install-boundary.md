@@ -112,13 +112,15 @@ the active worktree both to own that loaded Skill and to have a fresh build. A s
 result identifies `tool`, `status`, `project_root`, `loaded_worktree`, `integration`, `capability`,
 `surface_match`, and `worktree_head`. An unsafe or missing path, a stale active build, or different
 loaded/active worktree roots return nonzero. Different roots are rejected even when their generated
-bytes currently match. The failure names both worktrees and asks the user to open a new agent in the
-target worktree; updating the loaded/primary checkout is not a substitute. Its existing diagnostic
-channel includes a P10 handoff draft with the target path/branch and explicit unknown task/progress
+bytes currently match. The failure names both worktrees and directs the outer agent to initiate a
+P10 handoff to the target worktree, automatically by default; updating the loaded/primary checkout
+is not a substitute. If automatic startup is unavailable or cannot establish the required isolation,
+the outer agent asks the user to open the session manually with the complete prompt. Its existing
+diagnostic channel includes a P10 handoff draft with the target path/branch and explicit unknown task/progress
 fields for the outer session to complete. A stale build in the same worktree instead asks a
 maintenance session to rebuild; it does not allow a session with the affected Skill body already
 loaded to edit that Skill. The verifier does not read task, patch or conversation artifacts to invent
-a continuation.
+a continuation or launch the successor session itself.
 
 Repository policy requires this verification before project work and after changing worktrees, for
 each distinct owning worktree represented by project Skill paths retained in the conversation.

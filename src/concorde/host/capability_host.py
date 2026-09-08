@@ -1847,7 +1847,8 @@ def run_capability(capability: str, configuration: dict | None, runtime_input: d
                 completion="Complete the accepted task and its required checks; development loops stop at ready. "
                            "Delivery requires the user's separate request from a participating worktree session.")
             raise SpecError("Change worktree prepared at " + workspace["path"]
-                + ". Open a new agent in that worktree.\n\n" + prompt, "worktree_handoff_required")
+                + ". The outer agent must initiate the P10 handoff to a fresh session in that worktree.\n\n"
+                + prompt, "worktree_handoff_required")
         record_progress = mutation and capability != "concorde-deliver" and host.depth == 1
         if mutation and capability != "concorde-deliver":
             change = read_change(host.project_root)
