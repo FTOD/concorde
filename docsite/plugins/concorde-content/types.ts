@@ -44,7 +44,7 @@ export interface SourceDocument {
 
 /**
  * The shared related-feature relation vocabulary (Ontology FR-036/FR-037). The first seven values are
- * the only ones a maintainer may write in front matter `related_features`; `requires` never appears
+ * the only ones a developer may write in front matter `related_features`; `requires` never appears
  * there and is instead derived from interface ownership. Inverse forms (`composed_by`, `refined_by`,
  * `depended_on_by`) normalize to their forward kind during Feature Graph derivation.
  */

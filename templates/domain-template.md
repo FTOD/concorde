@@ -10,31 +10,40 @@
 
 # [Target title]
 
-Stable target ID: [id]. Register this and every other member explicitly; filenames have no meaning.
+Stable target ID: [id]. Save this main Spec as `ontology.md`, register it explicitly, reference
+only this Domain, and keep it main-visible. Other topic documents remain explicit members of this
+Domain's complete Spec collection. File layout is not component composition.
 
-# Domain
+## Scope
 
-A Domain is a business or problem-space scope, independent of the Service/Module component structure.
-Its complete resolved context—Target Spec plus explicitly referenced Shared Specs—explains the system's operation within this scope: meaningful entities,
-relationships, responsibilities, interaction triggers, rules, state transitions, completion, and failure.
-A Domain can describe observable features. It does not own implementation paths. A narrower Domain may
-have a scope parent; participating Services and Modules are a separate relation and can be shared across
-scopes. Shared membership admits only that physical document; parent, participant and co-referencing
-entity collections are not implicit context.
+[Introduce this Domain's purpose, who or what participates, and the outcomes it explains. Prefer
+an overview that establishes overall understanding. Put detailed explanations in the relevant child
+Domain, Service, Module or topic Spec where useful, with links for readers. Expand internal structure
+when it helps explain actual collaborations; no fixed abstraction level or black-box view is required.
+These are writing suggestions, not additional conformance gates.]
 
-To assess completeness, ask what each entity means, who is responsible for each rule, when interactions
-occur, what information crosses them, and how success, failure, and retry affect the business outcome.
-Missing facts block the affected task as Spec incomplete. A Domain's Spec need not reproduce private
-component inventories, but it must contain the promises it uses to explain the system.
+## Ontology
 
-A main coordinator may admit only this Domain's `main_visible` Target Spec and Shared Specs while routing a task. Therefore every child
-Domain, participating Service, or downstream Module that may receive work is named here by stable
-target ID together with its Domain-local responsibility and the condition for selecting it. This is
-a routing view, not inherited access to the downstream Spec.
+[Group entities into meaningful categories. Define each entity type, its meaning and responsibility,
+and name directed relationships within this Domain and with relevant external entities. Briefly
+explain unfamiliar terms where helpful. Using a protocol or modeling system does not automatically
+make all of its internal concepts part of this page's subject. Distinguish modeling concepts from
+physical files when they are relevant to the Domain. Do not replace relationships with a flat glossary.]
+
+## Architecture overview
+
+[Register one Archify JSON source with kind `architecture` and recipe `system-overview`. Explain the
+Domain boundary, the primary collaboration path and relevant external relationships. The docsite
+embeds the accepted diagram on this ontology.md main page. Use Archify System overview, request
+showcase validation, and target generated/diagrams/. Do not invent architecture for unknown facts.]
 
 ## Local promises and interactions
 
-[Define all target-relevant entities, ownership, inputs, outputs, conditions, failure, completion and retry semantics here. Name routable downstream targets by stable ID, responsibility and selection condition. Include every required collaborator contract locally. Do not rely on parent, provider or sibling documents outside the registered collection.]
+[Explain the collaborations, triggers, relied-upon promises, completion, failure and retry behavior
+needed to understand this Domain. Detail can live in other explicitly registered documents rather
+than being repeated on the main page. Name routable targets by stable ID, responsibility and selection
+condition in the main-visible collection. Links guide human readers but do not implicitly admit a
+parent, participant or sibling's remaining Specs into an agent's context.]
 
 ## Participating components
 

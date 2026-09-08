@@ -4,7 +4,7 @@
   "projectName": "concorde",
   "repository": "https://github.com/FTOD/concorde",
   "schema_version": 1,
-  "tagline": "Architecture-aware specification workflows",
-  "title": "Concorde",
+  "tagline": "Concorde Spec Protocol, Skills and verified workflows",
+  "title": "Concorde Framework",
   "url": "https://ftod.github.io"
 }

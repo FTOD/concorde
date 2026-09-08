@@ -6,14 +6,23 @@
 }
 ```
 
-# Workflow host boundary
+# Agent orchestration host boundary
+
+## Required orchestration model
+
+The registered Shared Specs **Agents and Harnesses** and **Agent Graphs, Agent Loops and feedback**
+define A1–A4 and G1–G4 for this Service. The host MUST resolve Python Agent definitions, Agent
+`spec.md` sources, Harness configurations and effective constraints before execution. It MUST
+coordinate declared Graph transitions and bounded loops with attributed AI feedback and explicit
+human decisions. Existing role, capability and launch records are adapter contracts; their current
+fields do not by themselves establish the required Agent or Harness bindings.
 
 ## feature.workflow.execute
 
-A capability is one Python module the host executes. It declares the roles it launches and their
-authority, the capabilities it composes in-process and its typed request and response. Skills are the
-only executable boundary: each Skill is rendered from prompts and exposes exactly one global or
-lifecycle capability. Stage capabilities have no Skill and no direct invocation. Every request
+A Capability provides usable or composable functionality under the Agent and Harness contract.
+The existing host adapter implements each registered entry as a Python module declaring launched
+roles, effects, composed entries and typed request/response contracts. In this adapter, rendered
+public Skills expose exactly one global or lifecycle capability. Stage capabilities have no Skill and no direct invocation. Every request
 passes through this host. The capability registry is a member of this complete Spec; exact wire
 schemas are code, exported by the build and published by the docsite, and this document states
 their promises.
@@ -40,7 +49,7 @@ A mutating request in the primary worktree creates an isolated branch from commi
 returns worktree_handoff_required with its path, branch, base commit and change_id. It does not copy
 uncommitted primary changes or continue the originating agent session in the new worktree. A new
 agent opened in the returned worktree continues the task. The existing error message includes a
-Protocol P10 draft with real worktree identity, submitted task/constraints, preparation/check status
+Framework execution profile P10 draft with real worktree identity, submitted task/constraints, preparation/check status
 and the absolute local state artifact path. Host-created worktrees live in temporary storage and the
 draft labels that lifetime explicitly. Unavailable conversation facts are marked unknown for the
 outer session to complete/localize; these drafts are never admitted as worker context or authority.
@@ -70,11 +79,11 @@ worker results for synthesis. An optional caller target/focus is a routing hint,
 `concorde-main` also owns topology evolution. `design-topology` admits exact registry metadata and
 all three global kind definitions while still withholding direct Module expansion and code. It returns a
 digest-bound candidate registry, local Spec tasks, migration constraints and acceptance conditions;
-no project file changes. `accept-topology` is the first maintainer gate. It rechecks the complete
+no project file changes. `accept-topology` is the first developer gate. It rechecks the complete
 discovery context, starts fresh target-local Spec authors and validates their combined output against
 an in-memory registry/document overlay. Full worker documents are stored only in an ignored,
 before-digest-bound application artifact. The public response exposes its ArtifactRef, not its
-contents. `apply-topology` is the second maintainer gate and atomically applies the exact reviewed
+contents. `apply-topology` is the second developer gate and atomically applies the exact reviewed
 artifact or leaves/restores the project. A stale registry, Protocol, Spec input, application digest
 or invalid final target state blocks mutation.
 Document membership changes require tasks for all retained current/candidate references. A shared
@@ -189,9 +198,9 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-context-snapshot@1` | Every stage capability's frozen input | Carries `target_id`, `kind`, `focus_id`, `phase`, `task`, `constraints`, `protocol_binding`, `protocol`, `document_order`, `target_spec`, `shared_specs`, `instructions`, `stage_inputs`, `implementation_artifacts` (populated only for implementation/code-review) and `workspace`. A changed membership or byte digest is rejected as `stale_context`. |
+| `concorde-context-snapshot@1` | Every stage capability's frozen input | Carries `target_id`, `kind`, `focus_id`, `phase`, `task`, `constraints`, `protocol_binding`, `protocol`, `document_order`, `target_spec`, `shared_specs`, `diagram_sources`, `instructions`, `stage_inputs`, `implementation_artifacts` (populated only for implementation/code-review) and `workspace`. A changed membership or byte digest is rejected as `stale_context`. |
 | `concorde-agent-stage-context@1` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@1, change_id, expected_artifacts}`. |
-| `concorde-agent-stage-result@1` | Worker to host, the completion | `{context_id, outcome, answer, gaps, documents, plan, tasks, reflection_findings}`; `documents`/`plan`/`tasks`/`reflection_findings` are populated only by the phase that produces them. A mismatched `context_id` is rejected as `incompatible_handoff`. |
+| `concorde-agent-stage-result@1` | Worker to host, the completion | `{context_id, outcome, answer, gaps, documents, diagrams?, plan, tasks, reflection_findings?}`; `documents`/`diagrams`/`plan`/`tasks`/`reflection_findings` are populated only by the phase that produces them. A mismatched `context_id` is rejected as `incompatible_handoff`. |
 
 ### Review types
 
@@ -212,8 +221,8 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | `concorde-main-worker-result@1` | Fresh reader/worker to main, for synthesis | `{target_id, focus_id, context_id, outcome, answer, gaps}`; never carries raw Spec bodies back into main cognition. |
 | `concorde-topology-design@1` | design-topology's output, embedded in the main stage result | `{summary, registry, spec_tasks (nonempty), migration_constraints, acceptance (nonempty)}`. |
 | `concorde-topology-proposal@1` | design-topology's response, and accept-topology's request | `{proposal_id, base_registry_digest, protocol_binding, context_id, discovered_targets (nonempty), task, constraints, target_hint, focus_hint, design: concorde-topology-design@1, workspace}`; a stale `base_registry_digest` or `protocol_binding` is rejected as `stale_proposal`. |
-| `concorde-topology-author-context@1` | Host to target-local Spec author, during accept-topology | `{context_id, base_registry_digest, target, task, protocol_binding, protocol, candidate_document_references, current_document_order, target_spec, shared_specs, instructions, workspace}`. |
-| `concorde-topology-author-result@1` | Author to host, the completion | `{context_id, target_id, outcome, answer, gaps, documents}`. |
+| `concorde-topology-author-context@1` | Host to target-local Spec author, during accept-topology | `{context_id, base_registry_digest, target, task, protocol_binding, protocol, candidate_document_references, current_document_order, target_spec, shared_specs, diagram_sources, instructions, workspace}`. |
+| `concorde-topology-author-result@1` | Author to host, the completion | `{context_id, target_id, outcome, answer, gaps, documents, diagrams?}`. |
 | `concorde-topology-application@1` | Host-private, produced by accept-topology and consumed by apply-topology | `{application_id, topology_proposal: concorde-topology-proposal@1, base_registry_digest, protocol_binding, files (nonempty)}`; the public response exposes only its ArtifactRef, never these bytes. |
 
 ### Project proposal
@@ -521,3 +530,33 @@ context-only retries and are not calculated by the caller. Status without a mana
 an empty list. record-gaps requires a nonempty explicit list and reflection_ids=[]: omitted/empty
 lists never mean all; unknown or resolved IDs fail as stale_reference. A repeated capture returns
 the existing link. The public metadata is sufficient for selection without reading control files.
+
+## Diagram sources in Spec authoring and review
+
+The host supplies only registered diagram bytes as path/digest/content/declaration records in diagram_sources.
+Ordinary Spec authors may return diagram replacements for their target's registered paths, in the
+optional diagrams array; other stages cannot author them. Source kind/title and generated output
+constraints are validated together with Markdown, and a failure rolls back the complete change.
+Shared diagram changes use coordinated topology authoring, with identical returned bytes from all
+references. Topology completion returns every accepted Markdown member and diagram source in
+descriptor order, including new Domain ontology.md and System overview sources. A blocked author
+returns no replacements. The prepared artifact and application checks bind that exact complete set.
+
+Diagram membership and bytes contribute to target revision, context freshness and review identity.
+Spec review receives their scoped changes; findings may locate a diagram while attributing the
+missing promise to a registered Markdown Spec. A generated HTML file is never an authoring input or
+permission grant. Publication separately performs Archify rendering and visual acceptance.
+
+## Optional Studio execution view
+
+The Studio adapter starts or observes the same CapabilityHost used by CLI and Skill invocations.
+Its generated graph configuration exposes one graph per Skill; internal stages appear in execution
+events without gaining direct public entries. Studio receives an invocation wrapper containing the
+existing schema-3 invocation and an optional expected_workspace assertion. Project and package
+roots remain host-bound; the assertion does not select another workspace.
+
+The final state exposes the unchanged capability result envelope, admitted policy descriptions and
+stage/process events. Pausing or replaying a run does not waive permissions, checks or the worktree
+lifecycle, and replay may execute effects again. Ordinary local CLI and Skill calls do not require
+a Studio server. The source-checkout setup and debugging guide is scripts/development/STUDIO.md.
+This execution view participates in Developer view and feedback through the orchestration host.

@@ -653,7 +653,7 @@ def _bucket_counts_excluding(parsed: ParsedReflections, excluded: set[str]) -> d
 def remove_closed(root: Path, requested: list[str]) -> dict[str, Any]:
     """Remove every requested (or, with none named, every) closed reflection document.
 
-    A closed reflection has ``status: resolved`` or ``status: dismissed``. The maintainer's
+    A closed reflection has ``status: resolved`` or ``status: dismissed``. The developer's
     disposition and ``resolution_note`` are preserved in Git history; the working-tree document and
     its plan (when one exists) are deleted together. ``index.json`` and every other document and
     plan are left untouched.

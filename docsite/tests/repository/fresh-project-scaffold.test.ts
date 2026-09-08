@@ -50,6 +50,11 @@ apply_project_proposal(root,package,project_proposal(root,package,'Atlas',config
   const applied = tool(root, 'docsite', '--apply', '--proposal', '.concorde/docsite-proposal.json', '--allow-primary-worktree');
   expect(applied.status).toBe('success');
   await symlink(resolve(siteDir, 'node_modules'), resolve(root, 'docsite/node_modules'), 'dir');
+  await mkdir(resolve(root, '.agents/skills'), {recursive: true});
+  await symlink(resolve(repositoryRoot, '.agents/skills/archify'), resolve(root, '.agents/skills/archify'), 'dir');
+  await writeFile(resolve(root, 'skills-lock.json'), await readFile(resolve(repositoryRoot, 'skills-lock.json')));
+  await mkdir(resolve(root, 'generated/protocol'), {recursive: true});
+  await writeFile(resolve(root, 'generated/protocol/framework-owned.txt'), 'Preserve Framework build assets.');
 }, 300_000);
 
 afterAll(async () => {
@@ -80,6 +85,8 @@ describe('a project holding only Profile 8 initialization outputs', () => {
   });
 
   it('validates and builds with the adapter it received', async () => {
+    await mkdir(resolve(root,'docsite/.docusaurus'),{recursive:true});
+    await writeFile(resolve(root,'docsite/.docusaurus/preview-sentinel.json'),'Preview cache stays independent.');
     const validate = run(process.execPath, ['--import','tsx','scripts/validate.ts'], resolve(root, 'docsite'));
     expect(validate.status, `${validate.stdout}\n${validate.stderr}`).toBe(0);
     const build = run(process.execPath, ['--import','tsx','scripts/build.ts'], resolve(root, 'docsite'));
@@ -89,5 +96,13 @@ describe('a project holding only Profile 8 initialization outputs', () => {
     expect(manifest.pages[0].route).toMatch(/^\/specs\/domain.atlas\//);
     const homepage=await readFile(resolve(root,'docsite/build/index.html'),'utf8');expect(homepage).toContain(manifest.pages[0].route);
     expect(existsSync(resolve(root,'docsite/build',manifest.pages[0].route.slice(1)+'.html'))).toBe(true);
+    expect(await readFile(resolve(root,'generated/protocol/framework-owned.txt'),'utf8')).toBe('Preserve Framework build assets.');
+    const mainPage=await readFile(resolve(root,'docsite/build',manifest.pages[0].route.slice(1)+'.html'),'utf8');
+    expect(mainPage).toContain('<iframe');
+    expect(mainPage).toContain('/diagrams/');
+    expect(mainPage.indexOf('<h1')).toBeLessThan(mainPage.indexOf('<iframe'));
+    expect(mainPage).toContain('Spec metadata');
+    expect(await readFile(resolve(root,'docsite/.docusaurus/preview-sentinel.json'),'utf8')).toBe('Preview cache stays independent.');
+    expect(existsSync(resolve(root,'docsite/.generated/docusaurus-production'))).toBe(true);
   }, 240_000);
 });

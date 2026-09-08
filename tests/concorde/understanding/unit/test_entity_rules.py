@@ -55,7 +55,7 @@ class EntityRuleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root, architecture = self.copy(temporary)
             architecture.write_text(architecture.read_text(encoding="utf-8").replace(
-                "`entity.example.maintainer` requests delivery.",
+                "`entity.example.developer` requests delivery.",
                 "",
             ), encoding="utf-8")
             self.assertIn("CONCORDE-INTERACTION-005", self.rules(root))

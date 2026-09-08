@@ -128,10 +128,10 @@ class BoundaryTests(unittest.TestCase):
         old=(self.root/'specs/ledger-api.md').read_bytes();result=self.run_op('concorde-specify',callback=cb)
         self.assertEqual('blocked',result['status']);self.assertEqual(old,(self.root/'specs/ledger-api.md').read_bytes())
     def test_domain_author_cannot_persist_missing_participant_routing(self):
-        path=self.root/'specs/how-money-moves.md';old=path.read_bytes()
+        path=self.root/'specs/bank/ontology.md';old=path.read_bytes()
         declaration=path.read_text().split('# Banking',1)[0]
         def cb(stage,snap,data,cwd):
-            if stage=='specify':data['documents']=[{'path':'specs/how-money-moves.md',
+            if stage=='specify':data['documents']=[{'path':'specs/bank/ontology.md',
                 'content':declaration+'# Banking\nThe participant declarations were accidentally omitted.\n'}]
         result=self.run_op('concorde-specify',{'target_id':'scope.bank','task':'Edit banking rules'},cb)
         self.assertEqual('blocked',result['status'],result);self.assertEqual(old,path.read_bytes())

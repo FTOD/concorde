@@ -182,3 +182,12 @@ preflight/launch failure. No executor failure silently retries with wider permis
 already authorized implementation edits. The host stops the affected transition and preserves the
 candidate for repair. Raw subprocess stdout/stderr remain host execution evidence, not downstream
 Spec-agent inputs or public review findings.
+
+## Declared architecture sources
+
+Target and topology-author snapshots include diagram_sources, with path, digest, serialized JSON
+content and its registered declaration (source, kind, title, optional recipe). These are admitted
+Spec artifacts with frozen identities; they never authorize directory discovery or generated HTML
+reads. Only Spec authoring returns optional diagrams replacements; topology authors return every
+accepted diagram source. Non-author roles cannot return those writes. Their membership, declarations
+and bytes are part of freshness and review evidence, even when Markdown itself is unchanged.

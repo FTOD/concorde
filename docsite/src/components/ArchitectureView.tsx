@@ -2,18 +2,18 @@ import {useBaseUrlUtils} from '@docusaurus/useBaseUrl';
 
 import type {ContentPage} from '../../plugins/concorde-content/types';
 
-/** The module's own Archify diagrams (`<module>/diagrams/*.json`), embedded in stable source order. */
-export default function ArchitectureView({page}: {page: ContentPage}) {
+/** Registered Archify diagrams, embedded on the owning target's main Spec. */
+export default function ArchitectureView({page, showHeading=true}: {page: ContentPage;showHeading?:boolean}) {
   const {withBaseUrl} = useBaseUrlUtils();
   if (!page.architectureDiagrams?.length) return null;
   return (
-    <section className="architectureView" aria-labelledby="architecture-view-heading">
-      <div className="architectureView__heading">
+    <section className="architectureView" aria-labelledby={showHeading?'architecture-view-heading':'architecture-overview'}>
+      {showHeading&&<div className="architectureView__heading">
         <div>
-          <p className="architectureView__eyebrow">Bounded architecture views</p>
-          <h2 id="architecture-view-heading">Explore this architectural level</h2>
+          <p className="architectureView__eyebrow">Architecture overview</p>
+          <h2 id="architecture-view-heading">Entities, boundaries and relationships</h2>
         </div>
-      </div>
+      </div>}
       {page.architectureDiagrams.map((diagram, index) => {
         const diagramUrl = withBaseUrl(diagram.route);
         const headingId = `architecture-diagram-${index + 1}`;

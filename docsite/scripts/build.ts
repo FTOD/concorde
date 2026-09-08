@@ -7,7 +7,7 @@ import {resolve} from 'node:path';
 import Ajv2020 from 'ajv/dist/2020';
 
 import {validateBuildManifest} from '../plugins/concorde-content/manifest';
-import {preparePublication} from './prepare-publication';
+import {preparePublication,productionGeneratedDirectory} from './prepare-publication';
 
 const siteDir = resolve(__dirname, '..');
 const projectRoot = resolve(siteDir, '..');
@@ -40,7 +40,8 @@ async function runDocusaurus(candidate: string): Promise<void> {
   const cli = resolve(siteDir, 'node_modules/@docusaurus/core/bin/docusaurus.mjs');
   await new Promise<void>((accept, reject) => {
     const child = spawn(process.execPath, [cli, 'build', '--out-dir', candidate], {
-      cwd: siteDir, stdio: 'inherit', env: {...process.env, NODE_ENV: 'production'},
+      cwd: siteDir, stdio: 'inherit', env: {...process.env, NODE_ENV: 'production',
+        DOCUSAURUS_GENERATED_FILES_DIR_NAME:productionGeneratedDirectory},
     });
     child.once('error', reject);
     child.once('exit', (code) => code === 0 ? accept() : reject(new Error(`Docusaurus exited with status ${code ?? 'unknown'}.`)));
@@ -74,7 +75,7 @@ export async function buildSite(): Promise<void> {
   const backup = resolve(siteDir, '.generated/previous-build');
   await rm(candidate, {recursive: true, force: true});
   try {
-    await preparePublication(projectRoot);
+    await preparePublication(projectRoot,{mode:'build'});
     await runDocusaurus(candidate);
     if (isScoped(projectRoot)) await validateScopedBuild(projectRoot,candidate);
     else {await validateGeneratedManifest(candidate);await validateGeneratedFeatureGraph(candidate);}

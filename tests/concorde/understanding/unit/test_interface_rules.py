@@ -47,8 +47,8 @@ class InterfaceRuleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root, design = self.copy(temporary)
             design.write_text(design.read_text(encoding="utf-8").replace(
-                "| Entity | Role |\n|---|---|\n| `entity.example.maintainer` |",
-                "| Entity | Type | Role |\n|---|---|---|\n| `entity.example.maintainer` | program |",
+                "| Entity | Role |\n|---|---|\n| `entity.example.developer` |",
+                "| Entity | Type | Role |\n|---|---|---|\n| `entity.example.developer` | program |",
             ).replace("| `entity.example.runtime` | Orchestrates", "| `entity.example.runtime` | program | Orchestrates").replace("| `module.example.api` | Provides", "| `module.example.api` | module | Provides"), encoding="utf-8")
             self.assertIn("CONCORDE-ZOOM-004", {item.rule_id for item in validate_project(root).findings})
 

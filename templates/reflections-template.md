@@ -16,7 +16,7 @@ triage: pending
   Concorde Reflection Document v2. Canonical path: .concorde/reflections/<bucket>/R-NNN.md, where
   <bucket> mirrors triage state: pending/ (triage: pending), planned/ (triage: complete and
   human_intervention: not-required), or needs-comments/ (triage: complete and human_intervention:
-  required). Maintainer status never changes the bucket.
+  required). Developer status never changes the bucket.
 
   Planning and task generation are the normal recording points. First reserve the identity through
   reflections_queue.py --allocate-id, then create exactly the returned reflection_path, which is
@@ -24,13 +24,13 @@ triage: pending
   reflections_queue.py --validate-entry R-NNN and correct only that new entry until it reports valid.
   At recording time, describe only the problem in Context, Expected,
   Observed, Impact, and Evidence. Give enough detail for a later investigator to reproduce and
-  understand it. Do not propose a fix and do not decide whether a maintainer is needed.
+  understand it. Do not propose a fix and do not decide whether a developer is needed.
 
   Keep triage: pending, omit human_intervention, and leave all three triage sections empty until
   concorde-reflections-triage investigates the reflection. Triage changes triage to complete, adds
   human_intervention: required | not-required, fills all three triage sections, and then moves the
   file with reflections_queue.py --relocate R-NNN; never move it by hand. User Comments is always
-  retained for maintainer input and may remain blank. A non-open status also requires a
+  retained for developer input and may remain blank. A non-open status also requires a
   resolution_note in front matter; the close step then removes the document, and Git history
   keeps it.
 
@@ -76,7 +76,7 @@ evidence rather than pasting secrets or bulk output.>
 
 ## User Comments
 
-<!-- Maintainer input when useful or requested. Do not remove this section. -->
+<!-- Developer input when useful or requested. Do not remove this section. -->
 
 ## Occurrences
 

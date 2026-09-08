@@ -11,7 +11,8 @@
 This registered Shared Spec defines the in-process registry interface required by the context and
 capability hosts. It is part of each listed target's admitted collection; callers need no provider,
 parent or co-referencing entity's other documents. Python paths below are relative to the supplied
-project root unless explicitly typed as project/package roots. No method grants an agent authority.
+project root unless explicitly typed as project/package roots. No method grants an agent authority. The host may supply JSON diagram bytes as well as Markdown
+through the in-memory document_overrides mapping; only registered source paths are consumed.
 
 ## Public call shapes
 
@@ -22,6 +23,7 @@ SpecRepository(project_root: Path | str, package_root: Path | str | None = None,
 SpecRepository.select(target_id: str, focus_id: str | None = None) -> SpecTarget
 SpecRepository.document(path: str) -> SpecDocument
 SpecRepository.documents(target: SpecTarget) -> tuple[SpecDocument, ...]
+SpecRepository.diagram_sources(target: SpecTarget) -> list[dict]
 SpecRepository.contracts(target: SpecTarget) -> tuple[dict, ...]
 SpecRepository.participants(target: SpecTarget) -> tuple[dict, ...]
 SpecRepository.implementation_files(target: SpecTarget) -> tuple[str, ...]
@@ -39,7 +41,7 @@ supplement an agent context. Construct a fresh repository after source, registry
 an instance caches documents already read and is not a live filesystem view. The constructor rejects
 unsafe roots, unsupported profiles/Protocol bindings, malformed registry/identity/relationship/check
 metadata and overlapping implementation grants. The root must contain `.concorde/config.json` with exactly
-`{profile_version: 8, registry: relative_path, protocol: {version: "1.1.0", digest: sha256},
+`{profile_version: 8, registry: relative_path, protocol: {version: "1.2.0", digest: sha256},
 capability_configuration: {type_id: "concorde-capability-configuration", schema_version: 1,
 data: {integration: "codex"|"claude", enforcement: "native"|"outer"}}}`. The referenced registry is
 `{schema_version: 1, project_id: stable_id, entry_target: target_id, targets: [SpecTarget records],
@@ -47,12 +49,20 @@ checks: [Check records]}`; tuple fields below are JSON arrays in that file. Entr
 Domain or Service. Every descriptor has exactly the listed fields; IDs are unique across targets and
 focuses, each focus document belongs to its target, parent kinds match their independent axis, and
 parents are acyclic. Domains have no code grants or component parent; components have no scope parent.
-Component participation names existing Domains. Registered implementation path prefixes are disjoint
+Component participation names existing Domains. Every Domain has exactly one registered basename
+`ontology.md`, referenced only by that Domain; document admission requires it to be main_visible.
+The `primary_document` property resolves that member regardless of order; for Services/Modules it
+returns the first registered document. Each Domain declares exactly one architecture diagram with
+recipe system-overview. Diagram paths are unique within each target, durable JSON outside control
+and generated paths; allowed kinds are architecture/workflow/sequence/dataflow/lifecycle. Only an
+architecture can declare the optional system-overview recipe. Registered implementation path prefixes are disjoint
 and cannot contain control/configuration files or Spec documents. Check IDs belong to their target.
 
-The supplied package contains `protocol/manifest.json` with version `1.1.0` and an `assets` list of
+The supplied package contains `protocol/manifest.json` with version `1.2.0` and an `assets` list of
 `{path, digest}`. The project pins the manifest's exact byte digest, and each asset must match its own
-listed byte digest. Principles and all three kind definitions are mandatory assets. Missing or changed
+listed byte digest. The configuration's `protocol` binding identifies this distributed rule bundle,
+including the Concorde Spec Protocol and Framework execution profile. Principles and all three kind
+definitions are mandatory assets. Missing or changed
 bindings/assets fail with `protocol_mismatch`; this repository never silently upgrades a binding.
 Full document and shared-contract validation is a
 separate deterministic host responsibility; successful construction is not semantic completeness.
@@ -85,12 +95,20 @@ implementation: tuple[str, ...]
 features: tuple[dict, ...]   # each {id: str, title: str, document: str}
 apis: tuple[dict, ...]       # same shape, independently owned focus IDs
 checks: tuple[str, ...]
-diagrams: tuple[dict, ...]   # each {source: str, kind: str, title: str}
+diagrams: tuple[dict, ...]   # {source: str, kind: str, title: str, recipe?: "system-overview"}
+primary_document: str       # computed property, not a registry field
 ```
 
 `SpecDocument` is a frozen record with `path/content/digest/document_id: str`, `targets: tuple[str,...]`,
 `main_visible: bool`, `metadata: dict` (parsed front matter, or empty) and `body: str` (Markdown after
 front matter). `content` preserves the complete text. `digest` hashes its exact source bytes.
+`diagram_sources(target)` returns ordered `{path,digest,content,declaration}` records for exactly the target's
+registered diagram sources, using host overlay bytes when present; it never reads generated HTML
+or discovers neighboring files. Invalid UTF-8, unsafe paths and missing files fail without a partial
+result. Full diagram kind/title, output-path and showcase checks belong to deterministic validation.
+Each declaration preserves the registered source/kind/title/optional recipe in context identity.
+Diagram paths also participate in the implementation-grant exclusion for authored Spec sources.
+
 A document referenced by multiple targets belongs under Shared Specs; otherwise it is Target Spec.
 
 Hosts may read these admitted repository indexes: `root/package_root: Path`, `config: dict`,

@@ -26,6 +26,7 @@ SpecRepository(project_root: Path | str, package_root: Path | str | None = None,
 SpecRepository.select(target_id: str, focus_id: str | None = None) -> SpecTarget
 SpecRepository.document(path: str) -> SpecDocument
 SpecRepository.documents(target: SpecTarget) -> tuple[SpecDocument, ...]
+SpecRepository.diagram_sources(target: SpecTarget) -> list[dict]
 SpecRepository.contracts(target: SpecTarget) -> tuple[dict, ...]
 SpecRepository.participants(target: SpecTarget) -> tuple[dict, ...]
 SpecRepository.implementation_files(target: SpecTarget) -> tuple[str, ...]

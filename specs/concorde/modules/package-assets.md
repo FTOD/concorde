@@ -10,11 +10,14 @@
 
 ## api.assets.render
 
-`build(project_root, integration="all", *, framework_prefix="")` renders every role's rendered
-instructions, every Skill's `SKILL.md` (Codex `.agents/skills` and Claude `.claude/skills`),
-`generated/langgraph.json`, and the Protocol assets (`generated/protocol/principles.md`, its three
-kind definitions, and `generated/protocol/schemas.json`) deterministically from `prompts/`, `skills/`
-and the capability contracts. The render is byte-identical across repeated calls and performs no
+`build(project_root, integration="all", *, framework_prefix="")` renders role instructions,
+integration-specific Skill files (Codex `.agents/skills` and Claude `.claude/skills`),
+`generated/langgraph.json`, the rule assets (`generated/protocol/principles.md`, its three
+kind definitions, and `generated/protocol/schemas.json`), and documentation inventories
+(`generated/docs/instructions.json` and `generated/docs/wire.json`) deterministically from
+`prompts/`, `skills/` and the capability contracts. The principles asset bundles the Concorde Spec
+Protocol with the Framework execution profile. These are build artifacts; installation decides
+their destination in a consumer project. The render is byte-identical across repeated calls and performs no
 network or process I/O. `write_build` also writes those outputs plus `generated/build-manifest.json`,
 recording every recorded source path's sha256. `check_build` renders into a temporary directory and
 reports every stale or drifted output without writing anything. `verify_fresh` raises
@@ -28,7 +31,7 @@ audience/layering rules, and detects unreachable or diamond-included sources.
 build-output checks behind `python -m concorde validate` and `build --check`.
 `recompute_protocol_manifest`/`python -m concorde protocol-manifest` report, accept (`--write`), or
 bind (`--bind-project`) the tracked `protocol/manifest.json` digest to the current build; accepting a
-changed Protocol export is maintainer-only, and a consumer separately accepts the installed manifest
+changed Protocol export is developer-only, and a consumer separately accepts the installed manifest
 version/digest in its own project configuration. This module owns `skills/` sources and
 `capabilities/__init__.py` (the capability inventory declaration); it does not own the prompts of
 other targets — `prompts/workflow-host`, `prompts/spec-context` and `prompts/protocol` belong to the

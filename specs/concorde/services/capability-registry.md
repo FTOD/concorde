@@ -8,14 +8,25 @@
 
 # Capability registry
 
-A capability is one Python module under `capabilities/` that the host executes. It declares the
-roles it launches and their authority, the capabilities it composes in-process, and its typed
-request and response. Skills are the only user-facing entries: each Skill exposes exactly one global
-or lifecycle capability through the launcher `scripts/run-capability.py <skill>`. Stage capabilities
-have no Skill and no executable entry. Roles are the nine launchable agent identities (coordinator,
-reader, spec-author, context-assessor, planner, task-author, implementation-worker, spec-reviewer,
-code-reviewer); each has one rendered instruction file and one exact effect declaration, and each
-launch is a fresh process under a policy compiled from that declaration.
+A **Capability** is functionality available for Agent use or composition, with declared inputs,
+results, effects and usage conditions. A Harness makes selected capabilities available by explicit
+reference. A Tool is a callable operation interface; a Skill supplies instructions and methods.
+[Agents and Harnesses](../workflow/agents-and-harnesses.md) defines the required capability use,
+composition and authority contract.
+
+## Current host adapter
+
+The following inventory describes the existing Python host adapter. Each entry is implemented by a
+module under `capabilities/`, declaring launched roles, effects, composed entries and typed requests
+and responses. The Python module is an implementation of functionality, not the definition of the
+Capability concept. Host-declared composition is distinct from capabilities available to an Agent.
+
+Current public Skill files expose exactly one global or lifecycle entry through
+`scripts/run-capability.py <skill>`. Stage entries have no public Skill. The nine existing role
+identifiers are coordinator, reader, spec-author, context-assessor, planner, task-author,
+implementation-worker, spec-reviewer and code-reviewer. Their rendered instructions and effect
+declarations are compatibility bindings; role identity alone does not satisfy the required
+`spec.md` + Harness + Constraints/Permissions Agent model.
 
 | Capability | Class | Skill | Launches | Uses | Behavior |
 | --- | --- | --- | --- | --- | --- |
@@ -39,14 +50,14 @@ boundary document.
 
 ## Capability classes
 
-Every capability belongs to exactly one class, distinguished by who selects its context:
+Every capability in this host adapter belongs to exactly one class, distinguished by context selection:
 
 - **Global** — receives only the caller's intent, at most with target/focus routing hints; the
   host's coordinator discovers main-visible Domain/Service Specs and selects the owning target, and
   the capability may span several targets and stages.
 - **Lifecycle** — deterministic host behavior with no agent cognition and no context selection.
 - **Stage** — receives an already bound `target_id` and one frozen context snapshot from the
-  capability that composes it, runs exactly one role, and never reselects or expands its context.
+  capability that composes it, coordinates only its declared Agent steps, and never reselects or expands its context.
 
 Global and lifecycle capabilities are exposed as Skills. Stage capabilities are never projected as
 Skills and have no executable entry; they are reachable only in-process from a capability whose

@@ -119,7 +119,7 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
 
 
 def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
-    """Recompute tracked Protocol asset digests from the current build (maintainer-only).
+    """Recompute tracked Protocol asset digests from the current build (developer-only).
 
     Mirrors the former ``sync-protocol-assets.py --bind-project``: with neither flag this only
     reports whether ``protocol/manifest.json`` matches the current ``generated/protocol/...``

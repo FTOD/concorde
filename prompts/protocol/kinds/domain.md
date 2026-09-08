@@ -5,7 +5,7 @@ audience: shared
 # Domain
 
 A Domain is a business or problem-space scope, independent of the Service/Module component structure.
-Its complete resolved context—Target Spec plus explicitly referenced Shared Specs—explains the system's operation within this scope: meaningful entities,
+Its complete resolved context—Target Spec plus explicitly referenced Shared Specs—explains the system's behavior within this scope: an Ontology of entity types, meanings,
 relationships, responsibilities, interaction triggers, rules, state transitions, completion, and failure.
 A Domain can describe observable features. It does not own implementation paths. A narrower Domain may
 have a scope parent; participating Services and Modules are a separate relation and can be shared across
@@ -45,3 +45,23 @@ the participant's private interface. A broader Domain may repeat a component par
 nested Domain when the broader scope genuinely routes work to it. Missing or inconsistent entries
 are rejected by deterministic validation. Context solving reports a missing direct entry as a Spec
 gap and an inconsistent entry as conflicting.
+
+## Main Spec and architecture overview
+
+Register exactly one local `ontology.md` as this Domain's main Spec. It references only this Domain,
+is main-visible, and contains an `Ontology` section with meaningful entity categories and named,
+directed relationships. When modeling categories or file conventions are part of the subject,
+distinguish their meanings; a Domain overview need not teach the entire Concorde Spec Protocol. Include relevant external entities and explain
+what crosses the Domain boundary.
+
+Declare exactly one architecture diagram with `recipe: system-overview`. Describe this overview
+in the main Spec; Concorde Framework renders it using Archify and embeds it on the Domain's page.
+The docsite's Domain node links directly to this document, independently of document order.
+Keep additional workflow, routing and contract documents in the registered collection. The main
+page never narrows the complete context or grants its linked targets' remaining Specs.
+
+Prefer a main page that builds overall understanding, with detailed explanations in the relevant
+child Domain, Service, Module or topic Spec. Expand internal structure whenever it helps explain
+real collaborations; no fixed abstraction level or black-box presentation is required. These are
+editorial recommendations rather than additional conformance or review gates. Keep the promises
+needed by the task available in the complete registered context.

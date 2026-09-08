@@ -248,7 +248,7 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
         REFLECTIONS_CONFIG_PATH: (package.root / REFLECTIONS_CONFIG_DEFAULT).read_bytes(),
         ".concorde/reflections/.gitignore": b"plans/\nworktrees/\n",
         ".concorde/topology-proposals/.gitignore": (
-            b"# Exact topology applications are local, maintainer-reviewed host artifacts.\n"
+            b"# Exact topology applications are local, developer-reviewed host artifacts.\n"
             b"*\n!.gitignore\n"
         ),
     }

@@ -343,7 +343,7 @@ class ReflectionsQueueTests(unittest.TestCase):
                         "status": "resolved",
                         "path": ".concorde/reflections/pending/R-002.md",
                         "title": "Fixture problem R-002",
-                        "resolution_note": "Decided by the maintainer.",
+                        "resolution_note": "Decided by the developer.",
                         "plan": ".concorde/reflections/plans/R-002.md",
                     }
                 ],
@@ -543,7 +543,7 @@ class ReflectionsQueueTests(unittest.TestCase):
             self.assertEqual(payload["summary"]["buckets"], {"pending": 1, "planned": 1, "needs-comments": 1})
             self.assertEqual({item["id"]: item["bucket"] for item in payload["entries"]}, {"R-001": "planned", "R-002": "needs-comments", "R-003": "pending"})
 
-            # A maintainer decision never moves a file; a changed intervention decision does.
+            # A developer decision never moves a file; a changed intervention decision does.
             waiting = collection / "needs-comments" / "R-002.md"
             waiting.write_text(waiting.read_text().replace("status: open", "status: resolved\nresolution_note: decided"))
             self.assertEqual(json.loads(run_queue(root, "--relocate").stdout)["status"], "unchanged")

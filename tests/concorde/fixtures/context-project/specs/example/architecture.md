@@ -29,7 +29,7 @@ Own workflow orchestration and exclude API persistence internals.
 
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
-| `entity.example.maintainer` | external-system | The workflow consumer. | `external:example-maintainer` |
+| `entity.example.developer` | external-system | The workflow consumer. | `external:example-developer` |
 | `entity.example.runtime` | program | The root workflow orchestrator. | `concept:example.runtime` |
 | `module.example.api` | module | The bounded API child module. | `specs/example/modules/api/architecture.md` |
 
@@ -37,14 +37,14 @@ Own workflow orchestration and exclude API persistence internals.
 
 | Source | Predicate | Target | Description | Interface |
 |---|---|---|---|---|
-| `entity.example.maintainer` | calls | `entity.example.runtime` | The maintainer starts delivery. | `contract.example.workflow` |
+| `entity.example.developer` | calls | `entity.example.runtime` | The developer starts delivery. | `contract.example.workflow` |
 | `entity.example.runtime` | calls | `module.example.api` | The root delegates the request to the API. | `contract.example.workflow` |
 
 ## Interactions
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.example.deliver` | `entity.example.maintainer` requests delivery. | `entity.example.maintainer` calls `entity.example.runtime`.<br>`entity.example.runtime` calls `module.example.api`. | A named workflow result is returned. | `contract.example.workflow` |
+| `interaction.example.deliver` | `entity.example.developer` requests delivery. | `entity.example.developer` calls `entity.example.runtime`.<br>`entity.example.runtime` calls `module.example.api`. | A named workflow result is returned. | `contract.example.workflow` |
 
 ## Modules
 

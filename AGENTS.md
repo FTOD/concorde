@@ -5,8 +5,14 @@ This policy applies only while developing the Concorde repository itself. Projec
 worktree where the session started into another linked worktree.
 
 In a fresh clone, run `python3 scripts/concorde.py build` once before this path resolves. Read and
-follow `generated/protocol/principles.md` as the canonical Concorde Protocol, including P10 for
+follow `generated/protocol/principles.md` as the canonical Concorde Spec Protocol and Framework rule bundle, including P10 for
 all session handoffs below. This file adds only source-checkout worktree and maintenance boundaries.
+
+## Spec language
+
+Concorde's own Specs under `specs/` MUST use English, including diagram labels, descriptions,
+relationship text and viewer locale. This is a Concorde project convention, not a requirement of
+the Concorde Spec Protocol; it does not prescribe the language of consumer projects or conversations.
 
 ## Worktree affinity
 

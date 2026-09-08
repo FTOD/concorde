@@ -32,7 +32,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual(['generated/protocol/principles.md','generated/protocol/kinds/service.md'],[d['path'] for d in context['protocol']])
         text=json.dumps(context)
         self.assertNotIn('PRIVATE_CODE',text)
-        self.assertNotIn('specs/audit-scope.md',text)
+        self.assertNotIn('specs/audit/ontology.md',text)
         self.assertNotIn('specs/ledger-api.md',text)
         self.assertEqual('success',validate_repository(self.root).status)
         participants=repo.participants(repo.select('scope.bank'))
@@ -68,7 +68,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertIn('CONCORDE-DOCUMENT-002',{finding.rule_id for finding in report.findings})
         for path,text in original.items():(self.root/path).write_text(text)
     def test_missing_domain_participant_is_validated_and_stops_context_solving(self):
-        path=self.root/'specs/how-money-moves.md';path.write_text(path.read_text().split('```concorde-participants',1)[0])
+        path=self.root/'specs/bank/ontology.md';path.write_text(path.read_text().split('```concorde-participants',1)[0])
         report=validate_repository(self.root)
         self.assertEqual('invalid',report.status)
         self.assertEqual({'service.transfer','module.ledger'},
@@ -83,7 +83,7 @@ class ScopedProtocolTests(unittest.TestCase):
                             for gap in result['output']['data']['gaps']))
         self.assertFalse((self.root/'.concorde/attempts').exists())
     def test_duplicate_and_kind_mismatched_participant_declarations_are_rejected(self):
-        path=self.root/'specs/how-money-moves.md';original=path.read_text()
+        path=self.root/'specs/bank/ontology.md';original=path.read_text()
         prefix,rest=original.split('```concorde-participants\n',1);payload,suffix=rest.split('\n```',1)
         participants=json.loads(payload)
         cases=[(participants+[copy.deepcopy(participants[0])],'CONCORDE-PARTICIPANT-002'),
@@ -163,13 +163,14 @@ class ScopedProtocolTests(unittest.TestCase):
                      'responsibility':'Publish the audit reporting view.',
                      'selection_condition':'Select for audit report generation or retrieval.',
                      'relied_upon_promises':['Audit reports expose the accepted audit records.']}]
-                data['documents']=[{'path':'specs/audit-scope.md',
-                    'content':'```concorde-document\n'+json.dumps({'id':'document.audit','targets':['scope.audit'],'main_visible':True},indent=2)+'\n```\n\n# Audit\nRoute audit reporting to service.audit-report.\n\n```concorde-participants\n'+json.dumps(participants,indent=2)+'\n```\n'}]
+                data['documents']=[{'path':'specs/audit/ontology.md',
+                    'content':'```concorde-document\n'+json.dumps({'id':'document.audit','targets':['scope.audit'],'main_visible':True},indent=2)+'\n```\n\n# Audit\n\n## Ontology\nRoute audit reporting to service.audit-report.\n\n```concorde-participants\n'+json.dumps(participants,indent=2)+'\n```\n'}]
         double=ModelProcessDouble(callback)
         design=self.run_op('concorde-main',{'action':'design-topology','task':'Add audit reports'},double)
         self.assertEqual('topology_proposed',design['output']['data']['outcome']);proposal=design['output']['data']['topology_proposal']
         self.assertFalse((self.root/'specs/audit-report.md').exists())
         prepared=self.run_op('concorde-main',{'action':'accept-topology','topology_proposal':proposal},double)
+        self.assertIsNotNone(prepared['output'],prepared)
         self.assertEqual('topology_prepared',prepared['output']['data']['outcome']);application=prepared['output']['data']['application']
         self.assertEqual({'id','path','digest'},set(application))
         self.assertNotIn('# Audit reports',json.dumps(prepared));self.assertNotIn('# Ledger API',json.dumps(prepared))
@@ -398,7 +399,7 @@ class ScopedProtocolTests(unittest.TestCase):
         result=self.run_op('concorde-dev-loop',{'task':'Plan transfer','constraints':['Keep API stable'],'specify':False,'run_reviews':False},ModelProcessDouble(rewrite))
         self.assertEqual('blocked',result['status']);self.assertEqual('incompatible_handoff',result['errors'][0]['code'])
     def test_main_cannot_guess_an_unmentioned_discovery_or_route_target(self):
-        path=self.root/'specs/how-money-moves.md';declaration=path.read_text().split('# Banking',1)[0]
+        path=self.root/'specs/bank/ontology.md';declaration=path.read_text().split('# Banking',1)[0]
         path.write_text(declaration+'# Banking\nNo downstream target is identified.\n')
         def expand(stage,snapshot,data,cwd):
             if stage=='route':data.update(outcome='expand',expand_targets=['service.transfer'],routes=[],gaps=[])

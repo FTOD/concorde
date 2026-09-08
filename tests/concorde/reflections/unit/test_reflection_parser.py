@@ -138,7 +138,7 @@ class ReflectionParserTests(unittest.TestCase):
                 "Human Intervention": "required",
                 "Triage Analysis": "The command contract and implementation disagree at the cited path.",
                 "Proposed Resolution": "Reconcile the command implementation with its owning contract.",
-                "Intervention Rationale": "The maintainer must choose which behavior is authoritative.",
+                "Intervention Rationale": "The developer must choose which behavior is authoritative.",
             },
         )
         with tempfile.TemporaryDirectory() as temporary:
@@ -174,7 +174,7 @@ class ReflectionParserTests(unittest.TestCase):
                 "Human Intervention": "required",
                 "Triage Analysis": "Evidence establishes the mismatch.",
                 "Proposed Resolution": "Update the owning contract.",
-                "Intervention Rationale": "A maintainer must choose the contract.",
+                "Intervention Rationale": "A developer must choose the contract.",
                 "User Comments": "Keep the current public behavior.",
             },
         )
@@ -207,7 +207,7 @@ class ReflectionParserTests(unittest.TestCase):
                 "Human Intervention": "required",
                 "Triage Analysis": "The public timeout is unspecified.",
                 "Proposed Resolution": "Clarify the contract.",
-                "Intervention Rationale": "A maintainer must choose the value.",
+                "Intervention Rationale": "A developer must choose the value.",
             },
         )
         with tempfile.TemporaryDirectory() as temporary:
@@ -220,7 +220,7 @@ class ReflectionParserTests(unittest.TestCase):
             self.assertEqual(parsed.bucket_counts(), {"pending": 1, "planned": 1, "needs-comments": 1})
             self.assertEqual(parsed.misplaced(), ())
             self.assertEqual([entry.bucket for entry in parsed.entries], ["pending", "planned", "needs-comments"])
-            # Maintainer status never changes the bucket.
+            # Developer status never changes the bucket.
             self.assertEqual(parsed.entries[2].status, "resolved")
             self.assertEqual(parsed.entries[2].expected_path, ".concorde/reflections/needs-comments/R-003.md")
 

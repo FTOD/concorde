@@ -12,7 +12,7 @@ const projectRoot = resolve(siteDir, '..');
 describe('Concorde repository GitHub Pages deployment', () => {
   it('reproduces the Concorde repository identity in docsite/site.json', () => {
     const identity = loadSiteIdentity(siteDir);
-    expect(identity.title).toBe('Concorde');
+    expect(identity.title).toBe('Concorde Framework');
     expect(identity.url).toBe('https://ftod.github.io');
     expect(identity.baseUrl).toBe('/concorde/');
     expect(identity.organizationName).toBe('FTOD');

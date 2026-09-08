@@ -25,13 +25,14 @@ safeRead(root: string, path: string): string;
 rewriteLinks(registry: ScopedRegistry, page: Page): string;
 hash(value: string | Buffer): string;
 // plugins/scoped-content/materialize.ts
+primaryDocument(target: Target): string;
 scopedSidebar(registry: ScopedRegistry): object[];
 materializeScoped(registry: ScopedRegistry): Promise<void>;
 // plugins/scoped-content/index.ts
 validateScopedBuild(root: string, directory: string): Promise<void>;
 scopedContent(context: LoadContext, options: unknown): Plugin<ScopedRegistry>; // default export
 // scripts/prepare-publication.ts and scripts/build.ts
-preparePublication(projectRoot: string): Promise<PreparedPublication | {registry: ScopedRegistry}>;
+preparePublication(projectRoot: string, options?: {mode?: 'preview' | 'build'}): Promise<PreparedPublication | {registry: ScopedRegistry}>;
 buildSite(): Promise<void>;
 promoteCandidate(candidate: string, destination: string, backup: string): Promise<void>;
 ```
@@ -66,13 +67,13 @@ interface Target {
   id: string; kind: Kind; title: string; documents: string[];
   scope_parent: string | null; component_parent: string | null; participates_in: string[];
   implementation: string[]; features: Focus[]; apis: Focus[]; checks: string[];
-  diagrams: {source: string; kind: string; title: string}[];
+  diagrams: {source: string; kind: string; title: string; recipe?: 'system-overview'}[];
 }
 interface Page {
   targetId: string; kind: Kind; title: string; sourcePath: string; contentDigest: string;
   route: string; stagedPath: string; content: string; documentId: string;
   documentTargets: string[]; mainVisible: boolean;
-  contextSection: 'target_spec' | 'shared_specs';
+  contextSection: 'target_spec' | 'shared_specs'; primary: boolean; inlineOverview: boolean;
   architectureDiagrams?: {
     kind: string; title: string; source: string; sourceSha256: string; route: string;
   }[];
@@ -100,13 +101,17 @@ composition, participation and required-contract dimensions.
 registry, and then every target's document and diagram-source references in registry order. Shared
 references appear once per membership in this ordered input sequence. It is a byte/version identity,
 not a semantic-completeness claim. Diagram sources declare matching kind/title and a generated HTML
-output under `generated/`; `sourceSha256` omits the digest prefix, and diagram routes are
+output under `generated/diagrams/`; `sourceSha256` omits the digest prefix, and diagram routes are
 `/diagrams/<first-16-hex-of-hash(source-path)>.html`.
 
 ## Materialization and required build collaborators
 
 `scopedSidebar` returns category/doc item objects with `type`, `label`, `items`, category `collapsed`
-and doc `id`. Separate root groups present Domain scopes and components; child categories follow
+and doc `id`. A Domain category also has `link: {type: doc, id}` pointing to its ontology.md
+page; the same page is not repeated as a child item. `primaryDocument` requires exactly one
+registered ontology.md for Domains and returns the first member for other kinds. Page.primary
+marks that choice; diagrams and the site entry use it rather than arbitrary array order.
+Separate root groups present Domain scopes and components; child categories follow
 the corresponding parent axis. `rewriteLinks` rewrites only supported local Markdown links to the
 registered page routes and rejects invalid or unregistered local destinations. Outside fenced code
 blocks it handles inline links and images with these forms, whose URL has no whitespace or closing
@@ -138,7 +143,7 @@ A failed write/copy rejects the promise and can leave partial derived assets. Re
 fresh model and re-materializes these disposable directories; callers must not publish partial assets.
 
 For Profile 8, `preparePublication(projectRoot)` resolves the root, loads the model, renders declared
-diagrams when present, materializes assets, removes the stale `docsite/.docusaurus` cache, and returns
+diagrams when present, materializes assets, clears the selected Docusaurus generated directory, and returns
 `{registry}`. Its required diagram renderer accepts the project root and produces each declared
 HTML output before copying; rejection stops preparation. `buildSite()` operates on the docsite
 containing this module, with project root its parent. Installed Node/Docusaurus dependencies must
@@ -205,3 +210,31 @@ await buildSite();                // integrated prepare/build/validate/promotion
 Repeated loading of unchanged inputs preserves identities. Repeated successful builds replace
 derived output. No returned model, manifest or successful deterministic check proves that the Spec
 supports every possible future task; independent Spec review and actual task gaps remain separate.
+
+## Domain main-document and overview validation
+
+Profile 8 publication rejects a missing or duplicate ontology.md member, shared or non-main-visible
+Domain main Spec, and a main Spec without a real Ontology heading outside code fences. It rejects
+a Domain without exactly one architecture declaration using recipe system-overview, an unsupported
+recipe/kind pairing, duplicate source paths, mismatched source kind/title or non-showcase overview.
+Other document names remain unrestricted and all registered members are published. These checks
+prove structural conformance; they do not prove that a Domain's Ontology is semantically complete.
+
+The renderer's Profile 8 transaction owns only generated/diagrams/. It validates all sources and
+exact delivery receipts in a candidate directory, then atomically replaces that subdirectory.
+Framework build outputs under generated/protocol, generated/roles and generated/docs survive both
+success and failure. Legacy diagnostic rendering retains its existing output-root contract.
+Profile 8 follows Archify's automatic legend by default; the legacy hidden-legend convention does
+not constrain new Domain overviews. Rendering requires the project's pinned Archify package.
+
+The main page keeps its title and introduction before the diagram. When the authored main Spec has
+an Architecture overview section, inlineOverview binds the registered diagrams to that section;
+otherwise a Domain's diagram follows its article. Domain main pages use the full reading column.
+The renderer presents concorde-document identity, references and visibility in a Spec metadata
+disclosure instead of a leading JSON code block, without changing the authored source or digest.
+
+Production builds use docsite/.generated/docusaurus-production for Docusaurus-generated modules
+and aliases. preparePublication mode build clears only that generated directory; the build process
+sets DOCUSAURUS_GENERATED_FILES_DIR_NAME to the same relative path. Default preview mode uses
+.docusaurus. A production build preserves an active preview's generated modules and cache, so
+development-only debug routes cannot overwrite the production module graph.

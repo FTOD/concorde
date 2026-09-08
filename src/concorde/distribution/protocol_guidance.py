@@ -23,7 +23,7 @@ def digest(content: bytes) -> str:
 def entry(integration: str) -> bytes:
     reference = (f"Read and follow `{PROTOCOL}` before Concorde workflow actions.\n"
                  if integration == "codex" else f"@{PROTOCOL}\n")
-    return START + ("## Concorde Protocol\n\n" + reference).encode() + END
+    return START + ("## Concorde Spec Protocol and Framework rules\n\n" + reference).encode() + END
 
 
 def split(content: bytes) -> tuple[bytes, bytes, bytes]:
@@ -31,13 +31,13 @@ def split(content: bytes) -> tuple[bytes, bytes, bytes]:
     if TOKEN not in content:
         return content, b"", b""
     if content.count(TOKEN) != 2 or content.count(START) != 1 or content.count(END) != 1:
-        raise GuidanceError("malformed or duplicate Concorde Protocol markers")
+        raise GuidanceError("malformed or duplicate Concorde Spec Protocol markers")
     if content.index(END) < content.index(START):
-        raise GuidanceError("misordered Concorde Protocol markers")
+        raise GuidanceError("misordered Concorde Spec Protocol markers")
     before, rest = content.split(START)
     middle, after = rest.split(END)
     if TOKEN in before + after or TOKEN in middle:
-        raise GuidanceError("misordered Concorde Protocol markers")
+        raise GuidanceError("misordered Concorde Spec Protocol markers")
     return before, START + middle + END, after
 
 

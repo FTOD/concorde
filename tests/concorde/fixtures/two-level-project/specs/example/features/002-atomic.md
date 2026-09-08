@@ -26,7 +26,7 @@ One small fixture behavior completes atomically.
 
 ### `contract.example.atomic` — Atomic behavior
 
-**Consumer**: fixture maintainer
+**Consumer**: fixture developer
 
 **Direction**: bidirectional
 
@@ -46,7 +46,7 @@ One small fixture behavior completes atomically.
 
 ## Usage Scenarios
 
-1. A maintainer invokes one atomic operation.
+1. A developer invokes one atomic operation.
 
 ## Requirements
 

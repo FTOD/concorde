@@ -125,7 +125,7 @@ do not infer product boundaries from repository directories.
 
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
-| `entity.{module_slug}.maintainer` | external-system | The maintainer who reviews and evolves the project architecture. | `external:{module_slug}.maintainer` |
+| `entity.{module_slug}.developer` | external-system | The developer who reviews and evolves the project architecture. | `external:{module_slug}.developer` |
 | `entity.{module_slug}.project` | concept | The project outcome whose architecture this root governs. | `concept:{module_slug}.project` |
 
 ## Relationships
@@ -133,13 +133,13 @@ do not infer product boundaries from repository directories.
 | Source | Predicate | Target | Description |
 |---|---|---|---|
 | `{identifier}` | owns_entity | `entity.{module_slug}.project` | The root module owns the project outcome boundary. |
-| `entity.{module_slug}.maintainer` | reads_from | `entity.{module_slug}.project` | The maintainer reviews the governed outcome before decomposition. |
+| `entity.{module_slug}.developer` | reads_from | `entity.{module_slug}.project` | The developer reviews the governed outcome before decomposition. |
 
 ## Interactions
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.{module_slug}.review-root` | A maintainer reviews the project boundary. | `{identifier}` defines `entity.{module_slug}.project`. | The root responsibility and boundary are explicit before decomposition. | None |
+| `interaction.{module_slug}.review-root` | A developer reviews the project boundary. | `{identifier}` defines `entity.{module_slug}.project`. | The root responsibility and boundary are explicit before decomposition. | None |
 
 ## Modules
 
@@ -170,9 +170,9 @@ None.
             },
             "components": [
                 {
-                    "id": "maintainer",
+                    "id": "developer",
                     "type": "external",
-                    "label": "Maintainer",
+                    "label": "Developer",
                     "sublabel": "Architecture reviewer",
                     "pos": [40, 170],
                     "size": [160, 68],
@@ -196,8 +196,8 @@ None.
             ],
             "connections": [
                 {
-                    "id": "maintainer-reviews-outcome",
-                    "from": "maintainer",
+                    "id": "developer-reviews-outcome",
+                    "from": "developer",
                     "to": "root_module",
                     "label": "reviews",
                     "variant": "emphasis",

@@ -187,7 +187,7 @@ The root changes through the provider's published API.
 
 ### `contract.example.root` — Change the root
 
-- **Consumer**: Fixture maintainer
+- **Consumer**: Fixture developer
 - **Direction**: Request to root result.
 - **Entry points**: `entity.example.private-locator`
 - **Inputs**: A bounded change request.
@@ -199,7 +199,7 @@ The root changes through the provider's published API.
 
 ## Usage Scenarios
 
-1. The maintainer changes the root through `contract.provider.api`.
+1. The developer changes the root through `contract.provider.api`.
 
 ## Requirements
 

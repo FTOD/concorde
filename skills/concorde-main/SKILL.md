@@ -16,7 +16,7 @@ Action `ask` (the default when action is omitted) routes one or more fresh targe
 synthesizes only their typed results. Action `design-topology` returns a digest-bound architecture
 proposal without changing files. Action `accept-topology` explicitly accepts that design, launches
 private target-local Spec authors and stores the resulting exact application as a host artifact;
-only its path and digest return to ambient cognition. After the maintainer reviews that artifact,
+only its path and digest return to ambient cognition. After the developer reviews that artifact,
 action `apply-topology` accepts it and atomically applies or rolls back the registry/document set.
 
 @include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-main

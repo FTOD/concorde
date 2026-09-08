@@ -41,7 +41,7 @@
   --graph-edge-relates-to: #9096b8;
   --graph-edge-requires: #ff85ac;
 }
-.provenanceShell {max-width: var(--ifm-container-width); margin: 1rem auto -1rem; padding: 0 var(--ifm-spacing-horizontal);}
+.provenanceShell {max-width: var(--ifm-container-width); margin: 1rem auto 1rem; padding: 0 var(--ifm-spacing-horizontal);}
 .provenance {display: flex; flex-wrap: wrap; gap: .55rem 1rem; align-items: center; padding: .75rem 1rem; border: 1px solid var(--concorde-border); border-radius: .65rem; background: var(--concorde-surface); font-size: .8rem;}
 .provenance__kind {font-weight: 700;}
 .featureRelationsShell {max-width: var(--ifm-container-width); margin: 1.5rem auto 0; padding: 0 var(--ifm-spacing-horizontal);}
@@ -58,7 +58,7 @@
 .architectureView__heading {display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: .75rem;}
 .architectureView__heading h2 {margin: 0; font-size: 1.3rem;}
 .architectureView__eyebrow {margin: 0 0 .25rem; color: var(--ifm-color-primary); font-size: .75rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;}
-.architectureView__frame {display: block; width: 100%; min-height: 38rem; border: 1px solid var(--concorde-border); border-radius: .55rem; background: white;}
+.architectureView__frame {display: block; width: 100%; height: clamp(38rem, 58vw, 52rem); border: 1px solid var(--concorde-border); border-radius: .55rem; background: white;}
 .architectureView__source {margin: .75rem 0 0; font-size: .8rem;}
 /* /graph page */
 .featureGraphPage__empty {padding: 1rem; border: 1px dashed var(--concorde-border); border-radius: .65rem; color: var(--ifm-color-emphasis-700);}

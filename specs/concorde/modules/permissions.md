@@ -8,6 +8,14 @@
 
 # Execution permissions
 
+## Required Agent authority boundary
+
+The registered Shared Spec **Agents and Harnesses** defines A4 for this Module. Effective authority
+MUST be a subset of the Agent definition's constraints and the host's invocation grant, including
+admitted capability and tool use as well as file, process, network and credential effects. Resource
+availability in a Harness is not permission. The native policy APIs below remain compatibility
+contracts and must be evaluated against that complete boundary.
+
 ## api.permissions.compile
 
 compile_policy(effects,binding,role_paths,outer_sandbox_required=False) intersects declared role paths with explicit host authority, producing a digest-bound policy. render_codex_configuration and render_claude_configuration create native read/write/command/network restrictions or reject unenforceable grants. build_launch_specification binds the resulting native configuration, context identity and fresh invocation. require_isolated_worktree(project_root,allow_primary_worktree=False) rejects unsafe mutation environments unless the trusted host grants the explicit exception. Task JSON cannot override any permission.

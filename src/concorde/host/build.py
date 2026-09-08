@@ -222,7 +222,7 @@ def render_protocol_kind(project_root: Path, kind: str) -> BuildOutput:
 def render_protocol_schemas(project_root: Path) -> BuildOutput:
     """Export the ``json_schema`` of every identity in ``contracts.exported_types()``.
 
-    Replaces the former maintainer-run ``scripts/sync-protocol-assets.py``. This has no recorded
+    Replaces the former developer-run ``scripts/sync-protocol-assets.py``. This has no recorded
     ``sources``: the exported schemas are derived from Python contracts across ``capabilities/``
     and ``src/concorde/host/``, not from a fixed file set, so freshness here is verified by value
     (``package_validation._validate_contracts``), the same way it always was.

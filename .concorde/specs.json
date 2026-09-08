@@ -6,9 +6,14 @@
     {
       "id": "domain.concorde",
       "kind": "domain",
-      "title": "Concorde",
+      "title": "Concorde Framework",
       "documents": [
-        "specs/concorde/system.md"
+        "specs/concorde/ontology.md",
+        "specs/concorde/spec-protocol.md",
+        "specs/concorde/main-routing.md",
+        "specs/concorde/framework-design.md",
+        "specs/concorde/workflow/agents-and-harnesses.md",
+        "specs/concorde/workflow/agent-graphs-and-loops.md"
       ],
       "scope_parent": null,
       "component_parent": null,
@@ -17,21 +22,37 @@
       "features": [
         {
           "id": "feature.concorde.evolve-protocol",
-          "title": "Concorde",
-          "document": "specs/concorde/system.md"
+          "title": "Evolve the Spec Protocol",
+          "document": "specs/concorde/spec-protocol.md"
         }
       ],
       "apis": [],
       "checks": [],
-      "diagrams": []
+      "diagrams": [
+        {
+          "source": "specs/concorde/diagrams/framework-overview.architecture.json",
+          "kind": "architecture",
+          "title": "Concorde Framework",
+          "recipe": "system-overview"
+        }
+      ]
     },
     {
       "id": "domain.workflow",
       "kind": "domain",
-      "title": "Workflow",
+      "title": "Agent orchestration",
       "documents": [
-        "specs/concorde/workflow/how-work-progresses.md",
-        "specs/concorde/services/capability-registry.md"
+        "specs/concorde/workflow/ontology.md",
+        "specs/concorde/workflow/routing.md",
+        "specs/concorde/workflow/query-and-routing.md",
+        "specs/concorde/workflow/development.md",
+        "specs/concorde/workflow/topology.md",
+        "specs/concorde/workflow/review-and-gaps.md",
+        "specs/concorde/workflow/delivery.md",
+        "specs/concorde/workflow/reflections.md",
+        "specs/concorde/services/capability-registry.md",
+        "specs/concorde/workflow/agents-and-harnesses.md",
+        "specs/concorde/workflow/agent-graphs-and-loops.md"
       ],
       "scope_parent": "domain.concorde",
       "component_parent": null,
@@ -40,14 +61,22 @@
       "features": [],
       "apis": [],
       "checks": [],
-      "diagrams": []
+      "diagrams": [
+        {
+          "source": "specs/concorde/workflow/diagrams/overview.architecture.json",
+          "kind": "architecture",
+          "title": "Agent orchestration",
+          "recipe": "system-overview"
+        }
+      ]
     },
     {
       "id": "domain.installation",
       "kind": "domain",
       "title": "Installation",
       "documents": [
-        "specs/concorde/installation/how-projects-adopt-concorde.md"
+        "specs/concorde/installation/ontology.md",
+        "specs/concorde/installation/routing.md"
       ],
       "scope_parent": "domain.concorde",
       "component_parent": null,
@@ -56,23 +85,64 @@
       "features": [],
       "apis": [],
       "checks": [],
-      "diagrams": []
+      "diagrams": [
+        {
+          "source": "specs/concorde/installation/diagrams/overview.architecture.json",
+          "kind": "architecture",
+          "title": "Installation",
+          "recipe": "system-overview"
+        }
+      ]
+    },
+    {
+      "id": "domain.developer-view",
+      "kind": "domain",
+      "title": "Developer view and feedback",
+      "documents": [
+        "specs/concorde/developer-view/ontology.md",
+        "specs/concorde/developer-view/routing.md",
+        "specs/concorde/developer-view/views.md",
+        "specs/concorde/developer-view/feedback.md"
+      ],
+      "scope_parent": "domain.concorde",
+      "component_parent": null,
+      "participates_in": [],
+      "implementation": [],
+      "features": [],
+      "apis": [],
+      "checks": [],
+      "diagrams": [
+        {
+          "source": "specs/concorde/developer-view/diagrams/overview.architecture.json",
+          "kind": "architecture",
+          "title": "Developer view and feedback",
+          "recipe": "system-overview"
+        }
+      ]
     },
     {
       "id": "domain.docsite",
       "kind": "domain",
-      "title": "Publication",
+      "title": "Spec publication",
       "documents": [
-        "specs/concorde/publication/how-specs-are-read.md"
+        "specs/concorde/publication/ontology.md",
+        "specs/concorde/publication/routing.md"
       ],
-      "scope_parent": "domain.concorde",
+      "scope_parent": "domain.developer-view",
       "component_parent": null,
       "participates_in": [],
       "implementation": [],
       "features": [],
       "apis": [],
       "checks": [],
-      "diagrams": []
+      "diagrams": [
+        {
+          "source": "specs/concorde/publication/diagrams/overview.architecture.json",
+          "kind": "architecture",
+          "title": "Spec publication",
+          "recipe": "system-overview"
+        }
+      ]
     },
     {
       "id": "service.spec-context",
@@ -122,17 +192,20 @@
     {
       "id": "service.workflow-host",
       "kind": "service",
-      "title": "Workflow host",
+      "title": "Agent orchestration host",
       "documents": [
         "specs/concorde/services/workflow-host-boundary.md",
         "specs/concorde/services/capability-registry.md",
         "specs/concorde/shared/agent-runtime-contracts.md",
-        "specs/concorde/shared/registry-contracts.md"
+        "specs/concorde/shared/registry-contracts.md",
+        "specs/concorde/workflow/agents-and-harnesses.md",
+        "specs/concorde/workflow/agent-graphs-and-loops.md"
       ],
       "scope_parent": null,
       "component_parent": null,
       "participates_in": [
-        "domain.workflow"
+        "domain.workflow",
+        "domain.developer-view"
       ],
       "implementation": [
         "src/concorde/host/capability_host.py",
@@ -222,7 +295,6 @@
         "scripts/install-concorde.py",
         "scripts/install-concorde.sh",
         "scripts/run-capability.py",
-        "scripts/run-viewer.py",
         "scripts/concorde.py",
         "src/concorde/host/cli.py",
         "src/concorde/host/worktree_affinity.py",
@@ -274,6 +346,35 @@
       ],
       "apis": [],
       "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "service.viewer",
+      "kind": "service",
+      "title": "Understand Anything viewer",
+      "documents": [
+        "specs/concorde/services/viewer-boundary.md"
+      ],
+      "scope_parent": null,
+      "component_parent": null,
+      "participates_in": [
+        "domain.developer-view"
+      ],
+      "implementation": [
+        "scripts/run-viewer.py",
+        "tests/concorde/distribution/unit/test_viewer_launcher.py"
+      ],
+      "features": [
+        {
+          "id": "feature.viewer.launch",
+          "title": "Open a raw code graph",
+          "document": "specs/concorde/services/viewer-boundary.md"
+        }
+      ],
+      "apis": [],
+      "checks": [
+        "check.viewer-launch"
+      ],
       "diagrams": []
     },
     {
@@ -368,7 +469,8 @@
       "title": "Agent execution",
       "documents": [
         "specs/concorde/modules/agent-execution.md",
-        "specs/concorde/shared/agent-runtime-contracts.md"
+        "specs/concorde/shared/agent-runtime-contracts.md",
+        "specs/concorde/workflow/agents-and-harnesses.md"
       ],
       "scope_parent": null,
       "component_parent": "service.workflow-host",
@@ -395,7 +497,8 @@
       "title": "Execution permissions",
       "documents": [
         "specs/concorde/modules/permissions.md",
-        "specs/concorde/shared/agent-runtime-contracts.md"
+        "specs/concorde/shared/agent-runtime-contracts.md",
+        "specs/concorde/workflow/agents-and-harnesses.md"
       ],
       "scope_parent": null,
       "component_parent": "service.workflow-host",
@@ -459,7 +562,8 @@
       "scope_parent": null,
       "component_parent": "service.installation",
       "participates_in": [
-        "domain.installation"
+        "domain.installation",
+        "domain.developer-view"
       ],
       "implementation": [
         "src/concorde/distribution/managed_runtime.py"
@@ -565,6 +669,22 @@
         "docsite/package.json",
         "docsite/package-lock.json",
         "scripts/development/check-docsite-types.py"
+      ]
+    },
+    {
+      "id": "check.viewer-launch",
+      "target_id": "service.viewer",
+      "argv": [
+        "{python}",
+        "-m",
+        "unittest",
+        "tests.concorde.distribution.unit.test_viewer_launcher"
+      ],
+      "timeout_seconds": 60,
+      "inputs": [
+        "scripts/run-viewer.py",
+        "tests/concorde/distribution/unit/test_viewer_launcher.py",
+        "concorde.json"
       ]
     }
   ]

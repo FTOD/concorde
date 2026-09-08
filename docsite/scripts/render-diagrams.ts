@@ -4,6 +4,7 @@ import {mkdir, mkdtemp, readFile, realpath, rename, rm, stat} from 'node:fs/prom
 import {dirname, relative, resolve, sep} from 'node:path';
 
 import {discoverDiagramDeclarations} from '../plugins/concorde-content/diagrams';
+import {isScoped} from '../plugins/scoped-content/model';
 import type {DiagramDeclaration, DiagramDeliveryReceipt, DiagramDeliverySet} from '../plugins/concorde-content/types';
 
 const expectedArchify = {
@@ -190,7 +191,10 @@ export async function renderDeclaredDiagrams(
   const archify = await resolveArchifyPackage(root);
   runChecked(runner, archify.bin, ['doctor'], 'Archify doctor');
   const declarations = await discoverDiagramDeclarations(root);
-  const generatedRoot = resolve(root, 'generated');
+  // A Profile 8 publication owns only diagrams, never the Framework's rules, Skills or docs build.
+  const scoped = isScoped(root);
+  const generatedRoot = resolve(root, scoped ? 'generated/diagrams' : 'generated');
+  await mkdir(dirname(generatedRoot), {recursive: true});
   const candidateRoot = await mkdtemp(resolve(root, '.generated-diagrams-'));
   const backupRoot = resolve(root, '.generated-diagrams-previous');
   const receipts: DiagramDeliveryReceipt[] = [];
@@ -203,7 +207,9 @@ export async function renderDeclaredDiagrams(
         `${declaration.sourcePath}: Archify validate`,
       );
       validateShowcaseReceipt(validation, declaration);
-      const candidateOutput = resolve(candidateRoot, declaration.outputFromGenerated);
+      const candidateOutput = resolve(candidateRoot, scoped
+        ? relative(resolve(root, 'generated/diagrams'), declaration.absoluteOutputPath)
+        : declaration.outputFromGenerated);
       if (!isWithin(candidateRoot, candidateOutput)) throw new Error(`${declaration.sourcePath}: candidate output escapes the delivery set.`);
       await mkdir(dirname(candidateOutput), {recursive: true});
       const deliveryArgs = [

@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 from concorde.host.typed_data import typed
 from concorde.host.agent_executor import AgentProcessExecutor
-from concorde.specification.initialize import project_proposal, apply_project_proposal, empty_target
+from concorde.specification.initialize import project_proposal, apply_project_proposal, empty_target, initial_overview
 
 PACKAGE = Path(__file__).resolve().parents[3]
 CONFIGURATION = typed('concorde-capability-configuration', {'integration':'claude','enforcement':'native'})
@@ -23,10 +23,12 @@ def update_document_declaration(root, path, **updates):
 
 def project(root):
     apply_project_proposal(root, PACKAGE, project_proposal(root, PACKAGE, 'Bank', CONFIGURATION, 'scope.bank'))
-    targets=[empty_target('scope.bank','domain','Bank',['specs/how-money-moves.md']),
-             empty_target('scope.audit','domain','Audit',['specs/audit-scope.md']),
+    targets=[empty_target('scope.bank','domain','Bank',['specs/bank/ontology.md']),
+             empty_target('scope.audit','domain','Audit',['specs/audit/ontology.md']),
              empty_target('service.transfer','service','Transfers',['specs/send-money.md','specs/transfer-promises.md']),
              empty_target('module.ledger','module','Ledger',['specs/ledger-api.md'])]
+    for target,folder in zip(targets[:2], ('bank','audit')):
+        target['diagrams']=[{'source':f'specs/{folder}/diagrams/overview.json','kind':'architecture','title':target['title'],'recipe':'system-overview'}]
     targets[2].update(participates_in=['scope.bank','scope.audit'], implementation=['app/transfer.py','checks/transfer_check.py'],
        features=[{'id':'feature.transfer','title':'Transfer money','document':'specs/send-money.md'}],checks=['check.transfer'])
     targets[3].update(component_parent='service.transfer', participates_in=['scope.bank'], implementation=['app/ledger.py'],
@@ -34,8 +36,8 @@ def project(root):
     registry={'schema_version':1,'project_id':'project.bank','entry_target':'scope.bank','targets':targets,
       'checks':[{'id':'check.transfer','target_id':'service.transfer','argv':['{python}','checks/transfer_check.py'],'timeout_seconds':10}]}
     (root/'.concorde/specs.json').write_text(json.dumps(registry))
-    files={'specs/how-money-moves.md':'# Banking\nA Transfer moves money between Accounts. The registered service.transfer Service handles transfer admission and execution; inspect its Service Spec when a task concerns that consumer capability. The module.ledger Module stores balances and is selected only after an admitted Domain or Service identifies a ledger API task. A completed transfer debits the sender and credits the receiver. The scope.audit Domain explains audit-specific outcomes. Duplicate requests require a new decision; unspecified retries are a Spec gap.\n',
-      'specs/audit-scope.md':'# Audit\nThe registered service.transfer Service participates here to explain successful balance changes. Audit does not own the implementation.\n',
+    files={'specs/bank/ontology.md':'# Banking\nA Transfer moves money between Accounts. The registered service.transfer Service handles transfer admission and execution; inspect its Service Spec when a task concerns that consumer capability. The module.ledger Module stores balances and is selected only after an admitted Domain or Service identifies a ledger API task. A completed transfer debits the sender and credits the receiver. The scope.audit Domain explains audit-specific outcomes. Duplicate requests require a new decision; unspecified retries are a Spec gap.\n',
+      'specs/audit/ontology.md':'# Audit\nThe registered service.transfer Service participates here to explain successful balance changes. Audit does not own the implementation.\n',
       'specs/send-money.md':'# Transfer money\n## feature.transfer\ntransfer(balance, amount) returns balance minus amount when amount is positive and balance is sufficient. It raises ValueError otherwise. Calls are pure and do not alter stored balances. The module.ledger target owns stored-balance reads; route ledger API questions to that Module without loading its Spec into main discovery.\n',
       'specs/transfer-promises.md':'# Local promises\nBalance and amount are integers. No network, persistence, retry, or collaborator is required. This complete two-document collection defines all facts required to implement and test transfer.\n',
       'specs/ledger-api.md':'# Ledger API\n## api.ledger\nread(account_id: str) returns an integer balance or raises KeyError. It has no side effects.\n',
@@ -43,16 +45,21 @@ def project(root):
       'app/ledger.py':'def read(account_id):\n    raise KeyError(account_id)\n',
       'checks/transfer_check.py':'import sys\nfrom pathlib import Path\nsys.path.insert(0,str(Path.cwd()))\nfrom app.transfer import transfer\nassert transfer(100,20)==80\nfor balance,amount in [(10,20),(10,0),(10,-1)]:\n    try: transfer(balance,amount)\n    except ValueError: pass\n    else: raise AssertionError("invalid transfer accepted")\n',
       'secret.py':'PRIVATE_CODE_MUST_NOT_ENTER_SPEC_CONTEXT = True\n'}
+    for target in targets[:2]:
+        diagram=target['diagrams'][0]
+        files[diagram['source']]=json.dumps(initial_overview(target['title'], '../../../generated/diagrams/'+target['id']+'.html'))
+        path=target['documents'][0];heading,body=files[path].split('\n',1)
+        files[path]=heading+'\n\n## Ontology\n'+body
     document_declarations={
-      'specs/how-money-moves.md':{'id':'document.bank','targets':['scope.bank'],'main_visible':True},
-      'specs/audit-scope.md':{'id':'document.audit','targets':['scope.audit'],'main_visible':True},
+      'specs/bank/ontology.md':{'id':'document.bank','targets':['scope.bank'],'main_visible':True},
+      'specs/audit/ontology.md':{'id':'document.audit','targets':['scope.audit'],'main_visible':True},
       'specs/send-money.md':{'id':'document.transfer.feature','targets':['service.transfer'],'main_visible':True},
       'specs/transfer-promises.md':{'id':'document.transfer.promises','targets':['service.transfer'],'main_visible':True},
       'specs/ledger-api.md':{'id':'document.ledger.api','targets':['module.ledger'],'main_visible':False}}
     for path,declaration in document_declarations.items():
         files[path]='```concorde-document\n'+json.dumps(declaration,indent=2)+'\n```\n\n'+files[path]
     participant_blocks={
-      'specs/how-money-moves.md':[
+      'specs/bank/ontology.md':[
         {'target_id':'service.transfer','kind':'service',
          'responsibility':'Decide and execute transfers in the banking Domain.',
          'selection_condition':'Select for transfer admission, execution, completion, or failure.',
@@ -61,7 +68,7 @@ def project(root):
          'responsibility':'Provide stored-balance reads used by banking behavior.',
          'selection_condition':'Select for a task about the ledger read API.',
          'relied_upon_promises':['A known account returns its integer balance and an unknown account raises KeyError.']}],
-      'specs/audit-scope.md':[
+      'specs/audit/ontology.md':[
         {'target_id':'service.transfer','kind':'service',
          'responsibility':'Supply successful transfer outcomes to the audit Domain.',
          'selection_condition':'Select when audit behavior depends on a completed transfer.',
@@ -119,11 +126,13 @@ class ModelProcessDouble:
                 declaration={'id':document_id,'targets':candidate[path],
                              'main_visible':target['kind']!='module'}
                 return ('```concorde-document\n'+json.dumps(declaration,indent=2)+'\n```\n\n'
-                    f"# {target['title']}\n\nStable target ID: {target['id']}.\n\n{snapshot['task']}\n")
+                    f"# {target['title']}\n\n"+("## Ontology\n\n" if target['kind']=='domain' else "")+f"Stable target ID: {target['id']}.\n\n{snapshot['task']}\n")
             documents=[{'path':path,'content':current.get(path,initial(path))}
                        for path in target['documents']]
+            current_diagrams={item['path']:item['content'] for item in snapshot['diagram_sources']}
+            diagrams=[{'path':d['source'],'content':current_diagrams.get(d['source'],json.dumps(initial_overview(d['title'],'../../../generated/diagrams/new-domain.html')))} for d in target['diagrams']]
             data={'context_id':snapshot['context_id'],'target_id':target['id'],'outcome':'completed',
-                  'answer':'Target-local Spec authored.','gaps':[],'documents':documents}
+                  'answer':'Target-local Spec authored.','gaps':[],'documents':documents,'diagrams':diagrams}
             if self.callback:self.callback(stage,snapshot,data,Path(cwd))
             payload={key:item['const'] for key,item in properties.items() if 'const' in item}
             payload.update(status='success',output='Explicit topology-author double.',limitations='none',

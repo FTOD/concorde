@@ -113,7 +113,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
         "focus_id": focus_id, "phase": phase, "task": task, "constraints": list(constraints),
         "protocol_binding": repository.config["protocol"], "protocol": protocol,
         "document_order": document_order, "target_spec": target_spec,
-        "shared_specs": shared_specs, "instructions": instructions,
+        "shared_specs": shared_specs, "diagram_sources": repository.diagram_sources(target), "instructions": instructions,
         "stage_inputs": list(stage_inputs),
         "implementation_artifacts": [{"id": path, "path": path,
             "digest": digest(read_file(repository.root, path))} for path in repository.implementation_files(target)]
@@ -218,6 +218,17 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
     current_documents = [repository.document(path) for path in current_paths]
     current_document_order, target_spec, shared_specs = _spec_sections(
         current_documents, references=references)
+    current_diagrams = []
+    # Candidate registration authorizes only already registered sources. A new path must be
+    # authored from the task, never read as an arbitrary existing file supplied by the caller.
+    admitted = {d["source"] for d in target["diagrams"] if d["source"] in repository.diagram_targets}
+    if target["id"] in repository.targets:
+        admitted.update(d["source"] for d in repository.targets[target["id"]].diagrams)
+    for path in sorted(admitted):
+        owners = repository.diagram_targets[path]
+        owner = target["id"] if target["id"] in owners else owners[0]
+        current_diagrams.append(next(item for item in repository.diagram_sources(repository.targets[owner])
+                                     if item["path"] == path))
     protocol = []
     for path in ("generated/protocol/principles.md", f"generated/protocol/kinds/{target['kind']}.md"):
         raw = repository.protocol_assets[path]
@@ -233,6 +244,7 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
         "current_document_order": current_document_order,
         "target_spec": target_spec,
         "shared_specs": shared_specs,
+        "diagram_sources": current_diagrams,
         "instructions": instructions,
         "workspace": workspace if workspace is not None else workspace_context(repository.root),
     }
@@ -251,8 +263,8 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, ch
         raise SpecError("context Protocol binding has changed", "stale_context")
     document_order, target_spec, shared_specs = _spec_sections(current.documents(target))
     if (document_order != value["document_order"] or target_spec != value["target_spec"]
-            or shared_specs != value["shared_specs"]):
-        raise SpecError("context document membership, classification, or bytes changed", "stale_context")
+            or shared_specs != value["shared_specs"] or current.diagram_sources(target) != value.get("diagram_sources", [])):
+        raise SpecError("context document/diagram membership, classification, declarations or bytes changed", "stale_context")
     if check_implementation and value["phase"] in {"implementation", "code-review"}:
         current_artifacts = [{"id": path, "path": path, "digest": digest(read_file(current.root, path))}
                              for path in current.implementation_files(target)]

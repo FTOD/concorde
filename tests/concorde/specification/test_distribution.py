@@ -26,7 +26,9 @@ class DistributionTests(unittest.TestCase):
             self.assertEqual(role,prompt.name);self.assertTrue(prompt.body.strip());self.assertIsNotNone(prompt.effects)
     def test_self_architecture_uses_two_axes_and_local_capability_registry(self):
         repo=SpecRepository(PACKAGE);self.assertEqual('success',validate_repository(PACKAGE).status)
-        self.assertEqual({'domain':4,'service':5,'module':8},{kind:sum(t.kind==kind for t in repo.targets.values()) for kind in ('domain','service','module')})
+        self.assertEqual({'domain':5,'service':6,'module':8},{kind:sum(t.kind==kind for t in repo.targets.values()) for kind in ('domain','service','module')})
+        self.assertEqual('domain.developer-view',repo.select('domain.docsite').scope_parent)
+        self.assertIn('scripts/run-viewer.py',repo.select('service.viewer').implementation)
         text='\n'.join(d.body for d in repo.documents(repo.select('service.workflow-host')))
         for op in CAPABILITY_NAMES:self.assertIn(op+'-request',text)
     def test_launcher_refuses_a_stage_capability_name_and_accepts_a_public_skill(self):

@@ -13,13 +13,16 @@
 A caller registers stable target identities, independent scope/component parent relationships,
 overlapping participation and each target's complete ordered Markdown collection. Domain targets
 hold business entities/rules; Service targets expose Features and precise exchanges; Module targets
-expose APIs directly. Features/APIs have local stable IDs and an explicit member document. File names
-have no semantic role. Every Markdown contains exactly one `concorde-document` JSON object with
+expose APIs directly. Features/APIs have local stable IDs and an explicit member document. Every Domain registers exactly one local main-visible `ontology.md`; other filenames
+remain unrestricted. Domain main-document selection uses explicit membership and the exact basename,
+never member order or directory scanning. The main Spec contains an Ontology section and owns one
+architecture declaration with `recipe: system-overview`. Every Markdown contains exactly one `concorde-document` JSON object with
 globally unique id, exact nonempty targets and boolean main_visible. A file referenced once is Target
 Spec; a file referenced several times is collective Shared Specs with no unique owner. The registry
 is the matching resolution index and rejects declaration mismatch, duplicate document IDs, cycles,
-foreign focus IDs, overlapping code ownership and unsafe paths. A Domain/Service may expose no
-document to main when another visible routing view is sufficient to select its target worker.
+foreign focus IDs, overlapping code ownership and unsafe paths. A Service may expose no
+document to Main when another visible routing view is sufficient to select its target worker; a
+Domain always exposes its local ontology.md main Spec.
 Each direct component participation edge must also have one machine-readable Domain-local
 `concorde-participants` entry containing target ID, kind, responsibility, selection condition and
 relied-upon promises. Registry metadata proves the relationship; the Domain entry supplies the
@@ -50,13 +53,19 @@ The snapshot data adds the content of each target_spec/shared_specs reference. T
 documents referenced only by the selected target; Shared Specs contains each multiply referenced
 document once. document_order preserves the registry order across both headings. The resolver does
 not load any referencing entity's other documents and does not recurse through shared membership.
-The context identity covers all inputs apart from its own identity field. Protocol contains
-principles and the matching kind definition only.
-Protocol 1.1.0 includes P10 handoffs in the principles body. The resolver verifies the build is
+`diagram_sources` contains only the selected target's registered JSON sources as path/digest/content/declaration
+records. These bytes are explicit Spec artifacts, not executable code, and participate in context
+identity and freshness. Changing a diagram invalidates the target revision and its review evidence.
+The context identity covers all inputs apart from its own identity field. The wire field `protocol`
+contains the distributed principles bundle and matching kind definition only. This bundle includes
+both Concorde Spec Protocol requirements and the Framework execution profile; the field name does
+not classify all runtime rules as Spec organization rules.
+Concorde Spec Protocol 1.2.0 introduces the main-Spec convention. The distributed rule bundle also
+includes the separately authored Framework execution profile, including P10 handoffs. The resolver verifies the build is
 fresh, then admits Protocol assets rendered into `generated/protocol/` from the exact project-bound
 manifest, without discovering root AGENTS.md/CLAUDE.md. The installed root entry serves
 outer user sessions only. Package update leaves an old binding unchanged and resolution rejects
-`protocol_mismatch` until the maintainer explicitly accepts the installed version and manifest
+`protocol_mismatch` until the developer explicitly accepts the installed version and manifest
 digest in `.concorde/config.json`. Changed bindings require new contexts.
 Stage inputs must be versioned plan, implementation-task or reflection-selection values. Code bytes
 are not embedded in a snapshot; implementation and the dedicated read-only code-review phase have
@@ -77,12 +86,16 @@ target snapshots, are admitted for a separate synthesis invocation.
 During `design-topology`, the discovery snapshot additionally includes exact registry metadata and
 all global kind definitions. It still directly expands no Module target and contains no implementation source.
 After the design is accepted, each fresh target-local Spec author receives one proposed descriptor,
-task, matching kind definition and only that target's current documents. A new target begins with no
-documents. A document-reference change tasks every retained current/candidate reference. Shared
+task, matching kind definition, that target's current documents and admitted registered diagram
+sources. Candidate diagrams already registered elsewhere are admitted only through the accepted
+target descriptor; arbitrary existing files are not read. A new target begins without invented
+business documents or architecture. A document-reference change tasks every retained current/candidate reference. Shared
 content changes require every candidate referencing author to return identical bytes; disagreement
-is conflicting. The host combines the deduplicated proposals in a registry/document overlay for
+is conflicting. Topology authors return complete Markdown and diagram replacements in descriptor
+order. The host combines the deduplicated proposals in a registry/Spec-source overlay for
 validation without exposing those bodies to the coordinator or changing project files.
-Ordinary single-target authoring preserves the entire `concorde-document` declaration; document ID,
+Ordinary single-target authoring may update its own registered diagram bytes while preserving
+their declared type/title and shared sources. It preserves the entire `concorde-document` declaration; document ID,
 reference and visibility changes are topology changes even for a currently local document.
 
 Context solving is a separate fresh context-assessor stage, run directly by the
@@ -101,6 +114,9 @@ into the worker snapshot.
 concorde-init request action:propose additionally requires name and configuration and optionally a
 target_id (default domain.project); action:apply requires the returned typed project proposal.
 A proposal records action initialize, nullable base_digest and files {path,before_digest,content}.
+It creates `specs/project/ontology.md` and a System overview source at
+`specs/project/diagrams/overview.architecture.json`. The stub diagrams only the known developer,
+project Spec and external Framework; unknown business entities and architecture are explicit gaps.
 Application validates every precondition and the complete resulting registry, then commits the file
 replacements or restores original bytes. New initialization never overwrites existing files. Profile
 7 is not agent-compatible and has no migration capability. The host can resolve metadata broadly;
@@ -151,7 +167,9 @@ Each physical Markdown declares `{id,targets,main_visible}` in one `concorde-doc
 Declaration targets equal the reverse registry membership; document IDs are globally unique.
 Domain Markdown carries `concorde-participants` JSON arrays; each entry has target_id, kind,
 responsibility, selection_condition and a nonempty unique relied_upon_promises array.
-Diagram records contain source,kind,title. Check records contain id,target_id,argv,timeout_seconds
+Diagram records contain source,kind,title and optional recipe (only `system-overview`, for
+architecture). Every Domain has exactly one such overview; its source requests showcase validation
+and a generated HTML output beneath `generated/diagrams/`. Check records contain id,target_id,argv,timeout_seconds
 and optional inputs (exact project-relative files/directories). The host hashes check declarations,
 owned implementation and declared check inputs. A changed check driver or acceptance input invalidates
 prior results; check authority never becomes an agent's code grant. Timeout is 1..3600 seconds.

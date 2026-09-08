@@ -8,6 +8,14 @@
 
 # Agent execution
 
+## Required Agent and Harness boundary
+
+The registered Shared Spec **Agents and Harnesses** defines A1–A4 for this Module. Execution MUST
+receive a resolved Agent definition binding `spec.md`, Harness and Constraints/Permissions, and
+operate the admitted model integration and local loop. It MUST preserve identity and effective
+resource limits through Capability calls and feedback. The launch APIs below are existing native
+adapter contracts; their presence alone does not establish a complete Agent/Harness implementation.
+
 ## api.execution.execute
 
 `AgentProcessExecutor` executes one host-built `LaunchSpecification` in a fresh Codex or Claude

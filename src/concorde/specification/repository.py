@@ -15,7 +15,7 @@ from .schema import ContractError, admit, validate
 
 
 PROFILE_VERSION = 8
-PROTOCOL_VERSION = "1.1.0"
+PROTOCOL_VERSION = "1.2.0"
 KINDS = frozenset({"domain", "service", "module"})
 IDENTITY = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$")
 CONTRACT_BLOCK = re.compile(r"^```concorde-contract\s*\n(.*?)^```\s*$", re.M | re.S)
@@ -72,6 +72,13 @@ class SpecTarget:
     checks: tuple[str, ...]
     diagrams: tuple[dict, ...]
 
+    @property
+    def primary_document(self) -> str:
+        """Resolve a Domain's main Spec from registered membership, never member order."""
+        if self.kind == "domain":
+            return next(path for path in self.documents if Path(path).name == "ontology.md")
+        return self.documents[0]
+
 
 @dataclass(frozen=True)
 class SpecDocument:
@@ -112,6 +119,7 @@ class SpecRepository:
         self.focus: dict[str, tuple[str, str, dict]] = {}
         self.checks: dict[str, dict] = {}
         self.document_targets: dict[str, list[str]] = {}
+        self.diagram_targets: dict[str, list[str]] = {}
         self._document_cache: dict[str, SpecDocument] = {}
         self._load_registry()
         self.entry_target = self.registry["entry_target"]
@@ -159,6 +167,8 @@ class SpecRepository:
             if not isinstance(raw["title"], str) or not raw["title"].strip():
                 raise SpecError(f"target {target_id} requires a title")
             documents = strings(raw["documents"], "documents", nonempty=True)
+            if raw["kind"] == "domain" and sum(Path(p).name == "ontology.md" for p in documents) != 1:
+                raise SpecError(f"Domain {target_id} must register exactly one local ontology.md main Spec")
             for path in documents:
                 safe_path(path)
                 if not path.endswith(".md") or path.startswith((".concorde/", ".git/")):
@@ -178,6 +188,27 @@ class SpecRepository:
                 raise SpecError("Modules declare APIs directly, not Features")
             if raw["kind"] != "module" and raw["apis"]:
                 raise SpecError("Service/Domain use cases belong in Features; boundary schemas belong in contracts")
+            if not isinstance(raw["diagrams"], list):
+                raise SpecError("diagrams must be an array")
+            diagram_sources = set()
+            for diagram in raw["diagrams"]:
+                if (not isinstance(diagram, dict) or not {"source", "kind", "title"} <= set(diagram)
+                        or set(diagram) - {"source", "kind", "title", "recipe"}):
+                    raise SpecError("diagram declarations require source/kind/title and optional recipe")
+                source = safe_path(diagram["source"])
+                if (not source.endswith(".json") or source.startswith((".concorde/", ".git/", "generated/"))
+                        or source in diagram_sources):
+                    raise SpecError(f"diagram sources must be unique durable JSON: {source}")
+                if (diagram["kind"] not in {"architecture", "workflow", "sequence", "dataflow", "lifecycle"}
+                        or not isinstance(diagram["title"], str) or not diagram["title"].strip()):
+                    raise SpecError(f"invalid diagram kind/title: {source}")
+                if "recipe" in diagram and (diagram["recipe"] != "system-overview" or diagram["kind"] != "architecture"):
+                    raise SpecError("system-overview is an architecture recipe")
+                diagram_sources.add(source)
+                paths.add(source)
+                self.diagram_targets.setdefault(source, []).append(target_id)
+            if raw["kind"] == "domain" and sum(d.get("recipe") == "system-overview" for d in raw["diagrams"]) != 1:
+                raise SpecError(f"Domain {target_id} must declare exactly one System overview architecture diagram")
             for focus_kind in ("features", "apis"):
                 if not isinstance(raw[focus_kind], list):
                     raise SpecError(f"{focus_kind} must be an array")
@@ -198,6 +229,8 @@ class SpecRepository:
                 if path==other or path.startswith(other+"/") or other.startswith(path+"/"):
                     raise SpecError(f"implementation ownership overlaps: {owner} and {peer}")
         for target in self.targets.values():
+            if target.kind == "domain" and self.document_targets[target.primary_document] != [target.id]:
+                raise SpecError(f"Domain main Spec must reference only its own Domain: {target.primary_document}")
             for field, kind in (("scope_parent", "domain"), ("component_parent", "component")):
                 parent = getattr(target, field)
                 if parent is not None:
@@ -242,6 +275,18 @@ class SpecRepository:
     def documents(self, target: SpecTarget) -> tuple[SpecDocument, ...]:
         return tuple(self.document(path) for path in target.documents)
 
+    def diagram_sources(self, target: SpecTarget) -> list[dict]:
+        """Only explicitly registered diagram bytes enter a target's reproducible context."""
+        result = []
+        for declaration in target.diagrams:
+            path = declaration["source"]
+            raw = self.document_overrides.get(path)
+            if raw is None:
+                raw = read_file(self.root, path)
+            result.append({"path": path, "digest": digest(raw), "content": raw.decode("utf-8"),
+                           "declaration": declaration})
+        return result
+
     def document(self, path: str) -> SpecDocument:
         """Read one declared Spec truth and verify its registry reference set."""
 
@@ -271,6 +316,9 @@ class SpecRepository:
             raise SpecError(
                 f"document target declaration differs from registry membership: {path}"
             )
+        if any(target.kind == "domain" and target.primary_document == path
+               for target in self.targets.values()) and not value["main_visible"]:
+            raise SpecError(f"Domain ontology.md must be main_visible: {path}")
         document = SpecDocument(path, text, digest(raw), document_id, targets,
                                 value["main_visible"], metadata, body)
         self._document_cache[path] = document

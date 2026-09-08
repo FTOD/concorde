@@ -2,7 +2,7 @@
   "schema_version": 3,
   "name": "concorde",
   "version": "4.0.0",
-  "description": "Explicit Domain scopes, Service/Module Specs, and permission-enforced capabilities",
+  "description": "Concorde Framework: Concorde Spec Protocol, installable Skills and verified agent workflows",
   "license": "MIT",
   "license_file": "LICENSE",
   "repository": "https://github.com/FTOD/concorde",

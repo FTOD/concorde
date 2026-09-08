@@ -166,12 +166,12 @@ class NativeInstallerTests(unittest.TestCase):
             target = Path(temporary)
             config = target / ".concorde/reflections/config.json"
             config.parent.mkdir(parents=True)
-            config.write_text('{"schema_version":1,"maintainer":"custom"}\n')
+            config.write_text('{"schema_version":1,"developer":"custom"}\n')
             actions, desired, _ = installer.installation_plan(target, self.package, "codex")
             item = next(entry for entry in actions if entry["path"] == ".concorde/reflections/config.json")
             self.assertEqual(item["action"], "preserve")
             installer.apply_plan(target, self.package, "codex", actions, desired)
-            self.assertIn('"maintainer":"custom"', config.read_text())
+            self.assertIn('"developer":"custom"', config.read_text())
             paths = {entry["path"] for entry in json.loads((target / ".concorde/install.json").read_text())["outputs"]}
             self.assertNotIn(".concorde/reflections/config.json", paths)
             self.assertNotIn(".concorde/reflections/.gitignore", paths)
@@ -350,7 +350,7 @@ class NativeInstallerTests(unittest.TestCase):
             target = Path(temporary)
             collision = target / ".agents/skills/concorde-validate/SKILL.md"
             collision.parent.mkdir(parents=True)
-            collision.write_text("maintainer file\n")
+            collision.write_text("developer file\n")
             actions, _, _ = installer.installation_plan(target, self.package, "codex")
             item = next(entry for entry in actions if entry["path"] == collision.relative_to(target).as_posix())
             self.assertEqual(item["action"], "conflict")

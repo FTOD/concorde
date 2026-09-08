@@ -17,7 +17,8 @@ TASK_ITEM = obj({"id": STRING, "target_id": STRING, "description": STRING,
                  "acceptance": STRING, "complete": {"type": "boolean"}})
 WORKER_OUTCOMES = {"enum": ["completed", "spec_incomplete", "unsupported", "conflicting", "failed"]}
 FOCUS = obj({"id": STRING, "title": STRING, "document": PATH})
-DIAGRAM = obj({"source": PATH, "kind": STRING, "title": STRING})
+DIAGRAM = obj({"source": PATH, "kind": STRING, "title": STRING,
+               "recipe": {"const": "system-overview"}}, ("recipe",))
 CHECK = obj({"id": STRING, "target_id": STRING, "argv": {**array(STRING), "minItems": 1},
              "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600},
              "inputs": array(PATH, unique=True)}, ("inputs",))
@@ -151,6 +152,7 @@ def schemas() -> dict:
         "main_visible": {"type": "boolean"}})
     document = obj({**document_ref["properties"], "content": {"type": "string"}})
     protocol_document = obj({"path": PATH, "digest": DIGEST, "content": {"type": "string"}})
+    diagram_source = obj({**protocol_document["properties"], "declaration": DIAGRAM})
     result["concorde-project-proposal"] = obj({"action": {"enum": ["initialize"]},
         "base_digest": {"anyOf": [DIGEST, {"type": "null"}]}, "files": array(PROPOSAL_FILE)})
     result["concorde-plan-artifact"] = obj({"plan": STRING})
@@ -163,7 +165,7 @@ def schemas() -> dict:
         "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
         "protocol": array(protocol_document),
         "document_order": array(PATH, unique=True), "target_spec": array(document),
-        "shared_specs": array(document), "instructions": {"type": "string"},
+        "shared_specs": array(document), "diagram_sources": array(diagram_source), "instructions": {"type": "string"},
         "stage_inputs": array(stage_input), "implementation_artifacts": array(ARTIFACT),
         "workspace": WORKSPACE_CONTEXT})
     result["concorde-agent-stage-context"] = obj({"snapshot": typed_schema("concorde-context-snapshot"),
@@ -195,12 +197,13 @@ def schemas() -> dict:
     result["concorde-agent-stage-result"] = obj({"context_id": DIGEST,
         "outcome": {"enum": ["completed", "sufficient", "spec_incomplete", "unsupported", "conflicting", "failed"]},
         "answer": {"type": "string"}, "gaps": array(GAP), "documents": array(DOCUMENT_CHANGE),
+        "diagrams": array(DOCUMENT_CHANGE),
         "plan": {"type": "string"}, "tasks": array(TASK_ITEM),
         "reflection_findings": array(obj({"reflection_id":STRING,"verified_commit":STRING,
           "observed_state":{"enum":["reproduced","not-reproduced"]},"verification":STRING,"analysis":STRING,"resolution":STRING,
           "intervention_rationale":STRING,"human_intervention":{"enum":["required","not-required"]},
           "route":{"enum":["fast-loop","plan","dismiss","blocked"]},"effort":{"enum":["small","medium","large"]},
-          "files":array(PATH,unique=True),"steps":STRING,"validation":STRING,"risks":STRING,"protocol_change":{"type":"boolean"}}))}, ("reflection_findings",))
+          "files":array(PATH,unique=True),"steps":STRING,"validation":STRING,"risks":STRING,"protocol_change":{"type":"boolean"}}))}, ("reflection_findings", "diagrams"))
     result["concorde-main-worker-result"] = obj({"target_id": STRING, "focus_id": NULLABLE_ID,
         "context_id": DIGEST, "outcome": WORKER_OUTCOMES, "answer": {"type": "string"},
         "gaps": array(GAP)})
@@ -244,9 +247,10 @@ def schemas() -> dict:
             "targets": {**array(STRING, unique=True), "minItems": 1}})),
         "current_document_order": array(PATH, unique=True),
         "target_spec": array(document), "shared_specs": array(document),
+        "diagram_sources": array(diagram_source),
         "instructions": {"type": "string"}, "workspace": WORKSPACE_CONTEXT})
     result["concorde-topology-author-result"] = obj({"context_id": DIGEST, "target_id": STRING,
         "outcome": WORKER_OUTCOMES, "answer": {"type": "string"}, "gaps": array(GAP),
-        "documents": array(DOCUMENT_CHANGE)})
+        "documents": array(DOCUMENT_CHANGE), "diagrams": array(DOCUMENT_CHANGE)}, ("diagrams",))
     result.update(_capability_schemas())
     return result

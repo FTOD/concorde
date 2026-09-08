@@ -108,7 +108,7 @@ def apply_investigation(project: Path, queue, runtime_input: dict, domain_output
         if concorde_project and finding["protocol_change"]:
             raise TypedDataError("incompatible_handoff", "/domain_output", "normative Protocol changes require feature.concorde.evolve-protocol")
         if finding["observed_state"] == "not-reproduced" and (finding["route"] != "dismiss" or finding["human_intervention"] != "required"):
-            raise TypedDataError("incompatible_handoff", "/domain_output", "a non-reproduced problem requires a maintainer dismissal decision")
+            raise TypedDataError("incompatible_handoff", "/domain_output", "a non-reproduced problem requires a developer dismissal decision")
         if finding["route"] == "fast-loop" and finding["effort"] != "small":
             raise TypedDataError("incompatible_handoff", "/domain_output", "fast-loop requires a small verified change")
         for key in ("verification", "analysis", "resolution", "intervention_rationale", "steps", "validation", "risks"):
@@ -157,7 +157,7 @@ def apply_investigation(project: Path, queue, runtime_input: dict, domain_output
         if any(item["observed_state"] != "reproduced" for item in findings):
             raise TypedDataError("incompatible_handoff", "/domain_output", "problem no longer reproduces; downstream implementation stopped")
         if any(item["human_intervention"] == "required" for item in findings):
-            raise TypedDataError("incompatible_handoff", "/domain_output", "selected reflection requires maintainer comments")
+            raise TypedDataError("incompatible_handoff", "/domain_output", "selected reflection requires developer comments")
         if any(item["route"] != task["route"] for item in findings):
             raise TypedDataError("incompatible_handoff", "/domain_output", "verified resolution route differs from the requested route")
         if any(item[-1] != "approved" for item in prepared):

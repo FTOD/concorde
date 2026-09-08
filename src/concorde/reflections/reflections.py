@@ -7,12 +7,12 @@ analysis, proposed resolution, and human-intervention decision.
 
 The bucket directory mirrors triage state and nothing else: ``pending/`` holds recorded problems
 that triage has not investigated, ``planned/`` holds completed triage that automation may carry out
-without a maintainer, and ``needs-comments/`` holds completed triage that waits for maintainer input
+without a developer, and ``needs-comments/`` holds completed triage that waits for developer input
 in ``User Comments``. Recording always creates a document under ``pending/``; the triage parent
 relocates it with the deterministic queue helper after persisting the completion. Buckets only ever
 hold open work: a closed document (``status: resolved`` or ``dismissed`` with a ``resolution_note``)
 is removed, together with its plan, by the queue helper's ``--remove-closed`` action once a
-maintainer has recorded that disposition, and Git history keeps the record.
+developer has recorded that disposition, and Git history keeps the record.
 """
 
 from __future__ import annotations
@@ -85,9 +85,9 @@ def bucket_path(bucket: str) -> str:
 def reflection_bucket(triage: str, human_intervention: str) -> str | None:
     """Return the bucket directory that must hold a reflection in the given triage state.
 
-    ``pending`` documents have not been triaged. Completed triage decides whether a maintainer must
+    ``pending`` documents have not been triaged. Completed triage decides whether a developer must
     comment before automation may proceed: ``required`` documents wait under ``needs-comments`` and
-    ``not-required`` documents wait under ``planned``. Maintainer-owned ``status`` never changes the
+    ``not-required`` documents wait under ``planned``. Developer-owned ``status`` never changes the
     bucket. ``None`` means the combination is invalid and is diagnosed elsewhere.
     """
     if triage == "pending":
@@ -235,7 +235,7 @@ class ParsedReflections:
         return tuple(entry for entry in self.entries if entry.misplaced)
 
     def closed(self) -> tuple[ReflectionEntry, ...]:
-        """Entries whose maintainer-owned status is ``resolved`` or ``dismissed``."""
+        """Entries whose developer-owned status is ``resolved`` or ``dismissed``."""
         return tuple(entry for entry in self.entries if entry.status in {"resolved", "dismissed"})
 
 
@@ -413,7 +413,7 @@ def parse_reflection_document(text: str, path: str) -> tuple[ReflectionEntry | N
                 1,
                 identifier,
                 f"Reflection is {status} but has no resolution_note.",
-                "Add the maintainer's reason and the resolving change as resolution_note.",
+                "Add the developer's reason and the resolving change as resolution_note.",
             )
         )
 

@@ -10,12 +10,14 @@ export interface Target {
   id: string; kind: Kind; title: string; documents: string[];
   scope_parent: string | null; component_parent: string | null; participates_in: string[];
   implementation: string[]; features: Focus[]; apis: Focus[]; checks: string[];
-  diagrams: {source: string; kind: string; title: string}[];
+  diagrams: {source: string; kind: string; title: string; recipe?: 'system-overview'}[];
 }
 export interface Page {
   targetId: string; kind: Kind; title: string; sourcePath: string; contentDigest: string;
   route: string; stagedPath: string; content: string; documentId: string;
   documentTargets: string[]; mainVisible: boolean; contextSection: 'target_spec' | 'shared_specs';
+  primary: boolean;
+  inlineOverview: boolean;
   architectureDiagrams?: {kind: string; title: string; source: string; sourceSha256: string; route: string}[];
 }
 export interface Edge {source: string; target: string; kind: 'scope_contains' | 'composes' | 'participates_in' | 'requires'; contract?: string}
@@ -25,6 +27,24 @@ export interface ScopedRegistry {
 }
 export const hash = (value: string | Buffer) => 'sha256:' + createHash('sha256').update(value).digest('hex');
 function requireThat(value: unknown, message: string): asserts value {if (!value) throw new Error(message);}
+export function primaryDocument(target: Target): string {
+  if (target.kind !== 'domain') return target.documents[0];
+  const main = target.documents.filter(path => posix.basename(path) === 'ontology.md');
+  requireThat(main.length === 1, `Domain must register exactly one ontology.md main Spec: ${target.id}`);
+  return main[0];
+}
+function ontologyProse(source: string): string {
+  let fence: string | undefined;
+  return source.split('\n').filter(line => {
+    const match = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+    if (match) {
+      if (!fence) fence = match[1];
+      else if (match[1][0] === fence[0] && match[1].length >= fence.length && !line.slice(match[0].length).trim()) fence = undefined;
+      return false;
+    }
+    return !fence;
+  }).join('\n');
+}
 export function safeRead(root: string, path: string): string {
   requireThat(typeof path === 'string' && path.length && !path.includes('\\') && !path.startsWith('/') &&
     path.split('/').every(p => p && p !== '.' && p !== '..'), `Unsafe source path: ${path}`);
@@ -69,11 +89,29 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     requireThat(['domain','service','module'].includes(t.kind) && typeof t.title === 'string' && t.title.trim(), `Invalid kind/title: ${t.id}`);
     requireThat(Array.isArray(t.documents) && t.documents.length && new Set(t.documents).size === t.documents.length, `Explicit nonempty unique collection required: ${t.id}`);
     for (const key of ['participates_in','implementation','features','apis','checks','diagrams'] as const) requireThat(Array.isArray(t[key]), `Missing ${key}: ${t.id}`);
+    primaryDocument(t);
+    const diagramSources = new Set<string>();
+    for (const diagram of t.diagrams) {
+      requireThat(diagram && ['source','kind','title'].every(key => typeof diagram[key as 'source'] === 'string') &&
+        Object.keys(diagram).every(key => ['source','kind','title','recipe'].includes(key)), `Invalid diagram declaration: ${t.id}`);
+      requireThat(diagram.source.endsWith('.json') && !/^(?:\.concorde|\.git|generated)\//.test(diagram.source),
+        `Diagram source must be durable JSON: ${diagram.source}`);
+      requireThat(['architecture','workflow','sequence','dataflow','lifecycle'].includes(diagram.kind) && diagram.title.trim(),
+        `Invalid diagram kind/title: ${diagram.source}`);
+      requireThat(!diagramSources.has(diagram.source), `Duplicate diagram source: ${diagram.source}`);
+      diagramSources.add(diagram.source);
+      requireThat(!('recipe' in diagram) || diagram.recipe === 'system-overview' && diagram.kind === 'architecture',
+        `System overview must be an architecture diagram: ${t.id}`);
+    }
+    if (t.kind === 'domain') requireThat(t.diagrams.filter(d => d.recipe === 'system-overview').length === 1,
+      `Domain must declare exactly one System overview: ${t.id}`);
     requireThat(t.scope_parent === null || typeof t.scope_parent === 'string', 'scope_parent must be explicit');
     requireThat(t.component_parent === null || typeof t.component_parent === 'string', 'component_parent must be explicit');
     requireThat(t.kind === 'domain' ? t.component_parent === null && !t.implementation.length && !t.participates_in.length : t.scope_parent === null, `Independent architecture dimensions violated: ${t.id}`);
     requireThat(t.kind === 'module' ? !t.features.length : !t.apis.length, `Module APIs and Service/Domain Features are distinct: ${t.id}`);
     for(const path of t.documents){
+      requireThat(typeof path === 'string' && path.endsWith('.md') && !/^(?:\.concorde|\.git)\//.test(path),
+        `Spec documents must be durable Markdown: ${path}`);
       const references=documentTargets.get(path)??[];
       references.push(t.id);documentTargets.set(path,references);
     }
@@ -88,6 +126,14 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     allIds.add(context.id);documentIds.set(context.id,path);documentContexts.set(path,context);
   }
   for (const t of targets) {
+    if (t.kind === 'domain') {
+      const main = primaryDocument(t); const declaration = documentContexts.get(main)!;
+      requireThat(declaration.targets.length === 1 && declaration.targets[0] === t.id,
+        `Domain main Spec must be local: ${main}`);
+      requireThat(declaration.main_visible, `Domain ontology.md must be main_visible: ${main}`);
+      const prose = ontologyProse(safeRead(root, main));
+      requireThat(/^## Ontology\s*$/m.test(prose), `Domain main Spec requires an Ontology section: ${main}`);
+    }
     for (const [key, kind] of [['scope_parent','scope_contains'],['component_parent','composes']] as const) {
       const parent = t[key]; const seen = new Set([t.id]); let cursor = parent;
       while (cursor) {
@@ -106,7 +152,8 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
       const title = /^#\s+(.+)$/m.exec(content)?.[1] ?? t.title; const key = hash(path).slice(7,23);
       pages.push({targetId:t.id,kind:t.kind,title,sourcePath:path,contentDigest:hash(raw),route:`/specs/${t.id}/${key}`,stagedPath:`${t.id}/${key}.md`,content,
         documentId:context.id,documentTargets:context.targets,mainVisible:context.main_visible,
-        contextSection:context.targets.length>1?'shared_specs':'target_spec'});
+        contextSection:context.targets.length>1?'shared_specs':'target_spec',primary:path===primaryDocument(t),
+        inlineOverview:t.kind==='domain'&&path===primaryDocument(t)&&/^## Architecture overview\s*$/m.test(ontologyProse(content))});
       inputs.push([path,hash(raw)]);
     }
     for (const focus of [...t.features,...t.apis]) {
@@ -116,10 +163,12 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     for (const d of t.diagrams) {
       const raw = safeRead(root,d.source); const source = JSON.parse(raw);
       requireThat(source.diagram_type === d.kind && source.meta?.title === d.title, `Diagram declaration differs: ${d.source}`);
+      if (d.recipe === 'system-overview') requireThat(source.meta?.quality_profile === 'showcase',
+        `System overview must request showcase validation: ${d.source}`);
       inputs.push([d.source,hash(raw)]);
       const output = posix.normalize(posix.join(posix.dirname(d.source),source.meta.output ?? ''));
-      requireThat(output.startsWith('generated/') && output.endsWith('.html'), `Diagram output must be generated HTML: ${d.source}`);
-      const page = pages.find(p=>p.targetId===t.id)!;
+      requireThat(output.startsWith('generated/diagrams/') && output.endsWith('.html'), `Diagram output must be HTML under generated/diagrams/: ${d.source}`);
+      const page = pages.find(p=>p.targetId===t.id && p.primary)!;
       (page.architectureDiagrams ??= []).push({kind:d.kind,title:d.title,source:d.source,sourceSha256:hash(raw).slice(7),route:'/diagrams/'+hash(d.source).slice(7,23)+'.html'});
     }
   }

@@ -8,9 +8,14 @@ const PROJECTIONS_GROUP={type:'category',label:'Projections',collapsed:false,ite
   {type:'doc',id:'projections/wire',label:'Wire contracts'},
 ]};
 export function scopedSidebar(registry: ScopedRegistry) {
-  const item=(target:Target):object=>({type:'category',label:target.title,collapsed:true,
-    items:[...registry.pages.filter(p=>p.targetId===target.id).map(p=>({type:'doc',id:p.stagedPath.replace(/\.md$/,''),label:p.title})),
-      ...registry.targets.filter(t=>(target.kind==='domain'?t.scope_parent:t.component_parent)===target.id).map(item)]});
+  const item=(target:Target):object=>{
+    const pages=registry.pages.filter(p=>p.targetId===target.id);
+    const main=pages.find(p=>p.primary)!;
+    return {type:'category',label:target.title,collapsed:true,
+      ...(target.kind==='domain'?{link:{type:'doc',id:main.stagedPath.replace(/\.md$/,'')}}:{}),
+      items:[...pages.filter(p=>target.kind!=='domain'||!p.primary).map(p=>({type:'doc',id:p.stagedPath.replace(/\.md$/,''),label:p.title})),
+        ...registry.targets.filter(t=>(target.kind==='domain'?t.scope_parent:t.component_parent)===target.id).map(item)]};
+  };
   return [{type:'category',label:'Domain scopes',collapsed:false,items:registry.targets.filter(t=>t.kind==='domain'&&!t.scope_parent).map(item)},
     {type:'category',label:'Components',collapsed:false,items:registry.targets.filter(t=>t.kind!=='domain'&&!t.component_parent).map(item)},
     ...(hasDocsProjections(registry.projectRoot)?[PROJECTIONS_GROUP]:[])].filter(group=>group.items.length);
@@ -30,7 +35,11 @@ export async function materializeScoped(registry:ScopedRegistry) {
       safeRead(registry.projectRoot,artifact);
       await copyFile(resolve(registry.projectRoot,artifact),resolve(generated,'static',diagram.route.slice(1)));
     }
-    await writeFile(path,matter.stringify(rewriteLinks(registry,page),{format:'md',slug:page.route.slice('/specs'.length),title:page.title,sidebar_label:page.title}));
+    // Identity is displayed by ContentProvenance; keep machine-readable metadata out of the
+    // reading flow while leaving the authored source and its digest intact.
+    const content=rewriteLinks(registry,page).replace(/^```concorde-document\s*\n[\s\S]*?^```\s*$/m,'').trimStart();
+    await writeFile(path,matter.stringify(content,{format:'md',slug:page.route.slice('/specs'.length),title:page.title,sidebar_label:page.title,
+      ...(page.kind==='domain'&&page.primary?{hide_table_of_contents:true}:{})}));
   }
   if(hasDocsProjections(registry.projectRoot)){
     const projectionsDirectory=resolve(generated,'content/specs/projections');

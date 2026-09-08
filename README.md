@@ -1,26 +1,33 @@
-# Concorde
+# Concorde Framework
 
-Concorde runs agent work from explicit, self-contained resolved contexts. A global main coordinator may inspect
+Concorde Framework includes the **Concorde Spec Protocol**, installable Skills, automatic validation,
+bounded agent workflows, developer views and feedback. The Protocol is the Framework's specification
+standard: it defines how conforming Specs are organized and expressed, and the Framework's software
+applies it. Concorde's own Specs follow the same Protocol as consumer projects.
+
+The Framework runs agent work from explicit, self-contained resolved contexts. A global main coordinator may inspect
 main-visible Domain and Service documents on demand to route a request; every routed worker then has one selected
 target, one reproducible context and a host-enforced permission boundary.
 
 Domain is a business/problem scope. Service and Module are component kinds: a Service offers Features
 through precise exchanges; a Module offers APIs. Domain scope nesting, component composition and
 multi-scope participation are independent relationships. Every target registers its complete ordered
-Markdown collection; filenames are unrestricted. Each Markdown declares a stable document ID, exact
+Markdown collection. Every Domain has one local, main-visible `ontology.md` and a declared
+System overview architecture diagram; other Spec filenames remain unrestricted. Each Markdown declares a stable document ID, exact
 referencing targets and main visibility. A target's context separates singly referenced Target Spec
 from one-hop collective Shared Specs; it never expands a co-referencing entity's remaining files.
 Each direct `participates_in` edge is also described inside that Domain's Markdown through a
 machine-readable participant entry containing stable ID, kind, local responsibility, selection
 condition and relied-upon promises.
 
-The shipped Protocol principles apply to every consumer project. `concorde-main` is the single
+The shipped Concorde Spec Protocol governs Spec organization; its Framework execution profile governs
+how this software uses those Specs. `concorde-main` is the single
 public entry for global questions and topology design. Its internal coordinator starts at the entry
 Domain or Service and appends only explicitly requested Domain/Service main-visible documents. It
 cannot directly expand a Module target or read code. Once it returns typed routes, the host starts different fresh workers and injects
 the pinned global principles plus each selected kind definition. Missing task-relevant facts yield
-Spec incomplete, not a search for arbitrary files. See [the principles](protocol/principles.md) and
-[Concorde's own system Spec](specs/concorde/system.md).
+Spec incomplete, not a search for arbitrary files. See [the authored Concorde Spec Protocol](prompts/protocol/principles.md) and
+[the Framework ontology](specs/concorde/ontology.md) and [Concorde Spec Protocol description](specs/concorde/spec-protocol.md).
 
 ## Install and initialize
 
@@ -122,7 +129,7 @@ attempt is needed for a Spec-only change.
 
 For architecture changes, invoke `concorde-main` with `action:design-topology`. It returns a complete
 candidate registry and target-local Spec tasks without writing. Send the exact returned proposal with
-`action:accept-topology` only after maintainer review. The host then runs private target authors and
+`action:accept-topology` only after developer review. The host then runs private target authors and
 stores exact registry/document bytes in an ignored application artifact, returning only its path and
 digest. Review that artifact outside agent cognition, then send its ArtifactRef with
 `action:apply-topology`. Stale inputs or invalid target state prevent writes; successful application
@@ -134,29 +141,43 @@ authors return identical shared bytes.
 [Capability registry](specs/concorde/services/capability-registry.md) ·
 [Workflow host boundary](specs/concorde/services/workflow-host-boundary.md)
 
-## Documentation
+## Developer view and feedback
+
+The [Developer view and feedback Domain](specs/concorde/developer-view/ontology.md) covers the
+Spec docsite, interactive diagrams, the Understand Anything code viewer and feedback into the
+Framework's existing workflows. [Spec publication](specs/concorde/publication/ontology.md) is one
+subdomain of this developer experience.
+
+The [viewer service](specs/concorde/services/viewer-boundary.md) opens an existing raw Understand
+Anything graph using the installer-owned runtime. Starting it does not generate a code graph or
+prove that the graph agrees with the Spec. A developer can inspect the views, clarify feedback in
+the agent conversation and proceed directly with an authorized change request.
+
 
 Concorde 4 uses Package Manifest 3, Architecture Profile 8, Workspace Protocol 14 and Delivery Proposal
 10. Profile 7 is rejected for agent execution and has no migration capability. Legacy readers
 remain deterministic diagnostic utilities only.
 
 The docsite publishes explicit registry members with separate scope/component navigation and a typed
-relationship graph. It also publishes "Agent instructions" and "Wire contracts" pages under a
+relationship graph. Clicking a Domain opens its registered `ontology.md`, independently of member
+order, with an embedded Archify System overview showing internal and external relationships. Diagram
+builds own `generated/diagrams/` and preserve Framework build outputs. It also publishes "Agent instructions" and "Wire contracts" pages under a
 Projections group, rendered directly from the current build's `generated/docs/*.json` outputs; both
 are explicitly labelled projections, never agent context authority, and `npm run validate` fails
 when the Concorde build behind them is stale. Run the docsite's validate/build scripts to create a
 candidate whose routes and source digests are checked before promotion. Human navigation does not
 grant agent context access.
 
-## Protocol entry and upgrades
+## Concorde Spec Protocol entry and upgrades
 
-Protocol 1.1.0 defines session handoffs in [P10](protocol/principles.md#p10-copyable-agent-handoffs).
+The Framework execution profile defines session handoffs in [P10](prompts/protocol/framework-profile.md#p10-copyable-agent-handoffs).
+Concorde Spec Protocol 1.2.0 adds the Domain main-Spec and System overview conventions.
 Root instructions and runtime drafts refer to that rule; public Skills do not carry another copy.
 The installer adds a receipt-owned `concorde-protocol` block at the start of the selected root file:
 
 - Codex: `AGENTS.md` explicitly tells the outer session to read
-  `.concorde/framework/protocol/principles.md`. A Markdown link is not treated as an automatic import.
-- Claude: `CLAUDE.md` uses the native `@.concorde/framework/protocol/principles.md` import outside a
+  `.concorde/framework/generated/protocol/principles.md`. A Markdown link is not treated as an automatic import.
+- Claude: `CLAUDE.md` uses the native `@.concorde/framework/generated/protocol/principles.md` import outside a
   code span or fence. The path is relative to that root file.
 
 These loading choices follow the [Codex instruction discovery documentation](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
@@ -186,7 +207,7 @@ Remove the entry before separately removing the framework; do not delete whole u
 Installing an updated package never rewrites `.concorde/config.json`. Existing projects remain bound
 to their accepted version/digest; execution rejects a mismatch with `protocol_mismatch`. The outer
 entry points at the installed rules, but does not accept them for project execution. After reviewing
-and explicitly accepting the new Protocol assets, a consumer maintainer can update only that binding
+and explicitly accepting the new Protocol assets, a consumer developer can update only that binding
 from the project root:
 
 ```python

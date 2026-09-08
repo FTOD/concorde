@@ -6,11 +6,30 @@
 }
 ```
 
-# How Specs become a documentation site
+# Spec publication
+
+This subdomain of [Developer view and feedback](../developer-view/ontology.md) turns registered project knowledge into a documentation site. Readers enter through
+a Domain main Spec, explore its architecture and follow links to the detail they need. Source Specs
+remain authoritative; published pages and diagrams are derived views.
+
+## Architecture overview
+
+The embedded **Spec publication** System overview shows the Domain boundary and its external relationships. Publication connects registered Spec and diagram sources to the build tools and the readers outside the publication boundary.
+
+## Ontology
+
+| Category | Entities | Relationships |
+| --- | --- | --- |
+| Authored knowledge | Domain, target, main Spec, topic/shared document, diagram source | A target explicitly registers its sources; ontology.md identifies a Domain main Spec |
+| Published views | Page, route, sidebar, architecture diagram, relationship graph | Pages project source membership; Domain nodes link to their main pages; views show declared relationships |
+| Evidence | Source digest, diagram receipt, build manifest | Evidence binds a complete candidate to exact source and artifact bytes |
+| Participants | Author, publication service, Archify, Docusaurus, reader | Authors maintain sources; tools render them; readers navigate the result |
+
+## Operating principles
 
 This Domain scopes a human publication of explicitly registered architecture knowledge. Source
-Markdown and the target registry are authoritative; generated pages, sidebars, diagrams and graph
-JSON are derived views. A Page represents one target's membership of one Markdown document. A Route
+Markdown, registered diagram JSON and the target registry are authored inputs; generated pages,
+sidebars, rendered diagrams and relationship graph JSON are derived views. A Page represents one target's membership of one Markdown document. A Route
 is stable under title edits and contains target identity plus a digest of its source path. A Build
 manifest binds route inventory to exact source bytes. A Relationship view separates Domain nesting,
 component composition, scope participation and required/provided contract edges.
@@ -20,8 +39,8 @@ copying or reinterpreting its content.
 
 The Publication Service scaffolds a project-local Docusaurus site using a reviewed proposal. Its
 Spec publication Module reads only explicitly registered documents, validates membership, rewrites
-local navigation and materializes pages. Arbitrary filenames and optional Markdown frontmatter are
-accepted. The two independent sidebar trees must not reinterpret Domain as a component kind. A
+local navigation and materializes pages. Optional Markdown frontmatter and arbitrary topic filenames are accepted; each Domain
+has one local ontology.md main Spec and a declared System overview. The two independent sidebar trees must not reinterpret Domain as a component kind. A
 component shared by several scopes retains one identity. All documents belonging to a target remain
 visible under Target Spec or Shared Specs as its complete resolved collection. Publication validates
 that document declarations and reverse registry memberships agree.
@@ -36,12 +55,10 @@ as authority. A local link to an unregistered document is a publication error. A
 the build invalidates the candidate. Only a complete candidate with current source identity and all
 expected routes is atomically promoted. Failed builds preserve the previous successful output.
 
-## Main routing view
+## Further detail
 
-The main coordinator selects `service.publication` for consumer-facing docsite proposal, build and
-publication outcomes. It selects `module.spec-publication` for the in-process registry-to-pages,
-sidebar, graph, diagram and build-manifest API. The Module ID is visible here so work can be routed;
-its remaining target collection stays private to the fresh target worker.
+The [Publication service](../services/publication-boundary.md) defines the publishing interface;
+[Spec publication](../modules/spec-publication.md) describes page, route, navigation and build APIs.
 
 ## Participating components
 

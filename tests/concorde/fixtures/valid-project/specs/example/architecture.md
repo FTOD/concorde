@@ -26,7 +26,7 @@ Own orchestration while delegating transport behavior to the API child module.
 
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
-| `entity.example.maintainer` | external-system | The human consumer of the example workflow. | `external:example-maintainer` |
+| `entity.example.developer` | external-system | The human consumer of the example workflow. | `external:example-developer` |
 | `entity.example.runtime` | program | The workflow orchestrator at the root boundary. | `concept:example.runtime` |
 | `module.example.api` | module | The bounded API transport child module. | `specs/example/modules/api/architecture.md` |
 
@@ -34,14 +34,14 @@ Own orchestration while delegating transport behavior to the API child module.
 
 | Source | Predicate | Target | Description | Interface |
 |---|---|---|---|---|
-| `entity.example.maintainer` | calls | `entity.example.runtime` | The maintainer starts delivery. | `contract.example.workflow` |
+| `entity.example.developer` | calls | `entity.example.runtime` | The developer starts delivery. | `contract.example.workflow` |
 | `entity.example.runtime` | calls | `module.example.api` | Orchestration delegates transport to the immediate child. | `contract.example.workflow` |
 
 ## Interactions
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.example.deliver` | `entity.example.maintainer` requests delivery. | `entity.example.maintainer` calls `entity.example.runtime`.<br>`entity.example.runtime` calls `module.example.api`. | The maintainer receives the workflow result. | `contract.example.workflow` |
+| `interaction.example.deliver` | `entity.example.developer` requests delivery. | `entity.example.developer` calls `entity.example.runtime`.<br>`entity.example.runtime` calls `module.example.api`. | The developer receives the workflow result. | `contract.example.workflow` |
 
 ## Modules
 

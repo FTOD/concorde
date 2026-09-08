@@ -14,13 +14,13 @@ interfaces:
 
 ## Outcome and Scope
 
-The maintainer receives the example workflow result; API internals remain outside this feature.
+The developer receives the example workflow result; API internals remain outside this feature.
 
 ## Architecture Zoom
 
 | Entity | Role |
 |---|---|
-| `entity.example.maintainer` | Invokes delivery and consumes the result. |
+| `entity.example.developer` | Invokes delivery and consumes the result. |
 | `entity.example.runtime` | Orchestrates delivery. |
 | `module.example.api` | Provides the bounded transport operation. |
 
@@ -28,7 +28,7 @@ The maintainer receives the example workflow result; API internals remain outsid
 
 ### `contract.example.workflow` — Delivery workflow
 
-**Consumer**: example maintainer
+**Consumer**: example developer
 
 **Direction**: bidirectional
 
@@ -48,7 +48,7 @@ The maintainer receives the example workflow result; API internals remain outsid
 
 ## Usage Scenarios
 
-1. A maintainer invokes the runtime and receives an API-backed result.
+1. A developer invokes the runtime and receives an API-backed result.
 
 ## Requirements
 

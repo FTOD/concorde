@@ -2,11 +2,72 @@
 from __future__ import annotations
 
 import json
+import posixpath
+import re
 from collections import Counter
 from pathlib import Path
 
 from ..model import Finding, ToolResult
 from .repository import SpecError, SpecRepository, digest, read_file
+from ..host.typed_data import safe_path
+
+
+def ontology_findings(repository: SpecRepository, target_id: str | None = None) -> tuple[Finding, ...]:
+    findings = []
+    for target in repository.targets.values():
+        if target.kind != "domain" or target_id is not None and target.id != target_id:
+            continue
+        try:
+            main = repository.document(target.primary_document)
+            prose = []
+            fence = None
+            for line in main.body.splitlines():
+                marker = re.match(r"^ {0,3}(`{3,}|~{3,})", line)
+                if marker:
+                    token = marker.group(1)
+                    if fence is None:
+                        fence = token
+                    elif token[0] == fence[0] and len(token) >= len(fence) and not line[marker.end():].strip():
+                        fence = None
+                    continue
+                if fence is None:
+                    prose.append(line)
+            if not re.search(r"^## Ontology\s*$", "\n".join(prose), re.M):
+                raise SpecError("Domain main Spec requires an Ontology section; content completeness still needs review")
+        except (ValueError, OSError, KeyError, TypeError) as problem:
+            findings.append(Finding("CONCORDE-ONTOLOGY-001", "error", target.primary_document,
+                str(problem), "Define the Domain's Ontology in its registered local main Spec.", subject_id=target.id))
+    return tuple(findings)
+
+
+def diagram_findings(repository: SpecRepository, target_id: str | None = None) -> tuple[Finding, ...]:
+    findings = []
+    for target in repository.targets.values():
+        if target_id is not None and target.id != target_id:
+            continue
+        for declaration in target.diagrams:
+            path = declaration["source"]
+            try:
+                raw = repository.document_overrides.get(path)
+                if raw is None:
+                    raw = read_file(repository.root, path)
+                diagram = json.loads(raw)
+                if not isinstance(diagram, dict) or not isinstance(diagram.get("meta"), dict):
+                    raise SpecError("diagram must be an object with metadata")
+                if diagram.get("diagram_type") != declaration["kind"] or diagram["meta"].get("title") != declaration["title"]:
+                    raise SpecError("declared diagram kind/title differs from its source")
+                if declaration.get("recipe") == "system-overview" and diagram["meta"].get("quality_profile") != "showcase":
+                    raise SpecError("System overview sources must request Archify showcase validation")
+                output = diagram["meta"].get("output")
+                if not isinstance(output, str) or not output:
+                    raise SpecError("diagram metadata must name its generated HTML output")
+                output = safe_path(posixpath.normpath(posixpath.join(posixpath.dirname(path), output)))
+                if not output.startswith("generated/diagrams/") or not output.endswith(".html"):
+                    raise SpecError("diagram output must be HTML beneath generated/diagrams/")
+            except (ValueError, OSError, KeyError, TypeError) as problem:
+                findings.append(Finding("CONCORDE-DIAGRAM-001", "error", path, str(problem),
+                    "Reconcile the registered diagram source, recipe and generated output.", subject_id=target.id))
+    return tuple(findings)
 
 
 def document_context_findings(repository: SpecRepository) -> tuple[Finding, ...]:
@@ -75,7 +136,7 @@ def domain_participant_findings(repository: SpecRepository,
             finding(
                 "CONCORDE-PARTICIPANT-001",
                 domain,
-                domain.documents[0],
+                domain.primary_document,
                 f"invalid Domain participant declaration: {problem}",
                 "Repair the concorde-participants JSON block using the exact declared fields.",
             )
@@ -118,7 +179,7 @@ def domain_participant_findings(repository: SpecRepository,
                 finding(
                     "CONCORDE-PARTICIPANT-004",
                     domain,
-                    domain.documents[0],
+                    domain.primary_document,
                     f"Domain {domain.id} is missing its direct participant {target_id}",
                     "Declare its stable target ID, kind, Domain-local responsibility, selection condition, "
                     "and relied-upon promises in a concorde-participants block.",
@@ -159,16 +220,13 @@ def validate_repository(root: str | Path, target_id: str | None = None,
                     else:
                         required.append(contract)
                 for declaration in target.diagrams:
-                    if set(declaration) != {"source", "kind", "title"}:
-                        raise SpecError("diagram declarations require source, kind, title")
-                    raw = read_file(repository.root, declaration["source"])
-                    diagram=json.loads(raw)
-                    if diagram.get("diagram_type") != declaration["kind"] or diagram.get("meta",{}).get("title") != declaration["title"]:
-                        raise SpecError("declared diagram kind/title differs from its source")
+                    raw = repository.document_overrides.get(declaration["source"])
+                    if raw is None:
+                        raw = read_file(repository.root, declaration["source"])
                     inputs.append((declaration["source"], digest(raw)))
                     artifacts.append(declaration["source"])
             except (ValueError, OSError) as problem:
-                error("CONCORDE-SPEC-001", target.documents[0], str(problem))
+                error("CONCORDE-SPEC-001", target.primary_document, str(problem))
         for contract in required:
             if contract["peer"].startswith("external:"):
                 continue
@@ -179,6 +237,8 @@ def validate_repository(root: str | Path, target_id: str | None = None,
                 # The first version admits exact shared wire schemas, with independent perspective prose.
                 error("CONCORDE-CONTRACT-003", contract["source"], f"incompatible shared wire schema for {contract['id']}")
         findings.extend(document_context_findings(repository))
+        findings.extend(ontology_findings(repository))
+        findings.extend(diagram_findings(repository))
         findings.extend(domain_participant_findings(repository))
         if (repository.root/".concorde/reflections").exists():
             from ..reflections.scoped_triage import queue_module
@@ -208,5 +268,5 @@ def validate_repository(root: str | Path, target_id: str | None = None,
             "errors": counts["error"], "warnings": 0, "infos": 0}, "source_digest": digest(sorted(inputs)),
             "claims": ["registry structure", "Spec document identity/membership/main visibility",
                        "local focus definitions", "contract examples", "shared wire schema equality",
-                       "Domain participant routing declarations"],
+                       "Domain participant routing declarations", "Domain ontology.md main Spec and System overview declarations"],
             "semantic_completeness": "not_proven"})

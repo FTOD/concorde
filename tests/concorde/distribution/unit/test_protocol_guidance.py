@@ -154,4 +154,4 @@ class ProtocolGuidanceTests(unittest.TestCase):
         config.write_bytes(before)
         self.install()
         self.assertEqual(before, config.read_bytes())
-        self.assertIn('"version": "1.1.0"', (self.root / ".concorde/framework/protocol/manifest.json").read_text())
+        self.assertIn('"version": "1.2.0"', (self.root / ".concorde/framework/protocol/manifest.json").read_text())

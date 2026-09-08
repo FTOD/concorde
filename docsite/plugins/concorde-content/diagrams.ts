@@ -1,4 +1,4 @@
-import {isScoped,loadScopedRegistry} from '../scoped-content/model';
+import {isScoped,loadScopedRegistry,primaryDocument} from '../scoped-content/model';
 import {lstat, readFile, realpath} from 'node:fs/promises';
 import {dirname, extname, posix, relative, resolve, sep} from 'node:path';
 
@@ -42,10 +42,11 @@ export async function listModuleDiagramSources(projectRoot: string, moduleSource
 
 export async function discoverDiagramDeclarations(projectRoot: string): Promise<DiagramDeclaration[]> {
   const root = resolve(projectRoot);
+  const scoped = isScoped(root);
   const pending: Array<{ownerPath: string; sourcePath: string}> = [];
-  if (isScoped(root)) {
+  if (scoped) {
     for (const target of loadScopedRegistry(root).targets)
-      for (const diagram of target.diagrams) pending.push({ownerPath:target.documents[0],sourcePath:diagram.source});
+      for (const diagram of target.diagrams) pending.push({ownerPath:primaryDocument(target),sourcePath:diagram.source});
   } else {
     const architectureFiles = await fg(['**/architecture.md'], {
       cwd: resolve(root, 'specs'), onlyFiles: true, unique: true, followSymbolicLinks: false,
@@ -79,7 +80,7 @@ export async function discoverDiagramDeclarations(projectRoot: string): Promise<
     if (document.meta.quality_profile !== 'showcase') {
       throw new Error(`${candidate.sourcePath}: meta.quality_profile must be showcase.`);
     }
-    if (document.meta.legend?.mode !== 'hidden') {
+    if (!scoped && document.meta.legend?.mode !== 'hidden') {
       throw new Error(`${candidate.sourcePath}: meta.legend.mode must be hidden.`);
     }
     if (typeof document.meta.output !== 'string' || !document.meta.output.trim()) {
@@ -91,6 +92,9 @@ export async function discoverDiagramDeclarations(projectRoot: string): Promise<
       throw new Error(`${candidate.sourcePath}: output must be a unique HTML file beneath generated/.`);
     }
     const outputPath = posixPath(relative(root, absoluteOutputPath));
+    if (scoped && !outputPath.startsWith('generated/diagrams/')) {
+      throw new Error(`${candidate.sourcePath}: Profile 8 diagrams must stay beneath generated/diagrams/.`);
+    }
     const previousSource = outputs.get(outputPath);
     if (previousSource) {
       throw new Error(`${candidate.sourcePath}: duplicate output "${outputPath}" also declared by ${previousSource}.`);

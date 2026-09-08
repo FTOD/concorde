@@ -74,7 +74,7 @@ def require_isolated_worktree(
     *,
     allow_primary_worktree: bool = False,
 ) -> WorktreeBoundary:
-    """Require a linked worktree unless the maintainer explicitly authorized primary mutation."""
+    """Require a linked worktree unless the developer explicitly authorized primary mutation."""
 
     candidate = Path(project_root)
     if candidate.is_symlink():
@@ -107,7 +107,7 @@ def require_isolated_worktree(
             )
         raise WorktreeBoundaryError(
             "agent-authored mutation requires a committed linked Git worktree; this directory is "
-            "not a Git worktree. Use --allow-primary-worktree only when the maintainer explicitly "
+            "not a Git worktree. Use --allow-primary-worktree only when the developer explicitly "
             "authorized mutation of this current directory."
         )
     boundary = inspect_worktree(project_root)
@@ -117,6 +117,6 @@ def require_isolated_worktree(
         "agent-authored mutation is not allowed in the primary Git worktree; create a unique "
         f"branch and linked worktree from committed HEAD {boundary.head}, then retry there. "
         "Primary staged, unstaged, untracked, and ignored files are outside the request authority. "
-        "Use --allow-primary-worktree only when the maintainer explicitly authorized mutation of "
+        "Use --allow-primary-worktree only when the developer explicitly authorized mutation of "
         "the primary worktree for this request."
     )

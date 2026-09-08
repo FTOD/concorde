@@ -14,13 +14,16 @@ export interface PreparedPublication {
   diagrams: DiagramDeliverySet;
 }
 
-export async function preparePublication(projectRoot: string): Promise<PreparedPublication | {registry: ScopedRegistry}> {
+export const productionGeneratedDirectory = '.generated/docusaurus-production';
+
+export async function preparePublication(projectRoot: string, options: {mode?: 'preview' | 'build'} = {}): Promise<PreparedPublication | {registry: ScopedRegistry}> {
   const root = resolve(projectRoot);
+  const generatedDirectory=options.mode==='build'?productionGeneratedDirectory:'.docusaurus';
   if (isScoped(root)) {
     const registry=loadScopedRegistry(root);
     if (registry.targets.some(t=>t.diagrams.length)) await renderDeclaredDiagrams(root);
     await materializeScoped(registry);
-    await rm(resolve(root,'docsite/.docusaurus'),{recursive:true,force:true});
+    await rm(resolve(root,'docsite',generatedDirectory),{recursive:true,force:true});
     return {registry};
   }
   const diagrams = await renderDeclaredDiagrams(root);
@@ -29,8 +32,8 @@ export async function preparePublication(projectRoot: string): Promise<PreparedP
   // Route and staging projections can change while Docusaurus's compiled content cache remains.
   // Discard that ignored cache so preview and production consume only the just-materialized registry.
   await Promise.all([
-    rm(resolve(__dirname, '../.docusaurus'), {recursive: true, force: true}),
-    rm(resolve(__dirname, '../node_modules/.cache'), {recursive: true, force: true}),
+    rm(resolve(root,'docsite',generatedDirectory), {recursive: true, force: true}),
+    ...(options.mode==='build'?[]:[rm(resolve(root,'docsite/node_modules/.cache'), {recursive: true, force: true})]),
   ]);
   return {registry, diagrams};
 }

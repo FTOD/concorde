@@ -14,7 +14,7 @@ import FeatureNeighborhood from '../../../components/FeatureNeighborhood';
 import FeatureRelations from '../../../components/FeatureRelations';
 
 type Props = WrapperProps<typeof OriginalLayoutType>;
-interface GlobalData {pages: ContentPage[]}
+interface GlobalData {pages: (ContentPage & {inlineOverview?:boolean})[]}
 
 export default function LayoutWrapper(props: Props) {
   const location = useLocation();
@@ -26,7 +26,8 @@ export default function LayoutWrapper(props: Props) {
     {page && <div className="provenanceShell"><ContentProvenance page={page} /></div>}
     {page?.relatedFeatures?.length ? <div className="featureRelationsShell"><FeatureRelations page={page} /></div> : null}
     {page?.featureId ? <div className="featureNeighborhoodShell"><FeatureNeighborhood featureId={page.featureId} /></div> : null}
-    {page?.architectureDiagrams?.length ? <div className="architectureViewShell"><ArchitectureView page={page} /></div> : null}
+    {page?.architectureDiagrams?.length && !page.inlineOverview && String(page.kind)!=='domain' ? <div className="architectureViewShell"><ArchitectureView page={page} /></div> : null}
     <OriginalLayout {...props} />
+    {page?.architectureDiagrams?.length && !page.inlineOverview && String(page.kind)==='domain' ? <div className="architectureViewShell"><ArchitectureView page={page} /></div> : null}
   </>;
 }

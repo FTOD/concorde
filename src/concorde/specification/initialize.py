@@ -12,7 +12,7 @@ from .validation import validate_repository
 
 
 TOPOLOGY_IGNORE_PATH = ".concorde/topology-proposals/.gitignore"
-TOPOLOGY_IGNORE = "# Exact topology applications are local, maintainer-reviewed host artifacts.\n*\n!.gitignore\n"
+TOPOLOGY_IGNORE = "# Exact topology applications are local, developer-reviewed host artifacts.\n*\n!.gitignore\n"
 
 
 def protocol_binding(package: Path) -> dict:
@@ -31,6 +31,28 @@ def empty_target(target_id: str, kind: str, title: str, documents: list[str]) ->
             "implementation": [], "features": [], "apis": [], "checks": [], "diagrams": []}
 
 
+def initial_overview(name: str, output: str) -> dict:
+    """An honest System overview of the known authoring boundary, not invented business design."""
+    return {
+        "schema_version": 1, "diagram_type": "architecture",
+        "meta": {"title": name, "output": output, "quality_profile": "showcase",
+                 "locale": "en", "viewBox": [1080, 520]},
+        "components": [
+            {"id": "developer", "type": "external", "label": "Project developer",
+             "sublabel": "Supplies intended behavior", "pos": [40, 180], "size": [220, 80]},
+            {"id": "project-spec", "type": "database", "label": "Project Spec",
+             "sublabel": "Business model not yet supplied", "pos": [420, 180], "size": [220, 80]},
+            {"id": "framework", "type": "external", "label": "Concorde Framework",
+             "sublabel": "Checks Concorde Spec Protocol conformance", "pos": [800, 180], "size": [220, 80]}],
+        "boundaries": [{"kind": "region", "label": "Known project-authoring scope",
+                        "wraps": ["project-spec"], "pad": 30}],
+        "connections": [{"from": "developer", "to": "project-spec", "label": "specifies"},
+                        {"from": "project-spec", "to": "framework", "label": "validates"}],
+        "cards": [{"dot": "amber", "title": "Unspecified business architecture",
+                   "items": ["Only project identity and Spec authoring are known.",
+                             "Define the Domain's real entities and external relationships before implementation."]}]}
+
+
 def project_proposal(root: Path, package: Path, name: str, configuration: dict,
                      target_id: str = "domain.project") -> dict:
     identifier(target_id)
@@ -39,23 +61,36 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
         raise SpecError("project name is required", "invalid_input")
     if checked_path(root, ".concorde/config.json").exists():
         raise SpecError("project already configured; use configure to change settings", "already_initialized")
-    path = "specs/project.md"
+    path = "specs/project/ontology.md"
+    diagram_path = "specs/project/diagrams/overview.architecture.json"
+    target = empty_target(target_id, "domain", name, [path])
+    target["diagrams"] = [{"source": diagram_path, "kind": "architecture", "title": name,
+                           "recipe": "system-overview"}]
     registry = {"schema_version": 1, "project_id": "project.initialized", "entry_target": target_id,
-        "targets": [empty_target(target_id, "domain", name, [path])], "checks": []}
+        "targets": [target], "checks": []}
     config = {"profile_version": 8, "registry": ".concorde/specs.json",
         "protocol": protocol_binding(package), "capability_configuration": configuration}
     declaration = {"id": "document." + target_id, "targets": [target_id],
                    "main_visible": True}
     text = ("```concorde-document\n" + json.dumps(declaration, indent=2) + "\n```\n\n"
-        f"# {name}\n\nThis Domain scopes the initialized project. Its current supported use is to\n"
+        f"# {name}\n\n## Ontology\n\nThis Domain scopes the initialized project. Its current supported use is to\n"
         "identify the project and author its intended behavior. Business entities, rules, participating\n"
         "components, and product features have not yet been supplied. A task requiring those facts\n"
         "must report Spec incomplete and name the missing information. Initialization does not infer\n"
-        "requirements from implementation code.\n\nThe project maintainer supplies intended behavior;\n"
-        "Concorde records it in explicitly registered Spec documents before planning implementation.\n")
+        "requirements from implementation code.\n\nThe project developer supplies intended behavior;\n"
+        "Concorde Framework records it in explicitly registered Spec documents before planning implementation.\n\n"
+        "The known entities are the Project Spec (a document collection), the Developer (its external\n"
+        "author), and Concorde Framework (the external software that validates it). The Developer\n"
+        "specifies intended behavior in the Project Spec; the Framework checks its Concorde Spec Protocol\n"
+        "conformance. This authoring relationship is not the project's unknown business architecture.\n\n"
+        "## Architecture overview\n\nThe declared System overview shows only this known authoring boundary.\n"
+        "The docsite embeds it on this main page. Replace it with the Domain's actual internal\n"
+        "architecture and relevant external relationships when those facts have been supplied.\n")
     files = [file_change(root, ".concorde/config.json", json.dumps(config, indent=2) + "\n"),
              file_change(root, ".concorde/specs.json", json.dumps(registry, indent=2) + "\n"),
-             file_change(root, path, text)]
+             file_change(root, path, text),
+             file_change(root, diagram_path, json.dumps(initial_overview(name,
+                 "../../../generated/diagrams/project.html"), indent=2) + "\n")]
     # Reflection defaults remain independently owned, and are never overwritten on init.
     index = ".concorde/reflections/index.json"
     if not checked_path(root, index).exists():
@@ -84,7 +119,8 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         raise SpecError("project proposal has a mismatched registry or Protocol binding", "invalid_proposal")
     allowed = {".concorde/config.json", ".concorde/specs.json", TOPOLOGY_IGNORE_PATH,
                ".concorde/reflections/index.json", ".concorde/reflections/config.json",
-               *(p for target in registry["targets"] for p in target["documents"])}
+               *(p for target in registry["targets"] for p in target["documents"]),
+               *(d["source"] for target in registry["targets"] for d in target["diagrams"])}
     if proposal["base_digest"] is not None or any(item["before_digest"] is not None for item in files):
         raise SpecError("initialization cannot replace existing files", "invalid_proposal")
     def verify():

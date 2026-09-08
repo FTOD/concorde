@@ -22,6 +22,7 @@ export default function ScopedGraph(){
     cy.on('tap','node',e=>setSelected(e.target.id()));return()=>cy.destroy();
   },[nodes,edges]);
   const target=data.architectureGraph.nodes.find(n=>n.id===selected);
+  const mainPage=target&&data.pages.find(p=>p.targetId===target.id&&p.primary);
   return <Layout title="Architecture relationships" description="Independent business scopes and component composition">
     <main className="container margin-vert--lg"><h1>Architecture relationships</h1>
       <p>Domains describe problem scopes. Services and Modules describe components. Select an entity to open its complete Spec collection.</p>
@@ -31,7 +32,7 @@ export default function ScopedGraph(){
         <label>Relationship <select value={relation} onChange={e=>setRelation(e.target.value)}>{['all','scope_contains','composes','participates_in','requires'].map(k=><option key={k}>{k}</option>)}</select></label>
       </div>
       <div ref={container} role="img" aria-label="Interactive architecture graph" style={{height:540,border:'1px solid #ccd3df',borderRadius:12,marginTop:20}}/>
-      {target&&<aside className="margin-vert--md"><h2>{target.title}</h2><p><code>{target.id}</code> · {target.kind}</p><ul>{data.pages.filter(p=>p.targetId===target.id).map(p=><li key={p.route}><Link to={p.route}>{p.title}</Link></li>)}</ul></aside>}
+      {target&&<aside className="margin-vert--md"><h2>{mainPage?<Link to={mainPage.route}>{target.title}</Link>:target.title}</h2><p><code>{target.id}</code> · {target.kind}</p><ul>{data.pages.filter(p=>p.targetId===target.id).map(p=><li key={p.route}><Link to={p.route}>{p.title}</Link>{p.primary?' · Main Spec':''}</li>)}</ul></aside>}
       <table className="margin-vert--md"><thead><tr><th>Source</th><th>Relationship</th><th>Target</th></tr></thead><tbody>{edges.map((e,i)=><tr key={i}><td><button onClick={()=>setSelected(e.source)}>{e.source}</button></td><td>{e.contract??e.kind.replaceAll('_',' ')}</td><td><button onClick={()=>setSelected(e.target)}>{e.target}</button></td></tr>)}</tbody></table>
     </main></Layout>;
 }

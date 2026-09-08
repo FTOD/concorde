@@ -45,7 +45,7 @@
         "interactions": [
           {
             "id": "interaction.example.deliver",
-            "trigger": "A maintainer requests delivery.",
+            "trigger": "A developer requests delivery.",
             "steps": ["entity.example.workflow calls entity.example.api"],
             "result": "The API returns the workflow result.",
             "interfaces": ["contract.example.workflow"]
@@ -68,7 +68,7 @@
           "title": "Deliver Workflow",
           "module": "module.example",
           "feature_path": "specs/example/features/001-deliver-workflow.md",
-          "outcome": "A maintainer can deliver the example workflow."
+          "outcome": "A developer can deliver the example workflow."
         }
       ],
       "externals": [],

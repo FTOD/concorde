@@ -45,7 +45,7 @@ The fixture provides the observable {slug} outcome and no unrelated behavior.
 
 ### `{interface_id}` — Fixture interface
 
-**Consumer**: fixture maintainer
+**Consumer**: fixture developer
 
 **Direction**: bidirectional
 
@@ -65,7 +65,7 @@ The fixture provides the observable {slug} outcome and no unrelated behavior.
 
 ## Usage Scenarios
 
-1. A maintainer invokes `entity.example.runtime` and observes the result.
+1. A developer invokes `entity.example.runtime` and observes the result.
 
 ## Requirements
 
@@ -108,21 +108,21 @@ Own fixture orchestration and exclude external product behavior.
 
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
-| `entity.example.maintainer` | external-system | The human consumer of fixture behavior. | `external:fixture-maintainer` |
+| `entity.example.developer` | external-system | The human consumer of fixture behavior. | `external:fixture-developer` |
 | `entity.example.runtime` | program | The conceptual executable that realizes fixture outcomes. | `concept:example.runtime` |
 
 ## Relationships
 
 | Source | Predicate | Target | Description |
 |---|---|---|---|
-| `entity.example.maintainer` | calls | `entity.example.runtime` | The maintainer invokes the fixture runtime. |
+| `entity.example.developer` | calls | `entity.example.runtime` | The developer invokes the fixture runtime. |
 | `module.example` | owns_entity | `entity.example.runtime` | The module owns the runtime boundary. |
 
 ## Interactions
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.example.invoke` | A maintainer requests a fixture outcome. | `entity.example.maintainer` calls `entity.example.runtime`. | The runtime returns an observable result. | None |
+| `interaction.example.invoke` | A developer requests a fixture outcome. | `entity.example.developer` calls `entity.example.runtime`. | The runtime returns an observable result. | None |
 
 ## Modules
 
@@ -153,11 +153,11 @@ def _root_system_overview() -> str:
                 "legend": {"mode": "hidden"},
             },
             "components": [
-                {"id": "maintainer", "type": "external", "label": "Maintainer"},
+                {"id": "developer", "type": "external", "label": "Developer"},
                 {"id": "runtime", "type": "backend", "label": "Runtime"},
             ],
             "connections": [
-                {"id": "maintainer-calls-runtime", "from": "maintainer", "to": "runtime", "label": "calls"}
+                {"id": "developer-calls-runtime", "from": "developer", "to": "runtime", "label": "calls"}
             ],
         },
         separators=(",", ":"),
@@ -346,6 +346,6 @@ def reflection_entry(identifier: str, feature: str = "feature.example.deliver", 
         "Status": status,
     }
     if status != "open":
-        entry["Note"] = "Decided by the maintainer."
+        entry["Note"] = "Decided by the developer."
     entry.update(overrides)
     return entry

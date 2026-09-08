@@ -57,7 +57,7 @@ candidate referencing target author to return identical bytes. State migration c
 Module identity, responsibility, relationships, document membership and implementation ownership
 from admitted Domain/Service facts and user intent, but never invent Module API details or code facts.
 Do not include any Spec document body in the topology design. The host will start private target
-authors only after explicit maintainer acceptance.
+authors only after explicit developer acceptance.
 
 During a `synthesize` phase for `ask`, use only the admitted Domain/Service discovery collection and typed
 worker results. Produce the user-facing answer and preserve any structured gaps. Do not request more

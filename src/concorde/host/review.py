@@ -32,8 +32,9 @@ def _under(path: str, roots) -> bool:
 
 def _changes(repository, target, mode, baseline) -> list[dict]:
     """Read history only for the current grant; never admit a project-wide diff."""
-    roots = target.documents if mode == "spec" else target.implementation
-    current = set(target.documents if mode == "spec" else repository.implementation_files(target))
+    spec_paths = (*target.documents, *(d["source"] for d in target.diagrams))
+    roots = spec_paths if mode == "spec" else target.implementation
+    current = set(spec_paths if mode == "spec" else repository.implementation_files(target))
     previous = {}
     if baseline and roots:
         tree = git_value(repository.root, "--literal-pathspecs", "ls-tree", "-r", "-z", baseline, "--", *roots)
@@ -155,7 +156,7 @@ def _validate(run, snapshot, info, data):
         raise SpecError("findings review requires concrete findings or gaps", "invalid_completion")
     if data["status"] != "incomplete" and not data["representative_tasks"]:
         raise SpecError("completed review requires representative task coverage", "invalid_completion")
-    allowed = set(run.target.documents)
+    allowed = set(run.target.documents) | {d["source"] for d in run.target.diagrams}
     if info["review_mode"] == "code":
         allowed.update(run.repository.implementation_files(run.target))
         allowed.update(item["path"] for item in info["changes"])

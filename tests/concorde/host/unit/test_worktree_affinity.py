@@ -86,7 +86,7 @@ class WorktreeAffinityTests(unittest.TestCase):
         linked = Path(self.temporary.name) / "linked"
         _git(self.root, "worktree", "add", "-qb", "agent/test2", str(linked), "HEAD")
         # Diverge the linked worktree's own build deterministically and independently of the
-        # primary, exactly as a maintainer editing concorde-main's own skill source and
+        # primary, exactly as a developer editing concorde-main's own skill source and
         # rebuilding there would.
         edited = linked / "skills/concorde-main/SKILL.md"
         edited.write_text(edited.read_text(encoding="utf-8") + "\nLinked-only change.\n", encoding="utf-8")

@@ -28,7 +28,7 @@ The consumer changes using only the provider's published API feature.
 
 ### `contract.example.consumer.change` — Change the consumer
 
-- **Consumer**: Fixture maintainer
+- **Consumer**: Fixture developer
 - **Direction**: Request to consumer result.
 - **Entry points**: `entity.example.consumer-service`
 - **Inputs**: A bounded change request.
@@ -40,7 +40,7 @@ The consumer changes using only the provider's published API feature.
 
 ## Usage Scenarios
 
-1. The maintainer changes the consumer through `contract.provider.api`.
+1. The developer changes the consumer through `contract.provider.api`.
 
 ## Requirements
 

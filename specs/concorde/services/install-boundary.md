@@ -15,10 +15,17 @@ optional `--checkout PATH`. The default is a read-only preview; `--apply` applie
 installation/update. Repeating the preview reports current owned output integrity. It owns
 .concorde/framework, .concorde/install.json and receipt-recorded integration outputs; it preserves
 project Specs, configuration, reflection history and unrelated user files.
-It also installs the selected root Protocol entry: `AGENTS.md` explicitly directs Codex to read
-`.concorde/framework/protocol/principles.md`; `CLAUDE.md` uses Claude's native relative `@` import.
-Only the selected integration's entry is installed. The root entry refers to Protocol P4/P10; it
-contains no duplicated handoff rules. Internal controlled contexts retain their separate injection
+Installation places rendered Skill entries in the selected project's `.agents/skills/` or
+`.claude/skills/` directory. Framework code, role instructions, rule assets, templates and supporting
+tools are deployed under `.concorde/framework/`; the managed runtime is provisioned separately.
+Skill definitions and generated instruction assets remain Framework-owned, while their installed
+entries are used through the project's model integration.
+
+It also installs the selected root rule entry: `AGENTS.md` explicitly directs Codex to read
+`.concorde/framework/generated/protocol/principles.md`; `CLAUDE.md` uses Claude's native relative `@` import.
+Only the selected integration's entry is installed. It loads the rule bundle containing the
+Concorde Spec Protocol and Framework execution profile, including P10 handoffs, without duplicating
+the handoff rules. Internal controlled contexts retain their separate injection
 and disabled ambient instruction discovery.
 
 Root entries are shared files with block ownership, not whole-file ownership. Receipt outputs with
@@ -116,7 +123,7 @@ a continuation.
 Repository policy requires this verification before project work and after changing worktrees, for
 each distinct owning worktree represented by project Skill paths retained in the conversation.
 An agent that creates a requested linked worktree hands work to a new agent opened there under
-Protocol P10, with the known path and branch. A freshly created worktree, including one the host
+Framework execution profile P10, with the known path and branch. A freshly created worktree, including one the host
 creates for a candidate change, must be built once before an agent can load Concorde Skills; the
 policy forbids direct edits to `generated/`, `.claude/skills/concorde-*` or `.agents/skills/concorde-*`:
 maintain `prompts/`, `skills/` or `capabilities/` sources, rebuild in their own worktree, then require
@@ -139,3 +146,10 @@ agent surface ownership. Select `module.managed-runtime` for managed Python or v
 `service.spec-context` when the requested behavior is project initialization or Protocol
 binding rather than installation ownership. These IDs are sufficient to route Module work without
 expanding the Module targets.
+
+## Viewer installation and launch ownership
+
+Installation distributes scripts/run-viewer.py and provisions its pinned official viewer runtime.
+The launch interface and graph admission behavior are owned by service.viewer and documented in
+[Understand Anything viewer](viewer-boundary.md). Native package acquisition and recovery remain
+on module.managed-runtime; starting the viewer is a separate developer action.
