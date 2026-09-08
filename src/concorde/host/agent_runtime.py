@@ -134,6 +134,9 @@ class AgentRuntime:
     """
 
     def __init__(self, definitions, resolve_context, *, limits=AgentLimits(), cancelled=lambda: False):
+        from .contracts import load_capability_inventory
+        capability_names = {"concorde-" + name.replace("_", "-")
+                            for name in load_capability_inventory().CAPABILITIES}
         definitions = tuple(definitions)
         self._definitions = {definition.id: definition for definition in definitions}
         if len(self._definitions) != len(definitions) or not definitions:
@@ -154,9 +157,14 @@ class AgentRuntime:
                     or agent.constraints.effects.writes or agent.constraints.effects.network
                     or agent.constraints.effects.credentials != "none"
                     or set(agent.constraints.effects.reads) - set(agent.harness.effects.reads)
+                    or set(agent.constraints.capabilities) - capability_names
+                    or set(agent.constraints.capabilities) - set(agent.harness.capabilities)
                     or set(agent.constraints.contexts) - set(agent.harness.contexts)
                     or set(agent.constraints.results) - set(agent.harness.results)
                     or type(agent.constraints.allow_delegation) is not bool
+                    or (agent.constraints.allow_delegation and (
+                        "concorde-agent-loop-context" not in agent.constraints.contexts
+                        or "concorde-agent-loop-step" not in agent.constraints.results))
                     or definition.input_type not in agent.constraints.contexts
                     or definition.result_type not in agent.constraints.results
                     or (definition.delegates and not agent.constraints.allow_delegation)):
@@ -169,7 +177,7 @@ class AgentRuntime:
             path = Path(definition.spec_path)
             if path.name != "spec.md" or path.is_symlink():
                 raise ValueError("Agent requires an authored spec.md")
-            body = path.read_text(encoding="utf-8")
+            body = path.read_bytes().decode("utf-8")
             if not body.strip():
                 raise ValueError("empty Agent Spec")
             self._specs[definition.id] = body
@@ -178,6 +186,14 @@ class AgentRuntime:
         if not callable(resolve_context) or not callable(cancelled) or not isinstance(limits, AgentLimits):
             raise ValueError("invalid runtime configuration")
         self._resolve_context, self._limits, self._cancelled = resolve_context, limits, cancelled
+
+    def _spec_current(self, definition: RuntimeAgent) -> bool:
+        path = Path(definition.spec_path)
+        try:
+            return (not path.is_symlink()
+                    and path.read_bytes().decode("utf-8") == self._specs[definition.id])
+        except (OSError, UnicodeError):
+            return False
 
     def invoke(self, agent_id: str, input: dict, grant: AgentGrant) -> AgentRun:
         if not isinstance(grant, AgentGrant) or not _names(grant.targets) or not _names(grant.agents):
@@ -219,6 +235,7 @@ class _Tree:
         limits = self.runtime._limits
         if depth > limits.max_depth or self.calls >= limits.max_calls:
             return finish("limit_exhausted", error="call_limit")
+        self.calls += 1
         definition = self.runtime._definitions.get(agent_id)
         if definition is None or agent_id not in grant.agents:
             return finish("rejected", error="agent_not_admitted")
@@ -232,8 +249,9 @@ class _Tree:
             if (definition.input_type == "concorde-agent-task"
                     and admitted_input["data"]["target_id"] not in effective.targets):
                 raise ValueError("task target is outside the grant")
-            if Path(definition.spec_path).read_text(encoding="utf-8") != self.runtime._specs[agent_id]:
-                raise ValueError("Agent Spec changed")
+            if not self.runtime._spec_current(definition):
+                stop = stopped()
+                return finish(stop or "rejected", error=stop or "stale_definition")
             context = validate_typed(self.runtime._resolve_context(definition, admitted_input, effective),
                                      "concorde-context-snapshot")
             snapshot = context["data"]
@@ -252,7 +270,6 @@ class _Tree:
         stop = stopped()
         if stop:
             return finish(stop, error=stop)
-        self.calls += 1
         input_json, context_json = canonical(admitted_input), canonical(context)
         binding = {"agent_id": agent_id, "spec": self.runtime._specs[agent_id],
             "agent_definition": asdict(definition.agent),
@@ -284,8 +301,9 @@ class _Tree:
             if stop or self.decisions >= limits.max_decisions:
                 return finish(stop or "limit_exhausted", error=stop or "decision_limit")
             try:
-                if Path(definition.spec_path).read_text(encoding="utf-8") != self.runtime._specs[agent_id]:
-                    return finish("rejected", error="stale_definition")
+                if not self.runtime._spec_current(definition):
+                    stop = stopped()
+                    return finish(stop or "rejected", error=stop or "stale_definition")
                 current = validate_typed(self.runtime._resolve_context(definition,
                     decode(input_json), effective), "concorde-context-snapshot")
                 stop = stopped()
@@ -355,6 +373,9 @@ class _Tree:
             if step.action == "complete":
                 return finish(step.outcome, step.value, details=step.details)
             if step.agent_id not in definition.delegates or step.agent_id not in effective.agents:
+                if self.calls >= limits.max_calls:
+                    return finish("limit_exhausted", error="call_limit")
+                self.calls += 1
                 feedback.append(AgentResult(str(uuid4()), invocation_id, step.agent_id,
                                             "rejected", None, "delegation_denied"))
                 self.events.append({"event": "return", **feedback[-1].wire()})

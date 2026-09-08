@@ -386,6 +386,37 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertEqual("candidate\n", (self.change / "shared.txt").read_text())
 
+    def test_self_hosted_integration_builds_its_exact_checkout_before_validation(self):
+        from concorde.host.build import verify_fresh
+        fixture_report=validate_repository(self.primary,package_root=PACKAGE)
+        self.assertEqual(fixture_report.status,'success')
+        for directory in ('prompts','skills','agents'):
+            shutil.copytree(PACKAGE/directory,self.primary/directory)
+        (self.primary/'concorde.json').write_text('{}')
+        (self.primary/'app/transfer.py').write_text(
+            'def transfer(balance, amount):\n'
+            '    if amount <= 0 or amount > balance: raise ValueError("invalid transfer")\n'
+            '    return balance - amount\n')
+        with (self.primary/'.gitignore').open('a') as stream:
+            stream.write('\ngenerated/\n.agents/\n.claude/\n')
+        commit=self.commit(self.primary,'Self-hosted integration fixture')
+        tree=git_value(self.primary,'rev-parse','HEAD^{tree}')
+        verified=[]
+        def inspect(root,**kwargs):
+            self.assertNotEqual(root,self.primary)
+            self.assertEqual(git_value(root,'rev-parse','HEAD^{tree}'),tree)
+            verify_fresh(root)
+            verified.append(root)
+            return fixture_report
+        with patch.object(worktree_delivery,'validate_repository',side_effect=inspect):
+            checks=worktree_delivery._verify_merged_tree(
+                CapabilityHost(self.primary,PACKAGE),commit,tree,'change.integration-build')
+        self.assertEqual(len(verified),1)
+        self.assertFalse(verified[0].exists())
+        self.assertTrue(checks)
+        self.assertTrue(all(check['status']=='passed' for check in checks))
+        self.assertFalse((self.primary/'generated').exists())
+
     def test_actual_integration_checks_run_after_primary_advances(self):
         change_id = self.ready()
         path = self.primary / "checks/transfer_check.py"

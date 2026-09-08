@@ -132,6 +132,15 @@ The Spec capsule admits both ordinary stage contracts and the recursive task/ans
 loop-context/loop-step interfaces; an Agent must explicitly declare the subset it uses.
 There is no separate recursive Agent or Harness definition model.
 
+The host-only lookup API is `agent_definition(name: str) -> Agent`; it accepts the bare catalog
+key, its hyphenated spelling or its `concorde-` external name and raises `BuildError/unknown_agent`
+when absent. `external_agent_name(name: str) -> str` prefixes a bare key and replaces underscores
+with hyphens. `resolve_agent(package_root: str|Path, name: str) -> AgentBinding` verifies the
+current built Spec/instructions, registered Harness and narrowed constraints and returns the
+immutable binding below. Unknown names, stale builds and inconsistent definitions raise
+`BuildError` with `unknown_agent`, `stale_build` or `invalid_agent_binding`. These APIs do not
+invoke an Agent, select a project target or grant its context.
+
 `AgentBinding` (module `agent_model`) is the reproducible identity of one resolved Agent definition
 (the registered Shared Spec **Agents and Harnesses** defines A1/A4, the Agent/Harness/Constraints
 model this binding resolves). It is a frozen record with `agent: str`, `spec_path: str`,

@@ -358,6 +358,12 @@ stores root validation evidence against the exact candidate tree. Existing autho
 still require completion; this path cannot bypass unfinished work. Deterministic readiness does not
 claim universal semantic completeness. The primary delivery request accepts the verified candidate.
 
+Delivery validates its actual integration result in a temporary detached worktree. When that tree
+contains `concorde.json`, it is a Concorde package checkout: the host calls `write_build` on that
+checkout's own merged sources before Spec/package validation and configured checks. Untracked
+build outputs do not alter the deliverable tree. Build or validation failure preserves both
+participants and prevents the primary update; no stale-output gate is disabled or bypassed.
+
 The primary worktree maintains `.concorde/worktrees.json` from Git's live worktree inventory, including
 unmanaged worktrees. Each entry has its path, branch, head, managed/locked status and, when available,
 change_id, owning target, task summary, phase and status. A secondary worktree registers its own

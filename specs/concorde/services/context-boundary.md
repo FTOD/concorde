@@ -314,6 +314,43 @@ The registered Shared Spec **Registry selection and value contracts** supplies t
 required constructor, selection, document/type, configuration and error promises without opening
 another target's remaining collection.
 
+## Review-result stage-input value
+
+`concorde-review-result@1` has exactly the typed envelope fields `type_id`, integer
+`schema_version: 1` (not boolean), and `data`. Its closed payload has all these required fields.
+Here `S` is a nonblank string, `N` is `S|null`, and `D` is `sha256:` plus exactly 64 lowercase
+hexadecimal digits:
+
+| Field | Type or allowed values |
+| --- | --- |
+| `context_id` | `D|null` |
+| `input_digest` | `D` |
+| `review_mode` | `"spec"|"code"` |
+| `status` | `"no_findings"|"findings"|"incomplete"|"skipped"|"not_run"` |
+| `representative_tasks` | unique `S[]` |
+| `findings` | `Finding[]` |
+| `gaps` | `ReviewGap[]` |
+| `answer`, `target_id` | `S` |
+| `focus_id` | `N` |
+| `revision` | closed object with `spec_digest: D`, `implementation_digest: D|null`, `baseline: N`, `head: N`, all required |
+| `semantic_completeness` | exactly `"not_proven"` |
+
+A closed `Finding` requires `id: S`, `severity: "blocking"|"advisory"`, `target_id: S`,
+`document: S`, `contract: S`, `location`, `problem: S`, and `affected_task: S`. The closed
+`location` requires `path` (a safe project-relative path) and `line` (positive integer or null).
+A closed `ReviewGap` requires `question: S`, `blocked_step: S`, and `needed_contract: S`, with
+optional `target_id: S` and `context_id: D`. These optional wire fields do not weaken the review
+host's requirement to bind blocking gaps to the reviewed target and context. Arrays may be empty
+unless the review host's status/coverage rules require contents. Unknown fields, invalid versions,
+unsafe paths and shape mismatches raise `TypedDataError` during typed validation. String baseline
+and head fields identify revisions; the wire shape itself does not prove their freshness.
+
+The context service validates allowed typed stage-input values and freezes their exact bytes into
+the snapshot. Repair admission additionally belongs to the workflow host: it binds the current
+code review and revision, admits that declared result only to `tasks`/`implementation` repair
+contexts, and removes write authority during review. A structurally valid review result alone
+neither authorizes a repair nor proves review completion, currentness or semantic completeness.
+
 ## Reader Agent and recursive factory
 
 This Service owns `agents/reader/AGENT` in the Python package `agents.reader` and its single authored
@@ -368,6 +405,77 @@ return evidence. The execution collaborator enforces explicit edges, inherited t
 allowlists, immutable contexts, and shared and per-Agent deadlines. Failed/rejected children are
 bounded feedback; cancellation or exhaustion terminates ancestors. Native cancellation and timeout
 classifications are retained. No persistent resume or parallel scheduling is implied.
+
+The resolver callback is `resolver(node: RuntimeAgent, input: dict, grant: AgentGrant) -> dict`.
+The host passes the selected node, validated typed input envelope and effective grant (inherited
+Agent allowlist and intersection of inherited/node target sets). It must return the full typed
+`concorde-context-snapshot@1` envelope, not a ContextSnapshot object or serialized string. The
+reader factory wraps `resolve_context(...).value` in that envelope using phase `ask`, the task's
+text and loaded instructions. The runtime validates the envelope and recomputes its context ID,
+requires no implementation artifacts, requires phase `ask` and a target in the effective grant,
+and for `concorde-agent-task` requires the task and context targets to match. Initial resolver
+exceptions or invalid returns reject admission with `admission_failed`, unless cancellation or
+exhaustion has already taken precedence. Before every decision it calls the resolver again with
+the same node, decoded typed input and effective grant; a changed valid envelope is rejected as
+`stale_context`. Exceptions or malformed returns during this subsequent check are execution
+failures (`failed`/`execution_failed`), again subject to cancellation/deadline precedence. Resolver
+calls do not broaden the grant and do not themselves start native processes.
+
+### Recursive decision and feedback interface
+
+The graph callback is `decide(frame: AgentFrame) -> AgentStep`. `AgentFrame` is frozen and has
+`invocation_id: str`, `parent_id: str|None`, `agent_id: str`, `input_json: str`,
+`context_json: str`, `spec: str`, `feedback: tuple[AgentResult, ...]`, `children_json: str`,
+`result_schema_json: str`, `remaining_seconds: float`, `deadline: float`, and
+`agent_binding_json: str|None = None`. The input and complete bound context are serialized typed
+values; `spec` contains the admitted instructions. The child list and result schema are serialized
+JSON; time values describe the shared absolute monotonic deadline and its remaining duration.
+The native adapter requires the serialized canonical binding. A frame and its context are private
+to this invocation; children receive their own host-resolved contexts.
+
+`AgentStep(source: str, action: str, agent_id: str|None=None, value: dict|None=None,
+outcome: str="completed", details: dict|None=None)` is frozen. The native adapter's public call
+shape is `NativeAgentAdapter(integration="codex", executor=None)(frame) -> AgentStep`. It launches
+one fresh model decision and converts its validated wire result into this record, decoding
+`value_json` to `value`. Native decisions require `source="model-driven"`; graph callbacks can
+also identify `code-driven` decisions. Invalid typed decisions or malformed JSON raise
+`InvalidAgentStep(ValueError)` and the runtime rejects them with `invalid_step`. Invalid native
+evidence raises `ValueError` and is classified as execution failure; enforced cancellation and
+deadline exhaustion retain their distinct outcomes.
+
+The native input/output use exact envelopes `{type_id, schema_version: 1, data}` with no other
+properties. All following payload fields are required and closed. `S` means nonblank string,
+`N` means `S|null`, and `Outcome` is the outcome enumeration above:
+
+| Type ID | Data |
+| --- | --- |
+| `concorde-agent-loop-context` | `invocation_id: S`, `parent_id: N`, `agent_id: S`, `input_json: S`, `context_json: S`, `feedback: Feedback[]`, `children: Child[]`, `result_schema_json: S` |
+| `concorde-agent-loop-step` | `source: "code-driven"|"model-driven"`, `action: "delegate"|"complete"`, `agent_id: N`, `value_json: N`, `outcome: Outcome`, `details: TypedValue<concorde-agent-interruption>|null` |
+
+`Feedback` contains `invocation_id: S`, `parent_id: N`, `agent_id: S`, `outcome: Outcome`,
+`value_json: N`, `error: N`, and nullable typed interruption `details`. `Child` contains
+`agent_id`, `input_type`, `result_type`, `input_schema_json` and `result_schema_json`, all `S`.
+These nested objects are also closed. Schemas describe the complete typed input/result envelopes;
+`_json` values are JSON strings, never additional authority. Interruption payloads have exactly
+`gaps: Gap[]` and `decision: N`; Gap's five fields listed above are nonblank strings and its
+context ID is `sha256:` plus 64 lowercase hexadecimal digits.
+
+Delegation sets `agent_id` to the advertised recipient, `value_json` to its serialized typed
+input, `outcome="completed"`, and `details=null`; it requests a child and does not claim that
+child has completed. The host checks the edge, effective grants and input type, allocates a fresh
+child invocation ID, and sets its `parent_id` to the current invocation. Direct-child results are
+appended in call order to cumulative feedback for the parent's next fresh decision; descendants'
+private results are not automatically propagated. Denied delegation returns a correlated rejected
+feedback item with `error="delegation_denied"`. Failed and rejected children permit another bounded
+parent decision; cancelled or exhausted children terminate their ancestors immediately.
+
+Completion requires `agent_id=null`. Successful completion supplies a serialized value matching
+the advertised result type and `details=null`. Other outcomes require `value_json=null`;
+`spec_incomplete` requires nonempty gaps matching the bound target/context and no decision,
+`waiting` requires only a nonblank decision, and the remaining outcomes require `details=null`.
+The runtime rejects inconsistent combinations with `invalid_step`. `AgentResult.wire()` produces
+the Feedback shape, decoding `details_json` into `details`. No untyped transcript, arbitrary child
+file, or provider-native delegation becomes an implicit input to the next decision.
 
 The Protocol schema asset is produced by the wire provider from its registered schemas: stable
 IDs, exact closed versioned payloads and self-contained local definitions. This Service verifies

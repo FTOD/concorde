@@ -18,6 +18,26 @@ with local definitions. Contract IDs are stable independent of paths. Local requ
 schemas admit only the supported offline subset: remote references and unknown keywords fail.
 Structural validation is not a claim of semantic completeness.
 
+## Canonical serialization
+
+`canonical(value)` returns a JSON string using Python's standard JSON encoder with sorted
+object keys, compact separators (`,` and `:`), ASCII escaping and `allow_nan=False`, with no
+trailing newline. It accepts `None`, booleans, strings, integers, finite floats, lists, tuples
+(encoded as arrays), and dictionaries containing recursively supported values. String-keyed
+objects are the transport contract: keys sort lexicographically, array order is preserved, and
+non-ASCII characters are escaped. It does not validate TypedValue schemas, normalize Unicode or
+numeric representations, or implement a separate cross-language canonicalization standard.
+
+The underlying encoder also accepts dictionary keys of type integer, finite float, boolean or
+`None` when key sorting is possible, converting them to JSON property strings. Such coercion can
+produce duplicate property strings; callers requiring round trips through `decode` must use
+unique string keys. Mixed keys that cannot be compared raise `TypeError`. Unsupported objects
+(including bytes, sets and arbitrary class instances) and unsupported key types raise `TypeError`.
+Non-finite floats anywhere in values or keys, and circular containers, raise `ValueError`;
+excessive nesting can raise `RecursionError`. These encoder exceptions propagate directly and
+are not wrapped as `TypedDataError`. Successful serialization has no filesystem effects and
+normalizes only the encoding choices stated above.
+
 ## Typed values and recursive dispatch
 
 A TypedValue is exactly `{type_id: str, schema_version: int, data: object}`. This API constructs

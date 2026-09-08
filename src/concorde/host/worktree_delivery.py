@@ -77,6 +77,11 @@ def _verify_merged_tree(host, commit: str, tree: str, change_id: str) -> list[di
         root = Path(directory) / "project"
         git(host.project_root, "worktree", "add", "--detach", str(root), commit)
         try:
+            if (root / "concorde.json").is_file():
+                # The integration checkout has no untracked generated assets. Self-hosted
+                # package validation requires a fresh build of these exact merged sources.
+                from .build import write_build
+                write_build(root)
             report = validate_repository(root, package_root=host.package_root)
             if report.status != "success":
                 raise SpecError("the merged candidate failed Spec validation", "invalid_merge")

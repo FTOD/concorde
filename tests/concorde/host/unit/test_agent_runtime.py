@@ -237,13 +237,98 @@ class AgentRuntimeTests(unittest.TestCase):
         run=self.invoke([self.definition('A',parent,['B']),self.definition('B',lambda f: changed(f))])
         self.assertEqual(run.result.error,'stale_context')
 
+    def test_code_driven_capabilities_require_known_harness_admission(self):
+        from concorde.host.harness import HARNESSES
+        for capability, admitted, accepted in (
+                ('concorde-unknown', True, False),
+                ('concorde-main', False, False),
+                ('concorde-main', True, True)):
+            with self.subTest(capability=capability, admitted=admitted):
+                decisions=[]
+                node=self.definition('A',lambda frame: decisions.append(frame) or self.done())
+                harness=replace(node.agent.harness,capabilities=(capability,) if admitted else ())
+                agent=replace(node.agent,harness=harness,
+                    constraints=replace(node.agent.constraints,capabilities=(capability,)))
+                with patch.dict(HARNESSES,{harness.name:harness}):
+                    if accepted:
+                        self.assertEqual(self.invoke([replace(node,agent=agent)]).result.outcome,'completed')
+                        self.assertEqual(len(decisions),1)
+                    else:
+                        with self.assertRaises(ValueError):
+                            AgentRuntime([replace(node,agent=agent)],self.context)
+                        self.assertEqual(decisions,[])
+
+    def test_delegation_requires_both_loop_interfaces_for_code_driven_agents(self):
+        for contexts, results in (
+                (('concorde-agent-task',),('concorde-agent-answer','concorde-agent-loop-step')),
+                (('concorde-agent-task','concorde-agent-loop-context'),('concorde-agent-answer',))):
+            with self.subTest(contexts=contexts, results=results):
+                node=self.definition('A',lambda frame:self.done(),['A'])
+                agent=replace(node.agent,constraints=replace(node.agent.constraints,
+                    contexts=contexts,results=results))
+                with self.assertRaises(ValueError):
+                    AgentRuntime([replace(node,agent=agent)],self.context)
+
+    def test_rejected_child_requests_consume_the_shared_call_budget(self):
+        for failure in ('input','context','edge'):
+            with self.subTest(failure=failure):
+                decisions=[];resolutions=[]
+                def parent(frame):
+                    decisions.append(frame)
+                    value={'type_id':'unknown'} if failure=='input' else self.task()
+                    return AgentStep('code-driven','delegate','B',value)
+                def resolver(node,value,grant):
+                    if node.id=='B':
+                        resolutions.append(node.id)
+                        raise ValueError('context admission failed')
+                    return self.context(node,value,grant)
+                a=self.definition('A',parent,['B'] if failure!='edge' else [])
+                b=self.definition('B',lambda frame:self.done())
+                runtime=AgentRuntime([a,b],resolver,limits=AgentLimits(max_calls=2))
+                result=runtime.invoke('A',self.task(),AgentGrant(
+                    frozenset({'service.transfer'}),frozenset({'A','B'}))).result
+                self.assertEqual((result.outcome,result.error),('limit_exhausted','call_limit'))
+                self.assertEqual(len(decisions),2)
+                self.assertEqual(resolutions,['B'] if failure=='context' else [])
+
     def test_missing_bindings_and_stale_spec_do_not_start(self):
         with self.assertRaises(ValueError):
             AgentRuntime([self.definition('A',lambda f:self.done(),['missing'])],self.context)
-        definition=self.definition('A',lambda f:self.done())
+        decisions=[]
+        definition=self.definition('A',lambda f:decisions.append(f) or self.done())
         runtime=AgentRuntime([definition],self.context)
         self.spec.write_text('# Changed')
-        self.assertEqual(runtime.invoke('A',self.task(),AgentGrant(frozenset({'service.transfer'}),frozenset({'A'}))).result.error,'admission_failed')
+        result=runtime.invoke('A',self.task(),AgentGrant(frozenset({'service.transfer'}),frozenset({'A'}))).result
+        self.assertEqual((result.outcome,result.error),('rejected','stale_definition'))
+        self.assertEqual(decisions,[])
+        self.assertEqual(self.admissions,[])
+
+    def test_unavailable_spec_rejects_initial_and_resumed_decisions(self):
+        for when in ('initial','continuation'):
+            with self.subTest(when=when):
+                self.spec.write_text('# Test Agent')
+                decisions=[]
+                def parent(frame):
+                    decisions.append(frame.agent_id)
+                    return AgentStep('code-driven','delegate','B',self.task())
+                def child(frame):
+                    self.spec.unlink()
+                    return self.done()
+                runtime=AgentRuntime([self.definition('A',parent,['B']),
+                    self.definition('B',child)],self.context)
+                if when=='initial': self.spec.unlink()
+                result=runtime.invoke('A',self.task(),AgentGrant(
+                    frozenset({'service.transfer'}),frozenset({'A','B'}))).result
+                self.assertEqual((result.outcome,result.error),('rejected','stale_definition'))
+                self.assertEqual(decisions,[] if when=='initial' else ['A'])
+
+    def test_spec_freshness_compares_exact_bytes(self):
+        self.spec.write_bytes(b'# Test Agent\n')
+        runtime=AgentRuntime([self.definition('A',lambda frame:self.done())],self.context)
+        self.spec.write_bytes(b'# Test Agent\r\n')
+        result=runtime.invoke('A',self.task(),AgentGrant(
+            frozenset({'service.transfer'}),frozenset({'A'}))).result
+        self.assertEqual((result.outcome,result.error),('rejected','stale_definition'))
 
     def test_stop_during_context_resolution_never_starts_a_decision(self):
         for mode in ('cancelled', 'deadline', 'resolver_error'):
