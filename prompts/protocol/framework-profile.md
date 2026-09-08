@@ -233,8 +233,11 @@ workspace identity, candidate status when applicable, and the live worktree inve
 lifecycle inputs MUST NOT grant access to another worktree's Specs, implementation or conversation.
 Managed secondary AGENTS.md and CLAUDE.md guidance supplements the host-enforced context.
 
-Creating a linked worktree from a primary mutation request is a handoff: a new agent MUST be opened in
-that worktree before project work continues. Development loops MUST stop at a verified ready candidate.
+Creating a linked worktree from a primary mutation request is a handoff: the host prepares the
+worktree and returns its identity; the outer agent MUST initiate a new session there under P10,
+automatically by default, before project work continues. The originating session MUST stop
+development in that worktree but MAY initiate the handoff. Returning the worktree identity does not
+mean the host has launched a session. Development loops MUST stop at a verified ready candidate.
 Delivery MUST be requested in an agent whose initial working directory is either the selected source
 worktree or the destination primary worktree. The host MUST reject unrelated third-worktree and
 nested delivery sessions; changing cwd or forwarding cannot grant participant membership. Component
@@ -251,11 +254,19 @@ distinguishable and resumable without repeating the merge.
 
 ### P10. Copyable agent handoffs
 
-Whenever a Concorde workflow asks the user to open, reopen, or switch to another agent session,
-include a self-contained prompt in a fenced text block that the user can copy directly into that
-agent. This applies to every such handoff, including worktree changes, primary-worktree delivery
-when a new session is actually required, and same-worktree maintenance recovery. Write the prompt
-in the user's language and include:
+Whenever a Concorde workflow requires another outer agent session, the originating outer agent
+MUST start it automatically when the available launcher can establish the required isolation. The
+new session MUST start with the intended worktree as its initial working directory, fresh context,
+and that worktree's own Skills. Changing cwd or starting a child that inherits the old conversation
+or Skill bodies does not satisfy this requirement. Same-worktree Skill maintenance likewise requires
+a fresh maintenance session that has not loaded the affected Skill bodies. Only when automatic
+startup is unavailable or these conditions cannot be established MUST the outer agent ask the user
+to open the session manually and provide a complete copyable prompt.
+
+For both automatic and manual handoffs, prepare a self-contained prompt in the user's language,
+pass it to the new session for automatic startup, and present it in a fenced text block for manual
+startup. This applies to worktree changes, primary-worktree delivery when a new session is actually
+required, and same-worktree maintenance recovery. Include:
 
 - The intended initial working directory as an absolute path and the branch, when known.
 - The original task, accepted scope, and user constraints or authorizations needed to continue.
@@ -268,12 +279,16 @@ in the user's language and include:
 Do not make the user reconstruct the task from earlier messages, supply known paths themselves,
 or ask a second time for a handoff prompt. State unknown information explicitly rather than
 inventing it. Preparing the prompt does not authorize entering or modifying the target worktree
-from the old session; the existing worktree and maintenance boundaries still apply.
+from the old session or forwarding the old conversation or Skill bodies; the existing worktree and
+maintenance boundaries still apply. The originating session stops the affected project work while
+remaining responsible for initiating the handoff.
 
 The runtime supplies facts it knows, including the actual worktree path, branch and change ID when
 available, through existing result/error channels. The outer session completes the original task,
-accepted scope, progress, checks and artifact details from its conversation before presenting the
-localized prompt. A runtime draft with unknown fields does not excuse omitting facts the session
+accepted scope, progress, checks and artifact details from its conversation before supplying the
+localized prompt to the launcher or user. The capability host's returned facts and draft do not
+constitute automatic session startup; launching the successor is the outer agent's responsibility.
+A runtime draft with unknown fields does not excuse omitting facts the session
 knows. Handoff text is for the new outer user session, not an input channel into controlled workers;
 those workers still require fresh host-bound contexts and declared artifact contracts (P5–P7).
 This clause does not create new handoff triggers, confirmations or authority. In particular, P9

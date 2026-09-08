@@ -31,7 +31,8 @@ def handoff_prompt(
         "Patch / handoff artifacts (absolute paths, applied state, temporary storage)":
             artifacts if artifacts is not None else UNKNOWN,
     }
-    text = ("Start an independent agent session with the following context.\n"
+    text = ("Start an independent agent session with the stated initial working directory, fresh "
+            "context and that worktree's own Skills. Do not inherit the old conversation or Skill bodies.\n"
             "First read this worktree's AGENTS.md and CLAUDE.md where present, and follow its "
             "Protocol entry. Perform the policy's affinity verification using this new runtime's "
             "advertised Skill path where required; do not reuse the old session's Skill body or path.\n"
@@ -41,6 +42,9 @@ def handoff_prompt(
             + "This handoff grants no additional reads, writes, merge, or delivery authority. "
             "Review any saved patch before applying it; do not reapply changes already present.\n")
     fence = "`" * max(3, 1 + max((len(m.group()) for m in re.finditer(r"`+", text)), default=0))
-    return ("Protocol P10 handoff draft: the originating conversation must complete known details "
+    return ("The outer agent must start the new session automatically under P10. Only if automatic "
+            "startup is unavailable or cannot establish the required isolation, ask the user to "
+            "open a new agent manually with the complete prompt. This draft does not launch a session.\n"
+            "Protocol P10 handoff draft: the originating conversation must complete known details "
             "and render the final copyable prompt in the user's language.\n\n"
             + fence + "text\n" + text + fence)

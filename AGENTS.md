@@ -31,18 +31,25 @@ retained in the conversation; one representative path per owning worktree is suf
 check must pass.
 
 If the runtime exposes no absolute project-local Concorde Skill path, worktree affinity cannot be
-proven; stop and ask the user to reopen the agent from the intended worktree instead of guessing.
+proven; stop project work and hand off to a new session in the intended worktree under P10 instead
+of guessing.
 
 Run it again after any cwd or tool `workdir` change. A result that reports different loaded and
 target worktrees ends project work in this conversation. Tell the user which worktree supplied the
-loaded Skills and explicitly ask them to open a new agent whose initial working directory is the
-target worktree. Do not inspect, plan, test, edit, or invoke a capability in that target worktree
+loaded Skills and initiate a new agent whose initial working directory is the target worktree under
+P10. Do not inspect, plan, test, edit, or invoke a capability in that target worktree
 from the old conversation, and never update the loaded Skill worktree as a substitute. Any other
 nonzero result also stops work unless it reports same-worktree projection drift and the current
 session qualifies for the maintenance recovery below.
 
 An agent may create a requested branch and linked worktree from the authorized committed base, but
-must stop after reporting its path and branch. Development in it belongs to a newly opened agent.
+must stop development there in the originating session, report its path and branch, and initiate
+the P10 handoff. Development in it belongs to the new agent. The outer agent starts that session
+automatically by default, with the target worktree as its initial working directory, fresh context,
+and that worktree's own Skills. Changing cwd or spawning a child that inherits the old conversation
+or Skill bodies does not satisfy the handoff. Only when automatic startup is unavailable or these
+conditions cannot be established should it ask the user to open the session manually, providing the
+complete copyable P10 prompt. Stopping development does not prohibit initiating this handoff.
 Never switch the current worktree in place to another branch or revision to avoid this handoff; a
 new target revision belongs in a linked worktree with its own agent session.
 
@@ -76,7 +83,8 @@ fails closed until it is.
 
 Do not invoke a project-local `concorde-*` Skill to govern a task that changes its own `prompts/`,
 `skills/`, `capabilities/`, or generated Skill surface. If such a Skill body is already loaded as
-instructions, stop before the first edit and ask the user to reopen a maintenance agent in this
-same worktree. Skill discovery metadata alone is not a loaded Skill body. A maintenance agent that
-has not invoked a project-local Skill may update sources, run the build, run `build --check`, and
-test normally.
+instructions, stop before the first edit and initiate a fresh maintenance session in this same
+worktree under P10, automatically by default, without loading the affected Skill bodies. Use the
+manual fallback above only when necessary. Skill discovery metadata alone is not a loaded Skill body.
+A maintenance agent that has not invoked a project-local Skill may update sources, run the build,
+run `build --check`, and test normally.

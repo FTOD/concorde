@@ -38,8 +38,10 @@ Check `python scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project, then invoke the paired init entry in an isolated worktree (or use the trusted host's explicit
 primary-worktree authorization). A mutation requested from the primary worktree prepares a linked
-worktree from committed HEAD and returns its identity. Open a new agent in that worktree to continue;
-the originating session does not follow the task into a different checkout.
+worktree from committed HEAD and returns its identity. The outer agent then starts a fresh session
+in that worktree under P10, using its own Skills; when automatic startup is unavailable or cannot
+establish that isolation, it provides a complete prompt for the user to open the session manually.
+The originating session does not follow the task into a different checkout.
 
 ```json
 {

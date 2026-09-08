@@ -128,16 +128,16 @@ def verify_worktree_affinity(root: Path, loaded_skill_path: str | Path) -> dict[
         raise WorktreeAffinityError(
             f"this agent loaded Concorde Skills from {loaded_root}, but project work targets {root}. "
             + version_detail
-            + f"Stop and explicitly ask the user to open a new agent in {root}; do not continue "
-            f"there and do not update Skills in {loaded_root}.\n\n" + _handoff(root)
+            + f"Stop project work here and initiate the P10 handoff to a new agent in {root}; "
+            f"do not continue there and do not update Skills in {loaded_root}.\n\n" + _handoff(root)
         )
     try:
         verify_fresh(root)
     except BuildError as error:
         raise WorktreeAffinityError(
             f"the active worktree's build is stale: {error}. Run python3 scripts/concorde.py build "
-            "in this worktree from a maintenance session, then open a fresh agent if any changed "
-            "project Skill was already loaded as instructions.\n\n"
+            "in this worktree from a maintenance session. If an affected project Skill was already "
+            "loaded as instructions, first initiate a fresh maintenance session under P10.\n\n"
             + _handoff(root, maintenance=True)
         ) from error
     return {

@@ -201,7 +201,15 @@ def _completion_schema(specification: LaunchSpecification) -> dict[str, Any]:
         },
         "status": {"enum": ["success", "failed"]},
         "output": {"type": "string"},
-        "limitations": {"type": "string"},
+        "limitations": {
+            "type": "string",
+            "minLength": 1,
+            "description": (
+                "For status=success, use exactly the lowercase string 'none', never an empty string. "
+                "For status=failed, explain the execution failure with a nonempty string other than 'none'. "
+                "A valid bounded gap assessment belongs in domain_output, not in limitations."
+            ),
+        },
         "gates": {
             "type": "array",
             "minItems": 1,
@@ -427,8 +435,13 @@ def _validate_completion(payload: dict[str, Any], specification: LaunchSpecifica
         gates.append(CompletionGate(name=name, status=gate_status, evidence=evidence))
     failed_gates = [gate for gate in gates if gate.status == "failed"]
     if status_value == "success":
-        if limitations != "none" or failed_gates:
-            raise ValueError("successful completion must have no limitations or failed gates")
+        if limitations != "none":
+            received = "an empty string" if not limitations else "a different string"
+            raise ValueError(
+                "successful completion requires limitations exactly 'none'; received " + received
+            )
+        if failed_gates:
+            raise ValueError("successful completion contains failed gates")
     elif not limitations.strip() or limitations == "none" or not failed_gates:
         raise ValueError("failed completion requires limitations and a failed gate")
     domain_output = payload.get("domain_output")
@@ -463,6 +476,32 @@ def _completion(stdout: str, specification: LaunchSpecification) -> CapabilityCo
 
 
 def _prompt(specification: LaunchSpecification) -> str:
+    version = _completion_version(specification)
+    assessment = (
+        "A valid gap assessment or review finding belongs in domain_output and does not by itself "
+        "make the envelope fail. "
+        if _domain_type(specification) is not None else ""
+    )
+    failed_domain_output = "Set domain_output to null for status=failed. " if version == 3 else ""
+    return (
+        _role_prompt(specification)
+        + "\n\nCompletion contract:\n"
+        + f"Return only Capability Completion Envelope {version} matching the supplied schema. "
+        "The envelope status describes execution of the bounded role. "
+        f"{assessment}"
+        "Report every mandatory prerequisite or phase gate you relied on. "
+        "Set status=success only when every reported gate passed and limitations is exactly 'none' "
+        "(the lowercase string, never an empty string). "
+        "Set status=failed if execution of the bounded role cannot complete, including failure of a "
+        "mandatory execution gate, required tool or authority check; include a nonempty limitation "
+        "other than 'none' and at least one failed gate. "
+        f"{failed_domain_output}"
+        "Never clear a real failure to obtain success. "
+        f"Bind the envelope to launch_digest {specification.digest}."
+    )
+
+
+def _role_prompt(specification: LaunchSpecification) -> str:
     if _domain_type(specification) == "concorde-review-stage-result":
         return (
             "Execute one independent Concorde review in a fresh session. You have no project write authority.\n"
@@ -555,7 +594,8 @@ def _prompt(specification: LaunchSpecification) -> str:
             "and launch/context digest. Its status describes completion of this bounded role, including "
             "a valid gap assessment. Workflow progress is controlled by domain_output.data.outcome. "
             "Put the typed concorde-agent-stage-result in domain_output. Include context_id, outcome, "
-            "answer, gaps, documents, plan, and tasks. Use empty arrays/strings for unused fields. "
+            "answer, gaps, documents, plan, and tasks. Use empty arrays/strings for unused domain_output fields; "
+            "this does not apply to the envelope limitations field. "
             "A spec_incomplete outcome requires concrete question/blocked_step/needed_contract gaps; "
             "other outcomes have no gaps. Only specification stages return document replacements. "
             "Do not transmit raw code or implementation logs in a result for a later Spec-only stage.\n"
@@ -604,13 +644,6 @@ def _prompt(specification: LaunchSpecification) -> str:
         "supplied inline and its source file need not be readable. An attempt_state of 'absent' is a "
         "validated no-attempt state, not missing evidence; evaluate only attempt artifacts that the "
         "receipt reports as present.\n\n"
-        "Completion contract:\n"
-        f"Return only Capability Completion Envelope {_completion_version(specification)} matching the supplied schema. "
-        "Report every mandatory prerequisite or phase gate you relied on. Set status=failed when any "
-        "mandatory gate, required tool, authority check, or requested outcome did not complete; include "
-        "a non-empty limitation and at least one failed gate. Set status=success only when every reported "
-        "gate passed, limitations is exactly 'none', and output is safe for the next capability stage. "
-        f"Bind the envelope to launch_digest {specification.digest}."
     )
 
 
