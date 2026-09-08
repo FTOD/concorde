@@ -28,7 +28,7 @@ from ..frontmatter import FrontMatterError, parse_document
 
 
 AUDIENCES = frozenset({"worker", "ambient", "shared"})
-RESERVED_VARIABLES = frozenset({"OPERATION", "SCRIPT", "FRAMEWORK"})
+RESERVED_VARIABLES = frozenset({"CAPABILITY", "SCRIPT", "FRAMEWORK"})
 PROTOCOL_PREFIX = "prompts/protocol/"
 PROMPTS_ROOT = "prompts/"
 SKILLS_ROOT = "skills/"

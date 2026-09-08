@@ -336,7 +336,7 @@ def target_state(root: Path, target_id: str, focus_id: str | None, *, create: bo
         raise SpecError("this capability requires an authored target plan", "missing_plan")
     return {"schema_version": 1, "target_id": target_id, "focus_id": focus_id,
             "plan": "", "tasks": [], "checks": [], "spec_digest": None,
-            "implementation_digest": None, "completed_operations": [],
+            "implementation_digest": None, "completed_capabilities": [],
             "phase": "plan", "status": "active"}
 
 

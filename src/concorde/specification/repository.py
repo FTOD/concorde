@@ -97,8 +97,8 @@ class SpecRepository:
         self.config = decode(read_file(self.root, ".concorde/config.json").decode())
         if self.config.get("profile_version") != PROFILE_VERSION:
             raise SpecError("Profile 8 is required; Profile 7 projects are not supported", "unsupported_profile")
-        if set(self.config) != {"profile_version", "registry", "protocol", "operation_configuration"}:
-            raise SpecError("Profile 8 configuration fields must be profile_version, registry, protocol, operation_configuration")
+        if set(self.config) != {"profile_version", "registry", "protocol", "capability_configuration"}:
+            raise SpecError("Profile 8 configuration fields must be profile_version, registry, protocol, capability_configuration")
         self.registry_path = safe_path(self.config["registry"])
         self.registry_bytes = (bytes(registry_bytes) if registry_bytes is not None
                                else read_file(self.root, self.registry_path))
@@ -122,6 +122,12 @@ class SpecRepository:
         self.protocol_manifest, self.protocol_assets = self._protocol()
 
     def _protocol(self) -> tuple[dict, dict[str, bytes]]:
+        from ..host.build import BuildError, verify_fresh
+
+        try:
+            verify_fresh(self.package_root)
+        except BuildError as error:
+            raise SpecError(str(error), error.code) from error
         raw = read_file(self.package_root, "protocol/manifest.json")
         manifest = decode(raw.decode())
         binding = {"version": manifest.get("version"), "digest": digest(raw)}
@@ -133,7 +139,7 @@ class SpecRepository:
             if digest(content) != item["digest"]:
                 raise SpecError(f"Protocol asset has changed: {item['path']}", "protocol_mismatch")
             assets[item["path"]] = content
-        required = {"protocol/principles.md", *(f"protocol/kinds/{kind}.md" for kind in KINDS)}
+        required = {"generated/protocol/principles.md", *(f"generated/protocol/kinds/{kind}.md" for kind in KINDS)}
         if not required.issubset(assets):
             raise SpecError("Protocol manifest is missing global principles or kind definitions")
         return manifest, assets

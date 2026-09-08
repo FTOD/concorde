@@ -66,4 +66,4 @@ def stage_response() -> dict:
         "outcome": {"enum": ["completed", "ready", "spec_incomplete", "unsupported",
                               "conflicting", "failed", "described", "delivered"]},
         "answer": {"type": "string"}, "artifacts": array(ARTIFACT), "gaps": array(GAP),
-        "checks": array(CHECK_RESULT), "completed_operations": array(STRING)})
+        "checks": array(CHECK_RESULT), "completed_capabilities": array(STRING)})

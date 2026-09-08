@@ -1,3 +1,7 @@
+---
+audience: shared
+---
+
 # Service
 
 A Service is a self-contained capability with an explicit boundary contract. Its complete resolved

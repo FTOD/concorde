@@ -9,7 +9,7 @@ ROLES = ()
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 
-_CONFIGURATION = shapes.typed_schema("concorde-operation-configuration")
+_CONFIGURATION = shapes.typed_schema("concorde-capability-configuration")
 
 REQUEST = shapes.obj({
     "action": {"enum": ["propose", "apply"]},

@@ -113,10 +113,10 @@ class PromptResolverRuleTests(unittest.TestCase):
         self.assertEqual(context.exception.rule_id, "CONCORDE-PROMPT-UNRESOLVED-001")
 
     def test_reserved_variables_pass_through_unresolved(self):
-        _write(self.root, "prompts/workflow-host/leaf.md", _prompt("ambient", "Run `{OPERATION}` with {SCRIPT} under {FRAMEWORK}.\n"))
+        _write(self.root, "prompts/workflow-host/leaf.md", _prompt("ambient", "Run `{CAPABILITY}` with {SCRIPT} under {FRAMEWORK}.\n"))
         _write(self.root, "skills/concorde-x/SKILL.md", '---\nname: concorde-x\ndescription: "X"\ncapability: x\n---\n\n@include prompts/workflow-host/leaf.md\n')
         result = resolve_skill_source(self.root, "skills/concorde-x/SKILL.md")
-        self.assertIn("{OPERATION}", result.body)
+        self.assertIn("{CAPABILITY}", result.body)
         self.assertIn("{SCRIPT}", result.body)
         self.assertIn("{FRAMEWORK}", result.body)
 

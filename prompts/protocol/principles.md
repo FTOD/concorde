@@ -1,3 +1,7 @@
+---
+audience: shared
+---
+
 # Concorde Workflow Principles
 
 Protocol 1.1.0. These principles apply to every Concorde project.

@@ -3,14 +3,14 @@
   "registry": ".concorde/specs.json",
   "protocol": {
     "version": "1.1.0",
-    "digest": "sha256:329c72429bb8344fab36800436be9483a846e64fe1d15338f51683a74a701e8e"
+    "digest": "sha256:cdf93baa2cf55dee3e491f89c4550604d63fb5a44843f1e30b78253ddd62ed3d"
   },
-  "operation_configuration": {
+  "capability_configuration": {
     "data": {
       "enforcement": "native",
       "integration": "codex"
     },
     "schema_version": 1,
-    "type_id": "concorde-operation-configuration"
+    "type_id": "concorde-capability-configuration"
   }
 }

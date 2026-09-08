@@ -152,8 +152,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
     def test_handoff_remains_one_json_response_on_the_paired_cli(self):
         operation = "concorde-dev-loop"
         task = {**self.task, "constraints": ["保留用户原文；不合并、不 push"]}
-        invocation = {"type_id": "concorde-operation-invocation", "schema_version": 2,
-                      "operation_id": operation, "mode": "execute", "configuration": CONFIGURATION,
+        invocation = {"type_id": "concorde-capability-invocation", "schema_version": 3,
+                      "capability_id": operation, "mode": "execute", "configuration": CONFIGURATION,
                       "input": typed(operation + "-request", task)}
         process = subprocess.run([sys.executable, str(PACKAGE / "scripts/run-capability.py"), operation],
                                  cwd=self.primary, input=json.dumps(invocation), text=True,
@@ -271,8 +271,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
 
     def test_paired_cli_delivers_from_source_and_primary_can_clean_up(self):
         change_id = self.ready()
-        invocation = {"type_id": "concorde-operation-invocation", "schema_version": 2,
-            "operation_id": "concorde-deliver", "mode": "execute", "configuration": None,
+        invocation = {"type_id": "concorde-capability-invocation", "schema_version": 3,
+            "capability_id": "concorde-deliver", "mode": "execute", "configuration": None,
             "input": typed("concorde-deliver-request", {"change_id": change_id})}
         command = [sys.executable, str(PACKAGE / "scripts/run-capability.py"), "concorde-deliver"]
         secondary = subprocess.run(command, input=json.dumps(invocation), capture_output=True,

@@ -46,7 +46,7 @@ class ProtocolGuidanceTests(unittest.TestCase):
                 else:
                     self.assertIn("Read and follow", root)
                 protocol = (self.root / guidance.PROTOCOL).read_bytes()
-                self.assertEqual(protocol, (REPOSITORY_ROOT / "protocol/principles.md").read_bytes())
+                self.assertEqual(protocol, (REPOSITORY_ROOT / "generated/protocol/principles.md").read_bytes())
                 self.assertIn(b"### P10. Copyable agent handoffs", protocol)
                 self.assertNotIn(b"### P10", (self.root / name).read_bytes())
                 for directory in (".agents/skills", ".claude/skills"):

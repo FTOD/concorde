@@ -33,9 +33,9 @@ _NAME_TOKEN = re.compile(r"concorde-[a-z][a-z0-9-]*")
 # in protocol/principles.md prose, not in any Python registry.
 _PROTOCOL_VOCABULARY = frozenset(
     {
-        "concorde-operation-invocation",
-        "concorde-operation-configuration",
-        "concorde-operation-result",
+        "concorde-capability-invocation",
+        "concorde-capability-configuration",
+        "concorde-capability-result",
         "concorde-document",
         "concorde-participants",
     }
@@ -47,7 +47,9 @@ def _finding(rule: str, source: str, message: str, remediation: str) -> Finding:
 
 
 def _prompt_roots() -> tuple[str, ...]:
-    return tuple(build.SKILL_SOURCES.values()) + tuple(role.prompt for role in ROLES.values())
+    return (tuple(build.SKILL_SOURCES.values()) + tuple(role.prompt for role in ROLES.values())
+            + ("prompts/protocol/principles.md",)
+            + tuple(f"prompts/protocol/kinds/{kind}.md" for kind in build.PROTOCOL_KINDS))
 
 
 def _validate_prompts(root: Path) -> list[Finding]:
@@ -279,19 +281,19 @@ def _validate_contracts(root: Path) -> list[Finding]:
         findings.append(_finding("CONCORDE-CONTRACT-UNIQUE-001", "src/concorde/host/contracts.py",
             f"exported type identities contain duplicates: {duplicates}.",
             "Keep every exported type identity globally unique."))
-    schemas_path = root / "protocol/schemas.json"
+    schemas_path = root / "generated/protocol/schemas.json"
     try:
         documented = json.loads(schemas_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
-        findings.append(_finding("CONCORDE-CONTRACT-SCHEMA-001", "protocol/schemas.json",
-            f"cannot read tracked schema manifest: {error}",
-            "Regenerate protocol/schemas.json from the exported contracts."))
+        findings.append(_finding("CONCORDE-CONTRACT-SCHEMA-001", "generated/protocol/schemas.json",
+            f"cannot read rendered schema export: {error}",
+            "Run `python -m concorde build` to render generated/protocol/schemas.json."))
         return findings
     expected = {name: json_schema(name) for name in names}
     if documented != expected:
-        findings.append(_finding("CONCORDE-CONTRACT-SCHEMA-001", "protocol/schemas.json",
-            "tracked protocol/schemas.json differs from the executable exported contracts.",
-            "Regenerate protocol/schemas.json from concorde.host.contracts.exported_types()."))
+        findings.append(_finding("CONCORDE-CONTRACT-SCHEMA-001", "generated/protocol/schemas.json",
+            "rendered generated/protocol/schemas.json differs from the executable exported contracts.",
+            "Run `python -m concorde build` to re-render generated/protocol/schemas.json from concorde.host.contracts.exported_types()."))
     return findings
 
 

@@ -9,7 +9,7 @@ ROLES = ()
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 
-_CONFIGURATION = shapes.typed_schema("concorde-operation-configuration")
+_CONFIGURATION = shapes.typed_schema("concorde-capability-configuration")
 
 REQUEST = shapes.obj({"configuration": _CONFIGURATION})
 RESPONSE = shapes.obj({"configuration": _CONFIGURATION, "status": {"const": "applied"}})

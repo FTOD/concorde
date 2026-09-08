@@ -11,7 +11,7 @@ from concorde.host.agent_executor import AgentProcessExecutor
 from concorde.specification.initialize import project_proposal, apply_project_proposal, empty_target
 
 PACKAGE = Path(__file__).resolve().parents[3]
-CONFIGURATION = typed('concorde-operation-configuration', {'integration':'claude','enforcement':'native'})
+CONFIGURATION = typed('concorde-capability-configuration', {'integration':'claude','enforcement':'native'})
 
 def update_document_declaration(root, path, **updates):
     document=root/path;text=document.read_text()
@@ -93,7 +93,7 @@ class ModelProcessDouble:
         value=json.JSONDecoder().raw_decode(input_text.split(marker,1)[1])[0]
         snapshot=(value['data']['snapshot']['data'] if value['type_id'] in {
             'concorde-main-stage-context','concorde-agent-stage-context','concorde-review-stage-context'} else value['data'])
-        capability=properties['capability']['const']
+        capability=properties['role']['const']
         self.calls.append({'stage':stage,'capability':capability,'snapshot':snapshot,'cwd':Path(cwd),'prompt':input_text,'argv':argv})
         if value['type_id']=='concorde-review-stage-context':
             review=value['data']['review']['data']

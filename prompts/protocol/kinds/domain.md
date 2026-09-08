@@ -1,3 +1,7 @@
+---
+audience: shared
+---
+
 # Domain
 
 A Domain is a business or problem-space scope, independent of the Service/Module component structure.

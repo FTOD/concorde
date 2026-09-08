@@ -62,7 +62,7 @@ _VERSION = re.compile(r"(?<!\d)(\d+)\.(\d+)(?:\.(\d+))?")
 
 
 def _completion_version(specification: LaunchSpecification) -> int:
-    return 2 if specification.runtime_input_json is not None else 1
+    return 3 if specification.runtime_input_json is not None else 1
 
 
 def _domain_type(specification: LaunchSpecification) -> str | None:
@@ -191,10 +191,10 @@ def verify_runtime_bootstrap(files: tuple[RuntimeBootstrapFile, ...]) -> None:
 def _completion_schema(specification: LaunchSpecification) -> dict[str, Any]:
     properties: dict[str, Any] = {
         "schema_version": {"type": "integer", "const": _completion_version(specification)},
-        "operation": {"type": "string", "const": specification.operation},
+        "capability": {"type": "string", "const": specification.capability},
         "stage": {"type": "string", "const": specification.stage},
         "occurrence": {"type": "integer", "const": specification.occurrence},
-        "capability": {"type": "string", "const": specification.capability},
+        "role": {"type": "string", "const": specification.role},
         "launch_digest": {"type": "string", "const": specification.digest},
         "workspace_digest": {"type": "string", "const": specification.workspace_digest},
         "runtime_bootstrap_digest": {
@@ -220,7 +220,7 @@ def _completion_schema(specification: LaunchSpecification) -> dict[str, Any]:
         },
     }
     definitions = {}
-    if _completion_version(specification) == 2:
+    if _completion_version(specification) == 3:
         properties["invocation_id"] = {"const": specification.invocation_id}
         domain_type = _domain_type(specification)
         if domain_type is not None:
@@ -375,27 +375,27 @@ def _claude_envelope(stdout: str) -> dict[str, Any]:
 
 def _validate_completion(payload: dict[str, Any], specification: LaunchSpecification) -> CapabilityCompletion:
     expected_keys = {
-        "schema_version", "operation", "stage", "occurrence", "capability", "launch_digest",
+        "schema_version", "capability", "stage", "occurrence", "role", "launch_digest",
         "workspace_digest", "runtime_bootstrap_digest",
         "status", "output", "limitations", "gates",
     }
     version = _completion_version(specification)
-    if version == 2:
+    if version == 3:
         expected_keys.add("domain_output")
         expected_keys.add("invocation_id")
     if set(payload) != expected_keys:
         raise ValueError(f"completion envelope fields do not match schema {version}")
     expected_identity = {
         "schema_version": version,
-        "operation": specification.operation,
+        "capability": specification.capability,
         "stage": specification.stage,
         "occurrence": specification.occurrence,
-        "capability": specification.capability,
+        "role": specification.role,
         "launch_digest": specification.digest,
         "workspace_digest": specification.workspace_digest,
         "runtime_bootstrap_digest": specification.native_configuration.runtime_bootstrap_digest,
     }
-    if version == 2:
+    if version == 3:
         expected_identity["invocation_id"] = specification.invocation_id
     for key, expected in expected_identity.items():
         if payload.get(key) != expected or type(payload.get(key)) is not type(expected):
@@ -441,10 +441,10 @@ def _validate_completion(payload: dict[str, Any], specification: LaunchSpecifica
         raise ValueError("this completion must have null domain_output")
     return CapabilityCompletion(
         schema_version=version,
-        operation=specification.operation,
+        capability=specification.capability,
         stage=specification.stage,
         occurrence=specification.occurrence,
-        capability=specification.capability,
+        role=specification.role,
         launch_digest=specification.digest,
         workspace_digest=specification.workspace_digest,
         runtime_bootstrap_digest=specification.native_configuration.runtime_bootstrap_digest,
@@ -466,9 +466,9 @@ def _prompt(specification: LaunchSpecification) -> str:
     if _domain_type(specification) == "concorde-review-stage-result":
         return (
             "Execute one independent Concorde review in a fresh session. You have no project write authority.\n"
-            f"Operation: {specification.operation}\nStage: {specification.stage}\n"
+            f"Capability: {specification.capability}\nStage: {specification.stage}\n"
             f"Host workspace grant:\n{specification.workspace_receipt_json}\n"
-            f"Configuration snapshot:\n{specification.operation_configuration_json}\n"
+            f"Configuration snapshot:\n{specification.capability_configuration_json}\n"
             f"Complete admitted context and task:\n{specification.runtime_input_json}\n\n"
             f"Review instructions:\n{specification.prompt}\n\n"
             "Read the entire admitted Target Spec and Shared Specs, not just patches. Spec review must judge "
@@ -484,7 +484,7 @@ def _prompt(specification: LaunchSpecification) -> str:
             "a gap whose blocked_step equals affected_task and needed_contract equals contract. Missing "
             "contracts encountered during code review also use gaps. No raw source snippets, patches or "
             "process logs may appear in answers or findings.\n"
-            "Return Capability Completion Envelope 2 with typed concorde-review-stage-result in domain_output. "
+            "Return Capability Completion Envelope 3 with typed concorde-review-stage-result in domain_output. "
             "For a valid bounded assessment, including findings, gaps or declared incomplete coverage, set "
             "the envelope status to success, limitations to exactly 'none', and every envelope gate to passed. "
             "The domain result status describes review coverage; findings are not process failures. A failed "
@@ -499,9 +499,9 @@ def _prompt(specification: LaunchSpecification) -> str:
     if _domain_type(specification) == "concorde-topology-author-result":
         return (
             "Execute one Concorde topology Spec-author stage in a fresh target-local context.\n"
-            f"Operation: {specification.operation}\nStage: {specification.stage}\n"
+            f"Capability: {specification.capability}\nStage: {specification.stage}\n"
             f"Host workspace grant:\n{specification.workspace_receipt_json}\n"
-            f"Configuration snapshot:\n{specification.operation_configuration_json}\n"
+            f"Configuration snapshot:\n{specification.capability_configuration_json}\n"
             f"Complete provisional target context:\n{specification.runtime_input_json}\n\n"
             "Use only the supplied target descriptor, matching kind definition, task, candidate document references, "
             "and current documents separated as Target Spec and Shared Specs. "
@@ -509,28 +509,28 @@ def _prompt(specification: LaunchSpecification) -> str:
             "target, registry file, Module body outside this target, implementation code, prior conversation, or remote "
             "source. A shared document is collective truth: preserve its exact declared target set and return the same "
             "proposed bytes as every other referencing target author. Report missing target-local facts as structured gaps.\n"
-            "Return Capability Completion Envelope 2 matching the supplied schema, with a typed "
+            "Return Capability Completion Envelope 3 matching the supplied schema, with a typed "
             "concorde-topology-author-result in domain_output. Bind every identity exactly.\n"
             f"Invocation: {specification.invocation_id}\nLaunch digest: {specification.digest}\n"
         )
     if _domain_type(specification) == "concorde-main-stage-result":
         return (
             "Execute one Concorde Profile 8 main-coordinator stage in a fresh context.\n"
-            f"Operation: {specification.operation}\nStage: {specification.stage}\n"
+            f"Capability: {specification.capability}\nStage: {specification.stage}\n"
             f"Host discovery grant:\n{specification.workspace_receipt_json}\n"
-            f"Configuration snapshot:\n{specification.operation_configuration_json}\n"
+            f"Configuration snapshot:\n{specification.capability_configuration_json}\n"
             f"Complete admitted discovery context and task:\n{specification.runtime_input_json}\n\n"
             "Use only the supplied append-only, main-visible Domain/Service documents, separated as Target Spec and "
             "Shared Specs. Never load a Module target Spec, "
             "implementation code, repository guidance, another Skill, a prior conversation, or a remote source. "
             "In route phase, request only Domain/Service IDs identified by an admitted Spec, or the explicit target "
-            "hint, in expand_targets; otherwise return exact worker routes. Non-ask Operations require one route and "
+            "hint, in expand_targets; otherwise return exact worker routes. Non-ask capabilities require one route and "
             "unchanged task intent. For design-topology, return topology_proposed with one complete candidate registry, "
             "target-local Spec tasks, migration constraints, and acceptance conditions after sufficient discovery; do "
             "not include document bodies or code facts. Do not perform routed work. In synthesize phase, use only typed worker results and return the final "
             "answer; do not expand context. Report missing routing information as a structured Spec gap owned by an "
             "admitted Domain or Service.\n"
-            "Return Capability Completion Envelope 2 matching the supplied schema. Put a typed "
+            "Return Capability Completion Envelope 3 matching the supplied schema. Put a typed "
             "concorde-main-stage-result in domain_output with context_id, outcome, answer, expand_targets, routes, "
             "gaps, and nullable topology_design. Bind every launch, invocation, workspace, and context identity exactly.\n"
             f"Invocation: {specification.invocation_id}\nLaunch digest: {specification.digest}\n"
@@ -538,9 +538,9 @@ def _prompt(specification: LaunchSpecification) -> str:
     if _domain_type(specification) == "concorde-agent-stage-result":
         return (
             "Execute one Concorde Profile 8 agent stage in a fresh context.\n"
-            f"Operation: {specification.operation}\nStage: {specification.stage}\n"
+            f"Capability: {specification.capability}\nStage: {specification.stage}\n"
             f"Host workspace grant:\n{specification.workspace_receipt_json}\n"
-            f"Configuration snapshot:\n{specification.operation_configuration_json}\n"
+            f"Configuration snapshot:\n{specification.capability_configuration_json}\n"
             f"Complete admitted context and task:\n{specification.runtime_input_json}\n\n"
             "Use only the supplied snapshot, whose document bodies are separated as Target Spec and Shared Specs, "
             "and enforced paths. Do not load repository guidance, "
@@ -551,7 +551,7 @@ def _prompt(specification: LaunchSpecification) -> str:
             "Do not silently supply a contract by convention or infer it from code. Independent reasoning may "
             "continue in the answer; do not broaden retrieval or mark dependent tasks complete. "
             "Do not run framework resolvers or validation commands; the trusted host performs these.\n"
-            "Return Capability Completion Envelope 2 matching the supplied schema, binding every identity "
+            "Return Capability Completion Envelope 3 matching the supplied schema, binding every identity "
             "and launch/context digest. Its status describes completion of this bounded role, including "
             "a valid gap assessment. Workflow progress is controlled by domain_output.data.outcome. "
             "Put the typed concorde-agent-stage-result in domain_output. Include context_id, outcome, "
@@ -565,8 +565,8 @@ def _prompt(specification: LaunchSpecification) -> str:
         f"{index + 1}. {result}" for index, result in enumerate(specification.prior_results)
     ) or "(none)"
     data_input = (
-        "Operation configuration (project snapshot):\n"
-        f"{specification.operation_configuration_json}\n\n"
+        "Capability configuration (project snapshot):\n"
+        f"{specification.capability_configuration_json}\n\n"
         "Typed runtime input (consume only these contracted fields):\n"
         f"{specification.runtime_input_json}\n\n"
         "Your completion output is an audit summary, not a downstream data channel. "
@@ -589,16 +589,16 @@ def _prompt(specification: LaunchSpecification) -> str:
         if _domain_type(specification) is not None else ""
     )
     return (
-        f"Operation: {specification.operation}\n"
-        f"Stage: {specification.stage}\n"
         f"Capability: {specification.capability}\n"
+        f"Stage: {specification.stage}\n"
+        f"Role: {specification.role}\n"
         f"{data_input}"
-        "Operation workspace receipt (trusted host result):\n"
+        "Capability workspace receipt (trusted host result):\n"
         f"{specification.workspace_receipt_json}\n\n"
         f"Canonical capability prompt:\n{specification.prompt}\n\n"
         f"{investigation}"
-        "Operation gate override:\n"
-        "This Operation-composed invocation has already satisfied the canonical Protocol 13 workspace "
+        "Capability gate override:\n"
+        "This capability-composed invocation has already satisfied the canonical Protocol 13 workspace "
         "gate through the trusted receipt above. Use only its bounded paths and do not rerun the "
         "workspace resolver or reopen broader project context. The complete canonical Skill body is "
         "supplied inline and its source file need not be readable. An attempt_state of 'absent' is a "
@@ -609,7 +609,7 @@ def _prompt(specification: LaunchSpecification) -> str:
         "Report every mandatory prerequisite or phase gate you relied on. Set status=failed when any "
         "mandatory gate, required tool, authority check, or requested outcome did not complete; include "
         "a non-empty limitation and at least one failed gate. Set status=success only when every reported "
-        "gate passed, limitations is exactly 'none', and output is safe for the next Operation stage. "
+        "gate passed, limitations is exactly 'none', and output is safe for the next capability stage. "
         f"Bind the envelope to launch_digest {specification.digest}."
     )
 

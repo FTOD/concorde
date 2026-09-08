@@ -221,7 +221,7 @@ def schemas() -> dict:
                             "document_order": array(PATH, unique=True),
                             "target_spec": array(document), "shared_specs": array(document)})
     result["concorde-discovery-context"] = obj({"context_id": DIGEST, "schema_version": {"const": 1},
-        "operation": {"enum": sorted(MAIN_ROUTED_CAPABILITIES)}, "phase": {"enum": ["route", "synthesize"]},
+        "capability": {"enum": sorted(MAIN_ROUTED_CAPABILITIES)}, "phase": {"enum": ["route", "synthesize"]},
         "action": {"enum": ["route", "ask", "design-topology"]},
         "task": STRING, "constraints": array(STRING), "target_hint": NULLABLE_ID,
         "focus_hint": NULLABLE_ID, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),

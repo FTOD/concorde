@@ -97,7 +97,7 @@ def resolve_child_capability(parent_capability: str, child_capability: str):
         try:
             parent_module = importlib.import_module(f"{inventory.__name__}.{parent_key}")
         except ImportError as error:
-            raise SpecError(f"unknown parent capability: {parent_capability}", "unknown_operation") from error
+            raise SpecError(f"unknown parent capability: {parent_capability}", "unknown_capability") from error
         if child_key not in parent_module.USES:
             raise SpecError(
                 f"{parent_capability} has no declared composition edge to {child_capability}",
@@ -106,7 +106,7 @@ def resolve_child_capability(parent_capability: str, child_capability: str):
     try:
         return importlib.import_module(f"{inventory.__name__}.{child_key}")
     except ImportError as error:
-        raise SpecError(f"unknown capability: {child_capability}", "unknown_operation") from error
+        raise SpecError(f"unknown capability: {child_capability}", "unknown_capability") from error
 
 
 def invoke_capability(parent_capability: str, child_capability: str, configuration: dict, payload: dict,
@@ -207,7 +207,7 @@ class MainInvocation:
     def __init__(self, capability: str, configuration: dict, task: dict, host: CapabilityHost):
         self.capability, self.configuration, self.task, self.host = capability, configuration, task, host
         if capability not in MAIN_ROUTED_CAPABILITIES:
-            raise SpecError("capability does not support main discovery", "unknown_operation")
+            raise SpecError("capability does not support main discovery", "unknown_capability")
         self.action = task.get("action", "route") if capability == MAIN_CAPABILITY else "route"
         self.repository = SpecRepository(host.project_root, host.package_root)
         self.entry = self.repository.select(self.repository.entry_target)
@@ -240,7 +240,7 @@ class MainInvocation:
             "application": application,
             "files": list(files),
             "gaps": list(gaps),
-            "completed_operations": list(self.completed),
+            "completed_capabilities": list(self.completed),
             "workspace": self.last_snapshot.value["workspace"],
         })
 
@@ -257,7 +257,7 @@ class MainInvocation:
             "artifacts": [],
             "gaps": list(gaps),
             "checks": [],
-            "completed_operations": list(self.completed),
+            "completed_capabilities": list(self.completed),
             **({"reviews": []} if self.capability == "concorde-review" else {}),
         })
 
@@ -267,7 +267,7 @@ class MainInvocation:
         snapshot = resolve_discovery_context(
             self.repository,
             tuple(self.discovered),
-            operation=self.capability,
+            capability=self.capability,
             phase=phase,
             task=self.task["task"],
             action=self.action,
@@ -314,10 +314,10 @@ class MainInvocation:
             })
             invocation_id = str(uuid.uuid4())
             launch = build_launch_specification(
-                operation=self.capability,
+                capability=self.capability,
                 stage=phase,
                 occurrence=occurrence,
-                capability=role,
+                role=role,
                 integration=integration,
                 agent=role,
                 project_root=str(capsule),
@@ -329,7 +329,7 @@ class MainInvocation:
                 policy=policy,
                 native_configuration=native,
                 runtime_input_json=canonical(value),
-                operation_configuration_json=canonical(self.configuration),
+                capability_configuration_json=canonical(self.configuration),
                 invocation_id=invocation_id,
             )
             self.host.descriptions.append({
@@ -670,7 +670,7 @@ def _validate_topology_proposal(host: CapabilityHost, proposal: dict) -> tuple[S
     snapshot = resolve_discovery_context(
         repository,
         tuple(data["discovered_targets"]),
-        operation=MAIN_CAPABILITY,
+        capability=MAIN_CAPABILITY,
         phase="route",
         action="design-topology",
         task=data["task"],
@@ -715,12 +715,12 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
             "registry_digest": digest(before_registry), "role_paths": {"spec-context": ["context.json"]}}
         runtime = typed("concorde-topology-author-context", snapshot.value)
         invocation_id = str(uuid.uuid4())
-        launch = build_launch_specification(operation=MAIN_CAPABILITY, stage="topology-author",
-            occurrence=occurrence, capability=role, integration=integration, agent=role,
+        launch = build_launch_specification(capability=MAIN_CAPABILITY, stage="topology-author",
+            occurrence=occurrence, role=role, integration=integration, agent=role,
             project_root=str(capsule), request=task, prompt=prompt.body, prior_results=(),
             workspace_receipt_json=canonical(receipt), workspace_digest=snapshot.id, policy=policy,
             native_configuration=native, runtime_input_json=canonical(runtime),
-            operation_configuration_json=canonical(configuration), invocation_id=invocation_id)
+            capability_configuration_json=canonical(configuration), invocation_id=invocation_id)
         host.descriptions.append({"operation": MAIN_CAPABILITY, "phase": "topology-author",
             "target_id": target["id"], "context_id": snapshot.id, "project_root": str(capsule),
             "read_paths": list(policy.read_paths), "write_paths": [], "network": False,
@@ -779,7 +779,7 @@ def _main_topology_response(action: str, repository: SpecRepository, proposal: d
         "discovered_targets": data["discovered_targets"], "routes": [], "worker_results": [],
         "topology_proposal": proposal if action == "accept-topology" else None,
         "application": application, "files": list(files), "gaps": list(gaps),
-        "completed_operations": list(completed),
+        "completed_capabilities": list(completed),
         "workspace": workspace_context(repository.root)})
 
 
@@ -977,7 +977,7 @@ class Invocation:
             "target_id": self.target.id, "focus_id": self.task.get("focus_id"), "change_id": self.change_id,
             "context_id": self.last_context, "outcome": outcome, "answer": answer,
             "gaps": list(gaps), "checks": list(checks), "artifacts": list(artifacts),
-            "completed_operations": list(self.completed)}
+            "completed_capabilities": list(self.completed)}
         if self.capability == "concorde-review":
             data["reviews"] = list(reviews)
         return typed(CAPABILITY_CONTRACTS[self.capability][1], data)
@@ -1081,11 +1081,11 @@ class Invocation:
             value = typed("concorde-agent-stage-context", {"snapshot": typed("concorde-context-snapshot", snapshot.value),
                 "change_id": self.change_id, "expected_artifacts": []})
             invocation_id = str(uuid.uuid4())
-            launch = build_launch_specification(operation=capability, stage=phase, occurrence=0, capability=role,
+            launch = build_launch_specification(capability=capability, stage=phase, occurrence=0, role=role,
                 integration=integration, agent=role, project_root=str(project), request=self.task["task"],
                 prompt=prompt.body, prior_results=(), workspace_receipt_json=canonical(receipt),
                 workspace_digest=snapshot.id, policy=policy, native_configuration=native,
-                runtime_input_json=canonical(value), operation_configuration_json=canonical(self.configuration),
+                runtime_input_json=canonical(value), capability_configuration_json=canonical(self.configuration),
                 invocation_id=invocation_id)
             self.host.descriptions.append({"operation": capability, "phase": phase, "context_id": snapshot.id,
                 "project_root": str(project), "read_paths": list(policy.read_paths),
@@ -1232,7 +1232,7 @@ class Invocation:
         state.pop("component_revisions", None)
         state.update(plan=result["plan"], tasks=[], checks=[], spec_digest=_target_revision(self.repository, self.target),
                      task=self.task["task"], constraints=self.task.get("constraints", []),
-                     implementation_digest=None, completed_operations=list(self.completed),
+                     implementation_digest=None, completed_capabilities=list(self.completed),
                      phase="plan", status="active")
         path = work_path(self.target.id, "plan.md")
         apply_files(self.repository.root, [file_change(self.repository.root, path, result["plan"])], {path})
@@ -1620,7 +1620,7 @@ class Invocation:
                 self.change_id = data["change_id"] or self.change_id
                 self.work_directory = f"{WORK_PATH}/{self.target.id}" if self.change_id else None
                 self.last_context = data["context_id"] or self.last_context
-                self.completed.extend(data["completed_operations"])
+                self.completed.extend(data["completed_capabilities"])
                 if is_review or name == "implement":
                     review_artifacts.extend(item for item in data["artifacts"] if item["id"].startswith("review."))
                 self.repository = SpecRepository(self.host.project_root, self.host.package_root)
@@ -1664,7 +1664,7 @@ def _project_capability(capability, configuration, task, host):
     if capability == "concorde-configure":
         SpecRepository(host.project_root, host.package_root)
         value = decode(read_file(host.project_root, ".concorde/config.json").decode())
-        value["operation_configuration"] = task["configuration"]
+        value["capability_configuration"] = task["configuration"]
         changed = file_change(host.project_root, ".concorde/config.json", canonical(value) + "\n")
         apply_files(host.project_root, [changed], {changed["path"]})
         return typed("concorde-configure-response", {"status": "applied", "configuration": task["configuration"]})
@@ -1769,13 +1769,13 @@ def run_capability(capability: str, configuration: dict | None, runtime_input: d
     host = replace(host_context, invocation_id=str(uuid.uuid4()), evidence=[], depth=host_context.depth + 1)
     record_progress = False
     host.observe("capability_started", operation=capability, invocation_id=host.invocation_id, depth=host.depth)
-    result = {"type_id": "concorde-operation-result", "schema_version": 2,
-              "operation_id": capability if capability in CAPABILITY_CONTRACTS else None,
+    result = {"type_id": "concorde-capability-result", "schema_version": 3,
+              "capability_id": capability if capability in CAPABILITY_CONTRACTS else None,
               "invocation_id": host.invocation_id, "mode": host.mode, "status": "blocked",
               "workspace": None, "output": None, "errors": []}
     try:
         if capability not in CAPABILITY_CONTRACTS:
-            raise SpecError("unknown registered capability", "unknown_operation")
+            raise SpecError("unknown registered capability", "unknown_capability")
         if host.mode not in {"execute", "describe-policy"}:
             raise SpecError("unknown capability mode", "invalid_input")
         if host.depth == 1 and capability not in LIFECYCLE_CAPABILITIES:
@@ -1784,7 +1784,7 @@ def run_capability(capability: str, configuration: dict | None, runtime_input: d
             # top-level invocation is verified once here, and load_role_prompt verifies it
             # again independently before trusting any generated/roles/*.md body.
             verify_fresh(host.package_root)
-        configuration = validate_typed(configuration if configuration is not None else load_configuration(host.project_root), "concorde-operation-configuration")
+        configuration = validate_typed(configuration if configuration is not None else load_configuration(host.project_root), "concorde-capability-configuration")
         task = validate_typed(runtime_input, CAPABILITY_CONTRACTS[capability][0])["data"]
         task = copy.deepcopy(task)
         if capability != "concorde-deliver" and not (capability == MAIN_CAPABILITY
@@ -1868,18 +1868,18 @@ def run_capability(capability: str, configuration: dict | None, runtime_input: d
 
 def validate_invocation(value: Any, capability: str | None = None) -> dict:
     """Validate the shared CLI/Studio envelope before selecting a trusted host."""
-    if not isinstance(value, dict) or set(value) != {"type_id", "schema_version", "operation_id", "mode", "configuration", "input"}:
-        raise SpecError("invocation fields do not match schema 2", "invalid_input")
-    if value["type_id"] != "concorde-operation-invocation" or type(value["schema_version"]) is not int or value["schema_version"] != 2:
-        raise SpecError("Profile 8 requires concorde-operation-invocation schema 2", "unsupported_version")
-    if capability is not None and value["operation_id"] != capability:
+    if not isinstance(value, dict) or set(value) != {"type_id", "schema_version", "capability_id", "mode", "configuration", "input"}:
+        raise SpecError("invocation fields do not match schema 3", "invalid_input")
+    if value["type_id"] != "concorde-capability-invocation" or type(value["schema_version"]) is not int or value["schema_version"] != 3:
+        raise SpecError("Profile 8 requires concorde-capability-invocation schema 3", "unsupported_version")
+    if capability is not None and value["capability_id"] != capability:
         raise SpecError("invocation does not match this entry point", "incompatible_handoff")
     return value
 
 
 def invocation_failure(capability: str | None, error: Exception) -> dict:
     """The same pre-host failure envelope for paired CLI and Studio entries."""
-    return {"type_id": "concorde-operation-result", "schema_version": 2, "operation_id": capability,
+    return {"type_id": "concorde-capability-result", "schema_version": 3, "capability_id": capability,
         "invocation_id": str(uuid.uuid4()), "mode": None, "status": "blocked", "workspace": None,
         "output": None, "errors": [{"code": getattr(error, "code", "invalid_input"),
             "field": getattr(error, "field", ""), "message": str(error)}]}

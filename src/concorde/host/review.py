@@ -221,12 +221,12 @@ def review(run, mode: str) -> dict:
             receipt = {"schema_version": 14, "target_id": run.target.id, "phase": phase,
                 "context_id": snapshot.id, "source_digest": snapshot.id, "input_digest": info["input_digest"],
                 "role_paths": {key: list(paths) for key, paths in roles.items()}}
-            launch = build_launch_specification(operation="concorde-review", stage=phase, occurrence=0,
-                capability=role, integration=integration, agent=role, project_root=str(project),
+            launch = build_launch_specification(capability="concorde-review", stage=phase, occurrence=0,
+                role=role, integration=integration, agent=role, project_root=str(project),
                 request=run.task["task"], prompt=prompt.body, prior_results=(),
                 workspace_receipt_json=canonical(receipt), workspace_digest=snapshot.id,
                 policy=policy, native_configuration=native, runtime_input_json=canonical(value),
-                operation_configuration_json=canonical(run.configuration), invocation_id=invocation_id)
+                capability_configuration_json=canonical(run.configuration), invocation_id=invocation_id)
             run.host.descriptions.append({"operation": "concorde-review", "phase": phase,
                 "context_id": snapshot.id, "input_digest": info["input_digest"],
                 "project_root": str(project), "read_paths": list(policy.read_paths), "write_paths": [],
@@ -306,13 +306,13 @@ def review_scope(run, mode: str) -> dict:
         run.host.evidence.extend(child_host.evidence)
         if result["output"] is None:
             outputs.append({"outcome": "failed", "answer": f"Review admission failed for {target_id}.",
-                            "gaps": [], "reviews": [], "artifacts": [], "completed_operations": []})
+                            "gaps": [], "reviews": [], "artifacts": [], "completed_capabilities": []})
         else:
             outputs.append(result["output"]["data"])
     outcomes = {output["outcome"] for output in outputs}
     outcome = next((value for value in ("failed", "spec_incomplete", "conflicting", "unsupported", "described")
                     if value in outcomes), "completed")
-    run.completed = [name for output in outputs for name in output["completed_operations"]]
+    run.completed = [name for output in outputs for name in output["completed_capabilities"]]
     return run.response(outcome, "\n\n".join(output["answer"] for output in outputs),
         gaps=[gap for output in outputs for gap in output["gaps"]],
         artifacts=[ref for output in outputs for ref in output["artifacts"]],

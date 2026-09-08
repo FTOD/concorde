@@ -14,24 +14,24 @@ from concorde.host.typed_data import typed
 from concorde.host.agent_executor import AgentProcessExecutor
 
 
-CONFIGURATION = typed("concorde-operation-configuration", {"integration": "claude", "enforcement": "native"})
+CONFIGURATION = typed("concorde-capability-configuration", {"integration": "claude", "enforcement": "native"})
 
 
-def invocation(operation: str, data: dict, *, configuration: dict | None = None,
+def invocation(capability: str, data: dict, *, configuration: dict | None = None,
                mode: str = "describe-policy") -> dict:
     from concorde.host.typed_data import CAPABILITY_CONTRACTS
 
-    return {"type_id": "concorde-operation-invocation", "schema_version": 1,
-            "operation_id": operation, "mode": mode,
+    return {"type_id": "concorde-capability-invocation", "schema_version": 3,
+            "capability_id": capability, "mode": mode,
             "configuration": configuration or CONFIGURATION,
-            "input": typed(CAPABILITY_CONTRACTS[operation][0], data)}
+            "input": typed(CAPABILITY_CONTRACTS[capability][0], data)}
 
 
 def configure(project: Path, configuration: dict | None = None) -> dict:
     value = configuration or CONFIGURATION
     path = project / ".concorde/config.json"
     document = json.loads(path.read_text())
-    document["operation_configuration"] = value
+    document["capability_configuration"] = value
     path.write_text(json.dumps(document) + "\n")
     return value
 
@@ -47,9 +47,9 @@ class ScriptedAgent:
     def run(self, argv, *, cwd, env, input_text):
         schema = json.loads(argv[argv.index("--json-schema") + 1])
         properties = schema["properties"]
-        capability = properties["capability"]["const"]
+        capability = properties["role"]["const"]
         runtime_input = json.JSONDecoder().raw_decode(input_text.split("Typed runtime input (consume only these contracted fields):\n", 1)[1])[0]
-        configuration = json.JSONDecoder().raw_decode(input_text.split("Operation configuration (project snapshot):\n", 1)[1])[0]
+        configuration = json.JSONDecoder().raw_decode(input_text.split("Capability configuration (project snapshot):\n", 1)[1])[0]
         assert "Prior results:" not in input_text
         self.calls.append({"capability": capability, "input": runtime_input, "configuration": configuration})
         failed = capability == self.failure

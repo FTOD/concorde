@@ -15,8 +15,8 @@ from tests.concorde.specification.support import CONFIGURATION, PACKAGE, ModelPr
 
 
 def invocation(operation="concorde-reflections-triage", mode="execute", data=None):
-    return {"type_id": "concorde-operation-invocation", "schema_version": 2,
-            "operation_id": operation, "mode": mode, "configuration": None,
+    return {"type_id": "concorde-capability-invocation", "schema_version": 3,
+            "capability_id": operation, "mode": mode, "configuration": None,
             "input": {"type_id": operation + "-request", "schema_version": 1, "data":
                       data if data is not None else {"target_id": "service.transfer", "task": "Explain transfer",
                           **({"action": "status", "reflection_ids": []} if operation == "concorde-reflections-triage" else {})}}}
@@ -59,7 +59,7 @@ class StudioTests(unittest.TestCase):
     def test_real_context_execution_matches_local_json(self):
         value = invocation()
         actual = self.graph().invoke({"invocation": value})
-        expected = run_capability(value["operation_id"], None, value["input"],
+        expected = run_capability(value["capability_id"], None, value["input"],
                                  host_context=CapabilityHost(self.root, PACKAGE))
         self.assertEqual("succeeded", actual["result"]["status"], actual)
         self.assertEqual(stable(expected), stable(actual["result"]))
@@ -135,7 +135,7 @@ class StudioTests(unittest.TestCase):
 
     def test_configuration_and_agent_completion_cannot_bypass_authority(self):
         value = invocation("concorde-main", data={"task": "Explain transfer"})
-        value["configuration"] = typed("concorde-operation-configuration",
+        value["configuration"] = typed("concorde-capability-configuration",
                                       {"integration": "codex", "enforcement": "native"})
         actual = self.graph("concorde-main").invoke({"invocation": value})
         self.assertEqual("configuration_mismatch", actual["result"]["errors"][0]["code"])

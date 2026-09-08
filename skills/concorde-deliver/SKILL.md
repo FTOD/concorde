@@ -14,7 +14,7 @@ bound to their original participant while the deterministic host operates on the
 Do not redirect a third-worktree session or forward its invocation to bypass the participant check.
 
 @include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-deliver
-configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1),
+configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1),
 and input (concorde-deliver-request@1). Supply the selected change_id from the primary worktree's
 `.concorde/worktrees.json` inventory. Optional target/task metadata cannot replace change ownership. Set keep_worktree:true to retain
 the source; the source is always retained when it owns the requesting session.

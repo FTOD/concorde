@@ -21,9 +21,9 @@ nested Operation cannot initiate delivery for this pair. Keep the session and it
 bound to their original participant while the deterministic host operates on the integration.
 Do not redirect a third-worktree session or forward its invocation to bypass the participant check.
 
-Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-capability.py concorde-deliver`. Its exact fields
-are type_id, schema_version:2, operation_id:"concorde-deliver", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1),
+Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-deliver`. Its exact fields
+are type_id, schema_version:3, capability_id:"concorde-deliver", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1),
 and input (concorde-deliver-request@1). Supply the selected change_id from the primary worktree's
 `.concorde/worktrees.json` inventory. Optional target/task metadata cannot replace change ownership. Set keep_worktree:true to retain
 the source; the source is always retained when it owns the requesting session.

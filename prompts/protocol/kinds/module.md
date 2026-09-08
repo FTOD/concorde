@@ -1,3 +1,7 @@
+---
+audience: shared
+---
+
 # Module
 
 A Module is a cohesive implementation responsibility specified through its provided and required APIs.

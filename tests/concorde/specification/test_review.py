@@ -129,10 +129,10 @@ class ReviewTests(unittest.TestCase):
         self.assertFalse((self.root / ".concorde/runs").exists())
 
     def test_failed_policy_preview_does_not_persist_artifacts_or_change_state(self):
-        self.configuration = typed("concorde-operation-configuration", {"integration": "claude", "enforcement": "outer"})
+        self.configuration = typed("concorde-capability-configuration", {"integration": "claude", "enforcement": "outer"})
         path = self.root / ".concorde/config.json"
         config = json.loads(path.read_text())
-        config["operation_configuration"] = self.configuration
+        config["capability_configuration"] = self.configuration
         path.write_text(json.dumps(config))
         ensure_change(self.root, task=self.task, allow_primary=True)
         before = read_change(self.root)
@@ -348,8 +348,8 @@ class ReviewTests(unittest.TestCase):
     def test_codex_generation_schema_is_strict_without_weakening_wire_validation(self):
         config_path = self.root / ".concorde/config.json"
         config = json.loads(config_path.read_text())
-        self.configuration = typed("concorde-operation-configuration", {"integration": "codex", "enforcement": "native"})
-        config["operation_configuration"] = self.configuration
+        self.configuration = typed("concorde-capability-configuration", {"integration": "codex", "enforcement": "native"})
+        config["capability_configuration"] = self.configuration
         config_path.write_text(json.dumps(config))
         double = self.double()
         captured = []

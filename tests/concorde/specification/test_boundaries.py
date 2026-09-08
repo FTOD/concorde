@@ -82,11 +82,17 @@ class BoundaryTests(unittest.TestCase):
     def test_unknown_stage_input_cannot_be_a_hidden_read_channel(self):
         with self.assertRaises(ValueError):resolve_context(SpecRepository(self.root),'service.transfer',stage_inputs=({'type_id':'opaque','schema_version':1,'data':{'code':'secret'}},))
     def test_protocol_tampering_invalidates_binding(self):
-        package=self.root/'package';shutil.copytree(PACKAGE/'protocol',package/'protocol')
-        (package/'protocol/kinds/service.md').write_text('changed')
+        from concorde.host.build import write_build
+        package=self.root/'package'
+        shutil.copytree(PACKAGE/'prompts',package/'prompts')
+        shutil.copytree(PACKAGE/'skills',package/'skills')
+        (package/'protocol').mkdir(parents=True)
+        shutil.copy2(PACKAGE/'protocol/manifest.json',package/'protocol/manifest.json')
+        write_build(package,'all')
+        (package/'generated/protocol/kinds/service.md').write_text('changed')
         with self.assertRaises(SpecError):SpecRepository(self.root,package)
     def test_configuration_cannot_replace_initialized_authority(self):
-        other=typed('concorde-operation-configuration',{'integration':'codex','enforcement':'native'})
+        other=typed('concorde-capability-configuration',{'integration':'codex','enforcement':'native'})
         result=run_capability('concorde-main',other,typed('concorde-main-request',self.task),host_context=CapabilityHost(self.root,PACKAGE))
         self.assertEqual('configuration_mismatch',result['errors'][0]['code'])
     def test_wrong_version_and_extra_fields_are_rejected(self):
@@ -160,7 +166,7 @@ class BoundaryTests(unittest.TestCase):
         for schema in [{'type':'object','unevaluatedProperties':False},{'$ref':'https://example.invalid/schema'},{'minLength':True},{'enum':[]},{'minimum':3,'maximum':1}]:
             with self.subTest(schema=schema),self.assertRaises(ContractError):admit(schema)
     def downgrade_to_profile7(self):
-        config=json.loads((self.root/'.concorde/config.json').read_text());config={'profile_version':7,'specification_root':'specs','root_module_id':'module.old','operation_configuration':config['operation_configuration']}
+        config=json.loads((self.root/'.concorde/config.json').read_text());config={'profile_version':7,'specification_root':'specs','root_module_id':'module.old','capability_configuration':config['capability_configuration']}
         (self.root/'.concorde/config.json').write_text(json.dumps(config))
     def test_profile7_cannot_be_silently_used_by_new_agent_runtime(self):
         self.downgrade_to_profile7();result=self.run_op('concorde-main');self.assertEqual('blocked',result['status']);self.assertEqual([],self.double.calls)

@@ -47,7 +47,7 @@ def run_in_studio(url: str, invocation: dict, project_root: Path, package_root: 
     print(f"Concorde Studio thread: {thread} ({base})", file=sys.stderr, flush=True)
     prefix = f"/threads/{thread}"
     run = request(prefix + "/runs", {
-        "assistant_id": invocation["operation_id"],
+        "assistant_id": invocation["capability_id"],
         "input": {"invocation": invocation, "expected_workspace": {
             "project_root": str(project_root.resolve()), "package_root": str(package_root.resolve())}},
         "multitask_strategy": "reject",
@@ -63,9 +63,9 @@ def run_in_studio(url: str, invocation: dict, project_root: Path, package_root: 
                         "studio_run_failed")
     state = request(prefix + "/state")["values"]
     result = state.get("result")
-    if (not isinstance(result, dict) or result.get("type_id") != "concorde-operation-result"
-            or type(result.get("schema_version")) is not int or result["schema_version"] != 2
-            or result.get("operation_id") != invocation["operation_id"]
+    if (not isinstance(result, dict) or result.get("type_id") != "concorde-capability-result"
+            or type(result.get("schema_version")) is not int or result["schema_version"] != 3
+            or result.get("capability_id") != invocation["capability_id"]
             or result.get("status") not in {"succeeded", "described", "blocked", "failed"}
             or not isinstance(result.get("errors"), list)
             or (result.get("mode") != invocation["mode"]

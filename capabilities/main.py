@@ -29,7 +29,7 @@ RESPONSE = shapes.obj({
     "application": {"anyOf": [shapes.ARTIFACT, {"type": "null"}]},
     "files": shapes.array(shapes.PATH, unique=True),
     "gaps": shapes.array(shapes.GAP),
-    "completed_operations": shapes.array(shapes.STRING),
+    "completed_capabilities": shapes.array(shapes.STRING),
     "workspace": shapes.WORKSPACE_CONTEXT,
 })
 

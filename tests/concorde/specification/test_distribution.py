@@ -34,13 +34,13 @@ class DistributionTests(unittest.TestCase):
             root=Path(directory);project(root)
             launcher=str(PACKAGE/'scripts/run-capability.py')
             internal_command=[sys.executable,launcher,'concorde-plan']
-            internal_value={'type_id':'concorde-operation-invocation','schema_version':2,'operation_id':'concorde-plan','mode':'execute','configuration':None,'input':typed('concorde-plan-request',{'target_id':'service.transfer','task':'Explain transfer'})}
+            internal_value={'type_id':'concorde-capability-invocation','schema_version':3,'capability_id':'concorde-plan','mode':'execute','configuration':None,'input':typed('concorde-plan-request',{'target_id':'service.transfer','task':'Explain transfer'})}
             result=subprocess.run(internal_command,input=json.dumps(internal_value),capture_output=True,text=True,cwd=root)
             self.assertEqual(3,result.returncode,result.stdout+result.stderr)
             output=json.loads(result.stdout)
             self.assertEqual('blocked',output['status']);self.assertEqual('unknown_capability',output['errors'][0]['code'])
             public_command=[sys.executable,launcher,'concorde-validate']
-            public_value={'type_id':'concorde-operation-invocation','schema_version':2,'operation_id':'concorde-validate','mode':'describe-policy','configuration':None,'input':typed('concorde-validate-request',{'target_id':'service.transfer','task':'Explain transfer'})}
+            public_value={'type_id':'concorde-capability-invocation','schema_version':3,'capability_id':'concorde-validate','mode':'describe-policy','configuration':None,'input':typed('concorde-validate-request',{'target_id':'service.transfer','task':'Explain transfer'})}
             result=subprocess.run(public_command,input=json.dumps(public_value),capture_output=True,text=True,cwd=root)
             self.assertEqual(0,result.returncode,result.stdout+result.stderr)
             self.assertEqual('described',json.loads(result.stdout)['status'])
@@ -60,7 +60,7 @@ root=Path.cwd();framework=root/'.concorde/framework';sys.path.insert(0,str(frame
 spec=importlib.util.spec_from_file_location('model_process_fixture',sys.argv[1]);helper=importlib.util.module_from_spec(spec);spec.loader.exec_module(helper)
 helper.PACKAGE=framework
 from concorde.host.typed_data import typed
-helper.CONFIGURATION=typed('concorde-operation-configuration',{'integration':sys.argv[2],'enforcement':'native'})
+helper.CONFIGURATION=typed('concorde-capability-configuration',{'integration':sys.argv[2],'enforcement':'native'})
 helper.project(root)
 from concorde.host.capability_service import CapabilityHost,run_capability
 import concorde.host.capability_host as actual_host

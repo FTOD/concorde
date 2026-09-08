@@ -29,7 +29,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual(list(target.documents),context['document_order'])
         self.assertEqual(list(target.documents),[d['path'] for section in ('target_spec','shared_specs')
                                                   for d in context[section]])
-        self.assertEqual(['protocol/principles.md','protocol/kinds/service.md'],[d['path'] for d in context['protocol']])
+        self.assertEqual(['generated/protocol/principles.md','generated/protocol/kinds/service.md'],[d['path'] for d in context['protocol']])
         text=json.dumps(context)
         self.assertNotIn('PRIVATE_CODE',text)
         self.assertNotIn('specs/audit-scope.md',text)
@@ -123,8 +123,8 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('service.transfer',worker['snapshot']['target_id'])
         self.assertEqual(second['snapshot']['targets'],final['snapshot']['targets'])
         self.assertEqual(4,len({str(call['cwd']) for call in double.calls}))
-        self.assertEqual(['protocol/principles.md','protocol/kinds/domain.md',
-            'protocol/kinds/service.md','protocol/kinds/module.md'],
+        self.assertEqual(['generated/protocol/principles.md','generated/protocol/kinds/domain.md',
+            'generated/protocol/kinds/service.md','generated/protocol/kinds/module.md'],
             [item['path'] for item in first['snapshot']['protocol']])
         invocation_ids=[item.completion.invocation_id for item in self.host.evidence]
         self.assertEqual(4,len(invocation_ids));self.assertEqual(4,len(set(invocation_ids)))
@@ -376,7 +376,7 @@ class ScopedProtocolTests(unittest.TestCase):
         result=self.run_op('concorde-dev-loop',{'task':'Plan the transfer promise','specify':False,'run_reviews':False},double)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual('service.transfer',result['output']['data']['target_id'])
-        self.assertEqual('concorde-coordinator-route',result['output']['data']['completed_operations'][0])
+        self.assertEqual('concorde-coordinator-route',result['output']['data']['completed_capabilities'][0])
         self.assertEqual(['route','route','context-solve'],[call['stage'] for call in double.calls][:3])
         self.assertEqual(['concorde-coordinator','concorde-coordinator','concorde-context-assessor'],
                          [call['capability'] for call in double.calls][:3])
@@ -411,12 +411,12 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('blocked',result['status']);self.assertEqual('incompatible_handoff',result['errors'][0]['code'])
     def test_discovery_context_is_append_only_digest_bound_and_domain_service_only(self):
         repo=SpecRepository(self.root)
-        first=resolve_discovery_context(repo,('scope.bank',),operation='concorde-main',phase='route',task='Route transfer')
-        second=resolve_discovery_context(repo,('scope.bank','service.transfer'),operation='concorde-main',phase='route',task='Route transfer')
+        first=resolve_discovery_context(repo,('scope.bank',),capability='concorde-main',phase='route',task='Route transfer')
+        second=resolve_discovery_context(repo,('scope.bank','service.transfer'),capability='concorde-main',phase='route',task='Route transfer')
         self.assertNotEqual(first.id,second.id)
         self.assertEqual(['scope.bank','service.transfer'],[item['target_id'] for item in second.value['targets']])
         with self.assertRaisesRegex(SpecError,'cannot read module'):
-            resolve_discovery_context(repo,('scope.bank','module.ledger'),operation='concorde-main',phase='route',task='Route ledger')
+            resolve_discovery_context(repo,('scope.bank','module.ledger'),capability='concorde-main',phase='route',task='Route ledger')
         path=self.root/'specs/send-money.md';declaration=path.read_text().split('# Transfer money',1)[0]
         path.write_text(declaration+'# Changed service routing facts\n')
         with self.assertRaisesRegex(SpecError,'changed'):recheck_discovery_context(repo,second)
@@ -426,19 +426,19 @@ class ScopedProtocolTests(unittest.TestCase):
         update_document_declaration(self.root,'specs/send-money.md',
                                     targets=['service.transfer','module.ledger'])
         visible=resolve_discovery_context(SpecRepository(self.root),('scope.bank','service.transfer'),
-            operation='concorde-main',phase='route',task='Route transfer').value
+            capability='concorde-main',phase='route',task='Route transfer').value
         service=visible['targets'][1]
         self.assertEqual(['specs/send-money.md'],[item['path'] for item in service['shared_specs']])
         self.assertNotIn('# Ledger API',json.dumps(service))
         update_document_declaration(self.root,'specs/send-money.md',main_visible=False)
         hidden=resolve_discovery_context(SpecRepository(self.root),('scope.bank','service.transfer'),
-            operation='concorde-main',phase='route',task='Route transfer').value
+            capability='concorde-main',phase='route',task='Route transfer').value
         self.assertNotIn('specs/send-money.md',hidden['targets'][1]['document_order'])
         worker=resolve_context(SpecRepository(self.root),'service.transfer').value
         self.assertIn('specs/send-money.md',[item['path'] for item in worker['shared_specs']])
         update_document_declaration(self.root,'specs/transfer-promises.md',main_visible=False)
         private=resolve_discovery_context(SpecRepository(self.root),('scope.bank','service.transfer'),
-            operation='concorde-main',phase='route',task='Route transfer').value
+            capability='concorde-main',phase='route',task='Route transfer').value
         self.assertEqual([],private['targets'][1]['document_order'])
     def test_membership_changes_invalidate_snapshot(self):
         repo=SpecRepository(self.root); snapshot=resolve_context(repo,'service.transfer')

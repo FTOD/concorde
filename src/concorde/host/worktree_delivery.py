@@ -194,7 +194,7 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
             "change_id": change_id, "context_id": None, "outcome": "described",
             "answer": "The delivery host verifies the candidate and integration, merges into "
                 + primary["branch"] + ", and retains the source worktree when requested or hosting this session.",
-            "gaps": [], "checks": [], "artifacts": [], "completed_operations": [],
+            "gaps": [], "checks": [], "artifacts": [], "completed_capabilities": [],
         })
     with repository_lock(root):
         receipt_file = checked_path(root, relative)
@@ -296,5 +296,5 @@ def _response(root: Path, receipt: dict, complete: bool) -> dict:
         "outcome": "delivered" if complete else "failed", "answer": answer,
         "gaps": [], "checks": receipt["checks"],
         "artifacts": [artifact(root, "delivery", _receipt_path(receipt["change_id"]))],
-        "completed_operations": ["concorde-deliver"] if complete else [],
+        "completed_capabilities": ["concorde-deliver"] if complete else [],
     })

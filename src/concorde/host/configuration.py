@@ -12,7 +12,7 @@ from ..model import Finding, ToolResult
 from .typed_data import TypedDataError, checked_path, decode, validate_typed
 
 CONFIG_PATH = ".concorde/config.json"
-CONFIG_TYPE = "concorde-operation-configuration"
+CONFIG_TYPE = "concorde-capability-configuration"
 
 
 def _project_root(project_root: str | Path) -> Path:
@@ -28,7 +28,7 @@ def load_configuration(project_root: str | Path) -> dict:
         raise TypedDataError("configuration_mismatch", "/configuration", "project root may not be a symlink")
     try:
         document = decode(checked_path(project, CONFIG_PATH).read_text(encoding="utf-8"))
-        value = document.get("operation_configuration") if isinstance(document, dict) else None
+        value = document.get("capability_configuration") if isinstance(document, dict) else None
         if value is None:
             raise TypedDataError("configuration_mismatch", "/configuration", "project capability settings are missing; apply an explicit configure proposal")
         return validate_typed(value, CONFIG_TYPE, "/configuration")
@@ -50,7 +50,7 @@ def propose_configuration(project_root: str | Path, configuration: dict) -> Tool
         document = decode(source.decode("utf-8"))
         if not isinstance(document, dict):
             raise ValueError("project configuration must be an object")
-        if document.get("operation_configuration") == configuration:
+        if document.get("capability_configuration") == configuration:
             return ToolResult("configure", ".", "unchanged", artifacts=(CONFIG_PATH,))
         proposal = {"proposal_version": 1, "path": CONFIG_PATH,
                     "source_digest": "sha256:" + hashlib.sha256(source).hexdigest(),
@@ -76,11 +76,11 @@ def apply_configuration(project_root: str | Path, proposal_path: str) -> ToolRes
         document = decode(source.decode("utf-8"))
         if not isinstance(document, dict):
             raise ValueError("project configuration must be an object")
-        if document.get("operation_configuration") == configuration:
+        if document.get("capability_configuration") == configuration:
             return ToolResult("configure", ".", "unchanged", artifacts=(CONFIG_PATH,))
         if "sha256:" + hashlib.sha256(source).hexdigest() != proposal["source_digest"]:
             raise ValueError("configuration changed after proposal; request a fresh proposal")
-        document["operation_configuration"] = configuration
+        document["capability_configuration"] = configuration
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
                                          prefix="capability-config-", delete=False) as stream:
             temporary = Path(stream.name)

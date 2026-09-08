@@ -9,7 +9,7 @@ FILES = {"codex": "AGENTS.md", "claude": "CLAUDE.md"}
 TOKEN = b"<!-- concorde-protocol:"
 START = b"\n<!-- concorde-protocol:start -->\n"
 END = b"<!-- concorde-protocol:end -->\n"
-PROTOCOL = ".concorde/framework/protocol/principles.md"
+PROTOCOL = ".concorde/framework/generated/protocol/principles.md"
 
 
 class GuidanceError(ValueError):

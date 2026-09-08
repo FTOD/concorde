@@ -24,9 +24,9 @@ private target-local Spec authors and stores the resulting exact application as 
 only its path and digest return to ambient cognition. After the maintainer reviews that artifact,
 action `apply-topology` accepts it and atomically applies or rolls back the registry/document set.
 
-Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-capability.py concorde-main`. Its exact fields
-are type_id, schema_version:2, operation_id:"concorde-main", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-main-request@1).
+Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-main`. Its exact fields
+are type_id, schema_version:3, capability_id:"concorde-main", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1), and input (concorde-main-request@1).
 Ask and design-topology requests require task and accept optional target_id/focus_id routing hints
 and constraints. Accept-topology requires the exact topology_proposal returned by design. Apply-
 topology requires only the exact application ArtifactRef returned by accept.

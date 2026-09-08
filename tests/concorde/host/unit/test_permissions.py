@@ -45,10 +45,10 @@ class PermissionTests(unittest.TestCase):
             "selected-feature": ("specs/consumer/features/001-change.md",),
         }
         self.binding = PolicyBinding(
-            operation="concorde-plan",
+            capability="concorde-plan",
             stage="author",
             occurrence=0,
-            capability="concorde-plan-author",
+            role="concorde-plan-author",
             agent="plan-author",
         )
 

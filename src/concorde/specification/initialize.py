@@ -16,6 +16,11 @@ TOPOLOGY_IGNORE = "# Exact topology applications are local, maintainer-reviewed 
 
 
 def protocol_binding(package: Path) -> dict:
+    from ..host.build import BuildError, verify_fresh
+    try:
+        verify_fresh(package)
+    except BuildError as error:
+        raise SpecError(str(error), error.code) from error
     raw = read_file(package, "protocol/manifest.json")
     return {"version": decode(raw.decode())["version"], "digest": digest(raw)}
 
@@ -29,7 +34,7 @@ def empty_target(target_id: str, kind: str, title: str, documents: list[str]) ->
 def project_proposal(root: Path, package: Path, name: str, configuration: dict,
                      target_id: str = "domain.project") -> dict:
     identifier(target_id)
-    configuration = validate_typed(configuration, "concorde-operation-configuration")
+    configuration = validate_typed(configuration, "concorde-capability-configuration")
     if not isinstance(name, str) or not name.strip():
         raise SpecError("project name is required", "invalid_input")
     if checked_path(root, ".concorde/config.json").exists():
@@ -38,7 +43,7 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
     registry = {"schema_version": 1, "project_id": "project.initialized", "entry_target": target_id,
         "targets": [empty_target(target_id, "domain", name, [path])], "checks": []}
     config = {"profile_version": 8, "registry": ".concorde/specs.json",
-        "protocol": protocol_binding(package), "operation_configuration": configuration}
+        "protocol": protocol_binding(package), "capability_configuration": configuration}
     declaration = {"id": "document." + target_id, "targets": [target_id],
                    "main_visible": True}
     text = ("```concorde-document\n" + json.dumps(declaration, indent=2) + "\n```\n\n"

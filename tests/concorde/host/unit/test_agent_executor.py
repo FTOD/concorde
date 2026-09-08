@@ -63,10 +63,10 @@ class AgentExecutorTests(unittest.TestCase):
         gate_status = "passed" if status == "success" else "failed"
         return {
             "schema_version": properties["schema_version"]["const"],
-            "operation": properties["operation"]["const"],
+            "capability": properties["capability"]["const"],
             "stage": properties["stage"]["const"],
             "occurrence": properties["occurrence"]["const"],
-            "capability": properties["capability"]["const"],
+            "role": properties["role"]["const"],
             "launch_digest": properties["launch_digest"]["const"],
             "workspace_digest": properties["workspace_digest"]["const"],
             "runtime_bootstrap_digest": properties["runtime_bootstrap_digest"]["const"],
@@ -135,10 +135,10 @@ class AgentExecutorTests(unittest.TestCase):
                 credentials="none",
             ),
             PolicyBinding(
-                operation="concorde-plan",
+                capability="concorde-plan",
                 stage="author",
                 occurrence=0,
-                capability="concorde-plan-author",
+                role="concorde-plan-author",
                 agent="plan-author",
             ),
             {
@@ -155,10 +155,10 @@ class AgentExecutorTests(unittest.TestCase):
             else render_claude_configuration(policy, native_enforcement=True)
         )
         return build_launch_specification(
-            operation="concorde-plan",
+            capability="concorde-plan",
             stage="author",
             occurrence=0,
-            capability="concorde-plan-author",
+            role="concorde-plan-author",
             integration=integration,
             agent="plan-author",
             project_root="/fixture/project",

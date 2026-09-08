@@ -97,7 +97,7 @@ class StudioServerTests(unittest.TestCase):
     def run_graph(self, value, **extra):
         thread = self.request("/threads", {})["thread_id"]
         state = self.request(f"/threads/{thread}/runs/wait", {
-            "assistant_id": value["operation_id"], "input": {"invocation": value, **extra}})
+            "assistant_id": value["capability_id"], "input": {"invocation": value, **extra}})
         self.assertNotIn("__error__", state, state)
         return thread, state
 
@@ -142,7 +142,7 @@ class StudioServerTests(unittest.TestCase):
     def test_live_custom_stream_contains_process_stages_and_persisted_result(self):
         value = invocation("concorde-main", data={"task": "Explain transfer"})
         thread = self.request("/threads", {})["thread_id"]
-        payload = {"assistant_id": value["operation_id"], "input": {"invocation": value},
+        payload = {"assistant_id": value["capability_id"], "input": {"invocation": value},
                    "stream_mode": ["custom", "updates"]}
         with urlopen(Request(self.base + f"/threads/{thread}/runs/stream", data=json.dumps(payload).encode(),
                              headers={"Content-Type": "application/json"}), timeout=30) as response:

@@ -84,10 +84,10 @@ def _configured_architecture(project_root: Path) -> ToolResult | None:
 
 
 def _create_proposal(project_root: Path, module_id: str | None, name: str | None,
-                     operation_configuration: dict | None) -> InitializationProposal:
+                     capability_configuration: dict | None) -> InitializationProposal:
     from ..host.typed_data import validate_typed
 
-    configuration = validate_typed(operation_configuration, "concorde-operation-configuration", "/configuration")
+    configuration = validate_typed(capability_configuration, "concorde-capability-configuration", "/configuration")
     project_name = name or project_root.resolve().name
     derived = _slug(module_id.split(".", 1)[1] if module_id and module_id.startswith("module.") else project_name)
     identifier = module_id or f"module.{derived}"
@@ -96,7 +96,7 @@ def _create_proposal(project_root: Path, module_id: str | None, name: str | None
     module_slug = identifier.split(".", 1)[1].replace(".", "-")
     specification_root = f"specs/{module_slug}"
     config = json.dumps({"profile_version": PROFILE_VERSION, "root_module_id": identifier,
-                         "specification_root": specification_root, "operation_configuration": configuration}, indent=2, sort_keys=True)
+                         "specification_root": specification_root, "capability_configuration": configuration}, indent=2, sort_keys=True)
     diagram_output = f"generated/architecture/{module_slug}-system-overview.html"
     architecture = f"""---
 id: {identifier}
@@ -243,7 +243,7 @@ None.
 
 
 def propose_initialization(project_root: str | Path, module_id: str | None = None, name: str | None = None,
-                           operation_configuration: dict | None = None) -> ToolResult:
+                           capability_configuration: dict | None = None) -> ToolResult:
     root = Path(project_root).resolve()
     configured = _configured_architecture(root)
     if configured is not None:
@@ -258,9 +258,9 @@ def propose_initialization(project_root: str | Path, module_id: str | None = Non
                     "Preserve the existing architecture and apply an explicit configure proposal."),))
         return configured
     try:
-        proposal = _create_proposal(root, module_id, name, operation_configuration)
+        proposal = _create_proposal(root, module_id, name, capability_configuration)
     except ValueError as error:
-        finding = Finding("CONCORDE-INIT-002", "error", ".concorde/config.json", str(error), "Provide a lowercase stable module.<namespace> ID and explicit concorde-operation-configuration@1 JSON.")
+        finding = Finding("CONCORDE-INIT-002", "error", ".concorde/config.json", str(error), "Provide a lowercase stable module.<namespace> ID and explicit concorde-capability-configuration@1 JSON.")
         return ToolResult("init", ".", "invalid", findings=(finding,), result={"interaction_model": _interaction_model()})
     exact = [(root / item.path).is_file() and (root / item.path).read_text(encoding="utf-8") == item.content for item in proposal.files]
     if all(exact):
@@ -298,7 +298,7 @@ def _load_accepted(root: Path, proposal_path: str) -> InitializationProposal:
     from ..host.typed_data import decode, validate_typed
 
     config = decode(next(item.content for item in files if item.path == ".concorde/config.json"))
-    validate_typed(config.get("operation_configuration"), "concorde-operation-configuration", "/configuration")
+    validate_typed(config.get("capability_configuration"), "concorde-capability-configuration", "/configuration")
     from ..reflections.configuration import validate_configuration
 
     validate_configuration(decode(next(item.content for item in files if item.path == ".concorde/reflections/config.json")))

@@ -80,7 +80,7 @@ def typed_schema(type_id: str) -> dict:
 
 
 DATA_SCHEMAS = {
-    "concorde-operation-configuration": obj({"integration": {"enum": ["codex", "claude"]},
+    "concorde-capability-configuration": obj({"integration": {"enum": ["codex", "claude"]},
                                             "enforcement": {"enum": ["native", "outer"]}}),
     "concorde-plan-context": obj({**TASK, "source_artifacts": array(ARTIFACT, unique=True)}, ("constraints", "source_artifacts")),
     "concorde-standard-dev-loop-context": obj(TASK, ("constraints",)),

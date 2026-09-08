@@ -42,6 +42,11 @@ def create_parser() -> argparse.ArgumentParser:
     verify_worktree.add_argument("--project-root", default=".")
     verify_worktree.add_argument("--loaded-skill-path", required=True)
     verify_worktree.add_argument("--format", choices=["text", "json"], default="text")
+
+    protocol_manifest = subparsers.add_parser("protocol-manifest")
+    protocol_manifest.add_argument("--write", action="store_true")
+    protocol_manifest.add_argument("--bind-project", action="store_true")
+    protocol_manifest.add_argument("--format", choices=["json"], default="json")
     return parser
 
 
@@ -113,6 +118,53 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
     return validate_project(root, arguments.target)
 
 
+def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
+    """Recompute tracked Protocol asset digests from the current build (maintainer-only).
+
+    Mirrors the former ``sync-protocol-assets.py --bind-project``: with neither flag this only
+    reports whether ``protocol/manifest.json`` matches the current ``generated/protocol/...``
+    build; ``--write`` accepts the current build's digests into the tracked manifest;
+    ``--bind-project`` pins ``.concorde/config.json``'s ``protocol`` binding to the (possibly just
+    rewritten) manifest's version and digest.
+    """
+
+    import json as json_module
+
+    from .build import BuildError, PROTOCOL_MANIFEST_PATH, recompute_protocol_manifest, verify_fresh
+    from ..specification.repository import digest as digest_bytes
+
+    root = Path(arguments.project_root)
+    try:
+        verify_fresh(root)
+        updated = recompute_protocol_manifest(root)
+    except BuildError as error:
+        return ToolResult("protocol-manifest", ".", "invalid", findings=(
+            Finding("CONCORDE-PROTOCOL-MANIFEST-001", "error", PROTOCOL_MANIFEST_PATH, str(error),
+                    "Run `python -m concorde build` to refresh generated/protocol/ outputs."),
+        ))
+    manifest_path = root / PROTOCOL_MANIFEST_PATH
+    current = json_module.loads(manifest_path.read_text(encoding="utf-8"))
+    differences = [item["path"] for item, fresh in zip(current["assets"], updated["assets"])
+                   if item["digest"] != fresh["digest"]]
+    artifacts: tuple[str, ...] = ()
+    if arguments.write and differences:
+        manifest_path.write_text(json_module.dumps(updated, indent=2) + "\n")
+        artifacts += (PROTOCOL_MANIFEST_PATH,)
+    if arguments.bind_project:
+        config_path = root / ".concorde/config.json"
+        config = json_module.loads(config_path.read_text(encoding="utf-8"))
+        config["protocol"] = {"version": updated["version"], "digest": digest_bytes(manifest_path.read_bytes())}
+        config_path.write_text(json_module.dumps(config, indent=2) + "\n")
+        artifacts += (".concorde/config.json",)
+    if differences and not arguments.write:
+        return ToolResult("protocol-manifest", ".", "invalid", artifacts=artifacts, findings=(
+            Finding("CONCORDE-PROTOCOL-MANIFEST-001", "error", PROTOCOL_MANIFEST_PATH,
+                    f"tracked Protocol manifest digests differ from the current build: {differences}",
+                    "Run `python -m concorde protocol-manifest --write` to accept the current build's digests."),
+        ), result={"differences": differences})
+    return ToolResult("protocol-manifest", ".", "success", artifacts=artifacts, result={"differences": differences})
+
+
 def _verify_worktree(arguments: argparse.Namespace) -> int:
     """Identical semantics and messages to the retired sync-agent-surfaces.py verify-worktree."""
 
@@ -147,6 +199,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         arguments = parser.parse_args(argv)
         if arguments.tool == "verify-worktree":
             return _verify_worktree(arguments)
+        if arguments.tool == "protocol-manifest":
+            payload = tool_envelope(_protocol_manifest(arguments))
+            sys.stdout.write(canonical_json(payload))
+            return exit_code(payload["status"])
         mutation = arguments.tool in {"init", "deliver", "docsite"} or (
             arguments.tool == "configure" and arguments.apply
         )
@@ -165,7 +221,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         tool = arguments.tool if arguments is not None else (argv[0] if argv else "validate")
         payload = envelope(
             tool
-            if tool in {"init", "configure", "context", "explore", "validate", "deliver", "docsite", "build"}
+            if tool in {"init", "configure", "context", "explore", "validate", "deliver", "docsite", "build", "protocol-manifest"}
             else "validate",
             ".",
             "failed",

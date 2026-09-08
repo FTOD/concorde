@@ -18,9 +18,9 @@ Invoke this Operation to run the development loop. The host owns context
 resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
 input; do not perform it directly in this ambient conversation or inspect additional project files.
 
-Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-capability.py concorde-dev-loop`. Its exact fields
-are type_id, schema_version:2, operation_id:"concorde-dev-loop", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-dev-loop-request@1).
+Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-dev-loop`. Its exact fields
+are type_id, schema_version:3, capability_id:"concorde-dev-loop", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1), and input (concorde-dev-loop-request@1).
 New task requests require task and may supply target_id/focus_id as routing hints; main discovery
 selects the owning target before the bounded loop starts. Existing changes retain their bound target.
 Optional `specify` (default true) and `run_reviews` (default true) flags select the loop shape.

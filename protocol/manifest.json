@@ -5,24 +5,24 @@
   "workspace_protocol": 14,
   "assets": [
     {
-      "path": "protocol/kinds/domain.md",
+      "path": "generated/protocol/kinds/domain.md",
       "digest": "sha256:c7c7f8a0c3bb4a77defefb988e77f18514da6858cbcfbd7d90b3e79fe995f051"
     },
     {
-      "path": "protocol/kinds/module.md",
+      "path": "generated/protocol/kinds/module.md",
       "digest": "sha256:aa1de65c09cfa5b87bc74034b6ca63367868582be50b15eaee3bba8c5395841c"
     },
     {
-      "path": "protocol/kinds/service.md",
+      "path": "generated/protocol/kinds/service.md",
       "digest": "sha256:f6619b1db6c725876ffd9cd2d698074b3cd0e63d5b41a026a2e5e8b78c9b5a88"
     },
     {
-      "path": "protocol/principles.md",
+      "path": "generated/protocol/principles.md",
       "digest": "sha256:bb5034eb4c04efb622159de6f14dc84fd95307314f37a76470b9f42349901a1e"
     },
     {
-      "path": "protocol/schemas.json",
-      "digest": "sha256:0f48fe9d1f9ba9a8aee2859b3e14bd86e619d6db609faa651457e62b907db591"
+      "path": "generated/protocol/schemas.json",
+      "digest": "sha256:9bf0b1c500f2f083d53ad7ff4ebf08a964ba654888da441faa2a3a4f6e147ffe"
     }
   ]
 }

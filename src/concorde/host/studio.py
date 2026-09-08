@@ -83,8 +83,8 @@ def build_studio_graph(capability: str, project_root: Path, package_root: Path, 
             writer(record)
 
         def observed_executor(launch):
-            identity = {"operation": launch.operation, "stage": launch.stage,
-                        "capability": launch.capability, "invocation_id": launch.invocation_id}
+            identity = {"capability": launch.capability, "stage": launch.stage,
+                        "role": launch.role, "invocation_id": launch.invocation_id}
             host.observe("agent_started", **identity)
             try:
                 completion = process_executor(launch)

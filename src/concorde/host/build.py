@@ -11,6 +11,7 @@ perform any network or process I/O.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import tempfile
@@ -70,6 +71,9 @@ SKILL_NAMES: tuple[str, ...] = (
 SKILL_SOURCES: dict[str, str] = {name: f"skills/{name}/SKILL.md" for name in SKILL_NAMES}
 
 SCHEMA_INTRO = "This complete schema is the invocation's input field. It does not grant project reads.\n"
+
+PROTOCOL_KINDS = ("domain", "module", "service")
+PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 
 
 @dataclass(frozen=True)
@@ -157,8 +161,8 @@ def render_skill(project_root: Path, name: str, integration: str, *, framework_p
     prefix = framework_prefix.strip("/")
     launcher = f"{prefix}/scripts/run-capability.py" if prefix else "scripts/run-capability.py"
     entrypoint = f"{launcher} {name}"
-    body = resolved.body.replace("{OPERATION}", f"python3 {launcher} {name}")
-    unresolved = [token for token in ("{SCRIPT}", "{FRAMEWORK}", "{OPERATION}") if token in body]
+    body = resolved.body.replace("{CAPABILITY}", f"python3 {launcher} {name}")
+    unresolved = [token for token in ("{SCRIPT}", "{FRAMEWORK}", "{CAPABILITY}") if token in body]
     if unresolved:
         raise BuildError(f"skill {name} contains unresolved package tokens: {unresolved}")
     body = (
@@ -187,6 +191,41 @@ def render_langgraph(project_root: Path) -> BuildOutput:
     }
     content = (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
     return BuildOutput(path="generated/langgraph.json", content=content, sources=tuple(sorted(SKILL_SOURCES.values())))
+
+
+def render_protocol_principles(project_root: Path) -> BuildOutput:
+    try:
+        resolved = resolve_role_prompt(project_root, "prompts/protocol/principles.md")
+    except PromptResolverError as error:
+        raise BuildError(f"protocol principles: {error.rule_id}: {error}") from error
+    content = resolved.body.encode("utf-8")
+    return BuildOutput(path="generated/protocol/principles.md", content=content, sources=resolved.sources)
+
+
+def render_protocol_kind(project_root: Path, kind: str) -> BuildOutput:
+    try:
+        resolved = resolve_role_prompt(project_root, f"prompts/protocol/kinds/{kind}.md")
+    except PromptResolverError as error:
+        raise BuildError(f"protocol kind {kind}: {error.rule_id}: {error}") from error
+    content = resolved.body.encode("utf-8")
+    return BuildOutput(path=f"generated/protocol/kinds/{kind}.md", content=content, sources=resolved.sources)
+
+
+def render_protocol_schemas(project_root: Path) -> BuildOutput:
+    """Export the ``json_schema`` of every identity in ``contracts.exported_types()``.
+
+    Replaces the former maintainer-run ``scripts/sync-protocol-assets.py``. This has no recorded
+    ``sources``: the exported schemas are derived from Python contracts across ``capabilities/``
+    and ``src/concorde/host/``, not from a fixed file set, so freshness here is verified by value
+    (``package_validation._validate_contracts``), the same way it always was.
+    """
+
+    from .contracts import exported_types
+
+    names = list(exported_types())
+    payload = {name: json_schema(name) for name in names}
+    content = (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
+    return BuildOutput(path="generated/protocol/schemas.json", content=content, sources=())
 
 
 def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
@@ -220,8 +259,13 @@ def build(project_root: str | Path, integration: str = "all", *, framework_prefi
         for one_integration in integrations:
             outputs.append(render_skill(root, name, one_integration, framework_prefix=framework_prefix))
     outputs.append(render_langgraph(root))
+    outputs.append(render_protocol_principles(root))
+    for kind in PROTOCOL_KINDS:
+        outputs.append(render_protocol_kind(root, kind))
+    outputs.append(render_protocol_schemas(root))
 
-    roots = list(ROLE_ROOTS.values()) + list(SKILL_SOURCES.values())
+    roots = (list(ROLE_ROOTS.values()) + list(SKILL_SOURCES.values()) + ["prompts/protocol/principles.md"]
+             + [f"prompts/protocol/kinds/{kind}.md" for kind in PROTOCOL_KINDS])
     unreachable = find_unreachable_prompts(root, roots)
     if unreachable:
         raise BuildError(f"unreachable prompt files (no root includes them): {list(unreachable)}")
@@ -310,7 +354,49 @@ def check_build(project_root: str | Path, integration: str = "all") -> tuple[boo
             for relative in set(fresh_contents) | set(current_contents):
                 if fresh_contents.get(relative) != current_contents.get(relative):
                     diffs.append(f"{fresh_key}/{relative}")
+    # A tracked Protocol manifest is optional here: some build roots (isolated build-lifecycle
+    # fixtures, for example) hold only prompts/skills and never claim to distribute Protocol
+    # assets at all. Its presence, once opted into, is still held to exact digest consistency.
+    manifest_file = root / PROTOCOL_MANIFEST_PATH
+    if manifest_file.is_file() and not manifest_file.is_symlink():
+        try:
+            tracked = json.loads(manifest_file.read_text(encoding="utf-8"))
+            assets = tracked["assets"]
+        except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError):
+            diffs.append(PROTOCOL_MANIFEST_PATH)
+        else:
+            for item in assets:
+                relative = item.get("path", "")
+                inner = relative.removeprefix("generated/") if relative.startswith("generated/") else None
+                content = fresh_generated.get(inner) if inner is not None else None
+                if content is None or _sha256_bytes(content) != item.get("digest"):
+                    diffs.append(f"{PROTOCOL_MANIFEST_PATH}:{relative}")
     return (not diffs, tuple(sorted(diffs)))
+
+
+def recompute_protocol_manifest(project_root: str | Path) -> dict:
+    """Recompute {path: sha256} for every tracked Protocol asset from the current build.
+
+    Reads the already-rendered ``generated/protocol/...`` files on disk (call ``verify_fresh``
+    first) and the tracked ``protocol/manifest.json``, returning an updated copy with fresh
+    digests. Does not write anything.
+    """
+
+    root = Path(project_root)
+    manifest_path = root / PROTOCOL_MANIFEST_PATH
+    if manifest_path.is_symlink() or not manifest_path.is_file():
+        raise BuildError(f"no tracked Protocol manifest at {manifest_path}")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise BuildError(f"cannot read {manifest_path}: {error}") from error
+    updated = copy.deepcopy(manifest)
+    for item in updated.get("assets", []):
+        path = root / item["path"]
+        if path.is_symlink() or not path.is_file():
+            raise BuildError(f"Protocol asset is missing from the current build: {item['path']}")
+        item["digest"] = _sha256_bytes(path.read_bytes())
+    return updated
 
 
 def verify_fresh(project_root: str | Path) -> None:

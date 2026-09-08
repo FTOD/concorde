@@ -91,7 +91,9 @@
       "implementation": [
         "src/concorde/specification/context.py",
         "src/concorde/specification/initialize.py",
-        "src/concorde/specification/validation.py"
+        "src/concorde/specification/validation.py",
+        "prompts/protocol",
+        "protocol/manifest.json"
       ],
       "features": [
         {
@@ -411,14 +413,14 @@
       ],
       "implementation": [
         "src/concorde/host/package_validation.py",
-        "scripts/sync-protocol-assets.py",
         "src/concorde/host/build.py",
         "src/concorde/host/prompt_resolver.py",
         "src/concorde/host/roles.py",
         "src/concorde/host/effects.py",
         "src/concorde/host/contract_shapes.py",
         "capabilities",
-        "prompts",
+        "prompts/spec-context",
+        "prompts/workflow-host",
         "skills"
       ],
       "features": [],

@@ -25,7 +25,7 @@ class InitializationTests(unittest.TestCase):
             value["require_approval"] = True
             settings.write_text(json.dumps(value) + "\n")
             before = settings.read_bytes()
-            proposed = propose_initialization(root, "module.example", "Example", operation_configuration=CONFIGURATION)
+            proposed = propose_initialization(root, "module.example", "Example", capability_configuration=CONFIGURATION)
             self.assertEqual(proposed.result["proposal"]["conflicts"], ())
             (root / "accepted.json").write_text(json.dumps(proposed.result["proposal"]))
             settings.write_text(json.dumps({**value, "order": "oldest-first"}))
@@ -40,8 +40,8 @@ class InitializationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="Example Project ") as temporary:
             root = Path(temporary)
             before = list(root.rglob("*"))
-            first = propose_initialization(root, operation_configuration=CONFIGURATION)
-            self.assertEqual(first, propose_initialization(root, operation_configuration=CONFIGURATION))
+            first = propose_initialization(root, capability_configuration=CONFIGURATION)
+            self.assertEqual(first, propose_initialization(root, capability_configuration=CONFIGURATION))
             self.assertEqual(first.status, "proposal")
             proposal = first.result["proposal"]
             self.assertEqual(proposal["proposal_version"], 4)
@@ -79,7 +79,7 @@ class InitializationTests(unittest.TestCase):
     def test_apply_is_exact_idempotent_and_produces_valid_root(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            proposed = propose_initialization(root, "module.sample", "Sample", operation_configuration=CONFIGURATION)
+            proposed = propose_initialization(root, "module.sample", "Sample", capability_configuration=CONFIGURATION)
             proposal = root / "accepted.json"
             proposal.write_text(json.dumps(proposed.result["proposal"]), encoding="utf-8")
             applied = apply_proposal(root, "accepted.json")
@@ -95,7 +95,7 @@ class InitializationTests(unittest.TestCase):
     def test_existing_configured_architecture_is_unchanged_not_reproposed(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            proposed = propose_initialization(root, "module.sample", "Sample", operation_configuration=CONFIGURATION)
+            proposed = propose_initialization(root, "module.sample", "Sample", capability_configuration=CONFIGURATION)
             (root / "accepted.json").write_text(json.dumps(proposed.result["proposal"]), encoding="utf-8")
             self.assertEqual(apply_proposal(root, "accepted.json").status, "success")
             result = propose_initialization(root, "module.different", "Different")
@@ -115,7 +115,7 @@ class InitializationTests(unittest.TestCase):
     def test_partial_conflict_and_staged_failure_are_non_mutating(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            proposed = propose_initialization(root, "module.sample", "Sample", operation_configuration=CONFIGURATION)
+            proposed = propose_initialization(root, "module.sample", "Sample", capability_configuration=CONFIGURATION)
             (root / "specs/sample").mkdir(parents=True)
             (root / "specs/sample/architecture.md").write_text("occupied", encoding="utf-8")
             (root / "accepted.json").write_text(json.dumps(proposed.result["proposal"]), encoding="utf-8")
@@ -124,7 +124,7 @@ class InitializationTests(unittest.TestCase):
             self.assertFalse((root / ".concorde/config.json").exists())
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            proposed = propose_initialization(root, "module.sample", "Sample", operation_configuration=CONFIGURATION)
+            proposed = propose_initialization(root, "module.sample", "Sample", capability_configuration=CONFIGURATION)
             (root / "accepted.json").write_text(json.dumps(proposed.result["proposal"]), encoding="utf-8")
             with mock.patch("pathlib.Path.replace", side_effect=OSError("injected promotion failure")):
                 failed = apply_proposal(root, "accepted.json")

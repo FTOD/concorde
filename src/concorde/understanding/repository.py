@@ -408,11 +408,11 @@ class ProjectRepository:
         value["specification_root"] = safe_relative_path(specification_root)
         if not isinstance(value.get("root_module_id"), str) or not value["root_module_id"]:
             raise RepositoryError("root_module_id is required")
-        if "operation_configuration" in value:
+        if "capability_configuration" in value:
             from ..host.typed_data import TypedDataError, validate_typed
 
             try:
-                value["operation_configuration"] = validate_typed(value["operation_configuration"], "concorde-operation-configuration")
+                value["capability_configuration"] = validate_typed(value["capability_configuration"], "concorde-capability-configuration")
             except TypedDataError as error:
                 raise RepositoryError(f"invalid capability configuration: {error}") from error
         return value

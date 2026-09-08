@@ -104,7 +104,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
         validate_typed(item, item["type_id"])
     document_order, target_spec, shared_specs = _spec_sections(repository.documents(target))
     protocol = []
-    for path in ("protocol/principles.md", f"protocol/kinds/{target.kind}.md"):
+    for path in ("generated/protocol/principles.md", f"generated/protocol/kinds/{target.kind}.md"):
         raw = repository.protocol_assets[path]
         protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
     # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
@@ -123,7 +123,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
 
 
 def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str, ...], *,
-                              operation: str, phase: str, task: str,
+                              capability: str, phase: str, task: str,
                               action: str = "route",
                               target_hint: str | None = None,
                               focus_hint: str | None = None,
@@ -167,7 +167,7 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
             "shared_specs": shared_specs,
         })
     # Main understands every global kind contract while remaining unable to read Module instances.
-    protocol_paths = ["protocol/principles.md", *(f"protocol/kinds/{kind}.md"
+    protocol_paths = ["generated/protocol/principles.md", *(f"generated/protocol/kinds/{kind}.md"
                       for kind in ("domain", "service", "module"))]
     protocol = []
     for path in protocol_paths:
@@ -176,7 +176,7 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
     from ..host.change_worktree import workspace_context
     manifest = {
         "schema_version": 1,
-        "operation": operation,
+        "capability": capability,
         "phase": phase,
         "action": action,
         "task": task,
@@ -219,7 +219,7 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
     current_document_order, target_spec, shared_specs = _spec_sections(
         current_documents, references=references)
     protocol = []
-    for path in ("protocol/principles.md", f"protocol/kinds/{target['kind']}.md"):
+    for path in ("generated/protocol/principles.md", f"generated/protocol/kinds/{target['kind']}.md"):
         raw = repository.protocol_assets[path]
         protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
     from ..host.change_worktree import workspace_context
@@ -269,7 +269,7 @@ def recheck_discovery_context(repository: SpecRepository, snapshot: DiscoveryCon
     resolved = resolve_discovery_context(
         current,
         tuple(item["target_id"] for item in value["targets"]),
-        operation=value["operation"],
+        capability=value["capability"],
         phase=value["phase"],
         task=value["task"],
         action=value["action"],

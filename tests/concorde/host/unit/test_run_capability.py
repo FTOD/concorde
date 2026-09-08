@@ -36,8 +36,8 @@ class RunCapabilityLauncherTests(unittest.TestCase):
         for name in SEVEN_SKILLS:
             with self.subTest(skill=name):
                 invocation = {
-                    "type_id": "concorde-operation-invocation", "schema_version": 2,
-                    "operation_id": name, "mode": "describe-policy", "configuration": None,
+                    "type_id": "concorde-capability-invocation", "schema_version": 3,
+                    "capability_id": name, "mode": "describe-policy", "configuration": None,
                     "input": {"type_id": f"{name}-request", "schema_version": 1,
                               "data": {"task": "Explain transfer"}},
                 }
@@ -100,14 +100,14 @@ class RunCapabilityLauncherTests(unittest.TestCase):
 
     def test_accepted_skill_actually_reaches_the_dispatcher(self):
         invocation = {
-            "type_id": "concorde-operation-invocation", "schema_version": 2,
-            "operation_id": "concorde-main", "mode": "describe-policy", "configuration": None,
+            "type_id": "concorde-capability-invocation", "schema_version": 3,
+            "capability_id": "concorde-main", "mode": "describe-policy", "configuration": None,
             "input": {"type_id": "concorde-main-request", "schema_version": 1,
                       "data": {"task": "Explain transfer"}},
         }
         process = _run(["concorde-main"], json.dumps(invocation))
         output = json.loads(process.stdout)
-        self.assertEqual("concorde-main", output["operation_id"])
+        self.assertEqual("concorde-main", output["capability_id"])
         self.assertIn(output["status"], {"described", "blocked", "failed"})
         # A well-formed describe-policy request against the real project must at least be
         # admitted and dispatched, not refused as an unknown or mismatched capability.

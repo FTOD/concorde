@@ -17,10 +17,10 @@ class PermissionPolicyError(ValueError):
 
 @dataclass(frozen=True)
 class PolicyBinding:
-    operation: str
+    capability: str
     stage: str
     occurrence: int
-    capability: str
+    role: str
     agent: str
     read_roles: tuple[str, ...] | None = None
     write_roles: tuple[str, ...] | None = None
@@ -30,10 +30,10 @@ class PolicyBinding:
 
 @dataclass(frozen=True)
 class NormalizedPolicy:
-    operation: str
+    capability: str
     stage: str
     occurrence: int
-    capability: str
+    role: str
     agent: str
     read_paths: tuple[str, ...]
     write_paths: tuple[str, ...]
@@ -104,10 +104,10 @@ NativeLaunchConfiguration = CodexLaunchConfiguration | ClaudeLaunchConfiguration
 
 @dataclass(frozen=True)
 class LaunchSpecification:
-    operation: str
+    capability: str
     stage: str
     occurrence: int
-    capability: str
+    role: str
     integration: Literal["codex", "claude"]
     agent: str
     project_root: str
@@ -120,7 +120,7 @@ class LaunchSpecification:
     native_configuration: NativeLaunchConfiguration
     digest: str
     runtime_input_json: str | None = None
-    operation_configuration_json: str | None = None
+    capability_configuration_json: str | None = None
     invocation_id: str | None = None
 
 
@@ -151,10 +151,10 @@ class CompletionGate:
 @dataclass(frozen=True)
 class CapabilityCompletion:
     schema_version: int
-    operation: str
+    capability: str
     stage: str
     occurrence: int
-    capability: str
+    role: str
     launch_digest: str
     workspace_digest: str
     runtime_bootstrap_digest: str
@@ -293,10 +293,10 @@ def compile_policy(
     denied = _paths([*deny_paths, *_CREDENTIAL_DENIES])
     payload = {
         "binding": {
-            "operation": binding.operation,
+            "capability": binding.capability,
             "stage": binding.stage,
             "occurrence": binding.occurrence,
-            "capability": binding.capability,
+            "role": binding.role,
             "agent": binding.agent,
         },
         "read_paths": read_paths,
@@ -308,10 +308,10 @@ def compile_policy(
         "outer_sandbox_required": outer_sandbox_required,
     }
     return NormalizedPolicy(
-        operation=binding.operation,
+        capability=binding.capability,
         stage=binding.stage,
         occurrence=binding.occurrence,
-        capability=binding.capability,
+        role=binding.role,
         agent=binding.agent,
         read_paths=read_paths,
         write_paths=write_paths,
@@ -651,10 +651,10 @@ def compare_effective_boundaries(
 
 def build_launch_specification(
     *,
-    operation: str,
+    capability: str,
     stage: str,
     occurrence: int,
-    capability: str,
+    role: str,
     integration: Literal["codex", "claude"],
     agent: str,
     project_root: str,
@@ -666,18 +666,18 @@ def build_launch_specification(
     policy: NormalizedPolicy,
     native_configuration: NativeLaunchConfiguration,
     runtime_input_json: str | None = None,
-    operation_configuration_json: str | None = None,
+    capability_configuration_json: str | None = None,
     invocation_id: str | None = None,
 ) -> LaunchSpecification:
     if native_configuration.integration != integration:
         raise PermissionPolicyError("native configuration integration differs from launch integration")
     if native_configuration.policy_digest != policy.digest:
         raise PermissionPolicyError("native configuration policy digest is stale")
-    if (operation, stage, occurrence, capability, agent) != (
-        policy.operation,
+    if (capability, stage, occurrence, role, agent) != (
+        policy.capability,
         policy.stage,
         policy.occurrence,
-        policy.capability,
+        policy.role,
         policy.agent,
     ):
         raise PermissionPolicyError("launch identity differs from normalized policy binding")
@@ -691,10 +691,10 @@ def build_launch_specification(
     if workspace_receipt_json != canonical_receipt:
         raise PermissionPolicyError("launch workspace receipt must use canonical serialization")
     payload = {
-        "operation": operation,
+        "capability": capability,
         "stage": stage,
         "occurrence": occurrence,
-        "capability": capability,
+        "role": role,
         "integration": integration,
         "agent": agent,
         "project_root": project_root,
@@ -706,27 +706,27 @@ def build_launch_specification(
         "policy_digest": policy.digest,
         "config_digest": native_configuration.digest,
     }
-    if (runtime_input_json is None) != (operation_configuration_json is None):
+    if (runtime_input_json is None) != (capability_configuration_json is None):
         raise PermissionPolicyError("structured launch requires both configuration and input")
     if runtime_input_json is not None:
         from .typed_data import canonical, decode, validate_typed
 
         runtime_input = validate_typed(decode(runtime_input_json))
-        configuration = validate_typed(decode(operation_configuration_json), "concorde-operation-configuration")
-        if runtime_input_json != canonical(runtime_input) or operation_configuration_json != canonical(configuration):
+        configuration = validate_typed(decode(capability_configuration_json), "concorde-capability-configuration")
+        if runtime_input_json != canonical(runtime_input) or capability_configuration_json != canonical(configuration):
             raise PermissionPolicyError("structured launch data must use canonical serialization")
         if prior_results:
             raise PermissionPolicyError("structured launches cannot carry narrative prior results")
         if not isinstance(invocation_id, str) or not invocation_id:
             raise PermissionPolicyError("structured launch requires a host-issued invocation identity")
         payload["runtime_input"] = runtime_input
-        payload["operation_configuration"] = configuration
+        payload["capability_configuration"] = configuration
         payload["invocation_id"] = invocation_id
     return LaunchSpecification(
-        operation=operation,
+        capability=capability,
         stage=stage,
         occurrence=occurrence,
-        capability=capability,
+        role=role,
         integration=integration,
         agent=agent,
         project_root=project_root,
@@ -739,7 +739,7 @@ def build_launch_specification(
         native_configuration=native_configuration,
         digest=_digest(payload),
         runtime_input_json=runtime_input_json,
-        operation_configuration_json=operation_configuration_json,
+        capability_configuration_json=capability_configuration_json,
         invocation_id=invocation_id,
     )
 
@@ -758,10 +758,10 @@ def finalize_launch_specification(
     elif runtime_bootstrap:
         raise PermissionPolicyError("Claude launch cannot receive Codex runtime bootstrap files")
     return build_launch_specification(
-        operation=specification.operation,
+        capability=specification.capability,
         stage=specification.stage,
         occurrence=specification.occurrence,
-        capability=specification.capability,
+        role=specification.role,
         integration=specification.integration,
         agent=specification.agent,
         project_root=specification.project_root,
@@ -773,6 +773,6 @@ def finalize_launch_specification(
         policy=specification.policy,
         native_configuration=native,
         runtime_input_json=specification.runtime_input_json,
-        operation_configuration_json=specification.operation_configuration_json,
+        capability_configuration_json=specification.capability_configuration_json,
         invocation_id=specification.invocation_id,
     )

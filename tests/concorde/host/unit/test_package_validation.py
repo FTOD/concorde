@@ -186,7 +186,7 @@ class CapabilityModuleRuleTests(unittest.TestCase):
 
 
 class ContractRuleTests(unittest.TestCase):
-    """Rule 3: exported type identities are unique; protocol/schemas.json matches json_schema."""
+    """Rule 3: exported type identities are unique; generated/protocol/schemas.json matches json_schema."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -198,19 +198,19 @@ class ContractRuleTests(unittest.TestCase):
         self.assertTrue(any(f.rule_id == "CONCORDE-CONTRACT-SCHEMA-001" for f in findings), findings)
 
     def test_stale_schemas_file_is_reported(self) -> None:
-        (self.root / "protocol").mkdir(parents=True)
-        (self.root / "protocol/schemas.json").write_text("{}", encoding="utf-8")
+        (self.root / "generated/protocol").mkdir(parents=True)
+        (self.root / "generated/protocol/schemas.json").write_text("{}", encoding="utf-8")
         findings = package_validation._validate_contracts(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-CONTRACT-SCHEMA-001" for f in findings), findings)
 
     def test_current_schemas_file_has_no_findings(self) -> None:
-        (self.root / "protocol").mkdir(parents=True)
-        shutil.copy2(REPOSITORY_ROOT / "protocol/schemas.json", self.root / "protocol/schemas.json")
+        (self.root / "generated/protocol").mkdir(parents=True)
+        shutil.copy2(REPOSITORY_ROOT / "generated/protocol/schemas.json", self.root / "generated/protocol/schemas.json")
         self.assertEqual([], package_validation._validate_contracts(self.root))
 
     def test_duplicate_exported_type_identity_is_reported(self) -> None:
-        (self.root / "protocol").mkdir(parents=True)
-        shutil.copy2(REPOSITORY_ROOT / "protocol/schemas.json", self.root / "protocol/schemas.json")
+        (self.root / "generated/protocol").mkdir(parents=True)
+        shutil.copy2(REPOSITORY_ROOT / "generated/protocol/schemas.json", self.root / "generated/protocol/schemas.json")
         with mock.patch.object(
             package_validation, "exported_types",
             return_value=("concorde-main-request", "concorde-main-request"),

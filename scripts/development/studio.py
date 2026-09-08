@@ -1,7 +1,7 @@
 """LangGraph dev entry points bound to this source checkout.
 
 Graphs are derived from ``skills/`` (one graph per skill, named by the skill), not from the
-Operation registry: the build's ``generated/langgraph.json`` names these same functions.
+capability registry: the build's ``generated/langgraph.json`` names these same functions.
 """
 from pathlib import Path
 import sys

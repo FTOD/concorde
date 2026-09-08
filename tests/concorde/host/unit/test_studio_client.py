@@ -22,8 +22,8 @@ class StudioClientTests(unittest.TestCase):
     def setUp(self):
         self.thread, self.run = str(uuid4()), str(uuid4())
         self.value = invocation()
-        self.result = {"type_id": "concorde-operation-result", "schema_version": 2,
-            "operation_id": self.value["operation_id"], "mode": "execute", "status": "succeeded",
+        self.result = {"type_id": "concorde-capability-result", "schema_version": 3,
+            "capability_id": self.value["capability_id"], "mode": "execute", "status": "succeeded",
             "invocation_id": str(uuid4()), "workspace": None, "output": {}, "errors": []}
 
     def opener(self, responses):
@@ -95,7 +95,7 @@ class StudioClientTests(unittest.TestCase):
                 self.assertEqual(2, len(calls))
 
     def test_incompatible_result_is_rejected(self):
-        for changes in [{"mode": "describe-policy"}, {"operation_id": "concorde-plan"},
+        for changes in [{"mode": "describe-policy"}, {"capability_id": "concorde-plan"},
                         {"status": "success"}, {"schema_version": True}, {"errors": "bad"}]:
             opener, _ = self.opener(iter([{"thread_id": self.thread}, {"run_id": self.run, "status": "success"},
                 {"values": {"result": {**self.result, **changes}}}]))
