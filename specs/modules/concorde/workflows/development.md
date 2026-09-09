@@ -19,10 +19,16 @@ Its successful output is a ready candidate, not an automatic merge.
 ## Stages and outcomes
 
 
-The standard loop follows these transitions; fast-loop skips remain explicit review records.
+With reviews enabled, the development loop follows these transitions. Explicit skips retain
+their own evidence states; delivery is a separately invoked capability after Ready.
+
+Authored source: `specs/modules/concorde/workflows/development.md` (the following fence).
+Kind: `mermaid`. Title: **Development, repair and separately authorized delivery**.
 
 ```mermaid
 stateDiagram-v2
+  accTitle: Development, repair and separately authorized delivery
+  accDescr: Development reaches Ready after current checks and configured reviews. Contract gaps wait for a Spec revision, code defects select bounded repair, and delivery is a separate authorized operation.
   [*] --> Specified
   Specified --> SpecReviewed: independent Spec review
   SpecReviewed --> Gap: necessary contract missing
@@ -35,7 +41,7 @@ stateDiagram-v2
   Checked --> CodeReviewed: independent code review
   CodeReviewed --> Ready: required evidence current and no blockers
   CodeReviewed --> Tasks: code defect needs repair
-  Ready --> Delivered: participating agent verifies and merges
+  Ready --> Delivered: separately authorized delivery verifies and merges
   Implemented --> Tasks: failure needs implementation work
   Delivered --> [*]
 ```

@@ -10,11 +10,11 @@
 
 # Registry implementation
 
-This Implementation Spec binds the exact files below. It is reused by `module.registry`.
+`implementation.registry` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.registry`.
 
 ## Responsibility
 
-Admit Module and Implementation identities, resolve document collections and look up exact file ownership and reuse. The implementation realizes these Module contracts through the interfaces and internal responsibilities stated here; missing product behavior must be resolved in the Module Spec.
+Realize explicit Module/Implementation/document indexes and deterministic forward/reverse selection over safe project paths.
 
 ## Bound files
 
@@ -28,12 +28,14 @@ The following paths identify responsibility groups; the exact authority remains 
 | --- | --- |
 | `src/concorde/specification/repository.py` | Separately indexes Module and Implementation descriptors, explicit documents, unique file owners and reverse users. Module selection never follows an implementation reference to read its body. |
 
-## Implementation contract
+## Implementation interfaces, dependencies and constraints
 
-Preserve the public inputs, results, effects and errors of the using Modules. Keep file ownership unique and use explicit dependency interfaces. Source files implement behavior; tests exercise that behavior and authored runtime assets configure its execution. Maintain this Spec when internal responsibilities change, without silently changing a Module contract.
+SpecRepository holds separate descriptors and a document cache, with optional in-memory registry/document overlays. It depends on canonical JSON/path admission and offline schema validation. Index creation rejects unresolved or duplicate identities, invalid composition and nonunique file owners. Module selection resolves a local focus without shrinking documents; implementation file enumeration is explicit and may distinguish declared pending files from existing regular files. Inline Mermaid is carried as document bytes with diagrams=[]; cached repository instances are reconstructed after source changes. The specified spec_files/spec_pair additions resolve explicit identity indexes to complete ordered file sets without reading bound source or widening ordinary select(). These additions require implementation before full query-support claims.
 
-The repository stores Module and Implementation descriptors separately, rejects duplicate file owners and derives reverse usage. Module document lookup never follows uses or implementation references. File grants are explicit, including pending files, and never broaden by recursively scanning a directory.
+The exact ownership list above agrees with the registered binding. Source-family labels in the responsibility table are explanatory groups and never own additional or future files. A Module reference does not duplicate this ownership or make these documents part of a Module collection.
 
 ## Verification and shared changes
 
-Run the relevant unit and integration tests for the changed interfaces. The Framework derives every using Module from the registry and checks its contract independently. Changes to any file, this Spec or the binding invalidate affected implementation evidence. Do not edit another Module Spec through this implementation grant.
+Repository and Module-model cases must cover shared document membership, focus ownership, one local module.md independent of order, acyclic parentage, dependency-versus-composition meaning and duplicate file owners. Check in-memory overlays produce no writes and reverse users include every Module sharing an implementation.
+
+These are verification obligations for implementation work, not a claim that checks were run during this Spec revision. A changed file, binding or Implementation Spec invalidates evidence for every registered using Module. Assess each consumer contract separately; missing public promises must be resolved in its Module Spec.

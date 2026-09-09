@@ -18,9 +18,9 @@ Each reviewer resolves a separate Agent definition and Harness under read-only p
 The host records input versions, coverage, concrete findings, gaps and completion. No-findings,
 findings, incomplete, not-run and skipped are distinct, and all conclusions remain task-specific.
 
-Standard development requires Spec review after authoring and before planning, and code review after
-implementation/checks and before ready. Fast-loop `run_reviews` defaults to false and records each
-skip. Once required, a review cannot be disabled by a resumed fast loop. Blocking contract gaps or
+Development defaults `run_reviews` to true: Spec review follows authoring and precedes planning;
+code review follows implementation/checks and precedes ready. An explicit `run_reviews=false`
+records each skip. Once required, a review cannot be disabled by a resumed fast loop. Blocking contract gaps or
 behavior findings prevent advancement until the Graph admits a repair or clarification path; advisory
 findings remain available through result artifacts. AI feedback identifies the reviewed revision and
 can select only the transitions allowed by the Graph. It cannot grant human acceptance or wider permissions.

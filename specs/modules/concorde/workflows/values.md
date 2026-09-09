@@ -10,6 +10,26 @@
 
 # Registry values and selection
 
+## Configuration and storage
+
+`Profile 9` is the Framework's project-configuration compatibility version for the
+Module/Implementation model. It is distinct from Spec Protocol 2.0.0 and from registry schema 2,
+which versions the Framework's JSON encoding. These numbers do not classify project Modules or
+add concepts to the specification language.
+
+The Framework reads `.concorde/config.json` with exactly `profile_version: 9`, `registry` (the
+registry's project-relative path), `protocol` (the accepted version and manifest digest) and
+`capability_configuration` (the typed integration/enforcement configuration). Other profile values
+fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
+
+Registry schema 2 stores exactly `schema_version`, `project_id`, `entry_target`, `targets`,
+`implementations` and `checks`. `targets` holds Module descriptors and `implementations` holds
+Implementation Spec descriptors. The separate check records configure executable verification;
+they are Framework execution metadata. Their serialized shape does not replace the Protocol's
+meaning of identity, membership, composition, dependency or file ownership.
+
+## Selection and returned values
+
 SpecRepository(project_root, package_root=None, *, registry_bytes=None, document_overrides=None)
 admits Profile 9 and registry schema 2. The optional bytes and document overrides form an in-memory
 candidate; they never authorize ambient agent reads. Construction rejects malformed identities,
@@ -42,3 +62,11 @@ read_file reads a regular file, digest produces canonical sha256 identity, strin
 string arrays and identifier checks stable IDs. Failures raise SpecError with code and field;
 typed path/JSON failures retain their TypedDataError contract. No lookup writes files, changes
 authority, silently retries a different path or reads source to invent missing Module meaning.
+
+## Inline architecture membership
+
+A Mermaid fence in a registered document belongs to that document’s complete context. Its source
+path, kind and title are identified beside the fence. No directory walk or additional document
+registration is needed, and `diagram_sources(target)` returns `[]` when there are no external
+source declarations. New authoring uses `diagrams: []`; old external JSON diagrams require an
+explicit source migration. Reading an inline diagram never adds another Module’s context.

@@ -21,7 +21,7 @@ below can only produce a policy at or under that complete Agent authority bounda
 
 The trusted calling host, rather than `compile_policy`, admits an Agent definition against an
 invocation grant. The compiler does not accept `AgentGrant` or select a child Agent. For the initial
-recursive read-only adapter, the required `module.agent-execution` collaborator checks the root
+recursive read-only adapter, the calling execution host checks the root
 Agent allowlist, each direct delegation edge and inherited Agent allowlist, and intersects target
 grants before resolving a child's context. It enforces shared call/depth/decision/deadline limits,
 local steps, cancellation and typed input/result contracts outside model discretion. A denied edge
@@ -32,7 +32,7 @@ After that admission, the native adapter supplies an explicit private `context.j
 read-only effects, no network and no credentials to these policy APIs. The compiler binds that
 host-issued path authority; the renderer restricts native process/tool access to the resulting
 policy and disables provider-native delegation. Context descriptions, installed resources and
-caller task JSON cannot add paths or operations. The execution collaborator verifies matching
+caller task JSON cannot add paths or operations. That caller verifies matching
 launch/completion/receipt identities and enforces the remaining deadline before accepting a result.
 Only its attested native executable may enter the separately declared bootstrap exception.
 Trusted synchronous Python callbacks enforce their own timely return and are not sandboxed by

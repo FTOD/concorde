@@ -10,11 +10,11 @@
 
 # Protocol Assets implementation
 
-This Implementation Spec binds the exact files below. It is reused by `module.protocol`.
+`implementation.protocol-assets` follows Spec Protocol 2.0.0 and binds the exact files below. It is used by `module.package-assets`.
 
 ## Responsibility
 
-Define the Module/Implementation specification standard and evolve its explicitly bound revision. The implementation realizes these Module contracts through the interfaces and internal responsibilities stated here; missing product behavior must be resolved in the Module Spec.
+Adapt the independent specification standard into packaged rule assets while retaining a distinct Framework execution profile.
 
 ## Bound files
 
@@ -30,15 +30,19 @@ The following paths identify responsibility groups; the exact authority remains 
 
 | File or source family | Responsibility |
 | --- | --- |
-| `prompts/protocol/principles.md` | Defines the Module, internal domain and reusable Implementation Spec semantics. |
+| `prompts/protocol/principles.md` | Includes the independent Protocol principles and the Framework execution profile. |
 | `prompts/protocol/framework-profile.md` | Defines phase-specific context, impact checks, execution and delivery behavior. |
-| `prompts/protocol/kinds/` | Supplies the separate Module and Implementation instruction definitions. |
+| `prompts/protocol/kinds/` | Includes the independent Module and Implementation chapters for runtime distribution. |
 | `protocol/manifest.json` | Pins the exported rule version and exact generated asset digests. |
 
-## Implementation contract
+## Implementation interfaces, dependencies and constraints
 
-Preserve the public inputs, results, effects and errors of the using Modules. Keep file ownership unique and use explicit dependency interfaces. Source files implement behavior; tests exercise that behavior and authored runtime assets configure its execution. Maintain this Spec when internal responsibilities change, without silently changing a Module contract.
+The principles and kind adapters consume exact independent chapter/template inputs. The Framework profile adds runtime context, permission, review and delivery rules without redefining Protocol identity or membership. The manifest records accepted version and generated rule digests; it is a package compatibility asset, not a bound Protocol chapter. This revision requires the Framework authoring recommendation to use inline Mermaid and remove its old renderer-specific recipe; the independent Protocol remains unchanged. Implementation of that asset migration must rebuild projections and explicitly reconcile the accepted manifest binding.
+
+The exact ownership list above agrees with the registered binding. Source-family labels in the responsibility table are explanatory groups and never own additional or future files. A Module reference does not duplicate this ownership or make these documents part of a Module collection.
 
 ## Verification and shared changes
 
-Run the relevant unit and integration tests for the changed interfaces. The Framework derives every using Module from the registry and checks its contract independently. Changes to any file, this Spec or the binding invalidate affected implementation evidence. Do not edit another Module Spec through this implementation grant.
+Build and package checks must cover include provenance, exact principles/kind/template exports, manifest digest agreement and propagation of a changed Framework rule into both integrations. Reading the built rule bundle must expose the independent Protocol and the separate execution profile without making Protocol chapters project Specs.
+
+These are verification obligations for implementation work, not a claim that checks were run during this Spec revision. A changed file, binding or Implementation Spec invalidates evidence for every registered using Module. Assess each consumer contract separately; missing public promises must be resolved in its Module Spec.

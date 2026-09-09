@@ -10,7 +10,7 @@
 
 # Agent runtime value and collaborator contracts
 
-This registered Shared Spec defines the exact public value records used by the capability host,
+This registered local companion document defines the exact public value records used by the capability host,
 permission compiler and executor. These are Python in-process contracts; they do not give an agent
 permission to construct its own grant. Strings called digests are canonical `sha256:` plus 64 lower-case
 hex digits. Paths in policies are project-relative POSIX paths without aliases or symlinks; an
@@ -270,9 +270,20 @@ findings.
 
 ## Declared architecture sources
 
-Target and topology-author snapshots include diagram_sources, with path, digest, serialized JSON
-content and its registered declaration (source, kind, title, optional recipe). These are admitted
-Spec artifacts with frozen identities; they never authorize directory discovery or generated HTML
-reads. Only Spec authoring returns optional diagrams replacements; topology authors return every
-accepted diagram source. Non-author roles cannot return those writes. Their membership, declarations
-and bytes are part of freshness and review evidence, even when Markdown itself is unchanged.
+Architecture source in this project is an inline `mermaid` fence in a registered Markdown
+member. Its source path, kind (`mermaid`) and title are stated beside the fence; `accTitle` and
+`accDescr` provide accessible text. Each Module's main diagram describes its principal entities
+and directed relationships. The entire containing Markdown document is the authored source.
+
+The source bytes already occur in `target_spec` or `shared_specs` and participate in document,
+revision and context digests. They are never duplicated in `diagram_sources`. The retained
+`diagram_sources` snapshot field is `[]` for this representation. Authors return changed fences
+inside `documents`; the optional separate `diagrams` result is omitted or empty. Shared Markdown
+changes require coordinated authoring from every explicitly registered owner. Non-author roles
+cannot replace these sources. Rendered SVG/HTML is never a cognitive input or another authority.
+
+New authoring and initialization use this Markdown representation. The registry's retained
+`diagrams` array is empty. Previously registered external JSON sources require explicit migration
+into registered Markdown before using this revised authoring/publication contract; the host must
+not silently discard them or reinterpret their bytes. No external diagram source format is added
+by this revision.

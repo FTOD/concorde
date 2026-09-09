@@ -28,9 +28,10 @@ every bucket, is rejected. Resolved/dismissed records need a human disposition
 and resolution_note before deterministic removal; Git history preserves the record.
 
 Public concorde-reflections-triage takes the common invocation@3 envelope and a request@1 containing
-target_id, action status|investigate|implement|merge|close, reflection_ids (unique string array), and
-optional task,focus_id,constraints,change_id. Mutations require explicit nonempty reflection_ids, all
-attributed to the selected target or its local focus IDs. Status returns only typed metadata: id,
+target_id, action status|record-gaps|investigate|implement|merge|close, reflection_ids (unique string array), and
+optional task,focus_id,constraints,change_id. Report mutations require explicit nonempty reflection_ids, all
+attributed to the selected target or its local focus IDs; record-gaps instead requires nonempty
+gap_ids and reflection_ids=[], as specified below. Status returns only typed metadata: id,
 target_id,status,triage,bucket (triage and bucket are derived from the record's bucket directory),
 nullable plan_status and nullable verification. It exposes no record
 body, source code or logs to ambient cognition. Merge removes records only after existing Git merge
@@ -52,7 +53,9 @@ require_approval; new or changed resolutions do not inherit stale approval. Impl
 reproduction, no outstanding human intervention and an approved route/plan. It composes a fresh
 `concorde-dev-loop` with intended behavior only; investigation text/code/logs are excluded from Spec-stage inputs.
 Success marks the plan implemented while leaving human disposition of the report independent.
-Protocol changes in Concorde require the explicit evolve-protocol workflow.
+The independent Protocol standard is outside the registered Module ownership available to a
+reflection investigation. A result that requires changing that standard cannot be applied through
+this Module-bound investigation.
 
 ## Main routing view
 
@@ -66,8 +69,8 @@ the Reflection rather than granting this Module access to that target's Spec.
 The `record-gaps` action selects nonempty gap_ids from the current change's open gap history and
 requires reflection_ids=[]. It creates pending specification Reflections using the existing allocator,
 record parser and buckets. Each record stores the validated gap target as feature ownership, its
-question/blocked step/needed contract and originating context/change/phase as evidence. The first
-registered document is the collection entry in concerns, not inferred ownership. The owning target
+question/blocked step/needed contract and originating context/change/phase as evidence. The Module’s unique local `module.md` is the collection entry in concerns, independently of
+registry document order; concerns is provenance, not inferred ownership. The owning target
 or a coordinating Module containing that component may capture it; foreign or resolved gaps are
 rejected. Repeating capture reuses the linked ID. The existing gap remains open and retains its
 history; capture is distinct from investigation, approval, implementation and human disposition.

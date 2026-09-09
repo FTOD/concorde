@@ -29,13 +29,13 @@ hash(value: string | Buffer): string;
 legacyAliasRoute(targetId: string, sourcePath: string): string;
 // plugins/scoped-content/materialize.ts
 primaryDocument(target: Target): string;
-scopedSidebar(registry: ScopedRegistry): object[];
+scopedSidebar(registry: ScopedRegistry, kind?: 'module' | 'implementation'): object[];
 materializeScoped(registry: ScopedRegistry): Promise<void>;
 // plugins/scoped-content/index.ts
 validateScopedBuild(root: string, directory: string): Promise<void>;
 scopedContent(context: LoadContext, options: unknown): Plugin<ScopedRegistry>; // default export
 // scripts/prepare-publication.ts and scripts/build.ts
-preparePublication(projectRoot: string, options?: {mode?: 'preview' | 'build'}): Promise<PreparedPublication | {registry: ScopedRegistry}>;
+preparePublication(projectRoot: string, options?: {mode?: 'preview' | 'build'}): Promise<{registry: ScopedRegistry}>;
 buildSite(): Promise<void>;
 promoteCandidate(candidate: string, destination: string, backup: string): Promise<void>;
 ```
@@ -46,8 +46,8 @@ and returns UTF-8 text; invalid paths throw `Error`, and OS read errors retain t
 `hash` returns `sha256:` followed by 64 lowercase hexadecimal digits. `isScoped` returns false for
 missing configuration or a non-9 profile, true for `profile_version === 9`, and propagates malformed
 JSON/unsafe path/read errors. Consumers of this API select the Profile 9 branch with `isScoped`.
-Legacy `PreparedPublication = {registry: ContentRegistry, diagrams: DiagramDeliverySet}` is the
-separate deterministic pre-Profile-8 path; those legacy values are not returned for Profile 9 roots.
+This public build contract accepts Profile 9 only. Legacy fixture readers remain separate diagnostic
+utilities; their records and rendering paths are not another supported publication mode.
 
 `loadScopedRegistry` reads `.concorde/config.json`, which must contain `profile_version: 9` and a
 safe relative `registry` path. The registry is `{schema_version: 2, project_id: string, entry_target: string,
@@ -70,7 +70,7 @@ interface Target {
   id: string; kind: Kind; title: string; documents: string[];
   parent: string | null; uses: string[];
   implementations: string[]; features: Focus[]; interfaces: Focus[]; checks: string[];
-  diagrams: {source: string; kind: string; title: string; recipe?: 'system-overview'}[];
+  diagrams: []; // inline sources are already in registered Markdown documents
 }
 interface Page {
   sourcePath: string; route: string; stagedPath: string; title: string; content: string;
@@ -78,9 +78,6 @@ interface Page {
   contextSection: 'target_spec' | 'shared_specs';
   memberships: {targetId: string; kind: Kind; primary: boolean}[];
   aliases: string[]; kind: Kind; primaryOf: string | null; inlineOverview: boolean;
-  architectureDiagrams?: {
-    kind: string; title: string; source: string; sourceSha256: string; route: string;
-  }[];
 }
 interface Edge {
   source: string; target: string;
@@ -112,28 +109,55 @@ the first membership's target title when none is primary. `content` excludes fro
 `contentDigest` hashes the complete source bytes. Edges distinguish Module composition, uses, implementation reuse and required-interface relationships.
 
 `sourceDigest` hashes JSON serialization of ordered `[path, contentDigest]` pairs: configuration,
-registry, each distinct registered document in first-reference order, and declared Module diagram sources. A shared physical document contributes its bytes once; membership changes are represented by the registry input. It is a byte/version identity,
-not a semantic-completeness claim. Diagram sources declare matching kind/title and a generated HTML
-output under `generated/diagrams/`; `sourceSha256` omits the digest prefix, and diagram routes are
-`/diagrams/<first-16-hex-of-hash(source-path)>.html`.
+registry and each distinct registered document in first-reference order. A shared physical document
+contributes its bytes once; membership changes are represented by the registry input. The complete
+Markdown digest includes every Mermaid fence and source declaration. Inline diagrams create no
+additional source or route record. This is a byte/version identity, not a semantic-completeness claim.
+
+## Independent Protocol documentation
+
+When `docsite/site.json` sets optional boolean `protocolDocs` to true, publication adds a
+**Spec Protocol** navbar tab before the software Spec tabs. A separate Docusaurus docs collection
+reads Markdown from `protocol/` and publishes it under `/protocol/` with its own chapter sidebar
+and local search index. The collection requires no project Spec metadata, Module/Feature identity
+or registry membership. Its pages do not appear in the software architecture graph or registered
+Spec manifest. Missing enabled content and broken chapter links fail the site build. Omitting the
+option disables this collection; scaffolding a consumer project does not enable or copy it.
+
+The adapter renders inline `mermaid` fences using Docusaurus's Mermaid theme in both Protocol and
+registered Spec pages. Protocol illustrations remain part of their independent chapter sources;
+software diagrams belong to their registered Markdown documents. Both retain accessible titles
+and descriptions, and neither creates a separate external diagram source or delivery route.
+This renderer choice does not change the Protocol's tool-neutral requirements.
 
 ## Materialization and required build collaborators
 
-`scopedSidebar` returns two top-level groups. The primary group, labelled "Specs by source path",
-mirrors the registered documents' own (possibly `specs/`-stripped) directory hierarchy: one nested
-category per directory segment (label the directory name, `collapsed: true` except the first level),
-directories before files, both alphabetical, and one `{type: doc, id, label}` leaf per document
-(label its file name, extension included). Every registered document appears exactly once, from
-registered documents only, never directory scanning. The secondary group, labelled "Specs by
-target" and initially collapsed, reproduces the Module-scope and component-composition trees as
-before, but every entry — including a Module's main Spec — is a `{type: link, label, href}` item
-rather than a doc id, because a document already has its one sidebar position in the primary tree
-and Docusaurus forbids placing the same doc id twice in one sidebar; a Module category's first item
-links to its module.md page labelled `<title> · Main Spec`. `primaryDocument` requires exactly one
+The primary Spec navigation mirrors the directory hierarchy of explicitly registered source paths;
+it never discovers new membership by scanning directories. A secondary target view separates
+`moduleSpecsSidebar` and `implementationSpecsSidebar`: Module categories follow registered parentage,
+and Implementation Specs are listed independently. The navbar exposes Module Specs, Graph and,
+when present, Implementation Specs; the optional independent Protocol tab precedes them.
+Directory grouping, structural composition and implementation reuse remain distinct views.
+
+A Module category links directly to its `module.md` through a Docusaurus category `link` of type
+`doc`. Its child items contain only additional registered documents and child Modules, never a
+second entry for `module.md`. A Module with no child items is a direct document link. The Module
+page displays its complete authored content, including Architecture and other overview sections,
+with section navigation. Mermaid diagrams render exactly where their fences occur in the authored
+Markdown; the renderer does not inject or duplicate an overview before or after the article. Document titles and labels use the filename without `.md`, except Module
+entry pages, which use the Module's title. Source provenance retains the exact source path.
+
+Every registered document has one Docusaurus doc reference, either as an item or a category link.
+Further appearances of explicitly shared Module documents use links to the same canonical page.
+This preserves access through each owning Module without duplicate doc IDs. The generated sidebar
+JSON contains both named sidebars; the packaged navbar and sidebar adapter consume that projection.
+`primaryDocument` requires exactly one
 registered module.md for Modules and returns the first member for other kinds; a Page's matching
 `memberships` entry marks that choice with `primary: true`, and diagrams and the site entry use it
-rather than arbitrary array order. `rewriteLinks` rewrites only supported local Markdown links to
-the registered page routes and rejects invalid or unregistered local destinations. Outside fenced code
+rather than arbitrary array order. `rewriteLinks` rewrites supported local Markdown links to the
+registered page routes. Diagram references use the owning document's Architecture anchor; there
+are no external diagram-source or delivered-HTML links. Invalid or unregistered local destinations
+are rejected. Outside fenced code
 blocks it handles inline links and images with these forms, whose URL has no whitespace or closing
 parenthesis:
 
@@ -152,8 +176,9 @@ not during registry loading. The function returns text without changing sources.
 
 `materializeScoped` consumes a model returned by the loader. Its `projectRoot` owns all output paths.
 It replaces `docsite/.generated/content/` and `docsite/.generated/static/`, writes each page under
-`content/specs/<stagedPath>`, copies declared diagram HTML to its static route and writes
-`docsite/.generated/specs-sidebar.json`. Markdown front matter specifies format, slug, title and
+`content/specs/<stagedPath>` with its Mermaid fences intact, and writes
+`docsite/.generated/specs-sidebar.json`. The Markdown renderer generates diagram views during the
+site build; materialization does not copy standalone diagram HTML. Markdown front matter specifies format, slug, title and
 sidebar label. At entry it removes `docsite/.generated/scoped-materialization.json`; only after all
 assets and the sidebar succeed does it write this identity record as
 `{schema_version: 1, sourceDigest: registry.sourceDigest}`. The function does not edit registered
@@ -162,16 +187,16 @@ A failed write/copy rejects the promise and can leave partial derived assets. Re
 fresh model and re-materializes these disposable directories; callers must not publish partial assets.
 
 The source-checkout check `python scripts/development/check-docsite-types.py` prepares the actual
-`scopedSidebar(loadScopedRegistry(projectRoot))` as `docsite/.generated/specs-sidebar.json`, then
+both results of `scopedSidebar(loadScopedRegistry(projectRoot), kind)` as `docsite/.generated/specs-sidebar.json`, then
 runs TypeScript with `--noEmit` against the docsite tsconfig. It installs the locked Node dependencies
 when their identity marker is absent or stale. This check must work in a fresh delivery worktree
-without pre-rendered diagram HTML; deriving its imported sidebar does not publish pages or establish
+using only registered sources; deriving its imported sidebar does not publish pages or establish
 publication readiness. Registry loading or TypeScript failure still fails the check.
 
-For Profile 9, `preparePublication(projectRoot)` resolves the root, loads the model, renders declared
-diagrams when present, materializes assets, clears the selected Docusaurus generated directory, and returns
-`{registry}`. Its required diagram renderer accepts the project root and produces each declared
-HTML output before copying; rejection stops preparation. `buildSite()` operates on the docsite
+For Profile 9, `preparePublication(projectRoot)` resolves the root, loads the model, materializes
+Markdown and navigation, clears the selected Docusaurus generated directory, and returns `{registry}`.
+It requires no separate diagram-renderer process. Docusaurus renders each Mermaid fence in the
+page build. Invalid syntax or a failed diagram render rejects the candidate before promotion. `buildSite()` operates on the docsite
 containing this module, with project root its parent. Installed Node/Docusaurus dependencies must
 be present. The Docusaurus collaborator must build into the supplied candidate directory, load the
 plugin, call its hooks, report rendered routes and exit zero. A spawn error or nonzero exit rejects
@@ -184,7 +209,7 @@ Missing, malformed or mismatched identity rejects and requires fresh preparation
 source changes between materialization and plugin loading even when the page routes stay the same.
 `contentLoaded({content, actions})` calls `actions.setGlobalData` with Workspace 15 entry target,
 page metadata without Markdown bodies and architecture nodes/edges. `getPathsToWatch()` returns
-absolute configuration, registry, Spec and diagram-source paths. `postBuild({outDir, routesPaths})`
+absolute configuration, registry and registered Markdown paths, which include the diagram sources. `postBuild({outDir, routesPaths})`
 requires the fresh source digest and materialization identity to match the loaded model, and every expected page route to be in
 the rendered route inventory after base-URL normalization. Otherwise it throws before emitting
 verification artifacts. After the build manifest and architecture graph, it writes one legacy
@@ -248,21 +273,21 @@ supports every possible future task; independent Spec review and actual task gap
 Profile 9 publication requires one local module.md for every Module. The complete Module collection
 must describe Architecture outside code fences and provide usage interfaces for its declared
 features. main_visible is presentation metadata and does not trim a Module's context. Architecture
-diagrams are optional; declared recipes, source identity, kind/title and output paths must agree.
+diagrams are required in each Concorde Module's reading entry by this project's convention; the
+Protocol itself remains tool-neutral. Inline source declarations and accessible Mermaid titles
+must agree with the local written model. A declared diagram does not establish semantic completeness.
 Implementation Specs have separate identities, explicit files and unique file ownership. Module
 composition, dependency declarations and implementation references are checked independently.
 These checks establish structure, not universal semantic completeness.
 
-The renderer's Profile 9 transaction owns only generated/diagrams/. It validates all sources and
-exact delivery receipts in a candidate directory, then atomically replaces that subdirectory.
-Framework build outputs under generated/protocol, generated/agents and generated/docs survive both
-success and failure. Legacy diagnostic rendering retains its existing output-root contract.
-Profile 9 follows Archify's automatic legend by default; the legacy hidden-legend convention does
-not constrain new Module overviews. Rendering requires the project's pinned Archify package.
+Diagram rendering belongs to the normal Markdown/site candidate transaction. It writes no
+`generated/diagrams/` tree and cannot change Framework outputs under generated/protocol,
+generated/agents or generated/docs. The site uses its locked Mermaid dependency, with no separately
+installed renderer Skill, generated-source JSON or independent diagram receipt.
 
-The main page keeps its title and introduction before the diagram. When the authored main Spec has
-an Architecture overview section, inlineOverview binds the registered diagrams to that section;
-otherwise a Module's diagram follows its article. Module main pages use the full reading column.
+The main page preserves the authored title, introduction and Architecture section order. The
+`inlineOverview` presentation flag indicates a main-page inline overview; it grants no membership
+or separate rendering authority. Module main pages use the full reading column.
 The renderer presents concorde-document identity, references and visibility in a Spec metadata
 disclosure instead of a leading JSON code block, without changing the authored source or digest.
 
@@ -271,3 +296,25 @@ and aliases. preparePublication mode build clears only that generated directory;
 sets DOCUSAURUS_GENERATED_FILES_DIR_NAME to the same relative path. Default preview mode uses
 .docusaurus. A production build preserves an active preview's generated modules and cache, so
 development-only debug routes cannot overwrite the production module graph.
+
+## Mermaid rendering and source compatibility
+
+The Markdown renderer consumes the literal body of each `mermaid` fence, supports the project's
+flowchart, entity-relationship and state-diagram syntax, and produces an accessible diagram within
+the containing page. `accTitle` and `accDescr` remain available to assistive technology. A diagram
+must fit the reading column or allow inspection without hiding content. Renderer directives may
+not fetch external source files or execute arbitrary page script. Render failures identify the
+owning source document and prevent publication of a candidate that silently drops a diagram.
+
+Source edits use ordinary document versioning: changing an edge, label, title or description changes
+the containing document digest and invalidates source-dependent build evidence. A shared Markdown
+member still publishes once and retains all registered memberships. Dependency links and diagram
+nodes do not add target contexts or graph edges to the explicit registry-derived relationship view.
+
+The `diagrams` registry property remains present as an empty array for this representation. Old
+external-source declarations are rejected with a migration diagnostic before preparation rather
+than ignored. Migration moves their meaningful model into registered Markdown, removes the external
+records and updates links to the owning document's Architecture section. Standalone legacy diagram
+HTML URLs have no preservation promise in this revision; canonical Spec page and legacy document
+alias redirects retain the compatibility contract above. Rendering support still requires ordinary
+site dependencies to be installed; initialization does not fetch them.

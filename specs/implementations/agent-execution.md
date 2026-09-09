@@ -10,11 +10,11 @@
 
 # Agent Execution implementation
 
-This Implementation Spec binds the exact files below. It is reused by `module.agent-execution`.
+`implementation.agent-execution` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.agent-execution`.
 
 ## Responsibility
 
-Execute separately bound Agent invocations through their Harness and admit typed results. The implementation realizes these Module contracts through the interfaces and internal responsibilities stated here; missing product behavior must be resolved in the Module Spec.
+Realize single native launches, explicit recursive scheduling and typed completion admission using separate execution and Harness primitives.
 
 ## Bound files
 
@@ -36,10 +36,14 @@ The following paths identify responsibility groups; the exact authority remains 
 | `src/concorde/host/native_agent.py` | Adapts a bound Agent loop to the selected native model integration. |
 | `src/concorde/host/harness.py` | Defines the resources and compatibility contracts available to an invocation. |
 
-## Implementation contract
+## Implementation interfaces, dependencies and constraints
 
-Preserve the public inputs, results, effects and errors of the using Modules. Keep file ownership unique and use explicit dependency interfaces. Source files implement behavior; tests exercise that behavior and authored runtime assets configure its execution. Maintain this Spec when internal responsibilities change, without silently changing a Module contract.
+AgentProcessExecutor consumes a LaunchSpecification and produces completion plus receipt or a classified execution failure. AgentRuntime uses immutable nodes, grants and frames; NativeAgentAdapter converts each model-driven decision through the same executor. Dependencies are the permission compiler/finalizer, typed-value admission and package binding resolution. Each child gets a fresh invocation/context, cumulative feedback contains only direct typed returns, and shared limits cannot reset. Callback injection is trusted host configuration with an explicit identity; callbacks must honor the remaining deadline.
+
+The exact ownership list above agrees with the registered binding. Source-family labels in the responsibility table are explanatory groups and never own additional or future files. A Module reference does not duplicate this ownership or make these documents part of a Module collection.
 
 ## Verification and shared changes
 
-Run the relevant unit and integration tests for the changed interfaces. The Framework derives every using Module from the registry and checks its contract independently. Changes to any file, this Spec or the binding invalidate affected implementation evidence. Do not edit another Module Spec through this implementation grant.
+Exercise launch/context/policy/receipt mismatches, nonzero exit, malformed completion, timeout and cancellation in the executor tests. Runtime tests cover A-to-B-to-C and self-edges, denied delegation before resolution, stale context, shared budgets and cancellation propagation. Process doubles establish boundary mechanics, not model semantic quality.
+
+These are verification obligations for implementation work, not a claim that checks were run during this Spec revision. A changed file, binding or Implementation Spec invalidates evidence for every registered using Module. Assess each consumer contract separately; missing public promises must be resolved in its Module Spec.

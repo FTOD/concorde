@@ -10,11 +10,11 @@
 
 # Spec Engine implementation
 
-This Implementation Spec binds the exact files below. It is reused by `module.installation`, `module.spec-context`.
+`implementation.spec-engine` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.installation`, `module.spec-context`.
 
 ## Responsibility
 
-Install, initialize, configure and upgrade Concorde while preserving user-owned content. Resolve complete Module contracts, bind code-writing implementation context and validate explicit Spec structure. The implementation realizes these Module contracts through the interfaces and internal responsibilities stated here; missing product behavior must be resolved in the Module Spec.
+Realize phase-specific context assembly, initialization proposals and deterministic Spec structure/contract checks.
 
 ## Bound files
 
@@ -175,12 +175,14 @@ The following paths identify responsibility groups; the exact authority remains 
 | `src/concorde/understanding/` | Retains isolated legacy diagnostic readers; Profile 9 admission uses the specification package. |
 | `tests/concorde/specification/` | Exercises the new model, context isolation, transactions and shared implementation evidence with controlled test doubles. |
 
-## Implementation contract
+## Implementation interfaces, dependencies and constraints
 
-Preserve the public inputs, results, effects and errors of the using Modules. Keep file ownership unique and use explicit dependency interfaces. Source files implement behavior; tests exercise that behavior and authored runtime assets configure its execution. Maintain this Spec when internal responsibilities change, without silently changing a Module contract.
+Context assembly selects registered document bytes, rules, instructions, task, admitted stage inputs and lifecycle identity into an immutable canonical snapshot. Only code writing appends Implementation Spec bodies; code review receives the separately declared file references. The initializer proposes an honest module.md with an inline Mermaid diagram and an empty external diagrams array. Dependencies are repository selection, wire admission, exact-file application and reader Agent definitions. The retained understanding readers and legacy fixture documents are isolated diagnostic implementation assets, not additional live project Spec collections.
 
-Context assembly partitions Module contracts from Implementation Specs. Only the implementation phase adds implementation documents; planners and task authors receive none. Registry and context digests include exact membership. Validation checks Module dependency promises and separate Implementation bindings. Initialization writes an honest Module stub and empty implementation registry.
+The exact ownership list above agrees with the registered binding. Source-family labels in the responsibility table are explanatory groups and never own additional or future files. A Module reference does not duplicate this ownership or make these documents part of a Module collection.
 
 ## Verification and shared changes
 
-Run the relevant unit and integration tests for the changed interfaces. The Framework derives every using Module from the registry and checks its contract independently. Changes to any file, this Spec or the binding invalidate affected implementation evidence. Do not edit another Module Spec through this implementation grant.
+Context and boundary cases must cover local Feature/Interface focus, shared membership, absent implementation bodies in planning, changed document/diagram bytes, malformed or foreign stage inputs and stale Protocol binding. Initialization cases cover absent-only destinations and complete recovery. Deterministic validators establish named structural invariants and never report universal semantic completeness.
+
+These are verification obligations for implementation work, not a claim that checks were run during this Spec revision. A changed file, binding or Implementation Spec invalidates evidence for every registered using Module. Assess each consumer contract separately; missing public promises must be resolved in its Module Spec.

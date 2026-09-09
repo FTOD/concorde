@@ -10,11 +10,11 @@
 
 # Wire Contracts implementation
 
-This Implementation Spec binds the exact files below. It is reused by `module.wire-contracts`.
+`implementation.wire-contracts` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.wire-contracts`.
 
 ## Responsibility
 
-Admit versioned structured values, offline schemas and safe project paths. The implementation realizes these Module contracts through the interfaces and internal responsibilities stated here; missing product behavior must be resolved in the Module Spec.
+Realize versioned value schemas, canonical encoding, safe paths and the supported offline interface-schema evaluator.
 
 ## Bound files
 
@@ -37,10 +37,14 @@ The following paths identify responsibility groups; the exact authority remains 
 | `src/concorde/host/wire_shapes.py` | Defines reusable primitive schema constructors and typed references. |
 | `src/concorde/specification/schema.py` | Checks the supported offline schema subset and example values without remote references. |
 
-## Implementation contract
+## Implementation interfaces, dependencies and constraints
 
-Preserve the public inputs, results, effects and errors of the using Modules. Keep file ownership unique and use explicit dependency interfaces. Source files implement behavior; tests exercise that behavior and authored runtime assets configure its execution. Maintain this Spec when internal responsibilities change, without silently changing a Module contract.
+contracts and contract_shapes declare the closed transport records; wire_shapes supplies reusable constructors; typed_data constructs/validates values and artifact references. The schema evaluator admits only its documented offline vocabulary and local definitions. Dependencies are standard JSON, hashing, regex and filesystem primitives. Canonical JSON encodes stable bytes but is separate from TypedValue and business validation. Snapshot diagram fields remain compatible empty arrays for inline Markdown diagrams; legacy external diagram fields cannot authorize paths or imply new membership.
+
+The exact ownership list above agrees with the registered binding. Source-family labels in the responsibility table are explanatory groups and never own additional or future files. A Module reference does not duplicate this ownership or make these documents part of a Module collection.
 
 ## Verification and shared changes
 
-Run the relevant unit and integration tests for the changed interfaces. The Framework derives every using Module from the registry and checks its contract independently. Changes to any file, this Spec or the binding invalidate affected implementation evidence. Do not edit another Module Spec through this implementation grant.
+Typed-data/schema cases cover wrong type/version, duplicate keys, non-finite numbers, unknown fields, safe-path aliases, stale artifact bytes, local versus remote references and schema/example mismatch. Exported schema validation and contextual value admission need separate assertions because JSON schema export omits internal path/context rules.
+
+These are verification obligations for implementation work, not a claim that checks were run during this Spec revision. A changed file, binding or Implementation Spec invalidates evidence for every registered using Module. Assess each consumer contract separately; missing public promises must be resolved in its Module Spec.

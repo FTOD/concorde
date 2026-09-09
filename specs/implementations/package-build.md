@@ -10,11 +10,11 @@
 
 # Package Build implementation
 
-This Implementation Spec binds the exact files below. It is reused by `module.installation`, `module.package-assets`.
+`implementation.package-build` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.installation`, `module.package-assets`.
 
 ## Responsibility
 
-Install, initialize, configure and upgrade Concorde while preserving user-owned content. Build deterministic Agent, Skill, Protocol, schema and documentation assets from authored sources. The implementation realizes these Module contracts through the interfaces and internal responsibilities stated here; missing product behavior must be resolved in the Module Spec.
+Realize deterministic source inclusion, public Skill adapters, runtime projections and package inventories for checkout distribution and installation.
 
 ## Bound files
 
@@ -78,10 +78,14 @@ The following paths identify responsibility groups; the exact authority remains 
 | `src/concorde/host/package_validation.py` | Checks package contracts and build consistency against the current model. |
 | `skills/` | Defines the installed public adapters; generated projections are not authoring files. |
 
-## Implementation contract
+## Implementation interfaces, dependencies and constraints
 
-Preserve the public inputs, results, effects and errors of the using Modules. Keep file ownership unique and use explicit dependency interfaces. Source files implement behavior; tests exercise that behavior and authored runtime assets configure its execution. Maintain this Spec when internal responsibilities change, without silently changing a Module contract.
+build returns rendered outputs; write_build replaces only owned projections; check_build compares a fresh render without changing sources. The include resolver depends on explicit Agent/Skill roots, Protocol adapters and capability declarations; layering, cycles, diamond inclusion and unreachable sources fail admission. Manifest source digests bind load_agent/verify_fresh. The package inventory, dependency locks and golden fixtures support distribution compatibility. Inline Spec diagrams are Markdown publication inputs and do not require a renderer Skill or diagram-rendering branch in the instruction build.
+
+The exact ownership list above agrees with the registered binding. Source-family labels in the responsibility table are explanatory groups and never own additional or future files. A Module reference does not duplicate this ownership or make these documents part of a Module collection.
 
 ## Verification and shared changes
 
-Run the relevant unit and integration tests for the changed interfaces. The Framework derives every using Module from the registry and checks its contract independently. Changes to any file, this Spec or the binding invalidate affected implementation evidence. Do not edit another Module Spec through this implementation grant.
+Use build, prompt-resolver and package-validation tests for byte-identical repeat rendering, both integrations, include errors, stale-source detection and owned-output cleanup. Consumer installation and source-worktree cases verify that the same build can serve its two using Modules without writing another worktree’s projections.
+
+These are verification obligations for implementation work, not a claim that checks were run during this Spec revision. A changed file, binding or Implementation Spec invalidates evidence for every registered using Module. Assess each consumer contract separately; missing public promises must be resolved in its Module Spec.

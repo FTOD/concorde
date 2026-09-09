@@ -37,12 +37,14 @@ architecture-graph.json has schema_version 1, sourceDigest, nodes and typed edge
 Each candidate validates exact source identity, route inventory and legacy redirect coverage before
 atomic promotion. Changes during generation or missing pages invalidate the candidate and preserve
 the previous build.
-Declared diagrams are validated/rendered from exact registry sources. Every Module declares one
-architecture with recipe system-overview; Archify renders it with showcase checks and the site
-embeds it on module.md. Other diagram filenames remain explicit declarations. Profile 9 diagram
-builds replace only generated/diagrams/ and preserve the Framework's generated rules, roles and docs.
-The project provides its pinned Archify skill and Node dependencies before publication; initialization
-does not silently download build tools.
+Every Concorde Module contains an inline Mermaid entity diagram in its `module.md` Architecture
+section, with an explicit source path, `mermaid` kind, title, accessible title and description.
+Publication renders that fence in its authored position using the site's locked Mermaid integration.
+The containing Markdown is the sole authored diagram source and already participates in source
+identity. New registries use `diagrams: []`; no external JSON, standalone diagram HTML, renderer
+Skill or separate diagram installation is required. Previously declared external diagrams must be
+explicitly converted before this publication contract accepts them. Initialization does not
+silently download site dependencies. Failed Mermaid rendering rejects the candidate.
 Local links resolve only registered document membership; unknown or ambiguous links fail validation.
 
 These generated views are human navigation, not agent context grants. The publication Tool may

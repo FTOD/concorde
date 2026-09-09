@@ -10,11 +10,11 @@
 
 # Managed Runtime implementation
 
-This Implementation Spec binds the exact files below. It is reused by `module.managed-runtime`.
+`implementation.managed-runtime` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.managed-runtime`.
 
 ## Responsibility
 
-Provision and verify the pinned Python and viewer runtime used by installed integrations. The implementation realizes these Module contracts through the interfaces and internal responsibilities stated here; missing product behavior must be resolved in the Module Spec.
+Realize locked Python and official viewer provisioning with staged artifacts and identity receipts.
 
 ## Bound files
 
@@ -33,10 +33,14 @@ The following paths identify responsibility groups; the exact authority remains 
 | `src/concorde/distribution/managed_runtime.py` | Plans, stages and verifies the locked Python and viewer runtimes with recoverable receipts. |
 | `viewer/` | Pins the official viewer package input independently of graph content. |
 
-## Implementation contract
+## Implementation interfaces, dependencies and constraints
 
-Preserve the public inputs, results, effects and errors of the using Modules. Keep file ownership unique and use explicit dependency interfaces. Source files implement behavior; tests exercise that behavior and authored runtime assets configure its execution. Maintain this Spec when internal responsibilities change, without silently changing a Module contract.
+load_runtime_spec admits pinned inputs; plan_runtime compares the existing receipt; provision_runtime stages the selected action and returns accepted runtime metadata. Dependencies are the locked package inputs, bootstrap Python, package acquisition tools and filesystem operations. The viewer package lock and manifest remain independent from project graph bytes. A verified existing runtime can be reused; incomplete or mismatched artifacts cannot be accepted. The support fixture supplies controlled artifacts for installation tests and must not turn a mocked acquisition into real provisioning evidence.
+
+The exact ownership list above agrees with the registered binding. Source-family labels in the responsibility table are explanatory groups and never own additional or future files. A Module reference does not duplicate this ownership or make these documents part of a Module collection.
 
 ## Verification and shared changes
 
-Run the relevant unit and integration tests for the changed interfaces. The Framework derives every using Module from the registry and checks its contract independently. Changes to any file, this Spec or the binding invalidate affected implementation evidence. Do not edit another Module Spec through this implementation grant.
+Exercise exact lock/version/hash agreement, verified reuse, missing Python, invalid viewer identity, interrupted acquisition and restoration of a previous runtime through distribution tests. A fresh-environment acceptance case must distinguish missing prerequisites from a successful provision.
+
+These are verification obligations for implementation work, not a claim that checks were run during this Spec revision. A changed file, binding or Implementation Spec invalidates evidence for every registered using Module. Assess each consumer contract separately; missing public promises must be resolved in its Module Spec.

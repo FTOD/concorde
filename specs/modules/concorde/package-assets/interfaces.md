@@ -17,8 +17,12 @@ integration-specific Skill files (Codex `.agents/skills` and Claude `.claude/ski
 `generated/langgraph.json`, the rule assets (`generated/protocol/principles.md`, its two
 kind definitions, and `generated/protocol/schemas.json`), and documentation inventories
 (`generated/docs/instructions.json` and `generated/docs/wire.json`) deterministically from
-`agents/`, `prompts/`, `skills/` and the capability contracts. The principles asset bundles the Concorde Spec
-Protocol with the Framework execution profile. These are build artifacts; installation decides
+`agents/`, `protocol/`, `prompts/`, `skills/` and the capability contracts. The principles asset
+bundles the Protocol principles, Spec management (including Spec and Context) and Required format
+chapters with the separate Framework execution profile. The two kind assets contain the Module and Implementation chapters
+and their canonical templates respectively; the Module asset also includes the Feature fragment.
+Framework configuration, phase authority and Mermaid authoring conventions belong to the execution
+profile, not the independent standard. These are build artifacts; installation decides
 their destination in a consumer project. The render is byte-identical across repeated calls and performs no
 network or process I/O. `write_build` also writes those outputs plus `generated/build-manifest.json`,
 recording every recorded source path's sha256. `check_build` renders into a temporary directory and
@@ -27,9 +31,7 @@ reports every stale or drifted output without writing anything. `verify_fresh` r
 calls it before every top-level capability invocation except a lifecycle capability. `load_agent`
 returns one Agent's rendered body under `generated/agents/<hyphenated>.md`, effect declaration, and
 complete `AgentBinding` from the current build, itself verifying freshness first
-(`load_role_prompt` remains as a compatibility alias). `resolve_agent` (`agent_model.py`, owned by
-`module.workflows` but depending on this module's `verify_fresh`) resolves one named Agent's
-complete binding: its Spec digest recorded in the build manifest, its registered Harness, and every
+(`load_role_prompt` remains as a compatibility alias). The returned Agent binding identifies its Spec digest recorded in the build manifest, its registered Harness, and every
 declared capability/context/result/effect/limit checked against that Harness, failing closed with
 `BuildError` (`stale_build`, `unknown_agent`, or `invalid_agent_binding`). The resolver
 (`resolve_agent_spec`, `resolve_role_prompt`, `resolve_skill_source`, `find_unreachable_prompts`,
@@ -42,8 +44,11 @@ Spec-alignment and build-output checks behind `python -m concorde validate` and 
 bind (`--bind-project`) the tracked `protocol/manifest.json` digest to the current build; accepting a
 changed Protocol export is developer-only, and a consumer separately accepts the installed manifest
 version/digest in its own project configuration. The reusable Package build Implementation Spec binds the build sources and Skill inventory.
-Agent responsibility files are bound separately by Agent definitions; Protocol authoring sources
-are bound by Protocol assets. Modules refer to these Implementation Specs rather than owning
+Agent responsibility files are bound separately by Agent definitions. Protocol adapters and the
+Framework execution profile are bound by Protocol assets; the independent standard under
+`protocol/` is an external normative input, not a registered or implementation-bound Spec. Protocol
+adapters alone may include its plain Markdown chapters, which require no audience front matter.
+The build records included chapter bytes in source identities so edits invalidate runtime outputs. Modules refer to these Implementation Specs rather than owning
 file prefixes themselves. write_build removes retired outputs only within its declared owned
 subtrees (generated/agents, generated/protocol and generated/docs), preserving diagrams and
 other generators' assets. This allows a Protocol change to retire old kind files coherently.
@@ -82,12 +87,6 @@ find_unreachable_prompts(project_root: str | Path, roots: list[str] | tuple[str,
 check_reachability(project_root: str | Path, roots: list[str] | tuple[str, ...]) -> None
 ```
 
-Public functions of agent_model (`module.workflows`):
-
-```text
-resolve_agent(package_root: str | Path, name: str) -> AgentBinding
-```
-
 Public functions of package_validation:
 
 ```text
@@ -95,3 +94,35 @@ validate_package(root: Path) -> list[Finding]
 ```
 
 Failures return structured findings or the declared exception; callers must stop the affected transition. Repeating an unchanged read is side-effect free. Mutations require current preconditions and explicit caller-owned paths. Local contract facts above remain authoritative without reading the parent or collaborating Specs.
+
+## Returned records and compatibility
+
+`BuildOutput` is a frozen record `{path: str, content: bytes, sources: tuple[str, ...]}`: path is
+an exact output location, content is the complete rendered byte sequence, and sources names the
+explicit authored inputs. `BuildResult` contains `outputs: tuple[BuildOutput, ...]` and
+`manifest: bytes`, the serialized source/output identity manifest. An in-memory render does not
+imply those outputs have been written. `ResolvedPrompt` contains expanded `body: str` and its
+explicit `sources: tuple[str, ...]`; it carries no execution grant.
+
+`SkillPrompt` retains the compatibility record name and fields `name`, `description`, `source_path`,
+`kind="skill"`, `body`, nullable `effects`, and nullable `binding`. String fields contain identity,
+provenance and complete instruction text. `load_agent` supplies non-null effects and a current
+Agent binding for a successfully admitted Agent. Effects have `reads` and `writes` string tuples,
+`network: bool` and `credentials: "none"|"declared"`; these describe a ceiling that the host must
+narrow for a concrete invocation, not automatically effective permissions.
+
+`AgentBinding` has string fields `agent`, `spec_path`, `spec_digest`, `instructions_path`,
+`instructions_digest`, `harness`, `harness_digest`, `constraints_digest`, `build_manifest_digest`
+and `digest`, plus `effective_loop`. Its loop has `timeout_seconds: int` and nullable
+`max_turns: int`; effective limits cannot exceed the bound Agent/Harness limits. Digest values
+identify exact admitted bytes/configuration, using `sha256:` and 64 lowercase hex digits.
+The binding digest covers the complete binding except its own digest field. Source locators remain
+provenance; they do not give a caller permission to load additional project context.
+
+Build and resolver failures stop the affected render/load and cannot be reinterpreted as an empty
+successful output. `BuildError(ValueError)` carries its declared error code; include-resolution
+errors use `PromptResolverError(ValueError)`. Filesystem errors can propagate. Repeated pure renders
+with unchanged inputs preserve bytes; a write can fail after some generated outputs have changed,
+so runtime freshness must be re-established before use. Rebuild from authored inputs to repair
+projections, never edit generated output as a new source. Public aliases preserve the same inputs,
+records and failure semantics; unsupported integration or asset identities require explicit repair.

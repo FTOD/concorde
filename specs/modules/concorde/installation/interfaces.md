@@ -10,6 +10,20 @@
 
 # Installation service
 
+## Configuration compatibility
+
+The canonical Module and Implementation templates, Feature fragment and mandatory Spec document
+format are authored under `protocol/` and distributed with the independent standard. The three
+Spec entries under `templates/` link to those sources. Plan, task and reflection starters remain
+Framework workflow assets; they are not additional Protocol Spec kinds.
+
+The Framework identifies its supported project configuration as Profile 9. Initialization writes
+`.concorde/config.json` with `profile_version: 9`, the `registry` path, an accepted Protocol
+`version` and manifest `digest` under `protocol`, and the typed `capability_configuration` for
+integration and enforcement. Its registry uses JSON schema version 2. Profile 9 and registry
+schema 2 are Framework compatibility and storage versions; Spec Protocol 2.0.0 identifies the
+independent specification standard. Installation and initialization preserve these separate roles.
+
 ## feature.installation.install
 
 The public deterministic installer accepts `--target PATH`, `--integration codex|claude`, and
@@ -102,7 +116,7 @@ outputs and the tracked `protocol/manifest.json` digests to match a fresh render
 
 `build` and `build --check` are idempotent and byte-identical across repeated runs, and never perform
 network or process I/O. Rebuilding after an unrelated source change leaves unrelated outputs
-byte-identical. The host refuses to run any capability on a stale build (error code `stale_build`),
+byte-identical. The host refuses ordinary capability execution on a stale build (error code `stale_build`),
 verified against `generated/build-manifest.json` before every top-level invocation except a
 lifecycle capability; editing a prompt without rebuilding therefore fails closed rather than serving
 stale instructions.

@@ -12,7 +12,7 @@
 
 ## Required orchestration model
 
-The registered Shared Specs **Agents and Harnesses** and **Agent Graphs, Agent Loops and feedback**
+The registered companion documents **Agents and Harnesses** and **Agent Graphs, Agent Loops and feedback**
 define A1–A4 and G1–G4 for this Module. The host MUST resolve Python Agent definitions, Agent
 `spec.md` sources, Harness configurations and effective constraints before execution. It MUST
 coordinate declared Graph transitions and bounded loops with attributed AI feedback and explicit
@@ -144,6 +144,11 @@ records each author before launch and after success or blocking. Already authore
 remain in the candidate when a later component blocks. Cross-component validation runs after every
 affected local author finishes; it cannot prevent resuming an incomplete reconciliation. No component
 code changes before this agreement. Component development loops report completion to the same owning change.
+
+This agreement uses the offline object-schema subset: `type`, `properties`, `required`,
+`additionalProperties` and `minLength` have their ordinary JSON Schema meanings. All properties
+listed as required must occur, unknown properties are rejected, and string lengths are measured
+in characters. The example’s target ID illustrates a separately registered consumer project.
 
 ```concorde-contract
 {
@@ -488,14 +493,14 @@ the gap nor silently turns a query into authoring, investigation or implementati
 
 ## Required collaborator interfaces
 
-The registered Shared Specs **Agent runtime value and collaborator contracts** and **Registry
+The registered companion documents **Agent runtime value and collaborator contracts** and **Registry
 selection and value contracts** are members of this same complete collection. They define all policy,
 launch, receipt, completion, registry, document and local contract records used below. They do not
 admit their other referencing targets' remaining Specs. These local required views are the promises
 the host relies on, independently of implementation imports.
 
 - Registry (`module.registry`): `SpecRepository(project_root, package_root=None, *, registry_bytes=None,
-  document_overrides=None)` returns the read-only admitted repository described in the Shared Spec.
+  document_overrides=None)` returns the read-only admitted repository described in the local registry-value document.
   `select(target_id, focus_id=None)` returns SpecTarget; documents/contracts/implementation_files use
   that descriptor and the complete locally defined return shapes. Reconstruct after changes; reject
   unknown/foreign selection, unsafe paths, invalid bindings and stale sources before granting access.
@@ -513,13 +518,13 @@ the host relies on, independently of implementation imports.
 - Permissions (`module.permissions`): `compile_policy(effects, binding, role_paths, *, deny_paths=(),
   outer_sandbox_required=False) -> NormalizedPolicy`, the Codex/Claude renderers, and
   `build_launch_specification(...) -> LaunchSpecification` have complete signatures and value types
-  in the runtime Shared Spec. They must reject widening, preserve empty reviewer writes and bind
+  in the local runtime-value document. They must reject widening, preserve empty reviewer writes and bind
   policy/native/context identities. `PermissionPolicyError(ValueError)` aborts the launch; an opaque
   task string cannot supply outer enforcement.
 - Execution (`module.agent-execution`): `AgentProcessExecutor()` constructs the default host executor;
   `executor(launch: LaunchSpecification) -> CapabilityExecutionResult` starts one fresh native process.
   A host may inject a callable with this same interface for a verified backend. The exact result,
-  completion and error/receipt records are in the runtime Shared Spec. Successful exit without matching
+  completion and error/receipt records are in the local runtime-value document. Successful exit without matching
   completion is failure. `CapabilityExecutionError(RuntimeError)` has a nullable receipt and stops the
   affected transition; it never retries permissively. Typed result validation remains mandatory for
   injected executors. Code/log material never becomes a later Spec-only input.
@@ -585,19 +590,29 @@ the existing link. The public metadata is sufficient for selection without readi
 
 ## Diagram sources in Spec authoring and review
 
-The host supplies only registered diagram bytes as path/digest/content/declaration records in diagram_sources.
-Ordinary Spec authors may return diagram replacements for their target's registered paths, in the
-optional diagrams array; other stages cannot author them. Source kind/title and generated output
-constraints are validated together with Markdown, and a failure rolls back the complete change.
-Shared diagram changes use coordinated topology authoring, with identical returned bytes from all
-references. Topology completion returns every accepted Markdown member and diagram source in
-descriptor order, including new Module module.md and System overview sources. A blocked author
-returns no replacements. The prepared artifact and application checks bind that exact complete set.
+Architecture source in this project is an inline `mermaid` fence in a registered Markdown
+member. Its source path, kind (`mermaid`) and title are stated beside the fence; `accTitle` and
+`accDescr` provide accessible text. Each Module's main diagram describes its principal entities
+and directed relationships. The entire containing Markdown document is the authored source.
 
-Diagram membership and bytes contribute to target revision, context freshness and review identity.
-Spec review receives their scoped changes; findings may locate a diagram while attributing the
-missing promise to a registered Markdown Spec. A generated HTML file is never an authoring input or
-permission grant. Publication separately performs Archify rendering and visual acceptance.
+The source bytes already occur in `target_spec` or `shared_specs` and participate in document,
+revision and context digests. They are never duplicated in `diagram_sources`. The retained
+`diagram_sources` snapshot field is `[]` for this representation. Authors return changed fences
+inside `documents`; the optional separate `diagrams` result is omitted or empty. Shared Markdown
+changes require coordinated authoring from every explicitly registered owner. Non-author roles
+cannot replace these sources. Rendered SVG/HTML is never a cognitive input or another authority.
+
+New authoring and initialization use this Markdown representation. The registry's retained
+`diagrams` array is empty. Previously registered external JSON sources require explicit migration
+into registered Markdown before using this revised authoring/publication contract; the host must
+not silently discard them or reinterpret their bytes. No external diagram source format is added
+by this revision.
+
+Spec review receives scoped Markdown changes, including the diagram fence, and attributes findings
+to that registered document and owning Module. A blocked author returns no replacements. A
+prepared application binds the complete accepted document set and every before-digest. Syntax and
+publication failures remain distinct from an incomplete or contradictory behavioral contract.
+Publication renders the same Mermaid source as part of the Markdown page.
 
 ## Optional Studio execution view
 
@@ -647,7 +662,7 @@ complete fixed target closure for every child and freshness check; a mismatched 
 rejected before context resolution. `integration` is codex or claude. An injected trusted executor
 requires a nonblank versioned `executor_reference` identifying its configuration. Its callable
 signature is `executor(launch: LaunchSpecification, *, deadline: float) -> CapabilityExecutionResult`;
-the launch/result records are defined in the admitted runtime Shared Spec. `deadline` is the exact
+the launch/result records are defined in the local runtime-value document. `deadline` is the exact
 absolute shared tree deadline on Python's `time.monotonic()` clock. The callable must honor the
 compiled native policy, reject an expired deadline, and limit all preflight and process work to
 `deadline - time.monotonic()`, raising a timeout exception on expiration. Once the shared deadline

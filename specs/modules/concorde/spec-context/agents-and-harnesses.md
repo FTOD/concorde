@@ -1,8 +1,8 @@
 ```concorde-document
 {
-  "id": "document.specs.modules.concorde.permissions.agents-and-harnesses",
+  "id": "document.specs.modules.concorde.spec-context.agents-and-harnesses",
   "targets": [
-    "module.permissions"
+    "module.spec-context"
   ],
   "main_visible": true
 }

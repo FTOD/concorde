@@ -10,11 +10,11 @@
 
 # Viewer Launcher implementation
 
-This Implementation Spec binds the exact files below. It is reused by `module.viewer`.
+`implementation.viewer-launcher` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.viewer`.
 
 ## Responsibility
 
-Open an existing Understand Anything code graph with the verified installed viewer. The implementation realizes these Module contracts through the interfaces and internal responsibilities stated here; missing product behavior must be resolved in the Module Spec.
+Realize the deterministic admission and process launch boundary for the existing raw graph viewer.
 
 ## Bound files
 
@@ -29,10 +29,14 @@ The following paths identify responsibility groups; the exact authority remains 
 | --- | --- |
 | `scripts/run-viewer.py` | Admits an existing raw graph and verified runtime, launches the official viewer and returns its process outcome without installing or rewriting project data. |
 
-## Implementation contract
+## Implementation interfaces, dependencies and constraints
 
-Preserve the public inputs, results, effects and errors of the using Modules. Keep file ownership unique and use explicit dependency interfaces. Source files implement behavior; tests exercise that behavior and authored runtime assets configure its execution. Maintain this Spec when internal responsibilities change, without silently changing a Module contract.
+The launcher parses project/port/no-open options, reads the installed manifest/receipt, selects the first existing raw graph and launches the pinned viewer entrypoint. Dependencies are the installed official viewer, Node runtime and safe filesystem/process operations. It does not create graphs or provision dependencies. The first existing graph is authoritative for admission; an invalid file cannot select a later path. Child flags and working directory follow the request, and exit/interruption/preflight failures preserve their distinct status contract.
+
+The exact ownership list above agrees with the registered binding. Source-family labels in the responsibility table are explanatory groups and never own additional or future files. A Module reference does not duplicate this ownership or make these documents part of a Module collection.
 
 ## Verification and shared changes
 
-Run the relevant unit and integration tests for the changed interfaces. The Framework derives every using Module from the registry and checks its contract independently. Changes to any file, this Spec or the binding invalidate affected implementation evidence. Do not edit another Module Spec through this implementation grant.
+Viewer-launcher tests cover ordered selection, invalid first graph, symlinks, missing or mismatched runtime, port bounds, child arguments/cwd, propagated exit codes and interruption. Mock launch success must not be described as proof that graph contents match current source.
+
+These are verification obligations for implementation work, not a claim that checks were run during this Spec revision. A changed file, binding or Implementation Spec invalidates evidence for every registered using Module. Assess each consumer contract separately; missing public promises must be resolved in its Module Spec.

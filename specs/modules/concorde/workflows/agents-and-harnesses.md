@@ -13,8 +13,7 @@
 This document defines the required Agent model for Concorde Framework. The requirements below are
 the standard for implementation review; an existing role prompt or launcher is not evidence that
 the complete model is implemented. Agent, Harness and Capability are Framework entities, not new
-Concorde Spec Protocol target kinds. Their owning Modules, Modules and Modules retain the existing
-registered Spec structure.
+Concorde Spec Protocol target kinds. Their providing Modules retain the explicit registered Spec structure.
 
 ## Architecture
 
@@ -60,7 +59,7 @@ Changing a binding requires fresh admission and invalidates evidence that depend
 An Agent's `spec.md` is its responsibility contract. The project task's Target Spec and Shared Specs
 are separate admitted inputs about the work to perform. Neither set implicitly grants access to the
 other's neighboring files. This Agent-specific filename convention adds no filename requirement to
-ordinary Module or Module Specs.
+ordinary Module or Implementation Specs.
 
 ## A2. Harness composition
 

@@ -15,7 +15,7 @@
 `SpecRepository` admits the explicitly configured Profile 9 topology and pinned Protocol, selects
 one complete target with an optional local API/Feature focus, and returns registered documents,
 local contracts, Module participant promises and existing implementation locators. The registered
-Shared Spec **Registry selection and value contracts** in this same collection defines constructor
+local document **Registry values and selection** in this same collection defines constructor
 inputs, configuration/registry shapes, exact returned records, indexes, effects, errors and examples.
 It does not admit any collaborator's remaining Spec or infer target meaning from implementation.
 
@@ -78,3 +78,32 @@ access. Local `contracts` includes every block from Target Spec plus Shared Spec
 tuple when no blocks exist, and leaves duplicate-provider/global consumer agreement checks to the
 separate repository validator. These are complete required promises for selection and local parsing;
 no agent needs to read the collaborators' implementation or other Spec files to use this API.
+
+## Stable-ID Spec context queries
+
+The registry exposes `spec_files(entity_id: str) -> tuple[str, ...]` as a read-only metadata query.
+It admits the Protocol's complete semantic query domain by explicit registered identity:
+
+| Selected identity | Returned complete file set |
+| --- | --- |
+| Module | Its registered Markdown documents in registration order. |
+| Feature or Interface | Its providing Module's complete collection, independent of its defining document. |
+| Implementation Spec | That Implementation Spec's own registered Markdown collection. |
+
+Inline Mermaid source is part of its registered Markdown and is not listed twice. The returned
+paths are unique exact project-relative paths. A document identity, heading, directory or unknown
+ID raises `SpecError/invalid_target`; identity prefixes and file locations never supply missing
+ownership. A query does not follow uses, parentage or implementation references. It neither reads
+implementation source files nor grants a worker access to the returned paths.
+
+`spec_pair(module_id: str, implementation_id: str) -> tuple[str, ...]` explicitly selects one
+Module contract together with one of its registered realizations. It returns the Module's full
+collection followed by the Implementation's own collection, deduplicated in first-reference order.
+Wrong identity kinds or a realization not referenced by the Module raise `SpecError/invalid_target`.
+The pair is a caller's two-part selection, not a new entity, merged owner or enlarged Module context.
+A normal `select(target_id, focus_id)` call remains Module-oriented and unchanged.
+
+Both queries return locators only, preserve explicit membership and perform no writes or network
+I/O. Repeat queries against the same admitted repository yield the same order. Reconstruct the
+repository after source changes. These query interfaces are specified additions; their implementation
+must be supplied before claiming complete Framework query support for Spec Protocol 2.0.0.

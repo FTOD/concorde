@@ -8,9 +8,7 @@
       "kind": "module",
       "title": "Concorde Framework",
       "documents": [
-        "specs/modules/concorde/module.md",
-        "specs/modules/concorde/architecture.md",
-        "specs/modules/concorde/developer-experience.md"
+        "specs/modules/concorde/module.md"
       ],
       "parent": null,
       "uses": [],
@@ -45,51 +43,6 @@
         }
       ],
       "checks": [],
-      "diagrams": [
-        {
-          "source": "specs/modules/concorde/diagrams/overview.architecture.json",
-          "kind": "architecture",
-          "title": "Concorde Framework",
-          "recipe": "system-overview"
-        }
-      ]
-    },
-    {
-      "id": "module.protocol",
-      "kind": "module",
-      "title": "Spec Protocol",
-      "documents": [
-        "specs/modules/concorde/protocol/module.md",
-        "specs/modules/concorde/protocol/architecture.md",
-        "specs/modules/concorde/protocol/spec-format.md",
-        "specs/modules/concorde/protocol/module-model.md",
-        "specs/modules/concorde/protocol/implementation-model.md"
-      ],
-      "parent": "module.concorde",
-      "uses": [],
-      "implementations": [
-        "implementation.protocol-assets"
-      ],
-      "features": [
-        {
-          "id": "feature.concorde.evolve-protocol",
-          "title": "Evolve the Spec Protocol",
-          "document": "specs/modules/concorde/protocol/module.md"
-        },
-        {
-          "id": "feature.protocol.describe-model",
-          "title": "Describe Module and Implementation Specs",
-          "document": "specs/modules/concorde/protocol/module.md"
-        }
-      ],
-      "interfaces": [
-        {
-          "id": "interface.protocol.use",
-          "title": "Spec Protocol usage",
-          "document": "specs/modules/concorde/protocol/module.md"
-        }
-      ],
-      "checks": [],
       "diagrams": []
     },
     {
@@ -98,7 +51,6 @@
       "title": "Agent workflows",
       "documents": [
         "specs/modules/concorde/workflows/module.md",
-        "specs/modules/concorde/workflows/architecture.md",
         "specs/modules/concorde/workflows/interfaces.md",
         "specs/modules/concorde/workflows/capabilities.md",
         "specs/modules/concorde/workflows/query-and-routing.md",
@@ -165,14 +117,7 @@
       "checks": [
         "check.workflow-runtime"
       ],
-      "diagrams": [
-        {
-          "source": "specs/modules/concorde/workflows/diagrams/overview.architecture.json",
-          "kind": "architecture",
-          "title": "Agent workflows",
-          "recipe": "system-overview"
-        }
-      ]
+      "diagrams": []
     },
     {
       "id": "module.installation",
@@ -180,7 +125,6 @@
       "title": "Installation",
       "documents": [
         "specs/modules/concorde/installation/module.md",
-        "specs/modules/concorde/installation/architecture.md",
         "specs/modules/concorde/installation/interfaces.md"
       ],
       "parent": "module.concorde",
@@ -217,14 +161,7 @@
         }
       ],
       "checks": [],
-      "diagrams": [
-        {
-          "source": "specs/modules/concorde/installation/diagrams/overview.architecture.json",
-          "kind": "architecture",
-          "title": "Installation",
-          "recipe": "system-overview"
-        }
-      ]
+      "diagrams": []
     },
     {
       "id": "module.spec-context",
@@ -232,16 +169,18 @@
       "title": "Module contexts",
       "documents": [
         "specs/modules/concorde/spec-context/module.md",
-        "specs/modules/concorde/spec-context/architecture.md",
         "specs/modules/concorde/spec-context/interfaces.md",
         "specs/modules/concorde/spec-context/runtime-values.md",
-        "specs/modules/concorde/spec-context/values.md"
+        "specs/modules/concorde/spec-context/values.md",
+        "specs/modules/concorde/spec-context/agents-and-harnesses.md"
       ],
       "parent": "module.concorde",
       "uses": [
         "module.registry",
         "module.wire-contracts",
-        "module.file-transactions"
+        "module.file-transactions",
+        "module.package-assets",
+        "module.agent-execution"
       ],
       "implementations": [
         "implementation.spec-engine",
@@ -282,7 +221,6 @@
       "title": "Spec registry",
       "documents": [
         "specs/modules/concorde/registry/module.md",
-        "specs/modules/concorde/registry/architecture.md",
         "specs/modules/concorde/registry/interfaces.md",
         "specs/modules/concorde/registry/values.md"
       ],
@@ -316,7 +254,6 @@
       "title": "Wire contracts",
       "documents": [
         "specs/modules/concorde/wire-contracts/module.md",
-        "specs/modules/concorde/wire-contracts/architecture.md",
         "specs/modules/concorde/wire-contracts/interfaces.md"
       ],
       "parent": "module.concorde",
@@ -347,11 +284,13 @@
       "title": "File transactions",
       "documents": [
         "specs/modules/concorde/file-transactions/module.md",
-        "specs/modules/concorde/file-transactions/architecture.md",
         "specs/modules/concorde/file-transactions/interfaces.md"
       ],
       "parent": "module.concorde",
-      "uses": [],
+      "uses": [
+        "module.registry",
+        "module.wire-contracts"
+      ],
       "implementations": [
         "implementation.file-transactions"
       ],
@@ -378,7 +317,6 @@
       "title": "Agent execution",
       "documents": [
         "specs/modules/concorde/agent-execution/module.md",
-        "specs/modules/concorde/agent-execution/architecture.md",
         "specs/modules/concorde/agent-execution/interfaces.md",
         "specs/modules/concorde/agent-execution/runtime-values.md",
         "specs/modules/concorde/agent-execution/agents-and-harnesses.md"
@@ -420,7 +358,6 @@
       "title": "Execution permissions",
       "documents": [
         "specs/modules/concorde/permissions/module.md",
-        "specs/modules/concorde/permissions/architecture.md",
         "specs/modules/concorde/permissions/interfaces.md",
         "specs/modules/concorde/permissions/runtime-values.md",
         "specs/modules/concorde/permissions/agents-and-harnesses.md"
@@ -456,7 +393,6 @@
       "title": "Package assets",
       "documents": [
         "specs/modules/concorde/package-assets/module.md",
-        "specs/modules/concorde/package-assets/architecture.md",
         "specs/modules/concorde/package-assets/interfaces.md"
       ],
       "parent": "module.concorde",
@@ -464,7 +400,8 @@
         "module.wire-contracts"
       ],
       "implementations": [
-        "implementation.package-build"
+        "implementation.package-build",
+        "implementation.protocol-assets"
       ],
       "features": [
         {
@@ -489,7 +426,6 @@
       "title": "Managed runtime",
       "documents": [
         "specs/modules/concorde/managed-runtime/module.md",
-        "specs/modules/concorde/managed-runtime/architecture.md",
         "specs/modules/concorde/managed-runtime/interfaces.md"
       ],
       "parent": "module.concorde",
@@ -520,7 +456,6 @@
       "title": "Reflections",
       "documents": [
         "specs/modules/concorde/reflections/module.md",
-        "specs/modules/concorde/reflections/architecture.md",
         "specs/modules/concorde/reflections/interfaces.md",
         "specs/modules/concorde/reflections/lifecycle.md"
       ],
@@ -556,7 +491,6 @@
       "title": "Spec publication",
       "documents": [
         "specs/modules/concorde/publication/module.md",
-        "specs/modules/concorde/publication/architecture.md",
         "specs/modules/concorde/publication/interfaces.md",
         "specs/modules/concorde/publication/pipeline.md"
       ],
@@ -585,14 +519,7 @@
       "checks": [
         "check.publication-types"
       ],
-      "diagrams": [
-        {
-          "source": "specs/modules/concorde/publication/diagrams/overview.architecture.json",
-          "kind": "architecture",
-          "title": "Spec publication",
-          "recipe": "system-overview"
-        }
-      ]
+      "diagrams": []
     },
     {
       "id": "module.viewer",
@@ -600,7 +527,6 @@
       "title": "Code viewer",
       "documents": [
         "specs/modules/concorde/viewer/module.md",
-        "specs/modules/concorde/viewer/architecture.md",
         "specs/modules/concorde/viewer/interfaces.md"
       ],
       "parent": "module.concorde",
@@ -858,6 +784,7 @@
         "docsite/scripts/validate.ts",
         "docsite/sidebars.architecture.ts",
         "docsite/sidebars.features.ts",
+        "docsite/sidebars.protocol.ts",
         "docsite/sidebars.specs.ts",
         "docsite/site.json",
         "docsite/src/components/ArchitectureView.tsx",

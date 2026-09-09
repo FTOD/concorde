@@ -25,6 +25,12 @@ other project Specs implicitly. The local [registry values](values.md) define th
 
 ## feature.context.resolve
 
+The existing runtime boundary below is Module-oriented: it accepts a Module `target_id` and an
+optional local Feature or Interface `focus_id`. Its project contract files implement the Protocol's
+Spec and Context mapping: the whole Module document collection plus its declared diagram sources.
+The independent Protocol also describes standalone Implementation Spec queries and explicit
+Module/Implementation pairings; those are not additional accepted `target_id` kinds of this API.
+
 The context Module is host-internal: `resolve_context` produces a private ContextSnapshot behind
 the executable boundary, and no Skill returns it or a redacted projection of it. Its
 inputs are target_id, task, optional focus_id/constraints/phase (default ask). Other phases are
@@ -47,7 +53,7 @@ resolve_context(repository: SpecRepository, target_id: str, *, phase: str = "ask
 
 The caller supplies a fresh, successfully admitted repository and correctly typed arguments.
 An unsupported phase raises `SpecError/invalid_phase`; a blank task raises `invalid_input`;
-target/focus and repository/Protocol failures use the Shared Spec's declared errors. Unsupported
+target/focus and repository/Protocol failures use the local companion document's declared errors. Unsupported
 stage-input IDs raise `SpecError/incompatible_handoff`, and malformed typed stage values raise
 `TypedDataError(ValueError)` with `code`, JSON-pointer `field` and message. The resolver returns no
 partial snapshot on failure. `instructions` is the caller's admitted role instruction text;
@@ -66,7 +72,8 @@ new dictionary and `.id` returns its `context_id`. The dictionary is the data of
 - `document_order: list[path]`, `target_spec` and `shared_specs`: ordered lists of
   `{document_id: str, path, digest: sha256, targets: list[str], main_visible: bool, content: str}`.
 - `diagram_sources: list[{path, digest, content, declaration}]`, where the declaration is the
-  selected target's registered `{source, kind, title, recipe?}` diagram record.
+  legacy external-source declaration. With the inline Mermaid representation this list is empty;
+  the complete containing Markdown is already in the document records.
 - `implementation_specs`: empty outside code writing; in implementation, a list of `{id,title,files,modules,documents}` records with the exact Implementation Spec bodies and bindings.
 - `stage_inputs: list[TypedValue]`, `implementation_artifacts: list[{id: str, path, digest: sha256}]`
   and `workspace`, the lifecycle record described below. Implementation references are empty
@@ -75,7 +82,8 @@ new dictionary and `.id` returns its `context_id`. The dictionary is the data of
 Spec and artifact paths are canonical project-relative POSIX paths; workspace locations are
 absolute host identity paths. Sha256 values use the `sha256:` prefix and 64
 lowercase hexadecimal digits. Arrays may be empty except the admitted nonempty document closure
-and two Protocol records. Every listed snapshot field is required; unknown fields are rejected
+and the phase-appropriate Protocol records: principles and Module kind for ordinary phases,
+with the Implementation kind additionally supplied to code writing. Every listed snapshot field is required; unknown fields are rejected
 at typed host admission. The digest covers the complete canonical dictionary except `context_id`.
 
 Ordinary `stage_inputs` are version-1 TypedValues with these payloads:
@@ -114,9 +122,10 @@ The snapshot data adds the content of each target_spec/shared_specs reference. T
 documents referenced only by the selected target; Shared Specs contains each multiply referenced
 document once. document_order preserves the registry order across both headings. The resolver does
 not load any referencing entity's other documents and does not recurse through shared membership.
-`diagram_sources` contains only the selected target's registered JSON sources as path/digest/content/declaration
-records. These bytes are explicit Spec artifacts, not executable code, and participate in context
-identity and freshness. Changing a diagram invalidates the target revision and its review evidence.
+`diagram_sources` is empty for inline Mermaid sources. Their containing registered Markdown
+records include the complete fence and source declaration. Those document bytes participate in
+context identity and freshness; changing a diagram invalidates the target revision and its review
+evidence without adding another context file.
 The context identity covers all inputs apart from its own identity field. The wire field `protocol`
 contains the distributed principles bundle and Module kind definition; code writing additionally includes the Implementation kind definition. This bundle includes
 both Concorde Spec Protocol requirements and the Framework execution profile; the field name does
@@ -183,9 +192,11 @@ content may be empty. These nested records reject unknown properties.
 concorde-init request action:propose additionally requires name and configuration and optionally a
 target_id (default module.project); action:apply requires the returned typed project proposal.
 A proposal records action initialize, nullable base_digest and files {path,before_digest,content}.
-It creates `specs/project/module.md` and a System overview source at
-`specs/project/diagrams/overview.architecture.json`. The stub diagrams only the known developer,
-project Spec and external Framework; unknown business entities and architecture are explicit gaps.
+It creates `specs/project/module.md` with an Architecture section containing an inline Mermaid
+diagram, its source/kind/title declaration and accessible title/description. The registry uses
+`diagrams: []`; no external diagram file is created. The stub models only known participants, the
+project Spec and the external Framework; unknown business entities and architecture are explicit
+gaps. The illustration does not turn a draft into a complete business contract.
 Application validates every precondition and the complete resulting registry, then commits the file
 replacements or restores original bytes. New initialization never overwrites existing files. Profile
 7 is not agent-compatible and has no migration capability. The host can resolve metadata broadly;
@@ -235,6 +246,11 @@ not an applied initialization. The host may not silently retry a rejected propos
 The following local provider contract repeats the common selection obligation independently of its
 consumer's Spec. Schema equality is checked deterministically; prose semantics still need review.
 
+This agreement uses the offline object-schema subset: `type`, `properties`, `required`,
+`additionalProperties` and `minLength` have their ordinary JSON Schema meanings. All properties
+listed as required must occur, unknown properties are rejected, and string lengths are measured
+in characters. The example’s target ID illustrates a separately registered consumer project.
+
 ```concorde-contract
 {
   "id": "contract.context.selection",
@@ -277,7 +293,9 @@ records have id, title and document. The entry is a Module, and its complete col
 
 Each Markdown declares id, exact targets and main_visible. Module concorde-dependencies entries
 contain target_id, responsibility, selection_condition and nonempty relied_upon_promises. A diagram
-is optional; declared sources have source/kind/title and an optional system-overview recipe. Check
+is authored inline in registered Markdown, with its source path, `mermaid` kind and title stated
+locally. Every Concorde Module has a principal entity diagram in `module.md`; this is a project
+convention, not an extra Protocol requirement. New declarations use `diagrams: []`. Check
 records declare id, target_id, argv, timeout_seconds and optional inputs. Shared implementation
 checks run for every using Module, recording separate target IDs and current revisions. They never
 combine the using Modules' Spec contexts or grant code to a planner.
@@ -299,7 +317,7 @@ All task roles use the same necessary-contract gap rule. Explanation, planning, 
 implementation pause only dependent judgments when a required contract is missing or ambiguous;
 independent reasoning may continue. Development gaps retain target, task, phase and Spec revision
 until repair and a successful fresh assessment of that step. Pure queries do not create Reflections.
-The local companion contract **Registry selection and value contracts** supplies this Module's local
+The local companion contract **Registry values and selection** supplies this Module's local
 required constructor, selection, document/type, configuration and error promises without opening
 another target's remaining collection.
 
@@ -342,8 +360,9 @@ neither authorizes a repair nor proves review completion, currentness or semanti
 
 ## Reader Agent and recursive factory
 
-This Module owns `agents/reader/AGENT` in the Python package `agents.reader` and its single authored
-`agents/reader/spec.md`. The same canonical Agent supports an ordinary one-decision stage and an
+This Module provides the reader factory and its fixed-target context behavior. The registered
+`implementation.agent-definitions` realization binds the shared reader definition and authored
+responsibility asset; implementation-file ownership is separate from Module ownership. The same canonical Agent supports an ordinary one-decision stage and an
 explicitly assembled recursive invocation. Legacy stage input receives only its stage result and
 no child interface. `concorde-agent-loop-context@1` admits one typed loop action, advertised child
 contracts and typed feedback. Neither path enables provider-native delegation. The registered
@@ -357,7 +376,7 @@ agents.reader.runtime(project_root, package_root, target_id, *, integration="cod
 
 The factory requires a nonblank target ID and codex/claude integration. It loads the reader through
 `module.package-assets.load_agent(package_root, "reader")`, whose result supplies `.body: str`
-and an immutable, current `.binding: AgentBinding` (the admitted runtime Shared Spec defines that
+and an immutable, current `.binding: AgentBinding` (the local runtime-value document defines that
 record). It creates a fixed-target, explicit self-edge graph node named `reader`, with eight local
 steps. It accepts typed `concorde-agent-task@1` data `{task: nonblank str, target_id: nonblank str}`
 and returns `concorde-agent-answer@1` data `{answer: nonblank str}`. A mismatched task target is

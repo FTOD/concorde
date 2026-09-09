@@ -10,11 +10,11 @@
 
 # Agent Definitions implementation
 
-This Implementation Spec binds the exact files below. It is reused by `module.workflows`, `module.spec-context`.
+`implementation.agent-definitions` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.workflows`, `module.spec-context`.
 
 ## Responsibility
 
-Route tasks and coordinate specification, planning, coding, review, topology changes and delivery. Resolve complete Module contracts, bind code-writing implementation context and validate explicit Spec structure. The implementation realizes these Module contracts through the interfaces and internal responsibilities stated here; missing product behavior must be resolved in the Module Spec.
+Bind each named runtime responsibility asset to a canonical Python Agent record; supply the same definitions to workflow stages and the context reader factory.
 
 ## Bound files
 
@@ -55,10 +55,14 @@ The following paths identify responsibility groups; the exact authority remains 
 | `agents/*/__init__.py` | Binds each Agent responsibility file to its Harness, capability references, data types and effects. |
 | `agents/*/spec.md` | Defines executable Agent role instructions. These are implementation assets, not additional Module or Implementation Spec targets. |
 
-## Implementation contract
+## Implementation interfaces, dependencies and constraints
 
-Preserve the public inputs, results, effects and errors of the using Modules. Keep file ownership unique and use explicit dependency interfaces. Source files implement behavior; tests exercise that behavior and authored runtime assets configure its execution. Maintain this Spec when internal responsibilities change, without silently changing a Module contract.
+Agent definitions expose catalog records and, for the reader, a fixed-target runtime factory. They depend on the host Agent/Harness primitives, typed context/result contracts, and current rendered assets. A definition binds its authored spec.md, effective effects, context/result type IDs, capability references and loop limits. The reader factory composes context resolution and native execution; construction alone must not launch a process or grant authority. Golden prompt files are expected build outputs used as test inputs, not additional authored rules.
+
+The exact ownership list above agrees with the registered binding. Source-family labels in the responsibility table are explanatory groups and never own additional or future files. A Module reference does not duplicate this ownership or make these documents part of a Module collection.
 
 ## Verification and shared changes
 
-Run the relevant unit and integration tests for the changed interfaces. The Framework derives every using Module from the registry and checks its contract independently. Changes to any file, this Spec or the binding invalidate affected implementation evidence. Do not edit another Module Spec through this implementation grant.
+Check catalog uniqueness, missing Spec/Harness rejection, context/result compatibility, reader target mismatch and explicit recursive edges. Build fixtures must show that changes to responsibilities alter the expected rendered body without admitting unrelated instructions; golden-byte equality alone does not prove role behavior.
+
+These are verification obligations for implementation work, not a claim that checks were run during this Spec revision. A changed file, binding or Implementation Spec invalidates evidence for every registered using Module. Assess each consumer contract separately; missing public promises must be resolved in its Module Spec.

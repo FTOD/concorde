@@ -52,7 +52,9 @@ The nine identifiers a capability "Launches" above are its named Agents: each on
 under the top-level `agents/` package, binding an authored `agents/<name>/spec.md`, a registered
 Harness, and its effective Constraints/Permissions (`spec.md` + Harness + Constraints/Permissions,
 per [Agents and Harnesses](agents-and-harnesses.md)). `agents/__init__.py` declares the
-inventory; each `agents/<name>/` directory belongs to the Module that launches it. A rendered
+inventory. Exact Agent source files have the single authoritative owner
+`implementation.agent-definitions`, reused by Workflows and Spec Context; launching an Agent
+does not transfer file ownership to the launching Module. A rendered
 `generated/agents/<hyphenated>.md` projection remains traceable to its `spec.md` source; role
 identity alone no longer stands in for this complete Agent model.
 
@@ -67,7 +69,9 @@ Every Agent is bound to exactly one of three registered Harnesses:
 `coordinator` binds `discovery-capsule`; `reader`, `spec-author`, `context-assessor`, `planner`,
 `task-author` and `spec-reviewer` bind `spec-capsule`; `implementation-worker` and `code-reviewer`
 bind `implementation-workspace`. Each Agent's own Constraints/Permissions never widen its bound
-Harness.
+Harness. The table shows ordinary stage contexts; an explicitly admitted recursive reader also
+uses the local `concorde-agent-loop-context`/`concorde-agent-loop-step` contracts. Those additional
+interfaces still require the canonical Agent constraint and host graph/grant checks.
 
 ```concorde-agents
 [

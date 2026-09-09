@@ -10,11 +10,11 @@
 
 # Workflow Host implementation
 
-This Implementation Spec binds the exact files below. It is reused by `module.workflows`.
+`implementation.workflow-host` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.workflows`.
 
 ## Responsibility
 
-Route tasks and coordinate specification, planning, coding, review, topology changes and delivery. The implementation realizes these Module contracts through the interfaces and internal responsibilities stated here; missing product behavior must be resolved in the Module Spec.
+Realize capability admission, routing, stage binding, evidence persistence and development/readiness coordination.
 
 ## Bound files
 
@@ -55,12 +55,14 @@ The following paths identify responsibility groups; the exact authority remains 
 | `src/concorde/host/configuration.py` | Loads and validates integration settings without treating caller configuration as authority. |
 | `src/concorde/host/studio.py` | Presents execution state and forwards explicit requests through the same host interfaces. |
 
-## Implementation contract
+## Implementation interfaces, dependencies and constraints
 
-Preserve the public inputs, results, effects and errors of the using Modules. Keep file ownership unique and use explicit dependency interfaces. Source files implement behavior; tests exercise that behavior and authored runtime assets configure its execution. Maintain this Spec when internal responsibilities change, without silently changing a Module contract.
+The capability service/CLI accept schema-3 invocations and dispatch the admitted entry; the host binds Module contexts, Agent definitions, permissions and stage results. Review runs in fresh read-only contexts and records input-bound findings. Dependencies are repository/context services, typed contracts, execution, permission and build services, plus candidate lifecycle state. A shared implementation change expands impact through the reverse index but creates separate consumer checks rather than a combined cognitive context. Studio uses the same host and result envelope; replay does not waive effect preconditions.
 
-The host resolves stage context, enforces phase-specific grants, preserves task constraints and records exact stage evidence. Implementation digests include Implementation Spec documents and bindings. Checks and code reviews expand shared implementation impact as separate Module invocations, never as one combined Spec context.
+The exact ownership list above agrees with the registered binding. Source-family labels in the responsibility table are explanatory groups and never own additional or future files. A Module reference does not duplicate this ownership or make these documents part of a Module collection.
 
 ## Verification and shared changes
 
-Run the relevant unit and integration tests for the changed interfaces. The Framework derives every using Module from the registry and checks its contract independently. Changes to any file, this Spec or the binding invalidate affected implementation evidence. Do not edit another Module Spec through this implementation grant.
+Host, structured-result and scoped-protocol tests cover routing hints versus grants, stage output identity, stale task/context, authoring authority, implementation-only writes, shared-consumer finalization and bounded review repairs. Studio tests verify that observations and replay preserve the normal invocation and workspace contract.
+
+These are verification obligations for implementation work, not a claim that checks were run during this Spec revision. A changed file, binding or Implementation Spec invalidates evidence for every registered using Module. Assess each consumer contract separately; missing public promises must be resolved in its Module Spec.

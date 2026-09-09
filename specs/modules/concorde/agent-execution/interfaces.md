@@ -128,7 +128,7 @@ lifecycle output, so `LoopPolicy.max_turns` stays `None` unless a caller explici
 ## Required collaborator promises and representative use
 
 The permission compiler/renderer/finalizer contracts and value types are fully defined in the
-registered Shared Spec. The wire collaborator provides `json_schema(type_id: str) -> dict` for a
+registered local companion document. The wire collaborator provides `json_schema(type_id: str) -> dict` for a
 self-contained typed result schema and `validate_typed(value: Any, expected: str | None = None,
 field: str = "") -> dict` for strict type/version/property/uniqueness validation. Unknown type/version,
 unsafe paths, invalid fields and mismatched expected types raise `TypedDataError(ValueError)`
@@ -137,7 +137,7 @@ These calls perform no project mutation or remote schema resolution.
 
 ```python
 executor = AgentProcessExecutor()
-# launch is already built by the trusted host using the local Shared Spec's builder contract.
+# launch is already built by the trusted host using the local runtime-value document's builder contract.
 try:
     result = executor(launch)
 except CapabilityExecutionError as failure:
@@ -154,7 +154,7 @@ establish that a model detected a semantic gap or behavior defect.
 ## api.execution.invoke-agent
 
 `AgentRuntime` is the host's recursive scheduling layer over the existing canonical
-`agent_model.Agent`, `harness.Harness` and `AgentBinding` records in the admitted Shared Spec.
+`agent_model.Agent`, `harness.Harness` and `AgentBinding` records in the admitted local companion document.
 `CapabilityHost.invoke_agent(runtime, agent_id, input, grant)` invokes it and retains its events.
 The normal stage executor and the development graph's bounded review/repair edge remain intact.
 A registered Agent may run as a one-decision stage or participate in an explicitly assembled
@@ -289,7 +289,8 @@ loop timeout. It never renews the tree deadline. A successfully attested step wi
 serialized JSON or a non-model-driven source raises `InvalidAgentStep`; failed native attestation
 remains an execution failure. Existing single-process runner and executor interfaces are unchanged.
 
-The context Module supplies `agents.reader.runtime(project_root, package_root, target_id, *,
+As a caller-composition example, a host may use the context Module’s factory
+`agents.reader.runtime(project_root, package_root, target_id, *,
 integration="codex", executor=None, executor_reference=None, limits=None, cancelled=lambda: False)`.
 It loads the same registered `agents.reader.AGENT` and `agents/reader/spec.md` used by ordinary
 reader stages, resolves its current rendered binding, and installs one `reader` node with a fixed
@@ -297,7 +298,8 @@ target, explicit self-edge and eight local steps. It consumes typed `concorde-ag
 `{task, target_id}` and completes with `concorde-agent-answer@1` `{answer}`; strings are nonblank.
 An injected executor requires a nonblank versioned reference. `limits=None` uses `AgentLimits()`.
 The factory resolves actual complete target snapshots for admission and freshness checks, grants
-no authority and starts no invocation. A mismatched task target is rejected before context reads.
+no authority and starts no invocation. This is a consumer of the execution API, not a required
+execution-to-context Module dependency; the runtime itself receives an explicit resolver callback. A mismatched task target is rejected before context reads.
 
 ```python
 from agents.reader import runtime

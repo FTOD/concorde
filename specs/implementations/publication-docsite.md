@@ -10,11 +10,11 @@
 
 # Publication Docsite implementation
 
-This Implementation Spec binds the exact files below. It is reused by `module.publication`.
+`implementation.publication-docsite` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.publication`.
 
 ## Responsibility
 
-Create navigable documentation and diagrams from registered Module and Implementation Specs. The implementation realizes these Module contracts through the interfaces and internal responsibilities stated here; missing product behavior must be resolved in the Module Spec.
+Realize registry-driven Markdown publication, inline Mermaid rendering, canonical routes, navigation, source manifests and candidate promotion.
 
 ## Bound files
 
@@ -47,6 +47,7 @@ Create navigable documentation and diagrams from registered Module and Implement
 - `docsite/scripts/validate.ts`
 - `docsite/sidebars.architecture.ts`
 - `docsite/sidebars.features.ts`
+- `docsite/sidebars.protocol.ts`
 - `docsite/sidebars.specs.ts`
 - `docsite/site.json`
 - `docsite/src/components/ArchitectureView.tsx`
@@ -144,10 +145,14 @@ The following paths identify responsibility groups; the exact authority remains 
 | `docsite/src/components/ScopedGraph.tsx` | Presents Module relationships and reusable Implementation bindings to developers. |
 | `docsite/scripts/` | Prepares diagrams, checks candidates and promotes a complete site while preserving the prior successful output. |
 
-## Implementation contract
+## Implementation interfaces, dependencies and constraints
 
-Preserve the public inputs, results, effects and errors of the using Modules. Keep file ownership unique and use explicit dependency interfaces. Source files implement behavior; tests exercise that behavior and authored runtime assets configure its execution. Maintain this Spec when internal responsibilities change, without silently changing a Module contract.
+The scoped model loads explicit registry records and unique physical documents. Materialization stages Markdown with Mermaid fences intact, derives directory and target navigation, and preserves one page per document. Docusaurus with its locked Mermaid theme renders diagram views in place; the build hooks bind sourceDigest, routes and aliases before candidate promotion. External renderer JSON/HTML delivery is retired from the supported publication path. Existing legacy adapter and renderer files remain explicitly owned until a later code migration removes them; their presence does not amend the revised Module contract.
+
+The exact ownership list above agrees with the registered binding. Source-family labels in the responsibility table are explanatory groups and never own additional or future files. A Module reference does not duplicate this ownership or make these documents part of a Module collection.
 
 ## Verification and shared changes
 
-Run the relevant unit and integration tests for the changed interfaces. The Framework derives every using Module from the registry and checks its contract independently. Changes to any file, this Spec or the binding invalidate affected implementation evidence. Do not edit another Module Spec through this implementation grant.
+Use scoped-registry, links, source-immutability and atomic-promotion tests for exact membership, shared-page uniqueness, aliases and source changes during build. Diagram coverage must exercise inline flowchart/entity/state syntax, accessible titles/descriptions and failure before promotion. Production-build cases must preserve the development preview’s generated directory.
+
+These are verification obligations for implementation work, not a claim that checks were run during this Spec revision. A changed file, binding or Implementation Spec invalidates evidence for every registered using Module. Assess each consumer contract separately; missing public promises must be resolved in its Module Spec.
