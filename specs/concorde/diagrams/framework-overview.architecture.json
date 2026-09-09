@@ -212,6 +212,16 @@
       "label": "Resolves Specs"
     },
     {
+      "from": "spec-protocol",
+      "to": "contexts",
+      "label": "Defines resolution rules",
+      "toSide": "top",
+      "via": [
+        [850, 100],
+        [850, 300]
+      ]
+    },
+    {
       "from": "contexts",
       "to": "workflow-host",
       "label": "Supplies context",
