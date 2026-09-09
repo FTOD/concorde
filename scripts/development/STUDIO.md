@@ -52,7 +52,7 @@ Select `concorde-main`, create a new thread, and enter this complete input in Gr
     "input": {
       "type_id": "concorde-main-request",
       "schema_version": 1,
-      "data": {"task": "Explain Concorde's workflow host", "target_id": "module.workflows"}
+      "data": {"task": "Explain Concorde's workflow host", "target_id": "module.development"}
     }
   }
 }

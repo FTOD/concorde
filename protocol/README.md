@@ -1,6 +1,6 @@
 # Spec Protocol
 
-Concorde Spec Protocol 2.0.0 defines a standard for describing software: what it promises, how its
+Concorde Spec Protocol 2.1.0 defines a standard for describing software: what it promises, how its
 responsibilities fit together, and how those contracts relate to implementation. Its purpose is
 to make that meaning explicit enough for people and tools to reach a consistent understanding.
 
@@ -11,7 +11,8 @@ to exact implementation files. **Spec management** gives these specifications st
 explicit document collections and unambiguous relationships.
 
 Spec management also defines [Spec and Context](spec-management/spec-and-context.md): which entities
-can be queried and how their context files are determined from explicit declarations.
+can be queried, how their Spec context files are determined from explicit declarations, and how a
+Module's implementation context follows from its implementation references.
 
 ## Information and its representation
 

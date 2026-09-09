@@ -2,7 +2,9 @@
 
 A Spec defines both a software contract and the project files needed to understand that contract.
 **Spec context** is the complete set of authored Spec files selected by a queryable entity.
-Module contract context and Implementation description context are distinct cases of that rule.
+Module contract context and Implementation Spec context are distinct cases of that rule. A Module
+additionally has an **implementation context**, defined at the end of this chapter, which is
+resolved from its implementation references and is never part of its Spec context.
 This is part of Spec management: identity selects the subject, membership selects the files, and
 the specification model determines what those files must explain.
 
@@ -48,7 +50,7 @@ flowchart TB
     owner["Resolve providing Module"]
     implementation["Selected Implementation"]
     moduleContext["Module context<br/>all documents + authored diagram sources"]
-    implementationContext["Implementation context<br/>its own documents + declared diagram sources"]
+    implementationContext["Implementation Spec context<br/>its own documents + declared diagram sources"]
     query --> kind
     kind -->|Module| module
     kind -->|Feature or Interface| owner
@@ -161,12 +163,39 @@ In the Checkout example, this combination includes the four Module files plus th
 Spec document. It still excludes `src/reservations.py`. An Implementation used by several Modules
 does not acquire an implicit preferred Module; the requested pairing must name the Module.
 
-An execution request MAY separately authorize an extension with exact implementation files.
-Each such addition must be attributable to an explicitly selected Implementation and its binding.
-Declared files pending creation remain identified as pending, not represented as already available
-contents. This extension does not import another using Module's collection or confer authority
-to change it. The development environment defines the applicable execution and permission rules;
-ordinary Spec queries retain the deterministic file sets above.
+A development tool authorizes implementation knowledge for a Module through the implementation
+context defined below, not through an ad hoc extension of a Spec query. Ordinary Spec queries retain
+the deterministic file sets above.
+
+## Implementation context
+
+**Implementation context** is the Protocol term for the implementation knowledge that belongs to a
+Module: the Implementation Specs the Module explicitly references, their declared authored diagram
+sources and the exact files those Implementation Specs bind. Let `F(R)` be the exact files bound by
+Implementation Spec `R` and `implementations(M)` the Implementation Specs that Module `M`
+references. Then:
+
+```text
+ImplementationContext(M) = union over R in implementations(M) of ( D(R) union A(R) union F(R) )
+ImplementationContext(feature F) = ImplementationContext(owner(F))
+ImplementationContext(interface T) = ImplementationContext(owner(T))
+```
+
+Implementation context is determined from the registered implementation references and file
+bindings alone, without model judgment, directory inspection or interpretation of prose links.
+It is disjoint from `Context(M)`: the Module's own Spec collection is never part of it, and a
+shared Implementation Spec never adds another using Module's contract. Those other users remain
+metadata identified by the reverse index. Declared files pending creation are identified as pending
+rather than represented as available contents. A Module without implementation references has an
+empty implementation context; that is a statement about the registry, not evidence that no
+realization exists.
+
+A tool MAY authorize a phase-specific subset of the implementation context, such as file references
+without Implementation Spec bodies for a read-only review, but MUST NOT add files outside it. The
+union of `Context(M)` and `ImplementationContext(M)` is the maximal file set a Module-bound task may
+receive without a new explicit selection. The development environment defines which phases receive
+which subset and the applicable permissions; a Spec query never includes implementation context
+implicitly.
 
 ## Completeness and unresolved references
 

@@ -1,6 +1,6 @@
 ```concorde-document
 {
-  "id": "document.specs.modules.concorde.reflections.module",
+  "id": "document.reflections.module",
   "targets": [
     "module.reflections"
   ],
@@ -14,9 +14,9 @@ Retain, investigate and resolve explicitly attributed project feedback and persi
 
 ## Contract identity and context
 
-`module.reflections` follows Spec Protocol 2.0.0. Its sole structural parent is `module.concorde`. The complete contract is the Markdown collection explicitly registered in `.concorde/specs.json`; links and realization references do not expand it. This reading entry introduces the collection.
+`module.reflections` follows Spec Protocol 2.1.0. Its sole structural parent is `module.concorde`. The complete contract is the Markdown collection explicitly registered in `.concorde/specs.json`; links and realization references do not expand it. This reading entry introduces the collection.
 
-The registered companion documents explain [interfaces](interfaces.md), [lifecycle](lifecycle.md). Their content remains authoritative regardless of navigation visibility.
+The registered companion documents explain [interfaces](interfaces.md) and [lifecycle](lifecycle.md). Their content remains authoritative regardless of navigation visibility.
 
 ## Architecture
 
@@ -63,32 +63,24 @@ The [local interface contract](interfaces.md) defines accepted inputs, outputs, 
 
 ## Local collaboration agreements
 
-These entries describe the exact direct providers and children registered for this Module. They state relied-upon behavior without importing another Module’s documents.
+These entries describe the exact direct providers registered for this Module. Development and this Module use each other: Development records gaps here, and approved work here runs through Development.
 
 ```concorde-dependencies
 [
   {
-    "target_id": "module.workflows",
-    "responsibility": "Route tasks and coordinate specification, planning, coding, review, topology changes and delivery.",
-    "selection_condition": "When turning approved intended behavior into a separately bound development or investigation invocation.",
+    "target_id": "module.development",
+    "responsibility": "Run investigation and approved implementation as separately bound invocations and development loops.",
+    "selection_condition": "When turning approved intended behavior into a development or investigation invocation.",
     "relied_upon_promises": [
-      "The public boundary is a versioned TypedValue invocation of an installed concorde-* Skill. Global calls select the owning Module; lifecycle calls perform declared deterministic actions. A planner determines tasks from the selected Module Spec alone. Code writers additionally receive referenced Implementation Specs. Each stage reports its own completion and gaps; a completed component does not independently deliver the enclosing change."
+      "An investigation or development invocation is fresh, bound to one Module and its recorded task, and reports its own completion, gaps and evidence without delivering."
     ]
   },
   {
-    "target_id": "module.spec-context",
-    "responsibility": "Resolve complete Module contracts, bind code-writing implementation context and validate explicit Spec structure.",
-    "selection_condition": "When resolving a complete Module context or preparing initial project Spec state.",
+    "target_id": "module.spec",
+    "responsibility": "Resolve Module, feature and interface identities for attribution.",
+    "selection_condition": "When admitting a record's owner or a selected local identity.",
     "relied_upon_promises": [
-      "resolve_context selects one Module and its complete registered documents. Feature focus never trims the collection. Non-code phases do not receive Implementation Specs or source. The implementation phase adds only the referenced Implementation Specs and exact bound files. Membership, bytes, rules and admitted stage inputs determine context identity."
-    ]
-  },
-  {
-    "target_id": "module.registry",
-    "responsibility": "Admit Module and Implementation identities, resolve document collections and look up exact file ownership and reuse.",
-    "selection_condition": "When resolving identities, document membership or exact implementation users.",
-    "relied_upon_promises": [
-      "SpecRepository reads registry schema 2. select returns a Module descriptor. Implementation records form a separate index, file_implementations maps each declared file to one owner, and implementation_users maps each Implementation Spec to all using Modules. Lookups never follow a relationship to read another Spec body."
+      "A registered identity resolves to exactly one providing Module, and an unknown or foreign identity is rejected."
     ]
   }
 ]
@@ -96,4 +88,4 @@ These entries describe the exact direct providers and children registered for th
 
 ## Realizations
 
-The registered realizations are `implementation.reflections`. They describe exact file ownership and internal implementation choices separately. Module/Feature/Interface selection includes this full contract collection and does not load those Implementation Specs. Code writing and dedicated code review use their separately declared Framework authority.
+The registered realizations are `implementation.reflections`, `implementation.file-transactions` and `implementation.legacy-understanding`. They describe exact file ownership and internal implementation choices separately; the legacy realization is a pending removal that this Module still imports for path helpers. Module/Feature/Interface selection includes this full contract collection and does not load those Implementation Specs.

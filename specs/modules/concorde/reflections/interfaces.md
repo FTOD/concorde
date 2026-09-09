@@ -1,13 +1,12 @@
 ```concorde-document
 {
-  "id": "document.reflection.boundary",
+  "id": "document.reflections.interfaces",
   "targets": [
     "module.reflections"
   ],
   "main_visible": true
 }
 ```
-
 # Reflection service
 
 ## feature.reflections.triage

@@ -1,16 +1,15 @@
 ```concorde-document
 {
-  "id": "document.specs.implementations.permissions",
+  "id": "document.implementation.permissions",
   "targets": [
     "implementation.permissions"
   ],
   "main_visible": false
 }
 ```
-
 # Permissions implementation
 
-`implementation.permissions` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.permissions`.
+`implementation.permissions` follows Spec Protocol 2.1.0 and binds the exact files below. It is reused by `module.harness`.
 
 ## Responsibility
 

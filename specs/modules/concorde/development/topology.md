@@ -1,0 +1,52 @@
+```concorde-document
+{
+  "id": "document.development.topology",
+  "targets": [
+    "module.development"
+  ],
+  "main_visible": true
+}
+```
+# Topology evolution Agent Graph
+
+Use this Graph when registered targets, document membership, shared truth or routing structure
+must change together. The developer supplies intended behavior and constraints. Main designs a
+candidate registry; fresh target-local authors supply the affected Specs after design acceptance.
+A second acceptance binds the exact prepared transaction before application.
+
+Human acceptance is a Graph control input tied to the exact design or prepared application. A
+rejection may select another design or authoring loop, but cannot authorize the rejected effects.
+The loop waits for a required decision and re-admits revised intent and current source identity.
+Coordinator and target-author invocations retain separate Agent definitions and Harness bindings.
+
+## Stages and outcomes
+
+
+
+Authored source: `specs/modules/concorde/workflows/topology.md` (the following fence).
+Kind: `mermaid`. Title: **Topology design, authoring and application**.
+
+```mermaid
+stateDiagram-v2
+  accTitle: Topology design, authoring and application
+  accDescr: A design requires acceptance before local authoring. A validated prepared artifact requires a second acceptance before application. Missing contracts and stale inputs block the affected transition.
+  [*] --> Designed: concorde-main design-topology
+  Designed --> Authoring: developer accepts design
+  Authoring --> Gap: target-local Spec incomplete
+  Authoring --> Prepared: overlay validation succeeds
+  Prepared --> Applied: developer accepts exact artifact
+  Prepared --> Stale: registry, Protocol or source bytes changed
+  Applied --> [*]
+```
+
+No target author writes project files. A gap or disagreement over exact shared bytes leaves the
+pre-design project unchanged. Prepared
+artifacts contain full proposed bytes, but only their path/digest enters coordinator cognition.
+Application is one host transaction with current before-digests and final repository validation.
+
+
+Every new Concorde Module includes a local `module.md` with an inline Mermaid entity diagram
+and a local declaration of its source path, kind and title. Its author returns the complete
+registered Markdown replacements, including diagram fences. The host checks all proposed files
+as one overlay before exposing the prepared application. Diagram content cannot widen Spec
+membership or agent permissions. Shared sources remain subject to identical-byte agreement.

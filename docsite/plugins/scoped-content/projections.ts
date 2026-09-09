@@ -8,7 +8,7 @@
  *
  * Both pages are explicitly labelled projections: rendered bytes for human browsing, never a
  * second authoring source and never agent context authority. That promise lives in the
- * workflow-host boundary Spec, not here.
+ * Development host boundary Spec, not here.
  */
 import {existsSync} from 'node:fs';
 import {resolve} from 'node:path';
@@ -17,7 +17,7 @@ import {safeRead} from './model';
 export const PROJECTION_NOTE =
   'This page is a rendered projection of the current build\'s `generated/docs/` output. It is a ' +
   'read-only view for human browsing, never a second authoring source, and never agent context ' +
-  'authority — see the workflow-host boundary Spec for the promises these instructions and ' +
+  'authority — see the Development host boundary Spec for the promises these instructions and ' +
   'schemas actually keep.';
 
 export interface SkillProjection {name: string; description: string; capability: string; body: string}
@@ -60,7 +60,7 @@ export function renderInstructionsPage(doc: InstructionsProjection): string {
 export function renderWirePage(doc: WireProjection): string {
   const lines: string[] = ['# Wire contracts', '', PROJECTION_NOTE, '',
     'Exact JSON Schemas for every identity `contracts.exported_types()` exports, rendered directly ' +
-    'from code. The workflow-host boundary Spec states these types\' promise-level meaning; this ' +
+    'from code. The Development host boundary Spec states these types\' promise-level meaning; this ' +
     'page states their literal shape.', ''];
   for (const typeId of Object.keys(doc).sort()) {
     lines.push(`## ${typeId}`, '', fence(JSON.stringify(doc[typeId], null, 2), 'json'), '');

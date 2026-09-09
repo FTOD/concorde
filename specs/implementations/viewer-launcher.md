@@ -1,16 +1,15 @@
 ```concorde-document
 {
-  "id": "document.specs.implementations.viewer-launcher",
+  "id": "document.implementation.viewer-launcher",
   "targets": [
     "implementation.viewer-launcher"
   ],
   "main_visible": false
 }
 ```
-
 # Viewer Launcher implementation
 
-`implementation.viewer-launcher` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.viewer`.
+`implementation.viewer-launcher` follows Spec Protocol 2.1.0 and binds the exact files below. It is reused by `module.views`.
 
 ## Responsibility
 

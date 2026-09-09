@@ -1,13 +1,12 @@
 ```concorde-document
 {
-  "id": "document.workflow.reflections",
+  "id": "document.reflections.lifecycle",
   "targets": [
     "module.reflections"
   ],
   "main_visible": true
 }
 ```
-
 # Reflection orchestration
 
 A Reflection retains a problem, its observed effects, evidence, investigation and developer

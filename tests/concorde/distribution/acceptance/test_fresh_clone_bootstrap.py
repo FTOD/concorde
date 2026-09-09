@@ -21,7 +21,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 # A target already registered in this project's own .concorde/specs.json (self-hosted registry),
 # used only to make a schema-valid concorde-validate request; describe-policy never executes checks.
-SELF_HOSTED_TARGET = "service.workflow-host"
+SELF_HOSTED_TARGET = "module.development"
 
 
 def _run(args: list[str], cwd: Path, **kwargs) -> subprocess.CompletedProcess:

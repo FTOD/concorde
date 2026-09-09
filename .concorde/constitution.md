@@ -1,7 +1,7 @@
 <!--
 Sync Impact Report
-- Version: 13.0.0 -> 14.0.0
-- Bump rationale: MAJOR; replace Domain/Service/Module kinds with Module and reusable Implementation Specs.
+- Version: 14.0.0 -> 14.1.0
+- Bump rationale: MINOR; adopt Protocol 2.1.0 (implementation context) and the six capability-oriented Modules.
 - Modified principles: P1–P10; complete Module contexts, explicit file ownership and per-consumer evidence.
 - Added sections: Module architecture, implementation reuse and direct authorized maintenance.
 - Removed sections: separate Domain/Service taxonomy and visibility-trimmed cognitive contexts.
@@ -10,7 +10,7 @@ Sync Impact Report
 
 # Concorde Constitution
 
-Version: 14.0.0. Architecture Profile 9; Workspace Protocol 14; Delivery Proposal 10.
+Version: 14.1.0. Architecture Profile 9; Workspace Protocol 14; Delivery Proposal 10.
 
 ## Part A: Protocol and Framework rule sources
 
@@ -31,7 +31,7 @@ maintaining a second copy of their text.
 ## Part B: Concorde project application
 
 The explicit registry is `.concorde/specs.json`; `module.concorde` is the project entry Module.
-Concorde adopts Protocol 2.0.0 and registry schema 2. Every Module owns a self-contained English
+Concorde adopts Protocol 2.1.0 and registry schema 2. Every Module owns a self-contained English
 Spec collection describing its features, interfaces and internal architecture. Implementation
 Specs bind explicit files with one owner per file and may be reused by multiple Modules. Only
 code-writing workers receive these Implementation Specs; other workers use their own complete

@@ -1,16 +1,15 @@
 ```concorde-document
 {
-  "id": "document.specs.implementations.reflections",
+  "id": "document.implementation.reflections",
   "targets": [
     "implementation.reflections"
   ],
   "main_visible": false
 }
 ```
-
 # Reflections implementation
 
-`implementation.reflections` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.reflections`.
+`implementation.reflections` follows Spec Protocol 2.1.0 and binds the exact files below. It is reused by `module.reflections`.
 
 ## Responsibility
 
@@ -18,7 +17,9 @@ Realize report parsing, monotonic allocation, exact selection and evidence-bound
 
 ## Bound files
 
+- `capabilities/reflections_triage.py`
 - `scripts/reflections_queue.py`
+- `skills/concorde-reflections-triage/SKILL.md`
 - `src/concorde/reflections/__init__.py`
 - `src/concorde/reflections/config.default.json`
 - `src/concorde/reflections/configuration.py`
@@ -26,6 +27,9 @@ Realize report parsing, monotonic allocation, exact selection and evidence-bound
 - `src/concorde/reflections/reflections.py`
 - `src/concorde/reflections/scoped_triage.py`
 - `src/concorde/reflections/validation.py`
+- `tests/concorde/fixtures/interfaces/reflections/index.json`
+- `tests/concorde/fixtures/interfaces/reflections/needs-comments/R-001.md`
+- `tests/concorde/fixtures/interfaces/reflections/pending/R-002.md`
 - `tests/concorde/reflections/__init__.py`
 - `tests/concorde/reflections/contract/__init__.py`
 - `tests/concorde/reflections/integration/__init__.py`
@@ -33,6 +37,8 @@ Realize report parsing, monotonic allocation, exact selection and evidence-bound
 - `tests/concorde/reflections/unit/test_reflection_parser.py`
 - `tests/concorde/reflections/unit/test_reflection_rules.py`
 - `tests/concorde/reflections/unit/test_reflections_queue.py`
+- `tests/concorde/specification/test_scope_and_reflections.py`
+- `tests/concorde/support/reflection_triage.py`
 
 ## Internal responsibilities
 

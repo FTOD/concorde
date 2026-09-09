@@ -1,16 +1,15 @@
 ```concorde-document
 {
-  "id": "document.specs.implementations.agent-execution",
+  "id": "document.implementation.agent-execution",
   "targets": [
     "implementation.agent-execution"
   ],
   "main_visible": false
 }
 ```
-
 # Agent Execution implementation
 
-`implementation.agent-execution` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.agent-execution`.
+`implementation.agent-execution` follows Spec Protocol 2.1.0 and binds the exact files below. It is reused by `module.harness`.
 
 ## Responsibility
 
@@ -20,7 +19,6 @@ Realize single native launches, explicit recursive scheduling and typed completi
 
 - `src/concorde/host/agent_executor.py`
 - `src/concorde/host/agent_runtime.py`
-- `src/concorde/host/harness.py`
 - `src/concorde/host/native_agent.py`
 - `tests/concorde/host/unit/test_agent_executor.py`
 - `tests/concorde/host/unit/test_agent_runtime.py`
@@ -34,7 +32,6 @@ The following paths identify responsibility groups; the exact authority remains 
 | `src/concorde/host/agent_executor.py` | Verifies native launch bindings and completion envelopes around a synchronous model process. |
 | `src/concorde/host/agent_runtime.py` | Controls recursive invocations, feedback, cancellation and shared limits. |
 | `src/concorde/host/native_agent.py` | Adapts a bound Agent loop to the selected native model integration. |
-| `src/concorde/host/harness.py` | Defines the resources and compatibility contracts available to an invocation. |
 
 ## Implementation interfaces, dependencies and constraints
 

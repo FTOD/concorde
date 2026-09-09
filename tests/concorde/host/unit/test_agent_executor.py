@@ -567,7 +567,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
             "phase": "plan",
             "task": "Plan the selected change",
             "constraints": [],
-            "protocol_binding": {"version": "2.0.0", "digest": "sha256:" + "4" * 64},
+            "protocol_binding": {"version": "2.1.0", "digest": "sha256:" + "4" * 64},
             "protocol": [],
             "document_order": ["specs/fixture.md"],
             "target_spec": [{

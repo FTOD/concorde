@@ -243,3 +243,109 @@ worktree 边界相关 63 项测试及构建/类型/能力声明 45 项测试通�
 包含新增的旧回执场景，全部通过，共覆盖 109 个不同测试。系统 Python 缺少 langgraph 的初次
 运行不作为代码失败结论。源码投影已 rebuild，`git diff --check` 通过；没有执行项目的完整
 Concorde 验证或 Agent 评审流程。
+
+## 重组：按能力划分的六个 Module 与 Harness
+
+日期：2026-09-09。规范依据：Spec Protocol 2.1.0。本节记录根 Module 重组的直接维护决定。
+决定已写入注册表、`specs/`、`protocol/` 与 Framework profile；标为“实现待跟进”的条目表示代码尚未
+对齐新契约。
+
+### D14：十三个兄弟 Module 收成六个按能力划分的 Module
+
+问题：原十三个子 Module 按代码层次划分。Harness 概念被切在 Workflows、Agent Execution、
+Permissions、Spec Context 和 Package Assets 五处；四个 Module 各持一份逐字节相同的
+Agents and Harnesses 与 runtime-values 副本，三个 Module 各持一份相同的 registry values；
+Wire Contracts 与 File Transactions 是实现基础设施却因“共享 provider 必须与消费者是兄弟”的规则
+被迫成为顶层 Module。
+
+决定：根 Module 下只保留 Spec、Harness、Development、Reflections、Distribution、Views 六个
+Module。Spec 拥有 Protocol 绑定、注册表、结构校验、初始化与按 ID 解析文件集；Harness 拥有四种
+context 的冻结、Agent 与 Harness 定义、权限编译、原生执行与 LangGraph 控制流；Development 拥有
+提问、开发循环、拓扑、候选证据与交付；Reflections 不变；Distribution 拥有构建、安装、配置与受管
+运行时，Build 从功能上属于它，Harness uses Distribution 获取渲染后的指令与新鲜度；Views 拥有文档站
+与代码图查看器。Wire Contracts 与 File Transactions 降级为 `implementation.typed-values` 与
+`implementation.file-transactions`，由需要它们的 Module 引用。重复副本各保留一份，归 Harness 或 Spec。
+Reflections 与 Development 互相 uses；uses 关系不构成需要拆分的环，只有 parent 必须无环。
+
+### D15：Protocol 2.1.0 定义 implementation context
+
+问题：代码里“写代码阶段拿到的实现知识”由 Module 的 implementation 引用唯一确定，但 Protocol
+只定义了 Implementation Spec 自身的 Context(R) 与显式配对 Context(M, R)，并把绑定文件写成
+“执行请求可另行授权的扩展”；spec-and-context.md 的图还把 Context(R) 的节点称作 Implementation context。
+
+决定：Protocol 升到 2.1.0。Spec and Context 新增 Implementation context 一节，定义
+`ImplementationContext(M) = ⋃ (D(R) ∪ A(R) ∪ F(R))`，Feature 与 Interface 沿用其 providing Module
+的结果；它与 Context(M) 不相交，共享 Implementation Spec 不带入其他使用者的契约，工具只能按阶段
+取子集而不能扩大。原节点改名为 Implementation Spec context；P2 点名该术语；模板与 README 同步。
+manifest 与 `.concorde/config.json` 重新绑定到新摘要。
+
+### D16：Framework profile 记录四种 context、LangGraph 与 Mermaid 约定
+
+决定：P5 把一次调用冻结的 context 明确为 Spec context、implementation context、capability context
+与 task context 四种，某一种可以为空但闭包非空；Agent 指令、Protocol 规则包与 Skills 不是 context，
+Skill 只是 global 或 lifecycle capability 装进开发者 workspace 的投影。P7 规定每个 capability 的
+控制流都是 LangGraph 图，节点是不调用模型的确定性步骤或调用模型的 Agent，leaf 可以是任一种，
+Studio 展示的就是这些图。作者约定改为内嵌 Mermaid，删除已退出的 Archify 与 `generated/diagrams/` 描述。
+
+### D17：确定性 capability 与 model-backed capability
+
+决定：Agents and Harnesses 把 capability 分成不发起 model 调用的确定性 capability 和至少调用一次
+model 的 model-backed capability，后者即 Agent。这个区分描述模型是否参与，不描述输出是否可复现。
+leaf 可以是纯 Python 步骤或一次模型调用；原“Python 控制逻辑实现的 Agent”提法删除。Harness 不再
+admit Skills；Agent 可用的 Capability 与 Tool 契约构成 capability context。
+
+实现待跟进：`Harness.skills` 字段仍在记录形状中且全部为空，删除会改变所有 Harness 摘要与 Agent 绑定；
+snapshot 尚无 capability context 字段。
+
+### D18：统一命名
+
+决定：Module ID 为 `module.<name>`，title 与根图标签等于 name；feature 为
+`feature.<module>.<verb>`，interface 为 `interface.<module>.<name>`，不再使用 `api.` 前缀；
+document 为 `document.<module>.<basename>`，Implementation 文档为 `document.implementation.<name>`；
+check 为 `check.<module>.<name>`。文件夹树按新 Module 树重排，一个 Module 一个文件夹。历史 delivery
+证据中的旧 ID 属于归档，不改。四条待处理 Reflection 原先归属于注册表中不存在的
+`feature.concorde.evolve-protocol`，按其内容改归 Development、Harness、Spec 和 Harness。
+
+### D19：relied_upon_promises 改写为消费者视角
+
+问题：原依赖块逐字复制提供方接口全文，Wire Contracts 的同一段出现在九个文件里。
+
+决定：保留 Protocol 的必填字段，每条只写消费者自己依赖的一两句承诺，不复制提供方接口原文。
+根 Module 的六条子 Module 条目按此重写。
+
+### D20：Implementation Spec 按变化原因重组
+
+决定：`spec-engine` 拆为 `spec-model`（注册表、校验、初始化、`concorde-init`、包入口）、
+`context`（上下文解析）与 `legacy-understanding`（Profile 7 遗留代码、fixture 与测试，显式标记待删除，
+并列出四处活引用：CLI `validate` 子命令与 reflections_queue 脚本调用旧校验器，reflection 校验与
+docsite 脚手架使用旧仓库类）。`workflow-host` 拆为 `development-host`、`agent-model`（Agent、
+Harness、effects 与 roles 投影）和 `studio`。`workflow-capabilities` 按能力归属拆到 Development、
+Spec、Distribution 与 Reflections 的实现，Skill 源与 prompt 片段随其能力归属。`package-build` 改名
+`build`，`wire-contracts` 改名 `typed-values` 并纳入 frontmatter 解析器。共 21 个 Implementation Spec，
+每个文件仍只有一个 owner，绑定清单由注册表生成。
+
+实现待跟进：`capability_host.py` 仍包含 Harness 规定的绑定与启动机制，需要抽到 Harness 的实现；
+main 的 discovery 循环、递归 AgentRuntime、reflections-triage、topology 与四个 lifecycle capability
+仍是普通 Python 控制流，需要改成 StateGraph 并让 `generated/langgraph.json` 指向真实图；遗留包及
+其 fixture 与测试的删除和四处引用迁移；`initialize.py` 仍写旧的外部 JSON 图；`model.py` 仍保留
+Profile 7 实体类；`spec_files` 与 `spec_pair` 尚未实现；文档站需要为移动后的文档声明旧 URL alias；
+`generated/roles` 与 `generated/diagrams` 是构建不再产生的残留输出，待清理。
+
+### 重组的检查记录
+
+`python3 scripts/concorde.py build` 与 `build --check` 通过；`protocol-manifest --write --bind-project`
+把 `.concorde/config.json` 绑定到 Protocol 2.1.0 的新摘要。`validate_repository` 与 `validate_package`
+均无 finding。用本地 Playwright Chromium 加 Mermaid 11 解析并渲染全部注册 Markdown 的 9 个 fence，
+全部成功；四个新图曾把保留字 `graph` 用作节点 ID，已改名。
+
+Python 全量测试 722 项，8 项跳过，3 项失败；这 3 项在 HEAD 的独立 worktree 上用 HEAD 自己的源码
+复现出完全相同的失败，属于本次之前已存在的问题：fresh-clone bootstrap 的两项把
+`service.workflow-host` 当作自托管 target，该 ID 在 HEAD 注册表里也不存在，已改为 `module.development`，
+但该测试克隆的是已提交的 HEAD，因此要到本次修改提交后才能通过；Studio 的
+`test_source_studio_delivery_retains_its_worktree` 期望交付保留源 worktree，与上一次提交把默认交付改为
+删除源 worktree 的行为冲突，本次未改动交付语义，留给交付的维护者决定。
+
+docsite 安装依赖后 `tsc --noEmit` 通过；framework-guides、scoped-registry、diagram-inventory、
+feature-graph、github-pages 与 production-build 共 44 项通过，其中 production-build 原先硬编码
+`module.workflows`，已改为 `module.development`。整站构建从新的六 Module 结构成功生成关系图与页面。
+未运行 Concorde 的 dev-loop、Spec/code review 或交付流程；没有提交。

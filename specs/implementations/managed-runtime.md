@@ -1,16 +1,15 @@
 ```concorde-document
 {
-  "id": "document.specs.implementations.managed-runtime",
+  "id": "document.implementation.managed-runtime",
   "targets": [
     "implementation.managed-runtime"
   ],
   "main_visible": false
 }
 ```
-
 # Managed Runtime implementation
 
-`implementation.managed-runtime` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.managed-runtime`.
+`implementation.managed-runtime` follows Spec Protocol 2.1.0 and binds the exact files below. It is reused by `module.distribution`.
 
 ## Responsibility
 

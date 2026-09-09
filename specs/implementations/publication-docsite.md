@@ -1,16 +1,15 @@
 ```concorde-document
 {
-  "id": "document.specs.implementations.publication-docsite",
+  "id": "document.implementation.publication-docsite",
   "targets": [
     "implementation.publication-docsite"
   ],
   "main_visible": false
 }
 ```
-
 # Publication Docsite implementation
 
-`implementation.publication-docsite` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.publication`.
+`implementation.publication-docsite` follows Spec Protocol 2.1.0 and binds the exact files below. It is reused by `module.views`.
 
 ## Responsibility
 

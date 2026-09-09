@@ -1,16 +1,15 @@
 ```concorde-document
 {
-  "id": "document.specs.implementations.worktree-lifecycle",
+  "id": "document.implementation.worktree-lifecycle",
   "targets": [
     "implementation.worktree-lifecycle"
   ],
   "main_visible": false
 }
 ```
-
 # Worktree Lifecycle implementation
 
-`implementation.worktree-lifecycle` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.workflows`, `module.installation`, `module.permissions`.
+`implementation.worktree-lifecycle` follows Spec Protocol 2.1.0 and binds the exact files below. It is reused by `module.harness`, `module.development`.
 
 ## Responsibility
 
@@ -23,15 +22,9 @@ Realize shared worktree identity, candidate state, instruction-affinity handoff 
 - `src/concorde/host/worktree.py`
 - `src/concorde/host/worktree_affinity.py`
 - `src/concorde/host/worktree_delivery.py`
-- `src/concorde/lifecycle/__init__.py`
-- `src/concorde/lifecycle/delivery.py`
 - `tests/concorde/host/unit/test_session_handoff.py`
 - `tests/concorde/host/unit/test_worktree_affinity.py`
 - `tests/concorde/host/unit/test_worktree_boundary.py`
-- `tests/concorde/lifecycle/__init__.py`
-- `tests/concorde/lifecycle/contract/__init__.py`
-- `tests/concorde/lifecycle/integration/__init__.py`
-- `tests/concorde/lifecycle/integration/test_implementation_delivery.py`
 - `tests/concorde/specification/test_worktree_lifecycle.py`
 
 ## Internal responsibilities

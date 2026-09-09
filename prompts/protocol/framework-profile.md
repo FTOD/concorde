@@ -14,22 +14,28 @@ migration; the runtime must not infer their meaning from paths or names.
 
 ### P5. One complete Module context per bounded task
 
-A bounded invocation selects one Module and freezes its complete document collection, task,
-constraints, phase, Protocol and role instructions. Feature/interface focus does not trim that
-collection. Planner and task-author inputs contain no Implementation Specs or source locators.
-A global coordinator may reason across explicitly selected complete Module Spec contexts for
-questions, routing and topology design. The host deterministically resolves their registered
+A bounded invocation selects one Module and freezes four kinds of context. Its **Spec context**
+is that Module's complete registered document collection and authored diagram sources; feature or
+interface focus does not trim it. Its **implementation context** is the Protocol-defined union of
+the referenced Implementation Specs and their bound files, supplied only to code-writing and
+code-review phases in their declared subsets. Its **capability context** is the set of admitted
+Capability and Tool contracts the invocation may use. Its **task context** is the task,
+constraints, admitted stage artifacts and lifecycle metadata. A kind may be empty for a phase, but
+the frozen closure is never empty. Planner and task-author inputs contain no implementation
+context. A global coordinator may reason across explicitly selected complete Module Spec contexts
+for questions, routing and topology design. The host deterministically resolves their registered
 documents and authored diagram sources, injects each source body once, and preserves per-Module
 membership and source digests. Questions are answered directly from these original sources;
 additional Module contexts require explicit selection. For mutations, each selected worker is a
 fresh invocation with only its own complete Module context. Routing metadata is an explicit input,
-not permission to inspect implementation. Coordinator discovery
-never loads Implementation Specs. Source-code phases use the selected Module's explicit file bindings.
+not permission to inspect implementation. Coordinator discovery never loads Implementation Specs.
 
 Spec authors, assessors, planners and task authors use only the selected Module's complete
 project-Spec collection. They MUST NOT read Implementation Specs or source code to supply missing
-Module meaning. Only the code-writing phase appends referenced Implementation Spec bodies and
-their bound files. Code review has its separately declared contract and code read authority.
+Module meaning. Only the code-writing phase receives the complete implementation context; code
+review receives its separately declared read-only subset. Agent instructions, the Protocol rule
+bundle and Skills are not context: instructions belong to the Agent definition, and a Skill is the
+installed projection of a global or lifecycle capability for the developer's own agent runtime.
 
 Context identities cover document membership and bytes, Protocol and instructions, declared stage
 artifacts and lifecycle identity. Code-writing context identities additionally cover the referenced
@@ -58,6 +64,10 @@ The registry's reverse index never grants a writer another Module's Spec or unre
 Unsupported enforcement fails closed. An outer developer-authorized maintenance session may read
 and modify the project directly; its explicit authorization does not silently widen normal worker
 permissions or become a project business contract.
+
+Every Framework capability's control flow is a LangGraph graph. Its nodes are deterministic
+capabilities, which make no model call, or Agents, which do; a leaf node may be either. The same
+graphs are the inspectable Studio surface, and no capability runs control flow outside them.
 
 Agent instructions, Skills, schemas and rule assets are deterministic projections of authored
 sources. Generated output is not edited as source. Builds distribute Module and Implementation
@@ -97,13 +107,11 @@ workflow handoff solely because it updates the Framework's own instructions.
 
 ### Framework authoring and publication conventions
 
-For a Module with nontrivial internal structure, recommend Archify's System overview recipe
-(`system-overview`) with `meta.quality_profile: "showcase"`. Register the exact diagram source,
-kind and title, and put its reference at the start of `module.md`. Publication renders it before
-the Module prose. A very simple Module may omit the overview with a brief architectural explanation.
-Show real responsibilities and connections; do not invent nodes to satisfy a diagram shape.
-This is an authoring recommendation, not a mandatory diagram-count or minimum-node check.
-
-The Framework's diagram declarations and renderer use exact JSON sources and derived outputs under
-`generated/diagrams/`. These tool choices, output paths and reading-view layouts implement the
-Protocol's architecture requirements; they are not requirements on every Protocol implementation.
+Every Concorde Module describes its principal entities and directed relationships in an inline
+Mermaid fence in its `module.md` Architecture section, declaring the source path, `mermaid` kind
+and title beside the fence with accessible title and description text. A complex Module may add
+further inline diagrams in its registered documents. Show real responsibilities and connections;
+do not invent nodes to satisfy a diagram shape. Publication renders each fence inside its own
+Markdown page; rendered views and navigation are derived and create no additional membership.
+These conventions implement the Protocol's architecture requirements for this project; they are
+not requirements on every Protocol implementation.

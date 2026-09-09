@@ -12,9 +12,9 @@ describe('Explicit Concorde self specification',()=>{
  });
  it('contains independently complete public Skill and business scope descriptions',()=>{
   const r=loadScopedRegistry(root);
-  const host=r.pages.filter(p=>p.memberships.some(m=>m.targetId==='module.workflows')).map(p=>p.content).join('\n');
+  const host=r.pages.filter(p=>p.memberships.some(m=>m.targetId==='module.development')).map(p=>p.content).join('\n');
   expect(host).toContain('concorde-context-solve-request');expect(host).toContain('concorde-capability-invocation');
-  const domain=r.pages.find(p=>p.memberships.some(m=>m.targetId==='module.workflows'&&m.primary))!;
+  const domain=r.pages.find(p=>p.memberships.some(m=>m.targetId==='module.development'&&m.primary))!;
   expect(domain.content).toContain('Module Spec');
   for(const module of r.targets.filter(t=>t.kind==='module')) {
    expect(module.documents.some(path=>path.endsWith('/architecture.md')||path.endsWith('/developer-experience.md'))).toBe(false);

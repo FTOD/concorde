@@ -1,16 +1,15 @@
 ```concorde-document
 {
-  "id": "document.specs.implementations.installation",
+  "id": "document.implementation.installation",
   "targets": [
     "implementation.installation"
   ],
   "main_visible": false
 }
 ```
-
 # Installation implementation
 
-`implementation.installation` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.installation`.
+`implementation.installation` follows Spec Protocol 2.1.0 and binds the exact files below. It is reused by `module.distribution`.
 
 ## Responsibility
 
@@ -18,6 +17,7 @@ Realize distribution entry points, receipt-owned installation and bounded root-g
 
 ## Bound files
 
+- `capabilities/configure.py`
 - `scripts/concorde.ps1`
 - `scripts/concorde.py`
 - `scripts/concorde.sh`
@@ -25,8 +25,10 @@ Realize distribution entry points, receipt-owned installation and bounded root-g
 - `scripts/install-concorde.py`
 - `scripts/requirements.lock`
 - `scripts/run-capability.py`
+- `skills/concorde-configure/SKILL.md`
 - `src/concorde/distribution/__init__.py`
 - `src/concorde/distribution/protocol_guidance.py`
+- `src/concorde/host/cli.py`
 - `templates/feature-template.md`
 - `templates/implementation-template.md`
 - `templates/module-template.md`

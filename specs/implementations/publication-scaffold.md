@@ -1,16 +1,15 @@
 ```concorde-document
 {
-  "id": "document.specs.implementations.publication-scaffold",
+  "id": "document.implementation.publication-scaffold",
   "targets": [
     "implementation.publication-scaffold"
   ],
   "main_visible": false
 }
 ```
-
 # Publication Scaffold implementation
 
-`implementation.publication-scaffold` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.publication`.
+`implementation.publication-scaffold` follows Spec Protocol 2.1.0 and binds the exact files below. It is reused by `module.views`.
 
 ## Responsibility
 

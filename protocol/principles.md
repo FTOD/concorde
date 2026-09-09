@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 2.0.0 defines Module Specs, Implementation Specs and their organization.
+Concorde Spec Protocol 2.1.0 defines Module Specs, Implementation Specs and their organization.
 These requirements apply to project specifications, including the specifications of software that
 implements this Protocol. They do not require the Protocol text to describe itself as a Module.
 
@@ -39,7 +39,9 @@ another structural parent. A directory or source layout does not establish a Mod
 
 An Implementation Spec MUST preserve the distinction between promised software behavior and the
 implementation choices that realize it. An implementation description or a code change does not
-silently amend a Module contract.
+silently amend a Module contract. The Implementation Specs a Module references, together with the
+files they bind, form that Module's **implementation context**; Spec management defines how it is
+resolved and keeps it separate from the Module's Spec context.
 
 ### P3. A Module Spec is a complete contract context
 

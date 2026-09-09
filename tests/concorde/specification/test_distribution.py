@@ -27,12 +27,12 @@ class DistributionTests(unittest.TestCase):
     def test_self_architecture_separates_modules_and_reusable_implementations(self):
         repo=SpecRepository(PACKAGE);report=validate_repository(PACKAGE)
         self.assertEqual('success',report.status,report.findings)
-        self.assertEqual(15,len(repo.targets));self.assertTrue(all(t.kind=='module' for t in repo.targets.values()))
-        self.assertEqual(18,len(repo.implementations))
-        self.assertEqual('module.concorde',repo.select('module.publication').parent)
-        self.assertIn('scripts/run-viewer.py',repo.implementation_paths(repo.select('module.viewer')))
+        self.assertEqual(7,len(repo.targets));self.assertTrue(all(t.kind=='module' for t in repo.targets.values()))
+        self.assertEqual(21,len(repo.implementations))
+        self.assertEqual('module.concorde',repo.select('module.views').parent)
+        self.assertIn('scripts/run-viewer.py',repo.implementation_paths(repo.select('module.views')))
         self.assertGreater(len(repo.implementation_users['implementation.worktree-lifecycle']),1)
-        text='\n'.join(d.body for d in repo.documents(repo.select('module.workflows')))
+        text='\n'.join(d.body for d in repo.documents(repo.select('module.development')))
         for op in CAPABILITY_NAMES:self.assertIn(op+'-request',text)
     def test_launcher_refuses_a_stage_capability_name_and_accepts_a_public_skill(self):
         with tempfile.TemporaryDirectory() as directory:

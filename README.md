@@ -1,7 +1,7 @@
 # Concorde Framework
 
 Concorde combines the **Spec Protocol**, installable Skills, agent execution, validation and developer
-views. Protocol **2.0.0** has two specification categories:
+views. Protocol **2.1.0** has two specification categories:
 
 - **Module Spec:** a self-contained contract describing provided features, their usage interfaces,
   and the Module's internal architecture. This internal domain includes concepts, private submodules,
@@ -164,7 +164,7 @@ authors return identical shared bytes.
 
 The [Developer experience](specs/modules/concorde/module.md#developer-entry-selection) covers the
 Spec docsite, interactive diagrams, the Understand Anything code viewer and feedback into the
-Framework's existing workflows. [Spec publication](specs/modules/concorde/publication/module.md#architecture) provides the authored-Spec view in this experience.
+Framework's existing workflows. [Spec publication](specs/modules/concorde/views/module.md#architecture) provides the authored-Spec view in this experience.
 
 The [viewer service](specs/modules/concorde/viewer/interfaces.md) opens an existing raw Understand
 Anything graph using the installer-owned runtime. Starting it does not generate a code graph or
@@ -189,7 +189,7 @@ grant agent context access.
 ## Concorde Spec Protocol entry and upgrades
 
 The Framework execution profile defines session handoffs in [P10](prompts/protocol/framework-profile.md#p10-explicit-session-handoffs).
-Concorde Spec Protocol 2.0.0 defines self-contained Module Specs and reusable, uniquely file-bound Implementation Specs.
+Concorde Spec Protocol 2.1.0 defines self-contained Module Specs and reusable, uniquely file-bound Implementation Specs.
 Root instructions and runtime drafts refer to that rule; public Skills do not carry another copy.
 The installer adds a receipt-owned `concorde-protocol` block at the start of the selected root file:
 

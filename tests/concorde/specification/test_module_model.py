@@ -25,7 +25,7 @@ class ModuleImplementationTests(unittest.TestCase):
         manifest = (PACKAGE / "protocol/manifest.json").read_bytes()
         self.write(".concorde/config.json", json.dumps({"profile_version": 9,
             "registry": ".concorde/specs.json", "protocol": {
-                "version": "2.0.0", "digest": digest(manifest)},
+                "version": "2.1.0", "digest": digest(manifest)},
             "capability_configuration": self.configuration}))
         targets = []
         for name in ("root", "a", "b"):

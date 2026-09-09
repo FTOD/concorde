@@ -1,16 +1,15 @@
 ```concorde-document
 {
-  "id": "document.specs.implementations.protocol-assets",
+  "id": "document.implementation.protocol-assets",
   "targets": [
     "implementation.protocol-assets"
   ],
   "main_visible": false
 }
 ```
-
 # Protocol Assets implementation
 
-`implementation.protocol-assets` follows Spec Protocol 2.0.0 and binds the exact files below. It is used by `module.package-assets`.
+`implementation.protocol-assets` follows Spec Protocol 2.1.0 and binds the exact files below. It is used by `module.distribution`.
 
 ## Responsibility
 

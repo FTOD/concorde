@@ -652,7 +652,7 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
         self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-TYPES-001" for f in findings), findings)
 
     def test_unknown_type_token_is_reported(self) -> None:
-        _document(self.root, "specs/boundary.md", "document.workflow-host.boundary",
+        _document(self.root, "specs/boundary.md", "document.development.interfaces",
             "Mentions `concorde-not-a-real-type@1` here.")
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_types(
@@ -660,7 +660,7 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
         self.assertTrue(any("names no exported identity" in f.message for f in findings), findings)
 
     def test_wrong_version_is_reported(self) -> None:
-        _document(self.root, "specs/boundary.md", "document.workflow-host.boundary",
+        _document(self.root, "specs/boundary.md", "document.development.interfaces",
             "Mentions `concorde-capability-invocation@2` here.")
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_types(
@@ -668,7 +668,7 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
         self.assertTrue(any("does not match its exported version" in f.message for f in findings), findings)
 
     def test_missing_exported_identity_is_reported(self) -> None:
-        _document(self.root, "specs/boundary.md", "document.workflow-host.boundary", "Nothing about types here.")
+        _document(self.root, "specs/boundary.md", "document.development.interfaces", "Nothing about types here.")
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_types(
             self.root, package_validation._registered_documents(self.root))
@@ -698,7 +698,7 @@ class SpecAlignmentErrorsRuleTests(unittest.TestCase):
         self._host_module("fixture.py",
             'class FixtureError(ValueError):\n    pass\n\n\n'
             'def raise_it():\n    raise FixtureError("something went wrong", "fixture_missing_code")\n')
-        _document(self.root, "specs/boundary.md", "document.workflow-host.boundary", "No error table here.")
+        _document(self.root, "specs/boundary.md", "document.development.interfaces", "No error table here.")
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_errors(
             self.root, package_validation._registered_documents(self.root))
@@ -709,7 +709,7 @@ class SpecAlignmentErrorsRuleTests(unittest.TestCase):
         self._host_module("fixture.py",
             'class FixtureError(ValueError):\n    pass\n\n\n'
             'def raise_it():\n    raise FixtureError("a plain message with spaces")\n')
-        _document(self.root, "specs/boundary.md", "document.workflow-host.boundary", "No error table here.")
+        _document(self.root, "specs/boundary.md", "document.development.interfaces", "No error table here.")
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_errors(
             self.root, package_validation._registered_documents(self.root))
@@ -719,7 +719,7 @@ class SpecAlignmentErrorsRuleTests(unittest.TestCase):
         self._host_module("fixture.py",
             'class FixtureError(ValueError):\n    pass\n\n\n'
             'def raise_it():\n    raise FixtureError("something went wrong", "fixture_code")\n')
-        _document(self.root, "specs/boundary.md", "document.workflow-host.boundary",
+        _document(self.root, "specs/boundary.md", "document.development.interfaces",
             "| Error code | Meaning |\n| --- | --- |\n| `fixture_code` | Something. |")
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_errors(

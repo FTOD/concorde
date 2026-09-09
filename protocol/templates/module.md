@@ -27,6 +27,7 @@ title. The standard does not require a particular drawing tool.
 [Identify the complete registered document collection and declared authored diagram sources.]
 [Keep this reading guide consistent with the inventory; it is not a second membership authority.]
 [Every Feature or Interface query selects this complete Module context.]
+[Implementation context follows from the implementation references below; do not list files here.]
 
 ## Features
 

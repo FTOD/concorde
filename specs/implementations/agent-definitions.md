@@ -1,16 +1,15 @@
 ```concorde-document
 {
-  "id": "document.specs.implementations.agent-definitions",
+  "id": "document.implementation.agent-definitions",
   "targets": [
     "implementation.agent-definitions"
   ],
   "main_visible": false
 }
 ```
-
 # Agent Definitions implementation
 
-`implementation.agent-definitions` follows Spec Protocol 2.0.0 and binds the exact files below. It is reused by `module.workflows`, `module.spec-context`.
+`implementation.agent-definitions` follows Spec Protocol 2.1.0 and binds the exact files below. It is reused by `module.harness`.
 
 ## Responsibility
 

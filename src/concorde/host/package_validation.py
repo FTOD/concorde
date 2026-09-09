@@ -30,7 +30,7 @@ from .prompt_resolver import (
 )
 from .contracts import INTERNAL_SKILLS, CAPABILITY_NAMES, exported_types, schemas
 
-_SUBJECT = "module.package-assets"
+_SUBJECT = "module.distribution"
 
 _NAME_TOKEN = re.compile(r"concorde-[a-z][a-z0-9-]*")
 
@@ -513,7 +513,7 @@ _ENVELOPE_VERSIONS = {
     "concorde-capability-result": 3,
 }
 
-_WORKFLOW_HOST_BOUNDARY_ID = "document.workflow-host.boundary"
+_WORKFLOW_HOST_BOUNDARY_ID = "document.development.interfaces"
 
 
 def _registered_documents(root: Path) -> dict[str, str] | None:
@@ -748,7 +748,7 @@ def _validate_spec_types(root: Path, documents: dict[str, str]) -> list[Finding]
     if boundary is None:
         return [_finding("CONCORDE-SPEC-TYPES-001", ".concorde/specs.json",
             f"no registered document declares id {_WORKFLOW_HOST_BOUNDARY_ID}.",
-            "Register the workflow-host boundary document with that document id.")]
+            "Register the Development interfaces document with that document id.")]
     path, text = boundary
     findings: list[Finding] = []
     expected: dict[str, int] = {name: 1 for name in schemas()}
@@ -833,7 +833,7 @@ def _validate_spec_alignment(root: Path) -> list[Finding]:
     if documents is None:
         return [_finding("CONCORDE-SPEC-CAPABILITIES-001", ".concorde/specs.json",
             "no readable Spec registry was found.",
-            "Register the capability registry and workflow-host boundary documents.")]
+            "Register the capability registry and Development interfaces documents.")]
     findings: list[Finding] = []
     findings.extend(_validate_spec_capabilities_block(root, documents))
     findings.extend(_validate_spec_agents_block(root, documents))

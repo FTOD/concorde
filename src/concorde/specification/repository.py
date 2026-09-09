@@ -19,7 +19,7 @@ from .schema import ContractError, admit, validate
 
 
 PROFILE_VERSION = 9
-PROTOCOL_VERSION = "2.0.0"
+PROTOCOL_VERSION = "2.1.0"
 KINDS = frozenset({"module"})
 SPEC_KINDS = frozenset({"module", "implementation"})
 IDENTITY = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$")
