@@ -18,7 +18,8 @@ input; do not perform it directly in this ambient conversation or inspect additi
 Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-reflections-triage`. Its exact fields
 are type_id, schema_version:3, capability_id:"concorde-reflections-triage", mode:"execute" or "describe-policy",
 configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1), and input (concorde-reflections-triage-request@1).
-Task requests select target_id and task, with optional focus_id, constraints, and change_id.
+Task requests select target_id and task, with optional focus_id (a scenario ID), constraints, and
+change_id.
 Initialization uses its typed propose/apply request; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
@@ -39,7 +40,7 @@ reflection_ids array to preserve durable missing-contract reports in the existin
 keeps its host-bound target owner; a Module may capture gaps of its participating components.
 Repeated capture reuses the linked Reflection ID. Capture does not resolve gaps, investigate, approve
 or implement a fix. For existing records, target_id names the owning target and focus_id may name its
-Feature/API; a Feature/API ID is not itself a target and concerns is not ownership.
+scenario; a scenario ID is not itself a target and concerns is not ownership.
 
 ## Input TypedValue schema
 

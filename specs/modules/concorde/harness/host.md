@@ -37,7 +37,7 @@ which do. The recursive delegation tree below is composed from the same graphs. 
 the Studio surface; no capability runs its control flow outside them. Graph structure alone proves
 nothing about semantics: transitions, limits and evidence still follow G1–G4.
 
-## interface.harness.invoke-agent
+## Recursive Agent invocation
 
 The trusted Python host offers `CapabilityHost.invoke_agent(runtime, agent_id, input, grant)`. It
 requires an installed `AgentRuntime` graph over canonical Agent definitions, a named node, that definition's typed input and an

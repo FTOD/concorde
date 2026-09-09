@@ -34,7 +34,7 @@ def _under(path: str, roots) -> bool:
 
 def _changes(repository, target, mode, baseline) -> list[dict]:
     """Read history only for the current grant; never admit a project-wide diff."""
-    spec_paths = (*target.documents, *(d["source"] for d in target.diagrams))
+    spec_paths = target.documents
     roots = spec_paths if mode == "spec" else repository.implementation_paths(target)
     current = set(spec_paths if mode == "spec" else repository.implementation_files(target))
     previous = {}
@@ -77,8 +77,8 @@ def inputs(run, mode: str) -> tuple[dict, object]:
     target = repository.select(run.target.id, run.task.get("focus_id"))
     if mode not in REVIEW_STAGES:
         raise SpecError("review_mode must be spec or code", "invalid_input")
-    if mode == "code" and (not target.implementations):
-        raise SpecError("code review requires a target with registered implementation files", "unsupported_target")
+    if mode == "code" and not target.files:
+        raise SpecError("code review requires a Module whose entities list implementation files", "unsupported_target")
     phase, role = REVIEW_STAGES[mode]
     prompt = load_role_prompt(run.host.package_root, role)
     change = read_change(repository.root)
@@ -158,7 +158,7 @@ def _validate(run, snapshot, info, data):
         raise SpecError("findings review requires concrete findings or gaps", "invalid_completion")
     if data["status"] != "incomplete" and not data["representative_tasks"]:
         raise SpecError("completed review requires representative task coverage", "invalid_completion")
-    allowed = set(run.target.documents) | {d["source"] for d in run.target.diagrams}
+    allowed = set(run.target.documents)
     if info["review_mode"] == "code":
         allowed.update(run.repository.implementation_files(run.target))
         allowed.update(item["path"] for item in info["changes"])
@@ -226,7 +226,7 @@ def review(run, mode: str) -> dict:
             native = renderer(policy, native_enforcement=run.configuration["data"]["enforcement"] == "native",
                               outer_sandbox=run.host.outer_sandbox)
             invocation_id = str(uuid.uuid4())
-            receipt = {"schema_version": 14, "target_id": run.target.id, "phase": phase,
+            receipt = {"schema_version": 15, "target_id": run.target.id, "phase": phase,
                 "context_id": snapshot.id, "source_digest": snapshot.id, "input_digest": info["input_digest"],
                 "role_paths": {key: list(paths) for key, paths in roles.items()}}
             launch = build_launch_specification(capability="concorde-review", stage=phase, occurrence=0,
@@ -308,17 +308,16 @@ def review_scope(run, mode: str) -> dict:
     work = (change or {}).get("targets", {}).get(run.target.id, {})
     components = dict(work.get("coordination", {}))
     if mode == "code":
-        affected = run.repository.affected_modules(list(run.repository.implementation_paths(run.target)))
+        affected = run.repository.affected_modules(run.target.files)
         for target in affected:
             if target.id != run.target.id:
                 components.setdefault(target.id, {"task":
                     "Check this Module's own contract against the shared implementation change. " + run.task["task"]})
     if not components or (mode == "spec" and run.host.track_gaps):
         return review(run, mode)
-    outputs = [review(run, mode)["data"]] if mode == "spec" or run.target.implementations else []
+    outputs = [review(run, mode)["data"]] if mode == "spec" or run.target.files else []
     from .capability_host import invoke_capability
-    affected_ids = {target.id for target in run.repository.affected_modules(
-        list(run.repository.implementation_paths(run.target)))}
+    affected_ids = {target.id for target in run.repository.affected_modules(run.target.files)}
     allowed = {run.target.id, *run.target.uses, *affected_ids,
                *(child.id for child in run.repository.children(run.target))}
     for target_id, record in components.items():
@@ -327,7 +326,7 @@ def review_scope(run, mode: str) -> dict:
         target = run.repository.select(target_id)
         if target.id not in allowed:
             raise SpecError("review target is outside declared composition, dependencies and implementation impact", "permission_denied")
-        if mode == "code" and not target.implementations:
+        if mode == "code" and not target.files:
             continue
         task = {"target_id": target_id, "task": record["task"], "review_mode": mode,
                 "change_id": run.change_id, "constraints": run.task.get("constraints", [])}
@@ -405,7 +404,7 @@ def require_reviews(run, enabled: bool) -> None:
     state.setdefault("review_intents", {})[run.target.id] = {"task": run.task["task"],
         "focus_id": run.task.get("focus_id"), "constraints": run.task.get("constraints", [])}
     requirements = state.setdefault("review_requirements", {}).setdefault(run.target.id, {})
-    for mode in ("spec", "code") if run.target.implementations else ("spec",):
+    for mode in ("spec", "code") if run.target.files else ("spec",):
         # A resumed fast loop cannot silently downgrade previously required review.
         requirements[mode] = bool(enabled or requirements.get(mode))
     save_change(run.repository.root, state)
@@ -421,8 +420,8 @@ def verify_required(run) -> None:
             # Each consumer review keeps its own intent and Module context. It is not replaced
             # by another consumer's current review or a later unrelated review of the same Module.
             from .capability_host import Invocation
-            peers = [target for target in run.repository.affected_modules(
-                list(run.repository.implementation_paths(run.target))) if target.id != run.target.id]
+            peers = [target for target in run.repository.affected_modules(run.target.files)
+                     if target.id != run.target.id]
             records = state.get("shared_implementation_reviews", {}).get(run.target.id, {})
             if set(records) != {target.id for target in peers}:
                 raise SpecError("required shared implementation consumer reviews are missing", "review_required")

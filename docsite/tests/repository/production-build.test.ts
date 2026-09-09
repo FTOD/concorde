@@ -20,17 +20,10 @@ it('publishes the current exact registry and verifies the promoted manifest',asy
  const navbar=html.match(/<nav\b[\s\S]*?<\/nav>/)![0];
  expect(navbar).toContain('Spec Protocol');
  expect(navbar.indexOf('Spec Protocol')).toBeLessThan(navbar.indexOf('Module Specs'));
- expect(navbar).toContain('Module Specs');expect(navbar).toContain('Implementation Specs');
+ expect(navbar).toContain('Module Specs');
  expect(navbar.indexOf('Module Specs')).toBeLessThan(navbar.indexOf('>Graph<'));
- expect(navbar.indexOf('>Graph<')).toBeLessThan(navbar.indexOf('Implementation Specs'));
- expect(html).toContain('id="architecture"');expect(html).toContain('id="developer-entry-selection"');
+ expect(html).toContain('id="purpose"');expect(html).toContain('id="scenarios"');expect(html).toContain('id="entities"');expect(html).toContain('id="architecture"');
  expect(html).not.toContain('<iframe');
- const implementation=r.pages.find(p=>p.kind==='implementation')!;
- const sidebar=(source:string)=>source.match(/<aside\b[^>]*class="[^"]*theme-doc-sidebar-container[^"]*"[\s\S]*?<\/aside>/)![0];
- expect(sidebar(html)).not.toContain(implementation.route);
- const implementationHtml=await readFile(resolve(output,implementation.route.slice(1)+'.html'),'utf8');
- expect(sidebar(implementationHtml)).toContain(implementation.route);
- expect(sidebar(implementationHtml)).not.toContain(entry.route);
 });
 it('publishes the independent standard with chapter navigation and no Spec wrapper',async()=>{
  const overview=await readFile(resolve(output,'protocol.html'),'utf8');
@@ -40,7 +33,7 @@ it('publishes the independent standard with chapter navigation and no Spec wrapp
  expect(overview).toContain('Templates');
  expect(overview).not.toContain('provenanceShell');
  expect(overview).not.toContain('feature.concorde.evolve-protocol');
- for(const chapter of ['principles','module','implementation','spec-management','spec-management/spec-and-context','format','templates/module','templates/implementation','templates/feature']) {
+ for(const chapter of ['principles','module','spec-management','spec-management/spec-and-context','format','templates/module','templates/scenario']) {
   const html=await readFile(resolve(output,`protocol/${chapter}.html`),'utf8');
   expect(html).toContain('theme-doc-sidebar-container');
   expect(html).not.toContain('provenanceShell');

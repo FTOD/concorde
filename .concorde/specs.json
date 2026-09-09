@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "project_id": "project.concorde",
   "entry_target": "module.concorde",
   "targets": [
@@ -12,33 +12,8 @@
       ],
       "parent": null,
       "uses": [],
-      "implementations": [],
-      "features": [
-        {
-          "id": "feature.concorde.develop",
-          "title": "Develop a specified change to a ready candidate",
-          "document": "specs/modules/concorde/module.md"
-        },
-        {
-          "id": "feature.concorde.inspect",
-          "title": "Inspect Specs, answers and code graphs",
-          "document": "specs/modules/concorde/module.md"
-        },
-        {
-          "id": "feature.concorde.adopt",
-          "title": "Adopt the Framework in a project",
-          "document": "specs/modules/concorde/module.md"
-        }
-      ],
-      "interfaces": [
-        {
-          "id": "interface.concorde.use",
-          "title": "Installed Skills and maintenance commands",
-          "document": "specs/modules/concorde/module.md"
-        }
-      ],
-      "checks": [],
-      "diagrams": []
+      "files": [],
+      "checks": []
     },
     {
       "id": "module.spec",
@@ -53,55 +28,50 @@
       ],
       "parent": "module.concorde",
       "uses": [],
-      "implementations": [
-        "implementation.spec-model",
-        "implementation.protocol-assets",
-        "implementation.typed-values",
-        "implementation.file-transactions"
-      ],
-      "features": [
-        {
-          "id": "feature.spec.ontology",
-          "title": "Admit the project Spec ontology",
-          "document": "specs/modules/concorde/spec/module.md"
-        },
-        {
-          "id": "feature.spec.registry",
-          "title": "Select complete Module and Implementation records",
-          "document": "specs/modules/concorde/spec/module.md"
-        },
-        {
-          "id": "feature.spec.initialize",
-          "title": "Initialize an honest project Spec",
-          "document": "specs/modules/concorde/spec/module.md"
-        }
-      ],
-      "interfaces": [
-        {
-          "id": "interface.spec.select",
-          "title": "SpecRepository selection and lookups",
-          "document": "specs/modules/concorde/spec/module.md"
-        },
-        {
-          "id": "interface.spec.validate",
-          "title": "Deterministic Spec validation",
-          "document": "specs/modules/concorde/spec/module.md"
-        },
-        {
-          "id": "interface.spec.initialize",
-          "title": "concorde-init proposal and application",
-          "document": "specs/modules/concorde/spec/module.md"
-        },
-        {
-          "id": "interface.spec.files",
-          "title": "Stable-ID Spec file-set queries",
-          "document": "specs/modules/concorde/spec/module.md"
-        }
+      "files": [
+        "capabilities/init.py",
+        "prompts/protocol/framework-profile.md",
+        "prompts/protocol/kinds/module.md",
+        "prompts/protocol/principles.md",
+        "protocol/README.md",
+        "protocol/format.md",
+        "protocol/manifest.json",
+        "protocol/module.md",
+        "protocol/principles.md",
+        "protocol/spec-management.md",
+        "protocol/spec-management/spec-and-context.md",
+        "protocol/templates/module.md",
+        "protocol/templates/scenario.md",
+        "skills/concorde-init/SKILL.md",
+        "src/concorde/__init__.py",
+        "src/concorde/__main__.py",
+        "src/concorde/diagnostics.py",
+        "src/concorde/frontmatter.py",
+        "src/concorde/host/contract_shapes.py",
+        "src/concorde/host/contracts.py",
+        "src/concorde/host/typed_data.py",
+        "src/concorde/host/wire_shapes.py",
+        "src/concorde/model.py",
+        "src/concorde/specification/__init__.py",
+        "src/concorde/specification/changes.py",
+        "src/concorde/specification/initialize.py",
+        "src/concorde/specification/repository.py",
+        "src/concorde/specification/schema.py",
+        "src/concorde/specification/validation.py",
+        "tests/__init__.py",
+        "tests/concorde/__init__.py",
+        "tests/concorde/host/unit/test_typed_data.py",
+        "tests/concorde/specification/__init__.py",
+        "tests/concorde/specification/support.py",
+        "tests/concorde/specification/test_distribution.py",
+        "tests/concorde/specification/test_module_architecture.py",
+        "tests/concorde/specification/test_module_model.py",
+        "tests/concorde/support/__init__.py",
+        "tests/concorde/support/paths.py"
       ],
       "checks": [
         "check.spec.model"
-      ],
-      "diagrams": []
+      ]
     },
     {
       "id": "module.harness",
@@ -123,79 +93,73 @@
         "module.spec",
         "module.distribution"
       ],
-      "implementations": [
-        "implementation.context",
-        "implementation.agent-model",
-        "implementation.agent-definitions",
-        "implementation.permissions",
-        "implementation.agent-execution",
-        "implementation.typed-values",
-        "implementation.studio",
-        "implementation.worktree-lifecycle"
-      ],
-      "features": [
-        {
-          "id": "feature.harness.context",
-          "title": "Freeze the four context kinds of an invocation",
-          "document": "specs/modules/concorde/harness/module.md"
-        },
-        {
-          "id": "feature.harness.agents",
-          "title": "Define Agents, Harnesses and their bindings",
-          "document": "specs/modules/concorde/harness/module.md"
-        },
-        {
-          "id": "feature.harness.permissions",
-          "title": "Compile and enforce effective permissions",
-          "document": "specs/modules/concorde/harness/module.md"
-        },
-        {
-          "id": "feature.harness.execute",
-          "title": "Execute bound invocations and admit typed completions",
-          "document": "specs/modules/concorde/harness/module.md"
-        },
-        {
-          "id": "feature.harness.typed-values",
-          "title": "Admit typed values, schemas and safe paths",
-          "document": "specs/modules/concorde/harness/module.md"
-        }
-      ],
-      "interfaces": [
-        {
-          "id": "interface.harness.context",
-          "title": "resolve_context, resolve_discovery_context and rechecks",
-          "document": "specs/modules/concorde/harness/module.md"
-        },
-        {
-          "id": "interface.harness.bind",
-          "title": "agent_definition and resolve_agent",
-          "document": "specs/modules/concorde/harness/module.md"
-        },
-        {
-          "id": "interface.harness.compile",
-          "title": "compile_policy and native launch rendering",
-          "document": "specs/modules/concorde/harness/module.md"
-        },
-        {
-          "id": "interface.harness.execute",
-          "title": "AgentProcessExecutor",
-          "document": "specs/modules/concorde/harness/module.md"
-        },
-        {
-          "id": "interface.harness.invoke-agent",
-          "title": "AgentRuntime and CapabilityHost.invoke_agent",
-          "document": "specs/modules/concorde/harness/module.md"
-        },
-        {
-          "id": "interface.harness.validate",
-          "title": "typed, validate_typed, json_schema and path helpers",
-          "document": "specs/modules/concorde/harness/module.md"
-        }
+      "files": [
+        "agents/code_reviewer/__init__.py",
+        "agents/code_reviewer/spec.md",
+        "agents/context_assessor/__init__.py",
+        "agents/context_assessor/spec.md",
+        "agents/coordinator/__init__.py",
+        "agents/coordinator/spec.md",
+        "agents/implementation_worker/__init__.py",
+        "agents/implementation_worker/spec.md",
+        "agents/planner/__init__.py",
+        "agents/planner/spec.md",
+        "agents/spec_author/__init__.py",
+        "agents/spec_author/spec.md",
+        "agents/spec_reviewer/__init__.py",
+        "agents/spec_reviewer/spec.md",
+        "agents/task_author/__init__.py",
+        "agents/task_author/spec.md",
+        "scripts/development/STUDIO.md",
+        "scripts/development/studio.py",
+        "src/concorde/frontmatter.py",
+        "src/concorde/host/agent_executor.py",
+        "src/concorde/host/agent_model.py",
+        "src/concorde/host/agent_runtime.py",
+        "src/concorde/host/change_worktree.py",
+        "src/concorde/host/contract_shapes.py",
+        "src/concorde/host/contracts.py",
+        "src/concorde/host/effects.py",
+        "src/concorde/host/harness.py",
+        "src/concorde/host/native_agent.py",
+        "src/concorde/host/permissions.py",
+        "src/concorde/host/roles.py",
+        "src/concorde/host/session_handoff.py",
+        "src/concorde/host/studio.py",
+        "src/concorde/host/studio_client.py",
+        "src/concorde/host/typed_data.py",
+        "src/concorde/host/wire_shapes.py",
+        "src/concorde/host/worktree.py",
+        "src/concorde/host/worktree_delivery.py",
+        "src/concorde/specification/context.py",
+        "src/concorde/specification/schema.py",
+        "tests/concorde/fixtures/build/golden/agents/code-reviewer.md",
+        "tests/concorde/fixtures/build/golden/agents/context-assessor.md",
+        "tests/concorde/fixtures/build/golden/agents/coordinator.md",
+        "tests/concorde/fixtures/build/golden/agents/implementation-worker.md",
+        "tests/concorde/fixtures/build/golden/agents/planner.md",
+        "tests/concorde/fixtures/build/golden/agents/spec-author.md",
+        "tests/concorde/fixtures/build/golden/agents/spec-reviewer.md",
+        "tests/concorde/fixtures/build/golden/agents/task-author.md",
+        "tests/concorde/host/integration/test_studio_server.py",
+        "tests/concorde/host/unit/test_agent_executor.py",
+        "tests/concorde/host/unit/test_agent_model.py",
+        "tests/concorde/host/unit/test_agent_runtime.py",
+        "tests/concorde/host/unit/test_change_worktree.py",
+        "tests/concorde/host/unit/test_permissions.py",
+        "tests/concorde/host/unit/test_session_handoff.py",
+        "tests/concorde/host/unit/test_studio.py",
+        "tests/concorde/host/unit/test_studio_client.py",
+        "tests/concorde/host/unit/test_typed_data.py",
+        "tests/concorde/host/unit/test_worktree_boundary.py",
+        "tests/concorde/specification/test_agent_binding.py",
+        "tests/concorde/specification/test_boundaries.py",
+        "tests/concorde/specification/test_scoped_protocol.py",
+        "tests/concorde/specification/test_worktree_lifecycle.py"
       ],
       "checks": [
         "check.harness.runtime"
-      ],
-      "diagrams": []
+      ]
     },
     {
       "id": "module.development",
@@ -217,323 +181,6 @@
         "module.spec",
         "module.reflections",
         "module.distribution"
-      ],
-      "implementations": [
-        "implementation.development-host",
-        "implementation.development-capabilities",
-        "implementation.worktree-lifecycle",
-        "implementation.file-transactions"
-      ],
-      "features": [
-        {
-          "id": "feature.development.execute",
-          "title": "Admit a Skill request and run its declared graph",
-          "document": "specs/modules/concorde/development/module.md"
-        },
-        {
-          "id": "feature.development.query",
-          "title": "Answer questions from complete Spec contexts",
-          "document": "specs/modules/concorde/development/module.md"
-        },
-        {
-          "id": "feature.development.develop",
-          "title": "Develop one change to a ready candidate",
-          "document": "specs/modules/concorde/development/module.md"
-        },
-        {
-          "id": "feature.development.topology",
-          "title": "Design and apply topology changes",
-          "document": "specs/modules/concorde/development/module.md"
-        },
-        {
-          "id": "feature.development.validate",
-          "title": "Record deterministic candidate evidence",
-          "document": "specs/modules/concorde/development/module.md"
-        },
-        {
-          "id": "feature.development.deliver",
-          "title": "Deliver an authorized ready change",
-          "document": "specs/modules/concorde/development/module.md"
-        }
-      ],
-      "interfaces": [
-        {
-          "id": "interface.development.use",
-          "title": "Installed concorde-* Skill boundary",
-          "document": "specs/modules/concorde/development/module.md"
-        }
-      ],
-      "checks": [
-        "check.development.runtime"
-      ],
-      "diagrams": []
-    },
-    {
-      "id": "module.reflections",
-      "kind": "module",
-      "title": "Reflections",
-      "documents": [
-        "specs/modules/concorde/reflections/module.md",
-        "specs/modules/concorde/reflections/interfaces.md",
-        "specs/modules/concorde/reflections/lifecycle.md"
-      ],
-      "parent": "module.concorde",
-      "uses": [
-        "module.development",
-        "module.spec"
-      ],
-      "implementations": [
-        "implementation.reflections",
-        "implementation.file-transactions",
-        "implementation.legacy-understanding"
-      ],
-      "features": [
-        {
-          "id": "feature.reflections.triage",
-          "title": "Triage attributed feedback and gaps",
-          "document": "specs/modules/concorde/reflections/module.md"
-        }
-      ],
-      "interfaces": [
-        {
-          "id": "interface.reflections.use",
-          "title": "concorde-reflections-triage boundary",
-          "document": "specs/modules/concorde/reflections/module.md"
-        }
-      ],
-      "checks": [],
-      "diagrams": []
-    },
-    {
-      "id": "module.distribution",
-      "kind": "module",
-      "title": "Distribution",
-      "documents": [
-        "specs/modules/concorde/distribution/module.md",
-        "specs/modules/concorde/distribution/installation.md",
-        "specs/modules/concorde/distribution/build.md",
-        "specs/modules/concorde/distribution/runtime.md"
-      ],
-      "parent": "module.concorde",
-      "uses": [
-        "module.spec"
-      ],
-      "implementations": [
-        "implementation.build",
-        "implementation.installation",
-        "implementation.managed-runtime",
-        "implementation.legacy-understanding"
-      ],
-      "features": [
-        {
-          "id": "feature.distribution.install",
-          "title": "Install and configure owned integrations",
-          "document": "specs/modules/concorde/distribution/module.md"
-        },
-        {
-          "id": "feature.distribution.build",
-          "title": "Render and verify authored projections",
-          "document": "specs/modules/concorde/distribution/module.md"
-        },
-        {
-          "id": "feature.distribution.runtime",
-          "title": "Provision the pinned managed runtime",
-          "document": "specs/modules/concorde/distribution/module.md"
-        },
-        {
-          "id": "feature.distribution.configure",
-          "title": "Apply integration and enforcement settings",
-          "document": "specs/modules/concorde/distribution/module.md"
-        }
-      ],
-      "interfaces": [
-        {
-          "id": "interface.distribution.install",
-          "title": "Installer and maintenance commands",
-          "document": "specs/modules/concorde/distribution/module.md"
-        },
-        {
-          "id": "interface.distribution.build",
-          "title": "build, write_build, check_build and verify_fresh",
-          "document": "specs/modules/concorde/distribution/module.md"
-        },
-        {
-          "id": "interface.distribution.runtime",
-          "title": "load_runtime_spec, plan_runtime and provision_runtime",
-          "document": "specs/modules/concorde/distribution/module.md"
-        }
-      ],
-      "checks": [],
-      "diagrams": []
-    },
-    {
-      "id": "module.views",
-      "kind": "module",
-      "title": "Views",
-      "documents": [
-        "specs/modules/concorde/views/module.md",
-        "specs/modules/concorde/views/publication.md",
-        "specs/modules/concorde/views/pipeline.md",
-        "specs/modules/concorde/views/viewer.md"
-      ],
-      "parent": "module.concorde",
-      "uses": [
-        "module.spec",
-        "module.distribution"
-      ],
-      "implementations": [
-        "implementation.publication-docsite",
-        "implementation.publication-scaffold",
-        "implementation.viewer-launcher",
-        "implementation.file-transactions",
-        "implementation.legacy-understanding"
-      ],
-      "features": [
-        {
-          "id": "feature.views.publish",
-          "title": "Publish registered Specs as a navigable site",
-          "document": "specs/modules/concorde/views/module.md"
-        },
-        {
-          "id": "feature.views.viewer",
-          "title": "Open an existing raw code graph",
-          "document": "specs/modules/concorde/views/module.md"
-        }
-      ],
-      "interfaces": [
-        {
-          "id": "interface.views.build",
-          "title": "concorde docsite scaffold and site build",
-          "document": "specs/modules/concorde/views/module.md"
-        },
-        {
-          "id": "interface.views.viewer",
-          "title": "scripts/run-viewer.py",
-          "document": "specs/modules/concorde/views/module.md"
-        }
-      ],
-      "checks": [
-        "check.views.publication-types",
-        "check.views.viewer"
-      ],
-      "diagrams": []
-    }
-  ],
-  "implementations": [
-    {
-      "id": "implementation.agent-definitions",
-      "title": "Agent definitions",
-      "documents": [
-        "specs/implementations/agent-definitions.md"
-      ],
-      "files": [
-        "agents/code_reviewer/__init__.py",
-        "agents/code_reviewer/spec.md",
-        "agents/context_assessor/__init__.py",
-        "agents/context_assessor/spec.md",
-        "agents/coordinator/__init__.py",
-        "agents/coordinator/spec.md",
-        "agents/implementation_worker/__init__.py",
-        "agents/implementation_worker/spec.md",
-        "agents/planner/__init__.py",
-        "agents/planner/spec.md",
-        "agents/spec_author/__init__.py",
-        "agents/spec_author/spec.md",
-        "agents/spec_reviewer/__init__.py",
-        "agents/spec_reviewer/spec.md",
-        "agents/task_author/__init__.py",
-        "agents/task_author/spec.md",
-        "tests/concorde/fixtures/build/golden/agents/code-reviewer.md",
-        "tests/concorde/fixtures/build/golden/agents/context-assessor.md",
-        "tests/concorde/fixtures/build/golden/agents/coordinator.md",
-        "tests/concorde/fixtures/build/golden/agents/implementation-worker.md",
-        "tests/concorde/fixtures/build/golden/agents/planner.md",
-        "tests/concorde/fixtures/build/golden/agents/spec-author.md",
-        "tests/concorde/fixtures/build/golden/agents/spec-reviewer.md",
-        "tests/concorde/fixtures/build/golden/agents/task-author.md"
-      ]
-    },
-    {
-      "id": "implementation.agent-execution",
-      "title": "Agent execution",
-      "documents": [
-        "specs/implementations/agent-execution.md"
-      ],
-      "files": [
-        "src/concorde/host/agent_executor.py",
-        "src/concorde/host/agent_runtime.py",
-        "src/concorde/host/native_agent.py",
-        "tests/concorde/host/unit/test_agent_executor.py",
-        "tests/concorde/host/unit/test_agent_runtime.py"
-      ]
-    },
-    {
-      "id": "implementation.agent-model",
-      "title": "Agent and Harness model",
-      "documents": [
-        "specs/implementations/agent-model.md"
-      ],
-      "files": [
-        "src/concorde/host/agent_model.py",
-        "src/concorde/host/effects.py",
-        "src/concorde/host/harness.py",
-        "src/concorde/host/roles.py",
-        "tests/concorde/host/unit/test_agent_model.py",
-        "tests/concorde/specification/test_agent_binding.py"
-      ]
-    },
-    {
-      "id": "implementation.build",
-      "title": "Build",
-      "documents": [
-        "specs/implementations/build.md"
-      ],
-      "files": [
-        "agents/__init__.py",
-        "capabilities/__init__.py",
-        "concorde.json",
-        "pyproject.toml",
-        "src/concorde/host/build.py",
-        "src/concorde/host/package_validation.py",
-        "src/concorde/host/prompt_resolver.py",
-        "tests/concorde/fixtures/build/golden/claude/concorde-configure/SKILL.md",
-        "tests/concorde/fixtures/build/golden/claude/concorde-deliver/SKILL.md",
-        "tests/concorde/fixtures/build/golden/claude/concorde-dev-loop/SKILL.md",
-        "tests/concorde/fixtures/build/golden/claude/concorde-init/SKILL.md",
-        "tests/concorde/fixtures/build/golden/claude/concorde-main/SKILL.md",
-        "tests/concorde/fixtures/build/golden/claude/concorde-reflections-triage/SKILL.md",
-        "tests/concorde/fixtures/build/golden/claude/concorde-validate/SKILL.md",
-        "tests/concorde/fixtures/build/golden/codex/concorde-configure/SKILL.md",
-        "tests/concorde/fixtures/build/golden/codex/concorde-deliver/SKILL.md",
-        "tests/concorde/fixtures/build/golden/codex/concorde-dev-loop/SKILL.md",
-        "tests/concorde/fixtures/build/golden/codex/concorde-init/SKILL.md",
-        "tests/concorde/fixtures/build/golden/codex/concorde-main/SKILL.md",
-        "tests/concorde/fixtures/build/golden/codex/concorde-reflections-triage/SKILL.md",
-        "tests/concorde/fixtures/build/golden/codex/concorde-validate/SKILL.md",
-        "tests/concorde/host/unit/test_build.py",
-        "tests/concorde/host/unit/test_package_validation.py",
-        "tests/concorde/host/unit/test_prompt_resolver.py",
-        "tests/concorde/support/build_fixture.py",
-        "uv.lock"
-      ]
-    },
-    {
-      "id": "implementation.context",
-      "title": "Context resolution",
-      "documents": [
-        "specs/implementations/context.md"
-      ],
-      "files": [
-        "src/concorde/specification/context.py",
-        "tests/concorde/specification/test_boundaries.py",
-        "tests/concorde/specification/test_scoped_protocol.py"
-      ]
-    },
-    {
-      "id": "implementation.development-capabilities",
-      "title": "Development capabilities",
-      "documents": [
-        "specs/implementations/development-capabilities.md"
       ],
       "files": [
         "capabilities/context_solve.py",
@@ -564,21 +211,17 @@
         "skills/concorde-deliver/SKILL.md",
         "skills/concorde-dev-loop/SKILL.md",
         "skills/concorde-main/SKILL.md",
-        "skills/concorde-validate/SKILL.md"
-      ]
-    },
-    {
-      "id": "implementation.development-host",
-      "title": "Development host",
-      "documents": [
-        "specs/implementations/development-host.md"
-      ],
-      "files": [
+        "skills/concorde-validate/SKILL.md",
         "src/concorde/host/__init__.py",
         "src/concorde/host/capability_host.py",
         "src/concorde/host/capability_service.py",
+        "src/concorde/host/change_worktree.py",
         "src/concorde/host/configuration.py",
         "src/concorde/host/review.py",
+        "src/concorde/host/session_handoff.py",
+        "src/concorde/host/worktree.py",
+        "src/concorde/host/worktree_delivery.py",
+        "src/concorde/specification/changes.py",
         "tests/concorde/host/__init__.py",
         "tests/concorde/host/acceptance/__init__.py",
         "tests/concorde/host/contract/__init__.py",
@@ -586,29 +229,79 @@
         "tests/concorde/host/integration/__init__.py",
         "tests/concorde/host/unit/__init__.py",
         "tests/concorde/host/unit/test_capability_modules.py",
+        "tests/concorde/host/unit/test_change_worktree.py",
         "tests/concorde/host/unit/test_run_capability.py",
+        "tests/concorde/host/unit/test_session_handoff.py",
+        "tests/concorde/host/unit/test_worktree_boundary.py",
         "tests/concorde/specification/test_review.py",
+        "tests/concorde/specification/test_worktree_lifecycle.py",
         "tests/concorde/support/operation_json.py"
+      ],
+      "checks": [
+        "check.development.runtime"
       ]
     },
     {
-      "id": "implementation.file-transactions",
-      "title": "File transactions",
+      "id": "module.reflections",
+      "kind": "module",
+      "title": "Reflections",
       "documents": [
-        "specs/implementations/file-transactions.md"
+        "specs/modules/concorde/reflections/module.md",
+        "specs/modules/concorde/reflections/interfaces.md",
+        "specs/modules/concorde/reflections/lifecycle.md"
+      ],
+      "parent": "module.concorde",
+      "uses": [
+        "module.development",
+        "module.spec"
       ],
       "files": [
-        "src/concorde/specification/changes.py"
-      ]
+        "capabilities/reflections_triage.py",
+        "scripts/reflections_queue.py",
+        "skills/concorde-reflections-triage/SKILL.md",
+        "src/concorde/reflections/__init__.py",
+        "src/concorde/reflections/config.default.json",
+        "src/concorde/reflections/configuration.py",
+        "src/concorde/reflections/investigation.py",
+        "src/concorde/reflections/reflections.py",
+        "src/concorde/reflections/scoped_triage.py",
+        "src/concorde/reflections/validation.py",
+        "src/concorde/specification/changes.py",
+        "tests/concorde/fixtures/interfaces/reflections/index.json",
+        "tests/concorde/fixtures/interfaces/reflections/needs-comments/R-001.md",
+        "tests/concorde/fixtures/interfaces/reflections/pending/R-002.md",
+        "tests/concorde/reflections/__init__.py",
+        "tests/concorde/reflections/contract/__init__.py",
+        "tests/concorde/reflections/integration/__init__.py",
+        "tests/concorde/reflections/unit/__init__.py",
+        "tests/concorde/reflections/unit/test_reflection_parser.py",
+        "tests/concorde/reflections/unit/test_reflection_rules.py",
+        "tests/concorde/reflections/unit/test_reflections_queue.py",
+        "tests/concorde/specification/test_scope_and_reflections.py",
+        "tests/concorde/support/reflection_triage.py"
+      ],
+      "checks": []
     },
     {
-      "id": "implementation.installation",
-      "title": "Installation",
+      "id": "module.distribution",
+      "kind": "module",
+      "title": "Distribution",
       "documents": [
-        "specs/implementations/installation.md"
+        "specs/modules/concorde/distribution/module.md",
+        "specs/modules/concorde/distribution/installation.md",
+        "specs/modules/concorde/distribution/build.md",
+        "specs/modules/concorde/distribution/runtime.md"
+      ],
+      "parent": "module.concorde",
+      "uses": [
+        "module.spec"
       ],
       "files": [
+        "agents/__init__.py",
+        "capabilities/__init__.py",
         "capabilities/configure.py",
+        "concorde.json",
+        "pyproject.toml",
         "scripts/concorde.ps1",
         "scripts/concorde.py",
         "scripts/concorde.sh",
@@ -619,13 +312,16 @@
         "scripts/worktree-guard.py",
         "skills/concorde-configure/SKILL.md",
         "src/concorde/distribution/__init__.py",
+        "src/concorde/distribution/managed_runtime.py",
         "src/concorde/distribution/protocol_guidance.py",
+        "src/concorde/host/build.py",
         "src/concorde/host/cli.py",
-        "templates/feature-template.md",
-        "templates/implementation-template.md",
+        "src/concorde/host/package_validation.py",
+        "src/concorde/host/prompt_resolver.py",
         "templates/module-template.md",
         "templates/plan-template.md",
         "templates/reflections-template.md",
+        "templates/scenario-template.md",
         "templates/tasks-template.md",
         "tests/concorde/distribution/__init__.py",
         "tests/concorde/distribution/acceptance/__init__.py",
@@ -637,183 +333,47 @@
         "tests/concorde/distribution/unit/__init__.py",
         "tests/concorde/distribution/unit/test_install_concorde.py",
         "tests/concorde/distribution/unit/test_protocol_guidance.py",
-        "tests/concorde/distribution/unit/test_worktree_guard.py"
-      ]
-    },
-    {
-      "id": "implementation.legacy-understanding",
-      "title": "Legacy understanding",
-      "documents": [
-        "specs/implementations/legacy-understanding.md"
-      ],
-      "files": [
-        "src/concorde/lifecycle/__init__.py",
-        "src/concorde/lifecycle/delivery.py",
-        "src/concorde/projection.py",
-        "src/concorde/understanding/__init__.py",
-        "src/concorde/understanding/alignment.py",
-        "src/concorde/understanding/context.py",
-        "src/concorde/understanding/feature_workspace.py",
-        "src/concorde/understanding/initialize.py",
-        "src/concorde/understanding/planning_context.py",
-        "src/concorde/understanding/readiness.py",
-        "src/concorde/understanding/repository.py",
-        "src/concorde/understanding/validate.py",
-        "src/concorde/understanding/validation/__init__.py",
-        "src/concorde/understanding/validation/diagrams.py",
-        "src/concorde/understanding/validation/entities.py",
-        "src/concorde/understanding/validation/features.py",
-        "src/concorde/understanding/validation/freshness.py",
-        "src/concorde/understanding/validation/hierarchy.py",
-        "src/concorde/understanding/validation/layout.py",
-        "tests/concorde/PROFILE8_TEST_MIGRATION.md",
-        "tests/concorde/fixtures/ask/questions.json",
-        "tests/concorde/fixtures/context-project/.concorde/config.json",
-        "tests/concorde/fixtures/context-project/specs/example/architecture.md",
-        "tests/concorde/fixtures/context-project/specs/example/diagrams/delivery-sequence.json",
-        "tests/concorde/fixtures/context-project/specs/example/diagrams/level-view.json",
-        "tests/concorde/fixtures/context-project/specs/example/features/001-deliver.md",
-        "tests/concorde/fixtures/context-project/specs/example/modules/api/architecture.md",
-        "tests/concorde/fixtures/context-project/specs/example/modules/api/diagrams/level-view.json",
-        "tests/concorde/fixtures/context-project/specs/example/modules/api/features/001-invoke.md",
-        "tests/concorde/fixtures/context-project/specs/example/modules/api/modules/store/architecture.md",
-        "tests/concorde/fixtures/context-project/specs/example/modules/api/modules/store/diagrams/system-overview.json",
-        "tests/concorde/fixtures/interfaces/alignment/alignment-explorer.example.json",
-        "tests/concorde/fixtures/interfaces/alignment/alignment-explorer.schema.json",
-        "tests/concorde/fixtures/interfaces/alignment/alignment-input.example.json",
-        "tests/concorde/fixtures/interfaces/alignment/alignment-input.schema.json",
-        "tests/concorde/fixtures/interfaces/alignment/knowledge-graph.example.json",
-        "tests/concorde/fixtures/interfaces/alignment/knowledge-graph.schema.json",
-        "tests/concorde/fixtures/interfaces/workspace/architecture-service.schema.json",
-        "tests/concorde/fixtures/interfaces/workspace/context-response.json",
-        "tests/concorde/fixtures/interfaces/workspace/deliver-eligible-response.json",
-        "tests/concorde/fixtures/interfaces/workspace/deliver-proposal.json",
-        "tests/concorde/fixtures/interfaces/workspace/feature-workspace.schema.json",
-        "tests/concorde/fixtures/interfaces/workspace/validation-response.json",
-        "tests/concorde/fixtures/invalid-projects/broken-reference/seed.json",
-        "tests/concorde/fixtures/invalid-projects/contract/seed.json",
-        "tests/concorde/fixtures/invalid-projects/cycle/seed.json",
-        "tests/concorde/fixtures/invalid-projects/duplicate-id/seed.json",
-        "tests/concorde/fixtures/invalid-projects/parse/seed.json",
-        "tests/concorde/fixtures/invalid-projects/reflections-malformed/.concorde/reflections/index.json",
-        "tests/concorde/fixtures/invalid-projects/reflections-malformed/.concorde/reflections/pending/R-001.md",
-        "tests/concorde/fixtures/invalid-projects/reflections-malformed/.concorde/reflections/pending/R-002.md",
-        "tests/concorde/fixtures/invalid-projects/reflections-malformed/.concorde/reflections/planned/R-003.md",
-        "tests/concorde/fixtures/invalid-projects/reflections-malformed/README.md",
-        "tests/concorde/fixtures/invalid-projects/reflections-malformed/seed.json",
-        "tests/concorde/fixtures/invalid-projects/scenario/seed.json",
-        "tests/concorde/fixtures/invalid-projects/view-depth/seed.json",
-        "tests/concorde/fixtures/permission-planning-project/.concorde/attempts/feature.example.consumer.change/tasks.md",
-        "tests/concorde/fixtures/permission-planning-project/.concorde/attempts/feature.example.other/secret.md",
-        "tests/concorde/fixtures/permission-planning-project/.concorde/config.json",
-        "tests/concorde/fixtures/permission-planning-project/.concorde/constitution.md",
-        "tests/concorde/fixtures/permission-planning-project/.concorde/feature.json",
-        "tests/concorde/fixtures/permission-planning-project/.concorde/reflections/log.md",
-        "tests/concorde/fixtures/permission-planning-project/specs/example/architecture.md",
-        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/consumer/architecture.md",
-        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/consumer/features/001-change.md",
-        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/provider/architecture.md",
-        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/provider/features/001-api.md",
-        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/provider/features/002-unrelated.md",
-        "tests/concorde/fixtures/permission-planning-project/src/consumer/service.py",
-        "tests/concorde/fixtures/permission-planning-project/src/provider/private.py",
-        "tests/concorde/fixtures/permission-planning-project/tests/consumer/test_service.py",
-        "tests/concorde/fixtures/permission-planning-project/tests/provider/test_private.py",
-        "tests/concorde/fixtures/two-level-project/.concorde/attempts/feature.example.checkout.authorize/plan.md",
-        "tests/concorde/fixtures/two-level-project/.concorde/config.json",
-        "tests/concorde/fixtures/two-level-project/.specify/feature.json",
-        "tests/concorde/fixtures/two-level-project/specs/example/architecture.md",
-        "tests/concorde/fixtures/two-level-project/specs/example/diagrams/system-overview.json",
-        "tests/concorde/fixtures/two-level-project/specs/example/features/001-checkout.md",
-        "tests/concorde/fixtures/two-level-project/specs/example/features/002-atomic.md",
-        "tests/concorde/fixtures/two-level-project/specs/example/features/003-authorize-payment.md",
-        "tests/concorde/fixtures/two-level-project/specs/example/features/004-confirm-order.md",
-        "tests/concorde/fixtures/valid-project/.concorde/config.json",
-        "tests/concorde/fixtures/valid-project/specs/example/architecture.md",
-        "tests/concorde/fixtures/valid-project/specs/example/diagrams/level-view.json",
-        "tests/concorde/fixtures/valid-project/specs/example/features/001-deliver.md",
-        "tests/concorde/fixtures/valid-project/specs/example/modules/api/architecture.md",
-        "tests/concorde/fixtures/valid-project/specs/example/modules/api/diagrams/system-overview.json",
-        "tests/concorde/fixtures/valid-project/specs/example/modules/api/features/001-invoke.md",
-        "tests/concorde/lifecycle/__init__.py",
-        "tests/concorde/lifecycle/contract/__init__.py",
-        "tests/concorde/lifecycle/integration/__init__.py",
-        "tests/concorde/lifecycle/integration/test_implementation_delivery.py",
-        "tests/concorde/support/feature_workspace.py",
-        "tests/concorde/understanding/__init__.py",
-        "tests/concorde/understanding/acceptance/__init__.py",
-        "tests/concorde/understanding/contract/__init__.py",
-        "tests/concorde/understanding/contract/test_alignment_explorer_contract.py",
-        "tests/concorde/understanding/contract/test_feature_workspace_contract.py",
-        "tests/concorde/understanding/integration/__init__.py",
-        "tests/concorde/understanding/integration/test_alignment_explorer.py",
-        "tests/concorde/understanding/integration/test_architecture_readiness.py",
-        "tests/concorde/understanding/integration/test_context.py",
-        "tests/concorde/understanding/integration/test_feature_workspace.py",
-        "tests/concorde/understanding/integration/test_initialize.py",
-        "tests/concorde/understanding/integration/test_validation.py",
-        "tests/concorde/understanding/unit/__init__.py",
-        "tests/concorde/understanding/unit/test_abstract_rules.py",
-        "tests/concorde/understanding/unit/test_alignment.py",
-        "tests/concorde/understanding/unit/test_contract_validation.py",
-        "tests/concorde/understanding/unit/test_entity_rules.py",
-        "tests/concorde/understanding/unit/test_feature_relations.py",
-        "tests/concorde/understanding/unit/test_feature_rules.py",
-        "tests/concorde/understanding/unit/test_feature_workspace.py",
-        "tests/concorde/understanding/unit/test_frontmatter.py",
-        "tests/concorde/understanding/unit/test_interface_rules.py",
-        "tests/concorde/understanding/unit/test_module_diagram_rules.py",
-        "tests/concorde/understanding/unit/test_planning_context.py",
-        "tests/concorde/understanding/unit/test_repository.py",
-        "tests/concorde/understanding/unit/test_rules.py",
-        "tests/concorde/understanding/unit/test_summary_rules.py",
-        "tests/concorde/understanding/unit/test_terminology_rules.py"
-      ]
-    },
-    {
-      "id": "implementation.managed-runtime",
-      "title": "Managed runtime",
-      "documents": [
-        "specs/implementations/managed-runtime.md"
-      ],
-      "files": [
-        "src/concorde/distribution/managed_runtime.py",
+        "tests/concorde/distribution/unit/test_worktree_guard.py",
+        "tests/concorde/fixtures/build/golden/claude/concorde-configure/SKILL.md",
+        "tests/concorde/fixtures/build/golden/claude/concorde-deliver/SKILL.md",
+        "tests/concorde/fixtures/build/golden/claude/concorde-dev-loop/SKILL.md",
+        "tests/concorde/fixtures/build/golden/claude/concorde-init/SKILL.md",
+        "tests/concorde/fixtures/build/golden/claude/concorde-main/SKILL.md",
+        "tests/concorde/fixtures/build/golden/claude/concorde-reflections-triage/SKILL.md",
+        "tests/concorde/fixtures/build/golden/claude/concorde-validate/SKILL.md",
+        "tests/concorde/fixtures/build/golden/codex/concorde-configure/SKILL.md",
+        "tests/concorde/fixtures/build/golden/codex/concorde-deliver/SKILL.md",
+        "tests/concorde/fixtures/build/golden/codex/concorde-dev-loop/SKILL.md",
+        "tests/concorde/fixtures/build/golden/codex/concorde-init/SKILL.md",
+        "tests/concorde/fixtures/build/golden/codex/concorde-main/SKILL.md",
+        "tests/concorde/fixtures/build/golden/codex/concorde-reflections-triage/SKILL.md",
+        "tests/concorde/fixtures/build/golden/codex/concorde-validate/SKILL.md",
+        "tests/concorde/host/unit/test_build.py",
+        "tests/concorde/host/unit/test_package_validation.py",
+        "tests/concorde/host/unit/test_prompt_resolver.py",
+        "tests/concorde/support/build_fixture.py",
         "tests/concorde/support/managed_runtime.py",
+        "uv.lock",
         "viewer/README.md",
         "viewer/package-lock.json",
         "viewer/package.json"
-      ]
-    },
-    {
-      "id": "implementation.permissions",
-      "title": "Permissions",
-      "documents": [
-        "specs/implementations/permissions.md"
       ],
-      "files": [
-        "src/concorde/host/permissions.py",
-        "tests/concorde/host/unit/test_permissions.py"
-      ]
+      "checks": []
     },
     {
-      "id": "implementation.protocol-assets",
-      "title": "Protocol assets",
+      "id": "module.views",
+      "kind": "module",
+      "title": "Views",
       "documents": [
-        "specs/implementations/protocol-assets.md"
+        "specs/modules/concorde/views/module.md",
+        "specs/modules/concorde/views/publication.md",
+        "specs/modules/concorde/views/pipeline.md",
+        "specs/modules/concorde/views/viewer.md"
       ],
-      "files": [
-        "prompts/protocol/framework-profile.md",
-        "prompts/protocol/kinds/implementation.md",
-        "prompts/protocol/kinds/module.md",
-        "prompts/protocol/principles.md",
-        "protocol/manifest.json"
-      ]
-    },
-    {
-      "id": "implementation.publication-docsite",
-      "title": "Publication docsite",
-      "documents": [
-        "specs/implementations/publication-docsite.md"
+      "parent": "module.concorde",
+      "uses": [
+        "module.spec",
+        "module.distribution"
       ],
       "files": [
         "docsite/README.md",
@@ -929,143 +489,143 @@
         "docsite/tests/unit/registry.test.ts",
         "docsite/tests/unit/site-identity.test.ts",
         "docsite/tsconfig.json",
-        "docsite/vitest.config.ts"
-      ]
-    },
-    {
-      "id": "implementation.publication-scaffold",
-      "title": "Publication scaffold",
-      "documents": [
-        "specs/implementations/publication-scaffold.md"
-      ],
-      "files": [
+        "docsite/vitest.config.ts",
+        "scripts/run-viewer.py",
         "src/concorde/autodocs/__init__.py",
         "src/concorde/autodocs/docsite_scaffold.py",
         "src/concorde/autodocs/docsite_template.py",
+        "src/concorde/lifecycle/__init__.py",
+        "src/concorde/lifecycle/delivery.py",
+        "src/concorde/projection.py",
+        "src/concorde/specification/changes.py",
+        "src/concorde/understanding/__init__.py",
+        "src/concorde/understanding/alignment.py",
+        "src/concorde/understanding/context.py",
+        "src/concorde/understanding/feature_workspace.py",
+        "src/concorde/understanding/initialize.py",
+        "src/concorde/understanding/planning_context.py",
+        "src/concorde/understanding/readiness.py",
+        "src/concorde/understanding/repository.py",
+        "src/concorde/understanding/validate.py",
+        "src/concorde/understanding/validation/__init__.py",
+        "src/concorde/understanding/validation/diagrams.py",
+        "src/concorde/understanding/validation/entities.py",
+        "src/concorde/understanding/validation/features.py",
+        "src/concorde/understanding/validation/freshness.py",
+        "src/concorde/understanding/validation/hierarchy.py",
+        "src/concorde/understanding/validation/layout.py",
+        "tests/concorde/PROFILE8_TEST_MIGRATION.md",
         "tests/concorde/autodocs/__init__.py",
         "tests/concorde/autodocs/integration/__init__.py",
         "tests/concorde/autodocs/integration/test_docsite_scaffold.py",
         "tests/concorde/autodocs/unit/__init__.py",
-        "tests/concorde/autodocs/unit/test_docsite_template.py"
-      ]
-    },
-    {
-      "id": "implementation.reflections",
-      "title": "Reflections",
-      "documents": [
-        "specs/implementations/reflections.md"
+        "tests/concorde/autodocs/unit/test_docsite_template.py",
+        "tests/concorde/distribution/unit/test_viewer_launcher.py",
+        "tests/concorde/fixtures/ask/questions.json",
+        "tests/concorde/fixtures/context-project/.concorde/config.json",
+        "tests/concorde/fixtures/context-project/specs/example/architecture.md",
+        "tests/concorde/fixtures/context-project/specs/example/diagrams/delivery-sequence.json",
+        "tests/concorde/fixtures/context-project/specs/example/diagrams/level-view.json",
+        "tests/concorde/fixtures/context-project/specs/example/features/001-deliver.md",
+        "tests/concorde/fixtures/context-project/specs/example/modules/api/architecture.md",
+        "tests/concorde/fixtures/context-project/specs/example/modules/api/diagrams/level-view.json",
+        "tests/concorde/fixtures/context-project/specs/example/modules/api/features/001-invoke.md",
+        "tests/concorde/fixtures/context-project/specs/example/modules/api/modules/store/architecture.md",
+        "tests/concorde/fixtures/context-project/specs/example/modules/api/modules/store/diagrams/system-overview.json",
+        "tests/concorde/fixtures/interfaces/alignment/alignment-explorer.example.json",
+        "tests/concorde/fixtures/interfaces/alignment/alignment-explorer.schema.json",
+        "tests/concorde/fixtures/interfaces/alignment/alignment-input.example.json",
+        "tests/concorde/fixtures/interfaces/alignment/alignment-input.schema.json",
+        "tests/concorde/fixtures/interfaces/alignment/knowledge-graph.example.json",
+        "tests/concorde/fixtures/interfaces/alignment/knowledge-graph.schema.json",
+        "tests/concorde/fixtures/interfaces/workspace/architecture-service.schema.json",
+        "tests/concorde/fixtures/interfaces/workspace/context-response.json",
+        "tests/concorde/fixtures/interfaces/workspace/deliver-eligible-response.json",
+        "tests/concorde/fixtures/interfaces/workspace/deliver-proposal.json",
+        "tests/concorde/fixtures/interfaces/workspace/feature-workspace.schema.json",
+        "tests/concorde/fixtures/interfaces/workspace/validation-response.json",
+        "tests/concorde/fixtures/invalid-projects/broken-reference/seed.json",
+        "tests/concorde/fixtures/invalid-projects/contract/seed.json",
+        "tests/concorde/fixtures/invalid-projects/cycle/seed.json",
+        "tests/concorde/fixtures/invalid-projects/duplicate-id/seed.json",
+        "tests/concorde/fixtures/invalid-projects/parse/seed.json",
+        "tests/concorde/fixtures/invalid-projects/reflections-malformed/.concorde/reflections/index.json",
+        "tests/concorde/fixtures/invalid-projects/reflections-malformed/.concorde/reflections/pending/R-001.md",
+        "tests/concorde/fixtures/invalid-projects/reflections-malformed/.concorde/reflections/pending/R-002.md",
+        "tests/concorde/fixtures/invalid-projects/reflections-malformed/.concorde/reflections/planned/R-003.md",
+        "tests/concorde/fixtures/invalid-projects/reflections-malformed/README.md",
+        "tests/concorde/fixtures/invalid-projects/reflections-malformed/seed.json",
+        "tests/concorde/fixtures/invalid-projects/scenario/seed.json",
+        "tests/concorde/fixtures/invalid-projects/view-depth/seed.json",
+        "tests/concorde/fixtures/permission-planning-project/.concorde/attempts/feature.example.consumer.change/tasks.md",
+        "tests/concorde/fixtures/permission-planning-project/.concorde/attempts/feature.example.other/secret.md",
+        "tests/concorde/fixtures/permission-planning-project/.concorde/config.json",
+        "tests/concorde/fixtures/permission-planning-project/.concorde/constitution.md",
+        "tests/concorde/fixtures/permission-planning-project/.concorde/feature.json",
+        "tests/concorde/fixtures/permission-planning-project/.concorde/reflections/log.md",
+        "tests/concorde/fixtures/permission-planning-project/specs/example/architecture.md",
+        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/consumer/architecture.md",
+        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/consumer/features/001-change.md",
+        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/provider/architecture.md",
+        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/provider/features/001-api.md",
+        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/provider/features/002-unrelated.md",
+        "tests/concorde/fixtures/permission-planning-project/src/consumer/service.py",
+        "tests/concorde/fixtures/permission-planning-project/src/provider/private.py",
+        "tests/concorde/fixtures/permission-planning-project/tests/consumer/test_service.py",
+        "tests/concorde/fixtures/permission-planning-project/tests/provider/test_private.py",
+        "tests/concorde/fixtures/two-level-project/.concorde/attempts/feature.example.checkout.authorize/plan.md",
+        "tests/concorde/fixtures/two-level-project/.concorde/config.json",
+        "tests/concorde/fixtures/two-level-project/.specify/feature.json",
+        "tests/concorde/fixtures/two-level-project/specs/example/architecture.md",
+        "tests/concorde/fixtures/two-level-project/specs/example/diagrams/system-overview.json",
+        "tests/concorde/fixtures/two-level-project/specs/example/features/001-checkout.md",
+        "tests/concorde/fixtures/two-level-project/specs/example/features/002-atomic.md",
+        "tests/concorde/fixtures/two-level-project/specs/example/features/003-authorize-payment.md",
+        "tests/concorde/fixtures/two-level-project/specs/example/features/004-confirm-order.md",
+        "tests/concorde/fixtures/valid-project/.concorde/config.json",
+        "tests/concorde/fixtures/valid-project/specs/example/architecture.md",
+        "tests/concorde/fixtures/valid-project/specs/example/diagrams/level-view.json",
+        "tests/concorde/fixtures/valid-project/specs/example/features/001-deliver.md",
+        "tests/concorde/fixtures/valid-project/specs/example/modules/api/architecture.md",
+        "tests/concorde/fixtures/valid-project/specs/example/modules/api/diagrams/system-overview.json",
+        "tests/concorde/fixtures/valid-project/specs/example/modules/api/features/001-invoke.md",
+        "tests/concorde/lifecycle/__init__.py",
+        "tests/concorde/lifecycle/contract/__init__.py",
+        "tests/concorde/lifecycle/integration/__init__.py",
+        "tests/concorde/lifecycle/integration/test_implementation_delivery.py",
+        "tests/concorde/support/feature_workspace.py",
+        "tests/concorde/understanding/__init__.py",
+        "tests/concorde/understanding/acceptance/__init__.py",
+        "tests/concorde/understanding/contract/__init__.py",
+        "tests/concorde/understanding/contract/test_alignment_explorer_contract.py",
+        "tests/concorde/understanding/contract/test_feature_workspace_contract.py",
+        "tests/concorde/understanding/integration/__init__.py",
+        "tests/concorde/understanding/integration/test_alignment_explorer.py",
+        "tests/concorde/understanding/integration/test_architecture_readiness.py",
+        "tests/concorde/understanding/integration/test_context.py",
+        "tests/concorde/understanding/integration/test_feature_workspace.py",
+        "tests/concorde/understanding/integration/test_initialize.py",
+        "tests/concorde/understanding/integration/test_validation.py",
+        "tests/concorde/understanding/unit/__init__.py",
+        "tests/concorde/understanding/unit/test_abstract_rules.py",
+        "tests/concorde/understanding/unit/test_alignment.py",
+        "tests/concorde/understanding/unit/test_contract_validation.py",
+        "tests/concorde/understanding/unit/test_entity_rules.py",
+        "tests/concorde/understanding/unit/test_feature_relations.py",
+        "tests/concorde/understanding/unit/test_feature_rules.py",
+        "tests/concorde/understanding/unit/test_feature_workspace.py",
+        "tests/concorde/understanding/unit/test_frontmatter.py",
+        "tests/concorde/understanding/unit/test_interface_rules.py",
+        "tests/concorde/understanding/unit/test_module_diagram_rules.py",
+        "tests/concorde/understanding/unit/test_planning_context.py",
+        "tests/concorde/understanding/unit/test_repository.py",
+        "tests/concorde/understanding/unit/test_rules.py",
+        "tests/concorde/understanding/unit/test_summary_rules.py",
+        "tests/concorde/understanding/unit/test_terminology_rules.py"
       ],
-      "files": [
-        "capabilities/reflections_triage.py",
-        "scripts/reflections_queue.py",
-        "skills/concorde-reflections-triage/SKILL.md",
-        "src/concorde/reflections/__init__.py",
-        "src/concorde/reflections/config.default.json",
-        "src/concorde/reflections/configuration.py",
-        "src/concorde/reflections/investigation.py",
-        "src/concorde/reflections/reflections.py",
-        "src/concorde/reflections/scoped_triage.py",
-        "src/concorde/reflections/validation.py",
-        "tests/concorde/fixtures/interfaces/reflections/index.json",
-        "tests/concorde/fixtures/interfaces/reflections/needs-comments/R-001.md",
-        "tests/concorde/fixtures/interfaces/reflections/pending/R-002.md",
-        "tests/concorde/reflections/__init__.py",
-        "tests/concorde/reflections/contract/__init__.py",
-        "tests/concorde/reflections/integration/__init__.py",
-        "tests/concorde/reflections/unit/__init__.py",
-        "tests/concorde/reflections/unit/test_reflection_parser.py",
-        "tests/concorde/reflections/unit/test_reflection_rules.py",
-        "tests/concorde/reflections/unit/test_reflections_queue.py",
-        "tests/concorde/specification/test_scope_and_reflections.py",
-        "tests/concorde/support/reflection_triage.py"
-      ]
-    },
-    {
-      "id": "implementation.spec-model",
-      "title": "Spec model",
-      "documents": [
-        "specs/implementations/spec-model.md"
-      ],
-      "files": [
-        "capabilities/init.py",
-        "skills/concorde-init/SKILL.md",
-        "src/concorde/__init__.py",
-        "src/concorde/__main__.py",
-        "src/concorde/diagnostics.py",
-        "src/concorde/model.py",
-        "src/concorde/specification/__init__.py",
-        "src/concorde/specification/initialize.py",
-        "src/concorde/specification/repository.py",
-        "src/concorde/specification/validation.py",
-        "tests/__init__.py",
-        "tests/concorde/__init__.py",
-        "tests/concorde/specification/__init__.py",
-        "tests/concorde/specification/support.py",
-        "tests/concorde/specification/test_distribution.py",
-        "tests/concorde/specification/test_module_architecture.py",
-        "tests/concorde/specification/test_module_model.py",
-        "tests/concorde/support/__init__.py",
-        "tests/concorde/support/paths.py"
-      ]
-    },
-    {
-      "id": "implementation.studio",
-      "title": "Studio",
-      "documents": [
-        "specs/implementations/studio.md"
-      ],
-      "files": [
-        "scripts/development/STUDIO.md",
-        "scripts/development/studio.py",
-        "src/concorde/host/studio.py",
-        "src/concorde/host/studio_client.py",
-        "tests/concorde/host/integration/test_studio_server.py",
-        "tests/concorde/host/unit/test_studio.py",
-        "tests/concorde/host/unit/test_studio_client.py"
-      ]
-    },
-    {
-      "id": "implementation.typed-values",
-      "title": "Typed values",
-      "documents": [
-        "specs/implementations/typed-values.md"
-      ],
-      "files": [
-        "src/concorde/frontmatter.py",
-        "src/concorde/host/contract_shapes.py",
-        "src/concorde/host/contracts.py",
-        "src/concorde/host/typed_data.py",
-        "src/concorde/host/wire_shapes.py",
-        "src/concorde/specification/schema.py",
-        "tests/concorde/host/unit/test_typed_data.py"
-      ]
-    },
-    {
-      "id": "implementation.viewer-launcher",
-      "title": "Viewer launcher",
-      "documents": [
-        "specs/implementations/viewer-launcher.md"
-      ],
-      "files": [
-        "scripts/run-viewer.py",
-        "tests/concorde/distribution/unit/test_viewer_launcher.py"
-      ]
-    },
-    {
-      "id": "implementation.worktree-lifecycle",
-      "title": "Worktree lifecycle",
-      "documents": [
-        "specs/implementations/worktree-lifecycle.md"
-      ],
-      "files": [
-        "src/concorde/host/change_worktree.py",
-        "src/concorde/host/session_handoff.py",
-        "src/concorde/host/worktree.py",
-        "src/concorde/host/worktree_delivery.py",
-        "tests/concorde/host/unit/test_change_worktree.py",
-        "tests/concorde/host/unit/test_session_handoff.py",
-        "tests/concorde/host/unit/test_worktree_boundary.py",
-        "tests/concorde/specification/test_worktree_lifecycle.py"
+      "checks": [
+        "check.views.publication-types",
+        "check.views.viewer"
       ]
     }
   ],

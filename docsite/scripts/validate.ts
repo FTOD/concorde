@@ -20,8 +20,7 @@ async function main() {
     // (today, only this repository's own dogfood docsite — see plugins/scoped-content/projections.ts).
     if (hasDocsProjections(root)) verifyConcordeBuildFresh(root);
     const registry=loadScopedRegistry(root);registry.pages.forEach(p=>rewriteLinks(registry,p));
-    await discoverDiagramDeclarations(root);
-    process.stdout.write(`Validated Profile 9: ${registry.targets.length} targets, ${registry.pages.length} document memberships.\n`);
+    process.stdout.write(`Validated Profile 10: ${registry.targets.length} targets, ${registry.pages.length} document memberships.\n`);
     return;
   }
   await discoverDiagramDeclarations(root);

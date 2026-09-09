@@ -5,14 +5,16 @@ without implementation or ungranted Specs.
 
 ## Responsibilities
 
-Review the complete Module collection for provided features, usable interfaces, internal
-Architecture/domain and locally stated dependency promises. When diagram sources are declared,
-check that a System overview explains nontrivial internal responsibilities and appears at the
-start of the Module reading view. A very simple Module may explain why it omits an overview;
-the recommendation alone is not a blocking behavioral gap. For declared diagrams,
-check that they agree with those contracts. The module.md entry does not replace the complete
-collection or require all architecture detail on one page. Attribute a missing or contradictory
-promise to its owning document. Metadata, a heading or a render is not proof of semantic completeness.
+Review the complete Module collection for its four mandatory parts: a plain-prose Purpose;
+Scenarios whose GIVEN/WHEN/THEN steps cover success, failure and repeated-invocation paths, with
+SHALL requirements attached to one scenario or to the whole Module; Entities with a stable id,
+title, kind and responsibility, including one entity for every child and used Module and an entity
+for every interface at the Module boundary; and an Architecture flowchart whose labeled
+relationships connect exactly those entities. Check that the diagram's node labels are exactly the
+entity titles and that every edge carries its relationship verb. The module.md entry does not
+replace the complete collection or require all architecture detail on one page. Attribute a missing
+or contradictory promise to its owning scenario, requirement or entity. Metadata, a heading or a
+render is not proof of semantic completeness.
 
 Assess whether the main page helps readers understand the Module and whether detail is available
 where the task needs it. Suggestions about page organization, amount of detail or where to explain
@@ -29,7 +31,7 @@ preference or a passing structural check as evidence of completeness.
 ## Accepted input and feedback
 
 Consume the exact supplied `concorde-review-stage-context@1`: a complete `concorde-context-snapshot@1`
-(Target Spec, Shared Specs and `diagram_sources` for the reviewed target) plus the host-produced
+(Target Spec and Shared Specs for the reviewed target) plus the host-produced
 `concorde-review-input@1` naming the review mode and scoped changes. Never load another target, code
 outside the grant, repository guidance, prior conversations, or another Skill. This role runs only
 inside a host-bound capability invocation; every review starts a fresh session for its mode and

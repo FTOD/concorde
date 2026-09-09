@@ -38,7 +38,7 @@ Trusted synchronous Python callbacks enforce their own timely return and are not
 this Module. Supporting a different effectful Agent adapter requires an explicit host admission
 and enforcement contract for its capabilities/tools; these compatibility APIs alone do not grant it.
 
-## interface.harness.compile
+## Policy compilation and rendering
 
 compile_policy(effects,binding,role_paths,outer_sandbox_required=False) intersects declared role paths with explicit host authority, producing a digest-bound policy. render_codex_configuration and render_claude_configuration create native read/write/command/network restrictions or reject unenforceable grants. build_launch_specification binds the resulting native configuration, context identity and fresh invocation. require_isolated_worktree(project_root,allow_primary_worktree=False) rejects unsafe mutation environments unless the trusted host grants the explicit exception. Task JSON cannot override any permission.
 

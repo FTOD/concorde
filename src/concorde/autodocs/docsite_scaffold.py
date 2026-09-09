@@ -48,7 +48,7 @@ def _configured_root_architecture(project_root: Path) -> str | None:
     if not config.exists():
         return None
     try:
-        if json.loads(config.read_text()).get("profile_version")==9:
+        if json.loads(config.read_text()).get("profile_version")==10:
             from ..specification.repository import SpecRepository
             repo=SpecRepository(project_root)
             return repo.targets[repo.entry_target].documents[0]

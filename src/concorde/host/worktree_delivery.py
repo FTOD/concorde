@@ -10,6 +10,7 @@ from .change_worktree import (DELIVERIES_PATH, _inventory, _write_json,
     git, git_value, list_worktrees, read_change, repository_lock, save_change,
     snapshot_tree, workspace_identity)
 from .typed_data import artifact, checked_path, decode, typed
+from ..specification.changes import confirm_pending_files
 from ..specification.repository import SpecError, SpecRepository, identifier, read_file
 from ..specification.validation import validate_repository
 
@@ -255,11 +256,18 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
         # Delivery reads evidence and runs deterministic checks without starting agents.
         candidate_host = replace(host, project_root=source, coordinated=True)
         Invocation("concorde-validate", configuration, payload, candidate_host).verify_completion()
+        # A pending marker is the author's declaration that a listed file is still to be written.
+        # Delivery is the deterministic moment that confirms the files that now exist and removes
+        # only those markers; the confirmation becomes part of the delivered candidate itself.
+        confirmed_files, still_pending = confirm_pending_files(source, host.package_root)
+        if confirmed_files:
+            actual_tree = snapshot_tree(source, state)
         source_head = git_value(source, "rev-parse", "HEAD")
         target_head = git_value(root, "rev-parse", "HEAD")
         source_branch = state["branch"]
+        message = ("Confirm created files for " + change_id) if confirmed_files else state["task"]
         candidate = (source_head if git_value(source, "rev-parse", "HEAD^{tree}") == actual_tree
-                     else _commit(source, actual_tree, (source_head,), state["task"]))
+                     else _commit(source, actual_tree, (source_head,), message))
         if _is_ancestor(root, target_head, candidate):
             merged, merged_tree = candidate, actual_tree
         else:
@@ -289,6 +297,7 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
                 "merged_commit": merged, "merged_tree": merged_tree,
                 "task": state["task"], "constraints": state["constraints"],
                 "targets": copy.deepcopy(state["targets"]), "checks": checks,
+                "confirmed_files": confirmed_files, "still_pending": still_pending,
                 "cleanup_error": None, "retained_worktree": keep_worktree}
             # A durable receipt precedes either ref update, so a restarted primary
             # session can distinguish an unmerged candidate from pending cleanup.
@@ -370,6 +379,13 @@ def _response(root: Path, receipt: dict, complete: bool) -> dict:
               + (" and retained its source worktree." if complete and receipt.get("retained_worktree") else
                  " and removed its temporary worktree and local state." if complete else
                  "; worktree cleanup is pending. Retry deliver from a participating session."))
+    confirmed = receipt.get("confirmed_files") or []
+    if confirmed:
+        answer += (" Confirmed created files: "
+                   + ", ".join(sorted(item["path"] for item in confirmed)) + ".")
+    if receipt.get("still_pending"):
+        answer += (" Files still declared pending: "
+                   + ", ".join(receipt["still_pending"]) + ".")
     promotion = receipt.get("primary_merge") or {}
     if promotion.get("status") == "merged":
         answer += " Explicitly merged into primary branch " + receipt["primary_merge"]["branch"] + "."

@@ -21,8 +21,9 @@ input; do not perform it directly in this ambient conversation or inspect additi
 Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-dev-loop`. Its exact fields
 are type_id, schema_version:3, capability_id:"concorde-dev-loop", mode:"execute" or "describe-policy",
 configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1), and input (concorde-dev-loop-request@1).
-New task requests require task and may supply target_id/focus_id as routing hints; main discovery
-selects the owning target before the bounded loop starts. Existing changes retain their bound target.
+New task requests require task and may supply target_id/focus_id (a scenario ID) as routing hints;
+main discovery selects the owning target before the bounded loop starts. Existing changes retain
+their bound target.
 Optional `specify` (default true) and `run_reviews` (default true) flags select the loop shape.
 `specify:false` skips Spec authoring for this pass, exactly like the former fast loop.
 `run_reviews:false` records an explicit skip for each review mode instead of running it. A review
@@ -31,8 +32,8 @@ every skip and every required review remains visible in the change record.
 Initialization uses its typed propose/apply request; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
-Main may explicitly admit complete Module Specs for routing, but cannot read Implementation Specs or code. It returns one
-typed route for this capability; the host then starts a different target worker.
+Main may explicitly admit complete Module Specs for routing, but cannot read implementation files.
+It returns one typed route for this capability; the host then starts a different target worker.
 When a mutation starts in the primary worktree, the host prepares a committed-base linked
 worktree and returns its identity and a handoff draft; it does not launch the next outer session.
 Follow P10 to start that session automatically with the returned worktree as its initial directory,

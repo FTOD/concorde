@@ -183,6 +183,11 @@ class ReflectionEntry:
 
     @property
     def feature(self) -> str:
+        """The recorded attribution identity: a Module ID or one of its scenario IDs.
+
+        The record field keeps its historical ``feature`` name; Profile 10 has no registered
+        Feature entity, so the value is validated against Module and scenario identities.
+        """
         return self.fields.get("Feature", "")
 
     @property
@@ -242,14 +247,15 @@ class ParsedReflections:
     problems: tuple[ReflectionProblem, ...]
     high_water: int | None = None
 
-    def entries_for(self, feature_id: str) -> tuple[ReflectionEntry, ...]:
-        return tuple(entry for entry in self.entries if entry.feature == feature_id)
+    def entries_for(self, attribution_id: str) -> tuple[ReflectionEntry, ...]:
+        """Records attributed to one Module or scenario identity."""
+        return tuple(entry for entry in self.entries if entry.feature == attribution_id)
 
-    def open_count(self, feature_id: str) -> int:
-        return sum(1 for entry in self.entries_for(feature_id) if entry.status == "open")
+    def open_count(self, attribution_id: str) -> int:
+        return sum(1 for entry in self.entries_for(attribution_id) if entry.status == "open")
 
-    def summary(self, feature_id: str) -> dict[str, int]:
-        selected = self.entries_for(feature_id)
+    def summary(self, attribution_id: str) -> dict[str, int]:
+        selected = self.entries_for(attribution_id)
         return {
             "entries": len(selected),
             "open": sum(1 for entry in selected if entry.status == "open"),

@@ -9,7 +9,7 @@
 ```
 # Typed values
 
-## interface.harness.validate
+## Typed value and schema validation
 
 `typed(type_id, data)` produces a validated TypedValue; `validate_typed(value, expected=None,
 field="")` rejects unknown type/version, unknown properties, malformed values and unsafe paths.
@@ -52,7 +52,7 @@ those three fields. Codes include `unknown_type`, `unsupported_version`, `incomp
 
 `contracts()` returns the installed capability-name mapping to `(request_type_id, response_type_id)`;
 names use `concorde-` and their types use `-request` and `-response`. `schemas()` returns the installed
-Profile 9 type-ID-to-payload-schema mapping. `exported_types()` enumerates its public capability
+Profile 10 type-ID-to-payload-schema mapping. `exported_types()` enumerates its public capability
 request/response types followed by internal stage types; callers can use each ID with `json_schema`
 to obtain its exact envelope and recursively referenced payload schemas. These returned schemas
 are the supported machine-readable discovery interface, not a grant to inspect implementation.

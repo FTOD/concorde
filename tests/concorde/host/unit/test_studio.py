@@ -183,8 +183,9 @@ class StudioTests(unittest.TestCase):
         change_id = fixture.ready()
         result = build_studio_graph("concorde-deliver", fixture.change, PACKAGE,
                                     executor=self.double.executor).invoke({"invocation": invocation(
-            "concorde-deliver", data={"change_id": change_id})})
+            "concorde-deliver", data={"change_id": change_id, "keep_worktree": True})})
         self.assertEqual("succeeded", result["result"]["status"], result)
+        self.assertIn("retained", result["result"]["output"]["data"]["answer"])
         self.assertTrue(fixture.change.exists())
         self.assertEqual([], self.double.calls)
 

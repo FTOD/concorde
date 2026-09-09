@@ -1,6 +1,6 @@
 # [Change plan]
 
-Target: [target_id]. Focus: [optional local ID]. Context: [context_id].
+Target: [target_id]. Focus: [optional scenario ID]. Context: [context_id].
 
 ## Intended behavior
 

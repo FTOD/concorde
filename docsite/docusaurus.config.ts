@@ -1,4 +1,4 @@
-import {readdirSync,readFileSync} from 'node:fs';
+import {readdirSync} from 'node:fs';
 import {resolve} from 'node:path';
 
 import type {Config, PluginModule} from '@docusaurus/types';
@@ -24,8 +24,6 @@ const projectRoot = resolve(__dirname, '..');
 const identity = loadSiteIdentity(__dirname);
 const hasProtocolDocs = identity.protocolDocs === true;
 const scoped = isScoped(projectRoot);
-const hasImplementationSpecs = scoped && JSON.parse(readFileSync(
-  resolve(__dirname,'.generated/specs-sidebar.json'),'utf8')).implementationSpecsSidebar.length > 0;
 // Docusaurus refuses to load a content-docs plugin instance with zero staged documents; a project
 // scaffolded from Initialization Proposal 3 output alone has a root module but no features yet.
 const hasFeatures = !scoped && hasStagedContent('.generated/content/features');
@@ -105,7 +103,6 @@ const config: Config = {
           {type: 'docSidebar', sidebarId: 'featuresSidebar', docsPluginId: 'features', label: 'Features', position: 'left'},
         ] : []),
         {to: '/graph', label: 'Graph', position: 'left'},
-        ...(hasImplementationSpecs ? [{type:'docSidebar',sidebarId:'implementationSpecsSidebar',label:'Implementation Specs',position:'left'}] : []),
         ...(identity.repository ? [
           repositoryHost === 'github.com'
             ? {href: identity.repository, position: 'right', className: 'header-github-link', 'aria-label': 'GitHub repository'}

@@ -3,7 +3,7 @@ id: R-NNN
 title: <short factual problem title>
 phase: plan | tasks | implement | analyze | converge | fast-loop
 date: YYYY-MM-DD
-feature: <stable ID of the selected feature>
+feature: <stable ID of the attributed Module or scenario>
 kind: specification | architecture | guidance | tooling | environment | implementation
 concerns: <stable ID or project-relative path, optional #fragment or :line>
 status: open
@@ -37,7 +37,7 @@ status: open
   index.json contains only {"schema_version": 1, "high_water": "R-NNN"}; it never contains
   reflection prose. Identifiers are permanent and never reused. On re-encounter, add an Occurrences
   item to the existing document instead of creating a duplicate. Never copy reflection prose into an
-  attempt, feature, architecture, plan, task list, code, test, diagram, or generated artifact.
+  attempt, scenario, architecture, plan, task list, code, test, diagram, or generated artifact.
 -->
 
 ## Context

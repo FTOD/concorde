@@ -156,7 +156,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         try:
             self.assertTrue((created / STATE_PATH).exists())
             self.assertEqual("created", read_change(created)["phase"])
-            self.assertEqual("def transfer(balance, amount):\n    return balance\n",
+            self.assertEqual("# TRANSFER_IMPLEMENTATION_CODE\ndef transfer(balance, amount):\n    return balance\n",
                              (self.primary / "app/transfer.py").read_text())
         finally:
             git(self.primary, "worktree", "remove", "--force", str(created))
@@ -254,6 +254,56 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertEqual(delivered, git_value(self.primary, "rev-parse", branch))
         self.assertIn(branch, again["output"]["data"]["answer"])
+
+    def declare_pending_files(self):
+        """Declare two files the plan intends to create, before any of them exists."""
+        path = self.change / "specs/transfer/module.md"
+        prefix, rest = path.read_text().split("```concorde-entities\n", 1)
+        payload, suffix = rest.split("\n```", 1)
+        entities = json.loads(payload)
+        entities[0].update(files=["app/rounding.py", "app/transfer.py"], pending=["app/rounding.py"])
+        entities[1].update(files=["checks/rounding_check.py", "checks/transfer_check.py"],
+                           pending=["checks/rounding_check.py"])
+        path.write_text(prefix + "```concorde-entities\n" + json.dumps(entities, indent=2) + "\n```" + suffix)
+        registry = json.loads((self.change / ".concorde/specs.json").read_text())
+        registry["targets"][2]["files"] = ["app/rounding.py", "app/transfer.py",
+                                           "checks/rounding_check.py", "checks/transfer_check.py"]
+        (self.change / ".concorde/specs.json").write_text(json.dumps(registry))
+
+    def test_delivery_confirms_created_pending_files_and_keeps_the_rest_pending(self):
+        self.declare_pending_files()
+        (self.change / "app/rounding.py").write_text("def round_half_up(value):\n    return value\n")
+        change_id = self.ready_delivery()
+        result = self.run_op(self.change, "concorde-deliver",
+                             {"change_id": change_id, "keep_worktree": True})
+        self.assertEqual("succeeded", result["status"], result)
+        answer = result["output"]["data"]["answer"]
+        self.assertIn("app/rounding.py", answer)
+        self.assertIn("checks/rounding_check.py", answer)
+        receipt = json.loads((self.primary / f".concorde/deliveries/{change_id}.json").read_text())
+        self.assertEqual([{"module": "service.transfer", "entity": "entity.transfer.calculation",
+                           "path": "app/rounding.py"}], receipt["confirmed_files"])
+        self.assertEqual(["checks/rounding_check.py"], receipt["still_pending"])
+        self.assertEqual("Confirm created files for " + change_id,
+            git_value(self.primary, "log", "-1", "--format=%s", receipt["candidate_commit"]))
+        payload = (self.change / "specs/transfer/module.md").read_text().split(
+            "```concorde-entities\n", 1)[1].split("\n```", 1)[0]
+        entities = json.loads(payload)
+        self.assertNotIn("pending", entities[0])
+        self.assertEqual(["checks/rounding_check.py"], entities[1]["pending"])
+        self.assertEqual("success", validate_repository(self.change, package_root=PACKAGE).status)
+
+    def test_delivery_refuses_a_declared_file_that_was_never_created_or_marked(self):
+        self.declare_pending_files()
+        path = self.change / "specs/transfer/module.md"
+        prefix, rest = path.read_text().split("```concorde-entities\n", 1)
+        payload, suffix = rest.split("\n```", 1)
+        entities = json.loads(payload)
+        entities[0].pop("pending")
+        path.write_text(prefix + "```concorde-entities\n" + json.dumps(entities, indent=2) + "\n```" + suffix)
+        report = validate_repository(self.change, package_root=PACKAGE)
+        self.assertEqual("invalid", report.status)
+        self.assertIn("CONCORDE-ENTITY-002", {finding.rule_id for finding in report.findings})
 
     def test_primary_merge_requires_separate_delivery_and_primary_session(self):
         change_id = self.ready_delivery()

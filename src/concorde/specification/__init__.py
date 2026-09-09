@@ -1,1 +1,1 @@
-"""Profile 9: self-contained Modules and reusable, explicitly file-bound Implementation Specs."""
+"""Profile 10: self-contained four-part Modules whose entities list implementation files."""

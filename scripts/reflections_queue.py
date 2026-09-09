@@ -179,7 +179,7 @@ def _specification_root(root: Path) -> tuple[str, Path]:
         config = json.loads((root / ".concorde/config.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise QueueError(f"invalid .concorde/config.json: {error}") from error
-    if config.get("profile_version")==9:return ".",root
+    if config.get("profile_version")==10:return ".",root
     relative = _safe_relative(str(config.get("specification_root", "")), "specification_root")
     path = root / relative
     if not path.is_dir():
@@ -189,10 +189,14 @@ def _specification_root(root: Path) -> tuple[str, Path]:
 
 def _document_map(specification_root: Path, root: Path) -> dict[str, str]:
     config=json.loads((root/".concorde/config.json").read_text())
-    if config.get("profile_version")==9:
+    if config.get("profile_version")==10:
         from concorde.specification.repository import SpecRepository
         repo=SpecRepository(root)
-        return {**{t.id:t.documents[0] for t in repo.targets.values()},**{key:value[2]["document"] for key,value in repo.focus.items()}}
+        result={t.id:t.primary_document for t in repo.targets.values()}
+        for target in repo.targets.values():
+            for scenario in repo.scenarios(target):
+                result[scenario.id]=scenario.document
+        return result
     result: dict[str, str] = {}
     for path in sorted(specification_root.rglob("*.md")):
         try:

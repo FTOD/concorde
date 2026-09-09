@@ -15,7 +15,7 @@ the standard for implementation review; an existing role prompt or launcher is n
 the complete model is implemented. Agent, Harness and Capability are Framework entities, not new
 Concorde Spec Protocol target kinds. Their providing Modules retain the explicit registered Spec structure.
 
-## Architecture
+## The Agent and Harness model
 
 **Harness = context + control flow + Agents or models + permissions and environment, per Agent.**
 **Agent = `spec.md` + Harness + Constraints/Permissions.**
@@ -65,7 +65,7 @@ Changing a binding requires fresh admission and invalidates evidence that depend
 An Agent's `spec.md` is its responsibility contract. The project task's Spec context and
 implementation context are separate admitted inputs about the work to perform. Neither set
 implicitly grants access to the other's neighboring files. This Agent-specific filename convention
-adds no filename requirement to ordinary Module or Implementation Specs.
+adds no filename requirement to ordinary Module Specs.
 
 ## A2. Harness composition
 
@@ -162,8 +162,8 @@ yield/delegate/continue path; it grants only a private context capsule, not proj
 The eight named Agents are each one Python module under the top-level `agents/` package, binding
 an authored `agents/<name>/spec.md`, a registered Harness, and its effective Constraints/Permissions
 per the model above. `agents/__init__.py` declares the inventory. Exact Agent source files have the
-single authoritative owner `implementation.agent-definitions`, referenced by this Module; a
-capability that launches an Agent does not own its definition. A rendered
+single authoritative owner `entity.harness.agent-definitions`; a capability that launches an Agent
+does not own its definition. A rendered
 `generated/agents/<hyphenated>.md` projection remains traceable to its `spec.md` source; role
 identity alone never stands in for this complete Agent model.
 

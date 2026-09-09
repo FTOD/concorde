@@ -22,7 +22,8 @@ This is a deterministic lifecycle capability: it runs no agent cognition and sel
 Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-validate`. Its exact fields
 are type_id, schema_version:3, capability_id:"concorde-validate", mode:"execute" or "describe-policy",
 configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1), and input (concorde-validate-request@1).
-Task requests select target_id and task, with optional focus_id, constraints, and change_id.
+Task requests select target_id and task, with optional focus_id (a scenario ID), constraints, and
+change_id.
 Initialization uses its typed propose/apply request; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
@@ -36,6 +37,15 @@ conditions, ask the user to open it manually with the complete copyable prompt. 
 this conversation; never carry it or its worktree-owned Skill bodies across that boundary. Report Spec gaps
 or blocked execution as returned; do not work around the boundary. Non-implementation agents never
 receive implementation code or raw test logs.
+
+Validation checks every Module's `module.md` for its four mandatory sections in order -- Purpose,
+Scenarios, Entities, Architecture -- the syntax of its scenario, requirement and `concorde-entities`
+declarations, unique stable IDs, and that the registry's `files` for a Module equal the sorted
+union of its entities' `files`. It also checks that the Architecture flowchart's node labels are
+exactly the declared entity titles and that every edge carries a label. A file an entity lists that
+does not exist and is not marked `pending` is an error; a file still marked `pending` after it
+exists on disk is a warning. Warnings are reported alongside errors but never by themselves turn a
+successful validation into a failure; only errors do.
 
 ## Input TypedValue schema
 

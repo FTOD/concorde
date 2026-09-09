@@ -19,7 +19,8 @@ This is a deterministic lifecycle capability: it runs no agent cognition and sel
 Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-configure`. Its exact fields
 are type_id, schema_version:3, capability_id:"concorde-configure", mode:"execute" or "describe-policy",
 configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1), and input (concorde-configure-request@1).
-Task requests select target_id and task, with optional focus_id, constraints, and change_id.
+Task requests select target_id and task, with optional focus_id (a scenario ID), constraints, and
+change_id.
 Initialization uses its typed propose/apply request; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 

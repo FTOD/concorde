@@ -21,11 +21,6 @@ Coordinator and target-author invocations retain separate Agent definitions and 
 
 ## Stages and outcomes
 
-
-
-Authored source: `specs/modules/concorde/workflows/topology.md` (the following fence).
-Kind: `mermaid`. Title: **Topology design, authoring and application**.
-
 ```mermaid
 stateDiagram-v2
   accTitle: Topology design, authoring and application
@@ -46,7 +41,7 @@ Application is one host transaction with current before-digests and final reposi
 
 
 Every new Concorde Module includes a local `module.md` with an inline Mermaid entity diagram
-and a local declaration of its source path, kind and title. Its author returns the complete
-registered Markdown replacements, including diagram fences. The host checks all proposed files
-as one overlay before exposing the prepared application. Diagram content cannot widen Spec
+whose `accTitle` and `accDescr` describe it for readers who cannot see it. Its author returns the
+complete registered Markdown replacements, including diagram fences. The host checks all proposed
+files as one overlay before exposing the prepared application. Diagram content cannot widen Spec
 membership or agent permissions. Shared sources remain subject to identical-byte agreement.

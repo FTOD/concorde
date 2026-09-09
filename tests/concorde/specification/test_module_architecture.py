@@ -1,4 +1,4 @@
-"""Spec Protocol 2.0: main-document identity and diagram authoring are usable end to end."""
+"""Spec Protocol 3.0: the reading entry, its inline architecture diagram and entity listings."""
 import copy
 import json
 import tempfile
@@ -16,6 +16,13 @@ from tests.concorde.specification.support import (
 )
 
 
+def replace_entities(text, update):
+    prefix, rest = text.split("```concorde-entities\n", 1)
+    payload, suffix = rest.split("\n```", 1)
+    value = update(json.loads(payload))
+    return prefix + "```concorde-entities\n" + json.dumps(value, indent=2) + "\n```" + suffix
+
+
 class ModuleArchitectureTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -23,7 +30,6 @@ class ModuleArchitectureTests(unittest.TestCase):
         self.root = Path(temporary.name)
         self.registry = project(self.root)
         self.main = "specs/bank/module.md"
-        self.diagram = "specs/bank/diagrams/overview.json"
 
     def save(self):
         (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
@@ -47,7 +53,6 @@ class ModuleArchitectureTests(unittest.TestCase):
         snapshot = resolve_context(repository, target.id).value
         self.assertEqual([topic, self.main], snapshot["document_order"])
         self.assertEqual([topic, self.main], [d["path"] for d in snapshot["target_spec"]])
-        self.assertEqual([self.diagram], [d["path"] for d in snapshot["diagram_sources"]])
         self.assertEqual("success", validate_repository(self.root).status)
 
     def test_missing_duplicate_or_shared_module_entry_is_rejected(self):
@@ -81,113 +86,139 @@ class ModuleArchitectureTests(unittest.TestCase):
                 report = validate_repository(self.root)
                 self.assertIn("CONCORDE-MODULE-001", {f.rule_id for f in report.findings})
 
-    def test_architecture_diagrams_are_optional_and_declared_recipes_are_checked(self):
-        declaration=copy.deepcopy(self.registry["targets"][0]["diagrams"][0])
-        self.registry["targets"][0]["diagrams"]=[];self.save()
-        self.assertEqual((),SpecRepository(self.root).select("scope.bank").diagrams)
-        self.registry["targets"][0]["diagrams"]=[{**declaration,"kind":"workflow"}];self.save()
-        with self.assertRaisesRegex(SpecError,"architecture"):
-            SpecRepository(self.root)
-        self.registry["targets"][0]["diagrams"]=[declaration,dict(declaration)];self.save()
-        with self.assertRaisesRegex(SpecError,"unique"):
-            SpecRepository(self.root)
+    def test_the_reading_entry_requires_a_mermaid_flowchart_in_its_architecture_section(self):
+        path = self.root / self.main
+        original = path.read_text()
+        start = original.index("```mermaid\n")
+        end = original.index("\n```", start) + len("\n```\n")
+        path.write_text(original[:start] + original[end:])
+        report = validate_repository(self.root)
+        self.assertEqual("invalid", report.status)
+        self.assertIn("CONCORDE-MODULE-001", {f.rule_id for f in report.findings})
+        self.assertTrue(any("Mermaid flowchart fence" in f.message for f in report.findings))
 
-    def test_declared_source_metadata_and_output_boundary_are_checked(self):
-        path = self.root / self.diagram
-        original = json.loads(path.read_text())
-        for field, value in (("title", "Wrong"), ("quality_profile", "standard"),
-                             ("output", "../../../generated/protocol/rules.html")):
-            with self.subTest(field=field):
-                candidate = copy.deepcopy(original)
-                candidate["meta"][field] = value
-                path.write_text(json.dumps(candidate))
-                report = validate_repository(self.root)
-                self.assertIn("CONCORDE-DIAGRAM-001", {f.rule_id for f in report.findings})
+    def test_diagram_nodes_must_equal_entity_titles_and_every_edge_must_be_labeled(self):
+        path = self.root / self.main
+        original = path.read_text()
+        path.write_text(original.replace("request -->|admitted by| transfer",
+                                         "request --> transfer"))
+        report = validate_repository(self.root)
+        self.assertEqual("invalid", report.status)
+        self.assertIn("CONCORDE-ARCHITECTURE-002", {f.rule_id for f in report.findings})
+        path.write_text(original.replace('audit["Audit"]', 'audit["Auditing"]'))
+        report = validate_repository(self.root)
+        self.assertEqual("invalid", report.status)
+        self.assertIn("CONCORDE-ARCHITECTURE-001", {f.rule_id for f in report.findings})
+        path.write_text(original.replace('    request["Transfer request"]',
+                                         '    request["Transfer request"'))
+        report = validate_repository(self.root)
+        self.assertEqual("invalid", report.status)
+        self.assertIn("CONCORDE-ARCHITECTURE-002", {f.rule_id for f in report.findings})
 
-    def test_diagram_bytes_invalidate_an_existing_context(self):
+    def test_an_entity_can_only_stand_for_a_child_or_used_module(self):
+        path = self.root / self.main
+        path.write_text(replace_entities(path.read_text(), lambda values: [
+            {**value, "target_id": "module.ledger"} if value["id"] == "entity.bank.audit" else value
+            for value in values]))
+        report = validate_repository(self.root)
+        self.assertEqual("invalid", report.status)
+        self.assertIn("CONCORDE-DEFINITION-001", {f.rule_id for f in report.findings})
+        self.assertTrue(any("is represented by two entities" in f.message for f in report.findings))
+
+    def test_inline_diagram_bytes_invalidate_an_existing_context(self):
         repository = SpecRepository(self.root)
         snapshot = resolve_context(repository, "scope.bank")
-        path = self.root / self.diagram
-        diagram = json.loads(path.read_text())
-        diagram["components"][1]["sublabel"] = "A revised authoring promise"
-        path.write_text(json.dumps(diagram))
+        path = self.root / self.main
+        path.write_text(path.read_text().replace("accTitle: Banking coordination",
+                                                 "accTitle: Banking settlement"))
         with self.assertRaisesRegex(SpecError, "bytes changed"):
             recheck_context(repository, snapshot)
 
-    def test_diagram_declaration_alone_also_invalidates_context(self):
+    def test_entity_file_listings_invalidate_an_existing_context(self):
         repository = SpecRepository(self.root)
-        snapshot = resolve_context(repository, "scope.bank")
-        self.registry["targets"][0]["diagrams"][0]["title"] = "Revised banking overview"
+        snapshot = resolve_context(repository, "service.transfer", phase="plan")
+        # A registry-only file listing change leaves every document byte untouched.
+        self.registry["targets"][2]["files"] = ["app/extra.py", "app/transfer.py",
+                                                "checks/transfer_check.py"]
         self.save()
-        with self.assertRaisesRegex(SpecError, "declarations"):
+        with self.assertRaisesRegex(SpecError, "listed implementation files"):
             recheck_context(repository, snapshot)
 
-    def test_spec_author_can_update_its_diagram_but_cannot_write_a_foreign_source(self):
-        before = (self.root / self.diagram).read_text()
-        replacement = json.loads(before)
-        replacement["components"][1]["sublabel"] = "Banking rules awaiting authoring"
-        after = json.dumps(replacement)
+    def test_spec_author_can_update_its_own_inline_diagram_but_not_a_foreign_document(self):
+        path = self.root / self.main
+        after = path.read_text().replace(
+            "accDescr: A transfer request reaches the transfer service",
+            "accDescr: One transfer request reaches the transfer service")
 
         def callback(stage, snapshot, result, cwd):
             if stage == "specify":
-                self.assertEqual(self.diagram, snapshot["diagram_sources"][0]["path"])
-                result["diagrams"] = [{"path": self.diagram, "content": after}]
+                result["documents"] = [{"path": self.main, "content": after}]
 
         result = self.call("concorde-specify", {"target_id": "scope.bank", "task": "Clarify the banking overview"}, callback)
         self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual(after, (self.root / self.diagram).read_text())
-        foreign = "specs/audit/diagrams/overview.json"
+        self.assertEqual(after, path.read_text())
+        foreign = "specs/audit/module.md"
         foreign_before = (self.root / foreign).read_bytes()
 
         def illegal(stage, snapshot, result, cwd):
             if stage == "specify":
-                result["diagrams"] = [{"path": foreign, "content": after}]
+                result["documents"] = [{"path": foreign, "content": after}]
 
         result = self.call("concorde-specify", {"target_id": "scope.bank", "task": "Clarify the banking overview"}, illegal)
         self.assertEqual("permission_denied", result["errors"][0]["code"], result)
         self.assertEqual(foreign_before, (self.root / foreign).read_bytes())
 
-    def test_invalid_diagram_rolls_back_markdown_and_diagram_together(self):
-        original = (self.root / self.main).read_bytes()
-        diagram_before = (self.root / self.diagram).read_bytes()
+    def test_an_invalid_inline_diagram_rolls_the_whole_document_back(self):
+        path = self.root / self.main
+        original = path.read_bytes()
+        broken = original.decode().replace("transfer -->|reports accepted changes to| audit",
+                                           "transfer --> audit")
 
         def callback(stage, snapshot, result, cwd):
             if stage == "specify":
-                result["documents"] = [{"path": self.main, "content": original.decode() + "\nA proposed rule.\n"}]
-                result["diagrams"] = [{"path": self.diagram, "content": "{}"}]
+                result["documents"] = [{"path": self.main, "content": broken}]
 
         result = self.call("concorde-specify", {"target_id": "scope.bank", "task": "Update overview and rules"}, callback)
         self.assertNotEqual("succeeded", result["status"], result)
-        self.assertEqual(original, (self.root / self.main).read_bytes())
-        self.assertEqual(diagram_before, (self.root / self.diagram).read_bytes())
+        self.assertEqual("invalid_spec", result["errors"][0]["code"], result)
+        self.assertEqual(original, path.read_bytes())
 
-    def test_new_module_topology_authors_and_applies_contract_and_diagram(self):
+    def test_new_module_topology_authors_and_applies_its_own_contract(self):
         def callback(stage, snapshot, result, cwd):
             if stage == "route" and snapshot["action"] == "design-topology":
                 registry = copy.deepcopy(snapshot["topology"])
                 target = empty_target("scope.risk", "module", "Risk", ["specs/risk/module.md"])
                 target["parent"] = "scope.bank"
-                target["diagrams"] = [{"source": "specs/risk/diagrams/overview.json", "kind": "architecture",
-                                       "title": "Risk", "recipe": "system-overview"}]
                 registry["targets"].append(target)
-                design = typed("concorde-topology-design", {"summary": "Add a Risk Domain.",
+                design = typed("concorde-topology-design", {"summary": "Add a Risk Module.",
                     "registry": registry, "spec_tasks": [
                         {"target_id": "scope.bank", "task": "Route risk modeling tasks to scope.risk."},
                         {"target_id": "scope.risk", "task": "Define the known authoring boundary and name missing risk rules."}],
-                    "migration_constraints": [], "acceptance": ["Risk has an ontology.md and an architecture overview."]})
-                result.update(outcome="topology_proposed", answer="Risk Domain proposed.",
+                    "migration_constraints": [], "acceptance": ["Risk is registered and routable."]})
+                result.update(outcome="topology_proposed", answer="Risk Module proposed.",
                               routes=[], expand_targets=[], gaps=[], topology_design=design)
 
             if stage == "topology-author" and snapshot["target"]["id"] == "scope.bank":
                 import re
-                item=next(item for item in result["documents"] if item["path"]==self.main)
-                match=re.search(r"```concorde-dependencies\s*\n(.*?)^```",item["content"],re.M|re.S)
-                entries=json.loads(match.group(1));entries.append({"target_id":"scope.risk",
-                    "responsibility":"Describe risk modeling.","selection_condition":"Select for risk rules.",
-                    "relied_upon_promises":["Unknown risk rules remain explicit rather than inferred from code."]})
-                item["content"]=item["content"][:match.start()]+"```concorde-dependencies\n"+json.dumps(entries)+"\n```"+item["content"][match.end():]
+                item = next(item for item in result["documents"] if item["path"] == self.main)
+                match = re.search(r"```concorde-dependencies\s*\n(.*?)^```", item["content"], re.M | re.S)
+                entries = json.loads(match.group(1))
+                entries.append({"target_id": "scope.risk",
+                    "responsibility": "Describe risk modeling.", "selection_condition": "Select for risk rules.",
+                    "relied_upon_promises": ["Unknown risk rules remain explicit rather than inferred from code."]})
+                content = (item["content"][:match.start()] + "```concorde-dependencies\n"
+                           + json.dumps(entries) + "\n```" + item["content"][match.end():])
+                content = replace_entities(content, lambda values: [*values, {
+                    "id": "entity.bank.risk", "title": "Risk", "kind": "module",
+                    "responsibility": "Describes risk modeling for Banking.",
+                    "target_id": "scope.risk"}])
+                item["content"] = content.replace('    audit["Audit"]',
+                    '    audit["Audit"]\n    risk["Risk"]').replace(
+                    "    transfer -->|reports accepted changes to| audit",
+                    "    transfer -->|reports accepted changes to| audit\n"
+                    "    request -->|assessed by| risk")
 
-        result = self.call("concorde-main", {"action": "design-topology", "task": "Add the Risk Domain"}, callback)
+        result = self.call("concorde-main", {"action": "design-topology", "task": "Add the Risk Module"}, callback)
         self.assertEqual("topology_proposed", result["output"]["data"]["outcome"], result)
         proposal = result["output"]["data"]["topology_proposal"]
         prepared = self.call("concorde-main", {"action": "accept-topology", "topology_proposal": proposal}, callback)
@@ -198,18 +229,23 @@ class ModuleArchitectureTests(unittest.TestCase):
         applied = self.call("concorde-main", {"action": "apply-topology", "application": application}, callback)
         self.assertEqual("topology_applied", applied["output"]["data"]["outcome"], applied)
         self.assertTrue((self.root / "specs/risk/module.md").is_file())
-        self.assertTrue((self.root / "specs/risk/diagrams/overview.json").is_file())
-        self.assertEqual("success", validate_repository(self.root).status)
+        report = validate_repository(self.root)
+        self.assertEqual("success", report.status, [f.message for f in report.findings])
+        repository = SpecRepository(self.root)
+        risk = repository.select("scope.risk")
+        self.assertEqual((), risk.files)
+        self.assertTrue(repository.scenarios(risk))
 
 
 class InitialModuleTests(unittest.TestCase):
-    def test_initialization_is_honest_and_rolls_back_a_bad_overview(self):
+    def test_initialization_is_honest_and_rolls_back_a_bad_reading_entry(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             proposal = project_proposal(root, PACKAGE, "New project", CONFIGURATION)
-            source = next(f for f in proposal["files"] if f["path"].endswith("overview.architecture.json"))
+            source = next(f for f in proposal["files"]
+                          if f["path"] == "specs/modules/project/module.md")
             before = source["content"]
-            source["content"] = "{}"
+            source["content"] = before.replace("## Architecture", "## Drawing")
             with self.assertRaises(SpecError):
                 apply_project_proposal(root, PACKAGE, proposal)
             self.assertFalse((root / ".concorde/config.json").exists())
@@ -219,7 +255,11 @@ class InitialModuleTests(unittest.TestCase):
             repository = SpecRepository(root, PACKAGE)
             target = repository.select("module.project")
             self.assertEqual("specs/modules/project/module.md", target.primary_document)
-            self.assertIn("not yet been supplied", repository.document(target.primary_document).body)
+            body = repository.document(target.primary_document).body
+            self.assertIn("not yet been supplied", body)
+            self.assertEqual((), target.files)
+            self.assertEqual({"Project Spec", "Developer", "Concorde Framework"},
+                             {entity.title for entity in repository.entities(target)})
             self.assertEqual("success", validate_repository(root, package_root=PACKAGE).status)
 
 

@@ -19,7 +19,7 @@ attributed AI feedback and explicit human decisions, and every capability graph 
 graph whose nodes are deterministic steps or Agent invocations. The wire `role` and `agent` fields
 remain compatibility identifiers derived from the bound Agent's name.
 
-## feature.development.execute
+## Capability execution boundary
 A Capability provides usable or composable functionality under the Agent and Harness contract.
 The existing host adapter implements each registered entry as a Python module declaring launched
 Agents, effects, composed entries and typed request/response contracts. In this adapter, rendered
@@ -64,8 +64,8 @@ lifecycle writes and final merges with the repository lock.
 
 The host resolves the complete selected Target Spec plus one-hop Shared Specs and Protocol/kind definition for every stage.
 Spec-only agents, including Spec reviewers, start in a private capsule containing only frozen input.
-Implementation workers receive the complete Module context plus referenced Implementation Specs and their exact bound file paths. Planners and task authors receive neither Implementation Specs nor implementation files. Code reviewers
-use a distinct read-only implementation role with only the current registered file enumeration. Sessions are fresh, network and credential
+Implementation workers receive the complete Module context plus the contents of its own listed implementation files. Planners and task authors already see those file names through the Module's entity declarations, but receive no file contents. Code reviewers
+use a distinct read-only implementation role with only the current listed implementation files. Sessions are fresh, network and credential
 access disabled, writes restricted by phase. A native integration unable to enforce the grant blocks;
 outer enforcement requires a host-issued sandbox. Executor completions must match invocation, policy,
 launch and context identities. No ambient conversation or predecessor transcript is admitted.
@@ -73,18 +73,18 @@ launch and context identities. No ambient conversation or predecessor transcript
 Every new agent-backed task in a global capability first launches `concorde-coordinator` with the
 entry Module.
 Main discovery can
-admit registered complete Module collections on demand; each admission starts a fresh process with a new context identity. Main never reads Implementation Spec bodies or implementation code. For capabilities other than
+admit registered complete Module collections on demand; each admission starts a fresh process with a new context identity. Main never reads implementation file contents or code. For capabilities other than
 the `ask` action of `concorde-main`, main must return one owning target; cross-target mutation is
 routed through a Module. The host
 then starts the capability's different bounded worker or composite flow. For questions,
 `concorde-main` answers directly from complete contexts resolved by Python and injected into the
-coordinator. Source pools deduplicate full document and declared diagram bodies, while target
+coordinator. Source pools deduplicate full document bodies, while target
 records retain their exact membership. Additional selections restart the coordinator with the
 expanded complete context; no reading worker or synthesis stage intervenes. An optional caller
 target/focus is a routing hint, not a context grant.
 
 `concorde-main` also owns topology evolution. `design-topology` admits exact registry metadata and
-the Module kind definition while withholding Implementation Spec bodies and code. It returns a
+the Module kind definition while withholding implementation file contents and code. It returns a
 digest-bound candidate registry, local Spec tasks, migration constraints and acceptance conditions;
 no project file changes. `accept-topology` is the first developer gate. It rechecks the complete
 discovery context, starts fresh target-local Spec authors and validates their combined output against
@@ -207,7 +207,7 @@ proposal and the stage-input artifacts that pass between stages inside one capab
 
 Common request task fields (named once, not repeated per row): `target_id` (required for every
 stage capability; an optional routing hint for `main`, `dev-loop` and `reflections-triage`), `task`,
-`focus_id`, `constraints`, `change_id`. Common response fields (present in every capability response
+`focus_id` (a candidate scenario ID), `constraints`, `change_id`. Common response fields (present in every capability response
 except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, `context_id`,
 `outcome`, `answer`, `artifacts`, `gaps`, `checks`, `completed_capabilities`.
 
@@ -231,14 +231,14 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-context-snapshot@1` | Every stage capability's frozen input | Carries `target_id`, `kind`, `focus_id`, `phase`, `task`, `constraints`, `protocol_binding`, `protocol`, `document_order`, `target_spec`, `shared_specs`, `diagram_sources`, `instructions`, `stage_inputs`, `implementation_artifacts` (populated only for implementation/code-review) and `workspace`. A changed membership or byte digest is rejected as `stale_context`. |
+| `concorde-context-snapshot@1` | Every stage capability's frozen input | Carries `target_id`, `kind`, `focus_id`, `phase`, `task`, `constraints`, `protocol_binding`, `protocol`, `document_order`, `target_spec`, `shared_specs`, `instructions`, `stage_inputs`, `implementation_artifacts` (populated only for implementation/code-review) and `workspace`. A changed membership or byte digest is rejected as `stale_context`. |
 | `concorde-agent-task@1` | Host or admitted parent to Agent | `{task, target_id}`; nonempty task and explicit target hint, validated against the host grant. |
 | `concorde-agent-answer@1` | Generic Agent to parent | `{answer}`; nonempty task-relevant answer, never a context snapshot. |
 | `concorde-agent-interruption@1` | Agent to parent | `{gaps, decision}`; gaps contain question, blocked_step, needed_contract, target_id and context_id. Spec incomplete requires nonempty bound gaps and null decision; waiting requires a nonempty decision question and no gaps. |
 | `concorde-agent-loop-context@1` | Host to fresh native decision | `{invocation_id, parent_id, agent_id, input_json, context_json, feedback, children, result_schema_json}`. JSON transport strings contain host-validated typed values. Each child descriptor has agent_id, input_type, result_type, input_schema_json and result_schema_json. Feedback has invocation_id, parent_id, agent_id, outcome, value_json, error and nullable typed details; no child private context. |
 | `concorde-agent-loop-step@1` | Native decision to host | `{source, action, agent_id, value_json, outcome, details}`. Source is code-driven or model-driven (native must use model-driven). Delegate requires a child ID and typed input, completed decision outcome and null details. Complete has no child ID and returns a typed result only for completed. Other outcomes are spec_incomplete, waiting, cancelled, failed, limit_exhausted or rejected; only gaps/waiting carry typed interruption details. |
 | `concorde-agent-stage-context@1` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@1, change_id, expected_artifacts}`. |
-| `concorde-agent-stage-result@1` | Worker to host, the completion | `{context_id, outcome, answer, gaps, documents, diagrams?, plan, tasks, reflection_findings?}`; `documents`/`diagrams`/`plan`/`tasks`/`reflection_findings` are populated only by the phase that produces them. A mismatched `context_id` is rejected as `incompatible_handoff`. |
+| `concorde-agent-stage-result@1` | Worker to host, the completion | `{context_id, outcome, answer, gaps, documents, plan, tasks, reflection_findings?}`; `documents`/`plan`/`tasks`/`reflection_findings` are populated only by the phase that produces them. A mismatched `context_id` is rejected as `incompatible_handoff`. |
 
 ### Review types
 
@@ -253,23 +253,22 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-discovery-context@1` | Host to coordinator, during direct questions, routing or topology design | `{context_id, schema_version: 1, capability: main\|dev-loop, phase: route, action: route\|ask\|design-topology, task, constraints, target_hint, focus_hint, protocol_binding, protocol, topology (nullable registry, design-topology only), targets, documents, diagram_sources, instructions, workspace}`. |
+| `concorde-discovery-context@1` | Host to coordinator, during direct questions, routing or topology design | `{context_id, schema_version: 1, capability: main\|dev-loop, phase: route, action: route\|ask\|design-topology, task, constraints, target_hint, focus_hint, protocol_binding, protocol, topology (nullable registry, design-topology only), targets, documents, instructions, workspace}`. |
 | `concorde-main-stage-context@1` | Wraps the discovery context for launch | `{snapshot: concorde-discovery-context@1}`. |
 | `concorde-main-stage-result@1` | Coordinator to host, the completion | `{context_id, outcome, answer, expand_targets, routes, gaps, topology_design (nullable)}`. |
 | `concorde-topology-design@1` | design-topology's output, embedded in the main stage result | `{summary, registry, spec_tasks (nonempty), migration_constraints, acceptance (nonempty)}`. |
 | `concorde-topology-proposal@1` | design-topology's response, and accept-topology's request | `{proposal_id, base_registry_digest, protocol_binding, context_id, discovered_targets (nonempty), task, constraints, target_hint, focus_hint, design: concorde-topology-design@1, workspace}`; a stale `base_registry_digest` or `protocol_binding` is rejected as `stale_proposal`. |
-| `concorde-topology-author-context@1` | Host to target-local Spec author, during accept-topology | `{context_id, base_registry_digest, target, task, protocol_binding, protocol, candidate_document_references, current_document_order, target_spec, shared_specs, diagram_sources, instructions, workspace}`. |
-| `concorde-topology-author-result@1` | Author to host, the completion | `{context_id, target_id, outcome, answer, gaps, documents, diagrams?}`. |
+| `concorde-topology-author-context@1` | Host to target-local Spec author, during accept-topology | `{context_id, base_registry_digest, target, task, protocol_binding, protocol, candidate_document_references, current_document_order, target_spec, shared_specs, instructions, workspace}`. |
+| `concorde-topology-author-result@1` | Author to host, the completion | `{context_id, target_id, outcome, answer, gaps, documents}`. |
 | `concorde-topology-application@1` | Host-private, produced by accept-topology and consumed by apply-topology | `{application_id, topology_proposal: concorde-topology-proposal@1, base_registry_digest, protocol_binding, files (nonempty)}`; the public response exposes only its ArtifactRef, never these bytes. |
 
 In the discovery context, each target records `target_id`, `kind: module`, `document_order`,
-`target_spec`, `shared_specs` and `diagram_sources`. The two Spec sections contain document
-references `{document_id, path, digest, targets, main_visible}`; diagram_sources contains that
-Module's exact declarations `{source, kind, title, recipe?}`. The top-level documents pool supplies
-each referenced document's full record with `content` once per path. The top-level diagram_sources
-pool supplies `{path, digest, content}` once per declared source path. Pools are sorted by path;
-target registration order and shared ownership remain explicit. Inline diagrams are already in
-their Markdown bodies. No visibility flag trims these complete contexts.
+`target_spec` and `shared_specs`. The two Spec sections contain document
+references `{document_id, path, digest, targets, main_visible}`. The top-level documents pool
+supplies each referenced document's full record with `content` once per path. Pools are sorted by
+path; target registration order and shared ownership remain explicit. Inline diagrams are already
+part of their Markdown document bodies, so they need no separate pool. No visibility flag trims
+these complete contexts.
 
 For ask, the coordinator may expand explicitly selected contexts or complete directly from their
 original contents with no routes. Other routed capabilities preserve one target task and its
@@ -570,7 +569,7 @@ implementation imports.
   `python -m concorde protocol-manifest [--write] [--bind-project]` reports, accepts, or binds the
   tracked Protocol digest to the current build. The host supplies rendered bodies inline and admits
   only role-specific paths; it does not let the worker reopen the source package.
-- File transactions (`implementation.file-transactions`, a realization this Module references): `file_change(root: Path, path: str, content: str) ->
+- File transactions (this Module's own `entity.development.file-transactions`, also listed by Spec, Reflections and Views): `file_change(root: Path, path: str, content: str) ->
   {path,before_digest,content}` captures current bytes (null digest for new files).
   `apply_files(root: Path, changes: list[dict], allowed: set[str], *, verify=None) -> list[str]` requires
   nonempty unique allowed paths, UTF-8 replacement text and exact before digests. It rechecks before
@@ -598,42 +597,39 @@ an empty list. record-gaps requires a nonempty explicit list and reflection_ids=
 lists never mean all; unknown or resolved IDs fail as stale_reference. A repeated capture returns
 the existing link. The public metadata is sufficient for selection without reading control files.
 
-## Diagram sources in Spec authoring and review
-Architecture source in this project is an inline `mermaid` fence in a registered Markdown
-member. Its source path, kind (`mermaid`) and title are stated beside the fence; `accTitle` and
-`accDescr` provide accessible text. Each Module's main diagram describes its principal entities
-and directed relationships. The entire containing Markdown document is the authored source.
+## Diagrams as part of registered documents
+Architecture diagrams in this project are inline Mermaid flowchart fences inside a registered
+Markdown document, with `accTitle` and `accDescr` accessible text stated beside the fence. A
+Module's main diagram, in its `module.md` Architecture section, describes its principal entities
+and directed relationships; further diagrams may appear in other registered documents. The entire
+containing Markdown document is the diagram's only authored source.
 
-The source bytes already occur in `target_spec` or `shared_specs` and participate in document,
-revision and context digests. They are never duplicated in `diagram_sources`. The retained
-`diagram_sources` snapshot field is `[]` for this representation. Authors return changed fences
-inside `documents`; the optional separate `diagrams` result is omitted or empty. Shared Markdown
-changes require coordinated authoring from every explicitly registered owner. Non-author roles
-cannot replace these sources. Rendered SVG/HTML is never a cognitive input or another authority.
+The diagram's bytes already occur in `target_spec` or `shared_specs` and participate in document,
+revision and context digests; no separate diagram-source pool or result field exists. Authors
+return a changed fence as part of the changed `documents` entry that contains it. Shared Markdown
+changes require coordinated authoring from every explicitly registered owner; non-author roles
+cannot replace these sources; and rendered SVG/HTML is never a cognitive input or another
+authority.
 
-New authoring and initialization use this Markdown representation. The registry's retained
-`diagrams` array is empty. Previously registered external JSON sources require explicit migration
-into registered Markdown before using this revised authoring/publication contract; the host must
-not silently discard them or reinterpret their bytes. No external diagram source format is added
-by this revision.
-
-Spec review receives scoped Markdown changes, including the diagram fence, and attributes findings
-to that registered document and owning Module. A blocked author returns no replacements. A
-prepared application binds the complete accepted document set and every before-digest. Syntax and
-publication failures remain distinct from an incomplete or contradictory behavioral contract.
-Publication renders the same Mermaid source as part of the Markdown page.
+Spec review receives scoped Markdown changes, including any diagram fence they touch, and
+attributes findings to that registered document and owning Module. A blocked author returns no
+replacements. A prepared application binds the complete accepted document set and every
+before-digest. Syntax and publication failures remain distinct from an incomplete or contradictory
+behavioral contract. Publication renders the same Mermaid source as part of the Markdown page.
 
 ## Reusable implementation context and evidence
-The registry separates Module descriptors from Implementation Specs with exact file bindings;
-together they determine each Module's implementation context. Only implementation snapshots contain implementation_specs records with id, title, files,
-using Module IDs and document bodies. Code writers may update those admitted implementation
-records' documents and bound files, but cannot change their identity, membership or registry
-bindings, or a Module Spec. New bindings receive private honest stubs until code-writing work
-authors their internal design. Non-code authors never read those stubs or implementation bodies.
+Each Module's entities carry its exact file bindings directly in its own Spec; the registry's
+`files` field mirrors their union, and together they determine the Module's implementation
+context. A declared file that does not yet exist is marked `pending` on its entity instead of
+receiving a separate stub document; delivery removes that marker once the file exists. Code
+writers may create or change a Module's own listed files, but cannot change entity identity,
+membership, the registry, or a Module Spec document. Non-code authors never read those files'
+contents, only their names through the entity declarations they can already see.
 
-Implementation revisions hash the binding descriptor, Implementation Spec documents and bound
-files. Validation derives all using Modules, runs their configured checks and records each Module's
-contract and implementation revisions. Code review uses a separate Module-only contract context
-for each consumer plus its authorized code. Required peer review artifacts are retained with their
-own intent; later source, Spec or membership changes invalidate those results. A single consumer's
-completion never establishes compatibility for every user of the shared implementation.
+Implementation revisions hash each Module's listed files' current digests. Validation derives
+every listing Module from the reverse index, runs their configured checks and records each
+Module's contract and implementation revisions. Code review uses a separate Module-only contract
+context for each consumer plus its authorized code. Required peer review artifacts are retained
+with their own intent; later source, Spec or membership changes invalidate those results. A single
+consumer's completion never establishes compatibility for every Module that lists the same shared
+file.

@@ -28,7 +28,9 @@ def triage(run):
         raise SpecError("gap_ids are only accepted by record-gaps", "invalid_input")
     _,_,parsed,_,raw=queue._load_reflections(root,required=True)
     entries={entry.identifier:entry for entry in parsed.entries}
-    local={run.target.id,*(x["id"] for x in (*run.target.features,*run.target.interfaces))}
+    # A reflection is attributed to a Module or one of its scenarios; entities and requirements
+    # locate text inside a Module and are not separate attribution identities.
+    local={run.target.id,*(scenario.id for scenario in run.repository.scenarios(run.target))}
     selected=ids or [entry.identifier for entry in parsed.entries if entry.feature in local]
     if any(i not in entries or entries[i].feature not in local for i in selected):
         raise SpecError("selected reflection does not belong to this target", "permission_denied")
@@ -47,8 +49,8 @@ def triage(run):
         (queue.remove_closed if action=="close" else queue.remove_merged)(root,ids)
         return run.response(answer="Eligible records removed; Git history retains their disposition.")
     progress(root, phase="reflection_investigation", status="active", invalidate=True)
-    if not run.target.implementations:
-        return run.response("unsupported","Select a Module with a registered Implementation Spec before code investigation.")
+    if not run.target.files:
+        return run.response("unsupported","Select a Module whose entities list implementation files before code investigation.")
     head=queue._captured_head(root);before=_implementation_digest(run.repository,run.target)
     selection=typed("concorde-reflection-selection",{"head":head,"records":[
         {"id":i,"path":entries[i].path,"digest":digest(raw[entries[i].path]),"content":raw[entries[i].path].decode()} for i in ids]})

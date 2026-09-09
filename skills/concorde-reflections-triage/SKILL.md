@@ -22,4 +22,4 @@ reflection_ids array to preserve durable missing-contract reports in the existin
 keeps its host-bound target owner; a Module may capture gaps of its participating components.
 Repeated capture reuses the linked Reflection ID. Capture does not resolve gaps, investigate, approve
 or implement a fix. For existing records, target_id names the owning target and focus_id may name its
-Feature/API; a Feature/API ID is not itself a target and concerns is not ownership.
+scenario; a scenario ID is not itself a target and concerns is not ownership.

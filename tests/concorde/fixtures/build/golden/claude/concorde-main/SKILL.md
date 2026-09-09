@@ -17,7 +17,7 @@ disable-model-invocation: false
 This is Concorde's public main entry. It replaces the former ask capability. The internal coordinator
 starts from the project's entry Module and may expand only registered Module
 complete Target Spec and explicitly registered Shared Specs. Shared membership never expands another entity's remaining
-documents. It understands the Module contract and never reads Implementation Specs or implementation code.
+documents. It understands the Module contract and never reads implementation files.
 
 Action `ask` (the default when action is omitted) answers directly from complete Spec contexts
 resolved by Python and injected into the coordinator. Each source body is included once, with
@@ -31,8 +31,8 @@ action `apply-topology` accepts it and atomically applies or rolls back the regi
 Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-main`. Its exact fields
 are type_id, schema_version:3, capability_id:"concorde-main", mode:"execute" or "describe-policy",
 configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1), and input (concorde-main-request@1).
-Ask and design-topology requests require task and accept optional target_id/focus_id routing hints
-and constraints. Accept-topology requires the exact topology_proposal returned by design. Apply-
+Ask and design-topology requests require task and accept optional target_id/focus_id (a candidate
+scenario ID) routing hints and constraints. Accept-topology requires the exact topology_proposal returned by design. Apply-
 topology requires only the exact application ArtifactRef returned by accept.
 The hint never grants Spec access to the coordinator. The global development loop
 (`concorde-dev-loop`) accepts the same task, with optional target_id, focus_id, constraints, and
@@ -42,10 +42,10 @@ Initialization uses its typed propose/apply request; use the published request s
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
 The coordinator expands complete Module collections only as needed and records the exact
-Target Spec/Shared Specs membership, declared diagram sources and digests in every discovery identity.
+Target Spec/Shared Specs membership and digests in every discovery identity.
 The coordinator can reason across all admitted complete contexts and answer without a reader or
 intermediate summaries. A mutation route selects a Module from admitted responsibilities; the fresh worker receives only its own
-complete Module collection. Main visibility metadata does not trim that collection or admit an Implementation Spec.
+complete Module collection. Main visibility metadata does not trim that collection or admit implementation files.
 Topology design receives exact registry metadata and explicitly admits affected Module contracts. Target authors' complete output
 is never returned through this capability; it stays in the ignored host application artifact. Report
 Spec gaps or blocked execution as returned and do not work around the boundary. Non-implementation
@@ -56,6 +56,11 @@ also task every retained affected Module to reconcile its local `concorde-depend
 The Module task carries the exact ID, local responsibility, selection condition and relied-upon
 promises. Candidate overlay validation rejects a registry edge without that self-contained Module
 routing view.
+
+A topology proposal that adds, removes or moves an entry in a Module's implementation `files` list
+likewise tasks that Module -- and every other Module already listing the same file -- to reconcile
+its entity declarations, since the registry `files` must equal the sorted union of a Module's
+entity files.
 
 Every physical Spec document declares stable ID, exact target references and main visibility.
 Changing document references tasks every retained current/candidate target. Shared truth has no
@@ -599,7 +604,7 @@ This complete schema is the invocation's input field. It does not grant project 
           "type": "object",
           "properties": {
             "schema_version": {
-              "const": 2
+              "const": 3
             },
             "project_id": {
               "type": "string",
@@ -653,65 +658,13 @@ This complete schema is the invocation's input field. It does not grant project 
                     },
                     "uniqueItems": true
                   },
-                  "implementations": {
+                  "files": {
                     "type": "array",
                     "items": {
                       "type": "string",
                       "minLength": 1
                     },
                     "uniqueItems": true
-                  },
-                  "features": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "title": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "document": {
-                          "type": "string",
-                          "minLength": 1
-                        }
-                      },
-                      "required": [
-                        "id",
-                        "title",
-                        "document"
-                      ],
-                      "additionalProperties": false
-                    }
-                  },
-                  "interfaces": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "title": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "document": {
-                          "type": "string",
-                          "minLength": 1
-                        }
-                      },
-                      "required": [
-                        "id",
-                        "title",
-                        "document"
-                      ],
-                      "additionalProperties": false
-                    }
                   },
                   "checks": {
                     "type": "array",
@@ -720,35 +673,6 @@ This complete schema is the invocation's input field. It does not grant project 
                       "minLength": 1
                     },
                     "uniqueItems": true
-                  },
-                  "diagrams": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "source": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "kind": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "title": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "recipe": {
-                          "const": "system-overview"
-                        }
-                      },
-                      "required": [
-                        "source",
-                        "kind",
-                        "title"
-                      ],
-                      "additionalProperties": false
-                    }
                   }
                 },
                 "required": [
@@ -758,56 +682,12 @@ This complete schema is the invocation's input field. It does not grant project 
                   "documents",
                   "parent",
                   "uses",
-                  "implementations",
-                  "features",
-                  "interfaces",
-                  "checks",
-                  "diagrams"
+                  "files",
+                  "checks"
                 ],
                 "additionalProperties": false
               },
               "minItems": 1
-            },
-            "implementations": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "title": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "documents": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "uniqueItems": true,
-                    "minItems": 1
-                  },
-                  "files": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "uniqueItems": true,
-                    "minItems": 1
-                  }
-                },
-                "required": [
-                  "id",
-                  "title",
-                  "documents",
-                  "files"
-                ],
-                "additionalProperties": false
-              }
             },
             "checks": {
               "type": "array",
@@ -859,7 +739,6 @@ This complete schema is the invocation's input field. It does not grant project 
             "project_id",
             "entry_target",
             "targets",
-            "implementations",
             "checks"
           ],
           "additionalProperties": false

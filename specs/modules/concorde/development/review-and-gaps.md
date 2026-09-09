@@ -42,5 +42,6 @@ scoped patches. Required evidence is rechecked at readiness/delivery, using the 
 lifecycle. A failed process or incomplete review never becomes an empty successful review.
 
 Read-only reflection investigation receives the selected Module contract and explicitly granted
-code files. It receives no Implementation Spec bodies or file permissions for those documents.
-Code-writing tasks separately receive their referenced Implementation Specs.
+code files. It receives no write permission for those files.
+Code-writing tasks separately receive the Module's own listed implementation files, with write
+authority limited to exactly those paths.

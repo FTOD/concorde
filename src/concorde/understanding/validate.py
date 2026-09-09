@@ -56,7 +56,7 @@ def validate_project(project_root: str | Path, target: str | None = None) -> Too
     config=Path(project_root)/".concorde/config.json"
     if config.is_file() and not config.is_symlink():
         try:
-            if json.loads(config.read_text()).get("profile_version")==9:
+            if json.loads(config.read_text()).get("profile_version")==10:
                 from ..specification.validation import validate_repository
                 return validate_repository(project_root,target)
         except (OSError,ValueError):pass

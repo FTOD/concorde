@@ -12,83 +12,262 @@
 
 Build authored projections, install and configure owned integrations, provision the managed runtime and keep a source checkout's own projections bound to the worktree that built them.
 
-## Contract identity and context
+## Purpose
 
-`module.distribution` follows Spec Protocol 2.1.0. Its sole structural parent is `module.concorde`. The complete contract is the Markdown collection explicitly registered in `.concorde/specs.json`; links and realization references do not expand it. This reading entry introduces the collection.
+Distribution turns authored Framework sources into the deterministic outputs a project actually
+runs: rendered Agent instructions and Skills, an installed and configured integration, and a
+verified managed Python and viewer runtime. Its users are developers installing or updating
+Concorde into a consumer project, developers maintaining this source checkout, and every other
+Framework capability that depends on fresh generated projections before it executes. Its promises
+stop at owned, receipt-tracked output: it never edits project-owned Specs or configuration, and it
+never decides what those Specs should say.
 
-The registered companion documents explain [installation](installation.md), [build](build.md) and [runtime](runtime.md). Their content remains authoritative regardless of navigation visibility.
+## Scenarios
+
+Scenario definitions for installing, configuring and guarding this source checkout's own worktrees
+are registered in [installation](installation.md). Scenario definitions for rendering and
+freshness-checking projections are registered in [build](build.md). Scenario definitions for
+provisioning the managed Python and viewer runtime are registered in [runtime](runtime.md).
+
+## Requirements
+
+- req.distribution.no-silent-protocol-rewrite: Install or update SHALL NOT silently rewrite a consumer's Protocol binding; a package with changed Protocol assets SHALL require the consumer's explicit binding decision before execution.
+- req.distribution.build-idempotent: `build` and `build --check` SHALL be idempotent and byte-identical across repeated runs and SHALL perform no network or process I/O.
+- req.distribution.one-worktree-build: Every build invocation SHALL operate only on the worktree containing its named sources and SHALL NOT point one worktree's build at another worktree's outputs.
+
+## Entities
+
+The three programs below realize build, installation and runtime provisioning; the interface
+entities are their means of use, and the remaining entities name the data and actors those
+interfaces exchange.
+
+```concorde-entities
+[
+  {
+    "id": "entity.distribution.build",
+    "title": "Build",
+    "kind": "program",
+    "responsibility": "Renders every Agent, Skill, rule, schema, documentation and Studio-graph output deterministically from authored sources, records their exact source/output digests in the build manifest, verifies freshness before ordinary capability execution, and runs package validation.",
+    "files": [
+      "agents/__init__.py",
+      "capabilities/__init__.py",
+      "concorde.json",
+      "pyproject.toml",
+      "src/concorde/host/build.py",
+      "src/concorde/host/package_validation.py",
+      "src/concorde/host/prompt_resolver.py",
+      "tests/concorde/fixtures/build/golden/claude/concorde-configure/SKILL.md",
+      "tests/concorde/fixtures/build/golden/claude/concorde-deliver/SKILL.md",
+      "tests/concorde/fixtures/build/golden/claude/concorde-dev-loop/SKILL.md",
+      "tests/concorde/fixtures/build/golden/claude/concorde-init/SKILL.md",
+      "tests/concorde/fixtures/build/golden/claude/concorde-main/SKILL.md",
+      "tests/concorde/fixtures/build/golden/claude/concorde-reflections-triage/SKILL.md",
+      "tests/concorde/fixtures/build/golden/claude/concorde-validate/SKILL.md",
+      "tests/concorde/fixtures/build/golden/codex/concorde-configure/SKILL.md",
+      "tests/concorde/fixtures/build/golden/codex/concorde-deliver/SKILL.md",
+      "tests/concorde/fixtures/build/golden/codex/concorde-dev-loop/SKILL.md",
+      "tests/concorde/fixtures/build/golden/codex/concorde-init/SKILL.md",
+      "tests/concorde/fixtures/build/golden/codex/concorde-main/SKILL.md",
+      "tests/concorde/fixtures/build/golden/codex/concorde-reflections-triage/SKILL.md",
+      "tests/concorde/fixtures/build/golden/codex/concorde-validate/SKILL.md",
+      "tests/concorde/host/unit/test_build.py",
+      "tests/concorde/host/unit/test_package_validation.py",
+      "tests/concorde/host/unit/test_prompt_resolver.py",
+      "tests/concorde/support/build_fixture.py",
+      "uv.lock"
+    ]
+  },
+  {
+    "id": "entity.distribution.installation",
+    "title": "Installation",
+    "kind": "program",
+    "responsibility": "Plans and applies receipt-owned Framework, Skill and bounded root-guidance changes for a target project without replacing project-owned Specs or configuration, and hosts the source checkout's own deterministic maintenance CLI and worktree guard.",
+    "files": [
+      "capabilities/configure.py",
+      "scripts/concorde.ps1",
+      "scripts/concorde.py",
+      "scripts/concorde.sh",
+      "scripts/development/check-docsite-types.py",
+      "scripts/install-concorde.py",
+      "scripts/requirements.lock",
+      "scripts/run-capability.py",
+      "scripts/worktree-guard.py",
+      "skills/concorde-configure/SKILL.md",
+      "src/concorde/distribution/__init__.py",
+      "src/concorde/distribution/protocol_guidance.py",
+      "src/concorde/host/cli.py",
+      "templates/module-template.md",
+      "templates/plan-template.md",
+      "templates/reflections-template.md",
+      "templates/scenario-template.md",
+      "templates/tasks-template.md",
+      "tests/concorde/distribution/__init__.py",
+      "tests/concorde/distribution/acceptance/__init__.py",
+      "tests/concorde/distribution/acceptance/test_consumer_install_end_to_end.py",
+      "tests/concorde/distribution/acceptance/test_fresh_clone_bootstrap.py",
+      "tests/concorde/distribution/contract/__init__.py",
+      "tests/concorde/distribution/contract/test_manifests.py",
+      "tests/concorde/distribution/integration/__init__.py",
+      "tests/concorde/distribution/unit/__init__.py",
+      "tests/concorde/distribution/unit/test_install_concorde.py",
+      "tests/concorde/distribution/unit/test_protocol_guidance.py",
+      "tests/concorde/distribution/unit/test_worktree_guard.py"
+    ]
+  },
+  {
+    "id": "entity.distribution.managed-runtime",
+    "title": "Managed runtime",
+    "kind": "program",
+    "responsibility": "Plans, stages and verifies the locked Python interpreter and the official viewer package as versioned, hash-bound artifacts, recording a recoverable identity receipt.",
+    "files": [
+      "src/concorde/distribution/managed_runtime.py",
+      "tests/concorde/support/managed_runtime.py",
+      "viewer/README.md",
+      "viewer/package-lock.json",
+      "viewer/package.json"
+    ]
+  },
+  {
+    "id": "entity.distribution.spec",
+    "title": "Spec",
+    "kind": "used module",
+    "target_id": "module.spec",
+    "responsibility": "Defines the project configuration and registry that installation, configuration and initialization read or write, with exactly one pinned Protocol binding."
+  },
+  {
+    "id": "entity.distribution.install-script",
+    "title": "Install script",
+    "kind": "interface",
+    "responsibility": "The `python3 scripts/concorde.py` and `scripts/install-concorde.py` command surface that previews owned changes by default and applies them only with `--apply`, and the `concorde-configure` capability that changes a supported integration or enforcement setting on an initialized project."
+  },
+  {
+    "id": "entity.distribution.build-command",
+    "title": "Build command",
+    "kind": "interface",
+    "responsibility": "The `build`/`write_build`/`check_build`/`verify_fresh`/`load_agent` Python functions and the `python3 scripts/concorde.py build` CLI entry that render, write, compare and freshness-check the projections, and load one Agent's current rendered binding."
+  },
+  {
+    "id": "entity.distribution.runtime-provisioning",
+    "title": "Runtime provisioning interface",
+    "kind": "interface",
+    "responsibility": "The `load_runtime_spec`/`plan_runtime`/`provision_runtime` functions that describe local provisioning state and stage the reviewed action for the locked Python runtime and the official viewer."
+  },
+  {
+    "id": "entity.distribution.worktree-guard",
+    "title": "Worktree guard",
+    "kind": "interface",
+    "responsibility": "The `scripts/worktree-guard.py` Claude Code and Codex hook command that decides one hook payload and refuses native worktree creation in a developer session of this source checkout."
+  },
+  {
+    "id": "entity.distribution.authored-sources",
+    "title": "Authored sources",
+    "kind": "concept",
+    "responsibility": "The root `concorde.json`, canonical `prompts/`, `skills/`, `capabilities/`, Protocol chapters and the contract modules under `src/concorde/host` that the build resolves through `@include` graphs into deterministic outputs."
+  },
+  {
+    "id": "entity.distribution.build-manifest",
+    "title": "Build manifest",
+    "kind": "record",
+    "responsibility": "The recorded source-to-output digest identity at `generated/build-manifest.json` that establishes freshness and that the host checks before every top-level capability invocation except a lifecycle capability."
+  },
+  {
+    "id": "entity.distribution.package-inventory",
+    "title": "Package inventory",
+    "kind": "record",
+    "responsibility": "The distributable `concorde.json` manifest naming the package version, accepted Protocol binding, workspace protocol, roles, capabilities, Skills and templates that installation selects assets from."
+  },
+  {
+    "id": "entity.distribution.installation-proposal",
+    "title": "Installation proposal",
+    "kind": "record",
+    "responsibility": "The preview of receipt-owned Framework, Skill and root-guidance replacements, computed from the package inventory and the target's current ownership receipt, that installation applies only once accepted and still current."
+  },
+  {
+    "id": "entity.distribution.ownership-receipt",
+    "title": "Ownership receipt",
+    "kind": "record",
+    "responsibility": "The hashed record of owned installed bytes, required runtime identity and root-guidance block boundaries that installation checks before accepting a change and restores from on failure."
+  },
+  {
+    "id": "entity.distribution.target-project",
+    "title": "Target project",
+    "kind": "concept",
+    "responsibility": "The initialized or uninitialized project directory that an installation, configuration or build proposal is applied to, whose project-owned Specs, configuration and unrelated files are always preserved."
+  },
+  {
+    "id": "entity.distribution.verified-runtime",
+    "title": "Verified managed runtime",
+    "kind": "concept",
+    "responsibility": "The staged, hash-verified Python interpreter and official viewer package that installation provisions and that runtime and viewer consumers read through the recorded receipt."
+  },
+  {
+    "id": "entity.distribution.integration-configuration",
+    "title": "Integration configuration",
+    "kind": "concept",
+    "responsibility": "The typed, supported integration and enforcement setting that `concorde-configure` applies atomically to an initialized project, leaving the previous configuration in place on any failure."
+  },
+  {
+    "id": "entity.distribution.developer-session",
+    "title": "Developer agent session",
+    "kind": "external actor",
+    "responsibility": "The Claude Code or Codex agent session in this source checkout whose native worktree creation the worktree guard refuses, so its loaded worktree-owned Skills never outlive the worktree that built them."
+  }
+]
+```
 
 ## Architecture
 
-Authored source: `specs/modules/concorde/distribution/module.md` (the Mermaid fence in this section). Kind: `mermaid`. Title: **Distribution entities and relationships**. The source is included through this document’s explicit membership; it is not a separate external diagram record.
+Build, Installation and Managed runtime are independent programs that only meet at explicit
+records: Build never writes into a target project, Installation never renders Framework assets
+itself, and Managed runtime never chooses which files Installation replaces. Ownership receipt and
+Build manifest play matching but distinct roles — one binds installed bytes in a target project,
+the other binds authored sources to rendered outputs in this checkout or a build client — and
+neither substitutes for the other. In this source checkout specifically, the worktree guard and the
+developer session it constrains are the only entities with no counterpart in an installed consumer
+project, because the guard is checkout policy and ships to no one else.
 
 ```mermaid
 flowchart TB
     accTitle: Distribution entities and relationships
-    accDescr: Authored sources form a resolved source graph that the build renders into generated Agents, Skills, rules, schemas and the Studio graph configuration, recorded by a build manifest. A package inventory identifies distributable assets. An installation proposal selects owned replacements and records their preconditions, requires a verified managed runtime, and records accepted ownership in a receipt. A configuration change applies supported integration settings to an initialized project. In the source checkout, a worktree guard refuses native worktree creation in the developer agent session that loads the worktree-owned generated Skills.
-    authored["Authored instructions, contracts and Protocol chapters"]
-    sourceGraph["Resolved source graph"]
-    outputs["Generated Agents, Skills, rules, schemas and graph configuration"]
+    accDescr: Authored sources are rendered by Build, which is exposed through the Build command, records freshness in the Build manifest and validates the Package inventory. The Install script is realized by Installation, which computes an Installation proposal from the Package inventory and the Ownership receipt, applies accepted replacements to the Target project, requires a Verified managed runtime, records new ownership in the receipt, and applies Integration configuration to the Target project. Installation reads the project configuration and registry through Spec. The Runtime provisioning interface is realized by Managed runtime, which provisions and verifies the Verified managed runtime that Distribution supplies. In the source checkout, the Worktree guard refuses native worktree creation in the Developer agent session that loads Build's worktree-owned outputs.
+    authored["Authored sources"]
+    build["Build"]
+    buildCmd["Build command"]
     manifest["Build manifest"]
     inventory["Package inventory"]
+    installScript["Install script"]
+    installation["Installation"]
     proposal["Installation proposal"]
-    target["Target project"]
     receipt["Ownership receipt"]
-    runtime["Verified managed runtime"]
-    configuration["Integration configuration"]
+    target["Target project"]
+    config["Integration configuration"]
+    runtimeIface["Runtime provisioning interface"]
+    managedRuntime["Managed runtime"]
+    verifiedRuntime["Verified managed runtime"]
+    guard["Worktree guard"]
     session["Developer agent session"]
-    guard["Source-checkout worktree guard"]
-    authored -->|contribute to| sourceGraph
-    sourceGraph -->|renders| outputs
-    manifest -->|binds source and output identities of| sourceGraph
-    manifest -->|establishes freshness of| outputs
-    inventory -->|supplies assets to| proposal
+    spec["Spec"]
+    authored -->|are rendered by| build
+    build -->|is exposed through| buildCmd
+    build -->|records freshness in| manifest
+    build -->|validates| inventory
+    inventory -->|supplies distributable assets to| proposal
+    installScript -->|is realized by| installation
+    installation -->|computes| proposal
     receipt -->|supplies before-state to| proposal
     proposal -->|applies accepted replacements to| target
-    proposal -->|requires| runtime
-    proposal -->|records accepted ownership in| receipt
-    configuration -->|applied to initialized| target
-    session -->|loads worktree-owned| outputs
+    proposal -->|requires| verifiedRuntime
+    installation -->|records accepted ownership in| receipt
+    installation -->|applies| config
+    config -->|is applied to initialized| target
+    runtimeIface -->|is realized by| managedRuntime
+    managedRuntime -->|provisions and verifies| verifiedRuntime
+    installation -->|reads project configuration and registry through| spec
+    session -->|loads worktree-owned outputs rendered by| build
     guard -->|refuses native worktree creation in| session
 ```
 
-The build resolves `@include` graphs from authored Agent responsibilities, Skill instructions, rule adapters and capability contracts and renders deterministic outputs whose freshness the manifest binds; generated assets are derived views, never authoring sources. Installation proposes owned replacements, applies an accepted current proposal, verifies runtime and assets and records ownership; failure restores previously valid owned state. The managed runtime provisions the locked Python environment and viewer package from hash-bound inputs. A source checkout distributes itself by building its own projections, and its checked-in agent configuration refuses native worktree creation in developer sessions so those projections stay bound to the worktree that built them.
-
-## Features
-
-### feature.distribution.install
-
-For a supported integration and target directory, preview receipt-owned Framework, Skill and root-guidance changes, then apply the accepted current proposal. Preserve user content and project-owned Specs and configuration. Conflicting ownership, modified owned blocks, stale previews or runtime failure prevent acceptance and restore replaced owned state.
-
-### feature.distribution.build
-
-For authored Framework assets and an integration selection, render deterministic Agent, Skill, rule, schema, documentation and Studio graph outputs; write them only to owned projection locations or compare them without writes. Source digests bind runtime freshness. In the source checkout, the worktree guard registered in the checked-in Claude Code and Codex configuration refuses a developer session's native worktree creation, so loaded Skills never outlive the worktree that built them; the guard is not installed into consumer projects. Invalid includes, bindings or package contracts produce findings or a build error and cannot authorize stale execution.
-
-### feature.distribution.runtime
-
-For locked Python and viewer requirements and an accepted provisioning action, compare installed state, stage required artifacts, verify their identity and record the resulting owned runtime receipt. An unchanged verified runtime may be reused. Failed acquisition or verification must not replace a previously valid runtime or mark partial state usable.
-
-### feature.distribution.configure
-
-For an initialized project, apply an explicit supported integration and enforcement configuration atomically. Unsupported values, an uninitialized project or a failed write leave the previous configuration in place.
-
-## Interfaces
-
-### interface.distribution.install
-
-The installer proposes owned file changes and applies accepted current proposals; `python3 scripts/concorde.py` exposes build, validate, docsite and protocol-manifest maintenance commands, `scripts/worktree-guard.py` is the source checkout's hook command, and `concorde-configure` applies integration settings. Missing business facts remain explicit. Failed application or provisioning restores previously valid owned state. The [installation](installation.md) document defines the commands, proposals, receipts and errors.
-
-### interface.distribution.build
-
-`build` renders assets; `write_build` writes owned projections; `check_build` compares without changing the worktree; `verify_fresh` detects changed authoring sources; `load_agent` returns one Agent's rendered body with its binding. Module and Implementation kind definitions are distributed together. The [build](build.md) document defines inputs, outputs, the manifest and errors.
-
-### interface.distribution.runtime
-
-`load_runtime_spec` reads locked requirements, `plan_runtime` describes provisioning state and `provision_runtime` stages versioned, hash-bound inputs and records verified receipts. A failed acquisition does not replace a previously valid runtime or accept a partial installation. The [runtime](runtime.md) document defines the records, actions and errors.
-
-## Local collaboration agreements
-
-These entries describe the exact direct providers registered for this Module. They state relied-upon behavior from this Module's perspective without importing another Module's documents.
+## Dependencies and composition
 
 ```concorde-dependencies
 [
@@ -103,6 +282,16 @@ These entries describe the exact direct providers registered for this Module. Th
 ]
 ```
 
-## Realizations
+## Unresolved information
 
-The registered realizations are `implementation.build`, `implementation.installation`, `implementation.managed-runtime` and `implementation.legacy-understanding`. They describe exact file ownership and internal implementation choices separately; the legacy realization is a pending removal that the maintenance CLI's `validate` command still imports. Module/Feature/Interface selection includes this full contract collection and does not load those Implementation Specs.
+`src/concorde/host/cli.py`'s `validate` subcommand currently calls `validate_project` from the
+Profile 7 legacy understanding package retained under `module.views` pending removal; migrating it
+to `validate_repository` is outstanding.
+
+Managed runtime's replacement design intends to preserve the previous valid runtime until a rebuild
+is verified and to restore it after a failed rebuild, but the current provisioning implementation
+still removes an owned environment before rebuilding; this preservation promise is not yet fulfilled
+by code, and callers must not infer recovery from the absence of success metadata.
+
+Project initialization and Protocol-binding decisions belong to `module.spec`'s `concorde-init`
+capability, not to this Module; installation never creates the registry or a Module stub itself.

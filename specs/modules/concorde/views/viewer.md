@@ -9,11 +9,9 @@
 ```
 # Understand Anything viewer service
 
-## feature.views.viewer
-
 This deterministic service opens an existing raw Understand Anything knowledge graph with the
-installer-owned official viewer. Its entry is `scripts/run-viewer.py` in the Framework package.
-It is a developer tool, not an agent Capability or a new Skill, and it launches no model cognition.
+installer-owned official viewer. Its entry is `scripts/run-viewer.py` in the Framework package. It
+is a developer tool, not an agent Capability or a new Skill, and it launches no model cognition.
 
 ```bash
 python3 .concorde/framework/scripts/run-viewer.py --project-root . --no-open
@@ -25,45 +23,72 @@ python3 .concorde/framework/scripts/run-viewer.py --project-root . --no-open
 | `--port N` | Optional integer from 0 through 65535, forwarded to the official viewer |
 | `--no-open` | Optional flag forwarded to the official viewer to suppress its browser opening |
 
-The launcher verifies the installed Framework manifest, runtime marker and official viewer package
-identity. It selects the first existing raw graph in the manifest's ordered graph_paths list:
-`.understand-anything/knowledge-graph.json`, then `.ua/knowledge-graph.json` in the current package.
-An invalid first existing graph fails; it does not silently switch to the other graph.
+## Launching the viewer
 
+### scenario.views.viewer-launch — Launching opens the first existing raw graph with the official viewer
+
+- GIVEN an installed Framework manifest, a verified runtime marker and at least one existing raw graph in the manifest's ordered graph_paths
+- WHEN `run-viewer.py --project-root PATH` runs
+- THEN it selects the first existing graph, validates its shape and starts the official viewer with the requested port and browser behavior
+- AND it returns the child process's exit code
+
+The launcher selects the first existing raw graph in the manifest's ordered `graph_paths` list:
+`.understand-anything/knowledge-graph.json`, then `.ua/knowledge-graph.json` in the current package.
 The graph must be a regular JSON object with a string version, object project, and arrays nodes and
-edges. Symlinks in the graph path are rejected. A Concorde explore/result envelope is not raw viewer
-input and is rejected. The launcher does not verify graph-to-code freshness, graph semantics or
-agreement with the Spec; it does not generate or rewrite the graph.
+edges. Symlinks in the graph path are rejected. A Concorde explore/result envelope is not raw
+viewer input and is rejected.
+
+### scenario.views.viewer-invalid-first-graph — An invalid first-choice graph fails without falling back
+
+- GIVEN the first existing graph in order is not a regular JSON object with a string version, object project and array nodes/edges, or is reached through a symlink
+- WHEN the launcher runs
+- THEN it fails immediately
+- AND it does not fall back to a later graph in the order
+
+### scenario.views.viewer-missing-runtime — A missing or mismatched runtime blocks launch
+
+- GIVEN a missing, unverified or mismatched runtime marker, viewer package identity or entrypoint file
+- WHEN the launcher runs
+- THEN it reports `CONCORDE VIEWER FAILED` on stderr and exits 3
+- AND it does so before starting any process
+
+### scenario.views.viewer-interrupted — Keyboard interruption is reported distinctly
+
+- GIVEN a running viewer child process
+- WHEN the launch is interrupted from the keyboard
+- THEN the launcher returns exit code 130
+
+- req.views.no-graph-generation: The viewer launcher SHALL NOT generate, rewrite or verify the freshness of the graph it opens against source.
+- req.views.no-dependency-install: The viewer launcher SHALL NOT resolve dependencies or perform network acquisition.
+- req.views.cli-syntax-errors: Invalid launch syntax or a port outside 0-65535 SHALL exit through argument parsing with code 2, distinct from a failed launch's exit code 3.
 
 After admission, the launcher checks Node.js >=18 and runs Node with the installed entrypoint and
 project directory, forwarding the optional flags. The child runs from the project directory. The
-launcher prints which graph it selected and returns the child exit code. Keyboard interruption
-returns 130. Invalid launch state or an OS failure reports `CONCORDE VIEWER FAILED` on stderr and
-returns 3 before accepting a launch; invalid CLI syntax or a port outside the range exits through
-argparse with code 2. No dependency resolution or network acquisition occurs in the launcher.
+launcher prints which graph it selected and returns the child exit code.
 
 ## Required installed-runtime contract
 
-The project contains `.concorde/framework/concorde.json`. Its runtime.venv is `.concorde/.venv`, and
-its viewer declaration supplies package, version, install_relative, entrypoint and graph_paths.
+The project contains `.concorde/framework/concorde.json`. Its `runtime.venv` is `.concorde/.venv`,
+and its viewer declaration supplies package, version, install_relative, entrypoint and graph_paths.
 Relative runtime paths cannot be absolute, contain `..`, or contain backslashes. Relevant installed
 paths must not be symlinks, and the viewer entrypoint must exist as a file.
 
 The runtime marker `.concorde/.venv/.concorde-runtime.json` has schema_version 2, owner concorde,
-viewer_version matching the manifest and viewer_entrypoint matching the declared entrypoint.
-The viewer package.json must match the declared package name and version. These startup checks
-verify recorded identity; installation is responsible for verifying the downloaded artifact.
+viewer_version matching the manifest and viewer_entrypoint matching the declared entrypoint. The
+viewer package.json must match the declared package name and version. These startup checks verify
+recorded identity; installation is responsible for verifying the downloaded artifact.
 
 The current package pins the official Egonex-AI/Understand-Anything viewer at 2.9.0 and installs it
 under `share/concorde/understand-anything-viewer` inside the managed runtime. Its entrypoint is
-`node_modules/understand-anything-viewer/bin/viewer.mjs`. The Installation service and managed-runtime
-Module supply this state through the reviewed install path. Missing or stale state requires that
-installation path to repair it; launch does not provision a replacement runtime itself.
+`node_modules/understand-anything-viewer/bin/viewer.mjs`. The Installation service and Managed
+runtime entity supply this state through the reviewed install path. Missing or stale state
+requires that installation path to repair it; launch does not provision a replacement runtime
+itself.
 
 ## Relationships and routing
 
 This service participates in Developer view and feedback. Its user-facing contract is owned here;
-`module.distribution` supplies viewer provisioning under the Installation service's ownership.
+`module.distribution` supplies viewer provisioning under the Installation entity's ownership.
 Changes to viewer launch or graph admission select this service. Changes to runtime acquisition,
-package verification or recovery select that Module through an admitted Module routing view.
-No graph or viewer action grants an agent access to another target's implementation.
+package verification or recovery select `module.distribution` through an admitted Module routing
+view. No graph or viewer action grants an agent access to another target's implementation.

@@ -11,8 +11,10 @@ from .repository import SpecError, SpecRepository, digest, read_file
 
 PHASES = frozenset({"ask", "specify", "plan", "tasks", "implementation", "spec-review", "code-review",
                     "validate", "deliver", "context-solve"})
+CODE_PHASES = frozenset({"implementation", "code-review"})
 DISCOVERY_PHASES = frozenset({"route"})
 DISCOVERY_KINDS = frozenset({"module"})
+PROTOCOL_PATHS = ("generated/protocol/principles.md", "generated/protocol/kinds/module.md")
 
 
 @dataclass(frozen=True)
@@ -88,12 +90,31 @@ def _spec_sections(documents, *, references: dict[str, tuple[str, ...]] | None =
     return order, target_spec, shared_specs
 
 
-def _implementation_specs(repository: SpecRepository, target) -> list[dict]:
-    """Called only for code-writing context; metadata and bodies are revision-bound together."""
-    return [{"id": spec.id, "title": spec.title, "files": list(spec.files),
-             "modules": list(repository.implementation_users[spec.id]),
-             "documents": [_document_value(repository.document(path)) for path in spec.documents]}
-            for spec in repository.implementation_specs(target)]
+def _protocol(repository: SpecRepository) -> list[dict]:
+    protocol = []
+    for path in PROTOCOL_PATHS:
+        raw = repository.protocol_assets[path]
+        protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
+    return protocol
+
+
+def _implementation_files(repository: SpecRepository, target) -> list[dict]:
+    """File names of the Module's implementation context; declarations only, never contents."""
+    try:
+        entities = repository.entity_files(target)
+    except SpecError:
+        entities = {}
+    result = []
+    for path in target.files:
+        entity = entities.get(path)
+        result.append({"path": path, "entity_id": entity.id if entity else None,
+                       "pending": bool(entity and path in entity.pending)})
+    return result
+
+
+def _implementation_artifacts(repository: SpecRepository, target) -> list[dict]:
+    return [{"id": path, "path": path, "digest": digest(read_file(repository.root, path))}
+            for path in repository.implementation_files(target)]
 
 
 def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = "ask",
@@ -112,27 +133,16 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
             raise SpecError("unknown stage input type", "incompatible_handoff")
         validate_typed(item, item["type_id"])
     document_order, target_spec, shared_specs = _spec_sections(repository.documents(target))
-    protocol = []
-    protocol_paths = ["generated/protocol/principles.md", "generated/protocol/kinds/module.md"]
-    writing_code = phase == "implementation" and not any(
-        item["type_id"] == "concorde-reflection-selection" for item in stage_inputs)
-    if writing_code:
-        protocol_paths.append("generated/protocol/kinds/implementation.md")
-    for path in protocol_paths:
-        raw = repository.protocol_assets[path]
-        protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
     # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
     from ..host.change_worktree import workspace_context
-    manifest = {"schema_version": 1, "target_id": target.id, "kind": target.kind,
+    manifest = {"schema_version": 2, "target_id": target.id, "kind": target.kind,
         "focus_id": focus_id, "phase": phase, "task": task, "constraints": list(constraints),
-        "protocol_binding": repository.config["protocol"], "protocol": protocol,
+        "protocol_binding": repository.config["protocol"], "protocol": _protocol(repository),
         "document_order": document_order, "target_spec": target_spec,
-        "shared_specs": shared_specs, "diagram_sources": repository.diagram_sources(target), "instructions": instructions,
+        "shared_specs": shared_specs, "instructions": instructions,
         "stage_inputs": list(stage_inputs),
-        "implementation_specs": _implementation_specs(repository, target) if writing_code else [],
-        "implementation_artifacts": [{"id": path, "path": path,
-            "digest": digest(read_file(repository.root, path))} for path in repository.implementation_files(target)]
-            if phase in {"implementation", "code-review"} else [],
+        "implementation_files": _implementation_files(repository, target),
+        "implementation_artifacts": _implementation_artifacts(repository, target) if phase in CODE_PHASES else [],
         "workspace": workspace if workspace is not None else workspace_context(repository.root)}
     return ContextSnapshot(canonical({**manifest, "context_id": digest(manifest)}))
 
@@ -146,9 +156,9 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
                               workspace: dict | None = None) -> DiscoveryContext:
     """Resolve complete selected Module contexts without model interpretation or summaries.
 
-    Target sections retain document membership and diagram declarations. Sorted source pools
-    carry each physical file's complete bytes once, including shared and non-main documents.
-    Relationships never implicitly select another Module's collection.
+    Target sections retain document membership. Sorted source pools carry each physical file's
+    complete bytes once, including shared and non-main documents. Relationships never implicitly
+    select another Module's collection.
     """
 
     if phase not in DISCOVERY_PHASES:
@@ -165,7 +175,6 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
         repository.select(target_hint, focus_hint)
     targets = []
     documents = {}
-    diagrams = {}
     for target_id in target_ids:
         target = repository.select(target_id)
         if target.kind not in DISCOVERY_KINDS:
@@ -178,9 +187,6 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
             repository.documents(target))
         for document in (*target_spec, *shared_specs):
             documents[document["path"]] = document
-        for source in repository.diagram_sources(target):
-            diagrams[source["path"]] = {key: value for key, value in source.items()
-                                       if key != "declaration"}
         targets.append({
             "target_id": target.id,
             "kind": target.kind,
@@ -189,17 +195,11 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
                             for document in target_spec],
             "shared_specs": [{key: value for key, value in document.items() if key != "content"}
                              for document in shared_specs],
-            "diagram_sources": list(target.diagrams),
         })
-    # Implementation definitions and bodies are deliberately absent from non-code cognition.
-    protocol_paths = ["generated/protocol/principles.md", "generated/protocol/kinds/module.md"]
-    protocol = []
-    for path in protocol_paths:
-        raw = repository.protocol_assets[path]
-        protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
+    # File contents are deliberately absent from non-code cognition.
     from ..host.change_worktree import workspace_context
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "capability": capability,
         "phase": phase,
         "action": action,
@@ -208,13 +208,12 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
         "target_hint": target_hint,
         "focus_hint": focus_hint,
         "protocol_binding": repository.config["protocol"],
-        "protocol": protocol,
+        "protocol": _protocol(repository),
         # Exact topology metadata is admitted only for explicit architecture design. Ordinary
         # routing learns business ownership from Module Specs and sees no code locators.
         "topology": repository.registry if action == "design-topology" else None,
         "targets": targets,
         "documents": [documents[path] for path in sorted(documents)],
-        "diagram_sources": [diagrams[path] for path in sorted(diagrams)],
         "instructions": instructions,
         "workspace": workspace if workspace is not None else workspace_context(repository.root),
     }
@@ -243,33 +242,17 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
     current_documents = [repository.document(path) for path in current_paths]
     current_document_order, target_spec, shared_specs = _spec_sections(
         current_documents, references=references)
-    current_diagrams = []
-    # Candidate registration authorizes only already registered sources. A new path must be
-    # authored from the task, never read as an arbitrary existing file supplied by the caller.
-    admitted = {d["source"] for d in target["diagrams"] if d["source"] in repository.diagram_targets}
-    if target["id"] in repository.targets:
-        admitted.update(d["source"] for d in repository.targets[target["id"]].diagrams)
-    for path in sorted(admitted):
-        owners = repository.diagram_targets[path]
-        owner = target["id"] if target["id"] in owners else owners[0]
-        current_diagrams.append(next(item for item in repository.diagram_sources(repository.targets[owner])
-                                     if item["path"] == path))
-    protocol = []
-    for path in ("generated/protocol/principles.md", f"generated/protocol/kinds/{target['kind']}.md"):
-        raw = repository.protocol_assets[path]
-        protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
     from ..host.change_worktree import workspace_context
     manifest = {
         "base_registry_digest": digest(repository.registry_bytes),
         "target": target,
         "task": task,
         "protocol_binding": repository.config["protocol"],
-        "protocol": protocol,
+        "protocol": _protocol(repository),
         "candidate_document_references": list(candidate_document_references),
         "current_document_order": current_document_order,
         "target_spec": target_spec,
         "shared_specs": shared_specs,
-        "diagram_sources": current_diagrams,
         "instructions": instructions,
         "workspace": workspace if workspace is not None else workspace_context(repository.root),
     }
@@ -288,17 +271,12 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, ch
         raise SpecError("context Protocol binding has changed", "stale_context")
     document_order, target_spec, shared_specs = _spec_sections(current.documents(target))
     if (document_order != value["document_order"] or target_spec != value["target_spec"]
-            or shared_specs != value["shared_specs"] or current.diagram_sources(target) != value.get("diagram_sources", [])):
-        raise SpecError("context document/diagram membership, classification, declarations or bytes changed", "stale_context")
-    writing_code = value["phase"] == "implementation" and not any(
-        item["type_id"] == "concorde-reflection-selection" for item in value["stage_inputs"])
-    implementation_specs = _implementation_specs(current, target) if writing_code else []
-    if check_implementation and implementation_specs != value.get("implementation_specs", []):
-        raise SpecError("Implementation Spec, binding or using Modules changed", "stale_context")
-    if check_implementation and value["phase"] in {"implementation", "code-review"}:
-        current_artifacts = [{"id": path, "path": path, "digest": digest(read_file(current.root, path))}
-                             for path in current.implementation_files(target)]
-        if current_artifacts != value["implementation_artifacts"]:
+            or shared_specs != value["shared_specs"]):
+        raise SpecError("context document membership, classification, declarations or bytes changed", "stale_context")
+    if _implementation_files(current, target) != value["implementation_files"]:
+        raise SpecError("listed implementation files or their entities changed", "stale_context")
+    if check_implementation and value["phase"] in CODE_PHASES:
+        if _implementation_artifacts(current, target) != value["implementation_artifacts"]:
             raise SpecError("implementation input membership or bytes changed", "stale_context")
 
 

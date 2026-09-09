@@ -86,7 +86,7 @@ SKILL_SOURCES: dict[str, str] = {name: f"skills/{name}/SKILL.md" for name in SKI
 
 SCHEMA_INTRO = "This complete schema is the invocation's input field. It does not grant project reads.\n"
 
-PROTOCOL_KINDS = ("module", "implementation")
+PROTOCOL_KINDS = ("module",)
 PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 
 # The build owns exactly these locations under `generated/`; every recorded BuildOutput path

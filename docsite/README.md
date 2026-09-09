@@ -7,47 +7,48 @@ that scaffolds the adapter — except `docsite/site.json`, which is project-owne
 the template (see below). This repository's own `docsite/` is simply the template's first instance:
 Concorde develops itself with Concorde.
 
-The adapter publishes the host project's explicitly registered Module and Implementation Specs.
-Canonical content stays outside `docsite/`; `.concorde/specs.json` names the documents, Module
-relationships and implementation file bindings. Nearby Markdown is not discovered as authority.
-Control state under `.concorde/` is excluded from published prose.
+The adapter publishes the host project's explicitly registered Module Specs. Canonical content
+stays outside `docsite/`; `.concorde/specs.json` names the documents, Module relationships and each
+Module's implementation file listing. Nearby Markdown is not discovered as authority. Control state
+under `.concorde/` is excluded from published prose.
 
-## Profile 9 navigation
+## Profile 10 navigation
 
-A Profile 9 project uses `plugins/scoped-content` and registry schema 2. Every registered document
+A Profile 10 project uses `plugins/scoped-content` and registry schema 3. Every registered document
 publishes once at a readable source-derived route: `specs/modules/project/module.md` becomes
-`/specs/modules/project/module`. The navbar separates `Module Specs`, `Graph` and `Implementation
-Specs` (the last appears when implementations are registered). Module and Implementation Specs have
-independent sidebars. A Module name opens its `module.md` directly, while its additional documents
-and child Modules appear underneath; no duplicate main-Spec entry is generated. Document names omit
-`.md`. Source paths remain visible in provenance. Additional documents, including explicitly shared
-Module documents, remain part of the complete registered collection.
+`/specs/modules/project/module`. The navbar exposes a single `Module Specs` tab alongside `Graph`;
+there is no separate Implementation Specs tab, because Implementation Specs no longer exist. A
+Module name opens its `module.md` directly, while its additional documents and child Modules appear
+underneath; no duplicate main-Spec entry is generated. Document names omit `.md`. Source paths
+remain visible in provenance. Additional documents, including explicitly shared Module documents,
+remain part of the complete registered collection.
 
-The relationship graph distinguishes `composes`, `uses`, `implemented_by` and required interface
-contracts. Shared capability Modules are siblings of their consumers. Reused Implementation Specs
-appear once, with edges from every using Module and their exact bound file list. Publication does
-not read or publish the implementation source bytes. Registered architecture diagrams describe a
-Module's internal model and render beneath `generated/diagrams/`. A registered System overview
-appears before the Module prose. The generator rewrites the overview's Markdown source link to the
-delivered interactive HTML. Very simple Modules may omit the overview.
+The relationship graph distinguishes `composes`, `uses` and matched provided/required structured
+contracts. Shared capability Modules are siblings of their consumers. An implementation file listed
+by several Modules' entities appears once, with an edge from every listing Module. Publication does
+not read or publish implementation file bytes beyond their listed names. Every Module's Architecture
+section renders its own inline Mermaid flowchart directly from the registered Markdown, with node
+labels equal to the declared entity titles and every edge labeled; there is no separate diagram
+source or build step.
 
 Stable target/path-hash aliases redirect to current canonical document routes. Changed source
 paths require deliberate migration of external links. Human navigation does not widen agent context.
 The older Architecture/Features adapter and its fixtures remain for Profile 7 diagnostic publication;
-its directory-discovery rules do not govern Profile 9 projects. Profile 8 requires explicit migration.
+its directory-discovery rules do not govern Profile 10 projects. Profile 8 and 9 require explicit
+migration.
 
 ## Site identity
 
 Concorde enables a separate **Spec Protocol** tab for the independent Markdown standard under
 `protocol/`. It has its own sidebar and `/protocol/` routes and participates in site search.
-These chapters bypass the project Spec registry: they have no Module/Feature identity, membership,
-Spec provenance wrapper or architecture-graph node. Framework Module and Implementation Specs
-remain under their existing tabs. Protocol documentation is opt-in; scaffolded consumer sites do
-not enable it or acquire Concorde's standard as their own project Specs.
+These chapters bypass the project Spec registry: they have no Module identity, membership, Spec
+provenance wrapper or architecture-graph node. Framework Module Specs remain under their existing
+tab. Protocol documentation is opt-in; scaffolded consumer sites do not enable it or acquire
+Concorde's standard as their own project Specs.
 
-The Protocol sidebar includes Required format and the canonical Module, Implementation and
-Feature templates. Template code blocks are authoring examples, not declarations that the
-Protocol pages themselves belong to the illustrated Modules.
+The Protocol sidebar includes Required format and the canonical Module template and Scenario
+fragment. Template code blocks are authoring examples, not declarations that the Protocol pages
+themselves belong to the illustrated Modules.
 
 Spec and Context is a child chapter of Spec management. It defines queryable entities, their
 authoritative Spec collections and deterministic file membership, with an entity-selection diagram.
@@ -114,11 +115,11 @@ Run commands from `docsite/`:
 | `npm run typecheck` | Type-check maintained TypeScript. |
 | `npm run check` | Run typechecking, all tests, source validation, and a production build. |
 
-Successful Profile 9 builds emit `build/build-manifest.json` using Build Manifest 16. It records
-registered document routes, typed relationships, exact source identities, diagram provenance and
-completed build checks. A stale materialization or changed source prevents candidate promotion.
+Successful Profile 10 builds emit `build/build-manifest.json` using Build Manifest 17. It records
+registered document routes, typed relationships, exact source identities and completed build
+checks. A stale materialization or changed source prevents candidate promotion.
 The retained Profile 7 adapter uses its own Build Manifest 13 boundary. Neither publication model
-stores a claim that a feature's implementation currently satisfies its promises.
+stores a claim that a Module's implementation currently satisfies its promises.
 
 A failed candidate is removed and never replaces the last verified `build/`. Ordinary builds do not
 run Archify `visual-check`; perceptual review remains an explicit human-evidence step.

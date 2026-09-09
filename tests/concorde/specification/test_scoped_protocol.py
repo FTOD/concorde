@@ -10,7 +10,8 @@ from concorde.specification.repository import SpecRepository, SpecError
 from concorde.specification.context import (resolve_context, recheck_context,
     resolve_discovery_context, recheck_discovery_context)
 from concorde.specification.validation import validate_repository
-from .support import project, PACKAGE, CONFIGURATION, ModelProcessDouble, update_document_declaration
+from .support import (project, PACKAGE, CONFIGURATION, ModelProcessDouble,
+    module_document, update_document_declaration)
 
 class ScopedProtocolTests(unittest.TestCase):
     def setUp(self):
@@ -22,10 +23,10 @@ class ScopedProtocolTests(unittest.TestCase):
         return run_capability(name,CONFIGURATION,typed(name+'-request',data),host_context=self.host)
     def test_module_dependencies_and_complete_arbitrary_collections(self):
         repo=SpecRepository(self.root)
-        target=repo.select('service.transfer','feature.transfer')
+        target=repo.select('service.transfer','scenario.transfer.debit')
         self.assertEqual(('module.ledger',),target.uses)
         self.assertIsNone(target.parent)
-        context=resolve_context(repo,target.id,focus_id='feature.transfer').value
+        context=resolve_context(repo,target.id,focus_id='scenario.transfer.debit').value
         self.assertEqual(list(target.documents),context['document_order'])
         self.assertEqual(list(target.documents),[d['path'] for section in ('target_spec','shared_specs')
                                                   for d in context[section]])
@@ -100,10 +101,10 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual([],result['output']['data']['gaps'])
         self.assertEqual([],[call['stage'] for call in double.calls])
         path.write_text(original)
-    def test_module_api_focus_is_local(self):
+    def test_module_scenario_focus_is_local(self):
         repo=SpecRepository(self.root)
-        self.assertEqual('module.ledger',repo.select('module.ledger','api.ledger').id)
-        with self.assertRaises(SpecError): repo.select('module.ledger','feature.transfer')
+        self.assertEqual('module.ledger',repo.select('module.ledger','scenario.ledger.read').id)
+        with self.assertRaises(SpecError): repo.select('module.ledger','scenario.transfer.debit')
         self.registry['entry_target']='module.ledger'
         (self.root/'.concorde/specs.json').write_text(json.dumps(self.registry))
         self.assertEqual('module.ledger',SpecRepository(self.root).entry_target)
@@ -144,8 +145,7 @@ class ScopedProtocolTests(unittest.TestCase):
                     registry['targets'][3]={**registry['targets'][3],'title':'Account ledger'}
                     registry['targets'].append({'id':'service.audit-report','kind':'module','title':'Audit reports',
                         'documents':['specs/audit-report/module.md'],'parent':None,'uses':[],
-                        'implementations':[],'features':[],'interfaces':[],
-                        'checks':[],'diagrams':[]})
+                        'files':[],'checks':[]})
                     registry['targets'][1]['uses'].append('service.audit-report')
                     design=typed('concorde-topology-design',{'summary':'Add an audit reporting Service.',
                         'registry':registry,'spec_tasks':[
@@ -165,8 +165,26 @@ class ScopedProtocolTests(unittest.TestCase):
                      'responsibility':'Publish the audit reporting view.',
                      'selection_condition':'Select for audit report generation or retrieval.',
                      'relied_upon_promises':['Audit reports expose the accepted audit records.']}]
-                data['documents']=[{'path':'specs/audit/module.md',
-                    'content':'```concorde-document\n'+json.dumps({'id':'document.audit','targets':['scope.audit'],'main_visible':True},indent=2)+'\n```\n\n# Audit\n\n## Architecture\nRoute audit reporting to service.audit-report.\n\n```concorde-dependencies\n'+json.dumps(participants,indent=2)+'\n```\n'}]
+                entities=[{'id':'entity.audit.transfer','title':'Transfer service','kind':'module',
+                     'responsibility':'Reports successful balance changes.','target_id':'service.transfer'},
+                    {'id':'entity.audit.reports','title':'Audit reports','kind':'module',
+                     'responsibility':'Publishes the audit reporting view.','target_id':'service.audit-report'},
+                    {'id':'entity.audit.record','title':'Audit record','kind':'concept',
+                     'responsibility':'Describes one accepted balance change.'}]
+                diagram=('flowchart TB\n    accTitle: Audit outcomes\n'
+                    '    accDescr: The transfer service produces the accepted change that becomes one audit record, which the reporting Module publishes.\n'
+                    '    transfer["Transfer service"]\n    record["Audit record"]\n    reports["Audit reports"]\n'
+                    '    transfer -->|produces| record\n    record -->|published by| reports')
+                data['documents']=[{'path':'specs/audit/module.md','content':module_document(
+                    'document.audit','scope.audit','Audit',
+                    'Audit describes the outcome an accepted balance change must produce and routes its\n'
+                    'reporting view to service.audit-report.',
+                    '### scenario.audit.record — An accepted transfer becomes one audit record\n\n'
+                    '- GIVEN a transfer the transfer Module reports as successful\n'
+                    '- WHEN Audit receives that accepted balance change\n'
+                    '- THEN one audit record describes the sender, the receiver and the amount\n',
+                    ('Audit owns its record concept and routes reporting to service.audit-report.',entities),
+                    'Route audit reporting to service.audit-report.',diagram,participants)}]
         double=ModelProcessDouble(callback)
         design=self.run_op('concorde-main',{'action':'design-topology','task':'Add audit reports'},double)
         self.assertEqual('topology_proposed',design['output']['data']['outcome']);proposal=design['output']['data']['topology_proposal']
@@ -191,7 +209,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertIn('# Ledger API',json.dumps(module_author['snapshot']))
         main=[call for call in double.calls if call['capability']=='concorde-coordinator']
         self.assertTrue(any('# Ledger API' in json.dumps(call['snapshot']) for call in main))
-        self.assertTrue(all('INTERNAL_LEDGER_IMPLEMENTATION_SPEC' not in json.dumps(call['snapshot']) for call in main))
+        self.assertTrue(all('LEDGER_IMPLEMENTATION_CODE' not in json.dumps(call['snapshot']) for call in main))
     def test_shared_truth_change_requires_all_references_and_identical_bytes(self):
         def design_callback(stage,snapshot,data,cwd):
             if stage!='route' or snapshot['action']!='design-topology':return
@@ -314,8 +332,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 registry=copy.deepcopy(snapshot['topology'])
                 registry['targets'].append({'id':'service.audit-report','kind':'module','title':'Audit reports',
                     'documents':['specs/audit-report/module.md'],'parent':None,'uses':[],
-                    'implementations':[],'features':[],'interfaces':[],
-                    'checks':[],'diagrams':[]})
+                    'files':[],'checks':[]})
                 registry['targets'][1]['uses'].append('service.audit-report')
                 design=typed('concorde-topology-design',{'summary':'Add audit reports without its Domain view.',
                     'registry':registry,'spec_tasks':[{'target_id':'service.audit-report','task':'Define audit reports.'}],
@@ -325,21 +342,21 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('blocked',result['status'],result)
         self.assertEqual('invalid_proposal',result['errors'][0]['code'])
         self.assertIn('Module tasks',result['errors'][0]['message'])
-    def test_main_can_admit_modules_and_answer_but_not_read_implementation_specs(self):
+    def test_main_can_admit_modules_and_answer_but_not_read_implementation_code(self):
         double=ModelProcessDouble()
         result=self.run_op('concorde-main',{'task':'Explain ledger reads',
-            'target_id':'module.ledger','focus_id':'api.ledger'},double)
+            'target_id':'module.ledger','focus_id':'scenario.ledger.read'},double)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual(['route','route'],[call['stage'] for call in double.calls])
         snapshot=double.calls[-1]['snapshot']
-        self.assertEqual('api.ledger',snapshot['focus_hint'])
+        self.assertEqual('scenario.ledger.read',snapshot['focus_hint'])
         self.assertIn('# Ledger API',json.dumps(snapshot))
-        self.assertNotIn('INTERNAL_LEDGER_IMPLEMENTATION_SPEC',json.dumps(snapshot))
+        self.assertNotIn('LEDGER_IMPLEMENTATION_CODE',json.dumps(snapshot))
         self.assertTrue(all(item['kind']=='module' for call in double.calls
                             for item in call['snapshot']['targets']))
         with self.assertRaises(SpecError):
-            resolve_discovery_context(SpecRepository(self.root),('implementation.ledger',),
-                capability='concorde-main',phase='route',task='Read implementation')
+            resolve_discovery_context(SpecRepository(self.root),('entity.ledger.store',),
+                capability='concorde-main',phase='route',task='Read one entity')
 
     def test_main_combines_original_sources_from_multiple_target_contexts(self):
         def answer(stage,snapshot,data,cwd):
@@ -443,9 +460,9 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual(['scope.bank','service.transfer'],[item['target_id'] for item in second.value['targets']])
         third=resolve_discovery_context(repo,('scope.bank','module.ledger'),capability='concorde-main',phase='route',task='Route ledger')
         self.assertIn('# Ledger API',third.serialized)
-        self.assertNotIn('INTERNAL_LEDGER_IMPLEMENTATION_SPEC',third.serialized)
+        self.assertNotIn('LEDGER_IMPLEMENTATION_CODE',third.serialized)
         with self.assertRaises(SpecError):
-            resolve_discovery_context(repo,('implementation.ledger',),capability='concorde-main',phase='route',task='Read implementation')
+            resolve_discovery_context(repo,('entity.ledger.store',),capability='concorde-main',phase='route',task='Read one entity')
         path=self.root/'specs/transfer/module.md';declaration=path.read_text().split('# Transfer money',1)[0]
         path.write_text(declaration+'# Changed service routing facts\n')
         with self.assertRaisesRegex(SpecError,'changed'):recheck_discovery_context(repo,second)
@@ -460,15 +477,12 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual([path],[item['path'] for item in transfer['shared_specs']])
         self.assertIn('specs/transfer/module.md',transfer['document_order'])
         self.assertNotIn('# Ledger API',json.dumps(transfer))
-        self.assertNotIn('INTERNAL_TRANSFER_IMPLEMENTATION_SPEC',json.dumps(visible))
+        self.assertNotIn('TRANSFER_IMPLEMENTATION_CODE',json.dumps(visible))
         worker=resolve_context(SpecRepository(self.root),'service.transfer').value
         self.assertEqual(worker['document_order'],transfer['document_order'])
     def test_global_context_deduplicates_complete_sources_and_preserves_each_membership(self):
         shared='specs/transfer/promises.md'
         self.registry['targets'][3]['documents'].append(shared)
-        bank_diagram=self.registry['targets'][0]['diagrams'][0]
-        ledger_diagram={**bank_diagram,'title':'Ledger perspective'}
-        self.registry['targets'][3]['diagrams']=[ledger_diagram]
         (self.root/'.concorde/specs.json').write_text(json.dumps(self.registry))
         update_document_declaration(self.root,shared,
             targets=['service.transfer','module.ledger'],main_visible=False)
@@ -489,31 +503,27 @@ class ScopedProtocolTests(unittest.TestCase):
             self.assertFalse(refs[0]['main_visible'])
             self.assertNotIn('content',refs[0])
         self.assertNotIn('specs/audit/module.md',paths)
-        self.assertEqual([bank_diagram['source']],[source['path'] for source in value['diagram_sources']])
-        self.assertEqual([bank_diagram],modules['scope.bank']['diagram_sources'])
-        self.assertEqual([ledger_diagram],modules['module.ledger']['diagram_sources'])
-        self.assertEqual((self.root/bank_diagram['source']).read_text(),
-                         value['diagram_sources'][0]['content'])
         self.assertNotIn('PRIVATE_CODE',snapshot.serialized)
 
-    def test_global_context_rechecks_declared_diagram_bytes_and_metadata(self):
+    def test_global_context_rechecks_registered_document_bytes_and_membership(self):
         repository=SpecRepository(self.root)
         snapshot=resolve_discovery_context(repository,('scope.bank',),
             capability='concorde-main',phase='route',task='Explain architecture')
-        path=self.root/self.registry['targets'][0]['diagrams'][0]['source']
+        path=self.root/'specs/bank/module.md'
         original=path.read_bytes()
-        path.write_bytes(original+b'\n')
+        path.write_bytes(original+b'\nAn added architectural fact.\n')
         with self.assertRaisesRegex(SpecError,'changed'):
             recheck_discovery_context(repository,snapshot)
         path.write_bytes(original)
-        self.registry['targets'][0]['diagrams'][0]['title']='Revised view'
+        self.registry['targets'][0]['documents'].append('specs/transfer/promises.md')
         (self.root/'.concorde/specs.json').write_text(json.dumps(self.registry))
+        update_document_declaration(self.root,'specs/transfer/promises.md',
+                                    targets=['service.transfer','scope.bank'])
         with self.assertRaisesRegex(SpecError,'changed'):
             recheck_discovery_context(repository,snapshot)
 
     def test_global_context_rejects_unavailable_required_source(self):
-        path=self.root/self.registry['targets'][0]['diagrams'][0]['source']
-        path.unlink()
+        (self.root/'specs/bank/module.md').unlink()
         with self.assertRaises(SpecError):
             resolve_discovery_context(SpecRepository(self.root),('scope.bank',),
                 capability='concorde-main',phase='route',task='Explain architecture')
@@ -521,7 +531,6 @@ class ScopedProtocolTests(unittest.TestCase):
     def test_main_can_answer_from_initial_spec_context_in_one_invocation(self):
         def answer(stage,snapshot,data,cwd):
             self.assertIn('# Banking',snapshot['documents'][0]['content'])
-            self.assertTrue(snapshot['diagram_sources'])
             data.update(outcome='completed',answer='Banking coordinates transfer, ledger and audit.',
                         expand_targets=[],routes=[])
         double=ModelProcessDouble(answer)
@@ -578,7 +587,11 @@ class ScopedProtocolTests(unittest.TestCase):
             if call['stage'] not in {'implementation','code-review'}:
                 self.assertNotEqual(self.root,call['cwd'])
                 self.assertNotIn('PRIVATE_CODE',call['prompt'])
-                self.assertNotIn('app/transfer.py',call['prompt'])
+                self.assertNotIn('TRANSFER_IMPLEMENTATION_CODE',call['prompt'])
+            if call['stage'] in {'plan','tasks'}:
+                self.assertEqual(['app/transfer.py','checks/transfer_check.py'],
+                                 [item['path'] for item in call['snapshot']['implementation_files']])
+                self.assertEqual([],call['snapshot']['implementation_artifacts'])
         self.assertTrue(all(d['write_paths']==[] for d in self.host.descriptions if d['phase']!='implementation'))
     def test_failed_behavioral_check_prevents_delivery(self):
         def broken(stage,snapshot,data,cwd):

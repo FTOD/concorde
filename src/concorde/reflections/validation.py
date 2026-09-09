@@ -1,4 +1,9 @@
-"""Per-file project reflection shape, vocabulary, and reference rules."""
+"""Per-file project reflection shape, vocabulary, and reference rules (Profile 7 legacy).
+
+Only the retained ``understanding`` package calls this. Profile 10 validates a record's
+``feature`` field against registered Module and scenario identities instead
+(``concorde.specification.validation.definition_ids``).
+"""
 
 from __future__ import annotations
 

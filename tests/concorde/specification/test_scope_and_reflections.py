@@ -52,7 +52,7 @@ id: R-001
 title: Transfer promise is not implemented
 phase: implement
 date: 2026-09-05
-feature: feature.transfer
+feature: scenario.transfer.debit
 kind: implementation
 concerns: app/transfer.py
 status: open
@@ -111,19 +111,25 @@ Keep this user comment intact.
         self.assertEqual('succeeded',result['status'],result);self.assertEqual([],self.double.calls)
         self.assertEqual('R-001',result['output']['data']['reflections'][0]['id']);self.assertNotIn('PRIVATE_REFLECTION',json.dumps(result))
     def test_candidate_overlay_validates_reflections_against_candidate_ids(self):
-        self.record();registry=json.loads((self.root/'.concorde/specs.json').read_text())
-        registry['targets'][2]['features']=[]
-        report=validate_repository(self.root,package_root=PACKAGE,registry_bytes=json.dumps(registry).encode())
+        self.record()
+        # The candidate renames the scenario the recorded reflection is attributed to.
+        candidate=(self.root/'specs/transfer/module.md').read_text().replace(
+            'scenario.transfer.debit','scenario.transfer.subtract')
+        report=validate_repository(self.root,package_root=PACKAGE,
+            document_overrides={'specs/transfer/module.md':candidate.encode()})
         self.assertEqual('invalid',report.status)
         self.assertIn('CONCORDE-REFLECT-004',{finding.rule_id for finding in report.findings})
+        self.assertEqual('success',validate_repository(self.root,package_root=PACKAGE).status)
     def test_investigation_is_readonly_and_preserves_user_report(self):
         self.record();before=(self.root/'app/transfer.py').read_bytes()
         result=self.run_op('concorde-reflections-triage',self.task('investigate'),self.finding)
         self.assertEqual('succeeded',result['status'],result);self.assertEqual(before,(self.root/'app/transfer.py').read_bytes())
         snapshot=next(call['snapshot'] for call in self.double.calls if call['stage']=='implementation')
-        self.assertEqual([],snapshot['implementation_specs'])
-        self.assertNotIn('INTERNAL_TRANSFER_IMPLEMENTATION_SPEC',json.dumps(snapshot))
-        self.assertFalse(any('specs/implementations/' in path for description in self.host.descriptions for path in description['read_paths']))
+        self.assertEqual(['app/transfer.py','checks/transfer_check.py'],
+                         [item['path'] for item in snapshot['implementation_files']])
+        self.assertNotIn('TRANSFER_IMPLEMENTATION_CODE',json.dumps(snapshot))
+        self.assertFalse(any('specs/' in path for description in self.host.descriptions
+                             for path in description['read_paths']))
         self.assertEqual([[]],[d['write_paths'] for d in self.host.descriptions]);text=(self.root/'.concorde/reflections/planned/R-001.md').read_text()
         self.assertIn('Keep this user comment intact.',text);self.assertIn('PRIVATE_REFLECTION_DETAIL_FOR_IMPLEMENTATION',text)
     def test_investigation_rejects_wrong_head(self):

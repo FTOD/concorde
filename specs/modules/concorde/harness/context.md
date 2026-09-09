@@ -18,8 +18,8 @@ implementation context; this Module realizes those definitions and adds the two 
 
 | Kind | Content | Required for |
 | --- | --- | --- |
-| Spec context | The selected Module's complete registered Markdown collection and declared authored diagram sources, exactly the Protocol's `Context(M)`; a feature or interface focus changes the question, not the membership. | Every Module-bound invocation. |
-| Implementation context | The Protocol's `ImplementationContext(M)`: the Module's referenced Implementation Specs, their diagram sources and their exact bound files. Code writing receives the complete context; code review receives file references without Implementation Spec bodies. | Code-writing and code-review phases only. |
+| Spec context | The selected Module's complete registered Markdown collection, exactly the Protocol's `Context(M)`; a scenario focus changes the question, not the membership. | Every Module-bound invocation. |
+| Implementation context | The Protocol's `ImplementationContext(M)`: the exact files the selected Module's own entities bind. Every phase can see those file names, their owning entity and pending status as part of the Module's entity declarations; only code-writing and code-review phases receive file contents, in their declared subsets. | File names: every phase. File contents: code-writing and code-review phases only. |
 | Capability context | The contracts of the Capabilities and Tools the invocation may use, as admitted by its Harness and constraints. Descriptions given to the model and bindings accepted by the executor resolve to the same contracts. | Optional; empty for every current Agent. |
 | Task context | The task and constraints, the stage artifacts admitted for this phase, such as a plan, implementation tasks, a review result or a reflection selection, and the frozen workspace lifecycle metadata. | Every invocation; stage artifacts are optional. |
 
@@ -28,7 +28,7 @@ Protocol rule bundle and installed Skills are not context: instructions belong t
 definition and are injected beside the context, and a Skill is the developer-facing projection of
 a global or lifecycle capability. The snapshot identity covers every admitted byte of every kind.
 
-## interface.harness.context
+## Context snapshot resolution
 
 `resolve_context` freezes one Module's Spec context with its task context, and, for code phases,
 its implementation context, into a private `concorde-context-snapshot@1`. `resolve_discovery_context`
@@ -36,13 +36,12 @@ freezes several explicitly selected complete Spec contexts for the global coordi
 `recheck_context` and `recheck_discovery_context` reject reuse after any admitted input changed.
 The sections below define the exact inputs, records, phases and errors.
 
-## feature.harness.context
-
 The existing runtime boundary below is Module-oriented: it accepts a Module `target_id` and an
-optional local Feature or Interface `focus_id`. Its project contract files implement the Protocol's
-Spec and Context mapping: the whole Module document collection plus its declared diagram sources.
-The independent Protocol also describes standalone Implementation Spec queries and explicit
-Module/Implementation pairings; those are not additional accepted `target_id` kinds of this API.
+optional local scenario `focus_id`. Its project contract files implement the Protocol's Spec and
+Context mapping: the whole Module document collection, including its inline Mermaid architecture
+fences and entity declarations. The independent Protocol supports only Module and scenario
+queries; a scenario query resolves to its providing Module's same complete context, so this API
+accepts no other `target_id` kind.
 
 The context Module is host-internal: `resolve_context` produces a private ContextSnapshot behind
 the executable boundary, and no Skill returns it or a redacted projection of it. Its
@@ -76,27 +75,30 @@ trusted-host frozen observation, not a caller task field or replacement authorit
 `ContextSnapshot(serialized: str)` is frozen; `.serialized` is canonical JSON, `.value` decodes a
 new dictionary and `.id` returns its `context_id`. The dictionary is the data of the private
 `concorde-context-snapshot@1` TypedValue; wrapping it adds the ordinary
-`{type_id, schema_version: 1, data}` envelope. Its exact fields are:
+`{type_id, schema_version: 2, data}` envelope. Its exact fields are:
 
-- `schema_version: 1`, `context_id: sha256`, `target_id: str`, `kind: module`,
-  `focus_id: str|null`, `phase: str`, `task: str`, `constraints: list[str]` and `instructions: str`.
+- `schema_version: 2`, `context_id: sha256`, `target_id: str`, `kind: module`,
+  `focus_id: str|null` (a scenario ID when present), `phase: str`, `task: str`,
+  `constraints: list[str]` and `instructions: str`.
 - `protocol_binding: {version: str, digest: sha256}` and
-  `protocol: list[{path, digest, content}]`, with the principles and kind documents in that order.
+  `protocol: list[{path, digest, content}]`, with the principles and Module kind documents in that order.
 - `document_order: list[path]`, `target_spec` and `shared_specs`: ordered lists of
   `{document_id: str, path, digest: sha256, targets: list[str], main_visible: bool, content: str}`.
-- `diagram_sources: list[{path, digest, content, declaration}]`, where the declaration is the
-  legacy external-source declaration. With the inline Mermaid representation this list is empty;
-  the complete containing Markdown is already in the document records.
-- `implementation_specs`: empty outside code writing; in implementation, a list of `{id,title,files,modules,documents}` records with the exact Implementation Spec bodies and bindings.
+  Every inline Mermaid architecture fence already occurs in this content; there is no separate
+  diagram source list.
+- `implementation_files: list[{path: str, entity_id: str, pending: bool}]`, present for every
+  phase: the exact files the selected Module's own entities bind, which entity owns each, and
+  whether it is still declared pending. Non-code phases see only these names, never file contents.
 - `stage_inputs: list[TypedValue]`, `implementation_artifacts: list[{id: str, path, digest: sha256}]`
-  and `workspace`, the lifecycle record described below. Implementation references are empty
-  outside `implementation` and `code-review`; code bytes are never embedded.
+  and `workspace`, the lifecycle record described below. `implementation_artifacts` is populated
+  only for the `implementation` and `code-review` phases, with the current content digest of each
+  entity-bound file; code bytes are never embedded in the snapshot.
 
 Spec and artifact paths are canonical project-relative POSIX paths; workspace locations are
 absolute host identity paths. Sha256 values use the `sha256:` prefix and 64
 lowercase hexadecimal digits. Arrays may be empty except the admitted nonempty document closure
-and the phase-appropriate Protocol records: principles and Module kind for ordinary phases,
-with the Implementation kind additionally supplied to code writing. Every listed snapshot field is required; unknown fields are rejected
+and the phase-appropriate Protocol records, which supply the principles and Module kind documents
+to every phase alike. Every listed snapshot field is required; unknown fields are rejected
 at typed host admission. The digest covers the complete canonical dictionary except `context_id`.
 
 Ordinary `stage_inputs` are version-1 TypedValues with these payloads:
@@ -135,15 +137,15 @@ The snapshot data adds the content of each target_spec/shared_specs reference. T
 documents referenced only by the selected target; Shared Specs contains each multiply referenced
 document once. document_order preserves the registry order across both headings. The resolver does
 not load any referencing entity's other documents and does not recurse through shared membership.
-`diagram_sources` is empty for inline Mermaid sources. Their containing registered Markdown
-records include the complete fence and source declaration. Those document bytes participate in
+Every inline Mermaid architecture fence is already part of its containing registered Markdown
+record's content; there is no separate diagram source field. Those document bytes participate in
 context identity and freshness; changing a diagram invalidates the target revision and its review
 evidence without adding another context file.
 The context identity covers all inputs apart from its own identity field. The wire field `protocol`
-contains the distributed principles bundle and Module kind definition; code writing additionally includes the Implementation kind definition. This bundle includes
+contains the distributed principles bundle and Module kind definition. This bundle includes
 both Concorde Spec Protocol requirements and the Framework execution profile; the field name does
 not classify all runtime rules as Spec organization rules.
-Concorde Spec Protocol 2.1.0 defines the Spec context and implementation context this service
+Concorde Spec Protocol 3.0.0 defines the Spec context and implementation context this service
 resolves. The distributed rule bundle also includes the separately authored Framework execution
 profile, including P10 handoffs. The resolver verifies the build is
 fresh, then admits Protocol assets rendered into `generated/protocol/` from the exact project-bound
@@ -162,23 +164,25 @@ Membership, configuration, Protocol or admitted bytes changing after resolution 
 
 Main discovery admits explicitly selected complete Module collections for global reasoning,
 questions and routing. A new admitted collection produces a new context identity and a fresh
-coordinator invocation. Python injects deduplicated original documents and declared diagram
-sources with per-Module membership. The coordinator answers directly from those complete contexts.
-Implementation Specs and implementation source bodies never enter this context.
+coordinator invocation. Python injects deduplicated original documents, already carrying their
+inline Mermaid fences, with per-Module membership. The coordinator answers directly from those
+complete contexts. Implementation source bodies never enter this context.
 During design-topology, exact registry metadata additionally describes Module composition,
-dependencies and Implementation bindings. It supplies structure, not hidden behavioral meaning.
+dependencies and entity file listings. It supplies structure, not hidden behavioral meaning.
 After the design is accepted, each fresh target-local Spec author receives one proposed descriptor,
-task, matching kind definition, that target's current documents and admitted registered diagram
-sources. Candidate diagrams already registered elsewhere are admitted only through the accepted
-target descriptor; arbitrary existing files are not read. A new target begins without invented
-business documents or architecture. A document-reference change tasks every retained current/candidate reference. Shared
-content changes require every candidate referencing author to return identical bytes; disagreement
-is conflicting. Topology authors return complete Markdown and diagram replacements in descriptor
-order. The host combines the deduplicated proposals in a registry/Spec-source overlay for
-validation without exposing those bodies to the coordinator or changing project files.
-Ordinary single-target authoring may update its own registered diagram bytes while preserving
-their declared type/title and shared sources. It preserves the entire `concorde-document` declaration; document ID,
-reference and visibility changes are topology changes even for a currently local document.
+task, matching kind definition and that target's current documents, which already contain their
+inline diagram fences. Candidate document content is admitted only through the accepted target
+descriptor; arbitrary existing files are not read. A new target begins without invented business
+documents or architecture. A document-reference change tasks every retained current/candidate
+reference. Shared content changes require every candidate referencing author to return identical
+bytes; disagreement is conflicting. Topology authors return complete Markdown replacements,
+including any changed inline diagram fences, in descriptor order. The host combines the
+deduplicated proposals in a registry/Spec-source overlay for validation without exposing those
+bodies to the coordinator or changing project files.
+Ordinary single-target authoring may update its own Architecture fences and other Markdown content
+directly, as long as the fence's node labels keep naming the Module's declared entity titles. It
+preserves the entire `concorde-document` declaration; document ID, reference and visibility
+changes are topology changes even for a currently local document.
 
 Context solving is a separate fresh context-assessor stage, run directly by the
 `concorde-context-solve` stage capability or as `concorde-plan`'s preliminary sufficiency check. It returns
@@ -290,10 +294,10 @@ resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str, ...
     workspace: dict | None = None) -> DiscoveryContext
 ```
 
-Here each selected Spec's context means its complete registered Markdown collection plus its
-declared authored diagram sources. The Python resolver determines membership without model
-judgment. It includes non-main documents in full, never follows dependencies or hyperlinks
-implicitly, and never substitutes an answer or summary for an original source.
+Here each selected Spec's context means its complete registered Markdown collection, including its
+inline architecture diagrams. The Python resolver determines membership without model judgment. It
+includes non-main documents in full, never follows dependencies or hyperlinks implicitly, and never
+substitutes an answer or summary for an original source.
 
 Inputs require a nonempty, duplicate-free ordered tuple of Module IDs, a nonblank task,
 capability concorde-main or concorde-dev-loop, phase route, and action route, ask or
@@ -304,20 +308,18 @@ resolution; no partial context is returned. Hints do not themselves add a Module
 DiscoveryContext has serialized, value and id accessors like ContextSnapshot. Its canonical
 concorde-discovery-context@1 payload contains context_id, schema_version, capability, phase,
 action, task, constraints, target_hint, focus_hint, protocol_binding, protocol, topology,
-targets, documents, diagram_sources, instructions and workspace. Topology is the exact registry
+targets, documents, instructions and workspace. Topology is the exact registry
 only for design-topology; otherwise it is null.
 
-Each target has target_id, kind (module), document_order, target_spec, shared_specs and
-diagram_sources. Target Spec and Shared Specs contain document metadata references
-{document_id, path, digest, targets, main_visible}; they contain no duplicate source bodies.
-The target's diagram_sources are its exact declarations {source, kind, title, recipe?}.
+Each target has target_id, kind (module), document_order, target_spec and shared_specs. Target
+Spec and Shared Specs contain document metadata references {document_id, path, digest, targets,
+main_visible}; they contain no duplicate source bodies.
 
 The top-level documents pool contains complete {document_id, path, digest, targets, main_visible,
-content} records, once per physical Markdown path. The top-level diagram_sources pool contains
-{path, digest, content} records, once per declared source path. Both pools are sorted by path;
-per-target registration order and attribution remain in the target records. A shared document's
-other owners remain metadata and do not select those owners' remaining contexts. An inline
-diagram is already part of its Markdown body.
+content} records, once per physical Markdown path, sorted by path; per-target registration order
+and attribution remain in the target records. A shared document's other owners remain metadata and
+do not select those owners' remaining contexts. An inline diagram is already part of its Markdown
+body; there is no separate diagram pool.
 
 The coordinator reads these original pools directly, combines facts across selected contexts,
 and returns an answer or an attributed Spec gap. No separate reading Agent, recursive reading
@@ -325,10 +327,9 @@ factory or worker-result synthesis is provided. Mutating workers retain their si
 context and separately bound permissions.
 
 recheck_discovery_context(repository, snapshot) reconstructs the same selection from current
-repository inputs. Membership, document order, original bytes, diagram declarations or sources,
-Protocol, instructions and lifecycle metadata bind context identity; changes reject reuse with
-SpecError/stale_context. Context assembly and rechecking launch no model and grant no write or
-network authority.
+repository inputs. Membership, document order, original bytes, Protocol, instructions and
+lifecycle metadata bind context identity; changes reject reuse with SpecError/stale_context.
+Context assembly and rechecking launch no model and grant no write or network authority.
 
 The Protocol schema asset is produced by the wire provider from its registered schemas: stable
 IDs, exact closed versioned payloads and self-contained local definitions. This Module verifies

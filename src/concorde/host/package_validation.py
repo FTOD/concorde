@@ -46,6 +46,8 @@ _PROTOCOL_VOCABULARY = frozenset(
         "concorde-capability-result",
         "concorde-document",
         "concorde-dependencies",
+        "concorde-entities",
+        "concorde-contract",
     }
 )
 

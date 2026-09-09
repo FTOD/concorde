@@ -20,7 +20,7 @@ class ManifestContractTests(unittest.TestCase):
         manifest = self.manifest
         self.assertEqual(manifest["schema_version"], 3)
         self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "5.0.0"))
-        self.assertEqual((manifest["architecture_profile"], manifest["workspace_protocol"]), (9, 14))
+        self.assertEqual((manifest["architecture_profile"], manifest["workspace_protocol"]), (10, 15))
         self.assertEqual(manifest["integrations"], ["claude", "codex"])
         self.assertEqual(manifest["install"], {
             "framework_root": ".concorde/framework",
@@ -62,7 +62,7 @@ class ManifestContractTests(unittest.TestCase):
         capabilities = load_capability_inventory()
         templates = sorted(path.name for path in (REPOSITORY_ROOT / "templates").glob("*.md"))
         self.assertEqual(sorted(self.manifest["templates"]), templates)
-        self.assertEqual((len(ROLES), len(capabilities.CAPABILITIES), len(SKILL_NAMES), len(templates)), (8, 13, 7, 6))
+        self.assertEqual((len(ROLES), len(capabilities.CAPABILITIES), len(SKILL_NAMES), len(templates)), (8, 13, 7, 5))
         self.assertEqual(
             (REPOSITORY_ROOT / "scripts/requirements.lock").read_text(),
             "langgraph==1.2.11\n",

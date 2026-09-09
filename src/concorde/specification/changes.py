@@ -59,3 +59,68 @@ def apply_files(root: Path, changes: list[dict], allowed: set[str], *, verify=No
                 write(path, backups[relative])
         raise
     return changed
+
+
+def _rewrite_entities(text: str, confirmed: dict[str, set[str]]) -> str:
+    """Drop confirmed paths from each named entity's ``pending`` list, changing nothing else."""
+    import json
+    from .repository import ENTITIES_BLOCK
+
+    pieces: list[str] = []
+    last = 0
+    for match in ENTITIES_BLOCK.finditer(text):
+        values = json.loads(match.group(1))
+        changed = False
+        for value in values:
+            paths = confirmed.get(value.get("id"))
+            if not paths or "pending" not in value:
+                continue
+            remaining = [path for path in value["pending"] if path not in paths]
+            if remaining != value["pending"]:
+                changed = True
+                if remaining:
+                    value["pending"] = remaining
+                else:
+                    value.pop("pending")
+        if changed:
+            pieces.append(text[last:match.start(1)])
+            pieces.append(json.dumps(values, indent=2) + "\n")
+            last = match.end(1)
+    pieces.append(text[last:])
+    return "".join(pieces)
+
+
+def confirm_pending_files(root: Path, package_root: Path | None = None) -> tuple[list[dict], list[str]]:
+    """Confirm declared-but-missing files that now exist, and report the ones still missing.
+
+    ``pending`` records an author's intent, never evidence: the validator re-checks the file
+    system on every run. Delivery is the one deterministic moment that clears a confirmed marker,
+    so the delivered Spec no longer claims a file is still to be written.
+    """
+    from .repository import SpecError, SpecRepository, read_file
+
+    repository = SpecRepository(root, package_root)
+    confirmed: list[dict] = []
+    still_pending: list[str] = []
+    documents: dict[str, dict[str, set[str]]] = {}
+    for target in repository.targets.values():
+        try:
+            entities = repository.entities(target)
+        except (SpecError, ValueError, OSError, KeyError, TypeError):
+            continue
+        for entity in entities:
+            for path in entity.pending:
+                if checked_path(repository.root, path).is_file():
+                    documents.setdefault(entity.document, {}).setdefault(entity.id, set()).add(path)
+                    confirmed.append({"module": target.id, "entity": entity.id, "path": path})
+                else:
+                    still_pending.append(path)
+    changes = []
+    for document_path, entity_paths in sorted(documents.items()):
+        before = read_file(repository.root, document_path).decode()
+        after = _rewrite_entities(before, entity_paths)
+        if after != before:
+            changes.append(file_change(repository.root, document_path, after))
+    if changes:
+        apply_files(repository.root, changes, {change["path"] for change in changes})
+    return confirmed, sorted(set(still_pending))

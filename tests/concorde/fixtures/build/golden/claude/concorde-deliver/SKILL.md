@@ -26,7 +26,9 @@ and input (concorde-deliver-request@1). Supply the selected change_id from the p
 cannot replace change ownership. No domain flags or positional arguments are accepted.
 
 Default delivery verifies the candidate and its integration with the current primary commit,
-creates `concorde/delivered/<change_id>` without checking it out, and removes the source worktree
+confirms every entity file marked `pending` that now exists on disk and clears its marker as part
+of the delivered commit (a file still missing stays pending and is reported), creates
+`concorde/delivered/<change_id>` without checking it out, and removes the source worktree
 and its local state. Each change has an independent delivery branch. The primary worktree's
 checked-out branch, index and project files are unchanged. `keep_worktree:true` explicitly retains
 the source; ownership of the requesting session does not retain it automatically. After removal,
@@ -42,7 +44,8 @@ integration and rejects conflicts or failed checks before changing the primary b
 local edits; a dirty primary blocks final merging but does not block default branch delivery.
 Do not start another primary writer or perform manual Git delivery around the host.
 
-Receipts retain delivery and primary merge evidence separately. Retry failed cleanup without
+Receipts retain delivery and primary merge evidence separately, including which files were
+confirmed and which remain pending. Retry failed cleanup without
 another branch merge. Retry an already completed primary merge without merging twice. After source
 removal, retry from the primary session using the receipt's change_id. Conflicts or failed checks
 preserve the candidate or delivered branch for repair in a new change worktree. Report the returned

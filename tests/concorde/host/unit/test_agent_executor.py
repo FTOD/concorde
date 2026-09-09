@@ -560,14 +560,14 @@ class AgentBindingPreflightTests(unittest.TestCase):
 
         snapshot_data = {
             "context_id": "sha256:" + "3" * 64,
-            "schema_version": 1,
+            "schema_version": 2,
             "target_id": "service.fixture",
             "kind": "module",
             "focus_id": None,
             "phase": "plan",
             "task": "Plan the selected change",
             "constraints": [],
-            "protocol_binding": {"version": "2.1.0", "digest": "sha256:" + "4" * 64},
+            "protocol_binding": {"version": "3.0.0", "digest": "sha256:" + "4" * 64},
             "protocol": [],
             "document_order": ["specs/fixture.md"],
             "target_spec": [{
@@ -576,10 +576,10 @@ class AgentBindingPreflightTests(unittest.TestCase):
                 "main_visible": True, "content": "# Fixture\n",
             }],
             "shared_specs": [],
-            "diagram_sources": [],
             "instructions": "Fixture role instructions.",
             "stage_inputs": [],
-            "implementation_specs": [],
+            "implementation_files": [{"path": "app/fixture.py", "entity_id": "entity.fixture.code",
+                                      "pending": False}],
             "implementation_artifacts": [],
             "workspace": {
                 "kind": "unversioned", "current_worktree": "/fixture/project", "current_branch": None,

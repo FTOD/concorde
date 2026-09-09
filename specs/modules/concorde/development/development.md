@@ -21,9 +21,6 @@ Its successful output is a ready candidate, not an automatic merge.
 With reviews enabled, the development loop follows these transitions. Explicit skips retain
 their own evidence states; delivery is a separately invoked capability after Ready.
 
-Authored source: `specs/modules/concorde/workflows/development.md` (the following fence).
-Kind: `mermaid`. Title: **Development, repair and separately authorized delivery**.
-
 ```mermaid
 stateDiagram-v2
   accTitle: Development, repair and separately authorized delivery
@@ -90,7 +87,7 @@ conversation or free-form predecessor output into context.
 A coordinating Module can have both its own code tasks and separately bound submodule or dependency
 tasks. Its original plan and task identity remain intact; local code tasks do not recursively open
 a new development loop for the same Module. Each child is specified, planned and implemented from
-its own complete Module contract and referenced Implementation Specs.
+its own complete Module contract and its own listed implementation files.
 
 Within a coordinated change, nested loops finish explicit code drafts. The enclosing coordinator
 waits for all writers, including its own coordination code, before checking the final candidate.

@@ -1,4 +1,4 @@
-"""Trusted execution of every public Concorde capability under Profile 9.
+"""Trusted execution of every public Concorde capability under Profile 10.
 
 Agents consume frozen Spec snapshots. Deterministic checks execute separately and their raw
 output never becomes a non-implementation agent input. Each stage starts a fresh process.
@@ -166,17 +166,23 @@ def _worktree(host: CapabilityHost, mutation: bool, task: dict) -> tuple[Capabil
 
 
 def _implementation_digest(repository: SpecRepository, target) -> str:
-    return digest({"bindings": [asdict(spec) for spec in repository.implementation_specs(target)],
-        "specs": [(doc.path, doc.digest) for doc in repository.implementation_documents(target)],
+    """Digest the Module's exact listed files and the bytes of the ones that already exist."""
+    return digest({"listed": list(target.files),
         "files": [(path, digest(read_file(repository.root, path)))
                   for path in repository.implementation_files(target)]})
 
 
 def _implementation_users(repository: SpecRepository, target) -> tuple:
-    """Include all direct users of the selected Module's bindings, with no context union."""
-    affected = {target.id, *(module.id for module in repository.affected_modules(
-        list(repository.implementation_paths(target))))}
+    """Include every Module that lists one of these files, with no context union."""
+    affected = {target.id, *(module.id for module in repository.affected_modules(target.files))}
     return tuple(module for module in repository.targets.values() if module.id in affected)
+
+
+def _unconfirmed_files(repository: SpecRepository, target) -> list[str]:
+    """Listed files that neither exist nor are explicitly declared pending by their entity."""
+    entities = repository.entity_files(target)
+    return sorted(path for path in repository.missing_files(target)
+                  if path not in entities or path not in entities[path].pending)
 
 
 def _impact_revisions(repository: SpecRepository, targets) -> list[dict]:
@@ -186,8 +192,7 @@ def _impact_revisions(repository: SpecRepository, targets) -> list[dict]:
 
 def _target_revision(repository: SpecRepository, target) -> str:
     return digest({"target": asdict(target), "protocol": repository.config["protocol"],
-                   "documents": [(doc.path, doc.digest) for doc in repository.documents(target)],
-                   "diagrams": [(item["path"], item["digest"]) for item in repository.diagram_sources(target)]})
+                   "documents": [(doc.path, doc.digest) for doc in repository.documents(target)]})
 
 
 def _check_revision(repository: SpecRepository, target) -> str:
@@ -336,7 +341,7 @@ class MainInvocation:
                 outer_sandbox=self.host.outer_sandbox,
             )
             receipt = {
-                "schema_version": 14,
+                "schema_version": 15,
                 "entry_target": self.entry.id,
                 "phase": phase,
                 "context_id": snapshot.id,
@@ -500,8 +505,7 @@ class MainInvocation:
         if decision["context_id"] != self.last_context or self.last_snapshot is None:
             raise SpecError("main route no longer matches its discovery context", "stale_context")
         value = self.last_snapshot.value
-        return "\n".join(source["content"] for source in
-                         (*value["documents"], *value["diagram_sources"]))
+        return "\n".join(source["content"] for source in value["documents"])
 
     def select_one(self) -> tuple[dict | None, dict | None]:
         routes, decision = self.discover_routes()
@@ -591,10 +595,10 @@ def _inspect_topology_design(repository: SpecRepository, design_value: dict,
     current_document_references: dict[str, set[str]] = {}
     candidate_document_references: dict[str, set[str]] = {}
     for target_id, target in current_targets.items():
-        for path in (*target["documents"], *(d["source"] for d in target["diagrams"])):
+        for path in target["documents"]:
             current_document_references.setdefault(path, set()).add(target_id)
     for target_id, target in candidate_targets.items():
-        for path in (*target["documents"], *(d["source"] for d in target["diagrams"])):
+        for path in target["documents"]:
             candidate_document_references.setdefault(path, set()).add(target_id)
     changed_memberships = {path for path in
         set(current_document_references) | set(candidate_document_references)
@@ -618,16 +622,26 @@ def _inspect_topology_design(repository: SpecRepository, design_value: dict,
     affected_modules = {owner for owner, _ in relations(current_targets) ^ relations(candidate_targets)}
     affected_modules.update(finding.subject_id for finding in module_dependency_findings(repository)
                             if finding.subject_id is not None)
-    old_implementations = {item["id"]: item for item in repository.registry["implementations"]}
-    new_implementations = {item["id"]: item for item in candidate["implementations"]}
-    changed_implementations = {key for key in old_implementations.keys() | new_implementations.keys()
-                              if old_implementations.get(key) != new_implementations.get(key)}
+    # A Module whose listed files change must rewrite its own entity declarations, and every
+    # Module that lists a file whose listing set changed is affected by that shared change.
+    current_file_users: dict[str, set[str]] = {}
+    candidate_file_users: dict[str, set[str]] = {}
+    for target_id, target in current_targets.items():
+        for path in target["files"]:
+            current_file_users.setdefault(path, set()).add(target_id)
+    for target_id, target in candidate_targets.items():
+        for path in target["files"]:
+            candidate_file_users.setdefault(path, set()).add(target_id)
     affected_modules.update(target_id for target_id, target in candidate_targets.items()
-                            if changed_implementations.intersection(target["implementations"]))
+        if list(current_targets.get(target_id, {}).get("files", [])) != list(target["files"]))
+    for path in set(current_file_users) | set(candidate_file_users):
+        if current_file_users.get(path, set()) != candidate_file_users.get(path, set()):
+            affected_modules.update(current_file_users.get(path, set()))
+            affected_modules.update(candidate_file_users.get(path, set()))
     missing_dependency_tasks = sorted(target_id for target_id in affected_modules
                                       if target_id in candidate_targets and target_id not in tasks)
     if missing_dependency_tasks:
-        raise SpecError(f"changed dependencies or shared implementation bindings require Module tasks: {missing_dependency_tasks}",
+        raise SpecError(f"changed dependencies or shared file listings require Module tasks: {missing_dependency_tasks}",
                         "invalid_proposal")
     discovered = set(discovered_targets)
     unread_existing = sorted(target_id for target_id in (changed | tasks.keys())
@@ -705,7 +719,7 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
         native = renderer(policy,
             native_enforcement=configuration["data"]["enforcement"] == "native",
             outer_sandbox=host.outer_sandbox)
-        receipt = {"schema_version": 14, "target_id": target["id"], "phase": "topology-author",
+        receipt = {"schema_version": 15, "target_id": target["id"], "phase": "topology-author",
             "context_id": snapshot.id, "source_digest": snapshot.id,
             "registry_digest": digest(before_registry), "role_paths": {"spec-context": ["context.json"]}}
         runtime = typed("concorde-topology-author-context", snapshot.value)
@@ -751,15 +765,11 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
                 raise SpecError("topology author gap names another context", "incompatible_handoff")
             gap.update(target_id=target["id"], context_id=snapshot.id)
         paths = [item["path"] for item in data["documents"]]
-        diagrams = data.get("diagrams", [])
         if data["outcome"] == "completed":
             if paths != target["documents"]:
                 raise SpecError("topology author must return every target document in order",
                                 "invalid_completion")
-            if [item["path"] for item in diagrams] != [d["source"] for d in target["diagrams"]]:
-                raise SpecError("topology author must return every registered diagram source in order",
-                                "invalid_completion")
-        elif data["documents"] or diagrams:
+        elif data["documents"]:
             raise SpecError("blocked topology author cannot return document replacements",
                             "invalid_completion")
         if read_file(repository.root, repository.registry_path) != before_registry:
@@ -788,46 +798,6 @@ def _main_topology_response(action: str, repository: SpecRepository, proposal: d
         "workspace": workspace_context(repository.root)})
 
 
-def _implementation_document_proposals(repository: SpecRepository, candidate: dict) -> dict[str, str]:
-    """Maintain exact binding metadata privately; code writers author implementation design.
-
-    This deterministic operation does not pass Implementation Spec bodies to Module authors or
-    the coordinator. New bindings receive honest stubs rather than invented code architecture.
-    """
-    import re
-    from ..specification.repository import DOCUMENT_BLOCK
-    current = {item["id"]: item for item in repository.registry["implementations"]}
-    proposed = {}
-    for implementation in candidate["implementations"]:
-        if current.get(implementation["id"]) == implementation:
-            continue
-        for index, path in enumerate(implementation["documents"]):
-            if path in repository.document_targets:
-                if any(owner not in repository.implementations for owner in repository.document_targets[path]):
-                    raise SpecError("Implementation binding cannot adopt a Module document", "invalid_proposal", path)
-                document = repository.document(path)
-                declaration = {"id": document.document_id, "targets": [implementation["id"]],
-                               "main_visible": document.main_visible}
-                body = DOCUMENT_BLOCK.sub("", document.content).lstrip()
-            else:
-                if checked_path(repository.root, path).exists():
-                    raise SpecError("Implementation binding cannot overwrite an unregistered document", "permission_denied", path)
-                declaration = {"id": "document." + implementation["id"] + "." + digest(path)[7:23],
-                               "targets": [implementation["id"]], "main_visible": False}
-                body = ("# " + implementation["title"] + "\n\n## Implementation design\n\n"
-                    "The file binding is explicit. Internal responsibilities and implementation choices "
-                    "have not yet been authored. The code-writing agent must specify them while "
-                    "implementing the complete Module contract; a planner does not read this document.\n")
-            if index == 0:
-                binding = "## Bound files\n\n" + "\n".join("- `" + path + "`" for path in implementation["files"]) + "\n"
-                if re.search(r"^## Bound files\s*$", body, re.M):
-                    body = re.sub(r"^## Bound files\s*\n.*?(?=^## |\Z)", binding + "\n", body, flags=re.M | re.S)
-                else:
-                    body = body.rstrip() + "\n\n" + binding
-            proposed[path] = "```concorde-document\n" + json.dumps(declaration, indent=2) + "\n```\n\n" + body
-    return proposed
-
-
 def _prepare_topology(configuration: dict, proposal: dict, host: CapabilityHost) -> dict:
     if host.mode == "execute":
         progress(host.project_root, phase="topology_authoring", status="active", invalidate=True)
@@ -843,11 +813,8 @@ def _prepare_topology(configuration: dict, proposal: dict, host: CapabilityHost)
     completed = ["concorde-coordinator-topology-design"]
     candidate_references: dict[str, list[str]] = {}
     for candidate_target in candidate["targets"]:
-        for path in (*candidate_target["documents"], *(d["source"] for d in candidate_target["diagrams"])):
+        for path in candidate_target["documents"]:
             candidate_references.setdefault(path, []).append(candidate_target["id"])
-    for implementation in candidate["implementations"]:
-        for path in implementation["documents"]:
-            candidate_references[path] = [implementation["id"]]
     for occurrence, (target_id, task) in enumerate(tasks.items()):
         target = candidate_targets[target_id]
         references = tuple({"path": path, "targets": candidate_references[path]}
@@ -858,9 +825,9 @@ def _prepare_topology(configuration: dict, proposal: dict, host: CapabilityHost)
             return _main_topology_response("accept-topology", repository, proposal,
                 outcome=result["outcome"], answer=result["answer"], gaps=result["gaps"],
                 completed=completed)
-        for item in (*result["documents"], *result.get("diagrams", [])):
+        for item in result["documents"]:
             path = item["path"]
-            if (path not in repository.document_targets and path not in repository.diagram_targets
+            if (path not in repository.document_targets
                     and checked_path(repository.root, path).exists()):
                 raise SpecError("topology author cannot replace an unregistered existing file",
                                 "permission_denied", path)
@@ -880,7 +847,7 @@ def _prepare_topology(configuration: dict, proposal: dict, host: CapabilityHost)
                 completed=completed)
         content = next(iter(contents))
         references = set(candidate_references[path])
-        current = read_file(repository.root, path).decode() if path in repository.document_targets or path in repository.diagram_targets else None
+        current = read_file(repository.root, path).decode() if path in repository.document_targets else None
         if len(references) > 1 and content != current:
             represented = {target_id for target_id, _ in items}
             if represented != references:
@@ -889,7 +856,6 @@ def _prepare_topology(configuration: dict, proposal: dict, host: CapabilityHost)
                     answer=f"Changing shared truth requires every referencing target author: {path}",
                     completed=completed)
         authored[path] = content
-    authored.update(_implementation_document_proposals(repository, candidate))
     overrides = {path: content.encode() for path, content in authored.items()}
     report = validate_repository(repository.root, package_root=host.package_root,
         registry_bytes=candidate_bytes, document_overrides=overrides)
@@ -944,25 +910,21 @@ def _apply_topology(application_ref: dict, host: CapabilityHost) -> dict:
                         "invalid_proposal")
     task_ids = {item["target_id"] for item in design["spec_tasks"]}
     targets = {item["id"]: item for item in design["registry"]["targets"]}
-    expected_documents = {path for target_id in task_ids for path in (
-        *targets[target_id]["documents"], *(d["source"] for d in targets[target_id]["diagrams"]))}
-    expected_documents.update(_implementation_document_proposals(repository, design["registry"]))
+    expected_documents = {path for target_id in task_ids
+                          for path in targets[target_id]["documents"]}
     actual_documents = {item["path"] for item in files if item["path"] != repository.registry_path}
     if actual_documents != expected_documents or len({item["path"] for item in files}) != len(files):
         raise SpecError("topology application document set differs from accepted design",
                         "invalid_proposal")
     candidate_references: dict[str, set[str]] = {}
     for target in design["registry"]["targets"]:
-        for path in (*target["documents"], *(d["source"] for d in target["diagrams"])):
+        for path in target["documents"]:
             candidate_references.setdefault(path, set()).add(target["id"])
-    for implementation in design["registry"]["implementations"]:
-        for path in implementation["documents"]:
-            candidate_references[path] = {implementation["id"]}
     for item in files:
         if item["path"] == repository.registry_path:
             continue
         current = (read_file(repository.root, item["path"]).decode()
-                   if item["path"] in repository.document_targets or item["path"] in repository.diagram_targets else None)
+                   if item["path"] in repository.document_targets else None)
         references = candidate_references[item["path"]]
         if len(references) > 1 and item["content"] != current and not references.issubset(task_ids):
             raise SpecError("shared truth application omitted a referencing target task",
@@ -1082,8 +1044,8 @@ class Invocation:
                     "answer": "Repair the recorded necessary contracts before resuming this step.",
                     "gaps": pending, "documents": [], "plan": "", "tasks": []}
         implementation = phase == "implementation"
-        if implementation and not self.target.implementations:
-            raise SpecError("implementation requires explicitly referenced file-bound Implementation Specs", "unsupported_target")
+        if implementation and not self.target.files:
+            raise SpecError("implementation requires a Module whose entities list implementation files", "unsupported_target")
         if self.host.mode != "describe-policy" and phase == "context-solve":
             participant_findings = module_dependency_findings(self.repository, self.target.id)
             if participant_findings:
@@ -1120,9 +1082,9 @@ class Invocation:
             if self.host.mode != "describe-policy":
                 context_file.parent.mkdir(parents=True, exist_ok=True)
                 context_file.write_text(snapshot.serialized + "\n")
-            roles = ({"spec-context": (relative,), "implementation": (*self.repository.implementation_paths(self.target),
-                        *(doc["path"] for spec in snapshot.value["implementation_specs"] for doc in spec["documents"]))}
-                      if project_workspace else {"spec-context": (relative,)})
+            roles = ({"spec-context": (relative,),
+                      "implementation": self.repository.implementation_paths(self.target)}
+                     if project_workspace else {"spec-context": (relative,)})
             write_roles = ("implementation",) if implementation and not readonly else ()
             try:
                 policy = compile_policy(prompt.effects,
@@ -1134,7 +1096,7 @@ class Invocation:
             renderer = render_codex_configuration if integration == "codex" else render_claude_configuration
             native = renderer(policy, native_enforcement=self.configuration["data"]["enforcement"] == "native",
                               outer_sandbox=self.host.outer_sandbox)
-            receipt = {"schema_version": 14, "target_id": self.target.id, "phase": phase,
+            receipt = {"schema_version": 15, "target_id": self.target.id, "phase": phase,
                 "context_id": snapshot.id, "source_digest": snapshot.id,
                 "registry_digest": digest(before_registry), "role_paths": {k: list(v) for k, v in roles.items()}}
             value = typed("concorde-agent-stage-context", {"snapshot": typed("concorde-context-snapshot", snapshot.value),
@@ -1186,35 +1148,11 @@ class Invocation:
                 raise SpecError("configuration changed during agent execution", "configuration_mismatch")
             if context_file.read_text() != snapshot.serialized + "\n":
                 raise SpecError("frozen context capsule changed", "stale_context")
-            if implementation and not readonly and data["documents"]:
-                allowed = {doc.path for doc in self.repository.implementation_documents(self.target)}
-                changes = []
-                for item in data["documents"]:
-                    if item["path"] not in allowed:
-                        raise SpecError("code writers may author only admitted Implementation Spec documents", "permission_denied")
-                    changes.append(file_change(self.repository.root, item["path"], item["content"]))
-                def verify_implementation_specs():
-                    current = SpecRepository(self.repository.root, self.host.package_root)
-                    for spec in current.implementation_specs(current.select(self.target.id)):
-                        for path in spec.documents:
-                            before = self.repository.document(path)
-                            after = current.document(path)
-                            if (before.document_id, before.targets, before.main_visible) != (
-                                    after.document_id, after.targets, after.main_visible):
-                                raise SpecError("Implementation Spec identity changes require explicit binding changes", "permission_denied")
-                apply_files(self.repository.root, changes, allowed, verify=verify_implementation_specs)
-            elif phase != "specify" and data["documents"]:
+            if phase != "specify" and data["documents"]:
+                # There is no Implementation Spec any more: only the Spec author writes Spec text.
                 raise SpecError("this phase cannot author Spec documents", "permission_denied")
-            if phase != "specify" and data.get("diagrams"):
-                raise SpecError("this phase cannot author Module diagram sources", "permission_denied")
             if implementation and not readonly:
                 current = SpecRepository(self.repository.root, self.host.package_root)
-                for spec in snapshot.value["implementation_specs"]:
-                    for before in spec["documents"]:
-                        after = current.document(before["path"])
-                        if (before["document_id"], tuple(before["targets"]), before["main_visible"]) != (
-                                after.document_id, after.targets, after.main_visible):
-                            raise SpecError("code writers cannot change Implementation Spec identity or membership", "permission_denied")
                 self.repository = current
                 self.target = current.select(self.target.id)
             self.host.evidence.append(result)
@@ -1232,7 +1170,7 @@ class Invocation:
             return self.response(result["outcome"], result["answer"], gaps=result["gaps"])
         if self.host.mode == "describe-policy":
             return self.response("described")
-        if result["documents"] or result.get("diagrams"):
+        if result["documents"]:
             changes = []
             for item in result["documents"]:
                 if item["path"] not in self.target.documents:
@@ -1264,17 +1202,6 @@ class Invocation:
                             item["path"],
                         )
                     changes.append(file_change(self.repository.root, item["path"], item["content"]))
-            diagram_paths = {d["source"] for d in self.target.diagrams}
-            for item in result.get("diagrams", []):
-                path = item["path"]
-                if path not in diagram_paths:
-                    raise SpecError("Spec author returned an unregistered diagram", "permission_denied", path)
-                before = read_file(self.repository.root, path).decode()
-                if before != item["content"]:
-                    if len(self.repository.diagram_targets[path]) > 1:
-                        raise SpecError("shared diagram changes require all referencing topology authors",
-                                        "permission_denied", path)
-                    changes.append(file_change(self.repository.root, path, item["content"]))
             def verify():
                 current = SpecRepository(self.repository.root, self.host.package_root)
                 current.documents(current.select(self.target.id))
@@ -1293,14 +1220,15 @@ class Invocation:
                         + "; ".join(finding.message for finding in participant_findings),
                         "invalid_spec",
                     )
-                from ..specification.validation import module_findings, diagram_findings
-                source_findings = (*module_findings(current, self.target.id),
-                                   *diagram_findings(current, self.target.id))
+                from ..specification.validation import module_findings, definition_findings
+                source_findings = tuple(finding for finding in
+                    (*module_findings(current, self.target.id), *definition_findings(current, self.target.id))
+                    if finding.severity == "error")
                 if source_findings:
-                    raise SpecError("authored Module architecture/diagram is invalid: " + "; ".join(
-                        f.message for f in source_findings), "invalid_spec")
+                    raise SpecError("authored Module sections, definitions or architecture are invalid: "
+                        + "; ".join(f.message for f in source_findings), "invalid_spec")
             if changes:
-                apply_files(self.repository.root, changes, set(self.target.documents) | diagram_paths, verify=verify)
+                apply_files(self.repository.root, changes, set(self.target.documents), verify=verify)
                 self.repository = SpecRepository(self.host.project_root, self.host.package_root)
         self.record_gaps("specify", [])
         change = read_change(self.repository.root)
@@ -1446,9 +1374,9 @@ class Invocation:
         expected = [{**task, "complete": True} for task in state["tasks"]]
         if returned != expected:
             raise SpecError("implementation must report every exact task complete", "incomplete_tasks")
-        missing = set(self.repository.implementation_paths(self.target)) - set(self.repository.implementation_files(self.target))
+        missing = _unconfirmed_files(self.repository, self.target)
         if missing:
-            raise SpecError("implementation did not materialize required bound files: " + ", ".join(sorted(missing)), "incomplete_tasks")
+            raise SpecError("implementation did not materialize required listed files: " + ", ".join(missing), "incomplete_tasks")
         state["tasks"] = returned
         state["implementation_digest"] = _implementation_digest(self.repository, self.target)
         state["checks"] = []
@@ -1595,9 +1523,8 @@ class Invocation:
                     return self.response(result["outcome"], result["answer"], gaps=result["gaps"])
                 if result["tasks"] != expected_local:
                     raise SpecError("local coordination code did not complete its exact tasks", "incomplete_tasks")
-                missing = set(self.repository.implementation_paths(self.target)) - set(self.repository.implementation_files(self.target))
-                if missing:
-                    raise SpecError("local implementation did not materialize its bound files", "incomplete_tasks")
+                if _unconfirmed_files(self.repository, self.target):
+                    raise SpecError("local implementation did not materialize its listed files", "incomplete_tasks")
                 state["local_completed_tasks"] = expected_local
                 state["local_implementation_digest"] = _implementation_digest(self.repository, self.target)
                 save_target_state(self.repository.root, state)
@@ -1828,7 +1755,7 @@ class Invocation:
         graph_state(self.repository.root, self.target.id, policy=policy,
             spec_digest=_target_revision(self.repository, self.target),
             implementation_digest=_implementation_digest(self.repository, self.target)
-                if self.target.implementations else None)
+                if self.target.files else None)
         stages = (["specify", "plan", "tasks", "implement", "validate"] if specify else
                   ["plan", "tasks", "implement", "validate"])
         change = read_change(self.repository.root)
@@ -1865,7 +1792,7 @@ class Invocation:
         include_specify = stages[0] == "specify"
         entry = stages[1] if include_specify else stages[0]
         chain = ["review_spec", "plan", "tasks", "implement", "validate"]
-        if self.target.implementations:
+        if self.target.files:
             chain.append("review_code")
         chain.append("ready")
         all_nodes = ["specify", *chain] if include_specify else chain
@@ -2118,7 +2045,7 @@ def _dispatch(capability, configuration, task, host):
         if capability == "concorde-dev-loop":
             describe_reviews = task.get("run_reviews", True)
             stages = ["concorde-context-solve", "concorde-plan", "concorde-tasks"]
-            if run.target.implementations:
+            if run.target.files:
                 stages.append("concorde-implement")
             if task.get("specify", True):
                 stages.insert(0, "concorde-specify")
@@ -2127,7 +2054,7 @@ def _dispatch(capability, configuration, task, host):
                 from .review import review
                 review(run, "spec")
             run.stage(stage)
-        if describe_reviews and run.target.implementations:
+        if describe_reviews and run.target.files:
             from .review import review
             review(run, "code")
         return run.response("described")
@@ -2271,7 +2198,7 @@ def validate_invocation(value: Any, capability: str | None = None) -> dict:
     if not isinstance(value, dict) or set(value) != {"type_id", "schema_version", "capability_id", "mode", "configuration", "input"}:
         raise SpecError("invocation fields do not match schema 3", "invalid_input")
     if value["type_id"] != "concorde-capability-invocation" or type(value["schema_version"]) is not int or value["schema_version"] != 3:
-        raise SpecError("Profile 9 requires concorde-capability-invocation schema 3", "unsupported_version")
+        raise SpecError("Profile 10 requires concorde-capability-invocation schema 3", "unsupported_version")
     if capability is not None and value["capability_id"] != capability:
         raise SpecError("invocation does not match this entry point", "incompatible_handoff")
     return value

@@ -12,10 +12,10 @@
 `concorde-main` accepts a question or task with optional routing hints. Main starts with the entry
 Module's complete collection, then explicitly expands other Module collections
 when needed. It identifies the owning target from admitted responsibilities and selection conditions.
-It never reads Implementation Specs or searches code to fill missing Module semantics.
+It never reads implementation files or searches code to fill missing Module semantics.
 
 For a query, Python resolves each explicitly selected Module's complete Spec context: every
-registered document and declared authored diagram source. The coordinator receives the original
+registered document, including its inline diagrams. The coordinator receives the original
 source bodies directly and may reason across all selected Modules. Shared sources are included
 once, with per-Module membership retained. Non-main documents remain complete members; references
 to another Module do not implicitly select its context. Additional contexts require explicit

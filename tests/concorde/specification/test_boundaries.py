@@ -65,15 +65,22 @@ class BoundaryTests(unittest.TestCase):
             if stage=='specify':data['documents']=[{'path':'specs/transfer/module.md','content':replacement}]
         result=self.run_op('concorde-specify',callback=cb)
         self.assertEqual('succeeded',result['status'],result);self.assertEqual(replacement,path.read_text())
-    def test_overlapping_code_ownership_rejected(self):
-        self.registry['targets'][3]['implementation']=['app'];self.save()
-        with self.assertRaises(SpecError):SpecRepository(self.root)
-    def test_control_files_cannot_be_implementation_grants(self):
-        self.registry['targets'][2]['implementation']=['.concorde'];self.save()
-        with self.assertRaises(SpecError):SpecRepository(self.root)
-    def test_target_and_focus_share_global_identity_namespace(self):
-        self.registry['targets'][2]['features'][0]['id']='module.ledger';self.save()
-        with self.assertRaises(SpecError):SpecRepository(self.root)
+    def test_a_directory_is_never_a_listed_implementation_file(self):
+        self.registry['targets'][3]['files']=['app'];self.save()
+        with self.assertRaisesRegex(SpecError,'explicit files'):SpecRepository(self.root)
+    def test_control_and_spec_files_cannot_be_listed_implementation_files(self):
+        for path in ('.concorde/config.json','generated/protocol/principles.md','specs/ledger/module.md'):
+            with self.subTest(path=path):
+                self.registry['targets'][2]['files']=[path];self.save()
+                with self.assertRaisesRegex(SpecError,'control, generated or project Spec file'):
+                    SpecRepository(self.root)
+    def test_module_and_scenario_share_one_global_identity_namespace(self):
+        from concorde.specification.validation import validate_repository
+        path=self.root/'specs/transfer/module.md'
+        path.write_text(path.read_text().replace('scenario.transfer.debit','scenario.ledger.read'))
+        report=validate_repository(self.root,package_root=PACKAGE)
+        self.assertEqual('invalid',report.status)
+        self.assertIn('CONCORDE-IDENTITY-001',{finding.rule_id for finding in report.findings})
     def test_code_is_digest_only_and_only_in_implementation_snapshot(self):
         repo=SpecRepository(self.root)
         plain=resolve_context(repo,'service.transfer').value;impl=resolve_context(repo,'service.transfer',phase='implementation').value

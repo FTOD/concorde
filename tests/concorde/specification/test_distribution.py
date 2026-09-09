@@ -24,14 +24,19 @@ class DistributionTests(unittest.TestCase):
         for role in INTERNAL_SKILLS:
             prompt=load_role_prompt(PACKAGE,role)
             self.assertEqual(role,prompt.name);self.assertTrue(prompt.body.strip());self.assertIsNotNone(prompt.effects)
-    def test_self_architecture_separates_modules_and_reusable_implementations(self):
+    def test_self_architecture_lists_every_implementation_file_under_an_entity(self):
         repo=SpecRepository(PACKAGE);report=validate_repository(PACKAGE)
-        self.assertEqual('success',report.status,report.findings)
+        self.assertEqual('success',report.status,[f.message for f in report.findings])
         self.assertEqual(7,len(repo.targets));self.assertTrue(all(t.kind=='module' for t in repo.targets.values()))
-        self.assertEqual(21,len(repo.implementations))
         self.assertEqual('module.concorde',repo.select('module.views').parent)
         self.assertIn('scripts/run-viewer.py',repo.implementation_paths(repo.select('module.views')))
-        self.assertGreater(len(repo.implementation_users['implementation.worktree-lifecycle']),1)
+        for target in repo.targets.values():
+            self.assertEqual(list(target.files),sorted(repo.entity_files(target)))
+        shared=[path for path,users in repo.file_users.items() if len(users)>1]
+        self.assertTrue(shared,'the self-hosted project shares implementation files between Modules')
+        for path in shared:
+            self.assertEqual(repo.file_users[path],
+                             tuple(t.id for t in repo.affected_modules([path])))
         text='\n'.join(d.body for d in repo.documents(repo.select('module.development')))
         for op in CAPABILITY_NAMES:self.assertIn(op+'-request',text)
     def test_launcher_refuses_a_stage_capability_name_and_accepts_a_public_skill(self):

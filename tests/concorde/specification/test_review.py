@@ -99,7 +99,9 @@ class ReviewTests(unittest.TestCase):
                 self.assertEqual(["context.json"], policy["read_paths"])
                 self.assertEqual([], snapshot["implementation_artifacts"])
                 self.assertNotIn("def transfer", calls[-1]["prompt"])
-                self.assertNotIn("app/transfer.py", calls[-1]["prompt"])
+                # The listed file names are Spec facts; only code review reads their bytes.
+                self.assertEqual(["app/transfer.py", "checks/transfer_check.py"],
+                                 [item["path"] for item in snapshot["implementation_files"]])
         self.assertEqual(2, len(set(identities)))
 
     def test_diff_admits_only_current_target_paths_and_includes_untracked_and_deleted(self):

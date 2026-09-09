@@ -6,4 +6,4 @@ audience: shared
 
 @include protocol/templates/module.md
 
-@include protocol/templates/feature.md
+@include protocol/templates/scenario.md

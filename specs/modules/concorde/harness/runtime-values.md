@@ -179,7 +179,7 @@ build_launch_specification(*, capability: str, stage: str, occurrence: int, role
 
 The returned frozen `LaunchSpecification` has exactly the parameters above as attributes plus
 `digest: str`. JSON arguments are serialized objects, not paths. The workspace receipt must bind
-`source_digest` to `workspace_digest` and contain the host role-path mapping. Typed Profile 9
+`source_digest` to `workspace_digest` and contain the host role-path mapping. Typed Profile 10
 launches supply runtime input, configuration and a fresh invocation ID together, use an empty
 `prior_results` tuple and a context identity as the workspace digest. Input/configuration type and
 version admission remains the host's obligation. A configuration/policy/integration mismatch or
@@ -207,7 +207,7 @@ returns another launch: the original requested digest and finalized digest are i
 name and nonempty evidence. A `CapabilityCompletion` is a frozen record with:
 
 ```python
-schema_version: int                       # 3 for typed Profile 9; legacy untyped launches use 1
+schema_version: int                       # 3 for typed Profile 10; legacy untyped launches use 1
 capability: str
 stage: str
 occurrence: int
@@ -267,22 +267,22 @@ host stops the affected transition and preserves the candidate for repair. Raw s
 stdout/stderr remain host execution evidence, not downstream Spec-agent inputs or public review
 findings.
 
-## Declared architecture sources
+## Architecture diagrams
 
-Architecture source in this project is an inline `mermaid` fence in a registered Markdown
-member. Its source path, kind (`mermaid`) and title are stated beside the fence; `accTitle` and
-`accDescr` provide accessible text. Each Module's main diagram describes its principal entities
-and directed relationships. The entire containing Markdown document is the authored source.
+A Module's architecture diagram is an inline `mermaid` flowchart fence inside its `module.md`
+Architecture section, or another registered document, with `accTitle` and `accDescr` accessible
+text beside it. Its node labels are exactly the Module's declared entity titles and every edge
+carries a relationship label. Each Module's main diagram describes its principal entities and
+directed relationships. The entire containing Markdown document is the diagram's only authored
+source; there is no separate diagram source record or field.
 
-The source bytes already occur in `target_spec` or `shared_specs` and participate in document,
-revision and context digests. They are never duplicated in `diagram_sources`. The retained
-`diagram_sources` snapshot field is `[]` for this representation. Authors return changed fences
-inside `documents`; the optional separate `diagrams` result is omitted or empty. Shared Markdown
-changes require coordinated authoring from every explicitly registered owner. Non-author roles
-cannot replace these sources. Rendered SVG/HTML is never a cognitive input or another authority.
+The fence's bytes already occur in `target_spec` or `shared_specs` as ordinary content of that
+document and participate in its document, revision and context digests. A changed fence is a
+changed document like any other prose edit, so authors return it inside `documents`. Shared
+Markdown changes require coordinated authoring from every explicitly registered owner. Non-author
+roles cannot replace these sources. Rendered SVG/HTML is never a cognitive input or another
+authority.
 
-New authoring and initialization use this Markdown representation. The registry's retained
-`diagrams` array is empty. Previously registered external JSON sources require explicit migration
-into registered Markdown before using this revised authoring/publication contract; the host must
-not silently discard them or reinterpret their bytes. No external diagram source format is added
-by this revision.
+A prior revision carried diagrams as external JSON sources referenced by a registry `diagrams`
+declaration. That representation and registry field are retired: every current diagram is inline
+Markdown, and Context(M) is exactly a Module's registered document collection.

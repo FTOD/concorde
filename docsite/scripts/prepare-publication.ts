@@ -20,8 +20,9 @@ export async function preparePublication(projectRoot: string, options: {mode?: '
   const root = resolve(projectRoot);
   const generatedDirectory=options.mode==='build'?productionGeneratedDirectory:'.docusaurus';
   if (isScoped(root)) {
+    // Registry schema 3 declares no external diagram sources; every Architecture section is an
+    // inline Mermaid fence, so Profile 10 publication never invokes Archify rendering.
     const registry=loadScopedRegistry(root);
-    if (registry.targets.some(t=>t.diagrams.length)) await renderDeclaredDiagrams(root);
     await materializeScoped(registry);
     await rm(resolve(root,'docsite',generatedDirectory),{recursive:true,force:true});
     return {registry};

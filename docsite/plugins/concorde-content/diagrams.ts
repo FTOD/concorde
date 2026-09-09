@@ -1,4 +1,4 @@
-import {isScoped,loadScopedRegistry,primaryDocument} from '../scoped-content/model';
+import {isScoped} from '../scoped-content/model';
 import {lstat, readFile, realpath} from 'node:fs/promises';
 import {dirname, extname, posix, relative, resolve, sep} from 'node:path';
 
@@ -45,8 +45,8 @@ export async function discoverDiagramDeclarations(projectRoot: string): Promise<
   const scoped = isScoped(root);
   const pending: Array<{ownerPath: string; sourcePath: string}> = [];
   if (scoped) {
-    for (const target of loadScopedRegistry(root).targets)
-      for (const diagram of target.diagrams) pending.push({ownerPath:primaryDocument(target),sourcePath:diagram.source});
+    // Registry schema 3 Modules declare no diagrams; every Architecture section is an inline
+    // Mermaid fence inside the registered Markdown, so there is nothing to discover here.
   } else {
     const architectureFiles = await fg(['**/architecture.md'], {
       cwd: resolve(root, 'specs'), onlyFiles: true, unique: true, followSymbolicLinks: false,

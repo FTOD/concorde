@@ -2,12 +2,12 @@
   "schema_version": 3,
   "name": "concorde",
   "version": "5.0.0",
-  "description": "Concorde Framework: self-contained Module contracts and reusable file-bound Implementation Specs",
+  "description": "Concorde Framework: self-contained four-part Module Specs whose entities list their implementation files",
   "license": "MIT",
   "license_file": "LICENSE",
   "repository": "https://github.com/FTOD/concorde",
-  "architecture_profile": 9,
-  "workspace_protocol": 14,
+  "architecture_profile": 10,
+  "workspace_protocol": 15,
   "delivery_proposal": 10,
   "skill_namespace": "concorde",
   "format_lineage": "Skill and Markdown template formatting was informed by GitHub Spec Kit; Concorde owns and executes every distributed asset.",
@@ -36,12 +36,11 @@
     ]
   },
   "templates": [
-    "feature-template.md",
     "module-template.md",
     "plan-template.md",
     "reflections-template.md",
-    "tasks-template.md",
-    "implementation-template.md"
+    "scenario-template.md",
+    "tasks-template.md"
   ],
   "package_roots": [
     "agents",

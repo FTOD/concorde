@@ -1,74 +1,114 @@
 # Module specifications
 
-A Module Spec describes one cohesive software responsibility through its features, interfaces and
-internal architecture. It answers what the Module provides, how it is used, and how its internal
-parts support those promises.
+A Module Spec describes one cohesive software responsibility in four parts. Its purpose and
+scenarios say what the Module promises; its entities and relationships say how the Module is
+built. Together they answer what the Module is for, how it reacts in each situation it is used
+in, what it consists of and how those parts collaborate.
 
 ```mermaid
 flowchart TB
-    accTitle: Information inside a Module contract
-    accDescr: A Module provides features, exposes interfaces for using those features, and describes an internal architecture. Features state observable promises, interfaces state exchange behavior, and architecture explains concepts, submodules and collaboration.
-    module["Module"]
-    features["Features<br/>capabilities and promises"]
-    interfaces["Interfaces<br/>inputs, outputs, effects and failures"]
-    architecture["Architecture / internal domain<br/>concepts, submodules and collaboration"]
-    module -->|provides| features
-    module -->|exposes| interfaces
-    interfaces -->|give access to| features
-    module -->|describes its design through| architecture
+    accTitle: Information inside a Module Spec
+    accDescr: A Module Spec has a functional half and an architecture half. The functional half states the purpose and the scenarios with their requirements. The architecture half states the entities and the labeled relationships between them. Entities may bind implementation files.
+    module["Module Spec"]
+    purpose["Purpose<br/>plain prose"]
+    scenarios["Scenarios<br/>GIVEN, WHEN, THEN + SHALL requirements"]
+    entities["Entities<br/>submodules, programs, files, records, actors"]
+    relationships["Relationships<br/>directed edges with verb labels"]
+    files["Implementation files"]
+    module -->|functional spec| purpose
+    module -->|functional spec| scenarios
+    module -->|architecture spec| entities
+    module -->|architecture spec| relationships
+    relationships -->|connect| entities
+    entities -->|may bind| files
 ```
 
-These are related views of one responsibility. An interface can support several features, and a
-feature can be available through several interfaces; neither becomes a separate Spec collection.
+## Purpose
 
-## Features
+The purpose is a short plain-prose statement of what the Module is for, who uses it and the
+boundary of its promises. It contains no lists, tables or structured blocks. It is the first thing
+a reader sees and the sentence a parent Module or consumer can rely on when it names this Module's
+responsibility.
 
-A feature is an observable capability supplied by the Module. Its description MUST explain the
-conditions in which it applies, the outcome it promises, relevant constraints and failure behavior.
-The consumer may be a person or another software component.
+## Scenarios and requirements
 
-For example, a Reservation Module may provide the capability to reserve available inventory.
-The promise includes what counts as available, when a reservation becomes effective and what
-happens if capacity is exhausted. A name such as "reservation support" alone does not establish
-those semantics.
+A scenario describes one situation in which the Module is used and how the Module must react.
+It has a stable identity, a title and a sequence of steps:
 
-Features have stable identities owned by their providing Module. A feature is a part of that
-Module's contract; identifying a feature does not create a separate Module or a smaller Spec
-collection. Features and interfaces need not have a one-to-one relationship.
+- **GIVEN** steps state the preconditions and the state of the world.
+- **WHEN** steps state the trigger: what an actor or a collaborator does.
+- **THEN** steps state the observable outcome the Module promises.
+- **AND** and **BUT** continue the previous kind of step.
 
-## Interfaces
+For example, a Checkout Module may promise:
 
-An interface is an explicitly described means of using a capability. It may be an API, function,
-command, file, protocol, event or another exchange. A Module Spec MUST explain:
+```markdown
+### scenario.checkout.submit — Successful checkout
 
-- Inputs, preconditions and accepted values.
-- Outputs and their meaning, including completion conditions.
-- Effects and relevant state changes.
-- Errors, partial outcomes and failure conditions.
-- Compatibility expectations and applicable retry or idempotency behavior.
+- GIVEN a customer has a valid cart
+- AND valid delivery and payment information
+- WHEN the customer submits checkout
+- THEN the system creates one order
+- AND returns the order identifier
+```
 
-For an interface that creates a reservation, a complete contract could explain the item and
-quantity inputs, the resulting reservation identity, when inventory becomes unavailable, the
-failure returned for insufficient capacity and what a repeated request does. A signature or data
-schema alone does not explain those promises. Examples SHOULD clarify ambiguous or significant
-behavior without substituting for the contract.
+Error paths, partial outcomes and repeated invocations are scenarios of their own. A scenario in
+which the same checkout is submitted twice states what the second submission does; a scenario in
+which payment is declined states what is created and what is returned. A name such as "checkout
+support" alone does not establish those promises.
 
-## Architecture and internal domain
+A **requirement** is a single sentence containing SHALL or SHALL NOT, with its own stable identity.
+A requirement written inside a scenario constrains that scenario; a requirement written outside
+any scenario constrains the whole Module. Requirements state what a scenario cannot express as
+steps: limits, invariants, compatibility and non-functional obligations.
 
-Architecture is the Module's internal design. Its description MUST explain the relevant concepts,
-responsibilities, directed relationships and collaborations, together with the rules, state
-transitions and completion or failure conditions needed to understand the behavior.
+```markdown
+- req.checkout.single-order: The system SHALL create at most one order for a successfully
+  submitted checkout request.
+```
 
-Submodules follow this same definition. Domain concepts such as a reservation or account, and
-external actors such as a customer, MAY appear in the model without becoming software Modules.
-A leaf Module may be realized directly by implementation files. A composite Module may also have
-coordination code of its own.
+Scenarios MAY be grouped under ordinary headings for reading; a group has no identity. A consumer
+Module's relied-upon promises SHOULD cite the provider's scenario or requirement identities when
+they exist, so that both Modules refer to the same promise.
 
-For nontrivial internal structure, a Module SHOULD include an architecture diagram showing its
-actual responsibilities, connections and external boundaries. A simple Module MAY explain its
-architecture in prose and briefly state why a diagram would add little. A diagram and the prose
-MUST describe a consistent model. The Protocol does not prescribe a drawing tool, visual theme,
-rendering format or page layout.
+An interface is a means of using the Module: an API, function, command, file, protocol or event.
+It appears as an entity in the architecture spec, and the scenarios triggered through it state its
+inputs, preconditions, outputs, effects, errors, compatibility expectations and retry or
+idempotency behavior. When an interface exchanges a structured value, a structured contract
+declaration records the agreed shape; the declaration does not replace the scenarios.
+
+## Entities
+
+An entity is a named thing the Module consists of or interacts with at its boundary. Its
+description states its stable identity, its title, its kind and its responsibility. The kind is
+free text: submodule, program, file, record, concept, interface, external actor or any term the
+project uses. An entity that is a submodule or a used Module names that Module's registered
+identity. An entity that is realized by code lists the exact files that realize it.
+
+For example, a Checkout Module may consist of an order form (an interface entity used by the
+customer), a checkout service (a program entity binding its source and tests), an order record
+(a concept entity) and the Inventory Module it uses (a used-Module entity). The customer is an
+external actor at the boundary.
+
+Every child Module and every used Module MUST appear as an entity of the containing or consuming
+Module, so that the architecture spec shows the composition and dependency the registry records.
+Domain concepts such as a reservation or account, and external actors such as a customer, MAY
+appear as entities without becoming software Modules.
+
+## Relationships and architecture
+
+The architecture spec relates the entities. Each relationship is a directed edge from one entity
+to another with a free-text label, which SHOULD be a verb: the checkout service "reserves stock
+through" Inventory, the order form "submits to" the checkout service, the checkout service
+"writes" the order record. The set of labeled edges, drawn as a diagram, is the Module's
+architecture. A diagram MUST name exactly the Module's entities and label every edge; the prose
+around it explains invariants, state transitions and completion or failure conditions the edges
+cannot show.
+
+A leaf Module may be realized directly by its entities' files. A composite Module may also have
+coordination code of its own, bound by one of its entities. The Protocol prescribes the Mermaid
+flowchart form defined in the Required format chapter; it does not prescribe a visual theme or
+page layout.
 
 ## Composition and dependencies
 
@@ -109,21 +149,36 @@ responsibility, when it is used or selected, and the promises relied upon. The s
 `concorde-dependencies` declaration records this local agreement. Merely naming a provider or
 linking to its Spec is insufficient.
 
+## Implementation files
+
+An entity MAY bind exact project-relative files: code, tests, configuration or authored runtime
+assets. Generated views, project-control records and the project Spec documents themselves are
+not implementation files. A binding names a file, not a directory, wildcard or rule that
+implicitly owns future files.
+
+Within one Module a file belongs to one entity. Several Modules MAY list the same file: for
+example, Import and Export may both list `src/encoding.py` under an entity of their own when one
+encoding realization serves both contracts. The file then has several using Modules, and a change
+to it must be assessed against each of their contracts. Compatibility with one consumer does not
+imply compatibility with every consumer.
+
+A declared file MAY be marked pending while it does not yet exist. The marker records an intended
+output. Once the file exists the marker SHOULD be removed; a development tool MAY remove it
+automatically when it delivers the change that created the file. Moving or renaming a file
+changes its listing, but does not by itself change a Module's identity, purpose or parent.
+
+The declared listings MUST make it possible to determine which files realize a Module and which
+Modules list a file. Reverse lookups are derived from those declarations, not additional
+ownership relationships.
+
 ## Completeness and contract boundaries
 
-The Module's complete registered collection MUST make its promised behavior and architecture
-understandable on their own. Authors MAY split topics across documents. The `module.md` reading
-entry introduces the responsibility and leads through the collection; it does not replace the
-remaining registered documents.
+The Module's complete registered collection MUST make its purpose, scenarios, entities and
+relationships understandable on their own. Authors MAY split topics across documents. The
+`module.md` reading entry holds the four mandatory parts and leads through the collection; it does
+not replace the remaining registered documents.
 
-An implementation reference explains which realization serves the Module, but it cannot provide
-a missing public promise. A dependency statement records what the consumer relies on without
-importing the provider's internal design. An unresolved dependency promise is therefore a gap in
-the consuming Module's contract, even if the provider or source code already describes a behavior.
-
-## Relationship to implementation
-
-A Module MAY reference several Implementation Specs. Several Modules MAY reference the same one.
-These references identify realizations of the Module's contract without changing its composition
-or document membership. Architectural responsibilities belong in the Module Spec; exact source
-bindings and implementation choices belong in the referenced Implementation Specs.
+A file binding explains which code realizes the Module, but it cannot provide a missing promise.
+A dependency statement records what the consumer relies on without importing the provider's
+internal design. An unresolved dependency promise is therefore a gap in the consuming Module's
+contract, even if the provider or source code already describes a behavior.

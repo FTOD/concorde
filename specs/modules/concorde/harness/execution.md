@@ -19,7 +19,7 @@ reconstructs and verifies the launch's declared `AgentBinding` — prompt, Harne
 context/result types and policy — before starting any process, so the launch APIs below execute
 only within a complete, checked Agent/Harness implementation.
 
-## interface.harness.execute
+## Native process execution
 
 `AgentProcessExecutor` executes one host-built `LaunchSpecification` in a fresh Codex or Claude
 process and returns a validated `CapabilityExecutionResult`, or raises `CapabilityExecutionError`.
@@ -93,7 +93,7 @@ return an empty bootstrap tuple. The permission Module's locally declared finali
 that attested file and rebinds the launch/configuration digests without widening task permissions.
 
 Every call starts a new process. Its stdin contains the complete host snapshot, task and role
-instructions; Profile 9 never passes predecessor transcripts. Spec review uses only its private
+instructions; Profile 10 never passes predecessor transcripts. Spec review uses only its private
 capsule. Code review uses a distinct read-only implementation grant. Codex automatic AGENTS.md
 loading is disabled, and its generation schema is adapted to supported strict syntax while the host
 continues to validate the original typed contracts. The executor parses the native lifecycle output
@@ -150,7 +150,7 @@ Consumers retain the original launch to verify receipt binding and consume the t
 rather than raw process output. A process double can test these boundary mechanics but cannot
 establish that a model detected a semantic gap or behavior defect.
 
-## interface.harness.invoke-agent
+## Recursive Agent invocation
 
 `AgentRuntime` is the host's recursive scheduling layer over the existing canonical
 `agent_model.Agent`, `harness.Harness` and `AgentBinding` records in the admitted local companion document.

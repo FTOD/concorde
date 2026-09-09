@@ -125,8 +125,8 @@ def load_package(root: Path) -> Package:
         raise InstallError(f"Concorde manifest is missing fields: {sorted(required - set(manifest))}")
     if manifest.get("schema_version") != 3 or manifest.get("name") != "concorde":
         raise InstallError("Concorde manifest must declare schema_version 3 and name 'concorde'")
-    if manifest.get("architecture_profile") != 9 or manifest.get("workspace_protocol") != 14:
-        raise InstallError("Concorde package must declare Architecture Profile 9 and Workspace Protocol 14")
+    if manifest.get("architecture_profile") != 10 or manifest.get("workspace_protocol") != 15:
+        raise InstallError("Concorde package must declare Architecture Profile 10 and Workspace Protocol 15")
     if manifest.get("delivery_proposal") != 10 or manifest.get("skill_namespace") != "concorde":
         raise InstallError("Concorde package must declare Delivery Proposal 10 and the concorde Skill namespace")
     install = manifest.get("install")

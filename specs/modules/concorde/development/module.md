@@ -10,85 +10,361 @@
 
 # Development
 
-Provide the installed Skill boundary and the workflows that answer questions, develop one change to a ready candidate, evolve topology, record candidate evidence and deliver an authorized change.
+## Purpose
 
-## Contract identity and context
+Development provides the installed Skill boundary and the deterministic host adapter that Concorde's own tooling runs on: capability admission and dispatch, the coordinator that answers questions and evolves project topology, the development graph that carries one intended change from an authored Spec to a ready candidate, deterministic validation, and delivery. It serves developers and their agents working through installed `concorde-*` Skills, and every other Concorde capability that composes through this same boundary. Its promises end at a ready, delivered or primary-merged candidate; it relies on Harness to run every Agent invocation, Spec to resolve and validate project Specs, Reflections to retain gap history, and Distribution to build and verify projections, without restating those Modules' own contracts here.
 
-`module.development` follows Spec Protocol 2.1.0. Its sole structural parent is `module.concorde`. The complete contract is the Markdown collection explicitly registered in `.concorde/specs.json`; links and realization references do not expand it. This reading entry introduces the collection.
+## Scenarios
 
-The registered companion documents explain [interfaces](interfaces.md), [capabilities](capabilities.md), [query-and-routing](query-and-routing.md), [development](development.md), [topology](topology.md), [review-and-gaps](review-and-gaps.md) and [delivery](delivery.md). Their content remains authoritative regardless of navigation visibility.
+Scenarios below are grouped by capability. The registered companion documents work out the exact wire shapes and mechanics they reference: [interfaces](interfaces.md) (the wire contracts, error codes and capability boundary), [capabilities](capabilities.md) (the capability registry), [query-and-routing](query-and-routing.md) (the query and routing graph), [development](development.md) (the development graph and its repair edge), [topology](topology.md) (the topology evolution graph), [review-and-gaps](review-and-gaps.md) (the review contract and gap handling) and [delivery](delivery.md) (branch publication and primary merging).
+
+Capability execution and the worktree boundary:
+
+### scenario.development.execute-capability — Successful capability execution
+
+- GIVEN an installed `concorde-*` Skill names one registered global or lifecycle capability
+- AND stdin carries a well-formed `concorde-capability-invocation@3` envelope in `execute` mode
+- WHEN the host admits the request
+- THEN it selects the capability's declared execution graph and obtains every Agent invocation it needs, bound to current instructions, context and compiled authority, from Harness
+- AND it returns a `concorde-capability-result@3` with status `succeeded` and the capability's own typed output
+
+- req.development.single-boundary: Every capability invocation SHALL pass through this Module's host adapter, with no direct agent-to-agent channel bypassing it.
+- req.development.distinct-outcomes: A capability result SHALL distinguish admission, domain and execution outcomes instead of collapsing them into one generic failure.
+
+### scenario.development.execute-unregistered — Unregistered or private capability refused
+
+- GIVEN a `capability_id` that names no registered Skill, or a stage capability invoked directly instead of through its composing capability
+- WHEN the host admits the request
+- THEN it refuses the request with `unknown_capability`
+- AND no Agent is launched and no project file changes
+
+- req.development.stage-no-skill: A stage capability SHALL have no installed Skill and SHALL be reachable only in-process from a capability that declares it in its composition.
+
+### scenario.development.execute-blocked-launch — Stale build or unenforceable permission blocks launch
+
+- GIVEN the recorded build manifest no longer matches its sources, or the compiled policy for the bound Agent cannot be enforced by the current integration
+- WHEN the host would otherwise launch an Agent for an admitted request
+- THEN it blocks the request with `stale_build` or the applicable permission error before any process starts
+- AND any existing candidate is preserved unchanged
+
+### scenario.development.describe-policy — Preview a capability's grants without executing it
+
+- GIVEN a request with `mode: describe-policy`
+- WHEN the host processes it
+- THEN it returns status `described`, naming the bound Agent, Harness, `agent_binding_digest`, `instructions_digest` and effective loop timeout for each previewed stage
+- AND no Agent is launched and no project file changes
+
+### scenario.development.worktree-handoff — Mutating request in the primary worktree hands off
+
+- GIVEN a mutating capability request is admitted while the current session's worktree is the primary worktree
+- WHEN the host would otherwise start development work there
+- THEN it creates an isolated worktree from the committed HEAD and returns `worktree_handoff_required` with its path, branch, base commit and change_id
+- AND it does not copy uncommitted primary changes or continue the originating session in the new worktree
+
+- req.development.handoff-prompt: A `worktree_handoff_required` error SHALL carry a complete Framework execution profile P10 prompt with real worktree identity, the submitted task and constraints, and the current preparation and check status.
+
+Answering questions and routing:
+
+### scenario.development.answer-question — Direct answer from selected Module contexts
+
+- GIVEN a question with an optional target or focus routing hint
+- WHEN `concorde-main` runs with `action: ask`
+- THEN the host deterministically resolves the explicitly selected Modules' complete Spec contexts, injects each selected Module's original document bodies once into the coordinator, and the coordinator returns a direct answer
+- AND the response contains no authored project file changes
+
+- req.development.routing-hint-not-context: A target or focus hint SHALL only steer selection; it SHALL NOT itself grant context or replace explicit resolution.
+
+### scenario.development.answer-gap — Missing promise reported as a Spec gap
+
+- GIVEN the coordinator's selected complete Module contexts do not contain a promise the question needs
+- WHEN the coordinator would otherwise have to guess or consult an unselected source
+- THEN the response reports a Spec gap naming the blocked question, the owning Module and the current context identity
+- AND the coordinator does not read implementation files or search code to supply the missing meaning
+
+### scenario.development.discovery-limit — Discovery stops at its declared limit
+
+- GIVEN repeated context expansion has not resolved the question
+- WHEN the coordinator's bounded expansion-step limit is reached
+- THEN the host returns the `context_limit` outcome instead of expanding context further
+
+Developing one change:
+
+### scenario.development.dev-loop-ready — A change reaches a ready candidate
+
+- GIVEN a developer supplies one intended change with its task and constraints
+- WHEN `concorde-dev-loop` runs Spec authoring (unless `specify=false`), Spec review, planning, tasks, implementation, deterministic checks and code review in order
+- THEN every stage completes successfully and the candidate reaches status `ready` with current evidence for every affected Module
+- AND the loop stops there and never itself invokes delivery
+
+### scenario.development.dev-loop-spec-gap — Development waits for a necessary Spec repair
+
+- GIVEN a stage discovers a necessary missing or ambiguous contract
+- WHEN that stage reports a Spec gap
+- THEN the loop stops with status `waiting` and preserves the candidate worktree
+- AND unrelated independent work may continue, and resuming after an explicit Spec repair does not repeat already-accepted authoring for the same task, focus and constraints
+
+### scenario.development.dev-loop-repair — Bounded automatic repair after blocking code review
+
+- GIVEN a code-owning target's code review returns blocking findings
+- WHEN the loop selects its automatic revision edge from code review back to task authoring
+- THEN task authoring receives the current completed tasks and the blocking `concorde-review-result@1` as `stage_inputs`, and the resulting repair tasks and their implementation are checked and code-reviewed again like any other change
+- AND this repair is bounded by the target's declared `max_repair_iterations` policy
+
+- req.development.repair-edge-only: `review_code -> tasks` SHALL be the development graph's only automatic revision edge; every other non-successful outcome SHALL stop the graph for a human decision or an explicit Spec or code change.
+
+### scenario.development.dev-loop-repair-exhausted — Repeated feedback or an exhausted limit stops the loop
+
+- GIVEN a repair attempt reproduces the same blocking-feedback fingerprint as the previous attempt, or the declared repair limit is exhausted
+- WHEN the loop would otherwise select another automatic repair
+- THEN it stops instead of retrying: unchanged feedback records status `waiting` and an exhausted limit records status `limit_exhausted`, and both keep the wire `outcome` `conflicting`
+- AND a human directly changing the Spec or the implementation between invocations resets the recorded repair count instead of continuing a stale attempt
+
+### scenario.development.dev-loop-coordinated — A Module coordinates its own and dependency tasks
+
+- GIVEN a Module task has both local code tasks and separately bound submodule or used-Module tasks
+- WHEN implementation runs
+- THEN each component is specified, planned and implemented from its own complete Module contract and its own listed files, and the coordinator waits for every writer, including its own coordination code, before checking the final candidate
+- AND a repair that changes a file listed by several Modules invalidates the already-recorded evidence of every listing Module, and finalization repeats until every participant is stable
+
+Evolving topology:
+
+### scenario.development.topology-design — Design a candidate registry
+
+- GIVEN a change to identities, composition, dependencies, document membership or file listings
+- WHEN `concorde-main` runs `design-topology`
+- THEN it admits exact registry metadata and the Module kind definition, withholds implementation file contents, and returns a digest-bound candidate registry, local Spec tasks, migration constraints and acceptance conditions
+- AND no project file changes
+
+### scenario.development.topology-accept — Accept a design and author local Specs
+
+- GIVEN a developer accepts a topology design
+- WHEN `concorde-main` runs `accept-topology`
+- THEN it rechecks the complete discovery context, starts a fresh target-local Spec author for each affected Module, and validates their combined output against an in-memory registry and document overlay
+- AND the full authored documents are stored only in a before-digest-bound application artifact, and the public response exposes only its ArtifactRef
+
+### scenario.development.topology-apply — Apply a reviewed artifact
+
+- GIVEN a developer accepts the exact prepared application artifact
+- WHEN `concorde-main` runs `apply-topology`
+- THEN it atomically applies the reviewed registry and document replacements together
+- AND successful application updates the accepted structure and sources in the same transaction
+
+### scenario.development.topology-stale — Stale or conflicting input is rejected
+
+- GIVEN the registry, Protocol or a candidate's shared document bytes changed since the design was produced, or two candidate authors return different bytes for the same shared document
+- WHEN `accept-topology` or `apply-topology` processes that input
+- THEN the host rejects the mutation and leaves the pre-existing project files unchanged
+- AND no target author ever writes a project file directly
+
+- req.development.shared-document-agreement: A document referenced by several candidate targets SHALL be applied only when every referencing target's author returns identical bytes for it.
+
+Validating a candidate:
+
+### scenario.development.validate-ready — Deterministic checks record readiness
+
+- GIVEN the current candidate
+- WHEN `concorde-validate` runs
+- THEN the host runs deterministic Spec validation and every configured implementation check of every affected Module, and records readiness evidence bound to the exact candidate bytes
+- AND validation never claims semantic completeness
+
+### scenario.development.validate-blocked — A failed or stale check blocks readiness
+
+- GIVEN a configured implementation check fails, is missing, or its previously recorded evidence no longer matches the current candidate bytes
+- WHEN readiness is evaluated
+- THEN the candidate is not recorded ready and the failing or stale check is reported
+
+Delivering a ready change:
+
+### scenario.development.deliver-branch — Publish an independent delivery branch
+
+- GIVEN a ready change selected by `change_id`, requested from its source or the primary worktree
+- WHEN `concorde-deliver` runs
+- THEN the host verifies participation, candidate evidence and actual integration, then publishes an independent `concorde/delivered/<change_id>` branch and removes the source worktree unless `keep_worktree:true`
+- AND default delivery leaves the primary branch, index and project files unchanged
+
+### scenario.development.deliver-merge-primary — Explicit primary merge
+
+- GIVEN an already delivered receipt and an explicit user-authorized `merge_primary:true` request from the primary worktree's owning session
+- WHEN the host processes that request
+- THEN it verifies current integration against the latest primary commit and merges the delivered branch, recording its own commit, tree and checks separately from staging evidence
+- BUT a generic delivery request without `merge_primary:true` never merges into the primary branch
+
+- req.development.single-primary-writer: At most one agent SHALL own writes in the primary worktree at a time, and the host SHALL serialize shared lifecycle writes and final primary merges with the repository lock.
+
+### scenario.development.deliver-session-rejected — Delivery refused from an unrelated worktree
+
+- GIVEN a session whose worktree is neither the change's selected source nor the primary worktree
+- WHEN it requests delivery or final merging for that change
+- THEN the host refuses it with `delivery_session_required` or `primary_session_required`
+- AND no branch is published or merged
+
+### scenario.development.deliver-conflict — Integration conflict blocks final merge
+
+- GIVEN the candidate's actual integration against the latest primary commit fails its configured checks or conflicts
+- WHEN final merging runs
+- THEN the host blocks the merge with `merge_conflict` or `failed_merge_checks`, preserves the delivered branch, and leaves the primary branch, index and project files unchanged
+
+## Requirements
+
+- req.development.global-discovery: A global capability's own coordinator SHALL discover complete Module Spec contexts; a stage capability SHALL NOT reselect or expand the frozen context its composing capability gave it.
+- req.development.langgraph-control-flow: Every capability's control flow SHALL be a LangGraph graph of deterministic steps and Agent invocations.
+- req.development.no-implementation-for-non-code: A planner, task author or Spec-only reviewer SHALL NOT receive the contents of this Module's or any other Module's listed implementation files.
+- req.development.explicit-skip-sticky: A `run_reviews=false` retry SHALL NOT cancel a Spec or code review already required for this change by an earlier enabled invocation.
+
+## Entities
+
+Two programs realize this Module's own code: the host adapter and the capability/Skill declarations that expose it. Two shared programs realize mechanics also listed by other Modules. Four used-Module entities name the direct dependencies this Module relies on.
+
+```concorde-entities
+[
+  {
+    "id": "entity.development.development-host",
+    "title": "Development host",
+    "kind": "program",
+    "responsibility": "Realize capability admission and dispatch, the global discovery loop, the development graph with its bounded repair edge, topology preparation and application, review evidence and candidate readiness.",
+    "files": [
+      "src/concorde/host/__init__.py",
+      "src/concorde/host/capability_host.py",
+      "src/concorde/host/capability_service.py",
+      "src/concorde/host/configuration.py",
+      "src/concorde/host/review.py",
+      "tests/concorde/host/__init__.py",
+      "tests/concorde/host/acceptance/__init__.py",
+      "tests/concorde/host/contract/__init__.py",
+      "tests/concorde/host/contract/test_structured_results.py",
+      "tests/concorde/host/integration/__init__.py",
+      "tests/concorde/host/unit/__init__.py",
+      "tests/concorde/host/unit/test_capability_modules.py",
+      "tests/concorde/host/unit/test_run_capability.py",
+      "tests/concorde/specification/test_review.py",
+      "tests/concorde/support/operation_json.py"
+    ]
+  },
+  {
+    "id": "entity.development.development-capabilities",
+    "title": "Development capabilities",
+    "kind": "program",
+    "responsibility": "Declare the Development Module's global, lifecycle and stage capability contracts, the installed Skills that expose its public entries, and the shared Skill prompt snippets.",
+    "files": [
+      "capabilities/context_solve.py",
+      "capabilities/deliver.py",
+      "capabilities/dev_loop.py",
+      "capabilities/implement.py",
+      "capabilities/main.py",
+      "capabilities/plan.py",
+      "capabilities/review.py",
+      "capabilities/specify.py",
+      "capabilities/tasks.py",
+      "capabilities/validate.py",
+      "prompts/workflow-host/dev-loop-flags.md",
+      "prompts/workflow-host/gap-reporting.md",
+      "prompts/workflow-host/host-bound-invocation.md",
+      "prompts/workflow-host/init-request-and-no-flags.md",
+      "prompts/workflow-host/invoke-capability-opener.md",
+      "prompts/workflow-host/lifecycle-no-cognition.md",
+      "prompts/workflow-host/loop-completion-and-reviews.md",
+      "prompts/workflow-host/loop-task-request-fields.md",
+      "prompts/workflow-host/main-may-inspect.md",
+      "prompts/workflow-host/review-scope-and-result.md",
+      "prompts/workflow-host/stdin-invocation-config-input.md",
+      "prompts/workflow-host/stdin-invocation-open.md",
+      "prompts/workflow-host/target-identity-opener.md",
+      "prompts/workflow-host/task-request-fields.md",
+      "prompts/workflow-host/worktree-handoff.md",
+      "skills/concorde-deliver/SKILL.md",
+      "skills/concorde-dev-loop/SKILL.md",
+      "skills/concorde-main/SKILL.md",
+      "skills/concorde-validate/SKILL.md"
+    ]
+  },
+  {
+    "id": "entity.development.worktree-lifecycle",
+    "title": "Worktree lifecycle",
+    "kind": "shared program",
+    "responsibility": "Realize shared worktree identity, candidate state, session handoff and delivery mechanics for its two Module consumers.",
+    "files": [
+      "src/concorde/host/change_worktree.py",
+      "src/concorde/host/session_handoff.py",
+      "src/concorde/host/worktree.py",
+      "src/concorde/host/worktree_delivery.py",
+      "tests/concorde/host/unit/test_change_worktree.py",
+      "tests/concorde/host/unit/test_session_handoff.py",
+      "tests/concorde/host/unit/test_worktree_boundary.py",
+      "tests/concorde/specification/test_worktree_lifecycle.py"
+    ]
+  },
+  {
+    "id": "entity.development.file-transactions",
+    "title": "File transactions",
+    "kind": "shared program",
+    "responsibility": "Realize exact replacement proposals as staged filesystem operations with before-digest checks and original-byte recovery, for every Module that applies an accepted proposal.",
+    "files": [
+      "src/concorde/specification/changes.py"
+    ]
+  },
+  {
+    "id": "entity.development.harness",
+    "title": "Harness",
+    "kind": "used module",
+    "target_id": "module.harness",
+    "responsibility": "Configure and run every Agent invocation: freeze its context kinds, bind its Agent and Harness definition, compile its effective permissions, execute it natively and coordinate it through LangGraph control flow."
+  },
+  {
+    "id": "entity.development.spec",
+    "title": "Spec",
+    "kind": "used module",
+    "target_id": "module.spec",
+    "responsibility": "Own the project Spec model: the pinned Protocol binding, the explicit registry, structural validation, stable-ID file-set queries and honest initialization."
+  },
+  {
+    "id": "entity.development.reflections",
+    "title": "Reflections",
+    "kind": "used module",
+    "target_id": "module.reflections",
+    "responsibility": "Retain, investigate and resolve explicitly attributed project feedback and persistent gaps."
+  },
+  {
+    "id": "entity.development.distribution",
+    "title": "Distribution",
+    "kind": "used module",
+    "target_id": "module.distribution",
+    "responsibility": "Build authored projections, install and configure owned integrations, provision the managed runtime and keep a source checkout's own projections bound to the worktree that built them."
+  }
+]
+```
 
 ## Architecture
 
-Authored source: `specs/modules/concorde/development/module.md` (the Mermaid fence in this section). Kind: `mermaid`. Title: **Development entities and relationships**. The source is included through this document’s explicit membership; it is not a separate external diagram record.
+A capability is global, lifecycle or stage. A global capability's own coordinator discovers complete Module Spec contexts and may span several targets and stages; a lifecycle capability is deterministic host behavior with no agent cognition; a stage capability receives an already bound target and one frozen context from its composing capability and never reselects or expands it. Development capabilities is the code inventory of installed Skills, capability modules and their prompt snippets; Development host is the shared adapter that admits, dispatches, coordinates and completes every one of them, and that prepares, evolves and finalizes the candidate worktree that carries one change's progress, gaps and evidence.
+
+A candidate owns its own component progress, gaps and evidence, and reviews refer to the exact candidate inputs they assessed. A code defect can select the bounded task/implementation repair edge; a necessary contract gap waits for a Spec revision instead. Finalization includes every Module that lists an affected shared file. Readiness, authorized delivery and primary merging are separate completion states.
 
 ```mermaid
 flowchart TB
     accTitle: Development entities and relationships
-    accDescr: An installed Skill admits a versioned request into one capability. A global capability starts the coordinator over explicitly selected complete Module Spec contexts to answer, route or design topology; a routed mutation binds one target and runs its declared graph of stages. The graph retains typed results and attributed feedback in a candidate worktree, whose evidence gates readiness. Delivery is a separately authorized capability over a ready candidate.
-    skill["Installed Skill request"]
-    capability["Capability<br/>global, lifecycle or stage"]
-    coordinator["Coordinator over selected Spec contexts"]
-    route["Routed target task"]
-    capabilityGraph["Declared capability graph"]
-    stage["Stage invocation"]
-    candidate["Candidate worktree"]
-    evidence["Reviews, checks and gaps"]
-    ready["Ready candidate"]
-    delivery["Authorized delivery"]
-    skill -->|admits into| capability
-    capability -->|global entries start| coordinator
-    coordinator -->|answers directly or| route
-    route -->|binds one target for| capabilityGraph
-    capabilityGraph -->|schedules| stage
-    stage -->|records typed results in| candidate
-    candidate -->|accumulates| evidence
-    evidence -->|current and complete permits| ready
-    ready -->|separately authorized request| delivery
-    evidence -->|bounded repair or human decision| capabilityGraph
+    accDescr: Development capabilities dispatches every Skill request into the Development host. The host reaches its four used Modules directly: Harness for context, permissions and Agent execution; Spec for target selection and structural validation; Reflections for attributed gap history; Distribution for build freshness and projections. The host also prepares candidates through Worktree lifecycle and applies accepted replacements through File transactions, both of which also realize shared mechanics for other Modules.
+    developmentCapabilities["Development capabilities"]
+    developmentHost["Development host"]
+    worktreeLifecycle["Worktree lifecycle"]
+    fileTransactions["File transactions"]
+    harness["Harness"]
+    spec["Spec"]
+    reflections["Reflections"]
+    distribution["Distribution"]
+    developmentCapabilities -->|dispatches requests into| developmentHost
+    developmentHost -->|prepares and delivers candidates through| worktreeLifecycle
+    developmentHost -->|applies accepted replacements through| fileTransactions
+    developmentHost -->|resolves context, compiles permissions and runs Agents through| harness
+    developmentHost -->|selects targets and validates Spec structure through| spec
+    developmentHost -->|records attributed gaps in| reflections
+    developmentHost -->|verifies build freshness through| distribution
+    worktreeLifecycle -.->|also realizes worktree mechanics for| harness
+    fileTransactions -.->|also applies accepted replacements for| spec
 ```
 
-A capability is global, lifecycle or stage. Global capabilities discover complete Module contexts through the coordinator and may span several targets and stages; lifecycle capabilities are deterministic host behavior; stage capabilities receive an already bound target and one frozen context. Every capability's control flow is a LangGraph graph composed of deterministic steps and Agent invocations that this Module obtains from the Harness.
+## Dependencies and composition
 
-A candidate owns component progress, gaps and evidence. Reviews refer to the exact candidate inputs they assessed. A code defect can select the bounded task/implementation repair edge; a necessary contract gap waits for a contract revision. Finalization includes every affected user of shared implementation. Readiness, authorized delivery and cleanup are separate completion states.
-
-## Features
-
-### feature.development.execute
-
-For an installed global or lifecycle Skill, admit its versioned request, select its declared execution graph and obtain each Agent invocation, bound to current instructions, context and authority, from the Harness. Return a typed capability result with distinct admission, domain and execution outcomes. Unregistered stages cannot be called as public Skills; stale inputs or unenforceable permissions prevent launch.
-
-### feature.development.query
-
-For a question and optional routing hints, deterministically resolve explicitly selected complete Module Spec contexts and inject deduplicated original document and diagram bodies into the coordinator. The coordinator reasons across those contexts and returns an answer with attributed gaps or limitations without authoring project files. A routing hint cannot grant context, and discovery stops at its declared limits.
-
-### feature.development.develop
-
-For one intended change, coordinate Spec authoring when enabled, configured reviews, sufficiency assessment, plan, tasks, implementation and checks. A successful result is a ready candidate with current evidence for all affected implementation users. Preserve drafts on failure; code-review repairs are bounded, and unchanged blocking feedback cannot loop indefinitely.
-
-### feature.development.topology
-
-For a change to identities, composition, dependencies, membership or realization bindings, prepare a registry design and separately authored local contracts. Bind developer acceptance first to the design and then to the complete application artifact. Conflicting shared bytes or stale preconditions reject application; successful application updates the accepted structure and sources together.
-
-### feature.development.validate
-
-For the current candidate, run deterministic Spec validation and every configured implementation check of every affected Module, and record readiness evidence bound to the exact candidate bytes. A failed, missing or stale check cannot establish readiness, and validation never claims semantic completeness.
-
-### feature.development.deliver
-
-For an authorized ready change selected by change_id, verify participation, candidate evidence and actual integration, publish an independent `concorde/delivered/<change_id>` branch and remove the source unless explicitly retained. Default delivery preserves the primary branch, index and project files. Only a separate explicitly user-authorized `merge_primary:true` request from the primary owning session may merge into its checked-out branch after current integration checks. One agent owns primary writes; repository locking serializes shared lifecycle writes and final merges. Branch delivery, cleanup and primary merging are recorded separately for safe retries.
-
-## Interfaces
-
-### interface.development.use
-
-The public boundary is a versioned TypedValue invocation of an installed `concorde-*` Skill. Global calls select the owning Module; lifecycle calls perform declared deterministic actions. A planner determines tasks from the selected Module Spec alone. Code writers additionally receive the Module's implementation context. Each stage reports its own completion and gaps; a completed component does not independently deliver the enclosing change.
-
-The [local interface contract](interfaces.md) defines accepted inputs, outputs, effects, errors and compatibility. A successful shape check alone does not establish successful execution or a complete business contract.
-
-## Local collaboration agreements
-
-These entries describe the exact direct providers registered for this Module. They state relied-upon behavior from this Module's perspective without importing another Module's documents.
+Development's sole structural parent is `module.concorde`; it has no submodules of its own. It uses four Modules directly.
 
 ```concorde-dependencies
 [
@@ -128,6 +404,8 @@ These entries describe the exact direct providers registered for this Module. Th
 ]
 ```
 
-## Realizations
+## Unresolved information
 
-The registered realizations are `implementation.development-host`, `implementation.development-capabilities`, `implementation.worktree-lifecycle` and `implementation.file-transactions`. They describe exact file ownership and internal implementation choices separately. Module/Feature/Interface selection includes this full contract collection and does not load those Implementation Specs. Code writing and dedicated code review use their separately declared Framework authority.
+Two boundaries are known but not yet realized in code; they were already recorded before this
+Module's realizations were folded into entity file listings, and are repeated here rather than
+newly discovered. `capability_host.py` still contains invocation-binding mechanics (the freeze, compile, render, launch, execute and validate sequence of `Invocation.stage` and `MainInvocation.stage`) that belong to the Harness Module's own host contract; extracting them into a Harness-owned realization is pending. Only the development loop (`concorde-dev-loop`) currently runs as a LangGraph `StateGraph`; the discovery loop, the topology graph, the lifecycle capabilities and the reflections-triage composition still run as plain Python control flow and must move onto `StateGraph` composition to satisfy req.development.langgraph-control-flow. Neither gap changes this Module's promises; both are implementation work tracked against the entities above rather than open Spec questions.

@@ -43,6 +43,7 @@ def _triage_text(original: str, finding: dict) -> str:
 def _plan_text(entry, finding: dict, task: dict, verified_on: str, status: str) -> str:
     metadata = {
         "id": entry.identifier, "title": entry.title, "route": finding["route"], "status": status,
+        # ``entry.feature`` is the recorded attribution identity: a Module or scenario ID.
         "recorded_under": entry.feature, "implement_in": task["feature_path"], "implement_in_id": entry.feature,
         "touches_docsite": any(path == "docsite" or path.startswith("docsite/") for path in finding["files"]),
         "effort": finding["effort"], "files": finding["files"],

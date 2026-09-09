@@ -10,7 +10,9 @@
 
 # Project initialization
 
-## feature.spec.initialize
+This document defines `concorde-init`'s propose/apply behavior. [module](module.md) introduces the Module; [registry](registry.md) and [values](values.md) define the general query and value records this capability builds on.
+
+## Request and proposal shapes
 
 The public input is `concorde-init-request@1`, an ordinary
 `{type_id, schema_version: 1, data}` envelope. `data` is a closed object with required
@@ -18,49 +20,76 @@ The public input is `concorde-init-request@1`, an ordinary
 `name` and `target_id`, when supplied, are nonblank strings. `configuration` is
 `concorde-capability-configuration@1` with exactly
 `{integration: "codex"|"claude", enforcement: "native"|"outer"}` in its data.
-`proposal` is `concorde-project-proposal@1` with exactly
-`{action: "initialize", base_digest: sha256|null, files: list[{path, before_digest: sha256|null,
-content: str}]}` in its data. File paths must be canonical project-relative paths and distinct;
-content may be empty. These nested records reject unknown properties.
+`proposal` is `concorde-project-proposal@1` with exactly `{action: "initialize", base_digest: sha256|null,
+files: list[{path, before_digest: sha256|null, content: str}]}` in its data. File paths must be
+canonical project-relative paths and distinct; content may be empty. These nested records reject
+unknown properties.
 
-concorde-init request action:propose additionally requires name and configuration and optionally a
-target_id (default module.project); action:apply requires the returned typed project proposal.
-A proposal records action initialize, nullable base_digest and files {path,before_digest,content}.
-It creates `specs/project/module.md` with an Architecture section containing an inline Mermaid
-diagram, its source/kind/title declaration and accessible title/description. The registry uses
-`diagrams: []`; no external diagram file is created. The stub models only known participants, the
-project Spec and the external Framework; unknown business entities and architecture are explicit
-gaps. The illustration does not turn a draft into a complete business contract.
-Application validates every precondition and the complete resulting registry, then commits the file
-replacements or restores original bytes. New initialization never overwrites existing files. Profile
-7 is not agent-compatible and has no migration capability. The host can resolve metadata broadly;
-no agent inherits its read authority. Local semantic authoring must make this collection sufficient.
+`action: "propose"` additionally requires `name` and `configuration` and optionally a `target_id`
+(default `module.project`); `action: "apply"` requires the returned typed project proposal. A
+proposal records `action: "initialize"`, a nullable `base_digest` and `files: {path, before_digest,
+content}`. It creates `specs/project/module.md` with the four mandatory Purpose, Scenarios,
+Entities and Architecture sections, including an inline Mermaid diagram in Architecture with
+accessible title and description text; no external diagram file is created. The stub models only
+known participants, the project Spec and the external Framework; unknown business entities,
+scenarios and architecture are explicit gaps recorded in the stub's own Unresolved information. The
+illustration does not turn a draft into a complete business contract.
 
 Success returns `concorde-init-response@1` with closed data
 `{status: "proposed"|"applied", proposal: TypedValue<concorde-project-proposal>|null,
 files: list[path]}`. Propose returns the exact typed proposal and its ordered paths, without
 changing project files; apply returns `status: "applied"`, `proposal: null` and the applied paths.
-Initialization requires `base_digest` and every `before_digest` to be null. It also initializes
-Reflection defaults and the topology-artifact ignore file only when absent. Missing action-specific
-inputs raise `invalid_input`; an already configured project raises `already_initialized`.
-Invalid proposal identity, forbidden replacement or mismatched registry/Protocol raises
-`invalid_proposal`; an out-of-bound path raises `permission_denied`; changed preconditions raise
-`stale_proposal`. Unsafe paths and typed-envelope errors use `TypedDataError`; filesystem or
-transaction failures propagate to the host after rollback of applied file replacements.
-Rollback I/O failure is itself a failure and cannot produce `applied`.
 
-Apply admits the complete proposal by its exact `concorde-project-proposal@1` envelope and
-`action: "initialize"`, not by an issuance token or lookup in a proposal store. Its files must
-include `.concorde/config.json` and `.concorde/specs.json`; the proposed configuration must name
-that registry and the currently installed Protocol version and exact manifest digest. The allowed
-file set is those two paths, `.concorde/topology-proposals/.gitignore`, the two Reflection defaults
-`.concorde/reflections/index.json` and `.concorde/reflections/config.json`, and the explicit document
-and diagram-source paths in the proposed registry. Every other destination is rejected even if its
-path is safe and absent. All proposed files have null before-digests and must still be absent at
-application. The host validates the complete resulting registry and documents after replacement
-within the rollback boundary; malformed, inconsistent or unsafe proposed structure cannot become
-an applied initialization. These structural rules do not replace the developer's acceptance of
-the concrete proposal or assert semantic completeness of an initialized stub.
+## Scenarios
+
+### scenario.spec.propose-initialization — Proposing an initial project structure
+
+- GIVEN an uninitialized project, a name and a supported capability configuration
+- WHEN the developer requests action propose
+- THEN the capability returns a typed concorde-project-proposal with a null base_digest, every file's before_digest null, and an honest Module stub
+- AND no project file changes yet
+
+### scenario.spec.apply-initialization — Applying an accepted proposal
+
+- GIVEN a previously returned proposal whose destinations are still absent and whose Protocol binding is current
+- WHEN the developer requests action apply with that exact proposal
+- THEN the capability validates the complete resulting registry and documents and commits every file in one transaction
+- AND it also creates the Reflection defaults and the topology-artifact ignore file when they are absent
+- AND the response reports status applied with the applied paths
+
+### scenario.spec.reject-already-initialized — Rejecting an already-configured project
+
+- GIVEN a project whose configuration already exists
+- WHEN initialization is requested
+- THEN the capability fails with already_initialized
+- AND no existing file is overwritten
+
+### scenario.spec.reject-stale-or-invalid-proposal — Rejecting a stale, invalid or out-of-bound proposal
+
+- GIVEN a proposal whose identity, registry/Protocol binding or destination set is invalid, out of bound, or whose preconditions changed since it was proposed
+- WHEN the developer requests action apply
+- THEN the capability fails with invalid_proposal, permission_denied or stale_proposal as appropriate
+- AND it does not apply a partial file set
+
+### scenario.spec.rollback-on-failure — Restoring original bytes on failure
+
+- GIVEN an accepted proposal is being applied
+- WHEN a filesystem or transaction failure occurs after some files were staged
+- THEN the capability restores the original bytes and cannot report applied
+- BUT a failure during that recovery itself is reported as a failure, never as a successful rollback
+
+## Requirements
+
+- req.spec.init-allowed-files: Application SHALL touch only .concorde/config.json, .concorde/specs.json, .concorde/topology-proposals/.gitignore, .concorde/reflections/index.json, .concorde/reflections/config.json and the explicit document paths named in the proposed registry.
+- req.spec.init-null-digests: Every proposed file SHALL have a null before_digest, and application SHALL require each destination to still be absent.
+- req.spec.init-no-overwrite: A new initialization SHALL NOT overwrite an existing file, and Profile 7 configurations SHALL NOT be treated as migratable.
+- req.spec.init-explicit-envelope: Apply SHALL admit the proposal by its exact concorde-project-proposal@1 envelope and SHALL NOT accept an issuance token or a store lookup in its place.
+- req.spec.init-configuration-roles: The invocation's outer configuration SHALL control host settings for the call itself, and the propose request's configuration SHALL control the project settings written into the proposal; apply SHALL use the accepted proposal's configuration bytes rather than a replacement from either invocation field.
+- req.spec.init-configuration-required: A null outer configuration SHALL load existing project settings; before initialization no such settings exist, so the caller SHALL supply a valid outer configuration or receive configuration_mismatch.
+- req.spec.init-worktree-handoff: A required worktree handoff SHALL be reported as a blocked result, never as an applied initialization.
+- req.spec.init-no-blind-retry: The host SHALL NOT silently retry a rejected proposal against different bytes.
+
+## Executable boundary
 
 At the executable boundary these typed values travel inside a
 `concorde-capability-invocation@3` with `capability_id: "concorde-init"`, `mode: "execute"`,
@@ -68,11 +97,4 @@ nullable typed outer `configuration`, and `input` containing the request. The re
 `concorde-capability-result@3` has the same capability ID, fresh `invocation_id`, mode, nullable
 workspace/output, status and `errors: list[{code, field, message}]`. Successful initialization has
 `status: "succeeded"` and the typed output above; admission failures are blocked and execution
-failures are failed, with no successful output. The outer configuration controls this invocation's host
-settings; the propose request's configuration controls the project settings written into the
-proposal. Initialization accepts different valid values for those two roles. Apply uses the
-accepted proposal's configuration bytes, not a replacement from either invocation field. A null
-outer configuration loads existing project settings; before initialization no such settings
-exist, so callers must supply a valid outer configuration or receive `configuration_mismatch`.
-There is no fallback from a null outer value to the request's project configuration. A required worktree handoff is a blocked result,
-not an applied initialization. The host may not silently retry a rejected proposal against new bytes.
+failures are failed, with no successful output.
