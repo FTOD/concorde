@@ -56,7 +56,6 @@ feature: feature.transfer
 kind: implementation
 concerns: app/transfer.py
 status: open
-triage: pending
 ---
 
 # R-001 · Transfer promise is not implemented

@@ -7,16 +7,16 @@ feature: <stable ID of the selected feature>
 kind: specification | architecture | guidance | tooling | environment | implementation
 concerns: <stable ID or project-relative path, optional #fragment or :line>
 status: open
-triage: pending
 ---
 
 # R-NNN · <short factual problem title>
 
 <!--
-  Concorde Reflection Document v2. Canonical path: .concorde/reflections/<bucket>/R-NNN.md, where
-  <bucket> mirrors triage state: pending/ (triage: pending), planned/ (triage: complete and
-  human_intervention: not-required), or needs-comments/ (triage: complete and human_intervention:
-  required). Developer status never changes the bucket.
+  Concorde Reflection Document v2. Canonical path: .concorde/reflections/<bucket>/R-NNN.md. The
+  bucket directory is the only record of triage state: pending/ holds a document whose three triage
+  sections are still empty, and planned/ or needs-comments/ hold a document whose three triage
+  sections are filled, according to whether concorde-reflections-triage decided a developer must
+  comment. Developer status never changes the bucket.
 
   Planning and task generation are the normal recording points. First reserve the identity through
   reflections_queue.py --allocate-id, then create exactly the returned reflection_path, which is
@@ -26,11 +26,11 @@ triage: pending
   Observed, Impact, and Evidence. Give enough detail for a later investigator to reproduce and
   understand it. Do not propose a fix and do not decide whether a developer is needed.
 
-  Keep triage: pending, omit human_intervention, and leave all three triage sections empty until
-  concorde-reflections-triage investigates the reflection. Triage changes triage to complete, adds
-  human_intervention: required | not-required, fills all three triage sections, and then moves the
-  file with reflections_queue.py --relocate R-NNN; never move it by hand. User Comments is always
-  retained for developer input and may remain blank. A non-open status also requires a
+  Leave all three triage sections empty until concorde-reflections-triage investigates the
+  reflection; never fill them in under pending/ by hand. Triage fills Triage Analysis, Proposed
+  Resolution, and Intervention Rationale and moves the file into planned/ or needs-comments/ in one
+  deterministic action; it never edits a bucketed document's sections in place. User Comments is
+  always retained for developer input and may remain blank. A non-open status also requires a
   resolution_note in front matter; the close step then removes the document, and Git history
   keeps it.
 

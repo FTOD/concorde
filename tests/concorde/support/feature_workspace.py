@@ -271,10 +271,7 @@ def write_reflection_collection(
             f"kind: {entry['Kind']}",
             f"concerns: {entry['Concerns']}",
             f"status: {entry['Status']}",
-            f"triage: {entry.get('Triage', 'pending')}",
         ]
-        if entry.get("Human Intervention"):
-            metadata.append(f"human_intervention: {entry['Human Intervention']}")
         if entry.get("Note"):
             metadata.append(f"resolution_note: {entry['Note']}")
         metadata.append("---")

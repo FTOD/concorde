@@ -5,14 +5,18 @@ reflection. ``index.json`` contains only the monotonic allocation high-water mar
 triage are deliberately separate: writers describe the problem, while triage later supplies the
 analysis, proposed resolution, and human-intervention decision.
 
-The bucket directory mirrors triage state and nothing else: ``pending/`` holds recorded problems
-that triage has not investigated, ``planned/`` holds completed triage that automation may carry out
-without a developer, and ``needs-comments/`` holds completed triage that waits for developer input
-in ``User Comments``. Recording always creates a document under ``pending/``; the triage parent
-relocates it with the deterministic queue helper after persisting the completion. Buckets only ever
-hold open work: a closed document (``status: resolved`` or ``dismissed`` with a ``resolution_note``)
-is removed, together with its plan, by the queue helper's ``--remove-closed`` action once a
-developer has recorded that disposition, and Git history keeps the record.
+The bucket directory a document lives in is its only record of triage state; there is no ``triage``
+or ``human_intervention`` front-matter field. ``pending/`` holds a document whose three triage
+sections (Triage Analysis, Proposed Resolution, Intervention Rationale) are still empty. ``planned/``
+and ``needs-comments/`` each hold a document whose three triage sections are filled, according to
+whether a developer must comment before automation may proceed. Recording always creates a document
+under ``pending/``. Investigation fills the three triage sections and moves the document into its
+bucket in one deterministic, host-controlled action; a document's sections are never edited while it
+stays bucketed, and a document whose triage-section content disagrees with its bucket, or that lies
+outside every bucket, is a placement breach. Buckets only ever hold open work: a closed document
+(``status: resolved`` or ``dismissed`` with a ``resolution_note``) is removed, together with its
+plan, by the queue helper's ``--remove-closed`` action once a developer has recorded that
+disposition, and Git history keeps the record.
 """
 
 from __future__ import annotations
@@ -40,9 +44,8 @@ REQUIRED_METADATA = (
     "kind",
     "concerns",
     "status",
-    "triage",
 )
-OPTIONAL_METADATA = frozenset({"human_intervention", "resolution_note"})
+OPTIONAL_METADATA = frozenset({"resolution_note"})
 PROBLEM_SECTIONS = ("Context", "Expected", "Observed", "Impact", "Evidence")
 TRIAGE_SECTIONS = ("Triage Analysis", "Proposed Resolution", "Intervention Rationale")
 REQUIRED_SECTIONS = (*PROBLEM_SECTIONS, *TRIAGE_SECTIONS, "User Comments", "Occurrences")
@@ -52,8 +55,6 @@ KINDS = frozenset(
     {"specification", "architecture", "guidance", "tooling", "environment", "implementation"}
 )
 STATUSES = frozenset({"open", "resolved", "dismissed"})
-TRIAGE_STATES = frozenset({"pending", "complete"})
-HUMAN_INTERVENTIONS = frozenset({"required", "not-required"})
 
 REFLECTION_ID_TEXT = r"R-(?:\d{3}|[1-9]\d{3,})"
 REFLECTION_ID = re.compile(rf"^{REFLECTION_ID_TEXT}$")
@@ -82,22 +83,44 @@ def bucket_path(bucket: str) -> str:
     return f"{REFLECTIONS_PATH}/{bucket}"
 
 
-def reflection_bucket(triage: str, human_intervention: str) -> str | None:
-    """Return the bucket directory that must hold a reflection in the given triage state.
+def bucket_for_intervention(human_intervention: str) -> str:
+    """Return the bucket a completed triage's human-intervention decision publishes into.
 
-    ``pending`` documents have not been triaged. Completed triage decides whether a developer must
-    comment before automation may proceed: ``required`` documents wait under ``needs-comments`` and
-    ``not-required`` documents wait under ``planned``. Developer-owned ``status`` never changes the
-    bucket. ``None`` means the combination is invalid and is diagnosed elsewhere.
+    ``required`` waits under ``needs-comments`` and ``not-required`` waits under ``planned``. This is
+    the only place a triage decision selects a bucket; any other value is a programming error.
     """
-    if triage == "pending":
-        return PENDING_BUCKET
-    if triage == "complete":
-        if human_intervention == "not-required":
-            return PLANNED_BUCKET
-        if human_intervention == "required":
-            return NEEDS_COMMENTS_BUCKET
-    return None
+    if human_intervention == "required":
+        return NEEDS_COMMENTS_BUCKET
+    if human_intervention == "not-required":
+        return PLANNED_BUCKET
+    raise ValueError(f"human_intervention must be 'required' or 'not-required': {human_intervention!r}")
+
+
+def triage_state(bucket: str | None) -> str:
+    """Return the historical ``triage`` value implied by one document's bucket.
+
+    The bucket directory is the sole record of triage state, so this is derived on every read and
+    never stored: ``pending`` for the pending bucket, ``complete`` for either triaged bucket, and
+    ``""`` for a document outside every bucket.
+    """
+    if bucket == PENDING_BUCKET:
+        return "pending"
+    if bucket in (PLANNED_BUCKET, NEEDS_COMMENTS_BUCKET):
+        return "complete"
+    return ""
+
+
+def human_intervention_for(bucket: str | None) -> str:
+    """Return the historical ``human_intervention`` value implied by one document's bucket.
+
+    Derived on every read and never stored: ``required`` for ``needs-comments``, ``not-required`` for
+    ``planned``, and ``""`` for the pending bucket or a document outside every bucket.
+    """
+    if bucket == NEEDS_COMMENTS_BUCKET:
+        return "required"
+    if bucket == PLANNED_BUCKET:
+        return "not-required"
+    return ""
 
 
 def reflection_path(identifier: str, bucket: str = PENDING_BUCKET) -> str:
@@ -167,28 +190,40 @@ class ReflectionEntry:
         return self.fields.get("Status", "")
 
     @property
+    def bucket(self) -> str | None:
+        """Bucket the document currently lives in, or ``None`` for a flat legacy path."""
+        location = split_reflection_path(self.path)
+        return location[0] if location is not None else None
+
+    @property
     def triage(self) -> str:
-        return self.fields.get("Triage", "")
+        """Historical triage state, derived from :attr:`bucket`."""
+        return triage_state(self.bucket)
 
     @property
     def human_intervention(self) -> str:
-        return self.fields.get("Human Intervention", "")
-
-    @property
-    def bucket(self) -> str | None:
-        """Bucket the document must live in according to its triage state."""
-        return reflection_bucket(self.triage, self.human_intervention)
+        """Historical human-intervention value, derived from :attr:`bucket`."""
+        return human_intervention_for(self.bucket)
 
     @property
     def expected_path(self) -> str | None:
-        """Canonical path for the current triage state, or ``None`` when it is undecidable."""
-        bucket = self.bucket
-        return None if bucket is None else reflection_path(self.identifier, bucket)
+        """Path ``--relocate`` would file this document under, or ``None`` when none is computable.
+
+        A bucketed document already sits in its one authoritative bucket, so this is simply its
+        current path: content/bucket disagreement is a placement breach, not something relocation
+        fixes. Only a flat legacy document has a distinct, computable destination, and only while
+        every triage section remains empty; an already-triaged flat document has no decidable bucket.
+        """
+        if self.bucket is not None:
+            return self.path
+        if any(_meaningful(self.fields.get(name, "")) for name in TRIAGE_SECTIONS):
+            return None
+        return reflection_path(self.identifier, PENDING_BUCKET)
 
     @property
     def misplaced(self) -> bool:
-        expected = self.expected_path
-        return expected is not None and self.path != expected
+        """Whether this document lies outside every tracked bucket."""
+        return self.bucket is None
 
 
 @dataclass(frozen=True)
@@ -223,7 +258,7 @@ class ParsedReflections:
         }
 
     def bucket_counts(self) -> dict[str, int]:
-        """Number of entries whose triage state assigns them to each bucket."""
+        """Number of entries currently filed in each bucket directory."""
         counts = {bucket: 0 for bucket in BUCKETS}
         for entry in self.entries:
             bucket = entry.bucket
@@ -328,6 +363,13 @@ def parse_reflection_document(text: str, path: str) -> tuple[ReflectionEntry | N
     allowed = set(REQUIRED_METADATA) | OPTIONAL_METADATA
     unknown = sorted(set(metadata) - allowed)
     if unknown:
+        if set(unknown) & {"triage", "human_intervention"}:
+            remediation = (
+                "The bucket directory now records triage state; remove the triage/human_intervention "
+                "front-matter line(s)."
+            )
+        else:
+            remediation = "Keep problem metadata in the fixed front matter and prose in its required section."
         problems.append(
             ReflectionProblem(
                 "shape",
@@ -335,7 +377,7 @@ def parse_reflection_document(text: str, path: str) -> tuple[ReflectionEntry | N
                 1,
                 identifier,
                 f"Reflection document has unsupported metadata field(s): {', '.join(unknown)}.",
-                "Keep problem metadata in the fixed front matter and prose in its required section.",
+                remediation,
             )
         )
 
@@ -389,7 +431,6 @@ def parse_reflection_document(text: str, path: str) -> tuple[ReflectionEntry | N
         ("phase", PHASES),
         ("kind", KINDS),
         ("status", STATUSES),
-        ("triage", TRIAGE_STATES),
     ):
         value = str(metadata.get(label, "")).strip()
         if value and value not in vocabulary:
@@ -417,61 +458,28 @@ def parse_reflection_document(text: str, path: str) -> tuple[ReflectionEntry | N
             )
         )
 
-    triage = str(metadata.get("triage", "")).strip()
-    human = metadata.get("human_intervention")
-    human_value = str(human).strip() if human is not None else ""
+    # The bucket directory is the sole record of triage state; content and placement must agree.
     triage_content = {name: _meaningful(sections.get(name, "")) for name in TRIAGE_SECTIONS}
-    if triage == "pending":
-        if human_value or any(triage_content.values()):
-            problems.append(
-                ReflectionProblem(
-                    "shape",
-                    path,
-                    1,
-                    identifier,
-                    "A pending reflection already contains triage analysis, a proposed resolution, or a human-intervention decision.",
-                    "At recording time describe only the problem; leave triage-owned content blank until reflection triage runs.",
-                )
-            )
-    elif triage == "complete":
-        if human_value not in HUMAN_INTERVENTIONS:
-            problems.append(
-                ReflectionProblem(
-                    "vocabulary",
-                    path,
-                    1,
-                    identifier,
-                    f"Completed triage has invalid human_intervention {human_value!r}.",
-                    "Triage must decide required or not-required.",
-                )
-            )
-        missing_triage = [name for name, value in triage_content.items() if not value]
-        if missing_triage:
-            problems.append(
-                ReflectionProblem(
-                    "shape",
-                    path,
-                    1,
-                    identifier,
-                    f"Completed triage is missing detail in: {', '.join(missing_triage)}.",
-                    "Triage must record its analysis, proposed resolution, and intervention rationale.",
-                )
-            )
-
-    expected_bucket = reflection_bucket(triage, human_value)
     location = split_reflection_path(path)
     actual_bucket = location[0] if location is not None else None
-    if expected_bucket is not None and identifier is not None and actual_bucket != expected_bucket:
-        where = f"{actual_bucket}/" if actual_bucket else "the collection root"
+    placement_message = None
+    if actual_bucket is None:
+        placement_message = "Reflection is outside every bucket (pending/, planned/, needs-comments/)."
+    elif actual_bucket == PENDING_BUCKET and any(triage_content.values()):
+        placement_message = "Reflection is filed under pending/ but its triage sections are already filled."
+    elif actual_bucket != PENDING_BUCKET and not all(triage_content.values()):
+        placement_message = f"Reflection is filed under {actual_bucket}/ but its triage sections are not all filled."
+    if placement_message is not None and identifier is not None:
         problems.append(
             ReflectionProblem(
                 "placement",
                 path,
                 1,
                 identifier,
-                f"Reflection is filed under {where} but its triage state belongs under {expected_bucket}/.",
-                f"Run reflections_queue.py --relocate {identifier} so the document moves to "
-                f"{REFLECTIONS_PATH}/{expected_bucket}/{identifier}.md; never edit the bucket by hand.",
+                placement_message,
+                "An untriaged document belongs under pending/ (--relocate files a legacy flat one "
+                "there); a triaged document is moved into planned/ or needs-comments/ by the triage "
+                "capability, never by editing the sections in place.",
             )
         )
 
@@ -504,8 +512,8 @@ def parse_reflection_document(text: str, path: str) -> tuple[ReflectionEntry | N
         "Kind": str(metadata.get("kind", "")),
         "Concerns": str(metadata.get("concerns", "")),
         "Status": status,
-        "Triage": triage,
-        "Human Intervention": human_value,
+        "Triage": triage_state(actual_bucket),
+        "Human Intervention": human_intervention_for(actual_bucket),
         "Note": str(metadata.get("resolution_note", "")),
         **{name: sections.get(name, "") for name in REQUIRED_SECTIONS},
     }

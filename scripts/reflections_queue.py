@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
-"""Deterministic per-file queue, allocation, plan-state, relocation, and removal helper.
+"""Deterministic per-file queue, allocation, plan-state, transition, and removal helper.
 
-Reflection documents live in one of three tracked buckets that mirror triage state:
-``pending/`` (``triage: pending``), ``planned/`` (``triage: complete`` and
-``human_intervention: not-required``), and ``needs-comments/`` (``triage: complete`` and
-``human_intervention: required``). ``--allocate-id`` always returns a ``pending/`` path and
-``--relocate`` moves documents into the bucket their front matter now requires; every other action
-refuses a misplaced collection so the layout never drifts silently; ``--validate-entry`` is the
-exception, running a bounded, read-only, project-wide validation but reporting only the findings
-attributable to one requested document. A closed document (``status: resolved`` or ``dismissed``
-with a ``resolution_note``) is deleted by ``--remove-closed`` rather than retained; Git history
-keeps the record. ``--remove-merged`` and ``--remove-closed`` delete the removed reflection's plan in
-the same atomic action, so no plan outlives its document, and ``--json`` lists any orphan plan whose
-document is already gone. A plan records only the last verification of its problem (``verified``
-date and ``verified_commit``); ``--json``/``--plans`` report each plan's ``verification`` as
-``current``,
+Reflection documents live in one of three tracked buckets, and the bucket directory is the only
+record of triage state: ``pending/`` holds a document whose three triage sections are still empty,
+and ``planned/`` or ``needs-comments/`` hold a document whose three triage sections are filled,
+according to whether a developer must comment. ``--allocate-id`` always returns a ``pending/`` path.
+``transition()`` is the triage capability's own way of publishing a completed triage: it writes the
+filled document straight into its target bucket and removes the ``pending/`` source in one atomic
+action. ``--relocate`` only ever files a legacy flat document (outside every bucket) into ``pending/``
+when it is still untriaged, and refuses an already-triaged one by name; it never moves a bucketed
+document. Every other action refuses a misplaced collection so the layout never drifts silently;
+``--validate-entry`` is the exception, running a bounded, read-only, project-wide validation but
+reporting only the findings attributable to one requested document. A closed document
+(``status: resolved`` or ``dismissed`` with a ``resolution_note``) is deleted by ``--remove-closed``
+rather than retained; Git history keeps the record. ``--remove-merged`` and ``--remove-closed`` delete
+the removed reflection's plan in the same atomic action, so no plan outlives its document, and
+``--json`` lists any orphan plan whose document is already gone. A plan records only the last
+verification of its problem (``verified`` date and ``verified_commit``); ``--json``/``--plans``
+report each plan's ``verification`` as ``current``,
 ``stale``, ``unverified``, or ``unknown`` against the checkout HEAD, ``--set`` accepts those two
 keys, a plan cannot become ``approved`` or ``implemented`` without them, and ``status=stale``
 sends a plan back to investigation.
@@ -50,6 +53,7 @@ from concorde.reflections.reflections import (  # noqa: E402
     reflection_number,
     reflection_path,
     reflections_path,
+    split_reflection_path,
     strip_reference_suffix,
 )
 from concorde.understanding.validate import validate_project  # noqa: E402
@@ -266,7 +270,11 @@ def _load_reflections(
     if problems:
         detail = "; ".join(f"{problem.path}: {problem.message}" for problem in problems)
         if any(problem.code == "placement" for problem in problems):
-            detail += "; run reflections_queue.py --relocate to file misplaced documents by triage state"
+            detail += (
+                "; run reflections_queue.py --relocate to file an untriaged legacy flat document into "
+                "pending/, or move a triaged document into planned/ or needs-comments/ through the "
+                "triage capability"
+            )
         raise QueueError(f"reflection collection is malformed: {detail}")
     return index, index_bytes, parsed, documents_by_id, raw
 
@@ -770,10 +778,17 @@ def _move_documents(root: Path, moves: list[tuple[str, str, str]], expected: dic
 
 
 def relocate(root: Path, requested: list[str]) -> dict[str, Any]:
-    """Move reflection documents into the bucket their triage state requires.
+    """File legacy flat reflection documents into ``pending/``; never move a bucketed document.
 
-    With no identifiers every misplaced document is relocated. The bucket is derived only from
-    ``triage`` and ``human_intervention``; the document text is never changed.
+    With no identifiers, every document whose bucket is decidable and differs from its current path
+    is relocated; in practice that means only a flat legacy document (outside every bucket) whose
+    three triage sections are still empty, which is filed into ``pending/``. A flat document whose
+    triage sections are already filled has no decidable bucket and raises :class:`QueueError` naming
+    it: it must be moved into ``planned/`` or ``needs-comments/`` explicitly, not filed by guesswork.
+    A document that already lives in a tracked bucket is always left exactly where it is, even when
+    its content disagrees with that bucket — that disagreement is a placement breach for triage (via
+    :func:`transition`) to resolve, not something this function edits or moves. The document text is
+    never changed.
     """
     identifiers: list[str] = []
     seen: set[str] = set()
@@ -814,7 +829,9 @@ def relocate(root: Path, requested: list[str]) -> dict[str, Any]:
                 "id": identifier,
                 "from": source,
                 "to": target,
-                "bucket": entries[identifier].bucket,
+                # entries[identifier] is the pre-move entry; its .bucket is now derived from that
+                # stale path, so the published bucket must come from the target path instead.
+                "bucket": split_reflection_path(target)[0],
             }
             for identifier, source, target in moves
         ],
@@ -823,6 +840,80 @@ def relocate(root: Path, requested: list[str]) -> dict[str, Any]:
         "buckets": parsed.bucket_counts(),
         "before_sha256": before_digest,
         "after_sha256": _collection_digest(after),
+    }
+
+
+def transition(
+    root: Path,
+    identifier: str,
+    source_relative: str,
+    expected_bytes: bytes,
+    replacement_text: str,
+    bucket: str,
+) -> dict[str, Any]:
+    """Publish one triage completion into its bucket and remove the pending source, atomically.
+
+    ``source_relative`` must still hold exactly ``expected_bytes``, and the target bucket must not
+    already hold a document for ``identifier``; the bucket directory is created if it does not yet
+    exist. A failure after the target is published rolls it back, so the source document always
+    survives an unsuccessful transition. This is the only way a document's triage-section content and
+    its bucket ever change together; ``relocate`` never touches an already-bucketed document.
+    """
+    source = root / source_relative
+    _require_real_file(root, source, "reflection document")
+    if source.read_bytes() != expected_bytes:
+        raise QueueError(f"reflection document changed before transition: {source_relative}")
+    target_relative = reflection_path(identifier, bucket)
+    target = root / target_relative
+    if target.exists() or target.is_symlink():
+        raise QueueError(f"transition target for {identifier} already exists: {target_relative}")
+    directory = _bucket_directory(root, bucket, create=True)
+    mode = stat.S_IMODE(source.stat().st_mode)
+    replacement = replacement_text.encode("utf-8")
+    stage = directory / f".{target.name}.reflection-stage"
+    if stage.exists() or stage.is_symlink():
+        raise QueueError(f"stale reflection staging path exists: {stage.relative_to(root)}")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    descriptor: int | None = None
+    published = False
+    try:
+        descriptor = os.open(stage, flags, mode)
+        with os.fdopen(descriptor, "wb") as stream:
+            descriptor = None
+            stream.write(replacement)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(stage, mode)
+        _require_real_file(root, source, "reflection document")
+        if source.read_bytes() != expected_bytes:
+            raise QueueError(f"reflection document changed during transition: {source_relative}")
+        if target.exists() or target.is_symlink():
+            raise QueueError(f"transition target for {identifier} already exists: {target_relative}")
+        os.replace(stage, target)
+        published = True
+        os.remove(source)
+    except (OSError, QueueError) as error:
+        if published and target.exists():
+            os.remove(target)
+        if isinstance(error, QueueError):
+            raise
+        raise QueueError(f"reflection transition failed: {error}") from error
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        try:
+            stage.unlink(missing_ok=True)
+        except OSError:
+            pass
+    return {
+        "tool": "transition-reflection",
+        "status": "transitioned",
+        "id": identifier,
+        "from": source_relative,
+        "to": target_relative,
+        "bucket": bucket,
     }
 
 
@@ -962,7 +1053,8 @@ def create_parser() -> argparse.ArgumentParser:
         "--relocate",
         nargs="*",
         metavar="R-NNN",
-        help="move the named (default: every misplaced) reflection into the bucket its triage state requires",
+        help="file the named (default: every eligible) untriaged legacy flat reflection into pending/; "
+             "never moves an already-bucketed document",
     )
     actions.add_argument(
         "--validate-entry",

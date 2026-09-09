@@ -82,9 +82,11 @@ class ManifestContractTests(unittest.TestCase):
         self.assertIn(".concorde/reflections/<bucket>/R-NNN.md", body)
         for bucket in ("pending/", "planned/", "needs-comments/"):
             self.assertIn(bucket, body)
-        self.assertIn("--relocate", body)
+        self.assertIn("--allocate-id", body)
         self.assertIn("--validate-entry", body)
-        self.assertIn("triage: pending", body)
+        # The bucket directory is the only record of triage state: the front matter never repeats it.
+        self.assertNotIn("triage:", body)
+        self.assertNotIn("human_intervention:", body)
         self.assertIn("## User Comments", body)
         self.assertIn("R-NNN", body)
 

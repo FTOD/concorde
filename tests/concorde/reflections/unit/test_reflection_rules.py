@@ -114,14 +114,28 @@ class ReflectionRuleTests(unittest.TestCase):
             project = self.project(temporary)
             collection = write_reflection_collection(project, [reflection_entry("R-001"), complete])
             self.assertEqual(reflect_rules(validate_project(project)), [])
+
+            # A flat legacy document (outside every bucket) and a filled document filed under
+            # pending/ (whose triage sections are already filled) are both placement breaches.
             (collection / "pending" / "R-001.md").rename(collection / "R-001.md")
-            (collection / "needs-comments").mkdir()
-            (collection / "planned" / "R-002.md").rename(collection / "needs-comments" / "R-002.md")
+            (collection / "planned" / "R-002.md").rename(collection / "pending" / "R-002.md")
             result = validate_project(project)
             self.assertEqual(reflect_rules(result), ["CONCORDE-REFLECT-005", "CONCORDE-REFLECT-005"])
             self.assertEqual(
                 sorted(item.source for item in result.findings if item.rule_id == "CONCORDE-REFLECT-005"),
-                [".concorde/reflections/R-001.md", ".concorde/reflections/needs-comments/R-002.md"],
+                [".concorde/reflections/R-001.md", ".concorde/reflections/pending/R-002.md"],
+            )
+
+            # A filled document may live in either triaged bucket: moving it from pending/ into
+            # needs-comments/ (instead of back to planned/) clears its breach on its own, because
+            # the bucket alone — not a separate human_intervention field — decides which one it is.
+            (collection / "needs-comments").mkdir()
+            (collection / "pending" / "R-002.md").rename(collection / "needs-comments" / "R-002.md")
+            result = validate_project(project)
+            self.assertEqual(reflect_rules(result), ["CONCORDE-REFLECT-005"])
+            self.assertEqual(
+                [item.source for item in result.findings if item.rule_id == "CONCORDE-REFLECT-005"],
+                [".concorde/reflections/R-001.md"],
             )
 
 

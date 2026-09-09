@@ -495,77 +495,165 @@ class ReflectionsQueueTests(unittest.TestCase):
             },
         )
 
-    def test_relocate_moves_completed_documents_by_triage_state_without_editing_them(self):
+    def test_relocate_files_untriaged_flat_legacy_documents_and_refuses_triaged_ones(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root = create_triage_project(Path(temporary))
+            root = create_triage_project(Path(temporary), entry_count=1)
             collection = root / ".concorde/reflections"
-            # Simulate the parent having persisted two completions in place under pending/.
             write_reflection_collection(root, [
-                self.completed_entry("R-001", "not-required", bucket="pending"),
-                self.completed_entry("R-002", "required", bucket="pending"),
-                reflection_entry("R-003"),
+                reflection_entry("R-001"),
+                self.completed_entry("R-002", "not-required"),
+                self.completed_entry("R-003", "required"),
             ])
             write_high_water(collection, 3)
-            first = (collection / "pending" / "R-001.md").read_bytes()
-            second = (collection / "pending" / "R-002.md").read_bytes()
+            untriaged = (collection / "pending" / "R-001.md").read_bytes()
+            bucketed = (collection / "planned" / "R-002.md").read_bytes()
+            triaged = (collection / "needs-comments" / "R-003.md").read_bytes()
+
+            # R-001 is a legacy flat document (outside every bucket) that is still untriaged; R-003
+            # is a legacy flat document whose triage sections are already filled.
+            (collection / "pending" / "R-001.md").rename(collection / "R-001.md")
+            (collection / "needs-comments" / "R-003.md").rename(collection / "R-003.md")
 
             refused = run_queue(root, "--json", check=False)
             self.assertEqual(refused.returncode, 2)
             self.assertIn("--relocate", refused.stderr)
-            for arguments in (("--allocate-id",), ("--set", "R-001", "status=approved")):
+            for arguments in (("--allocate-id",), ("--set", "R-002", "status=approved")):
                 self.assertEqual(run_queue(root, *arguments, check=False).returncode, 2)
 
-            one = json.loads(run_queue(root, "--relocate", "R-002").stdout)
-            self.assertEqual(one["tool"], "relocate-reflections")
-            self.assertEqual(one["status"], "relocated")
-            self.assertEqual(one["moved"], [{
-                "id": "R-002",
-                "from": ".concorde/reflections/pending/R-002.md",
-                "to": ".concorde/reflections/needs-comments/R-002.md",
-                "bucket": "needs-comments",
+            # With no identifiers, relocate refuses atomically: the already-triaged flat document
+            # has no decidable destination, so nothing moves, not even the untriaged one.
+            blocked = run_queue(root, "--relocate", check=False)
+            self.assertEqual(blocked.returncode, 2)
+            self.assertIn("R-003", blocked.stderr)
+            self.assertIn("decidable", blocked.stderr)
+            self.assertTrue((collection / "R-001.md").is_file())
+            self.assertTrue((collection / "R-003.md").is_file())
+
+            # Naming only the untriaged flat document files it into pending/ without editing it.
+            result = json.loads(run_queue(root, "--relocate", "R-001").stdout)
+            self.assertEqual(result["tool"], "relocate-reflections")
+            self.assertEqual(result["status"], "relocated")
+            self.assertEqual(result["moved"], [{
+                "id": "R-001",
+                "from": ".concorde/reflections/R-001.md",
+                "to": ".concorde/reflections/pending/R-001.md",
+                "bucket": "pending",
             }])
-            self.assertEqual((one["moved_count"], one["unchanged_count"]), (1, 0))
-            self.assertFalse((collection / "pending" / "R-002.md").exists())
-            self.assertEqual((collection / "needs-comments" / "R-002.md").read_bytes(), second)
-            self.assertTrue((collection / "pending" / "R-001.md").is_file())
+            self.assertEqual((result["moved_count"], result["unchanged_count"]), (1, 0))
+            self.assertFalse((collection / "R-001.md").exists())
+            self.assertEqual((collection / "pending" / "R-001.md").read_bytes(), untriaged)
 
-            everything = json.loads(run_queue(root, "--relocate").stdout)
-            self.assertEqual([item["id"] for item in everything["moved"]], ["R-001"])
-            self.assertEqual(everything["moved"][0]["to"], ".concorde/reflections/planned/R-001.md")
-            self.assertEqual((collection / "planned" / "R-001.md").read_bytes(), first)
-            self.assertEqual(everything["buckets"], {"pending": 1, "planned": 1, "needs-comments": 1})
+            # Naming the already-triaged flat document is refused by name: it must be moved into
+            # planned/ or needs-comments/ explicitly, never filed by --relocate.
+            refused_named = run_queue(root, "--relocate", "R-003", check=False)
+            self.assertEqual(refused_named.returncode, 2)
+            self.assertIn("R-003", refused_named.stderr)
+            self.assertIn("decidable", refused_named.stderr)
+            self.assertEqual((collection / "R-003.md").read_bytes(), triaged)
 
+            # A document that already lives in a tracked bucket is never touched or renamed.
+            self.assertEqual((collection / "planned" / "R-002.md").read_bytes(), bucketed)
+
+            # Relocate is a pure no-op once every eligible document is already filed.
+            (collection / "R-003.md").rename(collection / "planned" / "R-003.md")
             again = json.loads(run_queue(root, "--relocate").stdout)
-            self.assertEqual((again["status"], again["moved"], again["moved_count"], again["unchanged_count"]), ("unchanged", [], 0, 3))
+            self.assertEqual((again["status"], again["moved"], again["moved_count"]), ("unchanged", [], 0))
             self.assertEqual(again["before_sha256"], again["after_sha256"])
-
-            payload = json.loads(run_queue(root, "--json").stdout)
-            self.assertEqual(payload["summary"]["buckets"], {"pending": 1, "planned": 1, "needs-comments": 1})
-            self.assertEqual({item["id"]: item["bucket"] for item in payload["entries"]}, {"R-001": "planned", "R-002": "needs-comments", "R-003": "pending"})
-
-            # A developer decision never moves a file; a changed intervention decision does.
-            waiting = collection / "needs-comments" / "R-002.md"
-            waiting.write_text(waiting.read_text().replace("status: open", "status: resolved\nresolution_note: decided"))
-            self.assertEqual(json.loads(run_queue(root, "--relocate").stdout)["status"], "unchanged")
-            waiting.write_text(waiting.read_text().replace("human_intervention: required", "human_intervention: not-required"))
-            flipped = json.loads(run_queue(root, "--relocate", "R-002").stdout)
-            self.assertEqual(flipped["moved"][0]["to"], ".concorde/reflections/planned/R-002.md")
 
             for arguments, needle in ((("--relocate", "R-01"), "canonical"), (("--relocate", "R-009"), "no matching"), (("--relocate", "R-001", "R-001"), "repeated")):
                 result = run_queue(root, *arguments, check=False)
                 self.assertEqual(result.returncode, 2)
                 self.assertIn(needle, result.stderr)
 
+    def test_transition_publishes_into_its_bucket_and_removes_the_pending_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary), entry_count=1)
+            collection = root / ".concorde/reflections"
+            queue = load_queue_module()
+            source = collection / "pending" / "R-001.md"
+            original = source.read_bytes()
+            replacement = original.decode("utf-8").replace(
+                "## Triage Analysis\n\n", "## Triage Analysis\n\nRoot cause established.\n\n"
+            )
+
+            result = queue.transition(
+                root, "R-001", ".concorde/reflections/pending/R-001.md", original, replacement, "needs-comments",
+            )
+
+            self.assertEqual(result, {
+                "tool": "transition-reflection",
+                "status": "transitioned",
+                "id": "R-001",
+                "from": ".concorde/reflections/pending/R-001.md",
+                "to": ".concorde/reflections/needs-comments/R-001.md",
+                "bucket": "needs-comments",
+            })
+            self.assertFalse(source.exists())
+            target = collection / "needs-comments" / "R-001.md"
+            self.assertEqual(target.read_text(encoding="utf-8"), replacement)
+
+    def test_transition_refuses_when_the_source_changed_or_the_target_already_exists(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary), entry_count=1)
+            collection = root / ".concorde/reflections"
+            queue = load_queue_module()
+            source = collection / "pending" / "R-001.md"
+            original = source.read_bytes()
+
+            with self.assertRaisesRegex(queue.QueueError, "changed before transition"):
+                queue.transition(
+                    root, "R-001", ".concorde/reflections/pending/R-001.md", b"stale bytes", "replacement", "planned",
+                )
+            self.assertTrue(source.is_file())
+            self.assertEqual(source.read_bytes(), original)
+            self.assertFalse((collection / "planned").exists())
+
+            (collection / "planned").mkdir()
+            occupied = collection / "planned" / "R-001.md"
+            occupied.write_text("occupied\n", encoding="utf-8")
+            with self.assertRaisesRegex(queue.QueueError, "already exists"):
+                queue.transition(
+                    root, "R-001", ".concorde/reflections/pending/R-001.md", original, "replacement", "planned",
+                )
+            self.assertTrue(source.is_file())
+            self.assertEqual(source.read_bytes(), original)
+            self.assertEqual(occupied.read_text(encoding="utf-8"), "occupied\n")
+
+    def test_transition_rolls_back_the_published_target_when_removing_the_source_fails(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary), entry_count=1)
+            collection = root / ".concorde/reflections"
+            queue = load_queue_module()
+            source = collection / "pending" / "R-001.md"
+            original = source.read_bytes()
+            actual_remove = os.remove
+            calls = 0
+
+            def fail_first_remove(path, *args, **kwargs):
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    raise OSError("injected")
+                return actual_remove(path, *args, **kwargs)
+
+            with mock.patch.object(queue.os, "remove", side_effect=fail_first_remove):
+                with self.assertRaises(queue.QueueError):
+                    queue.transition(
+                        root, "R-001", ".concorde/reflections/pending/R-001.md", original, "replacement", "planned",
+                    )
+            self.assertTrue(source.is_file())
+            self.assertEqual(source.read_bytes(), original)
+            self.assertFalse((collection / "planned" / "R-001.md").exists())
+
     def test_relocate_rolls_back_and_rejects_symlinked_bucket_or_existing_target(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root = create_triage_project(Path(temporary))
+            root = create_triage_project(Path(temporary), entry_count=1)
             collection = root / ".concorde/reflections"
-            write_reflection_collection(root, [
-                self.completed_entry("R-001", "required", bucket="pending"),
-                self.completed_entry("R-002", "required", bucket="pending"),
-                reflection_entry("R-003"),
-            ])
-            write_high_water(collection, 3)
+            write_reflection_collection(root, [reflection_entry("R-001"), reflection_entry("R-002")])
+            write_high_water(collection, 2)
+            # Both are legacy flat, untriaged documents eligible for relocation into pending/.
+            (collection / "pending" / "R-001.md").rename(collection / "R-001.md")
+            (collection / "pending" / "R-002.md").rename(collection / "R-002.md")
             queue = load_queue_module()
             before = tree_hashes(root)
             actual_replace = os.replace
@@ -584,24 +672,24 @@ class ReflectionsQueueTests(unittest.TestCase):
             self.assertEqual(tree_hashes(root), before)
 
             # A target that appears between load and move is refused without touching the source.
-            source = collection / "pending" / "R-001.md"
-            occupied = collection / "needs-comments" / "R-001.md"
-            occupied.parent.mkdir(exist_ok=True)
+            source = collection / "R-001.md"
+            occupied = collection / "pending" / "R-001.md"
             occupied.write_text("occupied\n", encoding="utf-8")
             with self.assertRaisesRegex(queue.QueueError, "already exists"):
                 queue._move_documents(
                     root,
-                    [("R-001", ".concorde/reflections/pending/R-001.md", ".concorde/reflections/needs-comments/R-001.md")],
-                    {".concorde/reflections/pending/R-001.md": source.read_bytes()},
+                    [("R-001", ".concorde/reflections/R-001.md", ".concorde/reflections/pending/R-001.md")],
+                    {".concorde/reflections/R-001.md": source.read_bytes()},
                 )
             self.assertTrue(source.is_file())
             self.assertEqual(occupied.read_text(encoding="utf-8"), "occupied\n")
             occupied.unlink()
-            occupied.parent.rmdir()
 
+            # A symlinked bucket directory is refused rather than followed.
+            (collection / "pending").rmdir()
             outside = Path(temporary) / "outside-bucket"
             outside.mkdir()
-            (collection / "needs-comments").symlink_to(outside, target_is_directory=True)
+            (collection / "pending").symlink_to(outside, target_is_directory=True)
             before = tree_hashes(root)
             result = run_queue(root, "--relocate", check=False)
             self.assertEqual(result.returncode, 2)

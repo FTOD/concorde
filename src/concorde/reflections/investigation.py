@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 
 from ..host.typed_data import TypedDataError, checked_path, validate_typed, verify_artifacts
-from .reflections import parse_reflection_document
+from .reflections import bucket_for_intervention, parse_reflection_document
 
 
 def _replace_sections(text: str, replacements: dict[str, str]) -> str:
@@ -32,22 +32,12 @@ def _replace_sections(text: str, replacements: dict[str, str]) -> str:
 
 
 def _triage_text(original: str, finding: dict) -> str:
-    text = _replace_sections(original, {
+    """Replace only the three triage sections; the bucket move records the triage decision."""
+    return _replace_sections(original, {
         "Triage Analysis": finding["analysis"],
         "Proposed Resolution": finding["resolution"],
         "Intervention Rationale": finding["intervention_rationale"],
     })
-    lines = text.splitlines(keepends=True)
-    end = next(index for index, line in enumerate(lines[1:], 1) if line.strip() == "---")
-    updates = {"triage": "complete", "human_intervention": finding["human_intervention"]}
-    for key, value in updates.items():
-        found = next((index for index in range(1, end) if re.match(rf"^{key}:", lines[index])), None)
-        if found is None:
-            lines.insert(end, f"{key}: {value}\n")
-            end += 1
-        else:
-            lines[found] = f"{key}: {value}\n"
-    return "".join(lines)
 
 
 def _plan_text(entry, finding: dict, task: dict, verified_on: str, status: str) -> str:
@@ -120,8 +110,8 @@ def apply_investigation(project: Path, queue, runtime_input: dict, domain_output
         original = source.read_bytes()
         text = _triage_text(original.decode("utf-8"), finding)
         # Parse at the intended bucket path so every shape/content check applies
-        # before the first write. Relocation itself remains the queue Tool's job.
-        bucket = "needs-comments" if finding["human_intervention"] == "required" else "planned"
+        # before the first write. The bucket move itself remains the queue Tool's job.
+        bucket = bucket_for_intervention(finding["human_intervention"])
         updated, problems = parse_reflection_document(text, f".concorde/reflections/{bucket}/{identifier}.md")
         if problems or updated is None:
             raise TypedDataError("invalid_field", "/domain_output", "invalid triage completion: " + "; ".join(item.message for item in problems))
@@ -143,13 +133,12 @@ def apply_investigation(project: Path, queue, runtime_input: dict, domain_output
             if not config["require_approval"] or previously_approved:
                 status = "approved"
         plan_text = _plan_text(entry, finding, task, data["verified_on"], status)
-        prepared.append((identifier, source, original, text, plan_path, old_bytes, plan_text, status))
-    for identifier, source, original, text, plan_path, old_bytes, plan_text, status in prepared:
+        prepared.append((identifier, entry.path, original, text, bucket, plan_path, old_bytes, plan_text, status))
+    for identifier, source_relative, original, text, bucket, plan_path, old_bytes, plan_text, status in prepared:
         if queue._captured_head(project) != data["head"]:
             raise TypedDataError("workspace_mismatch", "/domain_output", "Git HEAD changed before persistence")
         _write_plan(project, plan_path, old_bytes, plan_text)
-        queue._atomic_file_replace(project, source, original, text.encode("utf-8"), "triage completion")
-        queue.relocate(project, [identifier])
+        queue.transition(project, identifier, source_relative, original, text, bucket)
         report = queue.validate_entry(project, identifier)
         if report.get("status") != "valid":
             raise TypedDataError("incompatible_handoff", "/domain_output", f"persisted triage completion failed validation: {identifier}")

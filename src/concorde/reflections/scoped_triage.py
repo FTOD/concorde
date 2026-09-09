@@ -151,7 +151,7 @@ def record_gaps(run, queue):
         today = date.today().isoformat()
         metadata = {"id": identifier, "title": title, "phase": phase, "date": today,
             "feature": target.id, "kind": "specification", "concerns": target.documents[0],
-            "status": "open", "triage": "pending"}
+            "status": "open"}
         front = "\n".join(f"{key}: {json.dumps(value, ensure_ascii=False)}" for key, value in metadata.items())
         content = (f"---\n{front}\n---\n\n# {identifier} · {title}\n\n"
             f"## Context\n\nTask for {target.id}: {item['task']}\n\n"
