@@ -34,7 +34,7 @@ Current public Skill files expose exactly one global or lifecycle entry through
 | init | lifecycle | concorde-init | — | — | Propose and apply explicit project initialization with a pinned Protocol |
 | configure | lifecycle | concorde-configure | — | — | Apply the initialized integration and enforcement configuration |
 | validate | lifecycle | concorde-validate | — | — | Run deterministic Spec and configured code checks and record readiness |
-| deliver | lifecycle | concorde-deliver | — | — | From either participating session, verify and merge a ready candidate; retain or clean up the source worktree |
+| deliver | lifecycle | concorde-deliver | — | — | Stage a ready candidate on its own branch and clean up; explicitly merge later from the sole primary writer |
 | specify | stage | — | spec-author | — | Author the bound target's Spec replacements |
 | review | stage | — | spec-reviewer, code-reviewer | — | Independent read-only Spec or code review of the bound target with version-bound findings and gaps |
 | context-solve | stage | — | context-assessor | — | Validate Module participant routing, then assess information sufficiency without expanding the context |

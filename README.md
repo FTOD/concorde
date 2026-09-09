@@ -120,14 +120,20 @@ metadata and change status. `concorde-main` receives this inventory and identifi
 session is in the primary or a candidate worktree. Secondary AGENTS.md/CLAUDE.md guidance also points
 to the local state and the primary worktree, without granting access to other worktrees' contents.
 
-To deliver, request `concorde-deliver` from either the selected source worktree or the destination
-primary worktree with the selected change_id. The destination is the primary worktree's current
-branch; it need not be named main. Third-worktree and nested sessions cannot deliver that change.
-The host verifies the exact candidate and integration before merging. It retains the source when
-it owns the requesting session or `keep_worktree:true` is supplied; otherwise it removes the source
-and local state. Destination local edits are preserved: a dirty destination blocks delivery until
-those edits have been safely preserved outside the merge transaction. Delivery receipts distinguish
-completed merges from pending cleanup, so retries never merge twice. Development loops stop at ready.
+To deliver, request `concorde-deliver` from the selected source or primary worktree with its
+change_id. The host checks the candidate and current integration, creates the independent branch
+`concorde/delivered/<change_id>`, and removes the source worktree by default. `keep_worktree:true`
+explicitly retains it; otherwise the source agent ends its session after delivery. The primary
+branch, index and project files stay unchanged, including any local edits. Development loops stop
+at ready and never deliver automatically.
+
+Only an explicit user request to merge into the primary branch authorizes a separate
+`merge_primary:true` request with the delivered change_id, from the primary worktree's sole writing
+agent. Other agents develop in linked worktrees. The host serializes lifecycle writes and final
+merges with a shared repository lock and checks integration against the latest primary commit.
+Conflicts, failed checks or local primary edits block final merging and preserve the delivery
+branch. Receipts distinguish staging, cleanup and final merging, allowing retries without duplicate
+merges; after source removal, use the primary session to retry.
 
 
 Reflection investigation is a separate, read-only implementation invocation; human

@@ -1,4 +1,4 @@
-"""Lifecycle: from the primary worktree, verify, merge and clean up one ready candidate change.
+"""Lifecycle: stage a verified change, clean up, and explicitly merge from the primary session.
 Deterministic; runs no agent cognition and selects no context."""
 from concorde.host import contract_shapes as shapes
 
@@ -16,7 +16,8 @@ REQUEST = shapes.obj({
     "focus_id": shapes.STRING,
     "constraints": shapes.array(shapes.STRING),
     "keep_worktree": {"type": "boolean"},
-}, ("target_id", "task", "focus_id", "constraints", "keep_worktree"))
+    "merge_primary": {"type": "boolean"},
+}, ("target_id", "task", "focus_id", "constraints", "keep_worktree", "merge_primary"))
 
 RESPONSE = shapes.stage_response()
 

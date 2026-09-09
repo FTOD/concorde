@@ -231,8 +231,10 @@ def _guidance_changes(root: Path, state: dict) -> list[dict]:
         f"The destination is the primary worktree: {state['primary_worktree']}.\n"
         "The session's initial working directory must be one of those two participants; a third\n"
         "worktree cannot deliver this change by redirecting or forwarding its invocation.\n"
-        "The destination's checked-out branch need not be main. The host verifies the integration\n"
-        "and retains this source when it owns the active session or keep_worktree:true is requested.\n"
+        "Delivery creates concorde/delivered/<change_id> and leaves the primary branch unchanged.\n"
+        "The host removes this source unless keep_worktree:true was explicitly requested.\n"
+        "End this session after removal. Only an explicit user request to the sole primary writer\n"
+        "authorizes a separate merge_primary:true request from the primary session.\n"
         "Development loops stop at a ready candidate and never deliver automatically.\n"
         + GUIDANCE_END)
     changes = []

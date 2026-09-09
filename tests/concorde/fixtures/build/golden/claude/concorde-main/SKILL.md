@@ -70,7 +70,11 @@ reads or a continuation of the same agent session in another checkout.
 
 `concorde-deliver` may be requested from either the selected source or destination worktree.
 Report the selected change_id and both participants; a third worktree cannot deliver that change.
-The source is retained when it owns the active session or keep_worktree:true is requested.
+Default delivery creates `concorde/delivered/<change_id>` and removes the source worktree unless
+keep_worktree:true is explicitly requested. End the source session after removal. The primary
+branch stays unchanged until the user explicitly requests a separate merge_primary:true delivery
+from the primary worktree's sole writing agent. All other agents develop in linked worktrees;
+the host serializes shared lifecycle writes and final primary merges with the repository lock.
 
 ## Input TypedValue schema
 

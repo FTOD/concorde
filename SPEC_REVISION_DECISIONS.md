@@ -223,3 +223,23 @@ Implementation 文件清单和 registry 一致，当前无发现的结构不一�
 补充验证结果：Prompt resolver/build 的 48 项 Python 测试通过；scoped registry/site identity 的
 40 项测试通过；包含实际整站构建的 production-build/framework-guides 7 项测试通过，共 95 项。
 `git diff --check` 通过。没有运行 Concorde 的完整验证或评审流程，也没有据此声明所有新契约已实现。
+
+## 交付流程修改提交前的补充审阅
+
+这批工作区修改把默认 delivery 改为发布 `concorde/delivered/<change_id>` 并清理源 worktree；
+主分支只由主 worktree 会话的独立 `merge_primary:true` 请求更新。显式保留、脏主目录保护、
+共享仓库锁、分阶段检查日志和可恢复回执随接口、指令、Spec、导出摘要一起更新。
+
+本次审阅补上两个实际问题：
+
+- 初次交付或清理重试中断时，`keep_worktree:true` 可能尚未写入回执，导致下一次未带该参数的
+  重试删除本来要求保留的 worktree。现在先持久化保留选择，再发布分支或尝试清理；显式 false
+  仍可解除保留。两个真实 Git 回归场景先复现失败，再验证修复。
+- 旧 schema-1 直接合并回执的重试提示错误地声称“主分支未变化”。现在按回执是否属于新分阶段
+  交付区分提示，保留旧记录的真实目标和清理重试行为，并增加兼容性回归测试。
+
+开发状态图也明确区分 Delivered 和 PrimaryMerged。检查使用项目 `.venv`：交付/生命周期/
+worktree 边界相关 63 项测试及构建/类型/能力声明 45 项测试通过；最后另跑 4 项针对性回归，
+包含新增的旧回执场景，全部通过，共覆盖 109 个不同测试。系统 Python 缺少 langgraph 的初次
+运行不作为代码失败结论。源码投影已 rebuild，`git diff --check` 通过；没有执行项目的完整
+Concorde 验证或 Agent 评审流程。

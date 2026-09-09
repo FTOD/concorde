@@ -56,14 +56,24 @@ new target revision belongs in a linked worktree with its own agent session.
 ## Delivery between participating worktrees
 
 For user-authorized delivery, the agent's initial worktree may be either the selected source
-worktree or the destination worktree. A session in a third worktree cannot initiate that delivery.
-Verify Skill affinity against the session-owned worktree as usual. Within this bounded delivery,
-inspect the other participant, merge its branch into the source to resolve integration conflicts,
-run integration checks, and update the destination without moving the session or loading that
-participant's Skills. These delivery actions are an exception to the cross-worktree handoff above;
+worktree or the primary worktree. A third-worktree session cannot initiate that delivery. Verify
+Skill affinity against the session-owned worktree as usual. The deterministic host may inspect the
+participants and verify integration without moving the session or loading the other participant's
+Skills. These bounded delivery actions are an exception to the cross-worktree handoff above;
 unrelated development and Skill projection maintenance remain bound to the original worktree.
-Preserve unrelated destination changes and retain the source worktree when the user requests it
-or when it owns the active session. No delivery request grants permission to discard local edits.
+
+Default delivery creates an independent `concorde/delivered/<change_id>` branch in the shared Git
+repository and removes the source worktree after verification. It never advances the primary
+worktree's checked-out branch or changes its index or project files. Retain the source only when
+explicitly requested; an active source session must end after removal and use P10 for later work.
+No delivery request grants permission to discard unrelated local edits.
+
+Only an explicit user request to merge into the primary branch authorizes a separate
+`merge_primary:true` delivery request from the primary worktree's owning session. At most one agent
+may own writes in the primary worktree at a time, including maintenance and conflict resolution;
+other agents must develop in their own linked worktrees. The host serializes shared lifecycle
+metadata and final primary merges with the repository lock, verifies the latest integration and
+preserves local edits. A generic request to deliver does not authorize the final primary merge.
 
 ## Building this worktree
 

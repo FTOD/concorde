@@ -89,7 +89,7 @@ The developer supplies a task, constraints and optionally a target/focus hint th
 | Initialize a project | `concorde-init` proposes then applies initial configuration and an honest Module stub; an existing project cannot be overwritten. |
 | Change integration settings | `concorde-configure` applies an explicit supported integration/enforcement configuration to an initialized project. |
 | Check a candidate | `concorde-validate` records current deterministic evidence; a failed or stale check cannot establish readiness. |
-| Deliver a candidate | `concorde-deliver` takes the selected change identity and retention choice; success distinguishes integration from pending cleanup. |
+| Deliver a candidate | `concorde-deliver` stages the selected change on an independent branch and removes its worktree by default; only a separate explicitly authorized request by the sole primary writer merges it into the primary branch. |
 | Work with recorded feedback | `concorde-reflections-triage` selects explicit Module-owned reports/gaps; status is read-only and mutations follow their declared evidence and disposition conditions. |
 
 Installed Skills use a single schema-3 capability invocation with `capability_id`, execute or

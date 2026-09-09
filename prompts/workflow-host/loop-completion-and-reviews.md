@@ -6,7 +6,9 @@ This loop ends at a verified `ready` candidate in the current change worktree. I
 invokes deliver. Partial progress and gaps remain in `.concorde/worktree.json` and resume under
 the same worktree change. Delivery is a separate request from an agent whose initial working directory is either the
 source change worktree or the destination primary worktree; report the participating paths and
-change_id when the candidate is ready.
+change_id when the candidate is ready. Delivery creates an independent branch and removes the
+candidate worktree by default. Only an explicit user request permits a separate final merge by
+the primary worktree's sole writing agent; other agents must use linked worktrees.
 
 When enabled, the loop requires independent Spec review after authoring and before planning, then
 read-only code review after implementation/checks and before ready. A skipped review is recorded

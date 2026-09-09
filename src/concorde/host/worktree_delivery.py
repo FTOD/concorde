@@ -69,7 +69,7 @@ def _commit(root: Path, tree: str, parents: tuple[str, ...], message: str) -> st
     return git(root, *arguments, input=message.rstrip() + "\n").stdout.strip()
 
 
-def _verify_merged_tree(host, commit: str, tree: str, change_id: str) -> list[dict]:
+def _verify_merged_tree(host, commit: str, tree: str, change_id: str, *, phase: str = "staging") -> list[dict]:
     """Run deterministic checks against the actual integration result, without agents."""
     from .capability_host import _check
 
@@ -94,7 +94,7 @@ def _verify_merged_tree(host, commit: str, tree: str, change_id: str) -> list[di
                     for result in results:
                         relative = f".concorde/runs/{host.invocation_id}/{result['check_id']}.log"
                         destination = checked_path(host.project_root,
-                            f"{DELIVERIES_PATH}/{change_id}/{result['check_id']}.log")
+                            f"{DELIVERIES_PATH}/{change_id}/{phase}/{result['check_id']}.log")
                         destination.parent.mkdir(parents=True, exist_ok=True)
                         destination.write_bytes(read_file(root, relative))
             if any(item["status"] != "passed" for item in checks):
@@ -122,7 +122,7 @@ def _cleanup(host, receipt: dict, *, keep_worktree: bool = False) -> bool:
             state = read_change(source, required=True)
             if state["change_id"] != receipt["change_id"] or snapshot_tree(source, state) != receipt["candidate_tree"]:
                 raise SpecError("delivered worktree has new candidate changes; retain it for inspection", "stale_delivery")
-            if keep_worktree or host.session_root == source:
+            if keep_worktree:
                 state.update(phase="delivered", status="delivered", outcome="delivered")
                 save_change(source, state, publish=False, locked=True)
                 receipt.update(status="delivered", cleanup_error=None, retained_worktree=True)
@@ -147,11 +147,15 @@ def _cleanup(host, receipt: dict, *, keep_worktree: bool = False) -> bool:
 
 def deliver(host, configuration: dict, task: dict) -> dict:
     primary = require_delivery_session(host, task["change_id"])
+    if task.get("merge_primary") and (host.session_root != Path(primary["path"])
+                                      or host.project_root != Path(primary["path"])):
+        raise SpecError("explicit primary merge requires the primary worktree's owning session",
+                        "primary_session_required")
     host = replace(host, project_root=Path(primary["path"]))
     try:
         return _deliver(host, configuration, task)
     except Exception as error:
-        if host.mode == "execute":
+        if host.mode == "execute" and not task.get("merge_primary"):
             try:
                 _remember_failure(host, task["change_id"], error)
             except (ValueError, OSError) as persistence_error:
@@ -189,26 +193,38 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
     relative = _receipt_path(change_id)
     root = host.project_root
     if host.mode == "describe-policy":
-        inventory = _inventory(root, persist=False)
-        selected = [item for item in inventory["worktrees"] if item["change_id"] == change_id]
-        if len(selected) != 1:
-            raise SpecError("delivery preview requires one registered live change", "unknown_change")
-        state = read_change(Path(selected[0]["path"]), required=True)
+        if checked_path(root, relative).exists():
+            state = decode(read_file(root, relative).decode())
+        else:
+            inventory = _inventory(root, persist=False)
+            selected = [item for item in inventory["worktrees"] if item["change_id"] == change_id]
+            if len(selected) != 1:
+                raise SpecError("delivery preview requires one registered change or receipt", "unknown_change")
+            state = read_change(Path(selected[0]["path"]), required=True)
         return typed("concorde-deliver-response", {
             "target_id": state["target_id"], "focus_id": state["focus_id"],
             "change_id": change_id, "context_id": None, "outcome": "described",
-            "answer": "The delivery host verifies the candidate and integration, merges into "
-                + primary["branch"] + ", and retains the source worktree when requested or hosting this session.",
+            "answer": "Delivery verifies integration into concorde/delivered/" + change_id
+                + " and removes the source unless explicitly retained. A separate merge_primary:true "
+                "request from the primary session is required to update " + primary["branch"] + ".",
             "gaps": [], "checks": [], "artifacts": [], "completed_capabilities": [],
         })
     with repository_lock(root):
         receipt_file = checked_path(root, relative)
         receipt = decode(read_file(root, relative).decode()) if receipt_file.exists() else None
+        if receipt is not None and (receipt.get("schema_version") != 1 or receipt.get("change_id") != change_id):
+            raise SpecError("delivery receipt has an invalid identity", "invalid_delivery")
+        if task.get("merge_primary"):
+            if receipt is None:
+                raise SpecError("stage this change before requesting its primary merge", "delivery_required")
+            return _merge_primary(host, receipt)
+        keep_worktree = task.get("keep_worktree", receipt.get("retained_worktree", False) if receipt else False)
         if receipt is not None:
-            if receipt.get("schema_version") != 1 or receipt.get("change_id") != change_id:
-                raise SpecError("delivery receipt has an invalid identity", "invalid_delivery")
             if _is_ancestor(root, receipt["merged_commit"], "refs/heads/" + receipt["target_branch"]):
-                complete = _cleanup(host, receipt, keep_worktree=task.get("keep_worktree", receipt.get("retained_worktree", False)))
+                # Persist an explicit retention change before cleanup can be interrupted.
+                receipt["retained_worktree"] = keep_worktree
+                _write_json(root, relative, receipt)
+                complete = _cleanup(host, receipt, keep_worktree=keep_worktree)
                 return _response(root, receipt, complete)
 
         inventory = _inventory(root, persist=True)
@@ -222,7 +238,10 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
         retry = state["status"] == "blocked" and state["phase"] == "deliver"
         if (state["status"] not in {"ready", "delivering"} and not retry) or not state["validated_tree"]:
             raise SpecError("the change worktree has not reached a verified ready state", "incomplete_change")
-        _primary_clean(root)
+        target_branch = "concorde/delivered/" + change_id
+        target_ref = "refs/heads/" + target_branch
+        if git(root, "show-ref", "--verify", "--quiet", target_ref, check=False).returncode == 0:
+            raise SpecError("delivery branch already exists without an accepted receipt", "stale_delivery")
         actual_tree = snapshot_tree(source, state)
         if actual_tree != state["validated_tree"]:
             raise SpecError("candidate files changed after validation", "stale_evidence")
@@ -261,45 +280,106 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
             _, current = workspace_identity(root)
             if current["branch"] != primary["branch"] or current["head"] != target_head:
                 raise SpecError("primary branch changed during delivery", "stale_delivery")
-            _primary_clean(root)
             receipt = {"schema_version": 1, "change_id": change_id, "status": "merging",
                 "target_id": state["target_id"], "focus_id": state["focus_id"],
                 "source_worktree": str(source), "source_branch": source_branch,
                 "candidate_commit": candidate, "candidate_tree": actual_tree,
-                "target_branch": current["branch"], "target_before": target_head,
+                "target_branch": target_branch, "target_before": target_head,
+                "primary_branch": current["branch"], "primary_merge": None,
                 "merged_commit": merged, "merged_tree": merged_tree,
                 "task": state["task"], "constraints": state["constraints"],
                 "targets": copy.deepcopy(state["targets"]), "checks": checks,
-                "cleanup_error": None}
+                "cleanup_error": None, "retained_worktree": keep_worktree}
             # A durable receipt precedes either ref update, so a restarted primary
             # session can distinguish an unmerged candidate from pending cleanup.
             _write_json(root, relative, receipt)
             git(source, "update-ref", "refs/heads/" + source_branch, candidate, source_head)
             # A retained source must not have an index staging the inverse of its new HEAD.
             git(source, "read-tree", candidate)
-            git(root, "merge", "--ff-only", "--no-edit", merged)
+            if any(item["branch"] == target_branch for item in list_worktrees(root)):
+                raise SpecError("delivery branch is checked out in a worktree", "stale_delivery")
+            git(root, "update-ref", target_ref, merged, "0" * len(merged))
             receipt["status"] = "cleanup_pending"
             _write_json(root, relative, receipt)
         except Exception:
-            if receipt is None or not _is_ancestor(root, receipt["merged_commit"], "HEAD"):
+            if receipt is None or not _is_ancestor(root, receipt["merged_commit"], target_ref):
                 state.update(phase="deliver", status="blocked", outcome="failed")
                 save_change(source, state, publish=False, locked=True)
                 _inventory(root, persist=True)
             raise
-        complete = _cleanup(host, receipt, keep_worktree=task.get("keep_worktree", receipt.get("retained_worktree", False)))
+        complete = _cleanup(host, receipt, keep_worktree=keep_worktree)
         return _response(root, receipt, complete)
+
+
+def _merge_primary(host, receipt: dict) -> dict:
+    """Only the primary owner may promote an already staged change, under the repository lock."""
+    root = host.project_root
+    change_id = receipt.get("change_id", "")
+    relative = _receipt_path(change_id)
+    if (receipt.get("schema_version") != 1
+            or receipt.get("target_branch") != "concorde/delivered/" + change_id
+            or not receipt.get("primary_branch")):
+        raise SpecError("primary merge requires a staged delivery receipt", "invalid_delivery")
+    primary, _ = workspace_identity(root)
+    if primary["branch"] != receipt["primary_branch"]:
+        raise SpecError("primary branch differs from the recorded delivery destination", "stale_delivery")
+    promotion = receipt.get("primary_merge")
+    if promotion and _is_ancestor(root, promotion["commit"], "HEAD"):
+        promotion["status"] = "merged"
+        _write_json(root, relative, receipt)
+        return _response(root, receipt, receipt["status"] == "delivered")
+    if promotion and promotion["status"] == "merged":
+        raise SpecError("the primary merge is no longer on its recorded branch", "stale_delivery")
+    if receipt["status"] != "delivered":
+        raise SpecError("finish delivery cleanup before requesting the primary merge", "delivery_required")
+    target_ref = "refs/heads/" + receipt["target_branch"]
+    if git_value(root, "rev-parse", target_ref) != receipt["merged_commit"]:
+        raise SpecError("the staged branch changed after verification", "stale_delivery")
+    _primary_clean(root)
+    before = primary["head"]
+    candidate = receipt["merged_commit"]
+    if _is_ancestor(root, candidate, before):
+        merged, tree = before, git_value(root, "rev-parse", "HEAD^{tree}")
+    elif _is_ancestor(root, before, candidate):
+        merged, tree = candidate, receipt["merged_tree"]
+    else:
+        result = git(root, "merge-tree", "--write-tree", before, candidate, check=False)
+        if result.returncode:
+            raise SpecError("delivered branch conflicts with the primary branch; preserve it and "
+                            "resolve in a new change worktree before delivery", "merge_conflict")
+        tree = result.stdout.splitlines()[0]
+        merged = _commit(root, tree, (before, candidate), "Merge delivered " + change_id)
+    checks = _verify_merged_tree(host, merged, tree, change_id, phase="primary")
+    current, _ = workspace_identity(root)
+    if current["branch"] != primary["branch"] or current["head"] != before:
+        raise SpecError("primary branch changed during merge verification", "stale_delivery")
+    if git_value(root, "rev-parse", target_ref) != candidate:
+        raise SpecError("staged branch changed during merge verification", "stale_delivery")
+    _primary_clean(root)
+    receipt["primary_merge"] = {"status": "merging", "branch": primary["branch"],
+                                "before": before, "commit": merged, "tree": tree, "checks": checks}
+    _write_json(root, relative, receipt)
+    git(root, "merge", "--ff-only", "--no-edit", merged)
+    receipt["primary_merge"]["status"] = "merged"
+    _write_json(root, relative, receipt)
+    return _response(root, receipt, True)
 
 
 def _response(root: Path, receipt: dict, complete: bool) -> dict:
     answer = ("Merged the verified change into " + receipt["target_branch"]
               + (" and retained its source worktree." if complete and receipt.get("retained_worktree") else
                  " and removed its temporary worktree and local state." if complete else
-                 "; worktree cleanup is pending. Retry deliver from either participating session."))
+                 "; worktree cleanup is pending. Retry deliver from a participating session."))
+    promotion = receipt.get("primary_merge") or {}
+    if promotion.get("status") == "merged":
+        answer += " Explicitly merged into primary branch " + receipt["primary_merge"]["branch"] + "."
+    elif receipt.get("primary_branch"):
+        answer += " The primary branch is unchanged; its owning session must receive an explicit merge request."
     return typed("concorde-deliver-response", {
         "target_id": receipt["target_id"], "focus_id": receipt["focus_id"],
         "change_id": receipt["change_id"], "context_id": None,
         "outcome": "delivered" if complete else "failed", "answer": answer,
-        "gaps": [], "checks": receipt["checks"],
+        "gaps": [], "checks": promotion.get("checks", receipt["checks"]),
         "artifacts": [artifact(root, "delivery", _receipt_path(receipt["change_id"]))],
         "completed_capabilities": ["concorde-deliver"] if complete else [],
     })

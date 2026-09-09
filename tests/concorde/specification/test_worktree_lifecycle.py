@@ -5,6 +5,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+from concurrent.futures import ThreadPoolExecutor
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -58,6 +60,17 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("ready", state["status"])
         self.assertFalse((self.change / ".concorde/attempts").exists())
         return state["change_id"]
+
+    def ready_delivery(self):
+        """A directly validated candidate for tests focused on Git delivery transactions."""
+        (self.change / "app/transfer.py").write_text(
+            'def transfer(balance, amount):\n'
+            '    if amount <= 0 or amount > balance: raise ValueError("invalid transfer")\n'
+            '    return balance - amount\n')
+        result = self.run_op(self.change, "concorde-validate", self.task)
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("ready", result["output"]["data"]["outcome"], result)
+        return read_change(self.change, required=True)["change_id"]
 
     def test_main_sees_primary_inventory_and_secondary_draft_identity(self):
         result = self.run_op(self.change, "concorde-main", {"task": "Explain transfer"})
@@ -227,22 +240,210 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(state["change_id"], read_change(self.change)["change_id"])
         self.assertTrue(self.change.exists())
 
-    def test_source_delivery_retains_active_worktree_and_retry_does_not_merge_twice(self):
+    def test_source_delivery_removes_active_worktree_and_retry_does_not_republish(self):
         change_id = self.ready()
+        before = git_value(self.primary, "rev-parse", "HEAD")
         result = self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
         self.assertEqual("succeeded", result["status"], result)
-        self.assertTrue(self.change.exists())
-        self.assertEqual("delivered", read_change(self.change)["status"])
-        self.assertEqual("", git_value(self.change, "diff", "--cached", "--name-only"))
+        self.assertFalse(self.change.exists())
+        branch = "concorde/delivered/" + change_id
+        delivered = git_value(self.primary, "rev-parse", branch)
+        with patch.object(worktree_delivery, "_verify_merged_tree", side_effect=AssertionError("duplicate checks")):
+            again = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id})
+        self.assertEqual("succeeded", again["status"], again)
+        self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
+        self.assertEqual(delivered, git_value(self.primary, "rev-parse", branch))
+        self.assertIn(branch, again["output"]["data"]["answer"])
+
+    def test_primary_merge_requires_separate_delivery_and_primary_session(self):
+        change_id = self.ready_delivery()
+        request = {"change_id": change_id, "merge_primary": True}
+        result = self.run_op(self.change, "concorde-deliver", request)
+        self.assertEqual("primary_session_required", result["errors"][0]["code"], result)
+        result = self.run_op(self.primary, "concorde-deliver", request)
+        self.assertEqual("delivery_required", result["errors"][0]["code"], result)
+        staged = self.run_op(self.change, "concorde-deliver", {"change_id": change_id, "keep_worktree": True})
+        self.assertEqual("succeeded", staged["status"], staged)
+        result = self.run_op(self.change, "concorde-deliver", request)
+        self.assertEqual("primary_session_required", result["errors"][0]["code"], result)
+        redirected = CapabilityHost(self.primary, PACKAGE, session_root=self.change)
+        result = self.run_op(self.primary, "concorde-deliver", request, host=redirected)
+        self.assertEqual("primary_session_required", result["errors"][0]["code"], result)
+        merged = self.run_op(self.primary, "concorde-deliver", request)
+        self.assertEqual("succeeded", merged["status"], merged)
         head = git_value(self.primary, "rev-parse", "HEAD")
-        again = self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
+        with patch.object(worktree_delivery, "_verify_merged_tree", side_effect=AssertionError("duplicate merge checks")):
+            again = self.run_op(self.primary, "concorde-deliver", request)
         self.assertEqual("succeeded", again["status"], again)
         self.assertEqual(head, git_value(self.primary, "rev-parse", "HEAD"))
+
+    def test_explicit_retention_survives_interrupted_initial_cleanup(self):
+        change_id = self.ready_delivery()
+        before = git_value(self.primary, "rev-parse", "HEAD")
+        with patch.object(worktree_delivery, "_cleanup", side_effect=OSError("interrupted cleanup")):
+            result = self.run_op(self.change, "concorde-deliver",
+                                 {"change_id": change_id, "keep_worktree": True})
+        self.assertEqual("failed", result["status"], result)
+        again = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id})
+        self.assertEqual("succeeded", again["status"], again)
+        self.assertTrue(self.change.exists())
         self.assertIn("retained", again["output"]["data"]["answer"])
-        cleaned = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id, "keep_worktree": False})
-        self.assertEqual("succeeded", cleaned["status"], cleaned)
+        self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
+
+    def test_cleanup_retry_persists_a_changed_retention_choice_before_cleanup(self):
+        change_id = self.ready_delivery()
+        with patch.object(worktree_delivery, "_cleanup", side_effect=OSError("interrupted cleanup")):
+            result = self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
+            self.assertEqual("failed", result["status"], result)
+            result = self.run_op(self.primary, "concorde-deliver",
+                                 {"change_id": change_id, "keep_worktree": True})
+        self.assertEqual("failed", result["status"], result)
+        again = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id})
+        self.assertEqual("succeeded", again["status"], again)
+        self.assertTrue(self.change.exists())
+        removed = self.run_op(self.primary, "concorde-deliver",
+                              {"change_id": change_id, "keep_worktree": False})
+        self.assertEqual("succeeded", removed["status"], removed)
         self.assertFalse(self.change.exists())
-        self.assertEqual(head, git_value(self.primary, "rev-parse", "HEAD"))
+
+    def test_independent_deliveries_do_not_update_each_other_or_primary(self):
+        before = git_value(self.primary, "rev-parse", "HEAD")
+        first_id = self.ready_delivery()
+        first = self.run_op(self.change, "concorde-deliver", {"change_id": first_id})
+        self.assertEqual("succeeded", first["status"], first)
+        first_branch = "concorde/delivered/" + first_id
+        first_head = git_value(self.primary, "rev-parse", first_branch)
+        self.change = self.directory / "second-change"
+        git(self.primary, "worktree", "add", "-b", "second-candidate", str(self.change))
+        second_id = self.ready_delivery()
+        second = self.run_op(self.change, "concorde-deliver", {"change_id": second_id})
+        self.assertEqual("succeeded", second["status"], second)
+        self.assertNotEqual(first_id, second_id)
+        self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
+        self.assertEqual(first_head, git_value(self.primary, "rev-parse", first_branch))
+        self.assertTrue(git_value(self.primary, "rev-parse", "concorde/delivered/" + second_id))
+        start = threading.Barrier(2)
+        checking = threading.Lock()
+        verify = worktree_delivery._verify_merged_tree
+        def checked(*args, **kwargs):
+            self.assertTrue(checking.acquire(blocking=False), "overlapping primary merge checks")
+            try:
+                return verify(*args, **kwargs)
+            finally:
+                checking.release()
+        def promote(change_id):
+            start.wait(timeout=10)
+            return run_capability("concorde-deliver", CONFIGURATION,
+                typed("concorde-deliver-request", {"change_id": change_id, "merge_primary": True}),
+                host_context=CapabilityHost(self.primary, PACKAGE))
+        with patch.object(worktree_delivery, "_verify_merged_tree", side_effect=checked):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                results = list(pool.map(promote, (first_id, second_id)))
+        for merged in results:
+            self.assertEqual("succeeded", merged["status"], merged)
+        for change_id in (first_id, second_id):
+            branch = "concorde/delivered/" + change_id
+            self.assertEqual(0, git(self.primary, "merge-base", "--is-ancestor", branch, "HEAD", check=False).returncode)
+
+    def test_legacy_delivery_receipt_does_not_claim_primary_was_unchanged(self):
+        change_id = self.ready_delivery()
+        self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
+        merged = self.run_op(self.primary, "concorde-deliver",
+                             {"change_id": change_id, "merge_primary": True})
+        self.assertEqual("succeeded", merged["status"], merged)
+        path = self.primary / merged["output"]["data"]["artifacts"][0]["path"]
+        receipt = json.loads(path.read_text())
+        receipt["target_branch"] = receipt.pop("primary_branch")
+        receipt.pop("primary_merge")
+        path.write_text(json.dumps(receipt))
+        before = git_value(self.primary, "rev-parse", "HEAD")
+        again = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id})
+        self.assertEqual("succeeded", again["status"], again)
+        self.assertIn("into integration", again["output"]["data"]["answer"])
+        self.assertNotIn("primary branch is unchanged", again["output"]["data"]["answer"])
+        self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
+
+    def test_primary_merge_checks_latest_integration_and_preserves_delivery_on_failure(self):
+        change_id = self.ready_delivery()
+        staged = self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
+        self.assertEqual("succeeded", staged["status"], staged)
+        path = self.primary / "checks/transfer_check.py"
+        path.write_text(path.read_text() + '\nassert transfer(100, 20) == 40\n')
+        advanced = self.commit(self.primary, "Changed acceptance after delivery")
+        result = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id, "merge_primary": True})
+        self.assertEqual("failed_merge_checks", result["errors"][0]["code"], result)
+        self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
+        self.assertTrue(git_value(self.primary, "rev-parse", "concorde/delivered/" + change_id))
+
+    def test_final_merge_conflict_preserves_primary_and_delivered_branch(self):
+        (self.change / "shared.txt").write_text("candidate\n")
+        change_id = self.ready_delivery()
+        staged = self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
+        self.assertEqual("succeeded", staged["status"], staged)
+        (self.primary / "shared.txt").write_text("primary\n")
+        before = self.commit(self.primary, "Conflicting change after delivery")
+        result = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id, "merge_primary": True})
+        self.assertEqual("merge_conflict", result["errors"][0]["code"], result)
+        self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
+        self.assertEqual("candidate", git_value(self.primary, "show", "concorde/delivered/" + change_id + ":shared.txt"))
+        self.assertEqual("", git_value(self.primary, "status", "--porcelain"))
+
+    def test_delivery_does_not_overwrite_an_existing_branch(self):
+        change_id = self.ready_delivery()
+        branch = "concorde/delivered/" + change_id
+        git(self.primary, "branch", branch)
+        before = git_value(self.primary, "rev-parse", branch)
+        result = self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
+        self.assertEqual("stale_delivery", result["errors"][0]["code"], result)
+        self.assertEqual(before, git_value(self.primary, "rev-parse", branch))
+        self.assertTrue(self.change.exists())
+
+    def test_primary_merge_preview_after_source_removal_is_read_only(self):
+        change_id = self.ready_delivery()
+        result = self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
+        self.assertEqual("succeeded", result["status"], result)
+        path = self.primary / result["output"]["data"]["artifacts"][0]["path"]
+        receipt = path.read_bytes()
+        before = git_value(self.primary, "rev-parse", "HEAD")
+        result = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id, "merge_primary": True},
+                             mode="describe-policy")
+        self.assertEqual("described", result["status"], result)
+        self.assertEqual(receipt, path.read_bytes())
+        self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
+
+    def test_changed_delivery_ref_blocks_final_merge(self):
+        change_id = self.ready_delivery()
+        result = self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
+        self.assertEqual("succeeded", result["status"], result)
+        branch = "concorde/delivered/" + change_id
+        git(self.primary, "update-ref", "refs/heads/" + branch, "HEAD")
+        before = git_value(self.primary, "rev-parse", "HEAD")
+        result = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id, "merge_primary": True})
+        self.assertEqual("stale_delivery", result["errors"][0]["code"], result)
+        self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
+
+    def test_primary_merge_recovers_receipt_after_update_without_merging_again(self):
+        change_id = self.ready_delivery()
+        staged = self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
+        self.assertEqual("succeeded", staged["status"], staged)
+        write = worktree_delivery._write_json
+        def interrupted(root, relative, receipt):
+            if (receipt.get("primary_merge") or {}).get("status") == "merged":
+                raise OSError("interrupted after primary ref update")
+            return write(root, relative, receipt)
+        request = {"change_id": change_id, "merge_primary": True}
+        with patch.object(worktree_delivery, "_write_json", side_effect=interrupted):
+            result = self.run_op(self.primary, "concorde-deliver", request)
+        self.assertEqual("failed", result["status"], result)
+        merged = git_value(self.primary, "rev-parse", "HEAD")
+        with patch.object(worktree_delivery, "_verify_merged_tree", side_effect=AssertionError("duplicate checks")):
+            again = self.run_op(self.primary, "concorde-deliver", request)
+        self.assertEqual("succeeded", again["status"], again)
+        self.assertEqual(merged, git_value(self.primary, "rev-parse", "HEAD"))
+        receipt = json.loads((self.primary / again["output"]["data"]["artifacts"][0]["path"]).read_text())
+        self.assertEqual("merged", receipt["primary_merge"]["status"])
+        self.assertTrue((self.primary / ".concorde/deliveries" / change_id / "staging").is_dir())
+        self.assertTrue((self.primary / ".concorde/deliveries" / change_id / "primary").is_dir())
 
     def test_third_worktree_redirected_runtime_and_nested_delivery_are_rejected(self):
         change_id = self.ready()
@@ -279,15 +480,15 @@ class WorktreeLifecycleTests(unittest.TestCase):
                                    text=True, cwd=self.change)
         self.assertEqual(0, secondary.returncode, secondary.stdout + secondary.stderr)
         self.assertEqual("delivered", json.loads(secondary.stdout)["output"]["data"]["outcome"])
-        self.assertTrue(self.change.exists())
-        invocation["input"]["data"]["keep_worktree"] = False
+        self.assertFalse(self.change.exists())
+        invocation["input"]["data"]["merge_primary"] = True
         primary = subprocess.run(command, input=json.dumps(invocation), capture_output=True,
                                  text=True, cwd=self.primary)
         self.assertEqual(0, primary.returncode, primary.stdout + primary.stderr)
         self.assertEqual("delivered", json.loads(primary.stdout)["output"]["data"]["outcome"])
         self.assertFalse(self.change.exists())
 
-    def test_primary_delivery_merges_non_main_branch_and_removes_only_transient_guidance(self):
+    def test_primary_delivery_stages_separate_branch_and_removes_only_transient_guidance(self):
         original = (self.primary / "AGENTS.md").read_text()
         self.run_op(self.change, "concorde-main", {"task": "Explain transfer"})
         path = self.change / "AGENTS.md"
@@ -298,18 +499,23 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("delivered", result["output"]["data"]["outcome"])
         self.assertEqual("integration", git_value(self.primary, "branch", "--show-current"))
         self.assertFalse(self.change.exists())
-        self.assertEqual(original + "\nA deliberately authored convention.\n", (self.primary / "AGENTS.md").read_text())
+        self.assertEqual(original, (self.primary / "AGENTS.md").read_text())
+        delivered_branch = "concorde/delivered/" + change_id
+        self.assertEqual(original + "\nA deliberately authored convention.\n",
+                         git(self.primary, "show", delivered_branch + ":AGENTS.md").stdout)
         self.assertFalse((self.primary / "CLAUDE.md").exists())
         self.assertFalse((self.primary / STATE_PATH).exists())
         self.assertEqual([], json.loads((self.primary / REGISTRY_PATH).read_text())["worktrees"])
         self.assertEqual("", git_value(self.primary, "status", "--porcelain"))
-        tracked = git_value(self.primary, "ls-tree", "-r", "--name-only", "HEAD")
+        tracked = git_value(self.primary, "ls-tree", "-r", "--name-only", delivered_branch)
         self.assertNotIn(STATE_PATH, tracked)
         self.assertNotIn(REGISTRY_PATH, tracked)
         self.assertNotIn(".concorde/work/", tracked)
         self.assertNotIn(".concorde/runs/", tracked)
         receipt = json.loads((self.primary / result["output"]["data"]["artifacts"][0]["path"]).read_text())
-        self.assertEqual("integration", receipt["target_branch"])
+        self.assertEqual(delivered_branch, receipt["target_branch"])
+        self.assertEqual("integration", receipt["primary_branch"])
+        self.assertIsNone(receipt["primary_merge"])
         self.assertEqual("delivered", receipt["status"])
         self.assertTrue(all(c["status"] == "passed" for c in receipt["checks"]))
 
@@ -338,7 +544,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertTrue(state["validation"]["checks"])
         result = self.run_op(self.primary, "concorde-deliver", {"change_id": state["change_id"]})
         self.assertEqual("succeeded", result["status"], result)
-        self.assertIn("Clarified directly", (self.primary / "specs/transfer/module.md").read_text())
+        self.assertIn("Clarified directly", git_value(self.primary, "show",
+            "concorde/delivered/" + state["change_id"] + ":specs/transfer/module.md"))
         self.assertFalse(self.change.exists())
 
     def test_validation_does_not_bypass_an_unfinished_authored_plan(self):
@@ -359,11 +566,18 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertTrue((self.change / "late.txt").exists())
         (self.change / "late.txt").unlink()
         (self.primary / "local.txt").write_text("Primary user work\n")
+        (self.primary / "shared.txt").write_text("Staged primary work\n")
+        git(self.primary, "add", "shared.txt")
+        index_before = git_value(self.primary, "diff", "--cached", "--binary")
         result = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id})
+        self.assertEqual("succeeded", result["status"], result)
+        result = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id, "merge_primary": True})
         self.assertEqual("dirty_primary", result["errors"][0]["code"], result)
         self.assertEqual("Primary user work\n", (self.primary / "local.txt").read_text())
+        self.assertEqual("Staged primary work\n", (self.primary / "shared.txt").read_text())
+        self.assertEqual(index_before, git_value(self.primary, "diff", "--cached", "--binary"))
         self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
-        self.assertTrue(self.change.exists())
+        self.assertFalse(self.change.exists())
 
     def test_primary_can_advance_before_a_clean_verified_merge(self):
         change_id = self.ready()
@@ -372,7 +586,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         result = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id})
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("Accepted independent change\n", (self.primary / "another.txt").read_text())
-        self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD^1"))
+        self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
+        self.assertEqual(advanced, git_value(self.primary, "rev-parse", "concorde/delivered/" + change_id + "^1"))
 
     def test_merge_conflict_does_not_change_primary_or_discard_candidate(self):
         (self.change / "shared.txt").write_text("candidate\n")
@@ -390,7 +605,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         from concorde.host.build import verify_fresh
         fixture_report=validate_repository(self.primary,package_root=PACKAGE)
         self.assertEqual(fixture_report.status,'success')
-        for directory in ('prompts','skills','agents'):
+        for directory in ('prompts','skills','agents','protocol'):
             shutil.copytree(PACKAGE/directory,self.primary/directory)
         (self.primary/'concorde.json').write_text('{}')
         (self.primary/'app/transfer.py').write_text(

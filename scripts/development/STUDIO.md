@@ -148,8 +148,11 @@ original CLI exits with code 3; resuming it does not retroactively deliver a new
 
 Worktree handoff, change ownership, delivery authorization and native completion receipts continue
 to apply. A `concorde-deliver` server session may belong to either the selected source or destination
-worktree; unrelated third-worktree and nested delivery remain rejected. It retains the source when
-that worktree hosts the session or `keep_worktree:true` is requested. The Studio client still checks
+worktree; unrelated third-worktree and nested delivery remain rejected. Default delivery creates
+`concorde/delivered/<change_id>` and removes the source unless `keep_worktree:true` is explicitly
+requested. End the source session after removal. Only an explicitly user-authorized separate
+`merge_primary:true` request from the sole primary writer updates the primary branch, under the
+repository lock and with current integration checks. The Studio client still checks
 its caller against the server's bound workspace; third-worktree forwarding cannot impersonate a
 participating session. A primary-worktree mutation can prepare a worktree and return a handoff; it
 cannot continue development there through this server. Run each server with its own checkout's authority.

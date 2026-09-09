@@ -21,9 +21,12 @@ require the separate target readers.
 
 Delivery may be requested from an agent opened in either the selected source or destination
 worktree. Third-worktree and nested delivery remain forbidden. Development loops end at ready; the
-delivery host verifies the candidate and integration before merging into the primary worktree's
-checked-out branch. Retain the source if it owns the active session or `keep_worktree:true` is
-requested.
+delivery host verifies integration, creates an independent `concorde/delivered/<change_id>` branch,
+and removes the source unless `keep_worktree:true` is explicitly requested. The source session
+ends after removal. Default delivery never advances the primary worktree's checked-out branch.
+Only an explicit user request authorizes a separate `merge_primary:true` request from the primary
+worktree's sole writing agent. Other agents use linked worktrees. The host serializes final merges
+and shared lifecycle writes with the repository lock and checks the latest integration.
 
 During a `route` phase, understand the user's task and either request one or more additional
 registered Module target IDs in `expand_targets` when their Specs are needed to decide

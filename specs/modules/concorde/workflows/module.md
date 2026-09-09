@@ -70,7 +70,7 @@ For a change to identities, composition, dependencies, membership or realization
 
 ### feature.workflows.deliver
 
-For an authorized ready change selected by change_id, verify the source and destination participation, candidate evidence and actual integration before updating the destination branch. Preserve local edits and retain the source when requested or when it owns the active session. Record a completed merge separately from pending cleanup so cleanup retries do not merge twice.
+For an authorized ready change selected by change_id, verify participation, candidate evidence and actual integration, publish an independent concorde/delivered/<change_id> branch and remove the source unless explicitly retained. Default delivery preserves the primary branch, index and project files. Only a separate explicitly user-authorized merge_primary:true request from the primary owning session may merge into its checked-out branch after current integration checks. One agent owns primary writes; repository locking serializes shared lifecycle writes and final merges. Record branch delivery, cleanup and primary merging separately for safe retries.
 
 ## Interfaces
 

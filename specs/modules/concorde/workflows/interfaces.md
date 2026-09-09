@@ -61,7 +61,11 @@ draft labels that lifetime explicitly. Unavailable conversation facts are marked
 outer session to complete/localize; these drafts are never admitted as worker context or authority.
 Host administrators may explicitly permit
 standalone development for controlled embedding. Delivery separately requires a session in its
-selected source or destination worktree; third-worktree and nested sessions are rejected.
+selected source or primary worktree; third-worktree and nested sessions are rejected. Default
+delivery publishes a per-change branch and removes the source worktree unless explicitly retained.
+Final primary merging is a separate merge_primary:true request requiring explicit user authorization
+and the primary owning session. Only one agent owns primary writes; the host serializes shared
+lifecycle writes and final merges with the repository lock.
 
 The host resolves the complete selected Target Spec plus one-hop Shared Specs and Protocol/kind definition for every stage.
 Spec-only agents, including Spec reviewers, start in a private capsule containing only frozen input.
@@ -218,7 +222,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | `concorde-init-request@1` / `concorde-init-response@1` | init | Requires only `action` (propose\|apply); adds optional `name`, `target_id`, `configuration` and `proposal` (a `concorde-project-proposal@1` TypedValue). Response replaces the common shape with `status` (proposed\|applied), a nullable `proposal` and `files`. |
 | `concorde-configure-request@1` / `concorde-configure-response@1` | configure | Requires `configuration`. Response requires `configuration` and `status: "applied"`; the only capability whose response does not use the common stage shape. |
 | `concorde-validate-request@1` / `concorde-validate-response@1` | validate | Requires `target_id` and `task`; adds optional `run_checks`. Response is the common shape only. |
-| `concorde-deliver-request@1` / `concorde-deliver-response@1` | deliver | Requires only `change_id`; adds optional `target_id`, `task`, `focus_id`, `constraints` and `keep_worktree`. Response is the common shape only. |
+| `concorde-deliver-request@1` / `concorde-deliver-response@1` | deliver | Requires only `change_id`; adds optional `target_id`, `task`, `focus_id`, `constraints`, `keep_worktree` and `merge_primary`. Response is the common shape only. |
 | `concorde-specify-request@1` / `concorde-specify-response@1` | specify (stage) | Requires `target_id` and `task`. Response is the common shape only. |
 | `concorde-review-request@1` / `concorde-review-response@1` | review (stage) | Requires `task` and `review_mode` (spec\|code); `target_id` is optional at the wire level but always supplied by the composing capability. Response adds `reviews` (`concorde-review-result@1` TypedValues). |
 | `concorde-context-solve-request@1` / `concorde-context-solve-response@1` | context-solve (stage) | Requires `target_id` and `task`. Response is the common shape only. |
@@ -293,9 +297,11 @@ invocation envelope, and every exported identity appears here at least once with
 | `context_limit` | Main discovery exceeded its bounded expansion-step limit. |
 | `delivery_in_progress` | The candidate is already being delivered; resume delivery from either participating worktree instead of starting a new mutation. |
 | `delivery_session_required` | The current session is not recognized as the change's selected source or destination worktree. |
+| `primary_session_required` | Final primary merging requires the primary owning outer session. |
+| `delivery_required` | Final primary merging requires a completed staged delivery; finish staging or cleanup first. |
 | `detached_primary` | The destination (primary) worktree has no attached branch to deliver onto. |
 | `detached_worktree` | A change worktree has no attached branch. |
-| `dirty_primary` | The primary worktree has uncommitted local changes that delivery must preserve rather than discard. |
+| `dirty_primary` | Final primary merging is blocked by local changes; default branch delivery preserves them and may proceed. |
 | `execution_cancelled` | `run_capability` caught a `CapabilityExecutionError` with `outcome == "cancelled"`; the change status becomes `cancelled` and the candidate is preserved. |
 | `execution_limit` | `run_capability` caught a `CapabilityExecutionError` with `outcome == "limit_exhausted"`; the change status becomes `limit_exhausted` and the candidate is preserved. |
 | `failed_merge_checks` | The verified merge of the candidate into the destination branch failed its configured checks. |
@@ -317,7 +323,7 @@ invocation envelope, and every exported identity appears here at least once with
 | `invalid_worktree_state` | `.concorde/worktree.json` has an invalid identity or schema. |
 | `legacy_attempt` | The worktree still carries an unsupported legacy `.concorde/attempts/` state that must be removed before it can be adopted. |
 | `limit_exhausted` | `CapabilityExecutionError.outcome` when the injected runner raised `subprocess.TimeoutExpired`; the host maps this to the `execution_limit` result error code. |
-| `merge_conflict` | The candidate conflicts with the current destination branch; resolve it in the candidate's own worktree and revalidate. |
+| `merge_conflict` | Integration conflicts with the primary branch. Resolve and revalidate in the candidate worktree, or a new candidate if delivery already removed the source. |
 | `missing_change` | Task authoring was requested without a managed change. |
 | `missing_plan` | Task authoring was requested without an authored plan. |
 | `missing_tasks` | Implementation was requested without authored tasks. |

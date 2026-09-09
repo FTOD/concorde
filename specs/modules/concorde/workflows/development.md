@@ -28,7 +28,7 @@ Kind: `mermaid`. Title: **Development, repair and separately authorized delivery
 ```mermaid
 stateDiagram-v2
   accTitle: Development, repair and separately authorized delivery
-  accDescr: Development reaches Ready after current checks and configured reviews. Contract gaps wait for a Spec revision, code defects select bounded repair, and delivery is a separate authorized operation.
+  accDescr: Development reaches Ready after current checks and configured reviews. Contract gaps wait for a Spec revision and code defects select bounded repair. Separate delivery stages a branch; merging it into the primary branch requires another explicit request.
   [*] --> Specified
   Specified --> SpecReviewed: independent Spec review
   SpecReviewed --> Gap: necessary contract missing
@@ -41,9 +41,11 @@ stateDiagram-v2
   Checked --> CodeReviewed: independent code review
   CodeReviewed --> Ready: required evidence current and no blockers
   CodeReviewed --> Tasks: code defect needs repair
-  Ready --> Delivered: separately authorized delivery verifies and merges
+  Ready --> Delivered: separate delivery verifies and stages a branch
+  Delivered --> PrimaryMerged: explicit primary-session merge request
   Implemented --> Tasks: failure needs implementation work
   Delivered --> [*]
+  PrimaryMerged --> [*]
 ```
 
 
