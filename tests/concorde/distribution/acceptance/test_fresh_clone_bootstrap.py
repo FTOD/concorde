@@ -89,12 +89,14 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
             self.assertEqual(sorted(SKILL_NAMES), skills)
             self.assertEqual(7, len(skills))
 
-        verified = _run([
-            sys.executable, "scripts/concorde.py", "verify-worktree",
-            "--project-root", ".", "--loaded-skill-path",
-            str(self.clone / ".claude/skills/concorde-main/SKILL.md"),
-        ], self.clone)
-        self.assertEqual(0, verified.returncode, verified.stderr)
+        # The clone carries the worktree guard and the Claude/Codex files that register it, so a
+        # session opened here refuses native worktree creation from its first tool call.
+        refused = _run([sys.executable, "scripts/worktree-guard.py", "--check",
+                        "git worktree add ../elsewhere"], self.clone)
+        self.assertEqual(2, refused.returncode, refused.stderr)
+        self.assertTrue(refused.stdout.startswith("deny (git-worktree)"), refused.stdout)
+        for integration_file in (".claude/settings.json", ".codex/hooks.json", ".codex/rules/worktree.rules"):
+            self.assertTrue((self.clone / integration_file).is_file(), integration_file)
 
         described = self._validate_invocation()
         self.assertEqual("described", described["status"], described)

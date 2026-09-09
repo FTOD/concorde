@@ -7,8 +7,9 @@ Studio is an optional development interface; ordinary CLI and Skill calls need n
 
 ## Start a server in this source worktree
 
-Use Python 3.11 or newer and run these commands from the intended Concorde checkout. Follow its
-`AGENTS.md` worktree-affinity check first when working through an agent.
+Use Python 3.11 or newer and run these commands from the intended Concorde checkout. When working
+through an agent, follow its `AGENTS.md` worktree ownership policy: the session stays in the
+worktree that supplied its Skills and never creates another worktree itself.
 
 ```bash
 uv sync --locked --group studio

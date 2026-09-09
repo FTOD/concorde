@@ -14,50 +14,42 @@ Concorde's own Specs under `specs/` MUST use English, including diagram labels, 
 relationship text and viewer locale. This is a Concorde project convention, not a requirement of
 the Concorde Spec Protocol; it does not prescribe the language of consumer projects or conversations.
 
-## Worktree affinity
+## Worktree ownership
 
-Before project work, identify one absolute project-local `concorde-*` `SKILL.md` path advertised by
-the agent runtime. Run the following command from the worktree that the task would read or change,
-passing that exact advertised path rather than reconstructing it from the current directory:
+A session works in the worktree that supplied its Skills and never creates, moves or enters
+another worktree itself. Worktrees for changes are created only by the Concorde host: invoke a
+Concorde capability (for example `concorde-dev-loop`), let the host prepare the candidate worktree
+from the committed base, and continue there in a fresh session under P10. That successor session
+starts with the target worktree as its initial working directory, fresh context and that worktree's
+own Skills; changing cwd or spawning a native subagent that inherits this conversation or its Skill
+bodies does not satisfy the handoff. Never switch the current worktree in place to another branch
+or revision to avoid a handoff; a new target revision belongs in a host-created linked worktree
+with its own agent session.
 
-```bash
-python3 scripts/concorde.py verify-worktree \
-  --project-root . \
-  --loaded-skill-path <absolute-runtime-advertised-SKILL.md-path>
-```
+This checkout enforces the rule in the agent runtimes, so it does not depend on an agent
+remembering it. Claude Code reads `.claude/settings.json`, which denies the `EnterWorktree` tool,
+subagents with `isolation: "worktree"`, and shell commands that run `git worktree add`,
+`git worktree move` or `claude --worktree`; its `PreToolUse` and `WorktreeCreate` hooks run
+`scripts/worktree-guard.py`, which also refuses the forms a permission rule cannot express and
+aborts every native worktree creation, `claude --worktree` at startup included. Codex reads
+`.codex/rules/worktree.rules`, which forbids `git worktree add` and `git worktree move`, and
+`.codex/hooks.json`, which runs the same guard before each shell command; Codex loads both only for
+a trusted project and runs the hook only after you reviewed it once with `/hooks`. Both runtimes
+apply these rules to native subagents as well. The guard inspects the whole command text, so write
+a file that must mention these commands with the editor tool rather than a shell here-document.
+`python3 scripts/worktree-guard.py --explain` prints the policy; `--check "<command>"` decides one
+command.
 
-Repeat the check for every distinct worktree represented by project-local Concorde Skill paths
-retained in the conversation; one representative path per owning worktree is sufficient. Every
-check must pass.
-
-If the runtime exposes no absolute project-local Concorde Skill path, worktree affinity cannot be
-proven; stop project work and hand off to a new session in the intended worktree under P10 instead
-of guessing.
-
-Run it again after any cwd or tool `workdir` change. A result that reports different loaded and
-target worktrees ends project work in this conversation. Tell the user which worktree supplied the
-loaded Skills and initiate a new agent whose initial working directory is the target worktree under
-P10. Do not inspect, plan, test, edit, or invoke a capability in that target worktree
-from the old conversation, and never update the loaded Skill worktree as a substitute. Any other
-nonzero result also stops work unless it reports same-worktree projection drift and the current
-session qualifies for the maintenance recovery below.
-
-An agent may create a requested branch and linked worktree from the authorized committed base, but
-must stop development there in the originating session, report its path and branch, and initiate
-the P10 handoff. Development in it belongs to the new agent. The outer agent starts that session
-automatically by default, with the target worktree as its initial working directory, fresh context,
-and that worktree's own Skills. Changing cwd or spawning a child that inherits the old conversation
-or Skill bodies does not satisfy the handoff. Only when automatic startup is unavailable or these
-conditions cannot be established should it ask the user to open the session manually, providing the
-complete copyable P10 prompt. Stopping development does not prohibit initiating this handoff.
-Never switch the current worktree in place to another branch or revision to avoid this handoff; a
-new target revision belongs in a linked worktree with its own agent session.
+The guard protects developer sessions of this checkout; it is not a sandbox, and it is not
+installed into consumer projects. Concorde's own workers run with project settings ignored and
+never create worktrees themselves. A refusal is a policy result, not a defect to work around: do
+not compute the command at runtime or reach the same effect through another tool.
 
 ## Delivery between participating worktrees
 
 For user-authorized delivery, the agent's initial worktree may be either the selected source
-worktree or the primary worktree. A third-worktree session cannot initiate that delivery. Verify
-Skill affinity against the session-owned worktree as usual. The deterministic host may inspect the
+worktree or the primary worktree. A third-worktree session cannot initiate that delivery. The
+session keeps its own worktree's Skills as usual. The deterministic host may inspect the
 participants and verify integration without moving the session or loading the other participant's
 Skills. These bounded delivery actions are an exception to the cross-worktree handoff above;
 unrelated development and Skill projection maintenance remain bound to the original worktree.
@@ -87,9 +79,9 @@ Outputs under `generated/`, `.claude/skills/concorde-*` and `.agents/skills/conc
 untracked build output, not authoring sources: never directly create, edit, delete, or rename
 them. Make the change in `prompts/`, `skills/` or `capabilities/` and rebuild. The host refuses to
 run any capability on a stale build (error code `stale_build`), verified against
-`generated/build-manifest.json`. A freshly created worktree — including one this host creates for
-a candidate change — must be built once before an agent can load Concorde Skills; `verify-worktree`
-fails closed until it is.
+`generated/build-manifest.json`. A freshly created worktree must be built once before an agent can
+load Concorde Skills; the host builds the worktrees it creates for candidate changes, and any other
+fresh worktree has no Concorde Skills until it is built.
 
 Do not invoke a project-local `concorde-*` Skill to govern a task that changes its own `prompts/`,
 `skills/`, `capabilities/`, or generated Skill surface. If such a Skill body is already loaded as

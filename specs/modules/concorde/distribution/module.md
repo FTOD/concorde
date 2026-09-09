@@ -10,7 +10,7 @@
 
 # Distribution
 
-Build authored projections, install and configure owned integrations, provision the managed runtime and verify a source checkout's own projections.
+Build authored projections, install and configure owned integrations, provision the managed runtime and keep a source checkout's own projections bound to the worktree that built them.
 
 ## Contract identity and context
 
@@ -25,7 +25,7 @@ Authored source: `specs/modules/concorde/distribution/module.md` (the Mermaid fe
 ```mermaid
 flowchart TB
     accTitle: Distribution entities and relationships
-    accDescr: Authored sources form a resolved source graph that the build renders into generated Agents, Skills, rules, schemas and the Studio graph configuration, recorded by a build manifest. A package inventory identifies distributable assets. An installation proposal selects owned replacements and records their preconditions, requires a verified managed runtime, and records accepted ownership in a receipt. A configuration change applies supported integration settings to an initialized project.
+    accDescr: Authored sources form a resolved source graph that the build renders into generated Agents, Skills, rules, schemas and the Studio graph configuration, recorded by a build manifest. A package inventory identifies distributable assets. An installation proposal selects owned replacements and records their preconditions, requires a verified managed runtime, and records accepted ownership in a receipt. A configuration change applies supported integration settings to an initialized project. In the source checkout, a worktree guard refuses native worktree creation in the developer agent session that loads the worktree-owned generated Skills.
     authored["Authored instructions, contracts and Protocol chapters"]
     sourceGraph["Resolved source graph"]
     outputs["Generated Agents, Skills, rules, schemas and graph configuration"]
@@ -36,6 +36,8 @@ flowchart TB
     receipt["Ownership receipt"]
     runtime["Verified managed runtime"]
     configuration["Integration configuration"]
+    session["Developer agent session"]
+    guard["Source-checkout worktree guard"]
     authored -->|contribute to| sourceGraph
     sourceGraph -->|renders| outputs
     manifest -->|binds source and output identities of| sourceGraph
@@ -46,9 +48,11 @@ flowchart TB
     proposal -->|requires| runtime
     proposal -->|records accepted ownership in| receipt
     configuration -->|applied to initialized| target
+    session -->|loads worktree-owned| outputs
+    guard -->|refuses native worktree creation in| session
 ```
 
-The build resolves `@include` graphs from authored Agent responsibilities, Skill instructions, rule adapters and capability contracts and renders deterministic outputs whose freshness the manifest binds; generated assets are derived views, never authoring sources. Installation proposes owned replacements, applies an accepted current proposal, verifies runtime and assets and records ownership; failure restores previously valid owned state. The managed runtime provisions the locked Python environment and viewer package from hash-bound inputs. A source checkout distributes itself by building its own projections and verifying instruction ownership.
+The build resolves `@include` graphs from authored Agent responsibilities, Skill instructions, rule adapters and capability contracts and renders deterministic outputs whose freshness the manifest binds; generated assets are derived views, never authoring sources. Installation proposes owned replacements, applies an accepted current proposal, verifies runtime and assets and records ownership; failure restores previously valid owned state. The managed runtime provisions the locked Python environment and viewer package from hash-bound inputs. A source checkout distributes itself by building its own projections, and its checked-in agent configuration refuses native worktree creation in developer sessions so those projections stay bound to the worktree that built them.
 
 ## Features
 
@@ -58,7 +62,7 @@ For a supported integration and target directory, preview receipt-owned Framewor
 
 ### feature.distribution.build
 
-For authored Framework assets and an integration selection, render deterministic Agent, Skill, rule, schema, documentation and Studio graph outputs; write them only to owned projection locations or compare them without writes. Source digests bind runtime freshness, and `verify-worktree` rejects mismatched instruction ownership even when bytes match. Invalid includes, bindings or package contracts produce findings or a build error and cannot authorize stale execution.
+For authored Framework assets and an integration selection, render deterministic Agent, Skill, rule, schema, documentation and Studio graph outputs; write them only to owned projection locations or compare them without writes. Source digests bind runtime freshness. In the source checkout, the worktree guard registered in the checked-in Claude Code and Codex configuration refuses a developer session's native worktree creation, so loaded Skills never outlive the worktree that built them; the guard is not installed into consumer projects. Invalid includes, bindings or package contracts produce findings or a build error and cannot authorize stale execution.
 
 ### feature.distribution.runtime
 
@@ -72,7 +76,7 @@ For an initialized project, apply an explicit supported integration and enforcem
 
 ### interface.distribution.install
 
-The installer proposes owned file changes and applies accepted current proposals; `python3 scripts/concorde.py` exposes build, validate, docsite, verify-worktree and protocol-manifest maintenance commands, and `concorde-configure` applies integration settings. Missing business facts remain explicit. Failed application or provisioning restores previously valid owned state. The [installation](installation.md) document defines the commands, proposals, receipts and errors.
+The installer proposes owned file changes and applies accepted current proposals; `python3 scripts/concorde.py` exposes build, validate, docsite and protocol-manifest maintenance commands, `scripts/worktree-guard.py` is the source checkout's hook command, and `concorde-configure` applies integration settings. Missing business facts remain explicit. Failed application or provisioning restores previously valid owned state. The [installation](installation.md) document defines the commands, proposals, receipts and errors.
 
 ### interface.distribution.build
 

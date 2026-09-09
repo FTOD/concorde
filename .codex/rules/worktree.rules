@@ -1,0 +1,14 @@
+# Concorde source checkout: worktrees are created only by the Concorde host.
+# Project-local Skills are worktree-owned build output, so a developer session must not create
+# or relocate worktrees itself. Codex loads this file for a trusted project; scripts/worktree-guard.py
+# (registered in .codex/hooks.json) covers the forms a prefix rule cannot express.
+prefix_rule(
+    pattern = ["git", "worktree", "add"],
+    decision = "forbidden",
+    justification = "Concorde source checkout: only the Concorde host creates worktrees (invoke concorde-dev-loop); Skills are worktree-owned build output.",
+)
+prefix_rule(
+    pattern = ["git", "worktree", "move"],
+    decision = "forbidden",
+    justification = "Concorde source checkout: worktrees are host-owned and are not relocated by agent sessions.",
+)

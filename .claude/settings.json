@@ -1,7 +1,4 @@
 {
-  "worktree": {
-    "baseRef": "head"
-  },
   "permissions": {
     "allow": [
       "Bash(uv sync)",
@@ -27,6 +24,43 @@
       "Bash(tail:*)",
       "Bash(wc:*)",
       "Bash(diff:*)"
+    ],
+    "deny": [
+      "EnterWorktree",
+      "Agent(isolation:worktree)",
+      "Bash(git worktree add *)",
+      "Bash(git worktree move *)",
+      "Bash(git * worktree add *)",
+      "Bash(git * worktree move *)",
+      "Bash(claude --worktree *)",
+      "Bash(claude -w *)",
+      "Bash(claude * --worktree *)",
+      "Bash(claude * -w *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "EnterWorktree|Agent|Task|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/scripts/worktree-guard.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/scripts/worktree-guard.py\"",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

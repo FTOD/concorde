@@ -286,14 +286,18 @@ Harness + Constraints). The build renders each Agent's instruction view to
 manifest; `describe-policy` mode (see above) shows the bound agent, harness and effective loop
 timeout for every stage it previews, alongside its read/write grants.
 
-Root `AGENTS.md`/`CLAUDE.md` bind an agent to the worktree that supplied its project Skills. If work
-targets another worktree, open a new agent there; verify affinity explicitly with:
+Root `AGENTS.md`/`CLAUDE.md` bind an agent to the worktree that supplied its project Skills. Agent
+sessions never create or enter worktrees themselves: the checkout's `.claude/settings.json`,
+`.codex/hooks.json` and `.codex/rules/worktree.rules` refuse `EnterWorktree`, worktree-isolated
+subagents, `git worktree add` and `claude --worktree`, with `scripts/worktree-guard.py` as the hook
+behind them. Worktrees for changes come from Concorde capabilities, whose host creates the candidate
+worktree and hands off a fresh session there under P10. The policy and a one-command check:
 
 ```bash
-python3 scripts/concorde.py verify-worktree --project-root . \
-  --loaded-skill-path <absolute-runtime-advertised-SKILL.md-path>
+python3 scripts/worktree-guard.py --explain
+python3 scripts/worktree-guard.py --check "git worktree add ../elsewhere"
 ```
 
 User-authorized delivery is the bounded exception: a session in either participating worktree can
 complete the integration while retaining its own Skills.
-See [source-checkout distribution](specs/modules/concorde/installation/interfaces.md#featureinstallationself-distribute).
+See [source-checkout distribution](specs/modules/concorde/distribution/installation.md#featuredistributionbuild).

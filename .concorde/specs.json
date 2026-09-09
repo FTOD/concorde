@@ -616,6 +616,7 @@
         "scripts/install-concorde.py",
         "scripts/requirements.lock",
         "scripts/run-capability.py",
+        "scripts/worktree-guard.py",
         "skills/concorde-configure/SKILL.md",
         "src/concorde/distribution/__init__.py",
         "src/concorde/distribution/protocol_guidance.py",
@@ -635,7 +636,8 @@
         "tests/concorde/distribution/integration/__init__.py",
         "tests/concorde/distribution/unit/__init__.py",
         "tests/concorde/distribution/unit/test_install_concorde.py",
-        "tests/concorde/distribution/unit/test_protocol_guidance.py"
+        "tests/concorde/distribution/unit/test_protocol_guidance.py",
+        "tests/concorde/distribution/unit/test_worktree_guard.py"
       ]
     },
     {
@@ -1059,10 +1061,9 @@
         "src/concorde/host/change_worktree.py",
         "src/concorde/host/session_handoff.py",
         "src/concorde/host/worktree.py",
-        "src/concorde/host/worktree_affinity.py",
         "src/concorde/host/worktree_delivery.py",
+        "tests/concorde/host/unit/test_change_worktree.py",
         "tests/concorde/host/unit/test_session_handoff.py",
-        "tests/concorde/host/unit/test_worktree_affinity.py",
         "tests/concorde/host/unit/test_worktree_boundary.py",
         "tests/concorde/specification/test_worktree_lifecycle.py"
       ]

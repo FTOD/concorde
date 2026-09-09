@@ -101,8 +101,7 @@ From the worktree being maintained, the deterministic entry points are:
 ```bash
 python3 scripts/concorde.py build --format json
 python3 scripts/concorde.py build --check --format json
-python3 scripts/concorde.py verify-worktree --project-root . \
-  --loaded-skill-path /absolute/runtime/path/to/.claude/skills/concorde-main/SKILL.md
+python3 scripts/worktree-guard.py --explain
 ```
 
 Every invocation operates on the worktree containing the sources named by `--project-root`; it never
@@ -120,41 +119,65 @@ verified against `generated/build-manifest.json` before every top-level invocati
 lifecycle capability; editing a prompt without rebuilding therefore fails closed rather than serving
 stale instructions.
 
-`verify-worktree` takes an absolute project-local Skill path exactly as advertised by the agent
-runtime. It accepts regular `.agents/skills/concorde-*/SKILL.md` or
-`.claude/skills/concorde-*/SKILL.md` files, derives the owning Git root and integration, and requires
-the active worktree both to own that loaded Skill and to have a fresh build. A successful schema-1
-result identifies `tool`, `status`, `project_root`, `loaded_worktree`, `integration`, `capability`,
-`surface_match`, and `worktree_head`. An unsafe or missing path, a stale active build, or different
-loaded/active worktree roots return nonzero. Different roots are rejected even when their generated
-bytes currently match. The failure names both worktrees and directs the outer agent to initiate a
-P10 handoff to the target worktree, automatically by default; updating the loaded/primary checkout
-is not a substitute. If automatic startup is unavailable or cannot establish the required isolation,
-the outer agent asks the user to open the session manually with the complete prompt. Its existing
-diagnostic channel includes a P10 handoff draft with the target path/branch and explicit unknown task/progress
-fields for the outer session to complete. A stale build in the same worktree instead asks a
-maintenance session to rebuild; it does not allow a session with the affected Skill body already
-loaded to edit that Skill. The verifier does not read task, patch or conversation artifacts to invent
-a continuation or launch the successor session itself.
+### Worktree guard
 
-Repository policy requires this verification before project work and after changing worktrees, for
-each distinct owning worktree represented by project Skill paths retained in the conversation.
-An agent that creates a requested linked worktree hands work to a new agent opened there under
-Framework execution profile P10, with the known path and branch. A freshly created worktree, including one the host
-creates for a candidate change, must be built once before an agent can load Concorde Skills; the
-policy forbids direct edits to `generated/`, `.claude/skills/concorde-*` or `.agents/skills/concorde-*`:
-maintain `prompts/`, `skills/` or `capabilities/` sources, rebuild in their own worktree, then require
-`build --check` to pass. A project-local Skill cannot govern maintenance of its own prompts, Skills,
-capabilities, or generated surface. A maintenance session that has not loaded that Skill body may
-update sources and rebuild; a session that has loaded it must reopen before editing. Discovery
-metadata alone does not load a Skill body.
+The source checkout refuses native worktree creation in developer agent sessions, because its
+project-local Skills are worktree-owned build output: a session that loaded them in one worktree
+and then created or entered another would act on the second worktree with the first worktree's
+instructions. Worktrees for changes come only from the Concorde host, which creates the candidate
+worktree from the committed base, builds it, and returns a P10 handoff for a fresh session there.
 
-Pull-request CI requires `build --check`, the package validator, and the worktree-affinity tests to
+`scripts/worktree-guard.py` is the hook command. It reads one Claude Code or Codex hook payload
+from stdin and decides: a `WorktreeCreate` event is always refused, so `claude --worktree`,
+subagents with `isolation: "worktree"` and background-session worktrees never materialise; a
+`PreToolUse` event is refused for the `EnterWorktree` tool, for `Agent`/`Task` calls whose
+`isolation` is `worktree`, and for shell tools whose command text contains `git … worktree add`,
+`git … worktree move` (global git options such as `-C` and `--git-dir=` included) or a `claude`
+launch with `--worktree`/`-w`. Other events, tools and commands pass silently; `git worktree list`,
+removing a worktree, and starting a session in an existing host-created worktree are allowed. A
+refusal writes a `permissionDecision: deny` object with its reason to stdout, the reason to stderr,
+and exits 2, which both runtimes treat as a block and report to the model. Unreadable input exits
+1, a visible non-blocking hook error rather than a refusal of every tool call. `--check "<command>"`
+decides one command text and `--explain` prints the policy for people.
+
+The checked-in integration files register the guard per worktree, so a session opened in any
+worktree of this repository is guarded from its first tool call. `.claude/settings.json` denies
+`EnterWorktree`, `Agent(isolation:worktree)` and the `git worktree add`, `git worktree move` and
+`claude --worktree` command prefixes outright, and runs the guard from `PreToolUse` (matching
+`EnterWorktree`, `Agent`, `Task`, `Bash` and `PowerShell`) and from `WorktreeCreate`; Claude Code
+applies deny rules and hooks to native subagents as well. `.codex/rules/worktree.rules` forbids the
+`git worktree add` and `git worktree move` prefixes without prompting, and `.codex/hooks.json` runs
+the guard from `PreToolUse` for shell commands; Codex loads both only for a trusted project and runs
+the hook only after it was reviewed once with `/hooks`, so the execpolicy rule is the layer that
+holds before that review. These files are the checkout's agent-integration configuration, next to
+`AGENTS.md`; the registry binds no file under `.claude/` or `.codex/` to an Implementation Spec.
+
+The guard protects the developer's session and its native subagents; it is a guardrail, not a
+sandbox. It inspects the command text an agent submits, so a command that computes
+`git worktree add` at runtime, or input sent to an already running shell, is outside its reach; and
+because the whole text is inspected, a file that must mention these commands is written with the
+editor tool rather than a shell here-document. Concorde's own workers are unaffected: Claude workers
+start with `--restricted`, which ignores project settings, and Codex workers start with
+`--ignore-user-config`, which leaves the project `.codex/` layer untrusted. The guard is repository
+policy for developing Concorde; the installer ships neither the script nor the integration files,
+and consumer projects receive no hook.
+
+An agent that needs a change worktree requests it through a Concorde capability. The host builds
+the worktrees it creates for candidate changes; any other freshly created worktree has no Concorde
+Skills until it is built. The policy forbids direct edits to `generated/`,
+`.claude/skills/concorde-*` or `.agents/skills/concorde-*`: maintain `prompts/`, `skills/` or
+`capabilities/` sources, rebuild in their own worktree, then require `build --check` to pass. A
+project-local Skill cannot govern maintenance of its own prompts, Skills, capabilities, or generated
+surface. A maintenance session that has not loaded that Skill body may update sources and rebuild;
+a session that has loaded it must reopen before editing. Discovery metadata alone does not load a
+Skill body.
+
+Pull-request CI requires `build --check`, the package validator, and the worktree-guard tests to
 pass. Behavioral coverage must show exact staleness detection without writes, both integrations
-rendered together, and byte-identical repeated builds. With two linked worktrees, verification must
-reject a Skill loaded from the other root both before and after their canonical sources diverge.
-Building within one worktree must leave the other's generated bytes unchanged, while verification
-with its own current Skill path succeeds after that worktree rebuilds.
+rendered together, byte-identical repeated builds, the guard's refusals and allowances for the
+documented events and commands with their exit codes and outputs, and that the checked-in Claude
+Code and Codex files register the guard. A fresh clone must carry the guard and those files.
+Building within one worktree must leave the other's generated bytes unchanged.
 
 ## Main routing view
 

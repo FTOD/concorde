@@ -1,6 +1,6 @@
 """Shared helper for tests that exercise the real build or the real graph.
 
-Any test that needs a working built package as a *prerequisite* (worktree affinity, worktree
+Any test that needs a working built package as a *prerequisite* (worktree
 creation, a Studio graph bound to a temporary root) should build the package root into its own
 temporary directory first, rather than depending on the actual checkout being pre-built. Tests
 that exercise ``build``/``check_build``/``write_build`` themselves are not this helper's concern;

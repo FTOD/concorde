@@ -38,11 +38,6 @@ def create_parser() -> argparse.ArgumentParser:
     build.add_argument("--check", action="store_true")
     build.add_argument("--format", choices=["json"], default="json")
 
-    verify_worktree = subparsers.add_parser("verify-worktree")
-    verify_worktree.add_argument("--project-root", default=".")
-    verify_worktree.add_argument("--loaded-skill-path", required=True)
-    verify_worktree.add_argument("--format", choices=["text", "json"], default="text")
-
     protocol_manifest = subparsers.add_parser("protocol-manifest")
     protocol_manifest.add_argument("--write", action="store_true")
     protocol_manifest.add_argument("--bind-project", action="store_true")
@@ -165,40 +160,11 @@ def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
     return ToolResult("protocol-manifest", ".", "success", artifacts=artifacts, result={"differences": differences})
 
 
-def _verify_worktree(arguments: argparse.Namespace) -> int:
-    """Identical semantics and messages to the retired sync-agent-surfaces.py verify-worktree."""
-
-    import json as json_module
-
-    from .worktree_affinity import WorktreeAffinityError, verify_worktree_affinity
-
-    root = Path(arguments.project_root).resolve()
-    try:
-        verified = verify_worktree_affinity(root, arguments.loaded_skill_path)
-        result = {"schema_version": 1, "tool": "verify-worktree", "status": "current", **verified}
-        if arguments.format == "json":
-            print(json_module.dumps(result, indent=2, sort_keys=True))
-        else:
-            print(
-                "Concorde agent worktree: current "
-                f"({verified['integration']}, {verified['capability']}, {verified['project_root']})"
-            )
-        return 0
-    except WorktreeAffinityError as error:
-        print(f"error: {error}", file=sys.stderr)
-        return 1
-    except (ValueError, OSError) as error:
-        print(f"error: {error}", file=sys.stderr)
-        return 2
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     parser = create_parser()
     arguments: argparse.Namespace | None = None
     try:
         arguments = parser.parse_args(argv)
-        if arguments.tool == "verify-worktree":
-            return _verify_worktree(arguments)
         if arguments.tool == "protocol-manifest":
             payload = tool_envelope(_protocol_manifest(arguments))
             sys.stdout.write(canonical_json(payload))

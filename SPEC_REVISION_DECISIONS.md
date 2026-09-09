@@ -349,3 +349,64 @@ docsite 安装依赖后 `tsc --noEmit` 通过；framework-guides、scoped-regist
 feature-graph、github-pages 与 production-build 共 44 项通过，其中 production-build 原先硬编码
 `module.workflows`，已改为 `module.development`。整站构建从新的六 Module 结构成功生成关系图与页面。
 未运行 Concorde 的 dev-loop、Spec/code review 或交付流程；没有提交。
+
+## 源 checkout 的 worktree 守卫
+
+日期：2026-09-09。本节记录用运行时拦截取代 `verify-worktree` 的直接维护决定，只涉及 Concorde 自身的
+源 checkout，不改变 Protocol，也不装进使用 Framework 的项目。
+
+### D21：禁止开发者会话自行创建 worktree，取代 verify-worktree
+
+问题：`verify-worktree` 要求每个 agent 会话在开工前、以及每次 cwd 变化后，拿运行时通告的绝对
+Skill 路径手工跑一次校验，并据结果自行发起 P10 交接。这一套依赖 agent 记得执行，流程复杂。
+真正需要保护的只有开发者自己的主会话（Claude Code、Codex CLI）和它自行创建的原生子 agent：
+主会话在 worktree A 加载 Skills v1，子 agent 创建或进入 worktree B，却仍带着 v1 的指令。Concorde
+自己的 worker 由 Python host 在正确目录启动，从不存在这个问题。
+
+决定：开发者会话不得自行创建、移动或进入 worktree；worktree 只由 Concorde host 创建（调用
+`concorde-dev-loop` 等 capability），随后按 P10 在新 worktree 里开启新会话。这条规则由 agent 运行时
+强制执行，不再依赖 agent 记忆：`.claude/settings.json` 的 deny 规则拒绝 `EnterWorktree`、
+`Agent(isolation:worktree)`、`git worktree add|move` 和 `claude --worktree` 前缀，`PreToolUse` 与
+`WorktreeCreate` 钩子运行 `scripts/worktree-guard.py`，后者覆盖前缀规则表达不了的写法（`git -C`、
+`sh -c` 包装等），并让 `claude --worktree` 在启动时就失败；`.codex/rules/worktree.rules` 以 execpolicy
+`forbidden` 拒绝 `git worktree add|move`，`.codex/hooks.json` 在每条 shell 命令前运行同一守卫。
+守卫脚本只用标准库，只读 stdin 的钩子载荷，拒绝时输出 `permissionDecision: deny` 与原因并以 2 退出，
+输入不可读时以 1 退出（可见但不阻塞）。它是守护而非沙箱：运行时拼出的命令和已运行 shell 的 stdin
+不在其覆盖范围；整段命令文本都会被检查，因此需要提及这些命令的文件用编辑工具而不是 shell heredoc
+写入。Codex 只在项目受信任时加载项目 `.codex/` 层，项目钩子还需用 `/hooks` 审核一次，审核前由
+execpolicy 规则兜底；两个运行时都把规则和钩子同样施加于原生子 agent。
+
+边界：这是开发 Concorde 仓库自身的策略。安装器不分发守卫脚本和这三个集成文件，消费者项目不会得到
+任何钩子。Concorde 自己的 worker 不受影响：Claude worker 以 `--restricted` 启动，忽略项目设置；
+Codex worker 以 `--ignore-user-config` 启动，项目 `.codex/` 层因此不受信任而不加载。
+
+随之删除：`verify-worktree` 子命令、`src/concorde/host/worktree_affinity.py` 及其测试；`AGENTS.md`
+的“Worktree affinity”一节改为“Worktree ownership”；`CLAUDE.md`、README、STUDIO.md 与 Distribution 的
+Module Spec、`implementation.installation`、`implementation.worktree-lifecycle` 同步改写；守卫脚本与其
+测试绑定到 `implementation.installation`（安装器已列出脚本清单，且注册表禁止绑定 `.claude/`、`.codex/`
+下的文件，三个集成文件与 `AGENTS.md` 一样是 checkout 的集成配置）；原随 affinity 测试文件存放的
+候选 worktree 自建构建测试移到 `tests/concorde/host/unit/test_change_worktree.py`。与既有 Spec 无冲突：
+P7 只说明白授权的维护会话可以直接改项目，P10 的交接不变，host 创建 worktree 的路径不变。
+
+技术依据（2026-09-09 核对官方文档并在本机 Claude Code 2.1.266、Codex 0.153.4 上实测）：Claude Code
+的 `WorktreeCreate` 钩子非零退出即中止 `--worktree`、`isolation: "worktree"` 与后台会话的 worktree
+创建；`PreToolUse` 钩子与 deny 规则同样作用于子 agent；`${CLAUDE_PROJECT_DIR}` 指向会话起始的项目根。
+Codex 0.153.4 没有原生 worktree 功能（`main` 分支上有尚未发布、默认关闭的实验特性 `worktrees`，
+届时可在项目配置里关闭），子 agent 与父会话共用 cwd；项目级 `.codex/hooks.json` 与 `.codex/rules/`
+在受信任项目中加载。
+
+### 守卫的检查记录
+
+`python3 scripts/concorde.py build --check` 与 `validate` 均通过（注册表绑定含新增与移除的文件）。
+守卫、候选 worktree、handoff、worktree 边界与生命周期、Distribution 结构共 64 项定向测试通过；
+`codex execpolicy check` 对规则文件给出 `forbidden`（`git worktree add|move`）且不匹配 `git worktree list`。
+Python 全量测试 734 项，8 项跳过，2 项失败：fresh-clone bootstrap 克隆的是已提交的 HEAD，其中还没有
+守卫脚本，提交后重跑通过；Studio 的 `test_source_studio_delivery_retains_its_worktree` 是上一节已记录的
+既有失败，本次未触及交付语义。docsite `validate` 与 150 项测试通过。
+
+在本 checkout 里用子会话实测：Claude Code 对 `sh -c 'git worktree add …'`（只有钩子能拦）、
+`isolation: "worktree"` 的 Agent 调用均在执行前拒绝并回显原因，`claude -p --worktree` 因
+`WorktreeCreate` 钩子失败而退出码 1，未生成任何 worktree；Codex 对直接的 `git worktree add` 与
+`sh -c` 包装形式均由 `PreToolUse` 钩子拦截（实测使用 `--dangerously-bypass-hook-trust` 代替尚未做的
+`/hooks` 审核）。本次按用户授权直接在 main 上提交，未 push；未运行 Concorde 的 dev-loop、Spec/code
+review 或交付流程。

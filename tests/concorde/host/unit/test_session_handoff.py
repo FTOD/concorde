@@ -13,7 +13,8 @@ class SessionHandoffTests(unittest.TestCase):
         self.assertIn('/unknown/target', prompt)
         self.assertIn(UNKNOWN, prompt)
         self.assertIn('AGENTS.md and CLAUDE.md', prompt)
-        self.assertIn("this new runtime's advertised Skill path", prompt)
+        self.assertIn("Skills this worktree built for itself", prompt)
+        self.assertIn("do not create or enter another worktree", prompt)
         self.assertIn('grants no additional reads, writes, merge, or delivery authority', prompt)
         with self.assertRaisesRegex(ValueError, 'absolute'):
             handoff_prompt('relative/path')
