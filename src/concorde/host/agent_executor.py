@@ -570,21 +570,21 @@ def _role_prompt(specification: LaunchSpecification) -> str:
         )
     if _domain_type(specification) == "concorde-main-stage-result":
         return (
-            "Execute one Concorde Profile 8 main-coordinator stage in a fresh context.\n"
+            "Execute one Concorde Profile 9 main-coordinator stage in a fresh context.\n"
             f"Capability: {specification.capability}\nStage: {specification.stage}\n"
             f"Host discovery grant:\n{specification.workspace_receipt_json}\n"
             f"Configuration snapshot:\n{specification.capability_configuration_json}\n"
             f"Complete admitted discovery context and task:\n{specification.runtime_input_json}\n\n"
-            "Use only the supplied append-only, main-visible Domain/Service documents, separated as Target Spec and "
-            "Shared Specs. Never load a Module target Spec, "
+            "Use only the supplied explicit complete Module documents, separated as Target Spec and "
+            "Shared Specs. Never load an Implementation Spec, "
             "implementation code, repository guidance, another Skill, a prior conversation, or a remote source. "
-            "In route phase, request only Domain/Service IDs identified by an admitted Spec, or the explicit target "
+            "In route phase, request only Module IDs identified by an admitted Spec, or the explicit target "
             "hint, in expand_targets; otherwise return exact worker routes. Non-ask capabilities require one route and "
             "unchanged task intent. For design-topology, return topology_proposed with one complete candidate registry, "
             "target-local Spec tasks, migration constraints, and acceptance conditions after sufficient discovery; do "
             "not include document bodies or code facts. Do not perform routed work. In synthesize phase, use only typed worker results and return the final "
             "answer; do not expand context. Report missing routing information as a structured Spec gap owned by an "
-            "admitted Domain or Service.\n"
+            "admitted Module.\n"
             "Return Capability Completion Envelope 3 matching the supplied schema. Put a typed "
             "concorde-main-stage-result in domain_output with context_id, outcome, answer, expand_targets, routes, "
             "gaps, and nullable topology_design. Bind every launch, invocation, workspace, and context identity exactly.\n"
@@ -592,7 +592,7 @@ def _role_prompt(specification: LaunchSpecification) -> str:
         )
     if _domain_type(specification) == "concorde-agent-stage-result":
         return (
-            "Execute one Concorde Profile 8 agent stage in a fresh context.\n"
+            "Execute one Concorde Profile 9 agent stage in a fresh context.\n"
             f"Capability: {specification.capability}\nStage: {specification.stage}\n"
             f"Host workspace grant:\n{specification.workspace_receipt_json}\n"
             f"Configuration snapshot:\n{specification.capability_configuration_json}\n"
@@ -600,7 +600,7 @@ def _role_prompt(specification: LaunchSpecification) -> str:
             "Use only the supplied snapshot, whose document bodies are separated as Target Spec and Shared Specs, "
             "and enforced paths. Do not load repository guidance, "
             "other Skills, ancestor/provider Specs, prior conversations, or remote sources. "
-            "Only the implementation stage may inspect granted implementation code. "
+            "Only the implementation stage receives referenced Implementation Specs and may inspect or change granted implementation files. Non-code stages determine tasks solely from the complete Module Spec. "
             "When the current task requires a missing or ambiguous contract, report question, blocked_step "
             "and needed_contract as structured Spec gaps, and pause the judgments or steps that depend on it. "
             "Do not silently supply a contract by convention or infer it from code. Independent reasoning may "
@@ -613,7 +613,7 @@ def _role_prompt(specification: LaunchSpecification) -> str:
             "answer, gaps, documents, plan, and tasks. Use empty arrays/strings for unused domain_output fields; "
             "this does not apply to the envelope limitations field. "
             "A spec_incomplete outcome requires concrete question/blocked_step/needed_contract gaps; "
-            "other outcomes have no gaps. Only specification stages return document replacements. "
+            "other outcomes have no gaps. Specification stages may return Module document replacements; code-writing stages may return only admitted Implementation Spec document replacements. "
             "Do not transmit raw code or implementation logs in a result for a later Spec-only stage.\n"
             f"Invocation: {specification.invocation_id}\nLaunch digest: {specification.digest}\n"
         )

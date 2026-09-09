@@ -29,40 +29,40 @@ class BoundaryTests(unittest.TestCase):
     def completion(self, task):
         return Invocation('concorde-validate', CONFIGURATION, task, self.host).verify_completion()
     def test_shared_physical_markdown_is_one_hop_context_not_entity_expansion(self):
-        self.registry['targets'][3]['documents'].append('specs/transfer-promises.md');self.save()
-        update_document_declaration(self.root,'specs/transfer-promises.md',
+        self.registry['targets'][3]['documents'].append('specs/transfer/promises.md');self.save()
+        update_document_declaration(self.root,'specs/transfer/promises.md',
                                     targets=['service.transfer','module.ledger'])
         repo=SpecRepository(self.root)
         service=resolve_context(repo,'service.transfer').value
         module=resolve_context(repo,'module.ledger').value
-        self.assertEqual(['specs/transfer-promises.md'],[item['path'] for item in service['shared_specs']])
-        self.assertEqual(['specs/transfer-promises.md'],[item['path'] for item in module['shared_specs']])
-        self.assertEqual(['specs/ledger-api.md'],[item['path'] for item in module['target_spec']])
-        self.assertNotIn('specs/send-money.md',json.dumps(module))
+        self.assertEqual(['specs/transfer/promises.md'],[item['path'] for item in service['shared_specs']])
+        self.assertEqual(['specs/transfer/promises.md'],[item['path'] for item in module['shared_specs']])
+        self.assertEqual(['specs/ledger/module.md'],[item['path'] for item in module['target_spec']])
+        self.assertNotIn('specs/transfer/module.md',json.dumps(module))
     def test_single_target_author_cannot_change_collective_shared_truth(self):
-        self.registry['targets'][3]['documents'].append('specs/transfer-promises.md');self.save()
-        update_document_declaration(self.root,'specs/transfer-promises.md',
+        self.registry['targets'][3]['documents'].append('specs/transfer/promises.md');self.save()
+        update_document_declaration(self.root,'specs/transfer/promises.md',
                                     targets=['service.transfer','module.ledger'])
-        path=self.root/'specs/transfer-promises.md';before=path.read_bytes()
+        path=self.root/'specs/transfer/promises.md';before=path.read_bytes()
         def cb(stage,snap,data,cwd):
-            if stage=='specify':data['documents']=[{'path':'specs/transfer-promises.md',
+            if stage=='specify':data['documents']=[{'path':'specs/transfer/promises.md',
                 'content':path.read_text()+'\nChanged by one target.\n'}]
         result=self.run_op('concorde-specify',callback=cb)
         self.assertEqual('blocked',result['status'],result);self.assertEqual(before,path.read_bytes())
         self.assertIn('shared Spec truth',result['errors'][0]['message'])
     def test_target_author_cannot_persist_duplicate_document_identity(self):
-        path=self.root/'specs/send-money.md';before=path.read_bytes()
+        path=self.root/'specs/transfer/module.md';before=path.read_bytes()
         replacement=path.read_text().replace('"id": "document.transfer.feature"',
                                              '"id": "document.ledger.api"')
         def cb(stage,snap,data,cwd):
-            if stage=='specify':data['documents']=[{'path':'specs/send-money.md','content':replacement}]
+            if stage=='specify':data['documents']=[{'path':'specs/transfer/module.md','content':replacement}]
         result=self.run_op('concorde-specify',callback=cb)
         self.assertEqual('blocked',result['status'],result);self.assertEqual(before,path.read_bytes())
         self.assertIn('require a topology change',result['errors'][0]['message'])
     def test_target_author_can_change_local_truth_without_changing_its_declaration(self):
-        path=self.root/'specs/send-money.md';replacement=path.read_text()+'\nA clarified local promise.\n'
+        path=self.root/'specs/transfer/module.md';replacement=path.read_text()+'\nA clarified local promise.\n'
         def cb(stage,snap,data,cwd):
-            if stage=='specify':data['documents']=[{'path':'specs/send-money.md','content':replacement}]
+            if stage=='specify':data['documents']=[{'path':'specs/transfer/module.md','content':replacement}]
         result=self.run_op('concorde-specify',callback=cb)
         self.assertEqual('succeeded',result['status'],result);self.assertEqual(replacement,path.read_text())
     def test_overlapping_code_ownership_rejected(self):
@@ -90,7 +90,7 @@ class BoundaryTests(unittest.TestCase):
         (package/'protocol').mkdir(parents=True)
         shutil.copy2(PACKAGE/'protocol/manifest.json',package/'protocol/manifest.json')
         write_build(package,'all')
-        (package/'generated/protocol/kinds/service.md').write_text('changed')
+        (package/'generated/protocol/kinds/module.md').write_text('changed')
         with self.assertRaises(SpecError):SpecRepository(self.root,package)
     def test_configuration_cannot_replace_initialized_authority(self):
         other=typed('concorde-capability-configuration',{'integration':'codex','enforcement':'native'})
@@ -118,28 +118,28 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(['scope.bank'],self.host.descriptions[0]['discovered_targets'])
         self.assertTrue(all(item['write_paths']==[] for item in self.host.descriptions))
     def test_changed_spec_requires_replanning_the_change(self):
-        task=self.change();p=self.root/'specs/send-money.md';p.write_text(p.read_text()+'\nChanged obligations.\n')
+        task=self.change();p=self.root/'specs/transfer/module.md';p.write_text(p.read_text()+'\nChanged obligations.\n')
         self.assertEqual('blocked',self.run_op('concorde-tasks',task)['status']);self.assertEqual([],self.double.calls)
     def test_changed_intent_cannot_reuse_the_worktree_change(self):
         task=self.change();task['task']='Different behavior'
         self.assertEqual('blocked',self.run_op('concorde-tasks',task)['status'])
     def test_spec_author_cannot_edit_provider_or_registry(self):
         def cb(stage,snap,data,cwd):
-            if stage=='specify':data['documents']=[{'path':'specs/ledger-api.md','content':'Changed'}]
-        old=(self.root/'specs/ledger-api.md').read_bytes();result=self.run_op('concorde-specify',callback=cb)
-        self.assertEqual('blocked',result['status']);self.assertEqual(old,(self.root/'specs/ledger-api.md').read_bytes())
+            if stage=='specify':data['documents']=[{'path':'specs/ledger/module.md','content':'Changed'}]
+        old=(self.root/'specs/ledger/module.md').read_bytes();result=self.run_op('concorde-specify',callback=cb)
+        self.assertEqual('blocked',result['status']);self.assertEqual(old,(self.root/'specs/ledger/module.md').read_bytes())
     def test_domain_author_cannot_persist_missing_participant_routing(self):
-        path=self.root/'specs/bank/ontology.md';old=path.read_bytes()
+        path=self.root/'specs/bank/module.md';old=path.read_bytes()
         declaration=path.read_text().split('# Banking',1)[0]
         def cb(stage,snap,data,cwd):
-            if stage=='specify':data['documents']=[{'path':'specs/bank/ontology.md',
+            if stage=='specify':data['documents']=[{'path':'specs/bank/module.md',
                 'content':declaration+'# Banking\nThe participant declarations were accidentally omitted.\n'}]
         result=self.run_op('concorde-specify',{'target_id':'scope.bank','task':'Edit banking rules'},cb)
         self.assertEqual('blocked',result['status'],result);self.assertEqual(old,path.read_bytes())
-        self.assertIn('participant routing',result['errors'][0]['message'])
+        self.assertIn('dependency promises',result['errors'][0]['message'])
     def test_planner_cannot_emit_spec_replacements(self):
         def cb(stage,snap,data,cwd):
-            if stage=='plan':data['documents']=[{'path':'specs/send-money.md','content':'Changed'}]
+            if stage=='plan':data['documents']=[{'path':'specs/transfer/module.md','content':'Changed'}]
         self.assertEqual('blocked',self.run_op('concorde-plan',callback=cb)['status'])
     def test_delivery_requires_real_current_checks(self):
         task=self.change();self.run_op('concorde-tasks',task);self.run_op('concorde-implement',task)
@@ -154,15 +154,15 @@ class BoundaryTests(unittest.TestCase):
         (self.root/'acceptance.json').write_text('{"revision":2}')
         with self.assertRaisesRegex(SpecError,'stale'):self.completion(task)
     def test_atomic_replacements_rollback_after_failed_verification(self):
-        original=(self.root/'specs/send-money.md').read_bytes()
-        changes=[file_change(self.root,'specs/send-money.md','changed'),file_change(self.root,'new.md','new')]
+        original=(self.root/'specs/transfer/module.md').read_bytes()
+        changes=[file_change(self.root,'specs/transfer/module.md','changed'),file_change(self.root,'new.md','new')]
         def reject():raise ValueError('invalid target')
-        with self.assertRaises(ValueError):apply_files(self.root,changes,{'specs/send-money.md','new.md'},verify=reject)
-        self.assertEqual(original,(self.root/'specs/send-money.md').read_bytes());self.assertFalse((self.root/'new.md').exists())
+        with self.assertRaises(ValueError):apply_files(self.root,changes,{'specs/transfer/module.md','new.md'},verify=reject)
+        self.assertEqual(original,(self.root/'specs/transfer/module.md').read_bytes());self.assertFalse((self.root/'new.md').exists())
     def test_stale_file_proposal_never_overwrites_newer_content(self):
-        change=file_change(self.root,'specs/send-money.md','proposed');(self.root/'specs/send-money.md').write_text('user change')
-        with self.assertRaises(ValueError):apply_files(self.root,[change],{'specs/send-money.md'})
-        self.assertEqual('user change',(self.root/'specs/send-money.md').read_text())
+        change=file_change(self.root,'specs/transfer/module.md','proposed');(self.root/'specs/transfer/module.md').write_text('user change')
+        with self.assertRaises(ValueError):apply_files(self.root,[change],{'specs/transfer/module.md'})
+        self.assertEqual('user change',(self.root/'specs/transfer/module.md').read_text())
     def test_unsupported_and_malformed_contract_schemas_fail_admission(self):
         for schema in [{'type':'object','unevaluatedProperties':False},{'$ref':'https://example.invalid/schema'},{'minLength':True},{'enum':[]},{'minimum':3,'maximum':1}]:
             with self.subTest(schema=schema),self.assertRaises(ContractError):admit(schema)

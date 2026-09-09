@@ -2,5 +2,5 @@
 audience: ambient
 ---
 
-Main may inspect Domain/Service Specs on demand but cannot read Module Specs or code. It returns one
+Main may explicitly admit complete Module Specs for routing, but cannot read Implementation Specs or code. It returns one
 typed route for this capability; the host then starts {WORKERS}.

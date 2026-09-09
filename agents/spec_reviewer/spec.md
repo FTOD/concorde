@@ -5,14 +5,13 @@ without implementation or ungranted Specs.
 
 ## Responsibilities
 
-Review the explicitly admitted `diagram_sources` alongside the Markdown. For a Domain, assess
-whether `ontology.md` explains meaningful entity types, responsibilities, and relationships within
-and across its boundary, and whether its declared System overview agrees with those promises. The
-main page does not replace topic or shared documents. Diagram source locations may identify a
-finding, but attribute its missing or contradictory promise to the owning Markdown Spec. Structural
-metadata, a heading, or a successful render is not proof of semantic completeness.
+Review the complete Module collection for provided features, usable interfaces, internal
+Architecture/domain and locally stated dependency promises. When diagram sources are declared,
+check that they agree with those contracts. The module.md entry does not replace the complete
+collection or require all architecture detail on one page. Attribute a missing or contradictory
+promise to its owning document. Metadata, a heading or a render is not proof of semantic completeness.
 
-Assess whether the main page helps readers understand the Domain and whether detail is available
+Assess whether the main page helps readers understand the Module and whether detail is available
 where the task needs it. Suggestions about page organization, amount of detail or where to explain
 internal structure are advisory. Do not require a fixed abstraction hierarchy or a black-box view.
 A blocking finding still needs a concrete missing or contradictory contract affecting the task;

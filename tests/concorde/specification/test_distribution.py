@@ -24,12 +24,15 @@ class DistributionTests(unittest.TestCase):
         for role in INTERNAL_SKILLS:
             prompt=load_role_prompt(PACKAGE,role)
             self.assertEqual(role,prompt.name);self.assertTrue(prompt.body.strip());self.assertIsNotNone(prompt.effects)
-    def test_self_architecture_uses_two_axes_and_local_capability_registry(self):
-        repo=SpecRepository(PACKAGE);self.assertEqual('success',validate_repository(PACKAGE).status)
-        self.assertEqual({'domain':5,'service':6,'module':8},{kind:sum(t.kind==kind for t in repo.targets.values()) for kind in ('domain','service','module')})
-        self.assertEqual('domain.developer-view',repo.select('domain.docsite').scope_parent)
-        self.assertIn('scripts/run-viewer.py',repo.select('service.viewer').implementation)
-        text='\n'.join(d.body for d in repo.documents(repo.select('service.workflow-host')))
+    def test_self_architecture_separates_modules_and_reusable_implementations(self):
+        repo=SpecRepository(PACKAGE);report=validate_repository(PACKAGE)
+        self.assertEqual('success',report.status,report.findings)
+        self.assertEqual(15,len(repo.targets));self.assertTrue(all(t.kind=='module' for t in repo.targets.values()))
+        self.assertEqual(18,len(repo.implementations))
+        self.assertEqual('module.concorde',repo.select('module.publication').parent)
+        self.assertIn('scripts/run-viewer.py',repo.implementation_paths(repo.select('module.viewer')))
+        self.assertGreater(len(repo.implementation_users['implementation.worktree-lifecycle']),1)
+        text='\n'.join(d.body for d in repo.documents(repo.select('module.workflows')))
         for op in CAPABILITY_NAMES:self.assertIn(op+'-request',text)
     def test_launcher_refuses_a_stage_capability_name_and_accepts_a_public_skill(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -46,7 +49,7 @@ class DistributionTests(unittest.TestCase):
             result=subprocess.run(public_command,input=json.dumps(public_value),capture_output=True,text=True,cwd=root)
             self.assertEqual(0,result.returncode,result.stdout+result.stderr)
             self.assertEqual('described',json.loads(result.stdout)['status'])
-            result=subprocess.run(public_command+['--feature-path','specs/send-money.md'],input=json.dumps(public_value),capture_output=True,text=True,cwd=root)
+            result=subprocess.run(public_command+['--feature-path','specs/transfer/module.md'],input=json.dumps(public_value),capture_output=True,text=True,cwd=root)
             self.assertEqual(3,result.returncode);self.assertEqual('blocked',json.loads(result.stdout)['status'])
     def test_installed_framework_runs_complete_real_graph_and_checks_for_both_integrations(self):
         spec=importlib.util.spec_from_file_location('profile8_installer',PACKAGE/'scripts/install-concorde.py');module=importlib.util.module_from_spec(spec);sys.modules[spec.name]=module;spec.loader.exec_module(module)

@@ -6,7 +6,7 @@ Decide whether the exact task can be carried out from Target Spec plus Shared Sp
 
 Shared membership does not admit any referencing entity's other documents. Distinguish sufficient
 information, missing information, a known prohibition, and contradictory obligations. For a
-Domain task, use only its local `concorde-participants` declarations to identify component IDs,
+Module task, use only its local `concorde-dependencies` declarations to identify component IDs,
 roles, selection conditions and relied-upon promises; registry relationships are not agent
 context. Do not search for missing information.
 

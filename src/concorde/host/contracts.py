@@ -1,4 +1,4 @@
-"""Profile 8 capability registry and versioned JSON contracts.
+"""Profile 9 capability registry and versioned JSON contracts.
 
 Public global and lifecycle capabilities are each paired with exactly one skill. Internal Skills
 describe only one host-bound agent role. Per-capability request/response contracts are owned by
@@ -22,15 +22,18 @@ DIAGRAM = obj({"source": PATH, "kind": STRING, "title": STRING,
 CHECK = obj({"id": STRING, "target_id": STRING, "argv": {**array(STRING), "minItems": 1},
              "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600},
              "inputs": array(PATH, unique=True)}, ("inputs",))
-TARGET_DESCRIPTOR = obj({"id": STRING, "kind": {"enum": ["domain", "service", "module"]},
+TARGET_DESCRIPTOR = obj({"id": STRING, "kind": {"const": "module"},
     "title": STRING, "documents": {**array(PATH, unique=True), "minItems": 1},
-    "scope_parent": NULLABLE_ID, "component_parent": NULLABLE_ID,
-    "participates_in": array(STRING, unique=True), "implementation": array(PATH, unique=True),
-    "features": array(FOCUS), "apis": array(FOCUS), "checks": array(STRING, unique=True),
+    "parent": NULLABLE_ID, "uses": array(STRING, unique=True),
+    "implementations": array(STRING, unique=True),
+    "features": array(FOCUS), "interfaces": array(FOCUS), "checks": array(STRING, unique=True),
     "diagrams": array(DIAGRAM)})
-REGISTRY = obj({"schema_version": {"const": 1}, "project_id": STRING,
+IMPLEMENTATION_DESCRIPTOR = obj({"id": STRING, "title": STRING,
+    "documents": {**array(PATH, unique=True), "minItems": 1},
+    "files": {**array(PATH, unique=True), "minItems": 1}})
+REGISTRY = obj({"schema_version": {"const": 2}, "project_id": STRING,
     "entry_target": STRING, "targets": {**array(TARGET_DESCRIPTOR), "minItems": 1},
-    "checks": array(CHECK)})
+    "implementations": array(IMPLEMENTATION_DESCRIPTOR), "checks": array(CHECK)})
 SPEC_TASK = obj({"target_id": STRING, "task": STRING})
 PROPOSAL_FILE = obj({"path": PATH, "before_digest": {"anyOf": [DIGEST, {"type": "null"}]},
                      "content": {"type": "string"}})
@@ -182,12 +185,15 @@ def schemas() -> dict:
     result["concorde-reflection-selection"] = obj({"head": STRING, "records": array(obj({"id":STRING,"path":PATH,"digest":DIGEST,"content":STRING}))})
     stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-implementation-task","concorde-reflection-selection","concorde-review-result")]}
     result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 1},
-        "target_id": STRING, "kind": {"enum": ["domain", "service", "module"]}, "focus_id": NULLABLE_ID,
+        "target_id": STRING, "kind": {"const": "module"}, "focus_id": NULLABLE_ID,
         "phase": STRING, "task": STRING, "constraints": array(STRING),
         "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
         "protocol": array(protocol_document),
         "document_order": array(PATH, unique=True), "target_spec": array(document),
         "shared_specs": array(document), "diagram_sources": array(diagram_source), "instructions": {"type": "string"},
+        "implementation_specs": array(obj({"id": STRING, "title": STRING,
+            "files": array(PATH, unique=True), "modules": array(STRING, unique=True),
+            "documents": array(document)})),
         "stage_inputs": array(stage_input), "implementation_artifacts": array(ARTIFACT),
         "workspace": WORKSPACE_CONTEXT})
     result["concorde-agent-stage-context"] = obj({"snapshot": typed_schema("concorde-context-snapshot"),
@@ -242,7 +248,7 @@ def schemas() -> dict:
         "topology_proposal": typed_schema("concorde-topology-proposal"),
         "base_registry_digest": DIGEST, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
         "files": {**array(PROPOSAL_FILE), "minItems": 1}})
-    discovery_target = obj({"target_id": STRING, "kind": {"enum": ["domain", "service"]},
+    discovery_target = obj({"target_id": STRING, "kind": {"const": "module"},
                             "document_order": array(PATH, unique=True),
                             "target_spec": array(document), "shared_specs": array(document)})
     result["concorde-discovery-context"] = obj({"context_id": DIGEST, "schema_version": {"const": 1},

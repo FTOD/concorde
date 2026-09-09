@@ -86,7 +86,7 @@ SKILL_SOURCES: dict[str, str] = {name: f"skills/{name}/SKILL.md" for name in SKI
 
 SCHEMA_INTRO = "This complete schema is the invocation's input field. It does not grant project reads.\n"
 
-PROTOCOL_KINDS = ("domain", "module", "service")
+PROTOCOL_KINDS = ("module", "implementation")
 PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 
 # The build owns exactly these locations under `generated/`; every recorded BuildOutput path
@@ -386,6 +386,17 @@ def write_build(
     root = Path(project_root)
     destination = Path(integration_root) if integration_root is not None else root
     result = build(root, integration, framework_prefix=framework_prefix)
+    expected = {output.path for output in result.outputs}
+    # A Protocol revision may retire a kind or role. Only these declared build-owned
+    # subtrees are reconciled; diagrams and other tools' generated assets are preserved.
+    for directory in GENERATED_OWNED_DIRS:
+        owned = root / directory
+        if owned.is_symlink():
+            raise BuildError(f"build-owned output directory is a symlink: {directory}")
+        if owned.is_dir():
+            for path in owned.rglob("*"):
+                if path.is_file() and not path.is_symlink() and path.relative_to(root).as_posix() not in expected:
+                    path.unlink()
     for output in result.outputs:
         base = destination if output.path.startswith((".claude/skills/", ".agents/skills/")) else root
         target = base / output.path

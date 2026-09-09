@@ -35,7 +35,7 @@ def _under(path: str, roots) -> bool:
 def _changes(repository, target, mode, baseline) -> list[dict]:
     """Read history only for the current grant; never admit a project-wide diff."""
     spec_paths = (*target.documents, *(d["source"] for d in target.diagrams))
-    roots = spec_paths if mode == "spec" else target.implementation
+    roots = spec_paths if mode == "spec" else repository.implementation_paths(target)
     current = set(spec_paths if mode == "spec" else repository.implementation_files(target))
     previous = {}
     if baseline and roots:
@@ -77,7 +77,7 @@ def inputs(run, mode: str) -> tuple[dict, object]:
     target = repository.select(run.target.id, run.task.get("focus_id"))
     if mode not in REVIEW_STAGES:
         raise SpecError("review_mode must be spec or code", "invalid_input")
-    if mode == "code" and (target.kind == "domain" or not target.implementation):
+    if mode == "code" and (not target.implementations):
         raise SpecError("code review requires a target with registered implementation files", "unsupported_target")
     phase, role = REVIEW_STAGES[mode]
     prompt = load_role_prompt(run.host.package_root, role)
@@ -303,42 +303,63 @@ def review(run, mode: str) -> dict:
 
 
 def review_scope(run, mode: str) -> dict:
-    """Aggregate only separately bound results for a Domain's recorded component work."""
-    if run.target.kind != "domain" or (mode == "spec" and run.host.track_gaps):
-        return review(run, mode)
+    """Review each using Module in a separate context after shared implementation changes."""
     change = read_change(run.repository.root)
     work = (change or {}).get("targets", {}).get(run.target.id, {})
-    components = work.get("coordination", {})
-    if mode == "code" and not components:
-        return run.response("unsupported", "This Domain has no recorded component work to route for code review.")
-    outputs = [review(run, mode)["data"]] if mode == "spec" else []
+    components = dict(work.get("coordination", {}))
+    if mode == "code":
+        affected = run.repository.affected_modules(list(run.repository.implementation_paths(run.target)))
+        for target in affected:
+            if target.id != run.target.id:
+                components.setdefault(target.id, {"task":
+                    "Check this Module's own contract against the shared implementation change. " + run.task["task"]})
+    if not components or (mode == "spec" and run.host.track_gaps):
+        return review(run, mode)
+    outputs = [review(run, mode)["data"]] if mode == "spec" or run.target.implementations else []
     from .capability_host import invoke_capability
+    affected_ids = {target.id for target in run.repository.affected_modules(
+        list(run.repository.implementation_paths(run.target)))}
+    allowed = {run.target.id, *run.target.uses, *affected_ids,
+               *(child.id for child in run.repository.children(run.target))}
     for target_id, record in components.items():
+        if target_id == run.target.id:
+            continue
         target = run.repository.select(target_id)
-        scopes = set(target.participates_in)
-        for scope in tuple(scopes):
-            parent = run.repository.targets[scope].scope_parent
-            while parent:
-                scopes.add(parent)
-                parent = run.repository.targets[parent].scope_parent
-        if target.kind == "domain" or run.target.id not in scopes:
-            raise SpecError("Domain review component is outside its participating scope", "permission_denied")
+        if target.id not in allowed:
+            raise SpecError("review target is outside declared composition, dependencies and implementation impact", "permission_denied")
+        if mode == "code" and not target.implementations:
+            continue
         task = {"target_id": target_id, "task": record["task"], "review_mode": mode,
                 "change_id": run.change_id, "constraints": run.task.get("constraints", [])}
         child_host = replace(run.host, routed_target=target_id, coordinated=True,
                              evidence=[], descriptions=run.host.descriptions)
-        result = invoke_capability(run.capability, "concorde-review", run.configuration,
-                                   typed("concorde-review-request", task), child_host)
+        # Call a single target reviewer directly: recursive impact expansion would review A/B forever.
+        from .capability_host import Invocation
+        child = Invocation("concorde-review", run.configuration, task, child_host)
+        result = review(child, mode)
         run.host.evidence.extend(child_host.evidence)
-        if result["output"] is None:
-            outputs.append({"outcome": "failed", "answer": f"Review admission failed for {target_id}.",
-                            "gaps": [], "reviews": [], "artifacts": [], "completed_capabilities": []})
-        else:
-            outputs.append(result["output"]["data"])
+        outputs.append(result["data"])
     outcomes = {output["outcome"] for output in outputs}
     outcome = next((value for value in ("failed", "spec_incomplete", "conflicting", "unsupported", "described")
                     if value in outcomes), "completed")
     run.completed = [name for output in outputs for name in output["completed_capabilities"]]
+    if mode == "code" and run.host.mode == "execute":
+        state = read_change(run.repository.root)
+        if state is not None:
+            records = {}
+            for output in outputs:
+                for value in output["reviews"]:
+                    data = value["data"]
+                    key = data["target_id"]
+                    if key == run.target.id or key not in affected_ids:
+                        continue
+                    reference = next((ref for ref in output["artifacts"]
+                                      if ref["id"] == f"review.{key}.code"), None)
+                    if reference is not None:
+                        records[key] = {"artifact": reference, "task": components[key]["task"],
+                                        "constraints": run.task.get("constraints", [])}
+            state.setdefault("shared_implementation_reviews", {})[run.target.id] = records
+            save_change(run.repository.root, state)
     return run.response(outcome, "\n\n".join(output["answer"] for output in outputs),
         gaps=[gap for output in outputs for gap in output["gaps"]],
         artifacts=[ref for output in outputs for ref in output["artifacts"]],
@@ -384,7 +405,7 @@ def require_reviews(run, enabled: bool) -> None:
     state.setdefault("review_intents", {})[run.target.id] = {"task": run.task["task"],
         "focus_id": run.task.get("focus_id"), "constraints": run.task.get("constraints", [])}
     requirements = state.setdefault("review_requirements", {}).setdefault(run.target.id, {})
-    for mode in ("spec", "code") if run.target.implementation else ("spec",):
+    for mode in ("spec", "code") if run.target.implementations else ("spec",):
         # A resumed fast loop cannot silently downgrade previously required review.
         requirements[mode] = bool(enabled or requirements.get(mode))
     save_change(run.repository.root, state)
@@ -396,6 +417,33 @@ def verify_required(run) -> None:
         for mode, required in state.get("review_requirements", {}).get(run.target.id, {}).items():
             if required:
                 current(run, mode, required=True)
+        if state.get("review_requirements", {}).get(run.target.id, {}).get("code"):
+            # Each consumer review keeps its own intent and Module context. It is not replaced
+            # by another consumer's current review or a later unrelated review of the same Module.
+            from .capability_host import Invocation
+            peers = [target for target in run.repository.affected_modules(
+                list(run.repository.implementation_paths(run.target))) if target.id != run.target.id]
+            records = state.get("shared_implementation_reviews", {}).get(run.target.id, {})
+            if set(records) != {target.id for target in peers}:
+                raise SpecError("required shared implementation consumer reviews are missing", "review_required")
+            for target in peers:
+                record = records[target.id]
+                task = {"target_id": target.id, "task": record["task"],
+                        "constraints": record["constraints"], "change_id": run.change_id}
+                reviewer = Invocation("concorde-review", run.configuration, task,
+                    replace(run.host, routed_target=target.id, coordinated=True))
+                try:
+                    verify_artifacts(run.repository.root, record["artifact"])
+                    value = validate_typed(json.loads(read_file(run.repository.root,
+                        record["artifact"]["path"]).decode()), "concorde-review-result")["data"]
+                    valid = (value["target_id"] == target.id and value["review_mode"] == "code"
+                        and value["input_digest"] == inputs(reviewer, "code")[0]["input_digest"]
+                        and value["status"] in {"no_findings", "findings"} and not value["gaps"]
+                        and not any(item["severity"] == "blocking" for item in value["findings"]))
+                except (ValueError, OSError, KeyError):
+                    valid = False
+                if not valid:
+                    raise SpecError(f"shared implementation review is failed or stale for {target.id}", "review_required")
     else:
         # Directly authored candidates have no invented target plans. Their
         # explicitly required reviews still apply to every selected target.

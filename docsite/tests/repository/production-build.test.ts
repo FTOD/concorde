@@ -24,7 +24,7 @@ it('preserves every legacy membership route as a redirect stub to its canonical 
 it('publishes the same typed relationship graph as the human navigation',async()=>{
  const graph=JSON.parse(await readFile(resolve(output,'architecture-graph.json'),'utf8'));const r=loadScopedRegistry(root);
  expect(graph.nodes).toEqual(r.targets);expect(graph.edges).toEqual(r.edges);
- const html=await readFile(resolve(output,'graph.html'),'utf8');expect(html).toContain('Architecture relationships');expect(html).toContain('service.workflow-host');
+ const html=await readFile(resolve(output,'graph.html'),'utf8');expect(html).toContain('Architecture relationships');expect(html).toContain('module.workflows');
 });
 it('publishes the Agent instructions and Wire contracts projection pages as rendered projections',async()=>{
  const instructions=await readFile(resolve(output,'specs/projections/instructions.html'),'utf8');

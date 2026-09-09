@@ -1,4 +1,4 @@
-"""Trusted execution of every public Concorde capability under Profile 8.
+"""Trusted execution of every public Concorde capability under Profile 9.
 
 Agents consume frozen Spec snapshots. Deterministic checks execute separately and their raw
 output never becomes a non-implementation agent input. Each stage starts a fresh process.
@@ -38,7 +38,7 @@ from ..specification.context import (DiscoveryContext, resolve_context,
     recheck_topology_author_context)
 from ..specification.changes import file_change, apply_files
 from ..specification.validation import (validate_repository, document_context_findings,
-    domain_participant_findings)
+    module_dependency_findings)
 
 
 @dataclass(frozen=True)
@@ -55,6 +55,8 @@ class CapabilityHost:
     coordinated: bool = False
     track_gaps: bool = False
     defer_ready: bool = False
+    defer_component_checks: bool = False
+    finalize_components: bool = False
     depth: int = 0
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     descriptions: list[dict] = field(default_factory=list)
@@ -130,7 +132,7 @@ def invoke_capability(parent_capability: str, child_capability: str, configurati
 
     Used by every nested dispatch the host performs on a parent capability's behalf: the stage
     graph inside ``dev_loop``'s ``Invocation.loop``, ``reflections_triage``'s composition of
-    ``dev_loop`` and a Domain's own recursive per-component review routing. ``run_capability``
+    ``dev_loop`` and a Module's own recursive per-component review routing. ``run_capability``
     remains the shared machinery every capability module's own ``run`` delegates to; this only
     resolves which module owns the call (see ``resolve_child_capability``).
     """
@@ -164,7 +166,22 @@ def _worktree(host: CapabilityHost, mutation: bool, task: dict) -> tuple[Capabil
 
 
 def _implementation_digest(repository: SpecRepository, target) -> str:
-    return digest([(path, digest(read_file(repository.root, path))) for path in repository.implementation_files(target)])
+    return digest({"bindings": [asdict(spec) for spec in repository.implementation_specs(target)],
+        "specs": [(doc.path, doc.digest) for doc in repository.implementation_documents(target)],
+        "files": [(path, digest(read_file(repository.root, path)))
+                  for path in repository.implementation_files(target)]})
+
+
+def _implementation_users(repository: SpecRepository, target) -> tuple:
+    """Include all direct users of the selected Module's bindings, with no context union."""
+    affected = {target.id, *(module.id for module in repository.affected_modules(
+        list(repository.implementation_paths(target))))}
+    return tuple(module for module in repository.targets.values() if module.id in affected)
+
+
+def _impact_revisions(repository: SpecRepository, targets) -> list[dict]:
+    return [{"target_id": target.id, "spec_digest": _target_revision(repository, target),
+             "implementation_digest": _implementation_digest(repository, target)} for target in targets]
 
 
 def _target_revision(repository: SpecRepository, target) -> str:
@@ -218,7 +235,7 @@ def _check(repository: SpecRepository, target, invocation_id: str) -> list[dict]
 
 
 class MainInvocation:
-    """Global Domain/Service discovery followed by fresh target workers."""
+    """Global Module discovery followed by fresh target workers."""
 
     def __init__(self, capability: str, configuration: dict, task: dict, host: CapabilityHost):
         self.capability, self.configuration, self.task, self.host = capability, configuration, task, host
@@ -227,8 +244,8 @@ class MainInvocation:
         self.action = task.get("action", "route") if capability == MAIN_CAPABILITY else "route"
         self.repository = SpecRepository(host.project_root, host.package_root)
         self.entry = self.repository.select(self.repository.entry_target)
-        if self.entry.kind not in {"domain", "service"}:
-            raise SpecError("the project entry target must be a Domain or Service for main discovery",
+        if self.entry.kind != "module":
+            raise SpecError("the project entry target must be a Module for main discovery",
                             "invalid_entry_target")
         if task.get("focus_id") and not task.get("target_id"):
             raise SpecError("a focus hint requires a target hint", "invalid_focus")
@@ -410,7 +427,7 @@ class MainInvocation:
                     raise SpecError("direct main answers require only an answer from admitted workspace metadata", "invalid_completion")
             elif outcome == "expand":
                 if not expansions or routes or gaps or topology is not None:
-                    raise SpecError("expand requires only nonempty Domain/Service targets", "invalid_completion")
+                    raise SpecError("expand requires only nonempty Module targets", "invalid_completion")
             elif outcome == "routed":
                 if expansions or not routes or gaps or topology is not None:
                     raise SpecError("routed requires only nonempty worker routes", "invalid_completion")
@@ -453,7 +470,7 @@ class MainInvocation:
                          "task": self.task["task"], "constraints": self.task.get("constraints", [])}], None
             return [], decision
 
-        routable_targets = sum(target.kind in {"domain", "service"}
+        routable_targets = sum(target.kind == "module"
                                for target in self.repository.targets.values())
         for occurrence in range(routable_targets + 1):
             decision = self.stage("route", occurrence)
@@ -469,8 +486,8 @@ class MainInvocation:
                         raise SpecError("main discovery requested a target absent from admitted Specs",
                                         "incompatible_handoff", target_id)
                     target = self.repository.select(target_id)
-                    if target.kind not in {"domain", "service"}:
-                        raise SpecError("main discovery cannot expand a Module Spec", "permission_denied", target_id)
+                    if target.kind != "module":
+                        raise SpecError("main discovery accepts only Module Specs", "permission_denied", target_id)
                     self.discovered.append(target_id)
                 continue
             if decision["outcome"] == "routed":
@@ -483,7 +500,7 @@ class MainInvocation:
                 for route in routes:
                     self.repository.select(route["target_id"], route["focus_id"])
                     if route["target_id"] not in self.discovered and route["target_id"] not in routing_text:
-                        raise SpecError("main routed a target absent from admitted Domain/Service Specs",
+                        raise SpecError("main routed a target absent from admitted Module Specs",
                                         "incompatible_handoff", route["target_id"])
                     if any(item not in route["constraints"] for item in original_constraints):
                         raise SpecError("main route dropped a user constraint", "incompatible_handoff")
@@ -510,7 +527,7 @@ class MainInvocation:
             return None, self.capability_response(outcome, decision["answer"], gaps=decision["gaps"])
         if len(routes) != 1:
             raise SpecError(
-                f"{self.capability} requires one owning target; route cross-target work through a Domain",
+                f"{self.capability} requires one owning target; route cross-target work through a coordinating Module",
                 "ambiguous_route",
             )
         self.completed.append("concorde-coordinator-route")
@@ -645,34 +662,31 @@ def _inspect_topology_design(repository: SpecRepository, design_value: dict,
             f"changed document sharing requires every retained referencing target task: {missing_document_tasks}",
             "invalid_proposal",
         )
-    current_edges = {(target_id, domain_id)
-        for target_id, target in current_targets.items() if target["kind"] != "domain"
-        for domain_id in target["participates_in"]}
-    candidate_edges = {(target_id, domain_id)
-        for target_id, target in candidate_targets.items() if target["kind"] != "domain"
-        for domain_id in target["participates_in"]}
-    affected_domains = {domain_id for _, domain_id in current_edges ^ candidate_edges}
-    for target_id in set(current_targets) & set(candidate_targets):
-        if current_targets[target_id]["kind"] != candidate_targets[target_id]["kind"]:
-            affected_domains.update(current_targets[target_id]["participates_in"])
-            affected_domains.update(candidate_targets[target_id]["participates_in"])
-    affected_domains.update(
-        finding.subject_id for finding in domain_participant_findings(repository)
-        if finding.subject_id is not None
-    )
-    missing_domain_tasks = sorted(domain_id for domain_id in affected_domains
-        if domain_id in candidate_targets and domain_id not in tasks)
-    if missing_domain_tasks:
-        raise SpecError(
-            f"changed or incomplete participation requires Domain Spec tasks: {missing_domain_tasks}",
-            "invalid_proposal",
-        )
+    def relations(targets):
+        result = {(target_id, peer) for target_id, target in targets.items() for peer in target["uses"]}
+        result.update((target["parent"], target_id) for target_id, target in targets.items()
+                      if target["parent"] is not None)
+        return result
+    affected_modules = {owner for owner, _ in relations(current_targets) ^ relations(candidate_targets)}
+    affected_modules.update(finding.subject_id for finding in module_dependency_findings(repository)
+                            if finding.subject_id is not None)
+    old_implementations = {item["id"]: item for item in repository.registry["implementations"]}
+    new_implementations = {item["id"]: item for item in candidate["implementations"]}
+    changed_implementations = {key for key in old_implementations.keys() | new_implementations.keys()
+                              if old_implementations.get(key) != new_implementations.get(key)}
+    affected_modules.update(target_id for target_id, target in candidate_targets.items()
+                            if changed_implementations.intersection(target["implementations"]))
+    missing_dependency_tasks = sorted(target_id for target_id in affected_modules
+                                      if target_id in candidate_targets and target_id not in tasks)
+    if missing_dependency_tasks:
+        raise SpecError(f"changed dependencies or shared implementation bindings require Module tasks: {missing_dependency_tasks}",
+                        "invalid_proposal")
     discovered = set(discovered_targets)
     unread_existing = sorted(target_id for target_id in (changed | tasks.keys())
-        if target_id in current_targets and current_targets[target_id]["kind"] in {"domain", "service"}
+        if target_id in current_targets and current_targets[target_id]["kind"] == "module"
         and target_id not in discovered)
     if unread_existing:
-        raise SpecError(f"topology design did not admit affected Domain/Service Specs: {unread_existing}",
+        raise SpecError(f"topology design did not admit affected Module Specs: {unread_existing}",
                         "invalid_proposal")
     missing_tasks = sorted((changed & candidate_targets.keys()) - tasks.keys())
     if missing_tasks:
@@ -826,6 +840,46 @@ def _main_topology_response(action: str, repository: SpecRepository, proposal: d
         "workspace": workspace_context(repository.root)})
 
 
+def _implementation_document_proposals(repository: SpecRepository, candidate: dict) -> dict[str, str]:
+    """Maintain exact binding metadata privately; code writers author implementation design.
+
+    This deterministic operation does not pass Implementation Spec bodies to Module authors or
+    the coordinator. New bindings receive honest stubs rather than invented code architecture.
+    """
+    import re
+    from ..specification.repository import DOCUMENT_BLOCK
+    current = {item["id"]: item for item in repository.registry["implementations"]}
+    proposed = {}
+    for implementation in candidate["implementations"]:
+        if current.get(implementation["id"]) == implementation:
+            continue
+        for index, path in enumerate(implementation["documents"]):
+            if path in repository.document_targets:
+                if any(owner not in repository.implementations for owner in repository.document_targets[path]):
+                    raise SpecError("Implementation binding cannot adopt a Module document", "invalid_proposal", path)
+                document = repository.document(path)
+                declaration = {"id": document.document_id, "targets": [implementation["id"]],
+                               "main_visible": document.main_visible}
+                body = DOCUMENT_BLOCK.sub("", document.content).lstrip()
+            else:
+                if checked_path(repository.root, path).exists():
+                    raise SpecError("Implementation binding cannot overwrite an unregistered document", "permission_denied", path)
+                declaration = {"id": "document." + implementation["id"] + "." + digest(path)[7:23],
+                               "targets": [implementation["id"]], "main_visible": False}
+                body = ("# " + implementation["title"] + "\n\n## Implementation design\n\n"
+                    "The file binding is explicit. Internal responsibilities and implementation choices "
+                    "have not yet been authored. The code-writing agent must specify them while "
+                    "implementing the complete Module contract; a planner does not read this document.\n")
+            if index == 0:
+                binding = "## Bound files\n\n" + "\n".join("- `" + path + "`" for path in implementation["files"]) + "\n"
+                if re.search(r"^## Bound files\s*$", body, re.M):
+                    body = re.sub(r"^## Bound files\s*\n.*?(?=^## |\Z)", binding + "\n", body, flags=re.M | re.S)
+                else:
+                    body = body.rstrip() + "\n\n" + binding
+            proposed[path] = "```concorde-document\n" + json.dumps(declaration, indent=2) + "\n```\n\n" + body
+    return proposed
+
+
 def _prepare_topology(configuration: dict, proposal: dict, host: CapabilityHost) -> dict:
     if host.mode == "execute":
         progress(host.project_root, phase="topology_authoring", status="active", invalidate=True)
@@ -843,6 +897,9 @@ def _prepare_topology(configuration: dict, proposal: dict, host: CapabilityHost)
     for candidate_target in candidate["targets"]:
         for path in (*candidate_target["documents"], *(d["source"] for d in candidate_target["diagrams"])):
             candidate_references.setdefault(path, []).append(candidate_target["id"])
+    for implementation in candidate["implementations"]:
+        for path in implementation["documents"]:
+            candidate_references[path] = [implementation["id"]]
     for occurrence, (target_id, task) in enumerate(tasks.items()):
         target = candidate_targets[target_id]
         references = tuple({"path": path, "targets": candidate_references[path]}
@@ -884,6 +941,7 @@ def _prepare_topology(configuration: dict, proposal: dict, host: CapabilityHost)
                     answer=f"Changing shared truth requires every referencing target author: {path}",
                     completed=completed)
         authored[path] = content
+    authored.update(_implementation_document_proposals(repository, candidate))
     overrides = {path: content.encode() for path, content in authored.items()}
     report = validate_repository(repository.root, package_root=host.package_root,
         registry_bytes=candidate_bytes, document_overrides=overrides)
@@ -940,6 +998,7 @@ def _apply_topology(application_ref: dict, host: CapabilityHost) -> dict:
     targets = {item["id"]: item for item in design["registry"]["targets"]}
     expected_documents = {path for target_id in task_ids for path in (
         *targets[target_id]["documents"], *(d["source"] for d in targets[target_id]["diagrams"]))}
+    expected_documents.update(_implementation_document_proposals(repository, design["registry"]))
     actual_documents = {item["path"] for item in files if item["path"] != repository.registry_path}
     if actual_documents != expected_documents or len({item["path"] for item in files}) != len(files):
         raise SpecError("topology application document set differs from accepted design",
@@ -948,6 +1007,9 @@ def _apply_topology(application_ref: dict, host: CapabilityHost) -> dict:
     for target in design["registry"]["targets"]:
         for path in (*target["documents"], *(d["source"] for d in target["diagrams"])):
             candidate_references.setdefault(path, set()).add(target["id"])
+    for implementation in design["registry"]["implementations"]:
+        for path in implementation["documents"]:
+            candidate_references[path] = {implementation["id"]}
     for item in files:
         if item["path"] == repository.registry_path:
             continue
@@ -1072,30 +1134,29 @@ class Invocation:
                     "answer": "Repair the recorded necessary contracts before resuming this step.",
                     "gaps": pending, "documents": [], "plan": "", "tasks": []}
         implementation = phase == "implementation"
-        if implementation and not self.target.implementation:
-            raise SpecError("implementation requires an explicitly owned Service/Module code scope", "unsupported_target")
-        if (self.host.mode != "describe-policy" and phase == "context-solve"
-                and self.target.kind == "domain"):
-            participant_findings = domain_participant_findings(self.repository, self.target.id)
+        if implementation and not self.target.implementations:
+            raise SpecError("implementation requires explicitly referenced file-bound Implementation Specs", "unsupported_target")
+        if self.host.mode != "describe-policy" and phase == "context-solve":
+            participant_findings = module_dependency_findings(self.repository, self.target.id)
             if participant_findings:
                 self.completed.append(capability)
                 conflicts = [finding for finding in participant_findings
-                             if finding.rule_id != "CONCORDE-PARTICIPANT-004"]
+                             if not finding.message.startswith("missing local dependency promises:")]
                 if conflicts:
                     return {"context_id": snapshot.id, "outcome": "conflicting",
-                            "answer": "Domain participant routing conflicts with its registered topology: "
+                            "answer": "Module dependency promises conflicts with its registered topology: "
                                 + "; ".join(finding.message for finding in conflicts),
                             "gaps": [], "documents": [], "plan": "", "tasks": []}
                 gaps = [{
-                    "question": "How should the Domain participant routing be completed? " + finding.message,
-                    "blocked_step": "Assess context sufficiency before Domain planning",
+                    "question": "How should the Module dependency promises be completed? " + finding.message,
+                    "blocked_step": "Assess context sufficiency before Module planning",
                     "needed_contract": f"{finding.rule_id}: {finding.remediation}",
                     "target_id": self.target.id,
                     "context_id": snapshot.id,
                 } for finding in participant_findings]
                 self.record_gaps(phase, gaps)
                 return {"context_id": snapshot.id, "outcome": "spec_incomplete",
-                        "answer": "Domain participant routing is incomplete or inconsistent.",
+                        "answer": "Module dependency promises is incomplete or inconsistent.",
                         "gaps": gaps, "documents": [], "plan": "", "tasks": []}
         before_registry = self.repository.registry_bytes
         with tempfile.TemporaryDirectory(prefix="concorde-context-") as directory:
@@ -1111,7 +1172,8 @@ class Invocation:
             if self.host.mode != "describe-policy":
                 context_file.parent.mkdir(parents=True, exist_ok=True)
                 context_file.write_text(snapshot.serialized + "\n")
-            roles = ({"spec-context": (relative,), "implementation": self.target.implementation}
+            roles = ({"spec-context": (relative,), "implementation": (*self.repository.implementation_paths(self.target),
+                        *(doc["path"] for spec in snapshot.value["implementation_specs"] for doc in spec["documents"]))}
                       if project_workspace else {"spec-context": (relative,)})
             write_roles = ("implementation",) if implementation and not readonly else ()
             try:
@@ -1176,8 +1238,37 @@ class Invocation:
                 raise SpecError("configuration changed during agent execution", "configuration_mismatch")
             if context_file.read_text() != snapshot.serialized + "\n":
                 raise SpecError("frozen context capsule changed", "stale_context")
-            if phase != "specify" and (data["documents"] or data.get("diagrams")):
+            if implementation and not readonly and data["documents"]:
+                allowed = {doc.path for doc in self.repository.implementation_documents(self.target)}
+                changes = []
+                for item in data["documents"]:
+                    if item["path"] not in allowed:
+                        raise SpecError("code writers may author only admitted Implementation Spec documents", "permission_denied")
+                    changes.append(file_change(self.repository.root, item["path"], item["content"]))
+                def verify_implementation_specs():
+                    current = SpecRepository(self.repository.root, self.host.package_root)
+                    for spec in current.implementation_specs(current.select(self.target.id)):
+                        for path in spec.documents:
+                            before = self.repository.document(path)
+                            after = current.document(path)
+                            if (before.document_id, before.targets, before.main_visible) != (
+                                    after.document_id, after.targets, after.main_visible):
+                                raise SpecError("Implementation Spec identity changes require explicit binding changes", "permission_denied")
+                apply_files(self.repository.root, changes, allowed, verify=verify_implementation_specs)
+            elif phase != "specify" and data["documents"]:
                 raise SpecError("this phase cannot author Spec documents", "permission_denied")
+            if phase != "specify" and data.get("diagrams"):
+                raise SpecError("this phase cannot author Module diagram sources", "permission_denied")
+            if implementation and not readonly:
+                current = SpecRepository(self.repository.root, self.host.package_root)
+                for spec in snapshot.value["implementation_specs"]:
+                    for before in spec["documents"]:
+                        after = current.document(before["path"])
+                        if (before["document_id"], tuple(before["targets"]), before["main_visible"]) != (
+                                after.document_id, after.targets, after.main_visible):
+                            raise SpecError("code writers cannot change Implementation Spec identity or membership", "permission_denied")
+                self.repository = current
+                self.target = current.select(self.target.id)
             self.host.evidence.append(result)
             self.completed.append(capability)
             if (data["outcome"] == "spec_incomplete" or not defer_gap_resolution
@@ -1247,18 +1338,18 @@ class Invocation:
                         + "; ".join(finding.message for finding in document_findings),
                         "invalid_spec",
                     )
-                participant_findings = domain_participant_findings(current, self.target.id)
+                participant_findings = module_dependency_findings(current, self.target.id)
                 if participant_findings:
                     raise SpecError(
-                        "authored Domain participant routing is invalid: "
+                        "authored Module dependency promises is invalid: "
                         + "; ".join(finding.message for finding in participant_findings),
                         "invalid_spec",
                     )
-                from ..specification.validation import ontology_findings, diagram_findings
-                source_findings = (*ontology_findings(current, self.target.id),
+                from ..specification.validation import module_findings, diagram_findings
+                source_findings = (*module_findings(current, self.target.id),
                                    *diagram_findings(current, self.target.id))
                 if source_findings:
-                    raise SpecError("authored ontology/diagram is invalid: " + "; ".join(
+                    raise SpecError("authored Module architecture/diagram is invalid: " + "; ".join(
                         f.message for f in source_findings), "invalid_spec")
             if changes:
                 apply_files(self.repository.root, changes, set(self.target.documents) | diagram_paths, verify=verify)
@@ -1358,8 +1449,9 @@ class Invocation:
                             "and initially incomplete", "invalid_completion")
         for task in tasks:
             self.repository.select(task["target_id"])
-            if self.target.kind != "domain" and task["target_id"] != self.target.id:
-                raise SpecError("component tasks must remain in their owning context", "permission_denied")
+            if task["target_id"] not in {self.target.id, *self.target.uses,
+                    *(child.id for child in self.repository.children(self.target))}:
+                raise SpecError("Module tasks may target only this Module, its declared dependencies or direct submodules", "permission_denied")
         if repair is not None:
             state.setdefault("task_history", []).append({"iteration": repair["iteration"],
                 "tasks": state["tasks"], "implementation_digest": state.get("implementation_digest")})
@@ -1384,7 +1476,7 @@ class Invocation:
         self.check_state(state)
         if not state["tasks"]:
             raise SpecError("implementation requires tasks", "missing_tasks")
-        if self.target.kind == "domain":
+        if state.get("coordination") or any(task["target_id"] != self.target.id for task in state["tasks"]):
             return self.implement_scope(state)
         if validate_repository(self.repository.root, package_root=self.host.package_root).status != "success":
             raise SpecError("reconcile all shared contracts before implementation", "incompatible_contracts")
@@ -1406,6 +1498,9 @@ class Invocation:
         expected = [{**task, "complete": True} for task in state["tasks"]]
         if returned != expected:
             raise SpecError("implementation must report every exact task complete", "incomplete_tasks")
+        missing = set(self.repository.implementation_paths(self.target)) - set(self.repository.implementation_files(self.target))
+        if missing:
+            raise SpecError("implementation did not materialize required bound files: " + ", ".join(sorted(missing)), "incomplete_tasks")
         state["tasks"] = returned
         state["implementation_digest"] = _implementation_digest(self.repository, self.target)
         state["checks"] = []
@@ -1433,21 +1528,20 @@ class Invocation:
         review_artifacts = []
         for task in state["tasks"]:
             component = self.repository.select(task["target_id"])
-            scopes = set(component.participates_in)
-            for scope in tuple(scopes):
-                parent = self.repository.targets[scope].scope_parent
-                while parent:
-                    scopes.add(parent)
-                    parent = self.repository.targets[parent].scope_parent
-            if component.kind == "domain" or self.target.id not in scopes:
-                raise SpecError("Domain task must target an explicitly participating component", "permission_denied")
+            allowed = {self.target.id, *self.target.uses,
+                       *(child.id for child in self.repository.children(self.target))}
+            if component.id not in allowed:
+                raise SpecError("coordinated task must name a declared dependency or direct submodule", "permission_denied")
             grouped.setdefault(component.id, []).append(task)
+        local_tasks = grouped.pop(self.target.id, [])
         component_tasks = {target_id: "\n\n".join(
             task["description"] + "\nAcceptance: " + task["acceptance"] for task in tasks)
             for target_id, tasks in grouped.items()}
         coordination = state.setdefault("coordination", {})
-        if coordination and set(coordination) != set(component_tasks):
-            raise SpecError("participating tasks changed; replan this worktree change", "stale_context")
+        # Local repair tasks do not erase already completed participating work. Its final
+        # contract evidence must still be refreshed if the repair changes a shared implementation.
+        for target_id, record in coordination.items():
+            component_tasks.setdefault(target_id, record["task"])
         for target_id, task_text in component_tasks.items():
             record = coordination.setdefault(target_id, {
                 "task": task_text, "spec_status": "pending", "implementation_status": "pending",
@@ -1483,7 +1577,8 @@ class Invocation:
             save_target_state(self.repository.root, state)
             payload = {"target_id": target_id, "task": task_text, "change_id": self.change_id,
                        "constraints": self.task.get("constraints", [])}
-            child_host = replace(self.host, routed_target=target_id, coordinated=True)
+            child_host = replace(self.host, routed_target=target_id, coordinated=True,
+                                 defer_component_checks=True, finalize_components=False)
             result = run_capability("concorde-specify", self.configuration,
                 typed("concorde-specify-request", payload), host_context=child_host)
             if result["status"] != "succeeded":
@@ -1508,7 +1603,8 @@ class Invocation:
             record = coordination[target_id]
             payload = {"target_id": target_id, "task": task_text, "change_id": self.change_id,
                        "constraints": self.task.get("constraints", [])}
-            child_host = replace(self.host, routed_target=target_id, coordinated=True)
+            child_host = replace(self.host, routed_target=target_id, coordinated=True,
+                                 defer_component_checks=True, finalize_components=False)
             from .review import require_reviews
             require_reviews(Invocation("concorde-review", self.configuration, payload, child_host), bool(
                 read_change(self.repository.root, required=True).get("review_requirements", {})
@@ -1536,6 +1632,101 @@ class Invocation:
             record.update(implementation_status="completed", outcome="completed",
                           implementation_digest=_implementation_digest(self.repository, self.repository.select(target_id)))
             save_target_state(self.repository.root, state)
+        if local_tasks:
+            # A composite may also own coordination code. Do not recursively start a dev-loop
+            # for this same target or replace its enclosing plan with one local subtask.
+            current_local = _implementation_digest(self.repository, self.target)
+            expected_local = [{**task, "complete": True} for task in local_tasks]
+            if (state.get("local_implementation_digest") != current_local
+                    or state.get("local_completed_tasks") != expected_local):
+                inputs = (typed("concorde-implementation-task", {"plan": state["plan"], "tasks": local_tasks}),)
+                result = self.stage("concorde-implement", inputs=inputs, defer_gap_resolution=True)
+                if result["outcome"] not in {"completed", "sufficient"}:
+                    state.update(phase="implementation", status="blocked")
+                    save_target_state(self.repository.root, state)
+                    return self.response(result["outcome"], result["answer"], gaps=result["gaps"])
+                if result["tasks"] != expected_local:
+                    raise SpecError("local coordination code did not complete its exact tasks", "incomplete_tasks")
+                missing = set(self.repository.implementation_paths(self.target)) - set(self.repository.implementation_files(self.target))
+                if missing:
+                    raise SpecError("local implementation did not materialize its bound files", "incomplete_tasks")
+                state["local_completed_tasks"] = expected_local
+                state["local_implementation_digest"] = _implementation_digest(self.repository, self.target)
+                save_target_state(self.repository.root, state)
+        # All coordinated writers finish before any consumer's final code checks. A nested
+        # coordinator leaves explicit drafts; the outer coordinator finalizes the whole tree.
+        if not self.host.defer_component_checks:
+            finalized = set()
+            def finalize(target_id, task_text):
+                if target_id in finalized:
+                    return None
+                finalized.add(target_id)
+                self.repository = SpecRepository(self.host.project_root, self.host.package_root)
+                component = self.repository.select(target_id)
+                component_state = target_state(self.repository.root, target_id, None)
+                nested = component_state.get("coordination", {})
+                for nested_id, record in nested.items():
+                    failure = finalize(nested_id, record["task"])
+                    if failure is not None:
+                        return failure
+                self.repository = SpecRepository(self.host.project_root, self.host.package_root)
+                component = self.repository.select(target_id)
+                component_state = target_state(self.repository.root, target_id, None)
+                component_state["component_revisions"] = {key: {
+                    "spec": _target_revision(self.repository, self.repository.select(key)),
+                    "implementation": _implementation_digest(self.repository, self.repository.select(key))}
+                    for key in nested}
+                component_state.update(implementation_digest=_implementation_digest(self.repository, component),
+                    checks=[], phase="validate", status="active")
+                save_target_state(self.repository.root, component_state)
+                payload = {"target_id": target_id, "task": task_text, "change_id": self.change_id,
+                           "constraints": self.task.get("constraints", [])}
+                child_host = replace(self.host, routed_target=target_id, coordinated=True,
+                                     defer_ready=True, defer_component_checks=False, finalize_components=True)
+                change = read_change(self.repository.root, required=True)
+                enabled = bool(change.get("review_requirements", {}).get(target_id, {}).get("spec"))
+                child = Invocation("concorde-dev-loop", self.configuration,
+                    {**payload, "specify": False, "run_reviews": enabled}, child_host)
+                verified = child.loop()["data"]
+                if verified["outcome"] not in {"completed", "ready"}:
+                    return verified
+                review_artifacts.extend(verified["artifacts"])
+                return None
+            def participating_ids():
+                change = read_change(self.repository.root, required=True)
+                selected = {self.target.id}
+                def visit(target_id):
+                    if target_id in selected:
+                        return
+                    selected.add(target_id)
+                    for nested_id in change["targets"].get(target_id, {}).get("coordination", {}):
+                        visit(nested_id)
+                for target_id in component_tasks:
+                    visit(target_id)
+                return selected
+            def candidate_implementation():
+                self.repository = SpecRepository(self.host.project_root, self.host.package_root)
+                return digest([(key, _implementation_digest(self.repository, self.repository.select(key)))
+                               for key in sorted(participating_ids())])
+            # Local repair remains bounded by each Module's loop. A later repair can stale
+            # an earlier consumer; rerun final verification until the shared candidate is stable.
+            for _ in range(1 + 2 * len(participating_ids())):
+                before_finalization = candidate_implementation()
+                finalized.clear()
+                for target_id, task_text in component_tasks.items():
+                    failure = finalize(target_id, task_text)
+                    if failure is not None:
+                        state.update(phase="validate", status="blocked")
+                        save_target_state(self.repository.root, state)
+                        return self.response(failure["outcome"], failure["answer"],
+                            gaps=failure.get("gaps", []), checks=failure.get("checks", []),
+                            artifacts=failure.get("artifacts", []))
+                    coordination[target_id]["implementation_digest"] = _implementation_digest(
+                        self.repository, self.repository.select(target_id))
+                if candidate_implementation() == before_finalization:
+                    break
+            else:
+                raise SpecError("shared implementation repairs did not converge to one verified candidate", "incompatible_contracts")
         state["component_revisions"] = {target_id: {
             "spec": _target_revision(self.repository, self.repository.select(target_id)),
             "implementation": _implementation_digest(self.repository, self.repository.select(target_id))}
@@ -1544,7 +1735,8 @@ class Invocation:
         state["implementation_digest"] = _implementation_digest(self.repository, self.target)
         state.update(phase="implementation", status="completed")
         save_target_state(self.repository.root, state)
-        return self.response(answer="Participating components completed in the candidate worktree.", artifacts=review_artifacts)
+        return self.response(answer="Participating components completed in the candidate worktree.",
+            artifacts=list({reference["id"]: reference for reference in review_artifacts}.values()))
 
     def validate(self, run_checks: bool = True) -> dict:
         if not self.host.coordinated:
@@ -1556,13 +1748,16 @@ class Invocation:
         if report.status != "success":
             progress(self.repository.root, status="blocked", outcome="invalid_spec")
             return self.response("failed", "Spec structure or shared contracts failed deterministic validation.")
-        checked_targets = tuple(self.repository.targets.values()) if direct_candidate else (self.target,)
+        checked_targets = (tuple(self.repository.targets.values()) if direct_candidate
+                           else _implementation_users(self.repository, self.target))
+        impacts = _impact_revisions(self.repository, checked_targets)
         results = [result for target in checked_targets
                    for result in _check(self.repository, target, self.host.invocation_id)] if run_checks else []
         state = None
         if change and self.target.id in change["targets"]:
             state = target_state(self.repository.root, self.target.id, self.task.get("focus_id"))
-            state.update(checks=results, validation_spec_digest=report.result["source_digest"],
+            state.update(checks=results, implementation_impacts=impacts,
+                         validation_spec_digest=report.result["source_digest"],
                          phase="validate", status="active")
             save_target_state(self.repository.root, state)
         self.completed.append("concorde-validate")
@@ -1574,6 +1769,13 @@ class Invocation:
             return self.response("failed", "Deterministic validation failed.", checks=results)
         if self.work_directory and snapshot_tree(self.repository.root) != before_tree:
             raise SpecError("candidate files changed while checks were running", "stale_evidence")
+        current_repository = SpecRepository(self.repository.root, self.host.package_root)
+        current_target = current_repository.select(self.target.id)
+        current_targets = (tuple(current_repository.targets.values()) if direct_candidate
+                           else _implementation_users(current_repository, current_target))
+        if _impact_revisions(current_repository, current_targets) != impacts:
+            raise SpecError("a using Module or shared implementation changed during validation", "stale_evidence")
+        self.repository, self.target = current_repository, current_target
         if direct_candidate:
             change = read_change(self.repository.root, required=True)
             change["validation"] = {"target_id": self.target.id, "focus_id": self.task.get("focus_id"),
@@ -1636,7 +1838,7 @@ class Invocation:
             component = self.repository.select(target_id)
             if revision != {"spec": _target_revision(self.repository, component),
                             "implementation": _implementation_digest(self.repository, component)}:
-                raise SpecError("a completed component changed before Domain delivery", "stale_evidence")
+                raise SpecError("a completed component changed before coordinated delivery", "stale_evidence")
             component_state = target_state(self.repository.root, target_id, None)
             payload = {"target_id": target_id, "task": component_state["task"],
                        "constraints": component_state.get("constraints", []), "change_id": self.change_id}
@@ -1649,8 +1851,13 @@ class Invocation:
         report = validate_repository(self.repository.root, self.target.id, self.host.package_root)
         if report.status != "success" or state.get("validation_spec_digest") != report.result["source_digest"]:
             raise SpecError("Spec validation is missing or stale", "stale_evidence")
-        if {item["check_id"] for item in state["checks"]} != set(self.target.checks) or any(
-                item["status"] != "passed" or item["source_digest"] != _check_revision(self.repository, self.target)
+        affected = _implementation_users(self.repository, self.target)
+        if state.get("implementation_impacts") != _impact_revisions(self.repository, affected):
+            raise SpecError("shared implementation consumer evidence is missing or stale", "stale_evidence")
+        required_checks = {key for target in affected for key in target.checks}
+        if {item["check_id"] for item in state["checks"]} != required_checks or any(
+                item["status"] != "passed" or item["source_digest"] != _check_revision(
+                    self.repository, self.repository.select(item["target_id"]))
                 for item in state["checks"]):
             raise SpecError("required implementation checks are missing, failed, or stale", "stale_evidence")
         return state
@@ -1673,7 +1880,7 @@ class Invocation:
         graph_state(self.repository.root, self.target.id, policy=policy,
             spec_digest=_target_revision(self.repository, self.target),
             implementation_digest=_implementation_digest(self.repository, self.target)
-                if self.target.implementation else None)
+                if self.target.implementations else None)
         stages = (["specify", "plan", "tasks", "implement", "validate"] if specify else
                   ["plan", "tasks", "implement", "validate"])
         change = read_change(self.repository.root)
@@ -1697,10 +1904,12 @@ class Invocation:
             stages = ["tasks", "implement", "validate"]
             if existing.get("tasks") and "tasks" not in blocked_phases:
                 stages = ["implement", "validate"]
-                if (self.target.kind != "domain" and all(item["complete"] for item in existing["tasks"])
+                if (not existing.get("coordination") and all(item["complete"] for item in existing["tasks"])
                         and "implementation" not in blocked_phases
                         and existing.get("implementation_digest") == _implementation_digest(self.repository, self.target)):
                     stages = ["validate"]
+        if self.host.finalize_components and existing and all(task["complete"] for task in existing.get("tasks", [])):
+            stages = ["validate"]
 
         # Resume trimming (above) only decides where the traversed path *enters*; every node from
         # "tasks" onward is still declared below so a repair can re-enter "tasks" even when this
@@ -1708,7 +1917,7 @@ class Invocation:
         include_specify = stages[0] == "specify"
         entry = stages[1] if include_specify else stages[0]
         chain = ["review_spec", "plan", "tasks", "implement", "validate"]
-        if self.target.implementation:
+        if self.target.implementations:
             chain.append("review_code")
         chain.append("ready")
         all_nodes = ["specify", *chain] if include_specify else chain
@@ -1741,7 +1950,14 @@ class Invocation:
             feedback or the declared iteration limit says otherwise (G2/G3 "AI review")."""
             if data["outcome"] != "conflicting":
                 return stop("review_code", data["outcome"])
-            reference = next(item for item in data["artifacts"] if item["id"].startswith("review."))
+            if any(value["data"]["target_id"] != self.target.id and any(
+                    finding["severity"] == "blocking" for finding in value["data"]["findings"])
+                    for value in data.get("reviews", [])):
+                # A peer's contract is not this planner's context. Preserve the peer result
+                # for separately routed work instead of inventing a repair from the first artifact.
+                return stop("review_code", data["outcome"])
+            reference = next(item for item in data["artifacts"]
+                             if item["id"] == f"review.{self.target.id}.code")
             verify_artifacts(self.repository.root, reference)
             reviewed = validate_typed(decode(read_file(self.repository.root, reference["path"]).decode()),
                                       "concorde-review-result")["data"]
@@ -1786,7 +2002,7 @@ class Invocation:
                         reference = read_change(self.repository.root, required=True)["reviews"][self.target.id][mode]["artifact"]
                         review_artifacts.append(reference)
                         data = self.response(answer=f"{mode} review explicitly skipped.", artifacts=[reference])["data"]
-                    elif current(self, mode) is not None:
+                    elif current(self, mode) is not None and (mode != "code" or len(_implementation_users(self.repository, self.target)) == 1):
                         review_artifacts.append(read_change(self.repository.root, required=True)["reviews"][self.target.id][mode]["artifact"])
                         data = self.response(answer=f"Current {mode} review retained.")["data"]
                     elif not self.host.coordinated:
@@ -1822,7 +2038,15 @@ class Invocation:
                     if is_review or name == "implement":
                         review_artifacts.extend(item for item in data["artifacts"] if item["id"].startswith("review."))
                     self.repository = SpecRepository(self.host.project_root, self.host.package_root)
-                if data["outcome"] in {"completed", "ready"}:
+                if (self.host.defer_component_checks and data["outcome"] in {"completed", "ready"}
+                        and (name == "implement" or name == "review_spec" and entry == "validate")):
+                    record_transition(self.repository.root, self.target.id, iteration=current_iteration(),
+                        **{"from": name, "to": "END"}, trigger="deterministic", outcome="completed",
+                        source="code-driven", artifact=None, input_digest=None, finding_ids=[], status="active")
+                    data = {**data, "outcome": "completed",
+                            "answer": "Component code draft is complete; the enclosing Module verifies the final shared candidate."}
+                    route = END
+                elif data["outcome"] in {"completed", "ready"}:
                     route = successor[name]
                 elif name == "review_code":
                     route = route_review_code(data)
@@ -1891,7 +2115,7 @@ def _project_capability(capability, configuration, task, host):
         return typed(CAPABILITY_CONTRACTS[capability][1], {"status": "applied", "proposal": None, "files": value["files"]})
     if not {"name", "configuration"}.issubset(task):
         raise SpecError("initialization proposal requires name and configuration", "invalid_input")
-    value = project_proposal(host.project_root, host.package_root, task["name"], task["configuration"], task.get("target_id", "domain.project"))
+    value = project_proposal(host.project_root, host.package_root, task["name"], task["configuration"], task.get("target_id", "module.project"))
     proposal = typed("concorde-project-proposal", {key: value[key] for key in ("action", "base_digest", "files")})
     return typed(CAPABILITY_CONTRACTS[capability][1], {"status": "proposed", "proposal": proposal, "files": [x["path"] for x in value["files"]]})
 
@@ -1946,7 +2170,7 @@ def _dispatch(capability, configuration, task, host):
         if capability == "concorde-dev-loop":
             describe_reviews = task.get("run_reviews", True)
             stages = ["concorde-context-solve", "concorde-plan", "concorde-tasks"]
-            if run.target.kind != "domain":
+            if run.target.implementations:
                 stages.append("concorde-implement")
             if task.get("specify", True):
                 stages.insert(0, "concorde-specify")
@@ -1955,7 +2179,7 @@ def _dispatch(capability, configuration, task, host):
                 from .review import review
                 review(run, "spec")
             run.stage(stage)
-        if describe_reviews and run.target.implementation:
+        if describe_reviews and run.target.implementations:
             from .review import review
             review(run, "code")
         return run.response("described")
@@ -2099,7 +2323,7 @@ def validate_invocation(value: Any, capability: str | None = None) -> dict:
     if not isinstance(value, dict) or set(value) != {"type_id", "schema_version", "capability_id", "mode", "configuration", "input"}:
         raise SpecError("invocation fields do not match schema 3", "invalid_input")
     if value["type_id"] != "concorde-capability-invocation" or type(value["schema_version"]) is not int or value["schema_version"] != 3:
-        raise SpecError("Profile 8 requires concorde-capability-invocation schema 3", "unsupported_version")
+        raise SpecError("Profile 9 requires concorde-capability-invocation schema 3", "unsupported_version")
     if capability is not None and value["capability_id"] != capability:
         raise SpecError("invocation does not match this entry point", "incompatible_handoff")
     return value

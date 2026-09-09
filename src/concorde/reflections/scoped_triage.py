@@ -28,7 +28,7 @@ def triage(run):
         raise SpecError("gap_ids are only accepted by record-gaps", "invalid_input")
     _,_,parsed,_,raw=queue._load_reflections(root,required=True)
     entries={entry.identifier:entry for entry in parsed.entries}
-    local={run.target.id,*(x["id"] for x in (*run.target.features,*run.target.apis))}
+    local={run.target.id,*(x["id"] for x in (*run.target.features,*run.target.interfaces))}
     selected=ids or [entry.identifier for entry in parsed.entries if entry.feature in local]
     if any(i not in entries or entries[i].feature not in local for i in selected):
         raise SpecError("selected reflection does not belong to this target", "permission_denied")
@@ -47,8 +47,8 @@ def triage(run):
         (queue.remove_closed if action=="close" else queue.remove_merged)(root,ids)
         return run.response(answer="Eligible records removed; Git history retains their disposition.")
     progress(root, phase="reflection_investigation", status="active", invalidate=True)
-    if run.target.kind=="domain":
-        return run.response("unsupported","Domain scopes do not own implementation code; select a participating Service or Module before investigation.")
+    if not run.target.implementations:
+        return run.response("unsupported","Select a Module with a registered Implementation Spec before code investigation.")
     head=queue._captured_head(root);before=_implementation_digest(run.repository,run.target)
     selection=typed("concorde-reflection-selection",{"head":head,"records":[
         {"id":i,"path":entries[i].path,"digest":digest(raw[entries[i].path]),"content":raw[entries[i].path].decode()} for i in ids]})
@@ -120,13 +120,9 @@ def record_gaps(run, queue):
         if not item or item["status"] != "open":
             raise SpecError("selected gap is missing or resolved", "stale_reference")
         target = run.repository.select(item["target_id"])
-        scopes = set(target.participates_in)
-        for scope in tuple(scopes):
-            parent = run.repository.targets[scope].scope_parent
-            while parent:
-                scopes.add(parent)
-                parent = run.repository.targets[parent].scope_parent
-        if target.id != run.target.id and not (run.target.kind == "domain" and run.target.id in scopes):
+        allowed = {run.target.id, *run.target.uses,
+                   *(child.id for child in run.repository.children(run.target))}
+        if target.id not in allowed:
             raise SpecError("selected gap belongs to another target", "permission_denied")
         selected.append((item, target))
     _, _, parsed, _, _ = queue._load_reflections(root, required=True)
@@ -187,13 +183,9 @@ def gap_records(run):
     result = []
     for item in (state or {}).get("gap_history", []):
         target = run.repository.select(item["target_id"])
-        scopes = set(target.participates_in)
-        for scope in tuple(scopes):
-            parent = run.repository.targets[scope].scope_parent
-            while parent:
-                scopes.add(parent)
-                parent = run.repository.targets[parent].scope_parent
-        if target.id == run.target.id or (run.target.kind == "domain" and run.target.id in scopes):
+        allowed = {run.target.id, *run.target.uses,
+                   *(child.id for child in run.repository.children(run.target))}
+        if target.id in allowed:
             result.append({key: item[key] for key in ("id", "target_id", "task", "phase", "gap", "status")}
                           | {"reflection_id": item.get("reflection_id")})
     return result

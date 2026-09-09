@@ -12,31 +12,37 @@ from .repository import SpecError, SpecRepository, digest, read_file
 from ..host.typed_data import safe_path
 
 
-def ontology_findings(repository: SpecRepository, target_id: str | None = None) -> tuple[Finding, ...]:
+def module_findings(repository: SpecRepository, target_id: str | None = None) -> tuple[Finding, ...]:
+    """Check declared feature/interface structure, not semantic sufficiency."""
     findings = []
     for target in repository.targets.values():
-        if target.kind != "domain" or target_id is not None and target.id != target_id:
+        if target_id is not None and target.id != target_id:
             continue
         try:
-            main = repository.document(target.primary_document)
+            documents = repository.documents(target)
             prose = []
             fence = None
-            for line in main.body.splitlines():
-                marker = re.match(r"^ {0,3}(`{3,}|~{3,})", line)
-                if marker:
-                    token = marker.group(1)
+            for document in documents:
+                for line in document.body.splitlines():
+                    marker = re.match(r"^ {0,3}(`{3,}|~{3,})", line)
+                    if marker:
+                        token = marker.group(1)
+                        if fence is None:
+                            fence = token
+                        elif token[0] == fence[0] and len(token) >= len(fence) and not line[marker.end():].strip():
+                            fence = None
+                        continue
                     if fence is None:
-                        fence = token
-                    elif token[0] == fence[0] and len(token) >= len(fence) and not line[marker.end():].strip():
-                        fence = None
-                    continue
-                if fence is None:
-                    prose.append(line)
-            if not re.search(r"^## Ontology\s*$", "\n".join(prose), re.M):
-                raise SpecError("Domain main Spec requires an Ontology section; content completeness still needs review")
+                        prose.append(line)
+                fence = None
+            if not re.search(r"^#{1,3} Architecture\s*$", "\n".join(prose), re.M):
+                raise SpecError("Module Spec must describe its internal Architecture/domain")
+            if target.features and not target.interfaces:
+                raise SpecError("a Module with provided features must declare its usage interfaces")
         except (ValueError, OSError, KeyError, TypeError) as problem:
-            findings.append(Finding("CONCORDE-ONTOLOGY-001", "error", target.primary_document,
-                str(problem), "Define the Domain's Ontology in its registered local main Spec.", subject_id=target.id))
+            findings.append(Finding("CONCORDE-MODULE-001", "error", target.primary_document,
+                str(problem), "Describe provided features, usage interfaces and internal architecture in this Module's own Spec.",
+                subject_id=target.id))
     return tuple(findings)
 
 
@@ -75,7 +81,7 @@ def document_context_findings(repository: SpecRepository) -> tuple[Finding, ...]
 
     findings = []
     identifiers: dict[str, str] = {}
-    reserved_ids = set(repository.targets) | set(repository.focus)
+    reserved_ids = set(repository.targets) | set(repository.implementations) | set(repository.focus)
     for path in repository.document_targets:
         try:
             document = repository.document(path)
@@ -106,84 +112,31 @@ def document_context_findings(repository: SpecRepository) -> tuple[Finding, ...]
     return tuple(findings)
 
 
-def domain_participant_findings(repository: SpecRepository,
-                                domain_id: str | None = None) -> tuple[Finding, ...]:
-    """Compare machine-readable Domain routing declarations with registry scope participation."""
-
+def module_dependency_findings(repository: SpecRepository,
+                               target_id: str | None = None) -> tuple[Finding, ...]:
+    """Match local relied-upon promises to Module dependencies and direct children."""
     findings = []
-    domains = [target for target in repository.targets.values()
-               if target.kind == "domain" and (domain_id is None or target.id == domain_id)]
-
-    def finding(rule_id: str, domain, source: str, message: str, remediation: str):
-        findings.append(Finding(rule_id, "error", source, message, remediation,
-                                subject_id=domain.id))
-
-    def participates_at_or_below(component, domain) -> bool:
-        for scope_id in component.participates_in:
-            current = repository.targets[scope_id]
-            while True:
-                if current.id == domain.id:
-                    return True
-                if current.scope_parent is None:
-                    break
-                current = repository.targets[current.scope_parent]
-        return False
-
-    for domain in domains:
-        try:
-            declarations = repository.participants(domain)
-        except (ValueError, OSError, KeyError, TypeError) as problem:
-            finding(
-                "CONCORDE-PARTICIPANT-001",
-                domain,
-                domain.primary_document,
-                f"invalid Domain participant declaration: {problem}",
-                "Repair the concorde-participants JSON block using the exact declared fields.",
-            )
+    for target in repository.targets.values():
+        if target_id is not None and target.id != target_id:
             continue
-        by_target: dict[str, list[dict]] = {}
-        for declaration in declarations:
-            by_target.setdefault(declaration["target_id"], []).append(declaration)
-        for target_id, items in by_target.items():
-            if len(items) > 1:
-                finding(
-                    "CONCORDE-PARTICIPANT-002",
-                    domain,
-                    items[1]["source"],
-                    f"Domain {domain.id} declares participant {target_id} more than once",
-                    "Keep exactly one local declaration for this participant in the Domain collection.",
-                )
-            component = repository.targets.get(target_id)
-            if component is None:
-                finding(
-                    "CONCORDE-PARTICIPANT-003",
-                    domain,
-                    items[0]["source"],
-                    f"Domain {domain.id} declares unknown participant {target_id}",
-                    "Register the component through an accepted topology change or remove the declaration.",
-                )
-                continue
-            if (component.kind != items[0]["kind"] or component.kind == "domain"
-                    or not participates_at_or_below(component, domain)):
-                finding(
-                    "CONCORDE-PARTICIPANT-003",
-                    domain,
-                    items[0]["source"],
-                    f"Domain {domain.id} participant {target_id} has the wrong kind or no scope participation",
-                    "Match the registered component kind and a direct or nested participates_in relation.",
-                )
-        required = sorted(component.id for component in repository.targets.values()
-                          if domain.id in component.participates_in)
-        for target_id in required:
-            if target_id not in by_target:
-                finding(
-                    "CONCORDE-PARTICIPANT-004",
-                    domain,
-                    domain.primary_document,
-                    f"Domain {domain.id} is missing its direct participant {target_id}",
-                    "Declare its stable target ID, kind, Domain-local responsibility, selection condition, "
-                    "and relied-upon promises in a concorde-participants block.",
-                )
+        try:
+            declarations = repository.dependencies(target)
+            seen = set()
+            expected = set(target.uses) | {child.id for child in repository.children(target)}
+            for declaration in declarations:
+                peer = declaration["target_id"]
+                if peer in seen:
+                    raise SpecError(f"duplicate dependency declaration: {peer}")
+                if peer not in expected:
+                    raise SpecError(f"dependency is not a declared use or direct submodule: {peer}")
+                seen.add(peer)
+            missing = expected - seen
+            if missing:
+                raise SpecError("missing local dependency promises: " + ", ".join(sorted(missing)))
+        except (ValueError, OSError, KeyError, TypeError) as problem:
+            findings.append(Finding("CONCORDE-DEPENDENCY-001", "error", target.primary_document,
+                str(problem), "Declare each direct dependency's responsibility, selection condition and relied-upon promises locally.",
+                subject_id=target.id))
     return tuple(findings)
 
 
@@ -207,7 +160,7 @@ def validate_repository(root: str | Path, target_id: str | None = None,
                 documents = repository.documents(target)
                 artifacts.extend(doc.path for doc in documents)
                 inputs.extend((doc.path, doc.digest) for doc in documents)
-                for focus in (*target.features, *target.apis):
+                for focus in (*target.features, *target.interfaces):
                     body = next(doc.body for doc in documents if doc.path == focus["document"])
                     if focus["id"] not in body:
                         error("CONCORDE-FOCUS-001", focus["document"], f"missing local definition for {focus['id']}")
@@ -236,10 +189,18 @@ def validate_repository(root: str | Path, target_id: str | None = None,
             elif provider["schema"] != contract["schema"]:
                 # The first version admits exact shared wire schemas, with independent perspective prose.
                 error("CONCORDE-CONTRACT-003", contract["source"], f"incompatible shared wire schema for {contract['id']}")
+        for implementation in repository.implementations.values():
+            try:
+                for path in implementation.documents:
+                    document = repository.document(path)
+                    artifacts.append(path)
+                    inputs.append((path, document.digest))
+            except (ValueError, OSError) as problem:
+                error("CONCORDE-IMPLEMENTATION-SPEC-001", implementation.primary_document, str(problem))
         findings.extend(document_context_findings(repository))
-        findings.extend(ontology_findings(repository))
+        findings.extend(module_findings(repository))
         findings.extend(diagram_findings(repository))
-        findings.extend(domain_participant_findings(repository))
+        findings.extend(module_dependency_findings(repository))
         if (repository.root/".concorde/reflections").exists():
             from ..reflections.scoped_triage import queue_module
             queue=queue_module(repository.package_root)
@@ -268,5 +229,6 @@ def validate_repository(root: str | Path, target_id: str | None = None,
             "errors": counts["error"], "warnings": 0, "infos": 0}, "source_digest": digest(sorted(inputs)),
             "claims": ["registry structure", "Spec document identity/membership/main visibility",
                        "local focus definitions", "contract examples", "shared wire schema equality",
-                       "Domain participant routing declarations", "Domain ontology.md main Spec and System overview declarations"],
+                       "Module dependency promises", "Module features, interfaces and architecture",
+                       "unique Implementation Spec file bindings and reverse Module usage"],
             "semantic_completeness": "not_proven"})

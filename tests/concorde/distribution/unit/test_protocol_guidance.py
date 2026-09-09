@@ -47,11 +47,11 @@ class ProtocolGuidanceTests(unittest.TestCase):
                     self.assertIn("Read and follow", root)
                 protocol = (self.root / guidance.PROTOCOL).read_bytes()
                 self.assertEqual(protocol, (REPOSITORY_ROOT / "generated/protocol/principles.md").read_bytes())
-                self.assertIn(b"### P10. Copyable agent handoffs", protocol)
+                self.assertIn(b"### P10. Explicit session handoffs", protocol)
                 self.assertNotIn(b"### P10", (self.root / name).read_bytes())
                 for directory in (".agents/skills", ".claude/skills"):
                     for skill in (self.root / directory).glob("*/SKILL.md"):
-                        self.assertNotIn("Copyable agent handoffs", skill.read_text())
+                        self.assertNotIn("Explicit session handoffs", skill.read_text())
                 self.assertEqual("unchanged", self.install(integration))
 
     def test_user_bytes_modes_and_post_install_edits_survive_upgrade_switch_and_cleanup(self):
@@ -154,4 +154,4 @@ class ProtocolGuidanceTests(unittest.TestCase):
         config.write_bytes(before)
         self.install()
         self.assertEqual(before, config.read_bytes())
-        self.assertIn('"version": "1.2.0"', (self.root / ".concorde/framework/protocol/manifest.json").read_text())
+        self.assertIn('"version": "2.0.0"', (self.root / ".concorde/framework/protocol/manifest.json").read_text())

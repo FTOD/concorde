@@ -60,8 +60,8 @@ class ReviewTests(unittest.TestCase):
             if phase.endswith("review"):
                 data.update(status="findings", gaps=[self.gap()], findings=[{
                     "id": "missing-limit", "severity": "blocking", "target_id": snapshot["target_id"],
-                    "document": "specs/send-money.md", "contract": self.gap()["needed_contract"],
-                    "location": {"path": "specs/send-money.md", "line": 12},
+                    "document": "specs/transfer/module.md", "contract": self.gap()["needed_contract"],
+                    "location": {"path": "specs/transfer/module.md", "line": 12},
                     "problem": "A required daily-limit promise is absent.",
                     "affected_task": self.gap()["blocked_step"]}])
             else:
@@ -69,9 +69,9 @@ class ReviewTests(unittest.TestCase):
         return callback
 
     def test_modes_use_full_collection_fresh_sessions_and_no_write_grants(self):
-        self.registry["targets"][3]["documents"].append("specs/transfer-promises.md")
+        self.registry["targets"][3]["documents"].append("specs/transfer/promises.md")
         (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
-        update_document_declaration(self.root, "specs/transfer-promises.md",
+        update_document_declaration(self.root, "specs/transfer/promises.md",
             targets=["service.transfer", "module.ledger"])
         calls, identities = [], []
         for mode in ("code", "spec"):
@@ -84,8 +84,8 @@ class ReviewTests(unittest.TestCase):
             self.assertFalse(policy["network"])
             self.assertTrue(policy["fresh_session"])
             snapshot = calls[-1]["snapshot"]
-            self.assertEqual(["specs/send-money.md", "specs/transfer-promises.md"], snapshot["document_order"])
-            self.assertEqual(["specs/transfer-promises.md"], [x["path"] for x in snapshot["shared_specs"]])
+            self.assertEqual(["specs/transfer/module.md", "specs/transfer/promises.md"], snapshot["document_order"])
+            self.assertEqual(["specs/transfer/promises.md"], [x["path"] for x in snapshot["shared_specs"]])
             self.assertNotIn("# Ledger API", calls[-1]["prompt"])
             self.assertNotIn("PRIVATE_CODE", calls[-1]["prompt"])
             if mode == "code":
@@ -151,9 +151,9 @@ class ReviewTests(unittest.TestCase):
             lambda d: d.update(representative_tasks=[" "]),
             lambda d: d.update(representative_tasks=["same", "same"]),
             lambda d: d.update(gaps=[self.gap()]),
-            lambda d: d.update(documents=[{"path": "specs/send-money.md", "content": "replacement"}]),
+            lambda d: d.update(documents=[{"path": "specs/transfer/module.md", "content": "replacement"}]),
         ]
-        original = (self.root / "specs/send-money.md").read_bytes()
+        original = (self.root / "specs/transfer/module.md").read_bytes()
         for mutate in mutations:
             with self.subTest(mutation=mutate):
                 def callback(stage, snapshot, data, cwd):
@@ -161,10 +161,10 @@ class ReviewTests(unittest.TestCase):
                 result = self.review(callback=callback)
                 self.assertEqual("failed", result["status"], result)
                 self.assertEqual("incomplete", result["output"]["data"]["reviews"][0]["data"]["status"])
-        self.assertEqual(original, (self.root / "specs/send-money.md").read_bytes())
+        self.assertEqual(original, (self.root / "specs/transfer/module.md").read_bytes())
         def foreign(stage, snapshot, data, cwd):
             self.missing("spec-review")(stage, snapshot, data, cwd)
-            data["findings"][0]["document"] = "specs/ledger-api.md"
+            data["findings"][0]["document"] = "specs/ledger/module.md"
         result = self.review(callback=foreign)
         self.assertEqual("failed", result["status"])
         self.assertIn("permission_denied", result["output"]["data"]["answer"])
@@ -219,7 +219,7 @@ class ReviewTests(unittest.TestCase):
 
     def test_input_change_during_review_invalidates_the_completion(self):
         def change(stage, snapshot, data, cwd):
-            path = self.root / "specs/send-money.md"
+            path = self.root / "specs/transfer/module.md"
             path.write_text(path.read_text() + "\nChanged during review.\n")
         result = self.review(callback=change)
         self.assertEqual("failed", result["status"])
@@ -269,7 +269,7 @@ class ReviewTests(unittest.TestCase):
         invocation = self.invocation()
         invocation.task = {**self.task, "constraints": ["Changed assessment constraint"]}
         self.assertIsNone(current(invocation, "spec"))
-        spec = self.root / "specs/send-money.md"
+        spec = self.root / "specs/transfer/module.md"
         spec.write_text(spec.read_text() + "\nChanged contract.\n")
         self.assertIsNone(current(self.invocation(), "spec"))
 
@@ -285,7 +285,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(1, len(read_change(self.root)["gaps"]))
         self.assertEqual(before["gaps"][0]["context_id"], retry["output"]["data"]["gaps"][0]["context_id"])
         self.assertNotIn("plan", [x["stage"] for x in self.model.calls])
-        spec = self.root / "specs/send-money.md"
+        spec = self.root / "specs/transfer/module.md"
         spec.write_text(spec.read_text() + "\nThe transfer capability owns a daily limit of 1000 units.\n")
         resumed = self.run_op("concorde-dev-loop")
         self.assertEqual("succeeded", resumed["status"], resumed)
@@ -304,7 +304,7 @@ class ReviewTests(unittest.TestCase):
                 result = self.run_op("concorde-dev-loop", callback=self.missing(phase))
                 self.assertEqual("blocked", result["status"], result)
                 self.assertEqual(phase, read_change(self.root)["gap_history"][0]["phase"])
-                spec = self.root / "specs/send-money.md"
+                spec = self.root / "specs/transfer/module.md"
                 spec.write_text(spec.read_text() + "\nThe transfer capability owns the necessary daily limit.\n")
                 resumed = self.run_op("concorde-dev-loop")
                 self.assertEqual("succeeded", resumed["status"], resumed)
@@ -330,7 +330,7 @@ class ReviewTests(unittest.TestCase):
         def advisory(stage, snapshot, data, cwd):
             if stage == "code-review":
                 data.update(status="findings", findings=[{"id": "clarity", "severity": "advisory",
-                    "target_id": "service.transfer", "document": "specs/send-money.md", "contract": "Pure transfer",
+                    "target_id": "service.transfer", "document": "specs/transfer/module.md", "contract": "Pure transfer",
                     "location": {"path": "app/transfer.py", "line": 1}, "problem": "An example could be clearer.",
                     "affected_task": "Read the implementation"}])
         self.assertEqual("succeeded", self.run_op("concorde-dev-loop", callback=advisory)["status"])
@@ -414,7 +414,7 @@ class ReviewTests(unittest.TestCase):
                         self.assertEqual([], self.model.calls)
                     self.assertEqual("succeeded", self.run_op("concorde-context-solve")["status"])
                     self.assertEqual("open", read_change(self.root)["gap_history"][0]["status"])
-                    spec = self.root / "specs/send-money.md"
+                    spec = self.root / "specs/transfer/module.md"
                     spec.write_text(spec.read_text() + "\nThe daily-limit owner is transfer.\n")
                     self.assertEqual("succeeded", self.run_op("concorde-dev-loop")["status"])
                     self.assertEqual("resolved", read_change(self.root)["gap_history"][0]["status"])
@@ -435,7 +435,7 @@ class ReviewTests(unittest.TestCase):
     def test_domain_review_aggregates_only_separate_recorded_component_contexts(self):
         task = {"target_id": "scope.bank", "task": "Implement the transfer and ledger promises"}
         def components(stage, snapshot, data, cwd):
-            if stage == "tasks" and snapshot["kind"] == "domain":
+            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
                 data["tasks"].append({"id": "task.ledger", "target_id": "module.ledger",
                     "description": "Implement the ledger read promise.", "acceptance": "Read known balances and reject unknown accounts.",
                     "complete": False})
@@ -468,7 +468,7 @@ class ReviewTests(unittest.TestCase):
         state = read_change(self.root)
         self.assertTrue(state["review_requirements"]["service.transfer"]["spec"])
         self.assertNotEqual("ready", state["status"])
-        spec = self.root / "specs/send-money.md"
+        spec = self.root / "specs/transfer/module.md"
         spec.write_text(spec.read_text() + "\nThe transfer daily-limit owner supplies the required rule.\n")
         resumed = self.run_op("concorde-dev-loop", {**task, "specify": False, "run_reviews": False})
         self.assertEqual("succeeded", resumed["status"], resumed)
@@ -486,18 +486,18 @@ class ReviewTests(unittest.TestCase):
     def test_rejected_authoring_preserves_gaps_until_the_host_accepts_the_repair(self):
         result = self.run_op("concorde-specify", callback=self.missing("specify"))
         self.assertEqual("blocked", result["status"], result)
-        original = (self.root / "specs/send-money.md").read_bytes()
+        original = (self.root / "specs/transfer/module.md").read_bytes()
         gap = read_change(self.root)["gap_history"][0]
         def invalid(stage, snapshot, data, cwd):
-            data["documents"] = [{"path": "specs/send-money.md", "content": "Missing document declaration"}]
+            data["documents"] = [{"path": "specs/transfer/module.md", "content": "Missing document declaration"}]
         result = self.run_op("concorde-specify", callback=invalid)
         self.assertNotEqual("succeeded", result["status"], result)
         state = read_change(self.root)
         self.assertEqual(gap, state["gap_history"][0])
         self.assertEqual([gap["gap"]], state["gaps"])
-        self.assertEqual(original, (self.root / "specs/send-money.md").read_bytes())
+        self.assertEqual(original, (self.root / "specs/transfer/module.md").read_bytes())
         def repair(stage, snapshot, data, cwd):
-            data["documents"] = [{"path": "specs/send-money.md", "content": original.decode() + "\nThe daily-limit owner is transfer.\n"}]
+            data["documents"] = [{"path": "specs/transfer/module.md", "content": original.decode() + "\nThe daily-limit owner is transfer.\n"}]
         self.assertEqual("succeeded", self.run_op("concorde-specify", callback=repair)["status"])
         self.assertEqual("resolved", read_change(self.root)["gap_history"][0]["status"])
 
@@ -510,7 +510,7 @@ class ReviewTests(unittest.TestCase):
                     project(self.root)
                     self.assertEqual("blocked", self.run_op("concorde-dev-loop",
                         callback=self.missing(phase))["status"])
-                    spec = self.root / "specs/send-money.md"
+                    spec = self.root / "specs/transfer/module.md"
                     spec.write_text(spec.read_text() + "\nThe daily-limit owner is transfer.\n")
                     def invalid(stage, snapshot, data, cwd):
                         if stage == phase:
@@ -528,7 +528,7 @@ class ReviewTests(unittest.TestCase):
         from concorde.host import capability_host
         self.assertEqual("blocked", self.run_op("concorde-dev-loop",
             callback=self.missing("plan"))["status"])
-        spec = self.root / "specs/send-money.md"
+        spec = self.root / "specs/transfer/module.md"
         spec.write_text(spec.read_text() + "\nThe daily-limit owner is transfer.\n")
         original_apply = capability_host.apply_files
         def reject_plan(root, changes, allowed, **kwargs):
@@ -592,7 +592,7 @@ class RepairLoopTests(unittest.TestCase):
     @staticmethod
     def finding(problem="A required daily-limit check is missing.", finding_id="daily-limit-check"):
         return {"id": finding_id, "severity": "blocking", "target_id": "service.transfer",
-                "document": "specs/send-money.md", "contract": "Pure transfer",
+                "document": "specs/transfer/module.md", "contract": "Pure transfer",
                 "location": {"path": "app/transfer.py", "line": 1},
                 "problem": problem, "affected_task": "Reject invalid amounts"}
 
@@ -695,9 +695,9 @@ class RepairLoopTests(unittest.TestCase):
                     "question": "Who owns the daily limit?", "blocked_step": "Decide daily-limit admission",
                     "needed_contract": "The transfer daily-limit owner and admission rule"}],
                     findings=[{"id": "missing-limit", "severity": "blocking", "target_id": snapshot["target_id"],
-                        "document": "specs/send-money.md",
+                        "document": "specs/transfer/module.md",
                         "contract": "The transfer daily-limit owner and admission rule",
-                        "location": {"path": "specs/send-money.md", "line": 12},
+                        "location": {"path": "specs/transfer/module.md", "line": 12},
                         "problem": "A required daily-limit promise is absent.",
                         "affected_task": "Decide daily-limit admission"}])
         result = self.run_op("concorde-dev-loop", callback=callback)
@@ -709,14 +709,14 @@ class RepairLoopTests(unittest.TestCase):
     def test_admitted_specify_spec_change_does_not_spuriously_reset_the_graph_record(self):
         def callback(stage, snapshot, data, cwd):
             if stage == "specify" and snapshot["target_id"] == "service.transfer":
-                document = next(d for d in snapshot["target_spec"] if d["path"] == "specs/send-money.md")
-                data["documents"] = [{"path": "specs/send-money.md",
+                document = next(d for d in snapshot["target_spec"] if d["path"] == "specs/transfer/module.md")
+                data["documents"] = [{"path": "specs/transfer/module.md",
                     "content": document["content"] + "\nThe transfer capability documents an additional promise.\n"}]
         result = self.run_op("concorde-dev-loop", callback=callback)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"])
         self.assertIn("The transfer capability documents an additional promise.",
-                      (self.root / "specs/send-money.md").read_text())
+                      (self.root / "specs/transfer/module.md").read_text())
         self.assertEqual([], read_change(self.root)["graph"]["service.transfer"]["transitions"])
         # A second dev-loop resumes without re-authoring; the first run's own admitted Spec change
         # must not be mistaken for an out-of-band human edit and spuriously reset the record.
@@ -726,7 +726,7 @@ class RepairLoopTests(unittest.TestCase):
         record = read_change(self.root)["graph"]["service.transfer"]
         self.assertEqual([], [t for t in record["transitions"] if t["trigger"] == "human"])
         # A genuinely human Spec edit between runs still resets the record.
-        spec = self.root / "specs/send-money.md"
+        spec = self.root / "specs/transfer/module.md"
         spec.write_text(spec.read_text() + "\nA human directly edited this Spec.\n")
         third = self.run_op("concorde-dev-loop")
         self.assertEqual("succeeded", third["status"], third)

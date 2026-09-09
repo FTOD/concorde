@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Spec publication",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1360,
+      800
+    ],
+    "output": "../../../../../generated/diagrams/publication.html"
+  },
+  "components": [
+    {
+      "id": "spec-sources",
+      "type": "external",
+      "label": "Registered Specs",
+      "sublabel": "Module main Specs and topics",
+      "pos": [
+        40,
+        380
+      ],
+      "size": [
+        220,
+        80
+      ]
+    },
+    {
+      "id": "registry-reader",
+      "type": "backend",
+      "label": "Registry reader",
+      "sublabel": "Checks identities and membership",
+      "pos": [
+        390,
+        380
+      ],
+      "size": [
+        220,
+        80
+      ]
+    },
+    {
+      "id": "page-materializer",
+      "type": "backend",
+      "label": "Page materialization",
+      "sublabel": "Stable routes, embedded diagrams",
+      "pos": [
+        740,
+        380
+      ],
+      "size": [
+        220,
+        80
+      ]
+    },
+    {
+      "id": "diagram-json",
+      "type": "external",
+      "label": "Registered diagram JSON",
+      "sublabel": "Internal and external relationships",
+      "pos": [
+        40,
+        120
+      ],
+      "size": [
+        220,
+        80
+      ]
+    },
+    {
+      "id": "diagram-check",
+      "type": "backend",
+      "label": "Diagram admission",
+      "sublabel": "Checks kind, title and recipe",
+      "pos": [
+        390,
+        120
+      ],
+      "size": [
+        220,
+        80
+      ]
+    },
+    {
+      "id": "diagram-integration",
+      "type": "backend",
+      "label": "Diagram build integration",
+      "sublabel": "Archify validation and delivery",
+      "pos": [
+        740,
+        120
+      ],
+      "size": [
+        220,
+        80
+      ]
+    },
+    {
+      "id": "navigation",
+      "type": "backend",
+      "label": "Module navigation",
+      "sublabel": "Module links to module.md",
+      "pos": [
+        390,
+        640
+      ],
+      "size": [
+        220,
+        80
+      ]
+    },
+    {
+      "id": "site-build",
+      "type": "backend",
+      "label": "Site build integration",
+      "sublabel": "Docusaurus and build verification",
+      "pos": [
+        740,
+        640
+      ],
+      "size": [
+        220,
+        80
+      ]
+    },
+    {
+      "id": "documentation-readers",
+      "type": "external",
+      "label": "Documentation readers",
+      "sublabel": "Read Modules and their topics",
+      "pos": [
+        1090,
+        640
+      ],
+      "size": [
+        220,
+        80
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Spec publication collaboration boundary",
+      "wraps": [
+        "registry-reader",
+        "page-materializer",
+        "diagram-check",
+        "diagram-integration",
+        "navigation",
+        "site-build"
+      ],
+      "pad": 30
+    }
+  ],
+  "connections": [
+    {
+      "from": "spec-sources",
+      "to": "registry-reader",
+      "label": "Reads",
+      "variant": "emphasis"
+    },
+    {
+      "from": "registry-reader",
+      "to": "page-materializer",
+      "label": "Registers pages",
+      "variant": "emphasis"
+    },
+    {
+      "from": "page-materializer",
+      "to": "site-build",
+      "label": "Builds site",
+      "variant": "emphasis",
+      "labelAt": [
+        850,
+        550
+      ]
+    },
+    {
+      "from": "site-build",
+      "to": "documentation-readers",
+      "label": "Publishes verified pages",
+      "variant": "emphasis"
+    },
+    {
+      "from": "diagram-json",
+      "to": "diagram-check",
+      "label": "Reads source"
+    },
+    {
+      "from": "diagram-check",
+      "to": "diagram-integration",
+      "label": "Validates & renders"
+    },
+    {
+      "from": "diagram-integration",
+      "to": "page-materializer",
+      "label": "Embeds HTML",
+      "labelAt": [
+        850,
+        290
+      ]
+    },
+    {
+      "from": "registry-reader",
+      "to": "navigation",
+      "label": "Selects main Spec",
+      "labelAt": [
+        500,
+        550
+      ]
+    },
+    {
+      "from": "navigation",
+      "to": "site-build",
+      "label": "Supplies sidebar"
+    }
+  ]
+}

@@ -93,7 +93,7 @@ export async function discoverDiagramDeclarations(projectRoot: string): Promise<
     }
     const outputPath = posixPath(relative(root, absoluteOutputPath));
     if (scoped && !outputPath.startsWith('generated/diagrams/')) {
-      throw new Error(`${candidate.sourcePath}: Profile 8 diagrams must stay beneath generated/diagrams/.`);
+      throw new Error(`${candidate.sourcePath}: Profile 9 diagrams must stay beneath generated/diagrams/.`);
     }
     const previousSource = outputs.get(outputPath);
     if (previousSource) {

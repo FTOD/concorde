@@ -26,8 +26,8 @@ export default function LayoutWrapper(props: Props) {
     {page && <div className="provenanceShell"><ContentProvenance page={page} /></div>}
     {page?.relatedFeatures?.length ? <div className="featureRelationsShell"><FeatureRelations page={page} /></div> : null}
     {page?.featureId ? <div className="featureNeighborhoodShell"><FeatureNeighborhood featureId={page.featureId} /></div> : null}
-    {page?.architectureDiagrams?.length && !page.inlineOverview && String(page.kind)!=='domain' ? <div className="architectureViewShell"><ArchitectureView page={page} /></div> : null}
+    {page?.architectureDiagrams?.length && !page.inlineOverview && String(page.kind)!=='module' ? <div className="architectureViewShell"><ArchitectureView page={page} /></div> : null}
     <OriginalLayout {...props} />
-    {page?.architectureDiagrams?.length && !page.inlineOverview && String(page.kind)==='domain' ? <div className="architectureViewShell"><ArchitectureView page={page} /></div> : null}
+    {page?.architectureDiagrams?.length && !page.inlineOverview && String(page.kind)==='module' ? <div className="architectureViewShell"><ArchitectureView page={page} /></div> : null}
   </>;
 }

@@ -21,7 +21,7 @@ async function main() {
     if (hasDocsProjections(root)) verifyConcordeBuildFresh(root);
     const registry=loadScopedRegistry(root);registry.pages.forEach(p=>rewriteLinks(registry,p));
     await discoverDiagramDeclarations(root);
-    process.stdout.write(`Validated Profile 8: ${registry.targets.length} targets, ${registry.pages.length} document memberships.\n`);
+    process.stdout.write(`Validated Profile 9: ${registry.targets.length} targets, ${registry.pages.length} document memberships.\n`);
     return;
   }
   await discoverDiagramDeclarations(root);

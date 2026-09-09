@@ -1,45 +1,51 @@
-/** Profile 8 is an explicit publication registry, never a filename-discovery convention. */
+/** Module/Implementation publication model. Registered documents are the only sources. */
 import {createHash} from 'node:crypto';
-import {lstatSync, readFileSync} from 'node:fs';
+import {existsSync, lstatSync, readFileSync} from 'node:fs';
 import {posix, resolve} from 'node:path';
 import matter from 'gray-matter';
 
-export type Kind = 'domain' | 'service' | 'module';
+export type Kind = 'module' | 'implementation';
 export interface Focus {id: string; title: string; document: string}
+/** Publication nodes include Modules and separately registered Implementation Specs. */
 export interface Target {
   id: string; kind: Kind; title: string; documents: string[];
-  scope_parent: string | null; component_parent: string | null; participates_in: string[];
-  implementation: string[]; features: Focus[]; apis: Focus[]; checks: string[];
+  parent: string | null; uses: string[]; implementations: string[];
+  features: Focus[]; interfaces: Focus[]; checks: string[];
   diagrams: {source: string; kind: string; title: string; recipe?: 'system-overview'}[];
+  files?: string[];
 }
 export interface Page {
   sourcePath: string; route: string; stagedPath: string; title: string; content: string; contentDigest: string;
   documentId: string; documentTargets: string[]; mainVisible: boolean; contextSection: 'target_spec' | 'shared_specs';
-  memberships: {targetId: string; kind: Kind; primary: boolean}[];
-  aliases: string[];
-  kind: Kind;
-  primaryOf: string | null;
-  inlineOverview: boolean;
+  memberships: {targetId: string; kind: Kind; primary: boolean}[]; aliases: string[];
+  kind: Kind; primaryOf: string | null; inlineOverview: boolean;
   architectureDiagrams?: {kind: string; title: string; source: string; sourceSha256: string; route: string}[];
 }
-export interface Edge {source: string; target: string; kind: 'scope_contains' | 'composes' | 'participates_in' | 'requires'; contract?: string}
+export interface Edge {source: string; target: string; kind: 'composes' | 'uses' | 'implemented_by' | 'requires'; contract?: string}
 export interface ScopedRegistry {
-  schema_version: 15; projectRoot: string; registryPath: string; entryTarget: string;
+  schema_version: 16; projectRoot: string; registryPath: string; entryTarget: string;
   sourceDigest: string; targets: Target[]; pages: Page[]; edges: Edge[];
 }
 export const hash = (value: string | Buffer) => 'sha256:' + createHash('sha256').update(value).digest('hex');
 function requireThat(value: unknown, message: string): asserts value {if (!value) throw new Error(message);}
-/** The legacy `/specs/<target-id>/<source-path-hash>` route a document's membership was once published at, kept as a redirect. */
+const ids = /^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$/;
+function uniqueStrings(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(v => typeof v === 'string' && v.trim()) && new Set(value).size === value.length;
+}
+function safePath(path: string): void {
+  requireThat(typeof path === 'string' && path.length && !path.includes('\\') && !path.startsWith('/') &&
+    path.split('/').every(p => p && p !== '.' && p !== '..'), `Unsafe source path: ${path}`);
+}
 export function legacyAliasRoute(targetId: string, sourcePath: string): string {
   return `/specs/${targetId}/${hash(sourcePath).slice(7, 23)}`;
 }
 export function primaryDocument(target: Target): string {
-  if (target.kind !== 'domain') return target.documents[0];
-  const main = target.documents.filter(path => posix.basename(path) === 'ontology.md');
-  requireThat(main.length === 1, `Domain must register exactly one ontology.md main Spec: ${target.id}`);
+  if (target.kind === 'implementation') return target.documents[0];
+  const main = target.documents.filter(path => posix.basename(path) === 'module.md');
+  requireThat(main.length === 1, `Module must register exactly one module.md: ${target.id}`);
   return main[0];
 }
-function ontologyProse(source: string): string {
+function prose(source: string): string {
   let fence: string | undefined;
   return source.split('\n').filter(line => {
     const match = /^ {0,3}(`{3,}|~{3,})/.exec(line);
@@ -52,9 +58,7 @@ function ontologyProse(source: string): string {
   }).join('\n');
 }
 export function safeRead(root: string, path: string): string {
-  requireThat(typeof path === 'string' && path.length && !path.includes('\\') && !path.startsWith('/') &&
-    path.split('/').every(p => p && p !== '.' && p !== '..'), `Unsafe source path: ${path}`);
-  let current = root;
+  safePath(path); let current = root;
   for (const part of path.split('/')) {
     current = resolve(current, part);
     requireThat(!lstatSync(current).isSymbolicLink(), `Symlink source: ${path}`);
@@ -63,176 +67,171 @@ export function safeRead(root: string, path: string): string {
   return readFileSync(current, 'utf8');
 }
 export function isScoped(root: string): boolean {
-  try {return JSON.parse(safeRead(root, '.concorde/config.json')).profile_version === 8;}
+  try {return JSON.parse(safeRead(root, '.concorde/config.json')).profile_version === 9;}
   catch (error) {if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error;}
 }
-const ids = /^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$/;
-interface DocumentContext {id:string; targets:string[]; main_visible:boolean}
-function documentContext(source:string,path:string,expected:string[]):DocumentContext {
-  const blocks=[...source.matchAll(/^```concorde-document\s*\n([\s\S]*?)^```\s*$/gm)];
-  requireThat(blocks.length===1,`Exactly one concorde-document block required: ${path}`);
-  const value=JSON.parse(blocks[0][1]) as Partial<DocumentContext>;
-  requireThat(Object.keys(value).sort().join(',')==='id,main_visible,targets',`Invalid concorde-document fields: ${path}`);
-  requireThat(typeof value.id==='string'&&ids.test(value.id),`Invalid document identity: ${path}`);
-  requireThat(Array.isArray(value.targets)&&value.targets.length&&new Set(value.targets).size===value.targets.length&&
-    value.targets.every(target=>typeof target==='string'&&ids.test(target)),`Invalid document targets: ${path}`);
-  requireThat(typeof value.main_visible==='boolean',`Invalid document main_visible: ${path}`);
-  requireThat(value.targets.length===expected.length&&value.targets.every(target=>expected.includes(target)),
-    `Document targets differ from registry membership: ${path}`);
+interface DocumentContext {id: string; targets: string[]; main_visible: boolean}
+function documentContext(source: string, path: string, expected: string[]): DocumentContext {
+  const blocks = [...source.matchAll(/^```concorde-document\s*\n([\s\S]*?)^```\s*$/gm)];
+  requireThat(blocks.length === 1, `Exactly one concorde-document block required: ${path}`);
+  const value = JSON.parse(blocks[0][1]) as Partial<DocumentContext>;
+  requireThat(Object.keys(value).sort().join(',') === 'id,main_visible,targets', `Invalid concorde-document fields: ${path}`);
+  requireThat(typeof value.id === 'string' && ids.test(value.id), `Invalid document identity: ${path}`);
+  requireThat(uniqueStrings(value.targets) && value.targets.length && value.targets.every(t => ids.test(t)), `Invalid document targets: ${path}`);
+  requireThat(typeof value.main_visible === 'boolean', `Invalid main_visible: ${path}`);
+  requireThat(value.targets.length === expected.length && value.targets.every(t => expected.includes(t)), `Document targets differ from registry membership: ${path}`);
   return value as DocumentContext;
 }
 export function loadScopedRegistry(root: string): ScopedRegistry {
   const configText = safeRead(root, '.concorde/config.json'); const config = JSON.parse(configText);
-  requireThat(config.profile_version === 8, 'Profile 8 configuration required');
+  requireThat(config.profile_version === 9, 'Profile 9 configuration required');
   const registryText = safeRead(root, config.registry); const registry = JSON.parse(registryText);
-  requireThat(registry.schema_version === 1 && Array.isArray(registry.targets), 'Spec registry schema 1 required');
-  const targets = registry.targets as Target[]; const byId = new Map<string, Target>(); const allIds = new Set<string>();
-  const documentTargets=new Map<string,string[]>();
-  const edges: Edge[] = [];
+  requireThat(Object.keys(registry).sort().join(',') === 'checks,entry_target,implementations,project_id,schema_version,targets', 'Invalid registry fields');
+  requireThat(registry.schema_version === 2 && Array.isArray(registry.targets) && registry.targets.length &&
+    Array.isArray(registry.implementations), 'Module/Implementation registry schema 2 required');
+  const modules = registry.targets as Target[];
+  const implementations: Target[] = registry.implementations.map((raw: {id: string; title: string; documents: string[]; files: string[]}) => {
+    requireThat(Object.keys(raw).sort().join(',') === 'documents,files,id,title', 'Implementation requires id/title/documents/files');
+    requireThat(uniqueStrings(raw.files) && raw.files.length, `Explicit implementation files required: ${raw.id}`);
+    return {...raw, kind: 'implementation', parent: null, uses: [], implementations: [], features: [], interfaces: [], checks: [], diagrams: []};
+  });
+  const targets = [...modules, ...implementations]; const byId = new Map<string, Target>(); const allIds = new Set<string>();
+  const documentTargets = new Map<string, string[]>(); const edges: Edge[] = [];
   const inputs: [string, string][] = [['.concorde/config.json', hash(configText)], [config.registry, hash(registryText)]];
   for (const t of targets) {
-    requireThat(ids.test(t.id) && !allIds.has(t.id), `Duplicate/invalid target identity: ${t.id}`); allIds.add(t.id);
-    requireThat(['domain','service','module'].includes(t.kind) && typeof t.title === 'string' && t.title.trim(), `Invalid kind/title: ${t.id}`);
-    requireThat(Array.isArray(t.documents) && t.documents.length && new Set(t.documents).size === t.documents.length, `Explicit nonempty unique collection required: ${t.id}`);
-    for (const key of ['participates_in','implementation','features','apis','checks','diagrams'] as const) requireThat(Array.isArray(t[key]), `Missing ${key}: ${t.id}`);
+    if (!implementations.includes(t)) requireThat(Object.keys(t).sort().join(',') === 'checks,diagrams,documents,features,id,implementations,interfaces,kind,parent,title,uses', `Invalid Module fields: ${t.id}`);
+    requireThat(typeof t.id === 'string' && ids.test(t.id) && !allIds.has(t.id), `Duplicate/invalid target identity: ${t.id}`); allIds.add(t.id);
+    requireThat((implementations.includes(t) || t.kind === 'module') && typeof t.title === 'string' && t.title.trim(), `Invalid kind/title: ${t.id}`);
+    requireThat(uniqueStrings(t.documents) && t.documents.length, `Explicit nonempty unique collection required: ${t.id}`);
+    for (const key of ['uses','implementations','checks'] as const) requireThat(uniqueStrings(t[key]), `Invalid ${key}: ${t.id}`);
+    for (const key of ['features','interfaces','diagrams'] as const) requireThat(Array.isArray(t[key]), `Missing ${key}: ${t.id}`);
+    requireThat(t.parent === null || typeof t.parent === 'string', `parent must be explicit: ${t.id}`);
     primaryDocument(t);
-    const diagramSources = new Set<string>();
-    for (const diagram of t.diagrams) {
-      requireThat(diagram && ['source','kind','title'].every(key => typeof diagram[key as 'source'] === 'string') &&
-        Object.keys(diagram).every(key => ['source','kind','title','recipe'].includes(key)), `Invalid diagram declaration: ${t.id}`);
-      requireThat(diagram.source.endsWith('.json') && !/^(?:\.concorde|\.git|generated)\//.test(diagram.source),
-        `Diagram source must be durable JSON: ${diagram.source}`);
-      requireThat(['architecture','workflow','sequence','dataflow','lifecycle'].includes(diagram.kind) && diagram.title.trim(),
-        `Invalid diagram kind/title: ${diagram.source}`);
-      requireThat(!diagramSources.has(diagram.source), `Duplicate diagram source: ${diagram.source}`);
-      diagramSources.add(diagram.source);
-      requireThat(!('recipe' in diagram) || diagram.recipe === 'system-overview' && diagram.kind === 'architecture',
-        `System overview must be an architecture diagram: ${t.id}`);
-    }
-    if (t.kind === 'domain') requireThat(t.diagrams.filter(d => d.recipe === 'system-overview').length === 1,
-      `Domain must declare exactly one System overview: ${t.id}`);
-    requireThat(t.scope_parent === null || typeof t.scope_parent === 'string', 'scope_parent must be explicit');
-    requireThat(t.component_parent === null || typeof t.component_parent === 'string', 'component_parent must be explicit');
-    requireThat(t.kind === 'domain' ? t.component_parent === null && !t.implementation.length && !t.participates_in.length : t.scope_parent === null, `Independent architecture dimensions violated: ${t.id}`);
-    requireThat(t.kind === 'module' ? !t.features.length : !t.apis.length, `Module APIs and Service/Domain Features are distinct: ${t.id}`);
-    for(const path of t.documents){
-      requireThat(typeof path === 'string' && path.endsWith('.md') && !/^(?:\.concorde|\.git)\//.test(path),
-        `Spec documents must be durable Markdown: ${path}`);
-      const references=documentTargets.get(path)??[];
-      references.push(t.id);documentTargets.set(path,references);
-    }
-    byId.set(t.id,t);
-  }
-  requireThat(byId.has(registry.entry_target), 'Unknown entry target');
-  const documentContexts=new Map<string,DocumentContext>();const documentIds=new Map<string,string>();
-  for(const [path,references] of documentTargets){
-    const context=documentContext(safeRead(root,path),path,references);const previous=documentIds.get(context.id);
-    requireThat(!previous||previous===path,`Duplicate document identity ${context.id}: ${previous} and ${path}`);
-    requireThat(!allIds.has(context.id),`Document identity collides with target: ${context.id}`);
-    allIds.add(context.id);documentIds.set(context.id,path);documentContexts.set(path,context);
-  }
-  // A project whose Specs are not entirely rooted at specs/ keeps full paths; Concorde's own
-  // repository (and every project that follows its convention) gets a readable specs/-relative route.
-  const stripSpecsRoot = [...documentTargets.keys()].every(path => path.startsWith('specs/'));
-  const contentCache = new Map<string, {raw: string; content: string}>();
-  const membershipsByPath = new Map<string, {targetId: string; kind: Kind; primary: boolean}[]>();
-  const diagramAttachments: {targetId: string; diagram: NonNullable<Page['architectureDiagrams']>[number]}[] = [];
-  for (const t of targets) {
-    if (t.kind === 'domain') {
-      const main = primaryDocument(t); const declaration = documentContexts.get(main)!;
-      requireThat(declaration.targets.length === 1 && declaration.targets[0] === t.id,
-        `Domain main Spec must be local: ${main}`);
-      requireThat(declaration.main_visible, `Domain ontology.md must be main_visible: ${main}`);
-      const prose = ontologyProse(safeRead(root, main));
-      requireThat(/^## Ontology\s*$/m.test(prose), `Domain main Spec requires an Ontology section: ${main}`);
-    }
-    for (const [key, kind] of [['scope_parent','scope_contains'],['component_parent','composes']] as const) {
-      const parent = t[key]; const seen = new Set([t.id]); let cursor = parent;
-      while (cursor) {
-        const node = byId.get(cursor); requireThat(node, `Unknown parent: ${cursor}`);
-        requireThat(!seen.has(cursor), `Hierarchy cycle: ${t.id}`); seen.add(cursor);
-        requireThat(key === 'scope_parent' ? node.kind === 'domain' : node.kind !== 'domain', `Wrong parent dimension: ${t.id}`);
-        cursor = node[key];
-      }
-      if (parent) edges.push({source:parent,target:t.id,kind});
-    }
-    for (const scope of t.participates_in) {requireThat(byId.get(scope)?.kind === 'domain', `Unknown participating scope: ${scope}`); edges.push({source:t.id,target:scope,kind:'participates_in'});}
     for (const path of t.documents) {
-      requireThat(path.endsWith('.md'), `Spec member must be Markdown: ${path}`);
-      let cached = contentCache.get(path);
-      if (!cached) {
-        const raw = safeRead(root,path); const content = matter(raw).content; requireThat(content.trim(), `Empty Spec: ${path}`);
-        cached = {raw, content}; contentCache.set(path, cached);
-      }
-      inputs.push([path,hash(cached.raw)]);
-      const memberships = membershipsByPath.get(path) ?? [];
-      memberships.push({targetId: t.id, kind: t.kind, primary: path === primaryDocument(t)});
-      membershipsByPath.set(path, memberships);
+      safePath(path); requireThat(path.endsWith('.md') && !/^(?:\.concorde|\.git)\//.test(path), `Spec documents must be durable Markdown: ${path}`);
+      const refs = documentTargets.get(path) ?? []; refs.push(t.id); documentTargets.set(path, refs);
     }
-    for (const focus of [...t.features,...t.apis]) {
-      requireThat(ids.test(focus.id) && !allIds.has(focus.id), `Duplicate/invalid focus: ${focus.id}`); allIds.add(focus.id);
-      requireThat(t.documents.includes(focus.document) && (contentCache.get(focus.document)?.content.includes(focus.id) ?? false), `Foreign or undefined local focus: ${focus.id}`);
-    }
-    for (const d of t.diagrams) {
-      const raw = safeRead(root,d.source); const source = JSON.parse(raw);
-      requireThat(source.diagram_type === d.kind && source.meta?.title === d.title, `Diagram declaration differs: ${d.source}`);
-      if (d.recipe === 'system-overview') requireThat(source.meta?.quality_profile === 'showcase',
-        `System overview must request showcase validation: ${d.source}`);
-      inputs.push([d.source,hash(raw)]);
-      const output = posix.normalize(posix.join(posix.dirname(d.source),source.meta.output ?? ''));
-      requireThat(output.startsWith('generated/diagrams/') && output.endsWith('.html'), `Diagram output must be HTML under generated/diagrams/: ${d.source}`);
-      diagramAttachments.push({targetId:t.id,diagram:{kind:d.kind,title:d.title,source:d.source,sourceSha256:hash(raw).slice(7),route:'/diagrams/'+hash(d.source).slice(7,23)+'.html'}});
+    byId.set(t.id, t);
+  }
+  requireThat(byId.get(registry.entry_target)?.kind === 'module', 'Entry target must be a Module');
+  // Finish structural admission before interpreting any Module's dependency prose.
+  for (const module of modules) {
+    const seen = new Set([module.id]); let cursor = module.parent;
+    while (cursor !== null) {
+      const parent = byId.get(cursor); requireThat(parent?.kind === 'module', `Unknown Module parent: ${cursor}`);
+      requireThat(!seen.has(cursor), `Module composition cycle: ${module.id}`); seen.add(cursor); cursor = parent.parent;
     }
   }
-  // One Page per distinct registered physical document: a shared Spec is published once, in the
-  // order its sourcePath was first registered, and carries every declared membership alongside it.
-  const pages: Page[] = []; const pageByPath = new Map<string, Page>(); const routeOwners = new Map<string, string>();
-  const allAliases = new Set<string>();
-  for (const [path, memberships] of membershipsByPath) {
-    const {raw, content} = contentCache.get(path)!;
-    const context = documentContexts.get(path)!;
-    const relative = stripSpecsRoot ? path.slice('specs/'.length) : path;
-    const route = `/specs/${relative.replace(/\.md$/, '')}`;
-    const stagedPath = relative;
-    requireThat(!stagedPath.startsWith('projections/'), `Staged path reserved for the Projections group: ${path}`);
-    requireThat(!routeOwners.has(route), `Duplicate canonical route ${route}: ${routeOwners.get(route)} and ${path}`);
-    routeOwners.set(route, path);
-    const primaryMembership = memberships.find(m => m.primary);
-    const kind = (primaryMembership ?? memberships[0]).kind;
-    const primaryOf = primaryMembership?.targetId ?? null;
-    const fallbackTitleOwner = byId.get((primaryMembership ?? memberships[0]).targetId)!;
-    const title = /^#\s+(.+)$/m.exec(content)?.[1] ?? fallbackTitleOwner.title;
-    const aliases = memberships.map(m => legacyAliasRoute(m.targetId, path));
-    for (const alias of aliases) allAliases.add(alias);
-    const page: Page = {
-      sourcePath: path, route, stagedPath, title, content, contentDigest: hash(raw),
-      documentId: context.id, documentTargets: context.targets, mainVisible: context.main_visible,
-      contextSection: context.targets.length > 1 ? 'shared_specs' : 'target_spec',
-      memberships, aliases, kind, primaryOf,
-      inlineOverview: kind === 'domain' && primaryOf !== null && /^## Architecture overview\s*$/m.test(ontologyProse(content)),
-    };
+
+  const fileOwners = new Map<string, string>();
+  const diagramPaths = new Set(modules.flatMap(module => module.diagrams.map(diagram => diagram.source)));
+  for (const t of implementations) for (const path of t.files!) {
+    safePath(path);
+    requireThat(!/^(?:\.concorde|\.git|\.agents|\.claude|\.codex|generated)\//.test(path) && !documentTargets.has(path) && !diagramPaths.has(path), `Unsafe implementation binding: ${path}`);
+    requireThat(!fileOwners.has(path), `Implementation file has multiple owners: ${path}`); fileOwners.set(path, t.id);
+    let cursor = root;
+    for (const part of path.split('/')) {
+      cursor = resolve(cursor, part);
+      try {requireThat(!lstatSync(cursor).isSymbolicLink(), `Symlink implementation binding: ${path}`);}
+      catch (error) {if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;}
+    }
+    if (existsSync(cursor)) requireThat(lstatSync(cursor).isFile(), `Implementation binding must name a file: ${path}`);
+  }
+  const cache = new Map<string, {raw: string; content: string; declaration: DocumentContext}>();
+  for (const [path, references] of documentTargets) {
+    const raw = safeRead(root, path); const content = matter(raw).content; const declaration = documentContext(content, path, references);
+    requireThat(!allIds.has(declaration.id), `Duplicate document identity: ${declaration.id}`); allIds.add(declaration.id);
+    requireThat(content.trim(), `Empty Spec: ${path}`);
+    if (references.some(id => byId.get(id)!.kind === 'implementation')) requireThat(references.length === 1, `Implementation Spec documents cannot be shared with another Spec: ${path}`);
+    cache.set(path, {raw, content, declaration}); inputs.push([path, hash(raw)]);
+  }
+  for (const t of targets) {
+    if (t.kind === 'module') {
+      requireThat(documentTargets.get(primaryDocument(t))!.length === 1, `Module reading entry must be local: ${t.id}`);
+      requireThat(/^#{1,3} Architecture\s*$/m.test(t.documents.map(path => prose(cache.get(path)!.content)).join('\n')), `Module Spec requires Architecture: ${t.id}`);
+      requireThat(!t.features.length || t.interfaces.length, `Module features require usage interfaces: ${t.id}`);
+    }
+    const seen = new Set([t.id]); let cursor = t.parent;
+    while (cursor !== null) {
+      const parent = byId.get(cursor); requireThat(parent?.kind === 'module', `Unknown Module parent: ${cursor}`);
+      requireThat(!seen.has(cursor), `Module composition cycle: ${t.id}`); seen.add(cursor); cursor = parent.parent;
+    }
+    if (t.parent) edges.push({source: t.parent, target: t.id, kind: 'composes'});
+    for (const peer of t.uses) {
+      requireThat(peer !== t.id && byId.get(peer)?.kind === 'module', `Unknown/self Module dependency: ${peer}`);
+      edges.push({source: t.id, target: peer, kind: 'uses'});
+    }
+    for (const implementation of t.implementations) {
+      requireThat(byId.get(implementation)?.kind === 'implementation', `Unknown Implementation Spec: ${implementation}`);
+      edges.push({source: t.id, target: implementation, kind: 'implemented_by'});
+    }
+    for (const focus of [...t.features, ...t.interfaces]) {
+      requireThat(Object.keys(focus).sort().join(',') === 'document,id,title' && typeof focus.title === 'string' && focus.title.trim(), `Invalid feature/interface: ${t.id}`);
+      requireThat(ids.test(focus.id) && !allIds.has(focus.id), `Duplicate/invalid focus: ${focus.id}`); allIds.add(focus.id);
+      requireThat(t.documents.includes(focus.document) && cache.get(focus.document)!.content.includes(focus.id), `Foreign or undefined focus: ${focus.id}`);
+    }
+    if (t.kind === 'module') {
+      const expected = new Set([...t.uses, ...modules.filter(child => child.parent === t.id).map(child => child.id)]);
+      const declared = new Set<string>();
+      for (const path of t.documents) for (const match of cache.get(path)!.content.matchAll(/^```concorde-dependencies\s*\n([\s\S]*?)^```\s*$/gm)) {
+        const entries = JSON.parse(match[1]); requireThat(Array.isArray(entries) && entries.length, `Invalid dependency declaration: ${path}`);
+        for (const d of entries) {
+          requireThat(Object.keys(d).sort().join(',') === 'relied_upon_promises,responsibility,selection_condition,target_id', `Invalid dependency fields: ${path}`);
+          requireThat(expected.has(d.target_id) && !declared.has(d.target_id), `Unrelated or duplicate Module dependency: ${d.target_id}`);
+          requireThat(typeof d.responsibility === 'string' && d.responsibility.trim() && typeof d.selection_condition === 'string' && d.selection_condition.trim() && uniqueStrings(d.relied_upon_promises) && d.relied_upon_promises.length, `Incomplete dependency promises: ${path}`);
+          declared.add(d.target_id);
+        }
+      }
+      requireThat(declared.size === expected.size, `Missing local Module dependency promises: ${t.id}`);
+      const consumers = modules.filter(m => m.uses.includes(t.id));
+      if (consumers.length > 1) requireThat(consumers.every(m => m.parent === t.parent), `Shared Module and consumers must be siblings: ${t.id}`);
+    }
+  }
+  const stripRoot = [...documentTargets.keys()].every(path => path.startsWith('specs/'));
+  const pages: Page[] = []; const pageByPath = new Map<string, Page>(); const routes = new Set<string>(); const aliases = new Set<string>();
+  for (const [path, references] of documentTargets) {
+    const {raw, content, declaration} = cache.get(path)!;
+    const memberships = references.map(id => {const t = byId.get(id)!; return {targetId: id, kind: t.kind, primary: primaryDocument(t) === path};});
+    const primary = memberships.find(m => m.primary); const owner = byId.get((primary ?? memberships[0]).targetId)!;
+    const stagedPath = stripRoot ? path.slice('specs/'.length) : path; const route = '/specs/' + stagedPath.replace(/\.md$/, '');
+    requireThat(!stagedPath.startsWith('projections/') && !routes.has(route), `Duplicate or reserved page route: ${route}`); routes.add(route);
+    const pageAliases = references.map(id => legacyAliasRoute(id, path)); pageAliases.forEach(alias => aliases.add(alias));
+    const page: Page = {sourcePath: path, route, stagedPath, title: /^#\s+(.+)$/m.exec(content)?.[1] ?? owner.title,
+      content, contentDigest: hash(raw), documentId: declaration.id, documentTargets: declaration.targets,
+      mainVisible: declaration.main_visible, contextSection: references.length > 1 ? 'shared_specs' : 'target_spec',
+      memberships, aliases: pageAliases, kind: owner.kind, primaryOf: primary?.targetId ?? null,
+      inlineOverview: false};
     pages.push(page); pageByPath.set(path, page);
   }
-  for (const route of routeOwners.keys()) requireThat(!allAliases.has(route), `Canonical route collides with a legacy alias route: ${route}`);
-  for (const attachment of diagramAttachments) {
-    const page = pageByPath.get(primaryDocument(byId.get(attachment.targetId)!))!;
-    (page.architectureDiagrams ??= []).push(attachment.diagram);
+  for (const route of routes) requireThat(!aliases.has(route), `Canonical route collides with an alias: ${route}`);
+  for (const t of modules) {
+    const declared = new Set<string>();
+    for (const d of t.diagrams) {
+      requireThat(d && Object.keys(d).every(k => ['source','kind','title','recipe'].includes(k)) && ['architecture','workflow','sequence','dataflow','lifecycle'].includes(d.kind) && typeof d.title === 'string' && d.title.trim(), `Invalid diagram declaration: ${t.id}`);
+      safePath(d.source); requireThat(d.source.endsWith('.json') && !/^(?:\.concorde|\.git|generated)\//.test(d.source) && !declared.has(d.source), `Invalid/duplicate diagram source: ${d.source}`); declared.add(d.source);
+      requireThat(!d.recipe || d.recipe === 'system-overview' && d.kind === 'architecture', `Invalid diagram recipe: ${d.source}`);
+      const raw = safeRead(root, d.source); const value = JSON.parse(raw);
+      requireThat(value.diagram_type === d.kind && value.meta?.title === d.title, `Diagram declaration differs: ${d.source}`);
+      if (d.recipe) requireThat(value.meta?.quality_profile === 'showcase', `System overview requires showcase validation: ${d.source}`);
+      const output = posix.normalize(posix.join(posix.dirname(d.source), value.meta?.output ?? ''));
+      requireThat(output.startsWith('generated/diagrams/') && output.endsWith('.html'), `Invalid diagram output: ${d.source}`);
+      inputs.push([d.source, hash(raw)]);
+      (pageByPath.get(primaryDocument(t))!.architectureDiagrams ??= []).push({kind: d.kind, title: d.title, source: d.source, sourceSha256: hash(raw).slice(7), route: '/diagrams/' + hash(d.source).slice(7,23) + '.html'});
+    }
   }
-  const providers = new Map<string,{owner:string;schema:string}>();
-  const required: {owner:string;peer:string;key:string;schema:string}[] = [];
-  // Contract links are navigation/consistency edges, never context inheritance.
-  for (const t of targets) for (const path of t.documents) for (const match of contentCache.get(path)!.content.matchAll(/^```concorde-contract\s*\n([\s\S]*?)^```\s*$/gm)) {
+  const providers = new Map<string, {owner: string; schema: string}>(); const required: {owner: string; peer: string; key: string; schema: string}[] = [];
+  for (const t of modules) for (const path of t.documents) for (const match of cache.get(path)!.content.matchAll(/^```concorde-contract\s*\n([\s\S]*?)^```\s*$/gm)) {
     const c = JSON.parse(match[1]); const key = `${c.id}@${c.version}`; const schema = stable(c.schema);
-    if (c.role === 'provided') {requireThat(!providers.has(key), `Duplicate contract provider: ${key}`);providers.set(key,{owner:t.id,schema});}
-    else if (c.role === 'required') required.push({owner:t.id,peer:c.peer,key,schema});
+    if (c.role === 'provided') {requireThat(!providers.has(key), `Duplicate provider: ${key}`); providers.set(key, {owner: t.id, schema});}
+    else if (c.role === 'required') required.push({owner: t.id, peer: c.peer, key, schema});
     else throw new Error(`Invalid contract role: ${key}`);
   }
   for (const c of required) {
     if (c.peer.startsWith('external:')) continue;
-    const p = providers.get(c.key);requireThat(p?.owner === c.peer && p.schema === c.schema, `Incompatible shared contract: ${c.key}`);
-    edges.push({source:c.owner,target:c.peer,kind:'requires',contract:c.key});
+    const provider = providers.get(c.key); requireThat(provider?.owner === c.peer && provider.schema === c.schema, `Incompatible shared contract: ${c.key}`);
+    edges.push({source: c.owner, target: c.peer, kind: 'requires', contract: c.key});
   }
-  return {schema_version:15,projectRoot:root,registryPath:config.registry,entryTarget:registry.entry_target,sourceDigest:hash(JSON.stringify(inputs)),targets,pages,edges};
+  return {schema_version: 16, projectRoot: root, registryPath: config.registry, entryTarget: registry.entry_target, sourceDigest: hash(JSON.stringify(inputs)), targets, pages, edges};
 }
 function stable(value: unknown): string {
   if (Array.isArray(value)) return '['+value.map(stable).join(',')+']';

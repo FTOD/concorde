@@ -31,7 +31,7 @@ every skip and every required review remains visible in the change record.
 Initialization uses its typed propose/apply request; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
-Main may inspect Domain/Service Specs on demand but cannot read Module Specs or code. It returns one
+Main may explicitly admit complete Module Specs for routing, but cannot read Implementation Specs or code. It returns one
 typed route for this capability; the host then starts a different target worker.
 When a mutation starts in the primary worktree, the host prepares a committed-base linked
 worktree and returns its identity and a handoff draft; it does not launch the next outer session.

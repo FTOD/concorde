@@ -229,7 +229,7 @@ class AgentRuntimeTests(unittest.TestCase):
         wrong=self.definition('A',lambda f:AgentStep('code-driven','complete',value=self.task()))
         self.assertEqual(self.invoke([wrong]).result.error,'invalid_step')
         def changed(frame):
-            (self.root/'specs/send-money.md').write_text((self.root/'specs/send-money.md').read_text()+'\nChanged contract.\n')
+            (self.root/'specs/transfer/module.md').write_text((self.root/'specs/transfer/module.md').read_text()+'\nChanged contract.\n')
             return AgentStep('code-driven','delegate','A',self.task())
         # Change occurs during the child; parent's next decision must not receive revised context.
         def parent(frame):
@@ -366,7 +366,7 @@ class AgentRuntimeTests(unittest.TestCase):
                 AgentGrant(frozenset({'service.transfer'}),frozenset({'reader'}))).result
         self.assertEqual(result.outcome,'completed')
         snapshot=decode(frames[0].context_json)['data']
-        self.assertEqual(snapshot['document_order'],['specs/send-money.md','specs/transfer-promises.md'])
+        self.assertEqual(snapshot['document_order'],['specs/transfer/module.md','specs/transfer/promises.md'])
         self.assertEqual(snapshot['implementation_artifacts'],[])
 
     def test_native_codex_and_claude_yield_to_code_agent_and_continue_fresh(self):

@@ -1,28 +1,24 @@
 {
   "schema_version": 1,
-  "version": "1.2.0",
-  "source_profile": 8,
+  "version": "2.0.0",
+  "source_profile": 9,
   "workspace_protocol": 14,
   "assets": [
     {
-      "path": "generated/protocol/kinds/domain.md",
-      "digest": "sha256:68c1dbf9adccf95c668a4b8b90bbb3a3cde45f6ee3b7ce257e12e6c82fa4b137"
-    },
-    {
       "path": "generated/protocol/kinds/module.md",
-      "digest": "sha256:aa1de65c09cfa5b87bc74034b6ca63367868582be50b15eaee3bba8c5395841c"
+      "digest": "sha256:8a5b769ff8c29fc0191f8d390a8e823962cfe08cfaf6a2cb8b59b8ff3ca8a5e8"
     },
     {
-      "path": "generated/protocol/kinds/service.md",
-      "digest": "sha256:f6619b1db6c725876ffd9cd2d698074b3cd0e63d5b41a026a2e5e8b78c9b5a88"
+      "path": "generated/protocol/kinds/implementation.md",
+      "digest": "sha256:d32dbd2347d9e3b19acfb86e5e603c398522e2e045e422fe77caba4253b4bb6f"
     },
     {
       "path": "generated/protocol/principles.md",
-      "digest": "sha256:cb65c364704fafc39928cae96be159603118855ca508288db746bab7dc3aef65"
+      "digest": "sha256:f50dceeb0c3a65269706ebd3837fffdf81c189f61c285bdc60e8650685c6d529"
     },
     {
       "path": "generated/protocol/schemas.json",
-      "digest": "sha256:5078251c9fcb3433af3c9bab193ce2272660cc148728b630710f42788b2a1335"
+      "digest": "sha256:1ae449150d6760315ed34ae8fe9b02493b5dca5a558f84f7062654ee94e99afe"
     }
   ]
 }

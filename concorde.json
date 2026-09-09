@@ -1,12 +1,12 @@
 {
   "schema_version": 3,
   "name": "concorde",
-  "version": "4.0.0",
-  "description": "Concorde Framework: Concorde Spec Protocol, installable Skills and verified agent workflows",
+  "version": "5.0.0",
+  "description": "Concorde Framework: self-contained Module contracts and reusable file-bound Implementation Specs",
   "license": "MIT",
   "license_file": "LICENSE",
   "repository": "https://github.com/FTOD/concorde",
-  "architecture_profile": 8,
+  "architecture_profile": 9,
   "workspace_protocol": 14,
   "delivery_proposal": 10,
   "skill_namespace": "concorde",
@@ -36,13 +36,12 @@
     ]
   },
   "templates": [
-    "domain-template.md",
     "feature-template.md",
     "module-template.md",
     "plan-template.md",
     "reflections-template.md",
-    "service-template.md",
-    "tasks-template.md"
+    "tasks-template.md",
+    "implementation-template.md"
   ],
   "package_roots": [
     "agents",

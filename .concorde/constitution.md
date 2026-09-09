@@ -1,271 +1,199 @@
 <!--
 Sync Impact Report
-- Version: 12.0.0 -> 13.0.0
-- Bump rationale: MAJOR; resolved contexts now compose target-local and collective shared document truth.
-- Modified principles: P3 document closure, P4 context sufficiency, P5 main visibility, P8 shared mutation.
-- Added sections: Explicit document identity/reference/visibility and collective shared authority.
-- Removed sections: none.
+- Version: 13.0.0 -> 14.0.0
+- Bump rationale: MAJOR; replace Domain/Service/Module kinds with Module and reusable Implementation Specs.
+- Modified principles: P1–P10; complete Module contexts, explicit file ownership and per-consumer evidence.
+- Added sections: Module architecture, implementation reuse and direct authorized maintenance.
+- Removed sections: separate Domain/Service taxonomy and visibility-trimmed cognitive contexts.
 - Deferred placeholders: none.
 -->
 
 # Concorde Constitution
 
-Version: 13.0.0. Architecture Profile 8; Workspace Protocol 14; Delivery Proposal 10.
+Version: 14.0.0. Architecture Profile 9; Workspace Protocol 14; Delivery Proposal 10.
 
 ## Part A: universal Concorde principles
 
-# Concorde Workflow Principles
+# Concorde Spec Protocol
 
-Protocol 1.0.0. These principles apply to every Concorde project.
+Concorde Spec Protocol 2.0.0 defines Module Specs and Implementation Specs. P1–P4 define the
+specification model; P5–P10 below describe the Framework that applies it. Concorde's own project
+uses the same model as consumer projects.
 
-### P1. Business scope and implementation structure are separate dimensions
+### P1. A Module has features, interfaces and an internal domain
 
-A project MUST distinguish Domain scopes from its Service/Module component structure.
+A **Module** is a cohesive responsibility with an explicit set of provided features and interfaces
+for using them. A feature explains an observable capability, its promises and its failures. An
+interface can be an API, function, command, file, protocol, event or another explicitly described
+exchange. Every Module Spec MUST explain the inputs, outputs, effects, errors, compatibility and
+applicable retry or idempotency behavior of its interfaces. Feature and interface identities are
+stable, local to the providing Module and independent of document paths.
 
-| Concept | Meaning | Primary specification obligations |
-|---|---|---|
-| Domain | A scope within which a business or problem-space vocabulary, rules, and system behavior are explained. | Define significant entities, their relationships and responsibilities, interaction triggers, invariants, state transitions, completion, failure, and retry semantics where applicable. Explain how the system operates within this scope, including relevant features. |
-| Service | A self-contained capability with a clearly specified interaction boundary. | Describe consumer-facing features and their usage, then define complete boundary contracts: entry points, configuration, runtime inputs, results, effects, errors, compatibility, and applicable retry/idempotency behavior. |
-| Module | A cohesive implementation responsibility exposed through an explicit API. | Define provided and required APIs, including signatures, types, preconditions, results, state/effect obligations, and failure behavior. Function calls are valid interactions. |
+A Module's **architecture** is its internal design. Its **domain** is this internal model: the
+relevant concepts, submodules, responsibilities, directed relationships, collaborations, rules,
+state transitions and completion or failure conditions. Domain is a view within a Module, not a
+separate target kind. The same Module definition applies recursively to every submodule. Business
+entities and external actors may be described within that model without becoming software modules.
 
-A Service's boundary can use an executable, a file exchange, HTTP, or another explicitly defined
-or versioned standard format. Deployment topology is a separate declared property. A Module's
-Spec MUST describe its interface rather than its algorithms or private implementation.
+Each Module has at most one structural parent. Parent relationships MUST be acyclic. Using another
+Module does not make it a submodule. When A and B share C, C is an independent sibling of A and B,
+with one identity and one structural parent. The registry declares `parent` separately from `uses`.
+The containing Module explains composition; each consumer explains the promises it relies on.
+A leaf Module may be realized directly by implementation files; a composite Module may also have
+its own coordination code. Deployment topology and source-file layout do not determine Module
+identity or parentage.
 
-Domain MUST NOT be treated as a third component kind in one universal Domain/Service/Module
-containment tree. The model MUST distinguish at least:
+A Module that routes work or depends on another Module MUST state that Module's stable ID,
+responsibility, selection condition and relied-upon promises in its own Spec. Machine-readable
+`concorde-dependencies` declarations describe direct `uses` and child relationships. These local
+promises make planning possible without loading the provider's Spec. A hyperlink is navigation,
+not an instruction to expand an agent's context.
 
-- Domain scope nesting: one Domain narrows a broader Domain's problem space.
-- Component composition: a Service or Module is composed using other Services or Modules.
-- Scope participation: a Service or Module participates in a Domain with a stated role.
-- Behavioral relationships: entities call, produce, consume, constrain, or otherwise interact
-  using named relationships with explicit direction and meaning.
+### P2. Implementation Specs bind reusable implementations to files
 
-Scope nesting and structural containment MUST be acyclic. They MUST NOT determine each other's
-parent relationships. Scope participation MAY overlap: a shared Service or Module can participate
-in multiple Domains without acquiring duplicate component identities or implementations. Each
-Domain explains the role relevant to its own scope. Participation does not automatically grant
-context access or mutation authority.
+An **Implementation Spec** describes one implementation and binds an explicit, nonempty set of
+project-relative files. It defines their implementation responsibilities, interfaces, dependencies,
+constraints and relevant verification. Files may contain code, tests, configuration or authored
+runtime assets. Generated output and project control files are not authoring sources.
 
-Every Domain and Service that routes work toward another target MUST state that target's stable ID,
-local responsibility, relationship and selection condition in its own Spec. This routing view does
-not substitute for the downstream target's complete Spec. It lets a main coordinator decide where
-work belongs without reading a Module Spec or relying on registry metadata as hidden business
-authority.
+Each implementation file MUST be bound to exactly one authoritative Implementation Spec. File
+bindings are explicit file paths, not directories, recursive discovery or implicit ownership of
+future files. A declared file may be pending creation; implementation completion must materialize
+required outputs. One Implementation Spec may bind several files. Several Modules may reference
+the same Implementation Spec, and one Module may reference several Implementation Specs.
+Reusing implementation does not merge Modules, create another structural parent, or require a
+shared Module when the reusable object is code rather than an independently provided capability.
 
-For every direct component `participates_in` relationship in the registry, the corresponding Domain
-collection MUST contain exactly one machine-readable `concorde-participants` entry with the
-component's stable target ID and kind, its Domain-local responsibility, the condition for selecting
-it, and the nonempty promises that Domain relies on. A broader Domain MAY repeat a participant from
-a nested Domain when it needs that participant locally, but the repeated declaration does not grant
-the participant's Spec or code. Deterministic validation MUST reject missing, duplicate, unknown,
-kind-mismatched or unrelated declarations. Before Domain planning or task generation, context
-solving MUST report a missing direct declaration as a concrete Domain Spec gap and an inconsistent
-declaration as conflicting.
+The registry records Module-to-Implementation references and Implementation-to-file bindings. The
+Framework derives the reverse Implementation-to-Module index. Changes to a binding, an
+Implementation Spec or a bound file invalidate affected implementation evidence for every user.
+Every affected Module's relied-upon contract must be checked in its own context. Source reuse
+never grants one Module authority to change another Module's Spec.
 
-Business entities such as Account, Transfer, and Daily Limit MUST have meaningful definitions
-and responsibility assignments where they matter. They do not each require a separate Domain,
-Service, or Module Spec. A Domain is responsible for explaining, for example, who checks a Daily
-Limit, when a Transfer is allowed, what completion means, and which failures permit retry.
+### P3. A Module Spec is a complete, explicit context
 
-### P2. Features and APIs describe the appropriate consumer view
+Each Module has a stable identity and an explicitly registered nonempty Markdown collection. It
+registers exactly one local `module.md` reading entry. The complete collection describes features,
+usage interfaces and internal architecture; authors may split topics across additional documents.
+An architecture diagram may clarify the internal domain, but a diagram or heading is not proof of
+semantic completeness. Initialization may create an honest stub that marks unknown facts.
 
-A Service Spec MUST explain its consumer-facing features: what a consumer can accomplish, how
-the Service is used, and the associated promises and failures. Its boundary schemas MUST make
-those promises executable and unambiguous.
+Every physical Spec document declares a globally unique document ID, its exact registered target
+references and main visibility in a `concorde-document` block. An explicitly shared Module document
+is part of each referring Module's own collection; it does not grant any other document. An
+Implementation Spec's documents cannot also be Module Spec documents. Implementation reuse is by
+Implementation Spec identity, never by copying the same binding into several owners.
 
-A Module Spec MUST describe its APIs directly. Concorde MUST NOT require authors to wrap each
-Module API in an artificial Feature document. Interface signatures and usage examples in a Spec
-are permitted contract content; they do not authorize reading implementation source.
+The Module's own complete collection is its sole project-Spec context for non-code work. Readers,
+Spec authors, assessors, planners and task authors MUST be able to determine behavior and tasks
+from that Module Spec alone. They MUST NOT read Implementation Specs or implementation source to
+fill in missing meaning. A missing promise is a Module Spec gap and must be corrected there.
+Neither parent, child, dependency, feature focus nor a directory walk adds context implicitly.
 
-A Domain Spec MUST emphasize operating principles and collaborations. It MAY describe features
-observable within its scope, including behavior that spans multiple Services or Modules.
+Only the code-writing implementation phase appends the explicitly referenced Implementation Specs
+and their bound files to the Module's contract context. Implementation detail does not supply
+missing Module semantics. Code review checks code against the Module contract; it does not expand
+non-code phases into implementation cognition. Changes to code do not silently alter a Module's
+promised behavior.
 
-Features and APIs used for selection, traceability, or lifecycle work MUST have stable identities
-independent of document paths. A Feature or API belongs to its providing Spec target. Neither its
-identity nor its filename creates an independent permission boundary. Concorde MUST NOT require a
-separate Feature file or one Feature per Markdown file.
+### P4. Versioned agreement and conformance
 
-### P3. Every resolved Spec context is a self-contained document closure
+A project binds to one explicit Protocol version and digest. Profile 9 uses registry schema 2:
+Module targets, one `parent`, explicit `uses`, Module features and interfaces, and a separate
+Implementation Spec collection with document and file bindings. Older profile structures require
+an explicit migration; names or directory ancestry are not sufficient to infer the new design.
 
-Every Domain, Service, and Module MUST have a stable Spec target identity and an explicitly
-registered, nonempty collection of Markdown documents. A physical document MAY be referenced by
-one target or shared by several targets. Each document MUST declare one globally unique stable
-document ID, the exact nonempty set of referencing target IDs, and whether its content is
-`main_visible`. The registry remains the deterministic resolution index and MUST contain the same
-memberships. Directory traversal, links, scope/component relationships, and another referencing
-entity's remaining documents MUST NOT implicitly add context.
+Deterministic checks establish identity, membership, single-parent composition, unique file
+ownership, dependency declarations and interface consistency. They do not prove every future task
+is specified or every implementation is correct. Behavioral review and configured tests supply
+additional, revision-bound evidence. The Framework's own Specs follow these same rules.
 
-The resolved context for one target is the ordered union of its registered documents. Documents
-referenced only by that target appear under `Target Spec`; documents referenced by several targets
-appear once under `Shared Specs`. This one-hop document inclusion is not recursive entity-context
-expansion. The complete resolved context MUST explain the target without requiring an undisclosed
-parent, ancestor, child, collaborator, or related entity Spec.
+## Concorde Framework execution profile
 
-Project knowledge SHOULD avoid unnecessary duplication. Exact shared truth—such as a vocabulary,
-schema, invariant, state transition or common completion rule—SHOULD have one canonical shared
-document when several targets rely on it. Target-local perspective remains local: a consumer still
-explains when and why it uses a capability and how it handles results and failures, while the
-provider explains what it offers. Natural-language similarity alone does not prove that two
-perspectives are duplicate.
+### P5. One complete Module context per bounded task
 
-A shared document has collective authority and no implicit unique owner. A single-target author MAY
-read it but MUST NOT change it. Changing shared truth requires a coordinated topology application in
-which every candidate referencing target receives a separate context and returns identical proposed
-bytes. Document identity, membership and `main_visible` changes follow the same reviewed, atomic
-path. Any shared change intentionally changes the context identity of every referencing target.
+A bounded invocation selects one Module and freezes its complete document collection, task,
+constraints, phase, Protocol and role instructions. Feature/interface focus does not trim that
+collection. Planner and task-author inputs contain no Implementation Specs or source locators.
+A global coordinator may discover explicitly admitted Module contracts for routing; each selected
+worker is a fresh invocation with only its own complete Module context. Routing metadata and typed
+worker results are explicit inputs, not permission to inspect implementation. Coordinator discovery
+never loads Implementation Specs. Source-code phases use the selected Module's explicit file bindings.
 
-### P4. Global principles and kind definitions are versioned context
+Context identities cover document membership and bytes, Protocol and instructions, declared stage
+artifacts and lifecycle identity. Code-writing context identities additionally cover the referenced
+Implementation Specs, file bindings and their current file digests. A changed input requires a new
+snapshot. Implementation-only changes do not add implementation knowledge to a planner.
 
-Concorde MUST distribute the global workflow principles and the definitions of Domain, Service,
-and Module as versioned Protocol assets. Every installed project MUST bind to an explicit
-compatible Protocol version. Initialization, updates, validation, and execution MUST agree on
-that binding.
+### P6. Gaps and review are tied to the affected contract
 
-For a Spec target, Concorde MUST automatically include the global principles and the corresponding
-kind definition in its context. These additions MUST be visible in the resolved context manifest.
-Project-specific rules MAY supplement the global principles but MUST NOT weaken them. Business
-facts needed to understand a target must remain available in its Target Spec plus Shared Specs;
-an ancestor's or co-referencing entity's remaining Spec cannot become an implicit supplement.
+Missing required behavior is a Module Spec gap. Name the missing promise, blocked step, Module and
+snapshot; continue only independent work. Implementation source cannot resolve that gap implicitly.
+A failed execution, an explicit prohibition and a missing runtime value with defined failure
+behavior are distinct from an unspecified contract.
 
-Concorde's own business decomposition is an application of these rules. It MUST NOT become a
-required Installation/Documentation/Workflow decomposition for other projects.
+Spec review uses Module Specs. Code review uses the same Module contracts and authorized code in a
+fresh read-only invocation. A review records its exact inputs, coverage, findings and completion.
+Changed relevant inputs invalidate it. Skipped, failed, incomplete and successful reviews remain
+distinct. Shared implementation changes require checks for all using Modules, with separate Module
+contexts and explicit per-consumer evidence. No passing structural check proves semantic completeness.
 
-### P5. Each agent invocation has one explicit, reproducible context
+### P7. Execution authority is explicit
 
-Every bounded worker task MUST bind to one explicit Spec target and a concrete context snapshot
-before execution. A Feature or API identifier MAY focus the task within that target, but MUST NOT
-silently replace its complete document collection with partial retrieval results.
+The host binds each normal Framework invocation to declared context and file permissions. Only
+implementation invocations receive Implementation Spec bodies; only code-writing invocations may
+change bound source. Code review and deterministic checks have separately declared read authority.
+The registry's reverse index never grants a writer another Module's Spec or unrelated code.
+Unsupported enforcement fails closed. An outer developer-authorized maintenance session may read
+and modify the project directly; its explicit authorization does not silently widen normal worker
+permissions or become a project business contract.
 
-A main coordinator is a separate agent role with a different context contract. It starts from the
-project entry Domain or Service and MAY request additional registered Domain or Service Specs as
-needed to understand intent and select work. Its discovery context is an ordered, append-only set of
-only the `main_visible` Target Spec and Shared Specs of admitted Domain/Service targets. Each expansion
-produces a new context identity covering the exact visible membership and bytes. Sharing a visible
-document with a Module does not admit the Module's remaining Spec. The coordinator MUST NOT directly
-expand a Module target or read implementation code.
-It MAY route work to a Module only when an admitted Domain or Service supplies the Module's stable
-ID, responsibility and selection condition. Missing routing facts are a Spec gap in the admitted
-Domain or Service that should supply them.
+Agent instructions, Skills, schemas and rule assets are deterministic projections of authored
+sources. Generated output is not edited as source. Builds distribute Module and Implementation
+kind definitions and the accepted Protocol binding. Configuration, installation and publication
+must agree on that binding. Runtime Agent responsibility files are authored implementation assets,
+not another category of project Spec.
 
-An Operation with one owning lifecycle or mutation result receives exactly one main route and keeps
-the user's task and constraints unchanged. Cross-target mutation is routed to a Domain that
-coordinates separately bound component work. The read-only `ask` action of `concorde-main` may route
-several target readers and combine only their typed results.
+### P8. Structure and bindings change together
 
-The coordinator that selects a target and the worker that consumes that target's complete context
-MUST be different fresh agent invocations. The trusted host resolves and transfers the worker
-snapshot directly; raw target or Protocol bodies MUST NOT pass back through the coordinator or an
-ambient public Skill. Typed worker results MAY become declared coordinator inputs for synthesis.
+Topology changes reconcile Module parentage, uses, features, interfaces, document memberships and
+Implementation references as one consistent proposal. A shared file has one Implementation Spec
+owner. The reverse index identifies every affected Module before a shared implementation change.
+A new or changed Module's author sees only that Module's contract collection; code-writing work
+receives the separately bound Implementation Specs. Other Module contracts are reviewed separately.
+An atomic application checks source versions and preserves prior bytes if applying the proposed
+structure fails. Human acceptance is explicit where the selected workflow requires it; direct
+maintenance follows the developer's explicit task authorization.
 
-The context manifest MUST identify the target and kind, document order, Target Spec and Shared Specs,
-each document's stable identity/reference set/main visibility and content digest,
-Protocol and kind-definition versions, Operation instructions, task input, phase, and any admitted
-stage artifacts or structured tool results. A context identity MUST cover membership as well as
-content. A change to admitted inputs produces a new snapshot rather than silently changing the
-meaning of an existing identity.
+### P9. Candidate and delivery evidence belong to a worktree
 
-Task intent, immutable Spec inputs, and explicit execution evidence have distinct roles. Prior
-conversation transcripts, free-form predecessor summaries, unrelated Spec excerpts, and arbitrary
-tool output MUST NOT become undeclared input channels. Inputs and outputs generated during a stage
-MUST follow declared artifact contracts and read/write boundaries.
+One candidate worktree holds one change, including its component progress, gaps and implementation
+impact evidence. Partial work is inspectable and resumable, not represented as completed delivery.
+Validation and review evidence bind to actual candidate inputs. Shared implementation changes
+invalidate evidence for every using Module even if only one Module initiated the change.
+Delivery preserves unrelated local changes, checks the actual integration and records incomplete
+cleanup separately from a completed merge. No component independently delivers its enclosing change.
 
-The trusted host may use the project registry to resolve targets and permissions. That authority
-does not grant an agent general access to the registry's other Spec bodies. Explicit shared-document
-membership grants only that document, not another target's remaining collection. Cross-target work
-MUST use separately bound invocations and explicit data contracts between them. Scope membership,
-composition, hyperlinks, and a caller-supplied file path are not permission grants.
+### P10. Explicit session handoffs
 
-### P6. Insufficient information is a Spec gap, not permission to search
-
-When the admitted context lacks information required to carry out a task, the agent MUST report
-Spec incomplete for that task. It MUST identify the unresolved question or missing contract,
-the step it blocks, the selected Spec target, and the context snapshot used for the judgment.
-It MUST NOT infer missing obligations from another Spec or from implementation code.
-
-Concorde MUST distinguish missing information from an outcome already determined by an explicit
-rule, conflicting requirements, and a failed execution. A known prohibition does not establish a
-Spec gap. An execution or model failure alone does not prove missing information.
-A missing runtime value whose requirement and missing-value behavior are already specified is
-an input/admission failure, rather than evidence that the Spec's semantics are incomplete.
-
-A context-solving Operation MUST assess the task using its admitted collection. It MUST NOT
-expand that collection to make the task appear answerable. A gap is resolved by supplying and
-reconciling the missing information through an explicit Spec-authoring task, producing a new Spec
-revision, and resolving a new context before the blocked task resumes. Cross-target contract
-changes require the affected local views to be reconciled.
-
-Structural validation MUST remain deterministic. A task-specific agent assessment can reveal a
-semantic gap, but MUST NOT claim to prove completeness for all possible future tasks.
-
-### P7. Execution enforces the agent's cognitive boundary
-
-All Concorde agent entry points MUST execute through an Operation host that establishes and
-enforces their context. This includes exploration, initialization, specification, planning,
-implementation, validation, fast loops, and reflection work. A public Skill can initiate an
-Operation; it MUST NOT bypass the host to perform the bounded task in an ambient conversation.
-
-Only the implementation phase may expose authorized implementation source to an agent. Code
-inspection, debugging, and code review therefore require an implementation invocation. Other
-phases consume the declared Spec context and contracted task/evidence inputs. Reflection
-investigation or initialization does not create an additional code-reading exception.
-
-The host MUST enforce reads, writes, searches, commands, network access, and tool outputs against
-the same task boundary. A context manifest is data; the execution grant is host-issued authority
-bound to that data, the phase, and the invocation. Caller configuration and artifact references
-MUST NOT supply replacement authority. Unsupported enforcement MUST prevent execution.
-
-Deterministic tools MAY read separately authorized code to compile, test, or otherwise validate
-it. Non-implementation agents may receive only the tool's declared validation result, bound to the
-relevant checks and revisions. Raw logs, source snippets, and stack traces MUST NOT be injected
-automatically. A tool with broader execution access MUST NOT expose an arbitrary read or command
-proxy to the agent. When interpreting a failure requires code inspection, Concorde dispatches an
-implementation task.
-
-Agent executions MUST start in fresh, controlled contexts. Changing a target or leaving an
-implementation phase MUST NOT reuse a conversation that has already seen now-excluded material.
-Removing file permissions cannot remove prior cognitive inputs. The guarantee covers admitted
-project information and tool access; it does not claim to erase a model's general prior knowledge.
-
-Public context inspection MAY expose target identity, membership, versions and digests for audit,
-but MUST NOT return the raw cognitive snapshot or document bodies to the ambient caller. The host
-keeps complete snapshots private and supplies them only to the fresh invocation whose policy is
-bound to that context.
-
-### P8. System topology is main-designed and explicitly accepted
-
-`concorde-main` is the single public entry for global questions and system-structure design; there
-is no separate ask Operation. For a topology change, its internal coordinator MAY receive the exact
-registry metadata and every global kind definition in addition to its append-only, main-visible
-Domain/Service discovery collections. Registry metadata supplies current structure, not hidden
-business meaning. The coordinator still MUST NOT directly expand a Module or receive implementation
-source.
-
-The coordinator produces a complete candidate registry, target-local Spec tasks, migration
-constraints and observable acceptance conditions without writing project files. A maintainer MUST
-explicitly accept that digest-bound design before any target author runs. The host then starts a
-fresh target-local Spec author for every added or changed target and for every unchanged
-Domain/Service whose routing view must change. A Module target's remaining collection is visible only
-to its own worker; a main-visible shared truth is not such an expansion.
-Worker document output remains host-private and MUST NOT return through main cognition.
-
-Changing document reference membership requires a Spec task for every retained current or candidate
-reference. A shared truth change requires every candidate reference to receive its own authoring
-context; the host accepts the shared bytes only when all returned proposals are identical. No single
-target author gains unilateral shared-document write authority.
-
-The host validates the candidate registry and complete proposed document bytes against an overlay,
-then stores one exact digest-bound application with before-digests. The public result exposes only
-an artifact identity, path and digest. A maintainer MUST explicitly accept that exact application
-before mutation. Application is atomic: stale registry, Protocol, discovery context, source bytes,
-target gaps or invalid final structure prevent project writes; failed target authoring leaves the
-project unchanged. The trusted host applies the accepted registry and documents together or restores
-their previous bytes.
-
+When the selected workflow requires a new outer session, start it in the intended worktree with
+fresh context and that worktree's instructions. Changing cwd does not erase prior cognitive inputs.
+Supply a self-contained prompt in the developer's language with the absolute directory, branch,
+task, authorizations, completed and remaining work, artifacts, checks and next steps. Start the
+session automatically when isolation can be established; otherwise provide a complete copyable
+prompt. A direct maintenance task explicitly authorized by the developer does not require a
+workflow handoff solely because it updates the Framework's own instructions.
 
 ## Part B: Concorde project application
 
-The explicit registry is .concorde/specs.json. domain.concorde is the project entry scope. Every consumer project must follow Part A and receive the pinned global principles and its target kind definition. The current refactor adopts two independent architectural dimensions, exact target/shared context closures, host-enforced fresh sessions, typed Operation handoffs and explicit Spec gaps. Runtime, distribution, self Specs and human publication must change together. Legacy Profile 7 utilities may inspect old fixtures deterministically but must never supply cognitive inputs to a Profile 8 agent.
+The explicit registry is `.concorde/specs.json`; `module.concorde` is the project entry Module.
+Concorde adopts Protocol 2.0.0 and registry schema 2. Every Module owns a self-contained English
+Spec collection describing its features, interfaces and internal architecture. Implementation
+Specs bind explicit files with one owner per file and may be reused by multiple Modules. Only
+code-writing workers receive these Implementation Specs; other workers use their own complete
+Module contracts. Shared implementation changes require fresh evidence for every using Module.
+Runtime, distribution, self Specs and human publication evolve together. Legacy Profile 7 utilities
+may inspect old fixtures deterministically but never supply cognitive inputs to a Profile 9 agent.
 
 ### Protocol version cutover and self-consistency
 

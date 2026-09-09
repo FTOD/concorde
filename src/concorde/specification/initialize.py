@@ -1,4 +1,4 @@
-"""Initialize Profile 8. Profile 7 projects are unsupported and have no migration path."""
+"""Initialize the Module/Implementation profile with an honest, self-contained Module stub."""
 from __future__ import annotations
 
 import json
@@ -27,8 +27,8 @@ def protocol_binding(package: Path) -> dict:
 
 def empty_target(target_id: str, kind: str, title: str, documents: list[str]) -> dict:
     return {"id": target_id, "kind": kind, "title": title, "documents": documents,
-            "scope_parent": None, "component_parent": None, "participates_in": [],
-            "implementation": [], "features": [], "apis": [], "checks": [], "diagrams": []}
+            "parent": None, "uses": [], "implementations": [],
+            "features": [], "interfaces": [], "checks": [], "diagrams": []}
 
 
 def initial_overview(name: str, output: str) -> dict:
@@ -50,30 +50,30 @@ def initial_overview(name: str, output: str) -> dict:
                         {"from": "project-spec", "to": "framework", "label": "validates"}],
         "cards": [{"dot": "amber", "title": "Unspecified business architecture",
                    "items": ["Only project identity and Spec authoring are known.",
-                             "Define the Domain's real entities and external relationships before implementation."]}]}
+                             "Define the Module's internal domain and external relationships before implementation."]}]}
 
 
 def project_proposal(root: Path, package: Path, name: str, configuration: dict,
-                     target_id: str = "domain.project") -> dict:
+                     target_id: str = "module.project") -> dict:
     identifier(target_id)
     configuration = validate_typed(configuration, "concorde-capability-configuration")
     if not isinstance(name, str) or not name.strip():
         raise SpecError("project name is required", "invalid_input")
     if checked_path(root, ".concorde/config.json").exists():
         raise SpecError("project already configured; use configure to change settings", "already_initialized")
-    path = "specs/project/ontology.md"
-    diagram_path = "specs/project/diagrams/overview.architecture.json"
-    target = empty_target(target_id, "domain", name, [path])
+    path = "specs/modules/project/module.md"
+    diagram_path = "specs/modules/project/diagrams/overview.architecture.json"
+    target = empty_target(target_id, "module", name, [path])
     target["diagrams"] = [{"source": diagram_path, "kind": "architecture", "title": name,
                            "recipe": "system-overview"}]
-    registry = {"schema_version": 1, "project_id": "project.initialized", "entry_target": target_id,
-        "targets": [target], "checks": []}
-    config = {"profile_version": 8, "registry": ".concorde/specs.json",
+    registry = {"schema_version": 2, "project_id": "project.initialized", "entry_target": target_id,
+        "targets": [target], "implementations": [], "checks": []}
+    config = {"profile_version": 9, "registry": ".concorde/specs.json",
         "protocol": protocol_binding(package), "capability_configuration": configuration}
     declaration = {"id": "document." + target_id, "targets": [target_id],
                    "main_visible": True}
     text = ("```concorde-document\n" + json.dumps(declaration, indent=2) + "\n```\n\n"
-        f"# {name}\n\n## Ontology\n\nThis Domain scopes the initialized project. Its current supported use is to\n"
+        f"# {name}\n\n## Features and interfaces\n\nProduct capabilities and their usage interfaces are not yet specified.\n\n## Architecture\n\nThis Module describes the initialized project. Its current supported use is to\n"
         "identify the project and author its intended behavior. Business entities, rules, participating\n"
         "components, and product features have not yet been supplied. A task requiring those facts\n"
         "must report Spec incomplete and name the missing information. Initialization does not infer\n"
@@ -84,13 +84,13 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
         "specifies intended behavior in the Project Spec; the Framework checks its Concorde Spec Protocol\n"
         "conformance. This authoring relationship is not the project's unknown business architecture.\n\n"
         "## Architecture overview\n\nThe declared System overview shows only this known authoring boundary.\n"
-        "The docsite embeds it on this main page. Replace it with the Domain's actual internal\n"
+        "The docsite embeds it on this main page. Replace it with the Module's actual internal\n"
         "architecture and relevant external relationships when those facts have been supplied.\n")
     files = [file_change(root, ".concorde/config.json", json.dumps(config, indent=2) + "\n"),
              file_change(root, ".concorde/specs.json", json.dumps(registry, indent=2) + "\n"),
              file_change(root, path, text),
              file_change(root, diagram_path, json.dumps(initial_overview(name,
-                 "../../../generated/diagrams/project.html"), indent=2) + "\n")]
+                 "../../../../generated/diagrams/project.html"), indent=2) + "\n")]
     # Reflection defaults remain independently owned, and are never overwritten on init.
     index = ".concorde/reflections/index.json"
     if not checked_path(root, index).exists():
@@ -129,4 +129,4 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
             raise SpecError("target-state validation failed: " + "; ".join(f.message for f in report.findings))
     changed = apply_files(root, files, allowed, verify=verify)
     return {"action": proposal["action"], "status": "applied", "files": changed,
-            "profile_version": 8, "protocol": protocol_binding(package)}
+            "profile_version": 9, "protocol": protocol_binding(package)}

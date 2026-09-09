@@ -1,1 +1,1 @@
-"""Profile 8: independent Domain scopes, components, and explicit Spec contexts."""
+"""Profile 9: self-contained Modules and reusable, explicitly file-bound Implementation Specs."""

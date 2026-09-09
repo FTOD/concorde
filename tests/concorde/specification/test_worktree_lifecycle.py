@@ -182,13 +182,13 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("ready", read_change(self.change)["status"])
 
     def test_partial_spec_reconciliation_is_explicit_and_resumes_completed_authors(self):
-        before_primary = (self.primary / "specs/send-money.md").read_bytes()
+        before_primary = (self.primary / "specs/transfer/module.md").read_bytes()
         def contract(role, peer, value_type, example):
             return "\n```concorde-contract\n" + json.dumps({"id": "contract.fixture.sync", "version": 1,
                 "role": role, "peer": peer, "schema": {"type": value_type},
                 "semantics": "The coordinated value has the agreed representation.", "example": example}) + "\n```\n"
-        consumer = self.change / "specs/send-money.md"
-        provider = self.change / "specs/ledger-api.md"
+        consumer = self.change / "specs/transfer/module.md"
+        provider = self.change / "specs/ledger/module.md"
         consumer.write_text(consumer.read_text() + contract("required", "module.ledger", "integer", 7))
         provider.write_text(provider.read_text() + contract("provided", "service.transfer", "integer", 7))
         task = {"target_id": "scope.bank", "task": "Coordinate transfer and ledger changes"}
@@ -211,8 +211,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("blocked", records["module.ledger"]["spec_status"])
         self.assertEqual("spec_reconciliation", state["phase"])
         self.assertEqual("spec_incomplete", state["outcome"])
-        self.assertIn("Clarified candidate promise", (self.change / "specs/send-money.md").read_text())
-        self.assertEqual(before_primary, (self.primary / "specs/send-money.md").read_bytes())
+        self.assertIn("Clarified candidate promise", (self.change / "specs/transfer/module.md").read_text())
+        self.assertEqual(before_primary, (self.primary / "specs/transfer/module.md").read_bytes())
         self.assertEqual("invalid", validate_repository(self.change, package_root=PACKAGE).status)
         self.assertFalse(any(c["stage"] == "implementation" for c in self.last_double.calls))
         def finish_provider(stage, snapshot, data, cwd):
@@ -328,7 +328,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
     def test_directly_authored_candidate_can_be_validated_and_delivered_without_a_plan(self):
         path = self.change / "app/transfer.py"
         path.write_text('def transfer(balance, amount):\n    if amount <= 0 or amount > balance:\n        raise ValueError("invalid transfer")\n    return balance - amount\n')
-        spec = self.change / "specs/send-money.md"
+        spec = self.change / "specs/transfer/module.md"
         spec.write_text(spec.read_text() + "\nClarified directly in the candidate.\n")
         result = self.run_op(self.change, "concorde-validate", self.task)
         self.assertEqual("succeeded", result["status"], result)
@@ -338,7 +338,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertTrue(state["validation"]["checks"])
         result = self.run_op(self.primary, "concorde-deliver", {"change_id": state["change_id"]})
         self.assertEqual("succeeded", result["status"], result)
-        self.assertIn("Clarified directly", (self.primary / "specs/send-money.md").read_text())
+        self.assertIn("Clarified directly", (self.primary / "specs/transfer/module.md").read_text())
         self.assertFalse(self.change.exists())
 
     def test_validation_does_not_bypass_an_unfinished_authored_plan(self):

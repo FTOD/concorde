@@ -562,12 +562,12 @@ class AgentBindingPreflightTests(unittest.TestCase):
             "context_id": "sha256:" + "3" * 64,
             "schema_version": 1,
             "target_id": "service.fixture",
-            "kind": "service",
+            "kind": "module",
             "focus_id": None,
             "phase": "plan",
             "task": "Plan the selected change",
             "constraints": [],
-            "protocol_binding": {"version": "1.2.0", "digest": "sha256:" + "4" * 64},
+            "protocol_binding": {"version": "2.0.0", "digest": "sha256:" + "4" * 64},
             "protocol": [],
             "document_order": ["specs/fixture.md"],
             "target_spec": [{
@@ -579,6 +579,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
             "diagram_sources": [],
             "instructions": "Fixture role instructions.",
             "stage_inputs": [],
+            "implementation_specs": [],
             "implementation_artifacts": [],
             "workspace": {
                 "kind": "unversioned", "current_worktree": "/fixture/project", "current_branch": None,

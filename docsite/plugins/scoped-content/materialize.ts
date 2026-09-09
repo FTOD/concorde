@@ -29,17 +29,14 @@ function renderSourceTree(node: DirNode, depth: number): object[] {
 }
 export function scopedSidebar(registry: ScopedRegistry) {
   const byPath = new Map(registry.pages.map(p=>[p.sourcePath,p]));
-  // Domain scope nesting and component composition are independent dimensions; every entry here is a
-  // plain link (never a doc id) because each document already has its one sidebar position in the
-  // source-path tree below, and Docusaurus forbids placing the same doc id twice in one sidebar.
+  // Source navigation lists each document once; Module and Implementation navigation uses links.
   const item=(target:Target):object=>{
     const pages=target.documents.map(path=>byPath.get(path)!);
     const main=byPath.get(primaryDocument(target))!;
-    const rest=target.kind==='domain'?pages.filter(p=>p!==main):pages;
     return {type:'category',label:target.title,collapsed:true,items:[
-      ...(target.kind==='domain'?[{type:'link',label:`${target.title} · Main Spec`,href:main.route}]:[]),
-      ...rest.map(p=>({type:'link',label:p.title,href:p.route})),
-      ...registry.targets.filter(t=>(target.kind==='domain'?t.scope_parent:t.component_parent)===target.id).map(item),
+      {type:'link',label:`${target.title} · Spec`,href:main.route},
+      ...pages.filter(page=>page!==main).map(page=>({type:'link',label:page.title,href:page.route})),
+      ...registry.targets.filter(t=>t.kind==='module'&&t.parent===target.id).map(item),
     ]};
   };
   const sourceTree: DirNode = {dirs: new Map(), files: []};
@@ -47,8 +44,8 @@ export function scopedSidebar(registry: ScopedRegistry) {
   return [
     {type:'category',label:'Specs by source path',collapsed:false,items:renderSourceTree(sourceTree,0)},
     {type:'category',label:'Specs by target',collapsed:true,items:[
-      {type:'category',label:'Domain scopes',collapsed:false,items:registry.targets.filter(t=>t.kind==='domain'&&!t.scope_parent).map(item)},
-      {type:'category',label:'Components',collapsed:false,items:registry.targets.filter(t=>t.kind!=='domain'&&!t.component_parent).map(item)},
+      {type:'category',label:'Modules',collapsed:false,items:registry.targets.filter(t=>t.kind==='module'&&!t.parent).map(item)},
+      {type:'category',label:'Implementation Specs',collapsed:false,items:registry.targets.filter(t=>t.kind==='implementation').map(item)},
     ].filter(group=>group.items.length)},
     ...(hasDocsProjections(registry.projectRoot)?[PROJECTIONS_GROUP]:[]),
   ];
@@ -72,7 +69,7 @@ export async function materializeScoped(registry:ScopedRegistry) {
     // reading flow while leaving the authored source and its digest intact.
     const content=rewriteLinks(registry,page).replace(/^```concorde-document\s*\n[\s\S]*?^```\s*$/m,'').trimStart();
     await writeFile(path,matter.stringify(content,{format:'md',slug:page.route.slice('/specs'.length),title:page.title,sidebar_label:posix.basename(page.stagedPath),
-      ...(page.kind==='domain'&&page.primaryOf?{hide_table_of_contents:true}:{})}));
+      ...(page.kind==='module'&&page.primaryOf?{hide_table_of_contents:true}:{})}));
   }
   if(hasDocsProjections(registry.projectRoot)){
     const projectionsDirectory=resolve(generated,'content/specs/projections');

@@ -52,7 +52,7 @@ Select `concorde-main`, create a new thread, and enter this complete input in Gr
     "input": {
       "type_id": "concorde-main-request",
       "schema_version": 1,
-      "data": {"task": "Explain Concorde's workflow host", "target_id": "service.workflow-host"}
+      "data": {"task": "Explain Concorde's workflow host", "target_id": "module.workflows"}
     }
   }
 }
@@ -98,7 +98,7 @@ Keep using the same JSON invocation on stdin, without the Studio `invocation` wr
 
 ```bash
 python3 scripts/run-capability.py concorde-main <<'JSON'
-{"type_id":"concorde-capability-invocation","schema_version":3,"capability_id":"concorde-main","mode":"describe-policy","configuration":null,"input":{"type_id":"concorde-main-request","schema_version":1,"data":{"task":"Explain Concorde's workflow host","target_id":"service.workflow-host"}}}
+{"type_id":"concorde-capability-invocation","schema_version":3,"capability_id":"concorde-main","mode":"describe-policy","configuration":null,"input":{"type_id":"concorde-main-request","schema_version":1,"data":{"task":"Explain Concorde's workflow host","target_id":"module.workflows"}}}
 JSON
 ```
 

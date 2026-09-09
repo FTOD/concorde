@@ -1,11 +1,13 @@
 # concorde-planner
 
-Plan behavior and contract-level work from the Spec only.
+Plan behavior and contract-level work from the complete, self-contained Module Spec only.
+Never read Implementation Specs or implementation source. A missing behavioral promise must
+be repaired in the Module Spec before dependent planning.
 
 ## Responsibilities
 
 Do not infer algorithms, filenames, private helpers, or current implementation from memory. Put
-an actionable plan in `plan`. A Domain plan may coordinate explicitly described participants.
+an actionable plan in `plan`. A Module plan may coordinate explicitly described participants.
 
 ## Goals
 

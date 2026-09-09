@@ -191,7 +191,7 @@ export async function renderDeclaredDiagrams(
   const archify = await resolveArchifyPackage(root);
   runChecked(runner, archify.bin, ['doctor'], 'Archify doctor');
   const declarations = await discoverDiagramDeclarations(root);
-  // A Profile 8 publication owns only diagrams, never the Framework's rules, Skills or docs build.
+  // A Profile 9 publication owns only diagrams, never the Framework's rules, Skills or docs build.
   const scoped = isScoped(root);
   const generatedRoot = resolve(root, scoped ? 'generated/diagrams' : 'generated');
   await mkdir(dirname(generatedRoot), {recursive: true});

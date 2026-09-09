@@ -1,36 +1,53 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "project_id": "project.concorde",
-  "entry_target": "domain.concorde",
+  "entry_target": "module.concorde",
   "targets": [
     {
-      "id": "domain.concorde",
-      "kind": "domain",
+      "id": "module.concorde",
+      "kind": "module",
       "title": "Concorde Framework",
       "documents": [
-        "specs/concorde/ontology.md",
-        "specs/concorde/spec-protocol.md",
-        "specs/concorde/main-routing.md",
-        "specs/concorde/framework-design.md",
-        "specs/concorde/workflow/agents-and-harnesses.md",
-        "specs/concorde/workflow/agent-graphs-and-loops.md"
+        "specs/modules/concorde/module.md",
+        "specs/modules/concorde/architecture.md",
+        "specs/modules/concorde/developer-experience.md"
       ],
-      "scope_parent": null,
-      "component_parent": null,
-      "participates_in": [],
-      "implementation": [],
+      "parent": null,
+      "uses": [],
+      "implementations": [],
       "features": [
         {
-          "id": "feature.concorde.evolve-protocol",
-          "title": "Evolve the Spec Protocol",
-          "document": "specs/concorde/spec-protocol.md"
+          "id": "feature.concorde.provide",
+          "title": "Concorde Framework",
+          "document": "specs/modules/concorde/module.md"
+        },
+        {
+          "id": "feature.concorde.develop",
+          "title": "Develop a specified change",
+          "document": "specs/modules/concorde/module.md"
+        },
+        {
+          "id": "feature.concorde.inspect",
+          "title": "Inspect project knowledge",
+          "document": "specs/modules/concorde/module.md"
+        },
+        {
+          "id": "feature.concorde.adopt",
+          "title": "Adopt the Framework",
+          "document": "specs/modules/concorde/module.md"
         }
       ],
-      "apis": [],
+      "interfaces": [
+        {
+          "id": "interface.concorde.use",
+          "title": "Concorde Framework usage",
+          "document": "specs/modules/concorde/module.md"
+        }
+      ],
       "checks": [],
       "diagrams": [
         {
-          "source": "specs/concorde/diagrams/framework-overview.architecture.json",
+          "source": "specs/modules/concorde/diagrams/overview.architecture.json",
           "kind": "architecture",
           "title": "Concorde Framework",
           "recipe": "system-overview"
@@ -38,56 +55,171 @@
       ]
     },
     {
-      "id": "domain.workflow",
-      "kind": "domain",
-      "title": "Agents",
+      "id": "module.protocol",
+      "kind": "module",
+      "title": "Spec Protocol",
       "documents": [
-        "specs/concorde/workflow/ontology.md",
-        "specs/concorde/workflow/routing.md",
-        "specs/concorde/workflow/query-and-routing.md",
-        "specs/concorde/workflow/development.md",
-        "specs/concorde/workflow/topology.md",
-        "specs/concorde/workflow/review-and-gaps.md",
-        "specs/concorde/workflow/delivery.md",
-        "specs/concorde/workflow/reflections.md",
-        "specs/concorde/services/capability-registry.md",
-        "specs/concorde/workflow/agents-and-harnesses.md",
-        "specs/concorde/workflow/agent-graphs-and-loops.md"
+        "specs/modules/concorde/protocol/module.md",
+        "specs/modules/concorde/protocol/architecture.md",
+        "specs/modules/concorde/protocol/spec-format.md",
+        "specs/modules/concorde/protocol/module-model.md",
+        "specs/modules/concorde/protocol/implementation-model.md"
       ],
-      "scope_parent": "domain.concorde",
-      "component_parent": null,
-      "participates_in": [],
-      "implementation": [],
-      "features": [],
-      "apis": [],
+      "parent": "module.concorde",
+      "uses": [],
+      "implementations": [
+        "implementation.protocol-assets"
+      ],
+      "features": [
+        {
+          "id": "feature.concorde.evolve-protocol",
+          "title": "Evolve the Spec Protocol",
+          "document": "specs/modules/concorde/protocol/module.md"
+        },
+        {
+          "id": "feature.protocol.describe-model",
+          "title": "Describe Module and Implementation Specs",
+          "document": "specs/modules/concorde/protocol/module.md"
+        }
+      ],
+      "interfaces": [
+        {
+          "id": "interface.protocol.use",
+          "title": "Spec Protocol usage",
+          "document": "specs/modules/concorde/protocol/module.md"
+        }
+      ],
       "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "module.workflows",
+      "kind": "module",
+      "title": "Agent workflows",
+      "documents": [
+        "specs/modules/concorde/workflows/module.md",
+        "specs/modules/concorde/workflows/architecture.md",
+        "specs/modules/concorde/workflows/interfaces.md",
+        "specs/modules/concorde/workflows/capabilities.md",
+        "specs/modules/concorde/workflows/query-and-routing.md",
+        "specs/modules/concorde/workflows/development.md",
+        "specs/modules/concorde/workflows/topology.md",
+        "specs/modules/concorde/workflows/review-and-gaps.md",
+        "specs/modules/concorde/workflows/delivery.md",
+        "specs/modules/concorde/workflows/agents-and-harnesses.md",
+        "specs/modules/concorde/workflows/graphs-and-loops.md",
+        "specs/modules/concorde/workflows/runtime-values.md",
+        "specs/modules/concorde/workflows/values.md"
+      ],
+      "parent": "module.concorde",
+      "uses": [
+        "module.spec-context",
+        "module.registry",
+        "module.wire-contracts",
+        "module.file-transactions",
+        "module.agent-execution",
+        "module.permissions",
+        "module.package-assets",
+        "module.reflections"
+      ],
+      "implementations": [
+        "implementation.workflow-host",
+        "implementation.workflow-capabilities",
+        "implementation.agent-definitions",
+        "implementation.worktree-lifecycle"
+      ],
+      "features": [
+        {
+          "id": "feature.workflow.execute",
+          "title": "Workflow host",
+          "document": "specs/modules/concorde/workflows/module.md"
+        },
+        {
+          "id": "feature.workflows.query",
+          "title": "Answer a Module question",
+          "document": "specs/modules/concorde/workflows/module.md"
+        },
+        {
+          "id": "feature.workflows.develop",
+          "title": "Develop and review a change",
+          "document": "specs/modules/concorde/workflows/module.md"
+        },
+        {
+          "id": "feature.workflows.topology",
+          "title": "Change Module structure and bindings",
+          "document": "specs/modules/concorde/workflows/module.md"
+        },
+        {
+          "id": "feature.workflows.deliver",
+          "title": "Integrate a verified candidate",
+          "document": "specs/modules/concorde/workflows/module.md"
+        }
+      ],
+      "interfaces": [
+        {
+          "id": "interface.workflows.use",
+          "title": "Agent workflows usage",
+          "document": "specs/modules/concorde/workflows/module.md"
+        }
+      ],
+      "checks": [
+        "check.workflow-runtime"
+      ],
       "diagrams": [
         {
-          "source": "specs/concorde/workflow/diagrams/overview.architecture.json",
+          "source": "specs/modules/concorde/workflows/diagrams/overview.architecture.json",
           "kind": "architecture",
-          "title": "Agents",
+          "title": "Agent workflows",
           "recipe": "system-overview"
         }
       ]
     },
     {
-      "id": "domain.installation",
-      "kind": "domain",
+      "id": "module.installation",
+      "kind": "module",
       "title": "Installation",
       "documents": [
-        "specs/concorde/installation/ontology.md",
-        "specs/concorde/installation/routing.md"
+        "specs/modules/concorde/installation/module.md",
+        "specs/modules/concorde/installation/architecture.md",
+        "specs/modules/concorde/installation/interfaces.md"
       ],
-      "scope_parent": "domain.concorde",
-      "component_parent": null,
-      "participates_in": [],
-      "implementation": [],
-      "features": [],
-      "apis": [],
+      "parent": "module.concorde",
+      "uses": [
+        "module.spec-context",
+        "module.package-assets",
+        "module.managed-runtime",
+        "module.file-transactions",
+        "module.wire-contracts"
+      ],
+      "implementations": [
+        "implementation.installation",
+        "implementation.spec-engine",
+        "implementation.package-build",
+        "implementation.worktree-lifecycle"
+      ],
+      "features": [
+        {
+          "id": "feature.installation.install",
+          "title": "Installation service",
+          "document": "specs/modules/concorde/installation/module.md"
+        },
+        {
+          "id": "feature.installation.self-distribute",
+          "title": "Distribute agent surfaces into the source worktree",
+          "document": "specs/modules/concorde/installation/module.md"
+        }
+      ],
+      "interfaces": [
+        {
+          "id": "interface.installation.use",
+          "title": "Installation usage",
+          "document": "specs/modules/concorde/installation/module.md"
+        }
+      ],
       "checks": [],
       "diagrams": [
         {
-          "source": "specs/concorde/installation/diagrams/overview.architecture.json",
+          "source": "specs/modules/concorde/installation/diagrams/overview.architecture.json",
           "kind": "architecture",
           "title": "Installation",
           "recipe": "system-overview"
@@ -95,322 +227,84 @@
       ]
     },
     {
-      "id": "domain.developer-view",
-      "kind": "domain",
-      "title": "Developer view and feedback",
+      "id": "module.spec-context",
+      "kind": "module",
+      "title": "Module contexts",
       "documents": [
-        "specs/concorde/developer-view/ontology.md",
-        "specs/concorde/developer-view/routing.md",
-        "specs/concorde/developer-view/views.md",
-        "specs/concorde/developer-view/feedback.md"
+        "specs/modules/concorde/spec-context/module.md",
+        "specs/modules/concorde/spec-context/architecture.md",
+        "specs/modules/concorde/spec-context/interfaces.md",
+        "specs/modules/concorde/spec-context/runtime-values.md",
+        "specs/modules/concorde/spec-context/values.md"
       ],
-      "scope_parent": "domain.concorde",
-      "component_parent": null,
-      "participates_in": [],
-      "implementation": [],
-      "features": [],
-      "apis": [],
-      "checks": [],
-      "diagrams": [
-        {
-          "source": "specs/concorde/developer-view/diagrams/overview.architecture.json",
-          "kind": "architecture",
-          "title": "Developer view and feedback",
-          "recipe": "system-overview"
-        }
-      ]
-    },
-    {
-      "id": "domain.docsite",
-      "kind": "domain",
-      "title": "Spec publication",
-      "documents": [
-        "specs/concorde/publication/ontology.md",
-        "specs/concorde/publication/routing.md"
+      "parent": "module.concorde",
+      "uses": [
+        "module.registry",
+        "module.wire-contracts",
+        "module.file-transactions"
       ],
-      "scope_parent": "domain.developer-view",
-      "component_parent": null,
-      "participates_in": [],
-      "implementation": [],
-      "features": [],
-      "apis": [],
-      "checks": [],
-      "diagrams": [
-        {
-          "source": "specs/concorde/publication/diagrams/overview.architecture.json",
-          "kind": "architecture",
-          "title": "Spec publication",
-          "recipe": "system-overview"
-        }
-      ]
-    },
-    {
-      "id": "service.spec-context",
-      "kind": "service",
-      "title": "Spec contexts",
-      "documents": [
-        "specs/concorde/services/context-boundary.md",
-        "specs/concorde/shared/registry-contracts.md",
-        "specs/concorde/shared/agent-runtime-contracts.md"
-      ],
-      "scope_parent": null,
-      "component_parent": null,
-      "participates_in": [
-        "domain.workflow",
-        "domain.installation"
-      ],
-      "implementation": [
-        "src/concorde/specification/context.py",
-        "src/concorde/specification/initialize.py",
-        "src/concorde/specification/validation.py",
-        "prompts/protocol",
-        "protocol/manifest.json",
-        "prompts/spec-context",
-        "agents/reader",
-        "agents/spec_author",
-        "agents/context_assessor"
+      "implementations": [
+        "implementation.spec-engine",
+        "implementation.agent-definitions"
       ],
       "features": [
         {
           "id": "feature.concorde.define-project-ontology",
           "title": "Spec contexts",
-          "document": "specs/concorde/services/context-boundary.md"
+          "document": "specs/modules/concorde/spec-context/module.md"
         },
         {
           "id": "feature.context.resolve",
           "title": "Spec contexts",
-          "document": "specs/concorde/services/context-boundary.md"
+          "document": "specs/modules/concorde/spec-context/module.md"
         },
         {
           "id": "feature.context.initialize",
           "title": "Spec contexts",
-          "document": "specs/concorde/services/context-boundary.md"
+          "document": "specs/modules/concorde/spec-context/module.md"
         }
       ],
-      "apis": [],
+      "interfaces": [
+        {
+          "id": "interface.spec-context.use",
+          "title": "Module contexts usage",
+          "document": "specs/modules/concorde/spec-context/module.md"
+        }
+      ],
       "checks": [
         "check.context-runtime"
       ],
       "diagrams": []
     },
     {
-      "id": "service.workflow-host",
-      "kind": "service",
-      "title": "Agent orchestration host",
-      "documents": [
-        "specs/concorde/services/workflow-host-boundary.md",
-        "specs/concorde/services/capability-registry.md",
-        "specs/concorde/shared/agent-runtime-contracts.md",
-        "specs/concorde/shared/registry-contracts.md",
-        "specs/concorde/workflow/agents-and-harnesses.md",
-        "specs/concorde/workflow/agent-graphs-and-loops.md"
-      ],
-      "scope_parent": null,
-      "component_parent": null,
-      "participates_in": [
-        "domain.workflow",
-        "domain.developer-view"
-      ],
-      "implementation": [
-        "src/concorde/host/capability_host.py",
-        "src/concorde/host/capability_service.py",
-        "src/concorde/host/change_worktree.py",
-        "src/concorde/host/worktree_delivery.py",
-        "src/concorde/host/review.py",
-        "tests/concorde/specification/test_review.py",
-        "src/concorde/host/configuration.py",
-        "src/concorde/host/session_handoff.py",
-        "tests/concorde/host/unit/test_session_handoff.py",
-        "capabilities/main.py",
-        "capabilities/dev_loop.py",
-        "capabilities/specify.py",
-        "capabilities/review.py",
-        "capabilities/context_solve.py",
-        "capabilities/plan.py",
-        "capabilities/tasks.py",
-        "capabilities/implement.py",
-        "capabilities/validate.py",
-        "capabilities/deliver.py",
-        "prompts/workflow-host",
-        "src/concorde/host/roles.py",
-        "src/concorde/host/studio.py",
-        "src/concorde/host/studio_client.py",
-        "scripts/development/studio.py",
-        "agents/coordinator",
-        "agents/planner",
-        "agents/task_author",
-        "agents/implementation_worker",
-        "agents/spec_reviewer",
-        "agents/code_reviewer",
-        "src/concorde/host/agent_model.py"
-      ],
-      "features": [
-        {
-          "id": "feature.workflow.execute",
-          "title": "Workflow host",
-          "document": "specs/concorde/services/workflow-host-boundary.md"
-        }
-      ],
-      "apis": [],
-      "checks": [
-        "check.workflow-runtime"
-      ],
-      "diagrams": []
-    },
-    {
-      "id": "service.reflections",
-      "kind": "service",
-      "title": "Reflections",
-      "documents": [
-        "specs/concorde/services/reflection-boundary.md"
-      ],
-      "scope_parent": null,
-      "component_parent": null,
-      "participates_in": [
-        "domain.workflow"
-      ],
-      "implementation": [
-        "src/concorde/reflections/reflections.py",
-        "src/concorde/reflections/configuration.py",
-        "src/concorde/reflections/config.default.json",
-        "src/concorde/reflections/investigation.py",
-        "src/concorde/reflections/scoped_triage.py",
-        "src/concorde/reflections/validation.py",
-        "scripts/reflections_queue.py",
-        "capabilities/reflections_triage.py"
-      ],
-      "features": [
-        {
-          "id": "feature.reflections.triage",
-          "title": "Reflections",
-          "document": "specs/concorde/services/reflection-boundary.md"
-        }
-      ],
-      "apis": [],
-      "checks": [],
-      "diagrams": []
-    },
-    {
-      "id": "service.installation",
-      "kind": "service",
-      "title": "Installation service",
-      "documents": [
-        "specs/concorde/services/install-boundary.md"
-      ],
-      "scope_parent": null,
-      "component_parent": null,
-      "participates_in": [
-        "domain.installation"
-      ],
-      "implementation": [
-        "scripts/install-concorde.py",
-        "scripts/install-concorde.sh",
-        "scripts/run-capability.py",
-        "scripts/concorde.py",
-        "src/concorde/host/cli.py",
-        "src/concorde/host/worktree_affinity.py",
-        "tests/concorde/host/unit/test_worktree_affinity.py",
-        "src/concorde/distribution/protocol_guidance.py",
-        "tests/concorde/distribution/unit/test_protocol_guidance.py",
-        "capabilities/init.py",
-        "capabilities/configure.py"
-      ],
-      "features": [
-        {
-          "id": "feature.installation.install",
-          "title": "Installation service",
-          "document": "specs/concorde/services/install-boundary.md"
-        },
-        {
-          "id": "feature.installation.self-distribute",
-          "title": "Distribute agent surfaces into the source worktree",
-          "document": "specs/concorde/services/install-boundary.md"
-        }
-      ],
-      "apis": [],
-      "checks": [],
-      "diagrams": []
-    },
-    {
-      "id": "service.publication",
-      "kind": "service",
-      "title": "Publication service",
-      "documents": [
-        "specs/concorde/services/publication-boundary.md"
-      ],
-      "scope_parent": null,
-      "component_parent": null,
-      "participates_in": [
-        "domain.docsite"
-      ],
-      "implementation": [
-        "src/concorde/autodocs/__init__.py",
-        "src/concorde/autodocs/docsite_scaffold.py",
-        "src/concorde/autodocs/docsite_template.py"
-      ],
-      "features": [
-        {
-          "id": "feature.publication.publish",
-          "title": "Publication service",
-          "document": "specs/concorde/services/publication-boundary.md"
-        }
-      ],
-      "apis": [],
-      "checks": [],
-      "diagrams": []
-    },
-    {
-      "id": "service.viewer",
-      "kind": "service",
-      "title": "Understand Anything viewer",
-      "documents": [
-        "specs/concorde/services/viewer-boundary.md"
-      ],
-      "scope_parent": null,
-      "component_parent": null,
-      "participates_in": [
-        "domain.developer-view"
-      ],
-      "implementation": [
-        "scripts/run-viewer.py",
-        "tests/concorde/distribution/unit/test_viewer_launcher.py"
-      ],
-      "features": [
-        {
-          "id": "feature.viewer.launch",
-          "title": "Open a raw code graph",
-          "document": "specs/concorde/services/viewer-boundary.md"
-        }
-      ],
-      "apis": [],
-      "checks": [
-        "check.viewer-launch"
-      ],
-      "diagrams": []
-    },
-    {
       "id": "module.registry",
       "kind": "module",
-      "title": "Registry",
+      "title": "Spec registry",
       "documents": [
-        "specs/concorde/modules/registry.md",
-        "specs/concorde/shared/registry-contracts.md"
+        "specs/modules/concorde/registry/module.md",
+        "specs/modules/concorde/registry/architecture.md",
+        "specs/modules/concorde/registry/interfaces.md",
+        "specs/modules/concorde/registry/values.md"
       ],
-      "scope_parent": null,
-      "component_parent": "service.spec-context",
-      "participates_in": [
-        "domain.workflow",
-        "domain.installation"
+      "parent": "module.concorde",
+      "uses": [
+        "module.wire-contracts"
       ],
-      "implementation": [
-        "src/concorde/specification/repository.py"
+      "implementations": [
+        "implementation.registry"
       ],
-      "features": [],
-      "apis": [
+      "features": [
+        {
+          "id": "feature.registry.provide",
+          "title": "Spec registry",
+          "document": "specs/modules/concorde/registry/module.md"
+        }
+      ],
+      "interfaces": [
         {
           "id": "api.registry.select",
           "title": "Registry",
-          "document": "specs/concorde/modules/registry.md"
+          "document": "specs/modules/concorde/registry/module.md"
         }
       ],
       "checks": [],
@@ -421,27 +315,27 @@
       "kind": "module",
       "title": "Wire contracts",
       "documents": [
-        "specs/concorde/modules/wire-contracts.md"
+        "specs/modules/concorde/wire-contracts/module.md",
+        "specs/modules/concorde/wire-contracts/architecture.md",
+        "specs/modules/concorde/wire-contracts/interfaces.md"
       ],
-      "scope_parent": null,
-      "component_parent": "service.workflow-host",
-      "participates_in": [
-        "domain.workflow",
-        "domain.installation"
+      "parent": "module.concorde",
+      "uses": [],
+      "implementations": [
+        "implementation.wire-contracts"
       ],
-      "implementation": [
-        "src/concorde/host/typed_data.py",
-        "src/concorde/host/contracts.py",
-        "src/concorde/host/wire_shapes.py",
-        "src/concorde/specification/schema.py",
-        "src/concorde/host/contract_shapes.py"
+      "features": [
+        {
+          "id": "feature.wire-contracts.provide",
+          "title": "Wire contracts",
+          "document": "specs/modules/concorde/wire-contracts/module.md"
+        }
       ],
-      "features": [],
-      "apis": [
+      "interfaces": [
         {
           "id": "api.wire.validate",
           "title": "Wire contracts",
-          "document": "specs/concorde/modules/wire-contracts.md"
+          "document": "specs/modules/concorde/wire-contracts/module.md"
         }
       ],
       "checks": [],
@@ -452,23 +346,27 @@
       "kind": "module",
       "title": "File transactions",
       "documents": [
-        "specs/concorde/modules/file-transactions.md"
+        "specs/modules/concorde/file-transactions/module.md",
+        "specs/modules/concorde/file-transactions/architecture.md",
+        "specs/modules/concorde/file-transactions/interfaces.md"
       ],
-      "scope_parent": null,
-      "component_parent": "service.spec-context",
-      "participates_in": [
-        "domain.workflow",
-        "domain.installation"
+      "parent": "module.concorde",
+      "uses": [],
+      "implementations": [
+        "implementation.file-transactions"
       ],
-      "implementation": [
-        "src/concorde/specification/changes.py"
+      "features": [
+        {
+          "id": "feature.file-transactions.provide",
+          "title": "File transactions",
+          "document": "specs/modules/concorde/file-transactions/module.md"
+        }
       ],
-      "features": [],
-      "apis": [
+      "interfaces": [
         {
           "id": "api.files.apply",
           "title": "File transactions",
-          "document": "specs/concorde/modules/file-transactions.md"
+          "document": "specs/modules/concorde/file-transactions/module.md"
         }
       ],
       "checks": [],
@@ -479,32 +377,38 @@
       "kind": "module",
       "title": "Agent execution",
       "documents": [
-        "specs/concorde/modules/agent-execution.md",
-        "specs/concorde/shared/agent-runtime-contracts.md",
-        "specs/concorde/workflow/agents-and-harnesses.md"
+        "specs/modules/concorde/agent-execution/module.md",
+        "specs/modules/concorde/agent-execution/architecture.md",
+        "specs/modules/concorde/agent-execution/interfaces.md",
+        "specs/modules/concorde/agent-execution/runtime-values.md",
+        "specs/modules/concorde/agent-execution/agents-and-harnesses.md"
       ],
-      "scope_parent": null,
-      "component_parent": "service.workflow-host",
-      "participates_in": [
-        "domain.workflow"
+      "parent": "module.concorde",
+      "uses": [
+        "module.permissions",
+        "module.wire-contracts",
+        "module.package-assets"
       ],
-      "implementation": [
-        "src/concorde/host/agent_executor.py",
-        "src/concorde/host/agent_runtime.py",
-        "src/concorde/host/native_agent.py",
-        "src/concorde/host/harness.py"
+      "implementations": [
+        "implementation.agent-execution"
       ],
-      "features": [],
-      "apis": [
+      "features": [
+        {
+          "id": "feature.agent-execution.provide",
+          "title": "Agent execution",
+          "document": "specs/modules/concorde/agent-execution/module.md"
+        }
+      ],
+      "interfaces": [
         {
           "id": "api.execution.execute",
           "title": "Agent execution",
-          "document": "specs/concorde/modules/agent-execution.md"
+          "document": "specs/modules/concorde/agent-execution/module.md"
         },
         {
           "id": "api.execution.invoke-agent",
           "title": "Recursive Agent invocation",
-          "document": "specs/concorde/modules/agent-execution.md"
+          "document": "specs/modules/concorde/agent-execution/module.md"
         }
       ],
       "checks": [],
@@ -515,25 +419,32 @@
       "kind": "module",
       "title": "Execution permissions",
       "documents": [
-        "specs/concorde/modules/permissions.md",
-        "specs/concorde/shared/agent-runtime-contracts.md",
-        "specs/concorde/workflow/agents-and-harnesses.md"
+        "specs/modules/concorde/permissions/module.md",
+        "specs/modules/concorde/permissions/architecture.md",
+        "specs/modules/concorde/permissions/interfaces.md",
+        "specs/modules/concorde/permissions/runtime-values.md",
+        "specs/modules/concorde/permissions/agents-and-harnesses.md"
       ],
-      "scope_parent": null,
-      "component_parent": "service.workflow-host",
-      "participates_in": [
-        "domain.workflow"
+      "parent": "module.concorde",
+      "uses": [
+        "module.wire-contracts"
       ],
-      "implementation": [
-        "src/concorde/host/permissions.py",
-        "src/concorde/host/worktree.py"
+      "implementations": [
+        "implementation.permissions",
+        "implementation.worktree-lifecycle"
       ],
-      "features": [],
-      "apis": [
+      "features": [
+        {
+          "id": "feature.permissions.provide",
+          "title": "Execution permissions",
+          "document": "specs/modules/concorde/permissions/module.md"
+        }
+      ],
+      "interfaces": [
         {
           "id": "api.permissions.compile",
           "title": "Execution permissions",
-          "document": "specs/concorde/modules/permissions.md"
+          "document": "specs/modules/concorde/permissions/module.md"
         }
       ],
       "checks": [],
@@ -544,29 +455,29 @@
       "kind": "module",
       "title": "Package assets",
       "documents": [
-        "specs/concorde/modules/package-assets.md"
+        "specs/modules/concorde/package-assets/module.md",
+        "specs/modules/concorde/package-assets/architecture.md",
+        "specs/modules/concorde/package-assets/interfaces.md"
       ],
-      "scope_parent": null,
-      "component_parent": "service.installation",
-      "participates_in": [
-        "domain.workflow",
-        "domain.installation"
+      "parent": "module.concorde",
+      "uses": [
+        "module.wire-contracts"
       ],
-      "implementation": [
-        "src/concorde/host/package_validation.py",
-        "src/concorde/host/build.py",
-        "src/concorde/host/prompt_resolver.py",
-        "src/concorde/host/effects.py",
-        "skills",
-        "capabilities/__init__.py",
-        "agents/__init__.py"
+      "implementations": [
+        "implementation.package-build"
       ],
-      "features": [],
-      "apis": [
+      "features": [
+        {
+          "id": "feature.package-assets.provide",
+          "title": "Package assets",
+          "document": "specs/modules/concorde/package-assets/module.md"
+        }
+      ],
+      "interfaces": [
         {
           "id": "api.assets.render",
           "title": "Package assets",
-          "document": "specs/concorde/modules/package-assets.md"
+          "document": "specs/modules/concorde/package-assets/module.md"
         }
       ],
       "checks": [],
@@ -577,73 +488,776 @@
       "kind": "module",
       "title": "Managed runtime",
       "documents": [
-        "specs/concorde/modules/managed-runtime.md"
+        "specs/modules/concorde/managed-runtime/module.md",
+        "specs/modules/concorde/managed-runtime/architecture.md",
+        "specs/modules/concorde/managed-runtime/interfaces.md"
       ],
-      "scope_parent": null,
-      "component_parent": "service.installation",
-      "participates_in": [
-        "domain.installation",
-        "domain.developer-view"
+      "parent": "module.concorde",
+      "uses": [],
+      "implementations": [
+        "implementation.managed-runtime"
       ],
-      "implementation": [
-        "src/concorde/distribution/managed_runtime.py"
+      "features": [
+        {
+          "id": "feature.managed-runtime.provide",
+          "title": "Managed runtime",
+          "document": "specs/modules/concorde/managed-runtime/module.md"
+        }
       ],
-      "features": [],
-      "apis": [
+      "interfaces": [
         {
           "id": "api.runtime.provision",
           "title": "Managed runtime",
-          "document": "specs/concorde/modules/managed-runtime.md"
+          "document": "specs/modules/concorde/managed-runtime/module.md"
         }
       ],
       "checks": [],
       "diagrams": []
     },
     {
-      "id": "module.spec-publication",
+      "id": "module.reflections",
+      "kind": "module",
+      "title": "Reflections",
+      "documents": [
+        "specs/modules/concorde/reflections/module.md",
+        "specs/modules/concorde/reflections/architecture.md",
+        "specs/modules/concorde/reflections/interfaces.md",
+        "specs/modules/concorde/reflections/lifecycle.md"
+      ],
+      "parent": "module.concorde",
+      "uses": [
+        "module.workflows",
+        "module.spec-context",
+        "module.registry"
+      ],
+      "implementations": [
+        "implementation.reflections"
+      ],
+      "features": [
+        {
+          "id": "feature.reflections.triage",
+          "title": "Reflections",
+          "document": "specs/modules/concorde/reflections/module.md"
+        }
+      ],
+      "interfaces": [
+        {
+          "id": "interface.reflections.use",
+          "title": "Reflections usage",
+          "document": "specs/modules/concorde/reflections/module.md"
+        }
+      ],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "module.publication",
       "kind": "module",
       "title": "Spec publication",
       "documents": [
-        "specs/concorde/modules/spec-publication.md"
+        "specs/modules/concorde/publication/module.md",
+        "specs/modules/concorde/publication/architecture.md",
+        "specs/modules/concorde/publication/interfaces.md",
+        "specs/modules/concorde/publication/pipeline.md"
       ],
-      "scope_parent": null,
-      "component_parent": "service.publication",
-      "participates_in": [
-        "domain.docsite",
-        "domain.workflow"
+      "parent": "module.concorde",
+      "uses": [
+        "module.file-transactions"
       ],
-      "implementation": [
-        "docsite/plugins",
-        "docsite/scripts",
-        "docsite/src",
-        "docsite/tests",
-        "docsite/docusaurus.config.ts",
-        "docsite/package.json",
-        "docsite/package-lock.json",
-        "docsite/tsconfig.json",
-        "docsite/sidebars.specs.ts",
-        "docsite/sidebars.architecture.ts",
-        "docsite/sidebars.features.ts",
-        "scripts/development/check-docsite-types.py"
+      "implementations": [
+        "implementation.publication-scaffold",
+        "implementation.publication-docsite"
       ],
-      "features": [],
-      "apis": [
+      "features": [
+        {
+          "id": "feature.publication.publish",
+          "title": "Publication service",
+          "document": "specs/modules/concorde/publication/module.md"
+        }
+      ],
+      "interfaces": [
         {
           "id": "api.publication.build",
           "title": "Spec publication",
-          "document": "specs/concorde/modules/spec-publication.md"
+          "document": "specs/modules/concorde/publication/module.md"
         }
       ],
       "checks": [
         "check.publication-types"
       ],
+      "diagrams": [
+        {
+          "source": "specs/modules/concorde/publication/diagrams/overview.architecture.json",
+          "kind": "architecture",
+          "title": "Spec publication",
+          "recipe": "system-overview"
+        }
+      ]
+    },
+    {
+      "id": "module.viewer",
+      "kind": "module",
+      "title": "Code viewer",
+      "documents": [
+        "specs/modules/concorde/viewer/module.md",
+        "specs/modules/concorde/viewer/architecture.md",
+        "specs/modules/concorde/viewer/interfaces.md"
+      ],
+      "parent": "module.concorde",
+      "uses": [
+        "module.managed-runtime"
+      ],
+      "implementations": [
+        "implementation.viewer-launcher"
+      ],
+      "features": [
+        {
+          "id": "feature.viewer.launch",
+          "title": "Open a raw code graph",
+          "document": "specs/modules/concorde/viewer/module.md"
+        }
+      ],
+      "interfaces": [
+        {
+          "id": "interface.viewer.use",
+          "title": "Code viewer usage",
+          "document": "specs/modules/concorde/viewer/module.md"
+        }
+      ],
+      "checks": [
+        "check.viewer-launch"
+      ],
       "diagrams": []
+    }
+  ],
+  "implementations": [
+    {
+      "id": "implementation.agent-definitions",
+      "title": "Agent Definitions",
+      "documents": [
+        "specs/implementations/agent-definitions.md"
+      ],
+      "files": [
+        "agents/code_reviewer/__init__.py",
+        "agents/code_reviewer/spec.md",
+        "agents/context_assessor/__init__.py",
+        "agents/context_assessor/spec.md",
+        "agents/coordinator/__init__.py",
+        "agents/coordinator/spec.md",
+        "agents/implementation_worker/__init__.py",
+        "agents/implementation_worker/spec.md",
+        "agents/planner/__init__.py",
+        "agents/planner/spec.md",
+        "agents/reader/__init__.py",
+        "agents/reader/spec.md",
+        "agents/spec_author/__init__.py",
+        "agents/spec_author/spec.md",
+        "agents/spec_reviewer/__init__.py",
+        "agents/spec_reviewer/spec.md",
+        "agents/task_author/__init__.py",
+        "agents/task_author/spec.md",
+        "tests/concorde/fixtures/build/golden/agents/code-reviewer.md",
+        "tests/concorde/fixtures/build/golden/agents/context-assessor.md",
+        "tests/concorde/fixtures/build/golden/agents/coordinator.md",
+        "tests/concorde/fixtures/build/golden/agents/implementation-worker.md",
+        "tests/concorde/fixtures/build/golden/agents/planner.md",
+        "tests/concorde/fixtures/build/golden/agents/reader.md",
+        "tests/concorde/fixtures/build/golden/agents/spec-author.md",
+        "tests/concorde/fixtures/build/golden/agents/spec-reviewer.md",
+        "tests/concorde/fixtures/build/golden/agents/task-author.md"
+      ]
+    },
+    {
+      "id": "implementation.agent-execution",
+      "title": "Agent Execution",
+      "documents": [
+        "specs/implementations/agent-execution.md"
+      ],
+      "files": [
+        "src/concorde/host/agent_executor.py",
+        "src/concorde/host/agent_runtime.py",
+        "src/concorde/host/harness.py",
+        "src/concorde/host/native_agent.py",
+        "tests/concorde/host/unit/test_agent_executor.py",
+        "tests/concorde/host/unit/test_agent_runtime.py"
+      ]
+    },
+    {
+      "id": "implementation.file-transactions",
+      "title": "File Transactions",
+      "documents": [
+        "specs/implementations/file-transactions.md"
+      ],
+      "files": [
+        "src/concorde/specification/changes.py"
+      ]
+    },
+    {
+      "id": "implementation.installation",
+      "title": "Installation",
+      "documents": [
+        "specs/implementations/installation.md"
+      ],
+      "files": [
+        "scripts/concorde.ps1",
+        "scripts/concorde.py",
+        "scripts/concorde.sh",
+        "scripts/development/check-docsite-types.py",
+        "scripts/install-concorde.py",
+        "scripts/requirements.lock",
+        "scripts/run-capability.py",
+        "src/concorde/distribution/__init__.py",
+        "src/concorde/distribution/protocol_guidance.py",
+        "templates/feature-template.md",
+        "templates/implementation-template.md",
+        "templates/module-template.md",
+        "templates/plan-template.md",
+        "templates/reflections-template.md",
+        "templates/tasks-template.md",
+        "tests/concorde/distribution/__init__.py",
+        "tests/concorde/distribution/acceptance/__init__.py",
+        "tests/concorde/distribution/acceptance/test_consumer_install_end_to_end.py",
+        "tests/concorde/distribution/acceptance/test_fresh_clone_bootstrap.py",
+        "tests/concorde/distribution/contract/__init__.py",
+        "tests/concorde/distribution/contract/test_manifests.py",
+        "tests/concorde/distribution/integration/__init__.py",
+        "tests/concorde/distribution/unit/__init__.py",
+        "tests/concorde/distribution/unit/test_install_concorde.py",
+        "tests/concorde/distribution/unit/test_protocol_guidance.py"
+      ]
+    },
+    {
+      "id": "implementation.managed-runtime",
+      "title": "Managed Runtime",
+      "documents": [
+        "specs/implementations/managed-runtime.md"
+      ],
+      "files": [
+        "src/concorde/distribution/managed_runtime.py",
+        "tests/concorde/support/managed_runtime.py",
+        "viewer/README.md",
+        "viewer/package-lock.json",
+        "viewer/package.json"
+      ]
+    },
+    {
+      "id": "implementation.package-build",
+      "title": "Package Build",
+      "documents": [
+        "specs/implementations/package-build.md"
+      ],
+      "files": [
+        "agents/__init__.py",
+        "capabilities/__init__.py",
+        "concorde.json",
+        "prompts/workflow-host/dev-loop-flags.md",
+        "prompts/workflow-host/gap-reporting.md",
+        "prompts/workflow-host/host-bound-invocation.md",
+        "prompts/workflow-host/init-request-and-no-flags.md",
+        "prompts/workflow-host/invoke-capability-opener.md",
+        "prompts/workflow-host/lifecycle-no-cognition.md",
+        "prompts/workflow-host/loop-completion-and-reviews.md",
+        "prompts/workflow-host/loop-task-request-fields.md",
+        "prompts/workflow-host/main-may-inspect.md",
+        "prompts/workflow-host/review-scope-and-result.md",
+        "prompts/workflow-host/stdin-invocation-config-input.md",
+        "prompts/workflow-host/stdin-invocation-open.md",
+        "prompts/workflow-host/target-identity-opener.md",
+        "prompts/workflow-host/task-request-fields.md",
+        "prompts/workflow-host/worktree-handoff.md",
+        "pyproject.toml",
+        "skills/concorde-configure/SKILL.md",
+        "skills/concorde-deliver/SKILL.md",
+        "skills/concorde-dev-loop/SKILL.md",
+        "skills/concorde-init/SKILL.md",
+        "skills/concorde-main/SKILL.md",
+        "skills/concorde-reflections-triage/SKILL.md",
+        "skills/concorde-validate/SKILL.md",
+        "src/concorde/host/build.py",
+        "src/concorde/host/effects.py",
+        "src/concorde/host/package_validation.py",
+        "src/concorde/host/prompt_resolver.py",
+        "tests/concorde/fixtures/build/golden/claude/concorde-configure/SKILL.md",
+        "tests/concorde/fixtures/build/golden/claude/concorde-deliver/SKILL.md",
+        "tests/concorde/fixtures/build/golden/claude/concorde-dev-loop/SKILL.md",
+        "tests/concorde/fixtures/build/golden/claude/concorde-init/SKILL.md",
+        "tests/concorde/fixtures/build/golden/claude/concorde-main/SKILL.md",
+        "tests/concorde/fixtures/build/golden/claude/concorde-reflections-triage/SKILL.md",
+        "tests/concorde/fixtures/build/golden/claude/concorde-validate/SKILL.md",
+        "tests/concorde/fixtures/build/golden/codex/concorde-configure/SKILL.md",
+        "tests/concorde/fixtures/build/golden/codex/concorde-deliver/SKILL.md",
+        "tests/concorde/fixtures/build/golden/codex/concorde-dev-loop/SKILL.md",
+        "tests/concorde/fixtures/build/golden/codex/concorde-init/SKILL.md",
+        "tests/concorde/fixtures/build/golden/codex/concorde-main/SKILL.md",
+        "tests/concorde/fixtures/build/golden/codex/concorde-reflections-triage/SKILL.md",
+        "tests/concorde/fixtures/build/golden/codex/concorde-validate/SKILL.md",
+        "tests/concorde/host/unit/test_build.py",
+        "tests/concorde/host/unit/test_package_validation.py",
+        "tests/concorde/host/unit/test_prompt_resolver.py",
+        "uv.lock"
+      ]
+    },
+    {
+      "id": "implementation.permissions",
+      "title": "Permissions",
+      "documents": [
+        "specs/implementations/permissions.md"
+      ],
+      "files": [
+        "src/concorde/host/permissions.py",
+        "tests/concorde/host/unit/test_permissions.py"
+      ]
+    },
+    {
+      "id": "implementation.protocol-assets",
+      "title": "Protocol Assets",
+      "documents": [
+        "specs/implementations/protocol-assets.md"
+      ],
+      "files": [
+        "prompts/protocol/framework-profile.md",
+        "prompts/protocol/kinds/implementation.md",
+        "prompts/protocol/kinds/module.md",
+        "prompts/protocol/principles.md",
+        "protocol/manifest.json"
+      ]
+    },
+    {
+      "id": "implementation.publication-docsite",
+      "title": "Publication Docsite",
+      "documents": [
+        "specs/implementations/publication-docsite.md"
+      ],
+      "files": [
+        "docsite/README.md",
+        "docsite/docusaurus.config.ts",
+        "docsite/package-lock.json",
+        "docsite/package.json",
+        "docsite/plugins/concorde-content/diagrams.ts",
+        "docsite/plugins/concorde-content/graph.ts",
+        "docsite/plugins/concorde-content/index.ts",
+        "docsite/plugins/concorde-content/links.ts",
+        "docsite/plugins/concorde-content/manifest.ts",
+        "docsite/plugins/concorde-content/registry.ts",
+        "docsite/plugins/concorde-content/routes.ts",
+        "docsite/plugins/concorde-content/site-identity.ts",
+        "docsite/plugins/concorde-content/types.ts",
+        "docsite/plugins/concorde-content/validation.ts",
+        "docsite/plugins/scoped-content/build-freshness.ts",
+        "docsite/plugins/scoped-content/index.ts",
+        "docsite/plugins/scoped-content/materialize.ts",
+        "docsite/plugins/scoped-content/model.ts",
+        "docsite/plugins/scoped-content/projections.ts",
+        "docsite/scaffold/deploy-docsite.yml",
+        "docsite/scripts/build.ts",
+        "docsite/scripts/inspect.ts",
+        "docsite/scripts/materialize-content.ts",
+        "docsite/scripts/prepare-publication.ts",
+        "docsite/scripts/render-diagrams.ts",
+        "docsite/scripts/start.ts",
+        "docsite/scripts/validate.ts",
+        "docsite/sidebars.architecture.ts",
+        "docsite/sidebars.features.ts",
+        "docsite/sidebars.specs.ts",
+        "docsite/site.json",
+        "docsite/src/components/ArchitectureView.tsx",
+        "docsite/src/components/ContentProvenance.tsx",
+        "docsite/src/components/FeatureGraph.tsx",
+        "docsite/src/components/FeatureNeighborhood.tsx",
+        "docsite/src/components/FeatureRelations.tsx",
+        "docsite/src/components/ScopedGraph.tsx",
+        "docsite/src/css/custom.css",
+        "docsite/src/pages/graph.tsx",
+        "docsite/src/pages/index.tsx",
+        "docsite/src/theme/DocItem/Layout/index.tsx",
+        "docsite/src/theme/MDXComponents/index.tsx",
+        "docsite/src/types/cytoscape-fcose.d.ts",
+        "docsite/static/img/favicon.svg",
+        "docsite/tests/contract/build-interface.test.ts",
+        "docsite/tests/contract/build-manifest.test.ts",
+        "docsite/tests/contract/content-sources.test.ts",
+        "docsite/tests/contract/feature-graph.test.ts",
+        "docsite/tests/fixtures/interfaces/build-manifest.example.json",
+        "docsite/tests/fixtures/interfaces/build-manifest.schema.json",
+        "docsite/tests/fixtures/interfaces/feature-graph.example.json",
+        "docsite/tests/fixtures/interfaces/feature-graph.schema.json",
+        "docsite/tests/fixtures/invalid-projects/broken-link/specs/example/architecture.md",
+        "docsite/tests/fixtures/invalid-projects/duplicate-id/specs/example/architecture.md",
+        "docsite/tests/fixtures/invalid-projects/duplicate-id/specs/example/features/001-one.md",
+        "docsite/tests/fixtures/invalid-projects/duplicate-id/specs/example/features/002-two.md",
+        "docsite/tests/fixtures/invalid-projects/feature-diagram/specs/example/architecture.md",
+        "docsite/tests/fixtures/invalid-projects/feature-diagram/specs/example/features/001-diagram.md",
+        "docsite/tests/fixtures/invalid-projects/legacy-control-state/specs/example/architecture.md",
+        "docsite/tests/fixtures/invalid-projects/legacy-control-state/specs/example/attempts/feature.fixture.legacy-control/plan.md",
+        "docsite/tests/fixtures/invalid-projects/legacy-control-state/specs/example/features/001-legacy-control.md",
+        "docsite/tests/fixtures/invalid-projects/legacy-control-state/specs/example/reflections.md",
+        "docsite/tests/fixtures/invalid-projects/legacy-residue/specs/example/architecture.md",
+        "docsite/tests/fixtures/invalid-projects/legacy-residue/specs/example/features/001-legacy.md",
+        "docsite/tests/fixtures/invalid-projects/legacy-residue/specs/example/features/001-legacy/abstract.md",
+        "docsite/tests/fixtures/invalid-projects/legacy-residue/specs/example/features/001-legacy/contracts/example/contract.md",
+        "docsite/tests/fixtures/invalid-projects/legacy-residue/specs/example/features/001-legacy/implementation.md",
+        "docsite/tests/fixtures/invalid-projects/missing-architecture/specs/features/001-orphan.md",
+        "docsite/tests/fixtures/invalid-projects/missing-feature/specs/example/architecture.md",
+        "docsite/tests/fixtures/invalid-projects/missing-title/specs/example/architecture.md",
+        "docsite/tests/fixtures/invalid-projects/nested-feature/specs/example/architecture.md",
+        "docsite/tests/fixtures/invalid-projects/nested-feature/specs/example/features/001-parent.md",
+        "docsite/tests/fixtures/invalid-projects/nested-feature/specs/example/features/001-parent/subfeatures/001-child.md",
+        "docsite/tests/fixtures/invalid-projects/parallel-docs/docs/guide.md",
+        "docsite/tests/fixtures/invalid-projects/route-collision/specs/one/architecture.md",
+        "docsite/tests/fixtures/invalid-projects/route-collision/specs/two/architecture.md",
+        "docsite/tests/fixtures/valid-project/.concorde/attempts/feature.fixture.alpha/plan.md",
+        "docsite/tests/fixtures/valid-project/.concorde/config.json",
+        "docsite/tests/fixtures/valid-project/.concorde/reflections/log.md",
+        "docsite/tests/fixtures/valid-project/.concorde/reflections/plans/R-001.md",
+        "docsite/tests/fixtures/valid-project/README.md",
+        "docsite/tests/fixtures/valid-project/specs/example/architecture.md",
+        "docsite/tests/fixtures/valid-project/specs/example/diagrams/fixture-level-view.json",
+        "docsite/tests/fixtures/valid-project/specs/example/features/001-alpha.md",
+        "docsite/tests/fixtures/valid-project/specs/example/modules/nested/architecture.md",
+        "docsite/tests/fixtures/valid-project/specs/example/modules/nested/features/002-beta.md",
+        "docsite/tests/integration/accessibility.test.ts",
+        "docsite/tests/integration/atomic-promotion.test.ts",
+        "docsite/tests/integration/diagram-delivery.test.ts",
+        "docsite/tests/integration/document-authoring.test.ts",
+        "docsite/tests/integration/feature-publication.test.ts",
+        "docsite/tests/integration/performance.test.ts",
+        "docsite/tests/integration/source-immutability.test.ts",
+        "docsite/tests/repository/diagram-inventory.test.ts",
+        "docsite/tests/repository/feature-graph.test.ts",
+        "docsite/tests/repository/framework-guides.test.ts",
+        "docsite/tests/repository/fresh-project-scaffold.test.ts",
+        "docsite/tests/repository/github-pages.test.ts",
+        "docsite/tests/repository/production-build.test.ts",
+        "docsite/tests/scoped-registry.test.ts",
+        "docsite/tests/setup.ts",
+        "docsite/tests/unit/architecture-sources.test.ts",
+        "docsite/tests/unit/build-freshness.test.ts",
+        "docsite/tests/unit/diagram-delivery.test.ts",
+        "docsite/tests/unit/feature-designs.test.ts",
+        "docsite/tests/unit/graph.test.ts",
+        "docsite/tests/unit/links.test.ts",
+        "docsite/tests/unit/materialize-content.test.ts",
+        "docsite/tests/unit/projections.test.ts",
+        "docsite/tests/unit/registry.test.ts",
+        "docsite/tests/unit/site-identity.test.ts",
+        "docsite/tsconfig.json",
+        "docsite/vitest.config.ts"
+      ]
+    },
+    {
+      "id": "implementation.publication-scaffold",
+      "title": "Publication Scaffold",
+      "documents": [
+        "specs/implementations/publication-scaffold.md"
+      ],
+      "files": [
+        "src/concorde/autodocs/__init__.py",
+        "src/concorde/autodocs/docsite_scaffold.py",
+        "src/concorde/autodocs/docsite_template.py",
+        "tests/concorde/autodocs/__init__.py",
+        "tests/concorde/autodocs/integration/__init__.py",
+        "tests/concorde/autodocs/integration/test_docsite_scaffold.py",
+        "tests/concorde/autodocs/unit/__init__.py",
+        "tests/concorde/autodocs/unit/test_docsite_template.py"
+      ]
+    },
+    {
+      "id": "implementation.reflections",
+      "title": "Reflections",
+      "documents": [
+        "specs/implementations/reflections.md"
+      ],
+      "files": [
+        "scripts/reflections_queue.py",
+        "src/concorde/reflections/__init__.py",
+        "src/concorde/reflections/config.default.json",
+        "src/concorde/reflections/configuration.py",
+        "src/concorde/reflections/investigation.py",
+        "src/concorde/reflections/reflections.py",
+        "src/concorde/reflections/scoped_triage.py",
+        "src/concorde/reflections/validation.py",
+        "tests/concorde/reflections/__init__.py",
+        "tests/concorde/reflections/contract/__init__.py",
+        "tests/concorde/reflections/integration/__init__.py",
+        "tests/concorde/reflections/unit/__init__.py",
+        "tests/concorde/reflections/unit/test_reflection_parser.py",
+        "tests/concorde/reflections/unit/test_reflection_rules.py",
+        "tests/concorde/reflections/unit/test_reflections_queue.py"
+      ]
+    },
+    {
+      "id": "implementation.registry",
+      "title": "Registry",
+      "documents": [
+        "specs/implementations/registry.md"
+      ],
+      "files": [
+        "src/concorde/specification/repository.py"
+      ]
+    },
+    {
+      "id": "implementation.spec-engine",
+      "title": "Spec Engine",
+      "documents": [
+        "specs/implementations/spec-engine.md"
+      ],
+      "files": [
+        "src/concorde/__init__.py",
+        "src/concorde/__main__.py",
+        "src/concorde/diagnostics.py",
+        "src/concorde/frontmatter.py",
+        "src/concorde/model.py",
+        "src/concorde/projection.py",
+        "src/concorde/specification/__init__.py",
+        "src/concorde/specification/context.py",
+        "src/concorde/specification/initialize.py",
+        "src/concorde/specification/validation.py",
+        "src/concorde/understanding/__init__.py",
+        "src/concorde/understanding/alignment.py",
+        "src/concorde/understanding/context.py",
+        "src/concorde/understanding/feature_workspace.py",
+        "src/concorde/understanding/initialize.py",
+        "src/concorde/understanding/planning_context.py",
+        "src/concorde/understanding/readiness.py",
+        "src/concorde/understanding/repository.py",
+        "src/concorde/understanding/validate.py",
+        "src/concorde/understanding/validation/__init__.py",
+        "src/concorde/understanding/validation/diagrams.py",
+        "src/concorde/understanding/validation/entities.py",
+        "src/concorde/understanding/validation/features.py",
+        "src/concorde/understanding/validation/freshness.py",
+        "src/concorde/understanding/validation/hierarchy.py",
+        "src/concorde/understanding/validation/layout.py",
+        "tests/__init__.py",
+        "tests/concorde/PROFILE8_TEST_MIGRATION.md",
+        "tests/concorde/__init__.py",
+        "tests/concorde/fixtures/ask/questions.json",
+        "tests/concorde/fixtures/context-project/.concorde/config.json",
+        "tests/concorde/fixtures/context-project/specs/example/architecture.md",
+        "tests/concorde/fixtures/context-project/specs/example/diagrams/delivery-sequence.json",
+        "tests/concorde/fixtures/context-project/specs/example/diagrams/level-view.json",
+        "tests/concorde/fixtures/context-project/specs/example/features/001-deliver.md",
+        "tests/concorde/fixtures/context-project/specs/example/modules/api/architecture.md",
+        "tests/concorde/fixtures/context-project/specs/example/modules/api/diagrams/level-view.json",
+        "tests/concorde/fixtures/context-project/specs/example/modules/api/features/001-invoke.md",
+        "tests/concorde/fixtures/context-project/specs/example/modules/api/modules/store/architecture.md",
+        "tests/concorde/fixtures/context-project/specs/example/modules/api/modules/store/diagrams/system-overview.json",
+        "tests/concorde/fixtures/interfaces/alignment/alignment-explorer.example.json",
+        "tests/concorde/fixtures/interfaces/alignment/alignment-explorer.schema.json",
+        "tests/concorde/fixtures/interfaces/alignment/alignment-input.example.json",
+        "tests/concorde/fixtures/interfaces/alignment/alignment-input.schema.json",
+        "tests/concorde/fixtures/interfaces/alignment/knowledge-graph.example.json",
+        "tests/concorde/fixtures/interfaces/alignment/knowledge-graph.schema.json",
+        "tests/concorde/fixtures/interfaces/reflections/index.json",
+        "tests/concorde/fixtures/interfaces/reflections/needs-comments/R-001.md",
+        "tests/concorde/fixtures/interfaces/reflections/pending/R-002.md",
+        "tests/concorde/fixtures/interfaces/workspace/architecture-service.schema.json",
+        "tests/concorde/fixtures/interfaces/workspace/context-response.json",
+        "tests/concorde/fixtures/interfaces/workspace/deliver-eligible-response.json",
+        "tests/concorde/fixtures/interfaces/workspace/deliver-proposal.json",
+        "tests/concorde/fixtures/interfaces/workspace/feature-workspace.schema.json",
+        "tests/concorde/fixtures/interfaces/workspace/validation-response.json",
+        "tests/concorde/fixtures/invalid-projects/broken-reference/seed.json",
+        "tests/concorde/fixtures/invalid-projects/contract/seed.json",
+        "tests/concorde/fixtures/invalid-projects/cycle/seed.json",
+        "tests/concorde/fixtures/invalid-projects/duplicate-id/seed.json",
+        "tests/concorde/fixtures/invalid-projects/parse/seed.json",
+        "tests/concorde/fixtures/invalid-projects/reflections-malformed/.concorde/reflections/index.json",
+        "tests/concorde/fixtures/invalid-projects/reflections-malformed/.concorde/reflections/pending/R-001.md",
+        "tests/concorde/fixtures/invalid-projects/reflections-malformed/.concorde/reflections/pending/R-002.md",
+        "tests/concorde/fixtures/invalid-projects/reflections-malformed/.concorde/reflections/planned/R-003.md",
+        "tests/concorde/fixtures/invalid-projects/reflections-malformed/README.md",
+        "tests/concorde/fixtures/invalid-projects/reflections-malformed/seed.json",
+        "tests/concorde/fixtures/invalid-projects/scenario/seed.json",
+        "tests/concorde/fixtures/invalid-projects/view-depth/seed.json",
+        "tests/concorde/fixtures/permission-planning-project/.concorde/attempts/feature.example.consumer.change/tasks.md",
+        "tests/concorde/fixtures/permission-planning-project/.concorde/attempts/feature.example.other/secret.md",
+        "tests/concorde/fixtures/permission-planning-project/.concorde/config.json",
+        "tests/concorde/fixtures/permission-planning-project/.concorde/constitution.md",
+        "tests/concorde/fixtures/permission-planning-project/.concorde/feature.json",
+        "tests/concorde/fixtures/permission-planning-project/.concorde/reflections/log.md",
+        "tests/concorde/fixtures/permission-planning-project/specs/example/architecture.md",
+        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/consumer/architecture.md",
+        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/consumer/features/001-change.md",
+        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/provider/architecture.md",
+        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/provider/features/001-api.md",
+        "tests/concorde/fixtures/permission-planning-project/specs/example/modules/provider/features/002-unrelated.md",
+        "tests/concorde/fixtures/permission-planning-project/src/consumer/service.py",
+        "tests/concorde/fixtures/permission-planning-project/src/provider/private.py",
+        "tests/concorde/fixtures/permission-planning-project/tests/consumer/test_service.py",
+        "tests/concorde/fixtures/permission-planning-project/tests/provider/test_private.py",
+        "tests/concorde/fixtures/two-level-project/.concorde/attempts/feature.example.checkout.authorize/plan.md",
+        "tests/concorde/fixtures/two-level-project/.concorde/config.json",
+        "tests/concorde/fixtures/two-level-project/.specify/feature.json",
+        "tests/concorde/fixtures/two-level-project/specs/example/architecture.md",
+        "tests/concorde/fixtures/two-level-project/specs/example/diagrams/system-overview.json",
+        "tests/concorde/fixtures/two-level-project/specs/example/features/001-checkout.md",
+        "tests/concorde/fixtures/two-level-project/specs/example/features/002-atomic.md",
+        "tests/concorde/fixtures/two-level-project/specs/example/features/003-authorize-payment.md",
+        "tests/concorde/fixtures/two-level-project/specs/example/features/004-confirm-order.md",
+        "tests/concorde/fixtures/valid-project/.concorde/config.json",
+        "tests/concorde/fixtures/valid-project/specs/example/architecture.md",
+        "tests/concorde/fixtures/valid-project/specs/example/diagrams/level-view.json",
+        "tests/concorde/fixtures/valid-project/specs/example/features/001-deliver.md",
+        "tests/concorde/fixtures/valid-project/specs/example/modules/api/architecture.md",
+        "tests/concorde/fixtures/valid-project/specs/example/modules/api/diagrams/system-overview.json",
+        "tests/concorde/fixtures/valid-project/specs/example/modules/api/features/001-invoke.md",
+        "tests/concorde/specification/__init__.py",
+        "tests/concorde/specification/support.py",
+        "tests/concorde/specification/test_agent_binding.py",
+        "tests/concorde/specification/test_boundaries.py",
+        "tests/concorde/specification/test_distribution.py",
+        "tests/concorde/specification/test_module_architecture.py",
+        "tests/concorde/specification/test_module_model.py",
+        "tests/concorde/specification/test_review.py",
+        "tests/concorde/specification/test_scope_and_reflections.py",
+        "tests/concorde/specification/test_scoped_protocol.py",
+        "tests/concorde/support/__init__.py",
+        "tests/concorde/support/build_fixture.py",
+        "tests/concorde/support/feature_workspace.py",
+        "tests/concorde/support/operation_json.py",
+        "tests/concorde/support/paths.py",
+        "tests/concorde/support/reflection_triage.py",
+        "tests/concorde/understanding/__init__.py",
+        "tests/concorde/understanding/acceptance/__init__.py",
+        "tests/concorde/understanding/contract/__init__.py",
+        "tests/concorde/understanding/contract/test_alignment_explorer_contract.py",
+        "tests/concorde/understanding/contract/test_feature_workspace_contract.py",
+        "tests/concorde/understanding/integration/__init__.py",
+        "tests/concorde/understanding/integration/test_alignment_explorer.py",
+        "tests/concorde/understanding/integration/test_architecture_readiness.py",
+        "tests/concorde/understanding/integration/test_context.py",
+        "tests/concorde/understanding/integration/test_feature_workspace.py",
+        "tests/concorde/understanding/integration/test_initialize.py",
+        "tests/concorde/understanding/integration/test_validation.py",
+        "tests/concorde/understanding/unit/__init__.py",
+        "tests/concorde/understanding/unit/test_abstract_rules.py",
+        "tests/concorde/understanding/unit/test_alignment.py",
+        "tests/concorde/understanding/unit/test_contract_validation.py",
+        "tests/concorde/understanding/unit/test_entity_rules.py",
+        "tests/concorde/understanding/unit/test_feature_relations.py",
+        "tests/concorde/understanding/unit/test_feature_rules.py",
+        "tests/concorde/understanding/unit/test_feature_workspace.py",
+        "tests/concorde/understanding/unit/test_frontmatter.py",
+        "tests/concorde/understanding/unit/test_interface_rules.py",
+        "tests/concorde/understanding/unit/test_module_diagram_rules.py",
+        "tests/concorde/understanding/unit/test_planning_context.py",
+        "tests/concorde/understanding/unit/test_repository.py",
+        "tests/concorde/understanding/unit/test_rules.py",
+        "tests/concorde/understanding/unit/test_summary_rules.py",
+        "tests/concorde/understanding/unit/test_terminology_rules.py"
+      ]
+    },
+    {
+      "id": "implementation.viewer-launcher",
+      "title": "Viewer Launcher",
+      "documents": [
+        "specs/implementations/viewer-launcher.md"
+      ],
+      "files": [
+        "scripts/run-viewer.py",
+        "tests/concorde/distribution/unit/test_viewer_launcher.py"
+      ]
+    },
+    {
+      "id": "implementation.wire-contracts",
+      "title": "Wire Contracts",
+      "documents": [
+        "specs/implementations/wire-contracts.md"
+      ],
+      "files": [
+        "src/concorde/host/contract_shapes.py",
+        "src/concorde/host/contracts.py",
+        "src/concorde/host/typed_data.py",
+        "src/concorde/host/wire_shapes.py",
+        "src/concorde/specification/schema.py",
+        "tests/concorde/host/unit/test_typed_data.py"
+      ]
+    },
+    {
+      "id": "implementation.workflow-capabilities",
+      "title": "Workflow Capabilities",
+      "documents": [
+        "specs/implementations/workflow-capabilities.md"
+      ],
+      "files": [
+        "capabilities/configure.py",
+        "capabilities/context_solve.py",
+        "capabilities/deliver.py",
+        "capabilities/dev_loop.py",
+        "capabilities/implement.py",
+        "capabilities/init.py",
+        "capabilities/main.py",
+        "capabilities/plan.py",
+        "capabilities/reflections_triage.py",
+        "capabilities/review.py",
+        "capabilities/specify.py",
+        "capabilities/tasks.py",
+        "capabilities/validate.py"
+      ]
+    },
+    {
+      "id": "implementation.workflow-host",
+      "title": "Workflow Host",
+      "documents": [
+        "specs/implementations/workflow-host.md"
+      ],
+      "files": [
+        "scripts/development/STUDIO.md",
+        "scripts/development/studio.py",
+        "src/concorde/host/__init__.py",
+        "src/concorde/host/agent_model.py",
+        "src/concorde/host/capability_host.py",
+        "src/concorde/host/capability_service.py",
+        "src/concorde/host/cli.py",
+        "src/concorde/host/configuration.py",
+        "src/concorde/host/review.py",
+        "src/concorde/host/roles.py",
+        "src/concorde/host/studio.py",
+        "src/concorde/host/studio_client.py",
+        "tests/concorde/host/__init__.py",
+        "tests/concorde/host/acceptance/__init__.py",
+        "tests/concorde/host/contract/__init__.py",
+        "tests/concorde/host/contract/test_structured_results.py",
+        "tests/concorde/host/integration/__init__.py",
+        "tests/concorde/host/integration/test_studio_server.py",
+        "tests/concorde/host/unit/__init__.py",
+        "tests/concorde/host/unit/test_agent_model.py",
+        "tests/concorde/host/unit/test_capability_modules.py",
+        "tests/concorde/host/unit/test_run_capability.py",
+        "tests/concorde/host/unit/test_studio.py",
+        "tests/concorde/host/unit/test_studio_client.py"
+      ]
+    },
+    {
+      "id": "implementation.worktree-lifecycle",
+      "title": "Worktree Lifecycle",
+      "documents": [
+        "specs/implementations/worktree-lifecycle.md"
+      ],
+      "files": [
+        "src/concorde/host/change_worktree.py",
+        "src/concorde/host/session_handoff.py",
+        "src/concorde/host/worktree.py",
+        "src/concorde/host/worktree_affinity.py",
+        "src/concorde/host/worktree_delivery.py",
+        "src/concorde/lifecycle/__init__.py",
+        "src/concorde/lifecycle/delivery.py",
+        "tests/concorde/host/unit/test_session_handoff.py",
+        "tests/concorde/host/unit/test_worktree_affinity.py",
+        "tests/concorde/host/unit/test_worktree_boundary.py",
+        "tests/concorde/lifecycle/__init__.py",
+        "tests/concorde/lifecycle/contract/__init__.py",
+        "tests/concorde/lifecycle/integration/__init__.py",
+        "tests/concorde/lifecycle/integration/test_implementation_delivery.py",
+        "tests/concorde/specification/test_worktree_lifecycle.py"
+      ]
     }
   ],
   "checks": [
     {
       "id": "check.context-runtime",
-      "target_id": "service.spec-context",
+      "target_id": "module.spec-context",
       "argv": [
         "{python}",
         "-m",
@@ -659,7 +1273,7 @@
     },
     {
       "id": "check.workflow-runtime",
-      "target_id": "service.workflow-host",
+      "target_id": "module.workflows",
       "argv": [
         "{python}",
         "-m",
@@ -677,7 +1291,7 @@
     },
     {
       "id": "check.publication-types",
-      "target_id": "module.spec-publication",
+      "target_id": "module.publication",
       "argv": [
         "{python}",
         "scripts/development/check-docsite-types.py"
@@ -694,7 +1308,7 @@
     },
     {
       "id": "check.viewer-launch",
-      "target_id": "service.viewer",
+      "target_id": "module.viewer",
       "argv": [
         "{python}",
         "-m",

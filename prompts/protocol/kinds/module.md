@@ -2,24 +2,15 @@
 audience: shared
 ---
 
-# Module
+# Module Spec
 
-A Module is a cohesive implementation responsibility specified through its provided and required APIs.
-Function calls are valid boundaries. Its complete resolved Target Spec plus Shared Specs defines callable signatures,
-input and output types, preconditions, state/effects, obligations, errors, compatibility, and representative
-usage. Describe APIs directly instead of manufacturing Feature wrappers. Interface signatures and usage
-examples are Spec content; private algorithms and helpers belong to implementation source.
+A Module defines a cohesive responsibility through its set of features and the interfaces used to
+access them. Its architecture describes its internal domain: concepts, private submodules,
+directed relationships, collaborations, rules and completion/failure behavior. Submodules follow
+the same model, have one structural parent, and shared capabilities are independent siblings.
 
-A Module may compose components and participate in Domain scopes independently. Its own Spec states
-all business facts and collaborator promises required to understand and use its APIs. Shared
-membership admits only that physical document; it does not inherit a Service's, Domain's, parent's,
-provider's, or co-referencing entity's remaining Spec. Selecting one API retains the complete
-resolved context. Only an implementation invocation or its dedicated read-only code-review role may
-expose authorized source code. Spec review never receives implementation.
-
-The main coordinator may design or route this Module from identity, responsibility and selection
-facts contained in admitted main-visible Domain/Service documents plus exact registry metadata. It
-never expands this Module target. A main-visible shared document may be seen through an admitted
-Domain or Service without admitting the Module's other documents. During an accepted topology
-change, separately bound referencing Spec authors receive the current Module documents and proposed
-descriptor.
+The registered collection, including its local module.md reading entry, must be self-contained.
+Describe every relied-upon collaborator promise locally. A planner must determine contract-level
+tasks without implementation files, Implementation Specs or another Module's remaining documents.
+Features and usage interfaces have stable identities and include errors, effects and examples.
+Architecture is Module design; file bindings belong to separately referenced Implementation Specs.

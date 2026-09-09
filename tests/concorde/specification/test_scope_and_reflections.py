@@ -22,20 +22,20 @@ class ScopeReflectionTests(unittest.TestCase):
         self.assertIn('"target_id": "service.transfer"',
                       '\n'.join(item['content'] for section in ('target_spec','shared_specs')
                                 for item in task_call['snapshot'][section]))
-        domain=[c for c in self.double.calls if c['capability']!='concorde-coordinator' and c['snapshot']['kind']=='domain']
+        domain=[c for c in self.double.calls if c['capability']!='concorde-coordinator' and c['snapshot']['target_id']=='scope.bank']
         self.assertTrue(domain);self.assertTrue(any(c['capability']!='concorde-coordinator' and
             c['snapshot']['target_id']=='service.transfer' for c in self.double.calls))
         self.assertFalse(any(c['stage']=='implementation' for c in domain))
-        self.assertTrue(all('specs/send-money.md' not in json.dumps(c['snapshot']) for c in domain))
+        self.assertTrue(all('specs/transfer/module.md' not in json.dumps(c['snapshot']) for c in domain))
     def test_domain_rejects_component_outside_its_scope(self):
-        registry=json.loads((self.root/'.concorde/specs.json').read_text());registry['targets'][2]['participates_in']=['scope.audit'];(self.root/'.concorde/specs.json').write_text(json.dumps(registry))
+        registry=json.loads((self.root/'.concorde/specs.json').read_text());registry['targets'][0]['uses']=['scope.audit'];(self.root/'.concorde/specs.json').write_text(json.dumps(registry))
         def cb(stage,snap,data,cwd):
             if stage=='tasks':data['tasks'][0]['target_id']='service.transfer'
         result=self.run_op('concorde-dev-loop',{'target_id':'scope.bank','task':'Implement transfer'},cb)
         self.assertNotEqual('succeeded',result['status']);self.assertFalse(any(c['stage']=='implementation' for c in self.double.calls))
     def test_domain_retains_component_gap_and_stops_before_code(self):
         def cb(stage,snapshot,data,cwd):
-            if stage=='tasks' and snapshot['kind']=='domain':data['tasks'][0]['target_id']='service.transfer'
+            if stage=='tasks' and snapshot['target_id']=='scope.bank':data['tasks'][0]['target_id']='service.transfer'
             if stage=='specify' and snapshot['target_id']=='service.transfer':
                 data.update(outcome='spec_incomplete',gaps=[{'question':'Which retry key identifies a transfer?','blocked_step':'Specify retries','needed_contract':'Idempotency ownership'}])
         result=self.run_op('concorde-dev-loop',{'target_id':'scope.bank','task':'Implement transfer retries'},cb)
@@ -120,6 +120,10 @@ Keep this user comment intact.
         self.record();before=(self.root/'app/transfer.py').read_bytes()
         result=self.run_op('concorde-reflections-triage',self.task('investigate'),self.finding)
         self.assertEqual('succeeded',result['status'],result);self.assertEqual(before,(self.root/'app/transfer.py').read_bytes())
+        snapshot=next(call['snapshot'] for call in self.double.calls if call['stage']=='implementation')
+        self.assertEqual([],snapshot['implementation_specs'])
+        self.assertNotIn('INTERNAL_TRANSFER_IMPLEMENTATION_SPEC',json.dumps(snapshot))
+        self.assertFalse(any('specs/implementations/' in path for description in self.host.descriptions for path in description['read_paths']))
         self.assertEqual([[]],[d['write_paths'] for d in self.host.descriptions]);text=(self.root/'.concorde/reflections/planned/R-001.md').read_text()
         self.assertIn('Keep this user comment intact.',text);self.assertIn('PRIVATE_REFLECTION_DETAIL_FOR_IMPLEMENTATION',text)
     def test_investigation_rejects_wrong_head(self):
@@ -135,7 +139,7 @@ Keep this user comment intact.
                     'blocked_step':'Investigate transfer admission','needed_contract':'Admission ownership'}])
         task=self.task('investigate')
         self.assertEqual('blocked',self.run_op('concorde-reflections-triage',task,missing)['status'])
-        path=self.root/'specs/send-money.md';path.write_text(path.read_text()+'\nTransfer owns admission.\n')
+        path=self.root/'specs/transfer/module.md';path.write_text(path.read_text()+'\nTransfer owns admission.\n')
         def invalid(*args):self.finding(*args);args[2]['reflection_findings'][0]['verified_commit']='0'*40
         result=self.run_op('concorde-reflections-triage',task,invalid)
         self.assertNotEqual('succeeded',result['status'],result)

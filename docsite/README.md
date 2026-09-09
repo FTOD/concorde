@@ -7,42 +7,30 @@ that scaffolds the adapter — except `docsite/site.json`, which is project-owne
 the template (see below). This repository's own `docsite/` is simply the template's first instance:
 Concorde develops itself with Concorde.
 
-The adapter builds a read-only projection of its host project. Canonical content stays outside
-`docsite/`:
+The adapter publishes the host project's explicitly registered Module and Implementation Specs.
+Canonical content stays outside `docsite/`; `.concorde/specs.json` names the documents, Module
+relationships and implementation file bindings. Nearby Markdown is not discovered as authority.
+Control state under `.concorde/` is excluded from published prose.
 
-- Every `../specs/**/architecture.md` is its module's Architecture landing page.
-- Every direct `../specs/**/features/*.md` is its feature's only Features page and landing page.
-- Every `../specs/**/diagrams/*.json` belongs to the adjacent module `architecture.md`; generated
-  Archify HTML beneath `../generated/architecture/` is disposable.
+## Profile 9 navigation
 
-The adapter publishes exactly Architecture and Features. Root `/` resolves to the configured root
-architecture; a repository `README.md` is not a page. A root `docs/` directory is rejected as a
-parallel prose authority and must be reconciled into owning specifications before removal. Public
-module and feature routes use stable IDs (`/architecture/<module-id>` and
-`/features/<feature-id>`). Generated sidebars follow declared module containment, while features
-remain flat capabilities grouped beneath their providing modules. Module entries carry the module
-name without the `Architecture:` heading prefix, and both sidebars start at the root module rather
-than a collection-level category. `related_features` become cross-links, never navigation
-containment.
+A Profile 9 project uses `plugins/scoped-content` and registry schema 2. Every registered document
+publishes once at a readable source-derived route: `specs/modules/project/module.md` becomes
+`/specs/modules/project/module`. The primary sidebar, "Specs by source path", mirrors registered
+source directories. "Specs by target" shows the Module composition tree and a separate
+Implementation Spec index. Each Module opens its one local `module.md`, regardless of document
+order. Additional documents, including explicitly shared Module documents, remain in its collection.
 
-Feature abstracts, accepted implementation narratives, module summary/design pairs, standalone
-specification contracts, nested feature hierarchies, and feature-owned diagrams are rejected as
-legacy residue. `.concorde/worktree.json`, `.concorde/worktrees.json`, `.concorde/work/`,
-`.concorde/reflections/<bucket>/R-NNN.md`, legacy attempts, and all
-other `.concorde/**` control state are outside publication discovery and Manifest provenance.
+The relationship graph distinguishes `composes`, `uses`, `implemented_by` and required interface
+contracts. Shared capability Modules are siblings of their consumers. Reused Implementation Specs
+appear once, with edges from every using Module and their exact bound file list. Publication does
+not read or publish the implementation source bytes. Registered architecture diagrams describe a
+Module's internal model and render beneath `generated/diagrams/`.
 
-## Profile 8 navigation
-
-A Profile 8 project (`.concorde/config.json` with `profile_version: 8`) is served by the separate
-`plugins/scoped-content` adapter instead of the legacy Architecture/Features adapter described
-below. Every explicitly registered Spec document publishes exactly one canonical page at a readable,
-source-path-derived route — `/specs/concorde/workflow/delivery.md` publishes at
-`/specs/concorde/workflow/delivery` — and the primary sidebar ("Specs by source path") mirrors the
-registered documents' own directory hierarchy, with recognizable filename entries, from registered
-documents only. Every route a document previously published at (`/specs/<target-id>/<source-path-hash>`)
-keeps working as a redirect to its canonical page, so existing published links stay valid. A secondary
-sidebar ("Specs by target") reproduces the Domain-scope and component-composition views, so a shared
-document remains reachable under each of its referencing targets even though it publishes only once.
+Stable target/path-hash aliases redirect to current canonical document routes. Changed source
+paths require deliberate migration of external links. Human navigation does not widen agent context.
+The older Architecture/Features adapter and its fixtures remain for Profile 7 diagnostic publication;
+its directory-discovery rules do not govern Profile 9 projects. Profile 8 requires explicit migration.
 
 ## Site identity
 
@@ -94,7 +82,7 @@ Run commands from `docsite/`:
 | Command | Purpose |
 |---|---|
 | `npm run inspect` | Print stable source-to-route mappings, exclusions, and finding counts. |
-| `npm run validate` | Validate Profile 7 sources, identities, relations, routes, provenance, and links. |
+| `npm run validate` | Validate registered sources, identities, relations, routes, provenance and links. |
 | `npm run render-diagrams` | Validate and atomically deliver all architecture-owned diagrams. |
 | `npm run start` | Prepare current content and diagrams, then start Docusaurus preview. |
 | `npm test` | Run unit, contract, fixture, and integration evidence. |
@@ -102,13 +90,11 @@ Run commands from `docsite/`:
 | `npm run typecheck` | Type-check maintained TypeScript. |
 | `npm run check` | Run typechecking, all tests, source validation, and a production build. |
 
-Successful builds emit deterministic `build/build-manifest.json` using Build Manifest 13. It records
-the two collections, one page per specification authority, stable routes and relations, SHA-256 source
-provenance, architecture diagrams, publication-root exclusions, and passed checks. The build
-validates that custom JSON boundary directly; it no longer depends on a specification-owned schema
-file. Feature pages, related-feature summaries, and Feature Graph 2 nodes carry no status field:
-whether a feature's promise currently holds is re-verified by the acting agent, never read from a
-stored value.
+Successful Profile 9 builds emit `build/build-manifest.json` using Build Manifest 16. It records
+registered document routes, typed relationships, exact source identities, diagram provenance and
+completed build checks. A stale materialization or changed source prevents candidate promotion.
+The retained Profile 7 adapter uses its own Build Manifest 13 boundary. Neither publication model
+stores a claim that a feature's implementation currently satisfies its promises.
 
 A failed candidate is removed and never replaces the last verified `build/`. Ordinary builds do not
 run Archify `visual-check`; perceptual review remains an explicit human-evidence step.

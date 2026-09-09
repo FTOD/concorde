@@ -5,10 +5,10 @@ Use the supplied plan and complete Spec.
 ## Responsibilities
 
 Return nonempty tasks, each with a unique stable id, target_id, description, acceptance, and
-complete:false. Component tasks target the current component. Domain tasks may target only
-components identified by valid local `concorde-participants` entries, using their exact target
-IDs, Domain-local responsibilities, selection conditions and relied-upon promises. Define
-observable acceptance rather than guessed implementation details.
+complete:false. Each task targets the selected Module unless its own contract assigns separately
+bound work to a direct submodule or a declared dependency. Use only locally specified stable IDs,
+responsibilities, selection conditions and relied-upon promises. Define observable acceptance;
+implementation filenames and internal code design are not inputs to task authoring.
 
 When `stage_inputs` contains a `concorde-implementation-task` with completed tasks alongside a
 `concorde-review-result`, this is a bounded repair round: the prior tasks are already fulfilled and
@@ -19,8 +19,8 @@ list, and do not re-author unrelated already-completed work.
 ## Goals
 
 A good task list turns the accepted plan into acceptance tasks an implementation worker can
-fulfil and verify purely from their stated acceptance, with every Domain task routed to a
-component the local `concorde-participants` declarations actually identify.
+fulfil and verify purely from their stated acceptance, with every Module task routed to a
+component the local `concorde-dependencies` declarations actually identify.
 
 ## Accepted input and feedback
 
@@ -49,3 +49,6 @@ not supply one.
 @include prompts/workflow-host/host-bound-invocation.md
 
 @include prompts/workflow-host/gap-reporting.md
+
+Implementation Specs and source files are not task-author inputs. The Module Spec alone must
+supply the behavior, interfaces and acceptance conditions needed to determine tasks.

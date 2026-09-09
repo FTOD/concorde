@@ -12,7 +12,7 @@ from .repository import SpecError, SpecRepository, digest, read_file
 PHASES = frozenset({"ask", "specify", "plan", "tasks", "implementation", "spec-review", "code-review",
                     "validate", "deliver", "context-solve"})
 DISCOVERY_PHASES = frozenset({"route", "synthesize"})
-DISCOVERY_KINDS = frozenset({"domain", "service"})
+DISCOVERY_KINDS = frozenset({"module"})
 
 
 @dataclass(frozen=True)
@@ -31,7 +31,7 @@ class ContextSnapshot:
 
 @dataclass(frozen=True)
 class DiscoveryContext:
-    """Append-only Domain/Service cognition for the main routing agent."""
+    """Explicit Module contracts for the global routing agent, never implementation."""
 
     serialized: str
 
@@ -88,6 +88,14 @@ def _spec_sections(documents, *, references: dict[str, tuple[str, ...]] | None =
     return order, target_spec, shared_specs
 
 
+def _implementation_specs(repository: SpecRepository, target) -> list[dict]:
+    """Called only for code-writing context; metadata and bodies are revision-bound together."""
+    return [{"id": spec.id, "title": spec.title, "files": list(spec.files),
+             "modules": list(repository.implementation_users[spec.id]),
+             "documents": [_document_value(repository.document(path)) for path in spec.documents]}
+            for spec in repository.implementation_specs(target)]
+
+
 def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = "ask",
                     task: str = "Understand this Spec", focus_id: str | None = None,
                     constraints: tuple[str, ...] = (), instructions: str = "",
@@ -105,7 +113,12 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
         validate_typed(item, item["type_id"])
     document_order, target_spec, shared_specs = _spec_sections(repository.documents(target))
     protocol = []
-    for path in ("generated/protocol/principles.md", f"generated/protocol/kinds/{target.kind}.md"):
+    protocol_paths = ["generated/protocol/principles.md", "generated/protocol/kinds/module.md"]
+    writing_code = phase == "implementation" and not any(
+        item["type_id"] == "concorde-reflection-selection" for item in stage_inputs)
+    if writing_code:
+        protocol_paths.append("generated/protocol/kinds/implementation.md")
+    for path in protocol_paths:
         raw = repository.protocol_assets[path]
         protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
     # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
@@ -116,6 +129,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
         "document_order": document_order, "target_spec": target_spec,
         "shared_specs": shared_specs, "diagram_sources": repository.diagram_sources(target), "instructions": instructions,
         "stage_inputs": list(stage_inputs),
+        "implementation_specs": _implementation_specs(repository, target) if writing_code else [],
         "implementation_artifacts": [{"id": path, "path": path,
             "digest": digest(read_file(repository.root, path))} for path in repository.implementation_files(target)]
             if phase in {"implementation", "code-review"} else [],
@@ -131,7 +145,7 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
                               constraints: tuple[str, ...] = (), instructions: str = "",
                               worker_results: tuple[dict, ...] = (),
                               workspace: dict | None = None) -> DiscoveryContext:
-    """Resolve the main agent's explicit, append-only Domain/Service discovery context."""
+    """Resolve explicitly admitted, complete Module contracts for routing."""
 
     if phase not in DISCOVERY_PHASES:
         raise SpecError("unsupported discovery phase", "invalid_phase")
@@ -159,7 +173,7 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
                 target.id,
             )
         document_order, target_spec, shared_specs = _spec_sections(
-            repository.documents(target), main_only=True)
+            repository.documents(target))
         targets.append({
             "target_id": target.id,
             "kind": target.kind,
@@ -167,9 +181,8 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
             "target_spec": target_spec,
             "shared_specs": shared_specs,
         })
-    # Main understands every global kind contract while remaining unable to read Module instances.
-    protocol_paths = ["generated/protocol/principles.md", *(f"generated/protocol/kinds/{kind}.md"
-                      for kind in ("domain", "service", "module"))]
+    # Implementation definitions and bodies are deliberately absent from non-code cognition.
+    protocol_paths = ["generated/protocol/principles.md", "generated/protocol/kinds/module.md"]
     protocol = []
     for path in protocol_paths:
         raw = repository.protocol_assets[path]
@@ -187,7 +200,7 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
         "protocol_binding": repository.config["protocol"],
         "protocol": protocol,
         # Exact topology metadata is admitted only for explicit architecture design. Ordinary
-        # routing learns business ownership from Domain/Service Specs and sees no code locators.
+        # routing learns business ownership from Module Specs and sees no code locators.
         "topology": repository.registry if action == "design-topology" else None,
         "targets": targets,
         "instructions": instructions,
@@ -203,7 +216,7 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
                                     workspace: dict | None = None) -> TopologyAuthorContext:
     """Build a private authoring context without exposing the target body to main."""
 
-    if target.get("kind") not in {"domain", "service", "module"}:
+    if target.get("kind") != "module":
         raise SpecError("topology target has an unsupported kind", "invalid_spec")
     if not isinstance(task, str) or not task.strip():
         raise SpecError("topology Spec task is required", "invalid_input")
@@ -266,6 +279,11 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, ch
     if (document_order != value["document_order"] or target_spec != value["target_spec"]
             or shared_specs != value["shared_specs"] or current.diagram_sources(target) != value.get("diagram_sources", [])):
         raise SpecError("context document/diagram membership, classification, declarations or bytes changed", "stale_context")
+    writing_code = value["phase"] == "implementation" and not any(
+        item["type_id"] == "concorde-reflection-selection" for item in value["stage_inputs"])
+    implementation_specs = _implementation_specs(current, target) if writing_code else []
+    if check_implementation and implementation_specs != value.get("implementation_specs", []):
+        raise SpecError("Implementation Spec, binding or using Modules changed", "stale_context")
     if check_implementation and value["phase"] in {"implementation", "code-review"}:
         current_artifacts = [{"id": path, "path": path, "digest": digest(read_file(current.root, path))}
                              for path in current.implementation_files(target)]
@@ -274,7 +292,7 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, ch
 
 
 def recheck_discovery_context(repository: SpecRepository, snapshot: DiscoveryContext) -> None:
-    """Re-resolve every admitted Domain/Service and reject any changed discovery input."""
+    """Re-resolve every admitted Module and reject any changed discovery input."""
 
     value = snapshot.value
     _recheck_workspace(repository.root, value["workspace"])
@@ -294,7 +312,7 @@ def recheck_discovery_context(repository: SpecRepository, snapshot: DiscoveryCon
         workspace=value["workspace"],
     )
     if resolved.serialized != snapshot.serialized:
-        raise SpecError("Domain/Service discovery context changed", "stale_context")
+        raise SpecError("Module discovery context changed", "stale_context")
 
 
 def recheck_topology_author_context(repository: SpecRepository, snapshot: TopologyAuthorContext) -> None:

@@ -8,7 +8,7 @@ import {afterAll, beforeAll, describe, expect, it} from 'vitest';
 
 /**
  * Concorde-repository evidence for feature.concorde.publish-project-docsite FR-009: a project holding
- * only Profile 8 initialization outputs receives the packaged docsite through the native `docsite`
+ * only Profile 9 initialization outputs receives the packaged docsite through the native `docsite`
  * Tool and passes the adapter's validate and build steps. It reuses this checkout's installed
  * dependencies and pinned Archify skill, so it stays outside the packaged template.
  */
@@ -41,7 +41,7 @@ from concorde.specification.initialize import project_proposal,apply_project_pro
 from concorde.host.typed_data import typed
 root=Path(sys.argv[2]);package=Path(sys.argv[1])
 config=typed('concorde-capability-configuration',{'integration':'codex','enforcement':'native'})
-apply_project_proposal(root,package,project_proposal(root,package,'Atlas',config,'domain.atlas'))`,repositoryRoot,root],root);
+apply_project_proposal(root,package,project_proposal(root,package,'Atlas',config,'module.atlas'))`,repositoryRoot,root],root);
   expect(initialized.status,initialized.stderr).toBe(0);
 
   docsiteProposal = tool(root, 'docsite', '--propose', '--allow-primary-worktree');
@@ -61,7 +61,7 @@ afterAll(async () => {
   if (root) await rm(root, {recursive: true, force: true});
 });
 
-describe('a project holding only Profile 8 initialization outputs', () => {
+describe('a project holding only Profile 9 initialization outputs', () => {
   it('receives the packaged adapter and identity without synthetic prose or repository evidence', async () => {
     const files = (docsiteProposal.result.proposal as {files: Array<{path: string}>}).files.map((file) => file.path);
     expect(files).toContain('docsite/docusaurus.config.ts');
@@ -92,10 +92,10 @@ describe('a project holding only Profile 8 initialization outputs', () => {
     const build = run(process.execPath, ['--import','tsx','scripts/build.ts'], resolve(root, 'docsite'));
     expect(build.status, `${build.stdout}\n${build.stderr}`).toBe(0);
     const manifest = JSON.parse(await readFile(resolve(root,'docsite/build/build-manifest.json'),'utf8'));
-    expect(manifest.schema_version).toBe(15);expect(manifest.pages).toHaveLength(1);
-    expect(manifest.pages[0].route).toBe('/specs/project/ontology');
-    expect(manifest.pages[0].targets).toEqual(['domain.atlas']);
-    expect(manifest.pages[0].aliases).toEqual([expect.stringMatching(/^\/specs\/domain\.atlas\/[0-9a-f]{16}$/)]);
+    expect(manifest.schema_version).toBe(16);expect(manifest.pages).toHaveLength(1);
+    expect(manifest.pages[0].route).toBe('/specs/modules/project/module');
+    expect(manifest.pages[0].targets).toEqual(['module.atlas']);
+    expect(manifest.pages[0].aliases).toEqual([expect.stringMatching(/^\/specs\/module\.atlas\/[0-9a-f]{16}$/)]);
     const homepage=await readFile(resolve(root,'docsite/build/index.html'),'utf8');expect(homepage).toContain(manifest.pages[0].route);
     expect(existsSync(resolve(root,'docsite/build',manifest.pages[0].route.slice(1)+'.html'))).toBe(true);
     const [legacyAlias]=manifest.pages[0].aliases as string[];
