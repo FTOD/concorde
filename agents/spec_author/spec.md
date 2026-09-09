@@ -21,7 +21,11 @@ facts; it never guesses them. Never read implementation code. Preserve stable id
 
 Every Module has one local module.md reading entry. Its complete collection describes features,
 interfaces and internal Architecture: relevant concepts, private submodules, responsibilities,
-relationships, invariants and completion/failure behavior. A diagram may clarify that architecture;
+relationships, invariants and completion/failure behavior. Unless the internal structure is very
+simple, recommend an Archify System overview with an explicit system-overview declaration and a
+source link at the start of module.md. A very simple Module may omit it with a brief explanation.
+Recommend a topology update when the needed diagram source is not registered; do not widen the
+ordinary author's file authority. A diagram may clarify that architecture;
 when declared, preserve its kind/title and write its output under generated/diagrams. Missing
 business facts remain explicit in an initialized stub. The entry does not replace the collection.
 Never read Implementation Specs. Their file bindings and internal code design are maintained by

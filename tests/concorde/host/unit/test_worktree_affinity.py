@@ -108,6 +108,7 @@ class CreateWorktreeBuildsTests(unittest.TestCase):
         self.root = Path(self.temporary.name) / "primary"
         self.root.mkdir()
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
+        shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
         shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
         _git(self.root, "init", "-q", "-b", "main")

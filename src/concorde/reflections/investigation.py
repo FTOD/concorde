@@ -96,7 +96,7 @@ def apply_investigation(project: Path, queue, runtime_input: dict, domain_output
         if finding["verified_commit"] != data["head"]:
             raise TypedDataError("workspace_mismatch", "/domain_output", "investigator verification does not match its admitted HEAD")
         if concorde_project and finding["protocol_change"]:
-            raise TypedDataError("incompatible_handoff", "/domain_output", "normative Protocol changes require feature.concorde.evolve-protocol")
+            raise TypedDataError("incompatible_handoff", "/domain_output", "the independent Protocol standard is outside Module-bound reflection ownership")
         if finding["observed_state"] == "not-reproduced" and (finding["route"] != "dismiss" or finding["human_intervention"] != "required"):
             raise TypedDataError("incompatible_handoff", "/domain_output", "a non-reproduced problem requires a developer dismissal decision")
         if finding["route"] == "fast-loop" and finding["effort"] != "small":

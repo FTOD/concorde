@@ -1,4 +1,4 @@
-import {readdirSync} from 'node:fs';
+import {readdirSync,readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 
 import type {Config, PluginModule} from '@docusaurus/types';
@@ -22,7 +22,10 @@ function hasStagedContent(generatedContentDirectory: string): boolean {
 
 const projectRoot = resolve(__dirname, '..');
 const identity = loadSiteIdentity(__dirname);
+const hasProtocolDocs = identity.protocolDocs === true;
 const scoped = isScoped(projectRoot);
+const hasImplementationSpecs = scoped && JSON.parse(readFileSync(
+  resolve(__dirname,'.generated/specs-sidebar.json'),'utf8')).implementationSpecsSidebar.length > 0;
 // Docusaurus refuses to load a content-docs plugin instance with zero staged documents; a project
 // scaffolded from Initialization Proposal 3 output alone has a root module but no features yet.
 const hasFeatures = !scoped && hasStagedContent('.generated/content/features');
@@ -44,7 +47,8 @@ const config: Config = {
   projectName: identity.projectName,
   onBrokenLinks: 'throw',
   onBrokenAnchors: 'throw',
-  markdown: {format: scoped ? 'md' : 'mdx', hooks: {onBrokenMarkdownLinks: 'throw'}},
+  markdown: {format: scoped ? 'md' : 'mdx', mermaid: true, hooks: {onBrokenMarkdownLinks: 'throw'}},
+  themes: ['@docusaurus/theme-mermaid'],
   trailingSlash: false,
   staticDirectories: ['static', ...(!scoped || hasStagedContent('.generated/static/diagrams') ? ['.generated/static'] : []), ...(!scoped ? ['../generated'] : [])],
   presets: [[
@@ -65,6 +69,13 @@ const config: Config = {
   ]],
   plugins: [
     [(scoped ? scopedContent : concordeContent) as unknown as PluginModule, {projectRoot}],
+    ...(hasProtocolDocs ? [
+      ['@docusaurus/plugin-content-docs', {
+        id: 'protocol', path: '../protocol', routeBasePath: 'protocol', sidebarPath: './sidebars.protocol.ts',
+        include: ['**/*.md'], numberPrefixParser: false,
+        showLastUpdateAuthor: false, showLastUpdateTime: false,
+      }],
+    ] : []),
     ...(hasFeatures ? [
       ['@docusaurus/plugin-content-docs', {
         id: 'features', path: '.generated/content/features', routeBasePath: 'features', sidebarPath: './sidebars.features.ts',
@@ -74,10 +85,11 @@ const config: Config = {
     ] : []),
     ['@easyops-cn/docusaurus-search-local', {
       hashed: true, indexDocs: true, indexBlog: false,
-      docsRouteBasePath: [scoped ? '/specs' : '/architecture', ...(hasFeatures ? ['/features'] : [])],
+      docsRouteBasePath: [scoped ? '/specs' : '/architecture', ...(hasFeatures ? ['/features'] : []), ...(hasProtocolDocs ? ['/protocol'] : [])],
       docsDir: [
         scoped ? '.generated/content/specs' : '.generated/content/architecture',
         ...(hasFeatures ? ['.generated/content/features'] : []),
+        ...(hasProtocolDocs ? ['../protocol'] : []),
       ],
     }],
   ],
@@ -85,11 +97,15 @@ const config: Config = {
     navbar: {
       title: identity.title,
       items: [
-        {type: 'docSidebar', sidebarId: scoped ? 'specsSidebar' : 'architectureSidebar', label: scoped ? 'Specs' : 'Architecture', position: 'left'},
+        ...(hasProtocolDocs ? [
+          {type: 'docSidebar', sidebarId: 'protocolSidebar', docsPluginId: 'protocol', label: 'Spec Protocol', position: 'left'},
+        ] : []),
+        {type: 'docSidebar', sidebarId: scoped ? 'moduleSpecsSidebar' : 'architectureSidebar', label: scoped ? 'Module Specs' : 'Architecture', position: 'left'},
         ...(hasFeatures ? [
           {type: 'docSidebar', sidebarId: 'featuresSidebar', docsPluginId: 'features', label: 'Features', position: 'left'},
         ] : []),
         {to: '/graph', label: 'Graph', position: 'left'},
+        ...(hasImplementationSpecs ? [{type:'docSidebar',sidebarId:'implementationSpecsSidebar',label:'Implementation Specs',position:'left'}] : []),
         ...(identity.repository ? [
           repositoryHost === 'github.com'
             ? {href: identity.repository, position: 'right', className: 'header-github-link', 'aria-label': 'GitHub repository'}

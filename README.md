@@ -20,18 +20,21 @@ Only the code-writing phase appends referenced Implementation Specs and bound fi
 maintains reverse implementation usage and checks each affected Module separately after shared
 changes. Context, checks and reviews identify the exact contracts and revisions they assessed.
 
-Concorde's own Specs use the same organization:
+The Protocol standard is independent of the software Specs that implement it:
 
 ```text
+protocol/                 Independent standard, organized as ordinary chapters
 specs/modules/concorde/     Module contracts and internal architectures
 specs/implementations/     Reusable Implementation Specs with explicit file bindings
 .concorde/specs.json       Registry schema 2: Modules, implementations and relationships
 ```
 
 Start with the [Concorde Module](specs/modules/concorde/module.md), its
-[architecture](specs/modules/concorde/architecture.md), and the
-[Spec Protocol](specs/modules/concorde/protocol/module.md). The
-[authored Protocol rules](prompts/protocol/principles.md) define the standard.
+[architecture](specs/modules/concorde/module.md#architecture), and the
+[Spec Protocol](protocol/README.md). The
+[authored Protocol rules](protocol/principles.md) define the standard. Protocol documents are
+outside the project Spec registry and do not need to satisfy their own Module/Feature format.
+The docsite publishes them in a dedicated **Spec Protocol** tab.
 
 ## Install and initialize
 
@@ -151,9 +154,9 @@ authors return identical shared bytes.
 
 ## Developer view and feedback
 
-The [Developer experience](specs/modules/concorde/developer-experience.md) covers the
+The [Developer experience](specs/modules/concorde/module.md#developer-entry-selection) covers the
 Spec docsite, interactive diagrams, the Understand Anything code viewer and feedback into the
-Framework's existing workflows. [Spec publication](specs/modules/concorde/publication/architecture.md) provides the authored-Spec view in this experience.
+Framework's existing workflows. [Spec publication](specs/modules/concorde/publication/module.md#architecture) provides the authored-Spec view in this experience.
 
 The [viewer service](specs/modules/concorde/viewer/interfaces.md) opens an existing raw Understand
 Anything graph using the installer-owned runtime. Starting it does not generate a code graph or
@@ -261,11 +264,11 @@ python3 scripts/concorde.py validate
 ```
 
 `build` renders every role, Skill, Protocol and docs-projection output deterministically from
-`prompts/`, `skills/` and `capabilities/`; `build --check` verifies those outputs and
+`protocol/`, `prompts/`, `skills/` and `capabilities/`; `build --check` verifies those outputs and
 `protocol/manifest.json` are current without writing anything; `validate` runs the complete Spec,
 capability-module, contract, Spec-alignment and build-output checks. The host refuses to run any
 capability on a stale build; a freshly created worktree must be built once before an agent can load
-Concorde Skills. After changing `prompts/protocol/principles.md` or a kind definition, accept the
+Concorde Skills. After changing the standard chapters under `protocol/` or their runtime adapters, accept the
 new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-project` (see above).
 
 Each named Agent is defined under `agents/<name>/`: an authored `spec.md` plus a Python

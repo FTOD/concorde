@@ -17,7 +17,9 @@ Skill sources (``skills/<name>/SKILL.md``) are a distinct front-matter shape (``
 roots. Agent Specs (``agents/<name>/spec.md``) are a third distinct shape: no front matter at all,
 and always an implicit ``worker`` root -- an Agent Spec carries its own ``# concorde-<name>``
 heading and behavioral contract directly, not role/audience metadata. Every other prompt lives
-under ``prompts/`` and must declare its own ``audience``.
+under ``prompts/`` and must declare its own ``audience``. Independent standard chapters under
+``protocol/`` are plain Markdown, implicitly shared, and can only be included by Protocol adapters
+or other standard chapters. They are not project Specs or agent prompt definitions.
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ from ..frontmatter import FrontMatterError, parse_document
 AUDIENCES = frozenset({"worker", "ambient", "shared"})
 RESERVED_VARIABLES = frozenset({"CAPABILITY", "SCRIPT", "FRAMEWORK"})
 PROTOCOL_PREFIX = "prompts/protocol/"
+PROTOCOL_TEXT_ROOT = "protocol/"
 PROMPTS_ROOT = "prompts/"
 SKILLS_ROOT = "skills/"
 SPECS_ROOT = "specs/"
@@ -87,6 +90,10 @@ def _parse_prompt_file(project_root: Path, relative: str) -> tuple[str, str]:
     """Return (audience, body) for one file under prompts/."""
 
     text = _read(project_root, relative)
+    if relative.startswith(PROTOCOL_TEXT_ROOT):
+        if not relative.endswith(".md"):
+            raise PromptResolverError("CONCORDE-PROMPT-SCOPE-001", f"Protocol text must be Markdown: {relative}")
+        return "shared", text
     try:
         metadata, body = parse_document(text, relative)
     except FrontMatterError as error:
@@ -139,8 +146,8 @@ def _check_scope(target: str, including: str) -> None:
         raise PromptResolverError(
             "CONCORDE-PROMPT-SCOPE-001", f"{including}: an Agent Spec may include only prompts/ files: {target}"
         )
-    including_is_protocol = including.startswith(PROTOCOL_PREFIX)
-    target_is_protocol = target.startswith(PROTOCOL_PREFIX)
+    including_is_protocol = including.startswith((PROTOCOL_PREFIX, PROTOCOL_TEXT_ROOT))
+    target_is_protocol = target.startswith((PROTOCOL_PREFIX, PROTOCOL_TEXT_ROOT))
     if including_is_protocol and not target_is_protocol:
         raise PromptResolverError(
             "CONCORDE-PROMPT-PROTOCOL-001", f"{including}: a Protocol prompt cannot include outside {PROTOCOL_PREFIX}: {target}"

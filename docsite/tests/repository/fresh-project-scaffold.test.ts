@@ -72,6 +72,7 @@ describe('a project holding only Profile 9 initialization outputs', () => {
     expect(files).not.toContain('.github/workflows/deploy-docsite.yml');
     const identity = JSON.parse(await readFile(resolve(root, 'docsite/site.json'), 'utf8')) as Record<string, unknown>;
     expect(identity).toMatchObject({schema_version: 1, title: 'Atlas', baseUrl: '/'});
+    expect(identity.protocolDocs).toBeUndefined();
     expect(existsSync(resolve(root, 'README.md'))).toBe(false);
     expect(existsSync(resolve(root, 'docs'))).toBe(false);
     expect(existsSync(resolve(root, 'docsite/site.json'))).toBe(true);
@@ -103,9 +104,10 @@ describe('a project holding only Profile 9 initialization outputs', () => {
     expect(redirectStub).toContain(manifest.pages[0].route);
     expect(await readFile(resolve(root,'generated/protocol/framework-owned.txt'),'utf8')).toBe('Preserve Framework build assets.');
     const mainPage=await readFile(resolve(root,'docsite/build',manifest.pages[0].route.slice(1)+'.html'),'utf8');
+    expect(mainPage.match(/<nav\b[\s\S]*?<\/nav>/)![0]).not.toContain('Spec Protocol');
     expect(mainPage).toContain('<iframe');
     expect(mainPage).toContain('/diagrams/');
-    expect(mainPage.indexOf('<h1')).toBeLessThan(mainPage.indexOf('<iframe'));
+    expect(mainPage.indexOf('<iframe')).toBeLessThan(mainPage.indexOf('<h1'));
     expect(mainPage).toContain('Spec metadata');
     expect(await readFile(resolve(root,'docsite/.docusaurus/preview-sentinel.json'),'utf8')).toBe('Preview cache stays independent.');
     expect(existsSync(resolve(root,'docsite/.generated/docusaurus-production'))).toBe(true);

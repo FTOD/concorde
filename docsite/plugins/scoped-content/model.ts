@@ -196,7 +196,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     const stagedPath = stripRoot ? path.slice('specs/'.length) : path; const route = '/specs/' + stagedPath.replace(/\.md$/, '');
     requireThat(!stagedPath.startsWith('projections/') && !routes.has(route), `Duplicate or reserved page route: ${route}`); routes.add(route);
     const pageAliases = references.map(id => legacyAliasRoute(id, path)); pageAliases.forEach(alias => aliases.add(alias));
-    const page: Page = {sourcePath: path, route, stagedPath, title: /^#\s+(.+)$/m.exec(content)?.[1] ?? owner.title,
+    const page: Page = {sourcePath: path, route, stagedPath, title: owner.kind === 'module' && primary ? owner.title : posix.basename(path, '.md'),
       content, contentDigest: hash(raw), documentId: declaration.id, documentTargets: declaration.targets,
       mainVisible: declaration.main_visible, contextSection: references.length > 1 ? 'shared_specs' : 'target_spec',
       memberships, aliases: pageAliases, kind: owner.kind, primaryOf: primary?.targetId ?? null,
@@ -218,6 +218,8 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
       inputs.push([d.source, hash(raw)]);
       (pageByPath.get(primaryDocument(t))!.architectureDiagrams ??= []).push({kind: d.kind, title: d.title, source: d.source, sourceSha256: hash(raw).slice(7), route: '/diagrams/' + hash(d.source).slice(7,23) + '.html'});
     }
+    const overviews=new Set(t.diagrams.filter(d=>d.recipe==='system-overview').map(d=>d.source));
+    pageByPath.get(primaryDocument(t))!.architectureDiagrams?.sort((a,b)=>Number(overviews.has(b.source))-Number(overviews.has(a.source)));
   }
   const providers = new Map<string, {owner: string; schema: string}>(); const required: {owner: string; peer: string; key: string; schema: string}[] = [];
   for (const t of modules) for (const path of t.documents) for (const match of cache.get(path)!.content.matchAll(/^```concorde-contract\s*\n([\s\S]*?)^```\s*$/gm)) {
@@ -248,6 +250,11 @@ export function rewriteLinks(registry: ScopedRegistry,page: Page): string {
       if (/^(?:[a-z]+:|#|\/)/i.test(url)) return whole;
       const [path,anchor] = url.split('#'); const source = posix.normalize(posix.join(posix.dirname(page.sourcePath),path));
       const target = registry.pages.find(p=>p.sourcePath===source);
+      const diagram = registry.pages.flatMap(p=>p.architectureDiagrams??[]).find(d=>d.source===source);
+      if (diagram) {
+        requireThat(!label.startsWith('!'), `Interactive diagram requires a link, not an image: ${url}`);
+        return `${label}(${diagram.route}${anchor?'#'+anchor:''})`;
+      }
       requireThat(target, `Unregistered local link: ${page.sourcePath} -> ${url}`);
       return `${label}(${target.route}${anchor?'#'+anchor:''})`;
     });

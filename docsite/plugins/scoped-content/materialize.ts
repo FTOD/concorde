@@ -7,47 +7,32 @@ const PROJECTIONS_GROUP={type:'category',label:'Projections',collapsed:false,ite
   {type:'doc',id:'projections/instructions',label:'Agent instructions'},
   {type:'doc',id:'projections/wire',label:'Wire contracts'},
 ]};
-interface DirNode {dirs: Map<string,DirNode>; files: Page[]}
-function insert(root: DirNode, page: Page): void {
-  const segments = page.stagedPath.split('/');
-  let node = root;
-  for (let i = 0; i < segments.length - 1; i++) {
-    let child = node.dirs.get(segments[i]);
-    if (!child) {child = {dirs: new Map(), files: []}; node.dirs.set(segments[i], child);}
-    node = child;
-  }
-  node.files.push(page);
-}
-/** Directories first, then files, both alphabetically; a nested category per directory segment,
- * collapsed by default except the first level. Every registered document appears exactly once. */
-function renderSourceTree(node: DirNode, depth: number): object[] {
-  const directories = [...node.dirs.entries()].sort(([a],[b])=>a.localeCompare(b))
-    .map(([name,child])=>({type:'category',label:name,collapsed:depth>0,items:renderSourceTree(child,depth+1)}));
-  const files = [...node.files].sort((a,b)=>posix.basename(a.stagedPath).localeCompare(posix.basename(b.stagedPath)))
-    .map(page=>({type:'doc',id:page.stagedPath.replace(/\.md$/,''),label:posix.basename(page.stagedPath)}));
-  return [...directories, ...files];
-}
-export function scopedSidebar(registry: ScopedRegistry) {
+interface SidebarItem {type:string; label:string; id?:string; href?:string; link?:{type:'doc';id:string}; collapsed?:boolean; items?:SidebarItem[]}
+export function scopedSidebar(registry: ScopedRegistry, kind:'module'|'implementation'='module'): SidebarItem[] {
   const byPath = new Map(registry.pages.map(p=>[p.sourcePath,p]));
-  // Source navigation lists each document once; Module and Implementation navigation uses links.
-  const item=(target:Target):object=>{
-    const pages=target.documents.map(path=>byPath.get(path)!);
-    const main=byPath.get(primaryDocument(target))!;
-    return {type:'category',label:target.title,collapsed:true,items:[
-      {type:'link',label:`${target.title} · Spec`,href:main.route},
-      ...pages.filter(page=>page!==main).map(page=>({type:'link',label:page.title,href:page.route})),
-      ...registry.targets.filter(t=>t.kind==='module'&&t.parent===target.id).map(item),
-    ]};
+  const placed = new Set<string>();
+  const id=(page:Page)=>page.stagedPath.replace(/\.md$/,'');
+  // Shared Module documents remain reachable from every owner, with one Docusaurus doc entry.
+  const document=(page:Page):SidebarItem=>{
+    if (placed.has(page.sourcePath)) return {type:'link',label:page.title,href:page.route};
+    placed.add(page.sourcePath);
+    return {type:'doc',id:id(page),label:page.title};
   };
-  const sourceTree: DirNode = {dirs: new Map(), files: []};
-  for (const page of registry.pages) insert(sourceTree, page);
+  const item=(target:Target,depth=0):SidebarItem=>{
+    const main=byPath.get(primaryDocument(target))!;
+    placed.add(main.sourcePath);
+    const items=[
+      ...target.documents.filter(path=>path!==main.sourcePath).map(path=>document(byPath.get(path)!)),
+      ...registry.targets.filter(t=>t.kind==='module'&&t.parent===target.id).map(child=>item(child,depth+1)),
+    ];
+    // The Module itself opens module.md; there is no extra main-Spec child entry.
+    return items.length
+      ? {type:'category',label:main.title,link:{type:'doc',id:id(main)},collapsed:depth>0,items}
+      : {type:'doc',id:id(main),label:main.title};
+  };
   return [
-    {type:'category',label:'Specs by source path',collapsed:false,items:renderSourceTree(sourceTree,0)},
-    {type:'category',label:'Specs by target',collapsed:true,items:[
-      {type:'category',label:'Modules',collapsed:false,items:registry.targets.filter(t=>t.kind==='module'&&!t.parent).map(item)},
-      {type:'category',label:'Implementation Specs',collapsed:false,items:registry.targets.filter(t=>t.kind==='implementation').map(item)},
-    ].filter(group=>group.items.length)},
-    ...(hasDocsProjections(registry.projectRoot)?[PROJECTIONS_GROUP]:[]),
+    ...registry.targets.filter(t=>t.kind===kind&&!t.parent).map(target=>item(target)),
+    ...(kind==='module'&&hasDocsProjections(registry.projectRoot)?[PROJECTIONS_GROUP]:[]),
   ];
 }
 export async function materializeScoped(registry:ScopedRegistry) {
@@ -68,8 +53,8 @@ export async function materializeScoped(registry:ScopedRegistry) {
     // Identity is displayed by ContentProvenance; keep machine-readable metadata out of the
     // reading flow while leaving the authored source and its digest intact.
     const content=rewriteLinks(registry,page).replace(/^```concorde-document\s*\n[\s\S]*?^```\s*$/m,'').trimStart();
-    await writeFile(path,matter.stringify(content,{format:'md',slug:page.route.slice('/specs'.length),title:page.title,sidebar_label:posix.basename(page.stagedPath),
-      ...(page.kind==='module'&&page.primaryOf?{hide_table_of_contents:true}:{})}));
+    await writeFile(path,matter.stringify(content,{format:'md',slug:page.route.slice('/specs'.length),title:page.title,sidebar_label:page.title,
+      displayed_sidebar:page.kind==='implementation'?'implementationSpecsSidebar':'moduleSpecsSidebar'}));
   }
   if(hasDocsProjections(registry.projectRoot)){
     const projectionsDirectory=resolve(generated,'content/specs/projections');
@@ -77,10 +62,11 @@ export async function materializeScoped(registry:ScopedRegistry) {
     const instructions=loadInstructionsProjection(registry.projectRoot);
     const wire=loadWireProjection(registry.projectRoot);
     await writeFile(resolve(projectionsDirectory,'instructions.md'),matter.stringify(renderInstructionsPage(instructions),
-      {format:'md',slug:'/projections/instructions',title:'Agent instructions',sidebar_label:'Agent instructions'}));
+      {format:'md',slug:'/projections/instructions',title:'Agent instructions',sidebar_label:'Agent instructions',displayed_sidebar:'moduleSpecsSidebar'}));
     await writeFile(resolve(projectionsDirectory,'wire.md'),matter.stringify(renderWirePage(wire),
-      {format:'md',slug:'/projections/wire',title:'Wire contracts',sidebar_label:'Wire contracts'}));
+      {format:'md',slug:'/projections/wire',title:'Wire contracts',sidebar_label:'Wire contracts',displayed_sidebar:'moduleSpecsSidebar'}));
   }
-  await writeFile(resolve(generated,'specs-sidebar.json'),JSON.stringify(scopedSidebar(registry),null,2)+'\n');
+  await writeFile(resolve(generated,'specs-sidebar.json'),JSON.stringify({moduleSpecsSidebar:scopedSidebar(registry),
+    implementationSpecsSidebar:scopedSidebar(registry,'implementation')},null,2)+'\n');
   await writeFile(identity,JSON.stringify({schema_version:1,sourceDigest:registry.sourceDigest})+'\n');
 }

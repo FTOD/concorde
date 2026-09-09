@@ -1,2 +1,2 @@
-import items from './.generated/specs-sidebar.json';
-export default {specsSidebar:items};
+import sidebars from './.generated/specs-sidebar.json';
+export default sidebars;

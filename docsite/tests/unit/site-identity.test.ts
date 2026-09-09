@@ -54,6 +54,13 @@ describe('site identity schema 1', () => {
     expect(loadSiteIdentity(siteDir)).toMatchObject({title: 'Atlas', organizationName: 'atlas-org'});
   });
 
+  it('only enables the independent standard collection through an explicit boolean', () => {
+    expect(parseSiteIdentity(validValue).protocolDocs).toBeUndefined();
+    expect(parseSiteIdentity({...validValue, protocolDocs: true}).protocolDocs).toBe(true);
+    expect(parseSiteIdentity({...validValue, protocolDocs: false}).protocolDocs).toBe(false);
+    expect(() => parseSiteIdentity({...validValue, protocolDocs: 'true'})).toThrow(/protocolDocs/);
+  });
+
   it('reports a missing file by its project-relative name', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'concorde-site-identity-missing-'));
     roots.push(root);

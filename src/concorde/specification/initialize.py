@@ -73,7 +73,7 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
     declaration = {"id": "document." + target_id, "targets": [target_id],
                    "main_visible": True}
     text = ("```concorde-document\n" + json.dumps(declaration, indent=2) + "\n```\n\n"
-        f"# {name}\n\n## Features and interfaces\n\nProduct capabilities and their usage interfaces are not yet specified.\n\n## Architecture\n\nThis Module describes the initialized project. Its current supported use is to\n"
+        f"# {name}\n\n[System overview](diagrams/overview.architecture.json)\n\n## Features and interfaces\n\nProduct capabilities and their usage interfaces are not yet specified.\n\n## Architecture\n\nThis Module describes the initialized project. Its current supported use is to\n"
         "identify the project and author its intended behavior. Business entities, rules, participating\n"
         "components, and product features have not yet been supplied. A task requiring those facts\n"
         "must report Spec incomplete and name the missing information. Initialization does not infer\n"
@@ -84,7 +84,7 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
         "specifies intended behavior in the Project Spec; the Framework checks its Concorde Spec Protocol\n"
         "conformance. This authoring relationship is not the project's unknown business architecture.\n\n"
         "## Architecture overview\n\nThe declared System overview shows only this known authoring boundary.\n"
-        "The docsite embeds it on this main page. Replace it with the Module's actual internal\n"
+        "The docsite embeds it at the start of this main page, before the Module prose. Replace it with the Module's actual internal\n"
         "architecture and relevant external relationships when those facts have been supplied.\n")
     files = [file_change(root, ".concorde/config.json", json.dumps(config, indent=2) + "\n"),
              file_change(root, ".concorde/specs.json", json.dumps(registry, indent=2) + "\n"),

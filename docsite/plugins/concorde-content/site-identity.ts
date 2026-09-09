@@ -11,6 +11,7 @@ export interface SiteIdentity {
   projectName: string;
   repository?: string;
   tagline?: string;
+  protocolDocs?: boolean;
 }
 
 const SITE_JSON_LABEL = 'docsite/site.json';
@@ -45,6 +46,9 @@ export function parseSiteIdentity(value: unknown): SiteIdentity {
   if (record.tagline !== undefined && !isNonEmptyString(record.tagline)) {
     invalid('tagline must be a non-empty string when present.');
   }
+  if (record.protocolDocs !== undefined && typeof record.protocolDocs !== 'boolean') {
+    invalid('protocolDocs must be a boolean when present.');
+  }
 
   return {
     schemaVersion: 1,
@@ -55,6 +59,7 @@ export function parseSiteIdentity(value: unknown): SiteIdentity {
     projectName: (record.projectName as string).trim(),
     ...(record.repository !== undefined ? {repository: (record.repository as string).trim()} : {}),
     ...(record.tagline !== undefined ? {tagline: (record.tagline as string).trim()} : {}),
+    ...(record.protocolDocs !== undefined ? {protocolDocs: record.protocolDocs as boolean} : {}),
   };
 }
 

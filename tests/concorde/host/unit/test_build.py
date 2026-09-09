@@ -138,6 +138,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
+        shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
         shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
 
@@ -162,6 +163,17 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         current, differences = check_build(self.root, "all")
         self.assertFalse(current)
         self.assertTrue(differences)
+
+    def test_independent_protocol_edit_invalidates_runtime_rule_projection(self):
+        write_build(self.root, "all")
+        chapter = self.root / "protocol/principles.md"
+        chapter.write_text(chapter.read_text() + "\nA changed standard.\n")
+        with self.assertRaises(BuildError) as context:
+            verify_fresh(self.root)
+        self.assertEqual(context.exception.code, "stale_build")
+        current, differences = check_build(self.root, "all")
+        self.assertFalse(current)
+        self.assertIn("generated/protocol/principles.md", differences)
 
     def test_check_never_writes_under_generated_or_the_skill_roots(self):
         self.assertFalse((self.root / "generated").exists())
@@ -215,6 +227,7 @@ class BuildFreshnessTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
+        shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
         shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
 
@@ -278,6 +291,7 @@ class BuildErrorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             shutil.copytree(REPOSITORY_ROOT / "prompts", root / "prompts")
+            shutil.copytree(REPOSITORY_ROOT / "protocol", root / "protocol")
             shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills")
             shutil.copytree(REPOSITORY_ROOT / "agents", root / "agents")
             main = root / "skills/concorde-main/SKILL.md"

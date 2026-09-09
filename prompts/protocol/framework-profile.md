@@ -4,6 +4,14 @@ audience: shared
 
 ## Concorde Framework execution profile
 
+This profile applies the independent Spec Protocol to Concorde's runtime. Framework configuration
+uses `profile_version: 9` for the Module/Implementation model and registry schema 2 for its JSON
+storage. `.concorde/config.json` declares `profile_version`, `registry`, `protocol` and
+`capability_configuration`. Its `protocol` binding identifies the accepted version and exact
+manifest digest. These configuration and storage versions are Framework compatibility identifiers,
+not additional versions of the specification language. Older configurations require explicit
+migration; the runtime must not infer their meaning from paths or names.
+
 ### P5. One complete Module context per bounded task
 
 A bounded invocation selects one Module and freezes its complete document collection, task,
@@ -13,6 +21,11 @@ A global coordinator may discover explicitly admitted Module contracts for routi
 worker is a fresh invocation with only its own complete Module context. Routing metadata and typed
 worker results are explicit inputs, not permission to inspect implementation. Coordinator discovery
 never loads Implementation Specs. Source-code phases use the selected Module's explicit file bindings.
+
+Readers, Spec authors, assessors, planners and task authors use only the selected Module's complete
+project-Spec collection. They MUST NOT read Implementation Specs or source code to supply missing
+Module meaning. Only the code-writing phase appends referenced Implementation Spec bodies and
+their bound files. Code review has its separately declared contract and code read authority.
 
 Context identities cover document membership and bytes, Protocol and instructions, declared stage
 artifacts and lifecycle identity. Code-writing context identities additionally cover the referenced
@@ -77,3 +90,16 @@ task, authorizations, completed and remaining work, artifacts, checks and next s
 session automatically when isolation can be established; otherwise provide a complete copyable
 prompt. A direct maintenance task explicitly authorized by the developer does not require a
 workflow handoff solely because it updates the Framework's own instructions.
+
+### Framework authoring and publication conventions
+
+For a Module with nontrivial internal structure, recommend Archify's System overview recipe
+(`system-overview`) with `meta.quality_profile: "showcase"`. Register the exact diagram source,
+kind and title, and put its reference at the start of `module.md`. Publication renders it before
+the Module prose. A very simple Module may omit the overview with a brief architectural explanation.
+Show real responsibilities and connections; do not invent nodes to satisfy a diagram shape.
+This is an authoring recommendation, not a mandatory diagram-count or minimum-node check.
+
+The Framework's diagram declarations and renderer use exact JSON sources and derived outputs under
+`generated/diagrams/`. These tool choices, output paths and reading-view layouts implement the
+Protocol's architecture requirements; they are not requirements on every Protocol implementation.

@@ -22,4 +22,19 @@ function DomainSectionHeading(props:ComponentProps<'h2'>) {
   </>;
 }
 
-export default {...OriginalComponents,h2:DomainSectionHeading};
+/** Delivered interactive HTML is a static asset, not a Docusaurus client-side route. */
+function SpecLink(props:ComponentProps<'a'>) {
+  const base=useBaseUrl('/');
+  const data=usePluginData('concorde-content') as {pages:ContentPage[]}|undefined;
+  const [path,fragment]=(props.href??'').split('#');
+  const route=canonicalRoute(path,base);
+  const diagram=data?.pages.flatMap(page=>page.architectureDiagrams??[])
+    .find(candidate=>normalizeRoute(candidate.route)===normalizeRoute(route));
+  if (diagram) {
+    const href=(base==='/'?'':base.replace(/\/$/,''))+diagram.route+(fragment?'#'+fragment:'');
+    return <a {...props} href={href} target="_blank" rel="noreferrer"/>;
+  }
+  return <OriginalComponents.a {...props}/>;
+}
+
+export default {...OriginalComponents,h2:DomainSectionHeading,a:SpecLink};

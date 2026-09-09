@@ -23,11 +23,10 @@ export default function LayoutWrapper(props: Props) {
   const pathname = canonicalRoute(location.pathname, baseUrl);
   const page = data.pages.find((candidate) => normalizeRoute(candidate.route) === normalizeRoute(pathname));
   return <>
+    {page?.architectureDiagrams?.length && !page.inlineOverview ? <div className="architectureViewShell"><ArchitectureView page={page} /></div> : null}
     {page && <div className="provenanceShell"><ContentProvenance page={page} /></div>}
     {page?.relatedFeatures?.length ? <div className="featureRelationsShell"><FeatureRelations page={page} /></div> : null}
     {page?.featureId ? <div className="featureNeighborhoodShell"><FeatureNeighborhood featureId={page.featureId} /></div> : null}
-    {page?.architectureDiagrams?.length && !page.inlineOverview && String(page.kind)!=='module' ? <div className="architectureViewShell"><ArchitectureView page={page} /></div> : null}
     <OriginalLayout {...props} />
-    {page?.architectureDiagrams?.length && !page.inlineOverview && String(page.kind)==='module' ? <div className="architectureViewShell"><ArchitectureView page={page} /></div> : null}
   </>;
 }

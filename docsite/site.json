@@ -2,6 +2,7 @@
   "baseUrl": "/concorde/",
   "organizationName": "FTOD",
   "projectName": "concorde",
+  "protocolDocs": true,
   "repository": "https://github.com/FTOD/concorde",
   "schema_version": 1,
   "tagline": "Concorde Spec Protocol, Skills and verified workflows",

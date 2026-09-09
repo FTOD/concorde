@@ -200,3 +200,26 @@ Implementation 文件清单和 registry 一致，当前无发现的结构不一�
 不是有效的 Mermaid 成功检查；最终结果来自浏览器环境。未运行整站构建或宣称发布管线已迁移完成。
 
 这些检查只支持上述有限结论，不证明全部语义完备，也不证明新 Spec 的行为已经由实现满足。
+
+## 剩余修改提交前的补充审阅
+
+在用户要求检查并提交其余工作区修改后，将独立 Protocol 章节与模板、include resolver、包摘要绑定、
+站点 Protocol 导航/Mermaid 依赖、旧 Spec 文件删除及相关测试作为同一组关联修改提交。
+修正 README 指向已改名章节的链接，并把当前仓库的 production-build 断言从旧 iframe/旧标题
+改为现有页面入口与不再嵌入外部图的结果。
+
+确认尚未完成的实现对齐：
+
+- Framework profile、Spec author/reviewer、初始化器及历史发布分支仍保留旧外部图约定；这些源文件
+  的现存改动随本次提交保存，并不表示已完成 D01–D04 所述的运行时迁移。
+- 当前 scopedSidebar 已改成 Module/Implementation 两套导航，尚未实现 D04 保留的文档路径主视图。
+- 当前 Page.title 使用 Module 标题或文件名，和 publication/pipeline.md 中仍保留的 H1 优先段落
+  不一致。后续应明确区分正文标题与导航标签，并统一其返回值契约。
+- 所安装的 Mermaid theme 在客户端完成渲染；静态站点构建成功不能证明浏览器中每个图均成功渲染，
+  也不等于已经实现“Mermaid 错误阻止发布”的新承诺。
+
+这些差距继续在本文件跟踪；本次提交保存已有工作，不把它们改写成已完成的迁移。
+
+补充验证结果：Prompt resolver/build 的 48 项 Python 测试通过；scoped registry/site identity 的
+40 项测试通过；包含实际整站构建的 production-build/framework-guides 7 项测试通过，共 95 项。
+`git diff --check` 通过。没有运行 Concorde 的完整验证或评审流程，也没有据此声明所有新契约已实现。

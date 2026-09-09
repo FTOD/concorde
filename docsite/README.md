@@ -16,16 +16,20 @@ Control state under `.concorde/` is excluded from published prose.
 
 A Profile 9 project uses `plugins/scoped-content` and registry schema 2. Every registered document
 publishes once at a readable source-derived route: `specs/modules/project/module.md` becomes
-`/specs/modules/project/module`. The primary sidebar, "Specs by source path", mirrors registered
-source directories. "Specs by target" shows the Module composition tree and a separate
-Implementation Spec index. Each Module opens its one local `module.md`, regardless of document
-order. Additional documents, including explicitly shared Module documents, remain in its collection.
+`/specs/modules/project/module`. The navbar separates `Module Specs`, `Graph` and `Implementation
+Specs` (the last appears when implementations are registered). Module and Implementation Specs have
+independent sidebars. A Module name opens its `module.md` directly, while its additional documents
+and child Modules appear underneath; no duplicate main-Spec entry is generated. Document names omit
+`.md`. Source paths remain visible in provenance. Additional documents, including explicitly shared
+Module documents, remain part of the complete registered collection.
 
 The relationship graph distinguishes `composes`, `uses`, `implemented_by` and required interface
 contracts. Shared capability Modules are siblings of their consumers. Reused Implementation Specs
 appear once, with edges from every using Module and their exact bound file list. Publication does
 not read or publish the implementation source bytes. Registered architecture diagrams describe a
-Module's internal model and render beneath `generated/diagrams/`.
+Module's internal model and render beneath `generated/diagrams/`. A registered System overview
+appears before the Module prose. The generator rewrites the overview's Markdown source link to the
+delivered interactive HTML. Very simple Modules may omit the overview.
 
 Stable target/path-hash aliases redirect to current canonical document routes. Changed source
 paths require deliberate migration of external links. Human navigation does not widen agent context.
@@ -33,6 +37,25 @@ The older Architecture/Features adapter and its fixtures remain for Profile 7 di
 its directory-discovery rules do not govern Profile 9 projects. Profile 8 requires explicit migration.
 
 ## Site identity
+
+Concorde enables a separate **Spec Protocol** tab for the independent Markdown standard under
+`protocol/`. It has its own sidebar and `/protocol/` routes and participates in site search.
+These chapters bypass the project Spec registry: they have no Module/Feature identity, membership,
+Spec provenance wrapper or architecture-graph node. Framework Module and Implementation Specs
+remain under their existing tabs. Protocol documentation is opt-in; scaffolded consumer sites do
+not enable it or acquire Concorde's standard as their own project Specs.
+
+The Protocol sidebar includes Required format and the canonical Module, Implementation and
+Feature templates. Template code blocks are authoring examples, not declarations that the
+Protocol pages themselves belong to the illustrated Modules.
+
+Spec and Context is a child chapter of Spec management. It defines queryable entities, their
+authoritative Spec collections and deterministic file membership, with an entity-selection diagram.
+
+Mermaid fences render directly in Markdown pages through Docusaurus's Mermaid theme. Protocol
+diagrams remain inline in their authored chapters, with accessible titles and descriptions. They
+illustrate the specification language and do not register additional software Modules or diagram
+assets in the project Spec registry.
 
 The adapter reads exactly one project-specific file, `docsite/site.json` (site identity schema 1),
 through `plugins/concorde-content/site-identity.ts`. No other adapter byte varies between projects.
@@ -47,6 +70,7 @@ through `plugins/concorde-content/site-identity.ts`. No other adapter byte varie
 | `projectName` | string | Non-empty. |
 | `repository` | string, optional | Absolute URL; enables the navbar repository link (a GitHub host renders the icon-only link; any other host renders a labeled "Source" link). |
 | `tagline` | string, optional | Falls back to a generic tagline when absent. |
+| `protocolDocs` | boolean, optional | Enables the independent `../protocol/` Markdown collection and Spec Protocol tab; defaults to disabled. |
 
 `docusaurus.config.ts` loads the identity once at startup and fails with an actionable error naming
 `docsite/site.json` and the violated rule when the file is missing or invalid.

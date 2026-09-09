@@ -6,7 +6,7 @@ import {hash,legacyAliasRoute,loadScopedRegistry,rewriteLinks,primaryDocument,ty
 import {materializeScoped,scopedSidebar} from '../plugins/scoped-content/materialize';
 import scopedContent,{validateScopedBuild} from '../plugins/scoped-content';
 import type {LoadContext} from '@docusaurus/types';
-interface SidebarItem {type:string; label:string; href?:string; id?:string; collapsed?:boolean; items?:SidebarItem[]}
+interface SidebarItem {type:string; label:string; href?:string; id?:string; link?:{type:'doc';id:string}; collapsed?:boolean; items?:SidebarItem[]}
 let root:string,targets:Target[];
 function put(path:string,text:string){mkdirSync(dirname(resolve(root,path)),{recursive:true});writeFileSync(resolve(root,path),text);}
 function target(id:string,kind:Target['kind'],documents:string[]):Target{return{id,kind,title:id,documents,parent:null,uses:[],implementations:[],features:[],interfaces:[],checks:[],diagrams:[]};}
@@ -100,8 +100,18 @@ it('rewrites only registered navigation to canonical routes and leaves code exam
  expect(rewriteLinks(r,p)).toContain('[Example](unknown.md)');
  p.content+='\n[Wrong](unknown.md)';expect(()=>rewriteLinks(r,p)).toThrow(/Unregistered/);
 });
+it('resolves an overview source link to its delivered diagram and presents that recipe first',()=>{
+ const overview=targets[0].diagrams[0];const detail={...overview,source:'specs/bank/detail.json',title:'Detail',recipe:undefined};
+ const source=JSON.parse(readFileSync(resolve(root,overview.source),'utf8'));
+ source.meta.title='Detail';source.meta.output='../../generated/diagrams/detail.html';put(detail.source,JSON.stringify(source));
+ targets[0].diagrams=[detail,overview];save();
+ const registry=loadScopedRegistry(root);const page=registry.pages.find(p=>p.sourcePath==='specs/bank/module.md')!;
+ expect(page.architectureDiagrams!.map(d=>d.source)).toEqual([overview.source,detail.source]);
+ page.content+='\n[System overview](overview.json)';
+ expect(rewriteLinks(registry,page)).toContain('[System overview]('+page.architectureDiagrams![0].route+')');
+ page.content+='\n![Diagram](overview.json)';expect(()=>rewriteLinks(registry,page)).toThrow(/requires a link/);
+});
 it('allows features and usage interfaces on the same Module',()=>{
- const r=loadScopedRegistry(root);expect(scopedSidebar(r).map(g=>g.label)).toEqual(['Specs by source path','Specs by target']);
  targets[3].features=[{id:'feature.ledger',title:'Read balance',document:'specs/ledger/module.md'}];
  put('specs/ledger/module.md',readFileSync(resolve(root,'specs/ledger/module.md'),'utf8')+'\n## feature.ledger\nRead an account balance.');save();
  expect(loadScopedRegistry(root).targets.find(t=>t.id==='module.ledger')?.features).toHaveLength(1);
@@ -122,9 +132,9 @@ it('binds the Module category and diagram to module.md even when it is not the f
  expect(primaryDocument(targets[0])).toBe('specs/bank/module.md');expect(main.sourcePath).toBe('specs/bank/module.md');
  expect(main.architectureDiagrams).toHaveLength(1);expect(registry.pages.find(p=>p.sourcePath===topic)?.architectureDiagrams).toBeUndefined();
  const sidebar=scopedSidebar(registry) as SidebarItem[];
- const domain=sidebar[1].items![0].items![0];
- expect(domain.items![0]).toEqual({type:'link',label:'scope.bank · Spec',href:main.route});
- expect(domain.items!.filter(i=>i.href===main.route)).toHaveLength(1);
+ const module=sidebar[0];
+ expect(module.link).toEqual({type:'doc',id:'bank/module'});
+ expect(module.items!.some(i=>i.id==='bank/module')).toBe(false);
  expect(registry.pages.filter(p=>p.memberships.some(m=>m.targetId==='scope.bank'))).toHaveLength(2);
 });
 it('requires one local Module entry and treats visibility as metadata',()=>{
@@ -142,6 +152,9 @@ it('requires an Architecture section and checks a declared diagram recipe',()=>{
 });
 it('rejects sources changed between materialization and plugin loading even when routes are unchanged',async()=>{
  const original=loadScopedRegistry(root);await materializeScoped(original);
+ const staged=readFileSync(resolve(root,'docsite/.generated/content/specs/transfer/promises.md'),'utf8');
+ expect(staged).toContain('title: promises');expect(staged).toContain('sidebar_label: promises');
+ expect(staged).toContain('displayed_sidebar: moduleSpecsSidebar');
  const plugin=()=>scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
  expect((await plugin().loadContent!())?.sourceDigest).toBe(original.sourceDigest);
  put('specs/transfer/promises.md',readFileSync(resolve(root,'specs/transfer/promises.md'),'utf8')+'\nNew promise.');
@@ -157,17 +170,29 @@ it('invalidates the previous materialization identity before a failed preparatio
  const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
  await expect(plugin.loadContent!()).rejects.toThrow(/ENOENT/);
 });
-it('mirrors the registered source-path directory structure with directories before files, both alphabetical',()=>{
+it('starts with Module roots and nests documents and children by registry ownership',()=>{
  targets[0].documents.push('specs/bank/routing.md');putSpec('specs/bank/routing.md',['scope.bank'],'# Routing\nLocal routing facts.');save();
- const registry=loadScopedRegistry(root);
- const tree=scopedSidebar(registry)[0] as {label:string;collapsed:boolean;items:{type:string;label:string;collapsed?:boolean;items?:{type:string;label:string}[]}[]};
- expect(tree.label).toBe('Specs by source path');expect(tree.collapsed).toBe(false);
- const [audit,bank,ledger,transfer]=tree.items;
- expect(audit).toMatchObject({type:'category',label:'audit',collapsed:false});
- expect(bank).toMatchObject({type:'category',label:'bank',collapsed:false});
- expect(bank.items!.map(i=>({type:i.type,label:i.label}))).toEqual([{type:'doc',label:'module.md'},{type:'doc',label:'routing.md'}]);
- expect(ledger.label).toBe('ledger');expect(transfer.label).toBe('transfer');
- expect(transfer.items!.map(f=>f.label)).toEqual(['module.md','promises.md']);
+ const sidebar=scopedSidebar(loadScopedRegistry(root));
+ expect(sidebar.map(item=>item.label)).toEqual(['scope.bank','scope.audit','service.transfer']);
+ expect(sidebar[0]).toMatchObject({type:'category',collapsed:false});
+ expect(sidebar[0].items).toEqual([
+  {type:'doc',id:'bank/routing',label:'routing'},
+ ]);
+ expect(sidebar[2].items!.at(-1)).toMatchObject({type:'doc',label:'module.ledger',id:'ledger/module'});
+});
+it('separates Module and Implementation sidebars without duplicate document entries',()=>{
+ const implementation=sharedImplementation();
+ targets[3].documents.push('specs/transfer/promises.md');sharedImplementation();
+ updateDocument('specs/transfer/promises.md',{targets:['service.transfer','module.ledger']});
+ const r=loadScopedRegistry(root);const sidebar=scopedSidebar(r);const implementations=scopedSidebar(r,'implementation');
+ expect(sidebar.map(item=>item.label)).toEqual(['scope.bank','scope.audit','service.transfer']);
+ expect(implementations).toEqual([{type:'doc',id:'implementations/shared',label:'shared'}]);
+ expect(r.pages.find(p=>p.sourcePath===implementation.documents[0])!.title).toBe('shared');
+ const flatten=(items:SidebarItem[]):SidebarItem[]=>items.flatMap(item=>[item,...flatten(item.items??[])]);
+ const items=flatten([...sidebar,...implementations]);const docs=items.flatMap(item=>item.type==='doc'?[item.id]:item.link?[item.link.id]:[]);
+ expect(docs).toHaveLength(r.pages.length);
+ expect(new Set(docs).size).toBe(r.pages.length);
+ expect(items.filter(item=>item.href==='/specs/transfer/promises')).toHaveLength(1);
 });
 it('strips the specs/ root only when every registered document is under it',()=>{
  targets[3].documents.push('docs/outside.md');putSpec('docs/outside.md',['module.ledger'],'# Outside\nNot under specs.');save();

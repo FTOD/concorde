@@ -6,15 +6,15 @@
   "assets": [
     {
       "path": "generated/protocol/kinds/module.md",
-      "digest": "sha256:8a5b769ff8c29fc0191f8d390a8e823962cfe08cfaf6a2cb8b59b8ff3ca8a5e8"
+      "digest": "sha256:a8e0eda12599436a09e0de7ff96495c5fd85f41e17372963946758f9aff54558"
     },
     {
       "path": "generated/protocol/kinds/implementation.md",
-      "digest": "sha256:d32dbd2347d9e3b19acfb86e5e603c398522e2e045e422fe77caba4253b4bb6f"
+      "digest": "sha256:e6ecd788934a2b46805b614fcbe9979e37d1f54f1dba45fbb5cf78367648c8a2"
     },
     {
       "path": "generated/protocol/principles.md",
-      "digest": "sha256:f50dceeb0c3a65269706ebd3837fffdf81c189f61c285bdc60e8650685c6d529"
+      "digest": "sha256:f64b1a3d279999d5deb69e8cbf5174067852a8dd57ba9016c2b4a40508be61e3"
     },
     {
       "path": "generated/protocol/schemas.json",

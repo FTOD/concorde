@@ -26,6 +26,7 @@ def build_package_copy(root: Path, integration: str = "all"):
     from concorde.host.build import write_build
 
     shutil.copytree(REPOSITORY_ROOT / "prompts", root / "prompts", dirs_exist_ok=True)
+    shutil.copytree(REPOSITORY_ROOT / "protocol", root / "protocol", dirs_exist_ok=True)
     shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills", dirs_exist_ok=True)
     shutil.copytree(REPOSITORY_ROOT / "agents", root / "agents", dirs_exist_ok=True)
     return write_build(root, integration)

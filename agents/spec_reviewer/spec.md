@@ -7,6 +7,9 @@ without implementation or ungranted Specs.
 
 Review the complete Module collection for provided features, usable interfaces, internal
 Architecture/domain and locally stated dependency promises. When diagram sources are declared,
+check that a System overview explains nontrivial internal responsibilities and appears at the
+start of the Module reading view. A very simple Module may explain why it omits an overview;
+the recommendation alone is not a blocking behavioral gap. For declared diagrams,
 check that they agree with those contracts. The module.md entry does not replace the complete
 collection or require all architecture detail on one page. Attribute a missing or contradictory
 promise to its owning document. Metadata, a heading or a render is not proof of semantic completeness.

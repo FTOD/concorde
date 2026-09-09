@@ -199,6 +199,20 @@ class PromptResolverRuleTests(unittest.TestCase):
 
     # --- 8. unreachable prompt files given a set of roots ----------------
 
+    def test_protocol_adapter_includes_plain_standard_and_tracks_its_bytes(self):
+        _write(self.root, "prompts/protocol/principles.md", _prompt("shared", "@include protocol/principles.md\n"))
+        _write(self.root, "protocol/principles.md", "# Independent standard\n\nNo Spec declaration or prompt front matter.\n")
+        result = resolve_role_prompt(self.root, "prompts/protocol/principles.md")
+        self.assertEqual(result.body, (self.root / "protocol/principles.md").read_text())
+        self.assertEqual(result.sources, ("prompts/protocol/principles.md", "protocol/principles.md"))
+
+    def test_worker_prompt_cannot_import_independent_standard(self):
+        _write(self.root, "protocol/principles.md", "# Standard\n")
+        _write(self.root, "prompts/workflow-host/a.md", _prompt("worker", "@include protocol/principles.md\n"))
+        with self.assertRaises(PromptResolverError) as context:
+            resolve_role_prompt(self.root, "prompts/workflow-host/a.md")
+        self.assertEqual(context.exception.rule_id, "CONCORDE-PROMPT-PROTOCOL-001")
+
     def test_unreachable_prompt_is_reported(self):
         _write(self.root, "prompts/workflow-host/root.md", _prompt("worker", "Root only\n"))
         _write(self.root, "prompts/workflow-host/orphan.md", _prompt("worker", "Never included\n"))

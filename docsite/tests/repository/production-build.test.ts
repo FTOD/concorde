@@ -13,6 +13,40 @@ it('publishes the current exact registry and verifies the promoted manifest',asy
  await validateScopedBuild(root,output);const r=loadScopedRegistry(root);
  for(const page of r.pages){const html=await readFile(resolve(output,page.route.slice(1)+'.html'),'utf8');expect(html).toContain(page.sourcePath);}
  const home=await readFile(resolve(output,'index.html'),'utf8');expect(home).toContain(r.pages.find(p=>p.primaryOf===r.entryTarget)!.route);
+ const entry=r.pages.find(p=>p.primaryOf===r.entryTarget)!;
+ const html=await readFile(resolve(output,entry.route.slice(1)+'.html'),'utf8');
+ expect(html).toContain('theme-doc-sidebar-container');
+ expect(html).not.toContain('>Specs by source path<');expect(html).not.toContain('>Specs by target<');
+ const navbar=html.match(/<nav\b[\s\S]*?<\/nav>/)![0];
+ expect(navbar).toContain('Spec Protocol');
+ expect(navbar.indexOf('Spec Protocol')).toBeLessThan(navbar.indexOf('Module Specs'));
+ expect(navbar).toContain('Module Specs');expect(navbar).toContain('Implementation Specs');
+ expect(navbar.indexOf('Module Specs')).toBeLessThan(navbar.indexOf('>Graph<'));
+ expect(navbar.indexOf('>Graph<')).toBeLessThan(navbar.indexOf('Implementation Specs'));
+ expect(html).toContain('id="architecture"');expect(html).toContain('id="developer-entry-selection"');
+ expect(html).not.toContain('<iframe');
+ const implementation=r.pages.find(p=>p.kind==='implementation')!;
+ const sidebar=(source:string)=>source.match(/<aside\b[^>]*class="[^"]*theme-doc-sidebar-container[^"]*"[\s\S]*?<\/aside>/)![0];
+ expect(sidebar(html)).not.toContain(implementation.route);
+ const implementationHtml=await readFile(resolve(output,implementation.route.slice(1)+'.html'),'utf8');
+ expect(sidebar(implementationHtml)).toContain(implementation.route);
+ expect(sidebar(implementationHtml)).not.toContain(entry.route);
+});
+it('publishes the independent standard with chapter navigation and no Spec wrapper',async()=>{
+ const overview=await readFile(resolve(output,'protocol.html'),'utf8');
+ expect(overview).toContain('Spec Protocol');
+ expect(overview).toContain('Spec management');
+ expect(overview).toContain('Required format');
+ expect(overview).toContain('Templates');
+ expect(overview).not.toContain('provenanceShell');
+ expect(overview).not.toContain('feature.concorde.evolve-protocol');
+ for(const chapter of ['principles','module','implementation','spec-management','spec-management/spec-and-context','format','templates/module','templates/implementation','templates/feature']) {
+  const html=await readFile(resolve(output,`protocol/${chapter}.html`),'utf8');
+  expect(html).toContain('theme-doc-sidebar-container');
+  expect(html).not.toContain('provenanceShell');
+ }
+ const graph=JSON.parse(await readFile(resolve(output,'architecture-graph.json'),'utf8'));
+ expect(graph.nodes.some((node:{id:string})=>node.id==='module.protocol')).toBe(false);
 });
 it('preserves every legacy membership route as a redirect stub to its canonical page',async()=>{
  const r=loadScopedRegistry(root);
