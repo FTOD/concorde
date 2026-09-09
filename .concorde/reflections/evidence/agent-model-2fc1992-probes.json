@@ -1,0 +1,83 @@
+{
+  "scope": "Temporary fixtures; real host and policy code; substituted model subprocesses",
+  "agent_bindings": {
+    "role_fields": [
+      "name",
+      "prompt",
+      "effects"
+    ],
+    "launch_fields": [
+      "capability",
+      "stage",
+      "occurrence",
+      "role",
+      "integration",
+      "agent",
+      "project_root",
+      "request",
+      "prompt",
+      "prior_results",
+      "workspace_receipt_json",
+      "workspace_digest",
+      "policy",
+      "native_configuration",
+      "digest",
+      "runtime_input_json",
+      "capability_configuration_json",
+      "invocation_id"
+    ],
+    "role_count": 9,
+    "bound_spec_md_count": 0,
+    "role_sources": {
+      "coordinator": "prompts/workflow-host/coordinator.md",
+      "reader": "prompts/spec-context/reader.md",
+      "spec_author": "prompts/spec-context/spec-author.md",
+      "context_assessor": "prompts/spec-context/context-assessor.md",
+      "planner": "prompts/workflow-host/planner.md",
+      "task_author": "prompts/workflow-host/task-author.md",
+      "implementation_worker": "prompts/workflow-host/implementation-worker.md",
+      "spec_reviewer": "prompts/workflow-host/spec-reviewer.md",
+      "code_reviewer": "prompts/workflow-host/code-reviewer.md"
+    }
+  },
+  "narrowed_role_effects": {
+    "injected_role_declarations": [
+      {
+        "role": "concorde-implementation-worker",
+        "declared_writes": []
+      }
+    ],
+    "effective_write_paths": [
+      "app/transfer.py",
+      "checks/transfer_check.py"
+    ],
+    "declaration_was_enforced": false,
+    "model_calls": 0
+  },
+  "blocking_ai_feedback": {
+    "status": "blocked",
+    "outcome": "conflicting",
+    "stages": [
+      "specify",
+      "spec-review",
+      "context-solve",
+      "plan",
+      "tasks",
+      "implementation",
+      "code-review"
+    ],
+    "implementation_invocations": 1,
+    "code_review_invocations": 1,
+    "has_automatic_repair_iteration": false
+  },
+  "source_sha256": {
+    "src/concorde/host/roles.py": "0b54cd1bbcebe8597c356390053ead4d473fc68d5fab5ffecb9f7be269412e48",
+    "src/concorde/host/build.py": "e8ddf4212c97eabdc8dfc044f06bc54427e4d974628999dee5ebdf34b65cbeba",
+    "src/concorde/host/capability_host.py": "6f50ea5bdd3f2c841512bea90a5830fb2f3c03dcbdb1feddcf12f045ec86feae",
+    "src/concorde/host/permissions.py": "901b207cb1bf686900c502fbe0d333fd79940f24c56442aab41b0b8f464dcf0f",
+    "src/concorde/host/agent_executor.py": "6be5520e90528af45b408eae3231d8fb357db30bc519b4c69960f9d1d6610604",
+    "src/concorde/host/review.py": "aab56ef3a17e9a59accd75edf16ae4257df93789320b5f5476a6ca819f0e4276"
+  },
+  "verified_commit": "2fc199214e1cd98e6c998e28fbb84c18968c9d8e",
+  "verified_date": "2026-09-08"
+}

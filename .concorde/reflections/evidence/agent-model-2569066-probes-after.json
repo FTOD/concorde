@@ -1,0 +1,160 @@
+{
+  "scope": "Temporary fixtures; real host and policy code; substituted model subprocesses",
+  "adapted_from": ".concorde/reflections/evidence/agent-model-2fc1992-probes.py",
+  "agent_bindings": {
+    "launch_fields": [
+      "capability",
+      "stage",
+      "occurrence",
+      "role",
+      "integration",
+      "agent",
+      "project_root",
+      "request",
+      "prompt",
+      "prior_results",
+      "workspace_receipt_json",
+      "workspace_digest",
+      "policy",
+      "native_configuration",
+      "digest",
+      "runtime_input_json",
+      "capability_configuration_json",
+      "invocation_id",
+      "agent_binding_json"
+    ],
+    "agent_count": 9,
+    "bound_spec_md_count": 9,
+    "bindings": {
+      "coordinator": {
+        "spec_path": "agents/coordinator/spec.md",
+        "harness": "discovery-capsule",
+        "binding_digest": "sha256:5b690704e167dd6c6363a95198d5b2841611a31fc79c8582eaac022b206112a4",
+        "effective_loop_timeout_seconds": 900,
+        "effective_loop_max_turns": null
+      },
+      "reader": {
+        "spec_path": "agents/reader/spec.md",
+        "harness": "spec-capsule",
+        "binding_digest": "sha256:4701f735ae21a80394fd0287f317f060f318e2a86621328e2517d1c8185594ff",
+        "effective_loop_timeout_seconds": 1800,
+        "effective_loop_max_turns": null
+      },
+      "spec_author": {
+        "spec_path": "agents/spec_author/spec.md",
+        "harness": "spec-capsule",
+        "binding_digest": "sha256:d124358ac79fbbb4a65de8b95432f7605ac2278cc31e780a2a92b4f1a8a40564",
+        "effective_loop_timeout_seconds": 1800,
+        "effective_loop_max_turns": null
+      },
+      "context_assessor": {
+        "spec_path": "agents/context_assessor/spec.md",
+        "harness": "spec-capsule",
+        "binding_digest": "sha256:59a5a319a67b75cbe3f256614ba25c44c1a01756882a77f5ba8f6f4beb1b7fd1",
+        "effective_loop_timeout_seconds": 1800,
+        "effective_loop_max_turns": null
+      },
+      "planner": {
+        "spec_path": "agents/planner/spec.md",
+        "harness": "spec-capsule",
+        "binding_digest": "sha256:6a33d3e296591a9ccf2aae138d42a7ceb2aa6e10ecfb7c260e1f7e6036af1d65",
+        "effective_loop_timeout_seconds": 1800,
+        "effective_loop_max_turns": null
+      },
+      "task_author": {
+        "spec_path": "agents/task_author/spec.md",
+        "harness": "spec-capsule",
+        "binding_digest": "sha256:1e222f6c834d764d7303f8be85848b9496a0f03bcc1847455c972f89ab2afc09",
+        "effective_loop_timeout_seconds": 1800,
+        "effective_loop_max_turns": null
+      },
+      "implementation_worker": {
+        "spec_path": "agents/implementation_worker/spec.md",
+        "harness": "implementation-workspace",
+        "binding_digest": "sha256:ced109012440450d1ff0431cfc3149271d3ab1503c9281a9a67ee417ad8fceba",
+        "effective_loop_timeout_seconds": 3600,
+        "effective_loop_max_turns": null
+      },
+      "spec_reviewer": {
+        "spec_path": "agents/spec_reviewer/spec.md",
+        "harness": "spec-capsule",
+        "binding_digest": "sha256:98c86d934d520c8c0d841d0b6b9bf73df5308c42e318e72873f8ab039201af50",
+        "effective_loop_timeout_seconds": 1800,
+        "effective_loop_max_turns": null
+      },
+      "code_reviewer": {
+        "spec_path": "agents/code_reviewer/spec.md",
+        "harness": "implementation-workspace",
+        "binding_digest": "sha256:26b36308e498ee17baf54058f7c2c680aae8e16b4e24f0c5bbf424bcce06e766",
+        "effective_loop_timeout_seconds": 3600,
+        "effective_loop_max_turns": null
+      }
+    }
+  },
+  "narrowed_role_effects": {
+    "injected_role_declarations": [
+      {
+        "role": "concorde-implementation-worker",
+        "declared_writes": []
+      }
+    ],
+    "error_code": "permission_denied",
+    "declaration_was_enforced": true,
+    "model_calls": 0
+  },
+  "readonly_investigation": {
+    "write_paths": [],
+    "agent": "concorde-implementation-worker",
+    "harness": "implementation-workspace",
+    "model_calls": 0
+  },
+  "blocking_ai_feedback": {
+    "status": "succeeded",
+    "outcome": "ready",
+    "stages": [
+      "specify",
+      "spec-review",
+      "context-solve",
+      "plan",
+      "tasks",
+      "implementation",
+      "code-review",
+      "tasks",
+      "implementation",
+      "code-review"
+    ],
+    "implementation_invocations": 2,
+    "code_review_invocations": 2,
+    "has_automatic_repair_iteration": true,
+    "graph_transitions": [
+      {
+        "artifact": {
+          "digest": "sha256:963d78412edd85d52b39a5813295fbfc27e057accdc9af2836b83c0a390eb71e",
+          "id": "review.service.transfer.code",
+          "path": ".concorde/runs/664b4bcf-0c35-4d5e-81bc-452778e2fb24/review-service.transfer-code.json"
+        },
+        "finding_ids": [
+          "daily-limit-check"
+        ],
+        "from": "review_code",
+        "input_digest": "sha256:cdfafe01896ccb81b55011062b3a672b871ea3e82da76c156df22d71f9a81b5c",
+        "iteration": 1,
+        "outcome": "conflicting",
+        "status": null,
+        "to": "tasks",
+        "trigger": "ai-review"
+      }
+    ]
+  },
+  "source_sha256": {
+    "src/concorde/host/roles.py": "48cde3515bee676ccfd76343bebc98d9613273109ade1ba7c6cbc6623e88684d",
+    "src/concorde/host/build.py": "222d27e30ad5292530ed55a374e0a86f2d71d6bcc1a57471167510d95a9af026",
+    "src/concorde/host/capability_host.py": "3e8e3eec59f5a93ccbf8b0fe06567df2aa08839c115c5eb530893195ec4806ca",
+    "src/concorde/host/permissions.py": "e96d8a57736fd414b559701936df50bbbfd99851ed2dcfa5d818fe8b2f1c0d02",
+    "src/concorde/host/agent_executor.py": "f58289d261589ab2d9d9e4f10d0ebaa58ea442dd2017a13d50ed83635a651f54",
+    "src/concorde/host/review.py": "f87ab7eee3206e03f19813ddc7ce8f243274bdd97e731b2055afca0fd869ec62",
+    "src/concorde/host/agent_model.py": "b904946416374e941a4eb9267e711157f870093cebdc929dcdb78ca418247641",
+    "src/concorde/host/harness.py": "3a4e13e3be75696c60ac7de23436897c1aaaf7c621f6fe5d81e7bc6b7b00014a"
+  },
+  "verified_commit": "2569066fd946f2a9babfb808da120008b3a8a355"
+}
