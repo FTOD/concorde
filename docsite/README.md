@@ -31,6 +31,19 @@ legacy residue. `.concorde/worktree.json`, `.concorde/worktrees.json`, `.concord
 `.concorde/reflections/<bucket>/R-NNN.md`, legacy attempts, and all
 other `.concorde/**` control state are outside publication discovery and Manifest provenance.
 
+## Profile 8 navigation
+
+A Profile 8 project (`.concorde/config.json` with `profile_version: 8`) is served by the separate
+`plugins/scoped-content` adapter instead of the legacy Architecture/Features adapter described
+below. Every explicitly registered Spec document publishes exactly one canonical page at a readable,
+source-path-derived route — `/specs/concorde/workflow/delivery.md` publishes at
+`/specs/concorde/workflow/delivery` — and the primary sidebar ("Specs by source path") mirrors the
+registered documents' own directory hierarchy, with recognizable filename entries, from registered
+documents only. Every route a document previously published at (`/specs/<target-id>/<source-path-hash>`)
+keeps working as a redirect to its canonical page, so existing published links stay valid. A secondary
+sidebar ("Specs by target") reproduces the Domain-scope and component-composition views, so a shared
+document remains reachable under each of its referencing targets even though it publishes only once.
+
 ## Site identity
 
 The adapter reads exactly one project-specific file, `docsite/site.json` (site identity schema 1),

@@ -12,7 +12,14 @@ beforeAll(()=>{
 it('publishes the current exact registry and verifies the promoted manifest',async()=>{
  await validateScopedBuild(root,output);const r=loadScopedRegistry(root);
  for(const page of r.pages){const html=await readFile(resolve(output,page.route.slice(1)+'.html'),'utf8');expect(html).toContain(page.sourcePath);}
- const home=await readFile(resolve(output,'index.html'),'utf8');expect(home).toContain(r.pages.find(p=>p.targetId===r.entryTarget)!.route);
+ const home=await readFile(resolve(output,'index.html'),'utf8');expect(home).toContain(r.pages.find(p=>p.primaryOf===r.entryTarget)!.route);
+});
+it('preserves every legacy membership route as a redirect stub to its canonical page',async()=>{
+ const r=loadScopedRegistry(root);
+ for(const page of r.pages) for(const alias of page.aliases){
+  const stub=await readFile(resolve(output,alias.slice(1)+'.html'),'utf8');
+  expect(stub).toContain(page.route);expect(stub).toContain('refresh');
+ }
 });
 it('publishes the same typed relationship graph as the human navigation',async()=>{
  const graph=JSON.parse(await readFile(resolve(output,'architecture-graph.json'),'utf8'));const r=loadScopedRegistry(root);

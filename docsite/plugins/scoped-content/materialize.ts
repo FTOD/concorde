@@ -1,24 +1,57 @@
 import {copyFile,mkdir,rm,writeFile} from 'node:fs/promises';
 import {dirname,resolve,posix} from 'node:path';
 import matter from 'gray-matter';
-import {rewriteLinks,safeRead,type ScopedRegistry,type Target} from './model';
+import {primaryDocument,rewriteLinks,safeRead,type Page,type ScopedRegistry,type Target} from './model';
 import {hasDocsProjections,loadInstructionsProjection,loadWireProjection,renderInstructionsPage,renderWirePage} from './projections';
 const PROJECTIONS_GROUP={type:'category',label:'Projections',collapsed:false,items:[
   {type:'doc',id:'projections/instructions',label:'Agent instructions'},
   {type:'doc',id:'projections/wire',label:'Wire contracts'},
 ]};
+interface DirNode {dirs: Map<string,DirNode>; files: Page[]}
+function insert(root: DirNode, page: Page): void {
+  const segments = page.stagedPath.split('/');
+  let node = root;
+  for (let i = 0; i < segments.length - 1; i++) {
+    let child = node.dirs.get(segments[i]);
+    if (!child) {child = {dirs: new Map(), files: []}; node.dirs.set(segments[i], child);}
+    node = child;
+  }
+  node.files.push(page);
+}
+/** Directories first, then files, both alphabetically; a nested category per directory segment,
+ * collapsed by default except the first level. Every registered document appears exactly once. */
+function renderSourceTree(node: DirNode, depth: number): object[] {
+  const directories = [...node.dirs.entries()].sort(([a],[b])=>a.localeCompare(b))
+    .map(([name,child])=>({type:'category',label:name,collapsed:depth>0,items:renderSourceTree(child,depth+1)}));
+  const files = [...node.files].sort((a,b)=>posix.basename(a.stagedPath).localeCompare(posix.basename(b.stagedPath)))
+    .map(page=>({type:'doc',id:page.stagedPath.replace(/\.md$/,''),label:posix.basename(page.stagedPath)}));
+  return [...directories, ...files];
+}
 export function scopedSidebar(registry: ScopedRegistry) {
+  const byPath = new Map(registry.pages.map(p=>[p.sourcePath,p]));
+  // Domain scope nesting and component composition are independent dimensions; every entry here is a
+  // plain link (never a doc id) because each document already has its one sidebar position in the
+  // source-path tree below, and Docusaurus forbids placing the same doc id twice in one sidebar.
   const item=(target:Target):object=>{
-    const pages=registry.pages.filter(p=>p.targetId===target.id);
-    const main=pages.find(p=>p.primary)!;
-    return {type:'category',label:target.title,collapsed:true,
-      ...(target.kind==='domain'?{link:{type:'doc',id:main.stagedPath.replace(/\.md$/,'')}}:{}),
-      items:[...pages.filter(p=>target.kind!=='domain'||!p.primary).map(p=>({type:'doc',id:p.stagedPath.replace(/\.md$/,''),label:p.title})),
-        ...registry.targets.filter(t=>(target.kind==='domain'?t.scope_parent:t.component_parent)===target.id).map(item)]};
+    const pages=target.documents.map(path=>byPath.get(path)!);
+    const main=byPath.get(primaryDocument(target))!;
+    const rest=target.kind==='domain'?pages.filter(p=>p!==main):pages;
+    return {type:'category',label:target.title,collapsed:true,items:[
+      ...(target.kind==='domain'?[{type:'link',label:`${target.title} · Main Spec`,href:main.route}]:[]),
+      ...rest.map(p=>({type:'link',label:p.title,href:p.route})),
+      ...registry.targets.filter(t=>(target.kind==='domain'?t.scope_parent:t.component_parent)===target.id).map(item),
+    ]};
   };
-  return [{type:'category',label:'Domain scopes',collapsed:false,items:registry.targets.filter(t=>t.kind==='domain'&&!t.scope_parent).map(item)},
-    {type:'category',label:'Components',collapsed:false,items:registry.targets.filter(t=>t.kind!=='domain'&&!t.component_parent).map(item)},
-    ...(hasDocsProjections(registry.projectRoot)?[PROJECTIONS_GROUP]:[])].filter(group=>group.items.length);
+  const sourceTree: DirNode = {dirs: new Map(), files: []};
+  for (const page of registry.pages) insert(sourceTree, page);
+  return [
+    {type:'category',label:'Specs by source path',collapsed:false,items:renderSourceTree(sourceTree,0)},
+    {type:'category',label:'Specs by target',collapsed:true,items:[
+      {type:'category',label:'Domain scopes',collapsed:false,items:registry.targets.filter(t=>t.kind==='domain'&&!t.scope_parent).map(item)},
+      {type:'category',label:'Components',collapsed:false,items:registry.targets.filter(t=>t.kind!=='domain'&&!t.component_parent).map(item)},
+    ].filter(group=>group.items.length)},
+    ...(hasDocsProjections(registry.projectRoot)?[PROJECTIONS_GROUP]:[]),
+  ];
 }
 export async function materializeScoped(registry:ScopedRegistry) {
   const generated=resolve(registry.projectRoot,'docsite/.generated');
@@ -38,8 +71,8 @@ export async function materializeScoped(registry:ScopedRegistry) {
     // Identity is displayed by ContentProvenance; keep machine-readable metadata out of the
     // reading flow while leaving the authored source and its digest intact.
     const content=rewriteLinks(registry,page).replace(/^```concorde-document\s*\n[\s\S]*?^```\s*$/m,'').trimStart();
-    await writeFile(path,matter.stringify(content,{format:'md',slug:page.route.slice('/specs'.length),title:page.title,sidebar_label:page.title,
-      ...(page.kind==='domain'&&page.primary?{hide_table_of_contents:true}:{})}));
+    await writeFile(path,matter.stringify(content,{format:'md',slug:page.route.slice('/specs'.length),title:page.title,sidebar_label:posix.basename(page.stagedPath),
+      ...(page.kind==='domain'&&page.primaryOf?{hide_table_of_contents:true}:{})}));
   }
   if(hasDocsProjections(registry.projectRoot)){
     const projectionsDirectory=resolve(generated,'content/specs/projections');

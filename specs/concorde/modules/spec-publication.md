@@ -24,6 +24,7 @@ loadScopedRegistry(root: string): ScopedRegistry;
 safeRead(root: string, path: string): string;
 rewriteLinks(registry: ScopedRegistry, page: Page): string;
 hash(value: string | Buffer): string;
+legacyAliasRoute(targetId: string, sourcePath: string): string;
 // plugins/scoped-content/materialize.ts
 primaryDocument(target: Target): string;
 scopedSidebar(registry: ScopedRegistry): object[];
@@ -70,10 +71,11 @@ interface Target {
   diagrams: {source: string; kind: string; title: string; recipe?: 'system-overview'}[];
 }
 interface Page {
-  targetId: string; kind: Kind; title: string; sourcePath: string; contentDigest: string;
-  route: string; stagedPath: string; content: string; documentId: string;
-  documentTargets: string[]; mainVisible: boolean;
-  contextSection: 'target_spec' | 'shared_specs'; primary: boolean; inlineOverview: boolean;
+  sourcePath: string; route: string; stagedPath: string; title: string; content: string;
+  contentDigest: string; documentId: string; documentTargets: string[]; mainVisible: boolean;
+  contextSection: 'target_spec' | 'shared_specs';
+  memberships: {targetId: string; kind: Kind; primary: boolean}[];
+  aliases: string[]; kind: Kind; primaryOf: string | null; inlineOverview: boolean;
   architectureDiagrams?: {
     kind: string; title: string; source: string; sourceSha256: string; route: string;
   }[];
@@ -84,18 +86,29 @@ interface Edge {
   contract?: string;
 }
 interface ScopedRegistry {
-  schema_version: 14; projectRoot: string; registryPath: string; entryTarget: string;
+  schema_version: 15; projectRoot: string; registryPath: string; entryTarget: string;
   sourceDigest: string; targets: Target[]; pages: Page[]; edges: Edge[];
 }
 ```
 
-Target/document order follows the registry. For each target/document reference there is one Page.
-A shared physical document keeps its single document identity and identical byte digest, while
-receiving a route in each referencing target: `/specs/<target-id>/<key>`, where `key` is the first
-16 hex digits of `hash(sourcePath)` after `sha256:`. Its staged path is `<target-id>/<key>.md`.
-The Markdown H1 supplies the page title, falling back to the target title. `content` excludes front
-matter; `contentDigest` hashes the complete source bytes. Edges keep the independent scope,
-composition, participation and required-contract dimensions.
+Target/document order follows the registry. There is exactly one Page per distinct registered
+physical document, in the order its sourcePath was first registered. Its canonical route is
+`/specs/` followed by its sourcePath with a leading `specs/` segment removed — only when every
+registered document's path starts with `specs/` — and its `.md` extension dropped; a project whose
+documents are not all under `specs/` keeps full paths. Its staged path is that same (possibly
+unstripped) relative path, `.md` extension kept. `loadScopedRegistry` throws when two documents
+would map to the same canonical route, when a canonical route equals a legacy alias route, or when
+a staged path falls under the reserved `projections/` prefix.
+A shared physical document keeps its single document identity, identical byte digest and one Page,
+carrying a `memberships` entry `{targetId, kind, primary}` per referencing target in registry order.
+`kind` is the kind of the membership marked `primary`, else the first membership's kind; `primaryOf`
+is that membership's targetId, or `null` when no membership is primary. `aliases` lists, for every
+membership, the legacy route it previously published at: `/specs/<target-id>/<key>`, where `key` is
+the first 16 hex digits of `hash(sourcePath)` after `sha256:` (`legacyAliasRoute` computes this).
+The Markdown H1 supplies the page title, falling back to the primary membership's target title, or
+the first membership's target title when none is primary. `content` excludes front matter;
+`contentDigest` hashes the complete source bytes. Edges keep the independent scope, composition,
+participation and required-contract dimensions.
 
 `sourceDigest` hashes JSON serialization of ordered `[path, contentDigest]` pairs: configuration,
 registry, and then every target's document and diagram-source references in registry order. Shared
@@ -106,14 +119,21 @@ output under `generated/diagrams/`; `sourceSha256` omits the digest prefix, and 
 
 ## Materialization and required build collaborators
 
-`scopedSidebar` returns category/doc item objects with `type`, `label`, `items`, category `collapsed`
-and doc `id`. A Domain category also has `link: {type: doc, id}` pointing to its ontology.md
-page; the same page is not repeated as a child item. `primaryDocument` requires exactly one
-registered ontology.md for Domains and returns the first member for other kinds. Page.primary
-marks that choice; diagrams and the site entry use it rather than arbitrary array order.
-Separate root groups present Domain scopes and components; child categories follow
-the corresponding parent axis. `rewriteLinks` rewrites only supported local Markdown links to the
-registered page routes and rejects invalid or unregistered local destinations. Outside fenced code
+`scopedSidebar` returns two top-level groups. The primary group, labelled "Specs by source path",
+mirrors the registered documents' own (possibly `specs/`-stripped) directory hierarchy: one nested
+category per directory segment (label the directory name, `collapsed: true` except the first level),
+directories before files, both alphabetical, and one `{type: doc, id, label}` leaf per document
+(label its file name, extension included). Every registered document appears exactly once, from
+registered documents only, never directory scanning. The secondary group, labelled "Specs by
+target" and initially collapsed, reproduces the Domain-scope and component-composition trees as
+before, but every entry — including a Domain's main Spec — is a `{type: link, label, href}` item
+rather than a doc id, because a document already has its one sidebar position in the primary tree
+and Docusaurus forbids placing the same doc id twice in one sidebar; a Domain category's first item
+links to its ontology.md page labelled `<title> · Main Spec`. `primaryDocument` requires exactly one
+registered ontology.md for Domains and returns the first member for other kinds; a Page's matching
+`memberships` entry marks that choice with `primary: true`, and diagrams and the site entry use it
+rather than arbitrary array order. `rewriteLinks` rewrites only supported local Markdown links to
+the registered page routes and rejects invalid or unregistered local destinations. Outside fenced code
 blocks it handles inline links and images with these forms, whose URL has no whitespace or closing
 parenthesis:
 
@@ -124,9 +144,8 @@ parenthesis:
 
 A URL beginning with a scheme, `#`, or `/` is preserved unchanged. Other destinations
 resolve relative to the source document directory using POSIX normalization; an optional `#anchor`
-is preserved. Matching pages are selected by sourcePath: prefer the route belonging to the source
-page's target; otherwise accept the destination only when exactly one page matches. A shared
-destination with no same-target reference is ambiguous and is rejected. Relative non-Spec assets
+is preserved. The resolved path selects the single page registered at that sourcePath — there is
+now exactly one — and an unregistered destination is rejected. Relative non-Spec assets
 have no matching page and are rejected; callers use a supported absolute or root-relative asset URL.
 Unsupported Markdown forms are left unchanged. Link validation occurs during rewrite/materialization,
 not during registry loading. The function returns text without changing sources.
@@ -163,12 +182,16 @@ provide `{projectRoot?: string}`, defaulting to the site's parent. `loadContent`
 model and requires a valid materialization identity with the same source digest before returning it.
 Missing, malformed or mismatched identity rejects and requires fresh preparation. This detects
 source changes between materialization and plugin loading even when the page routes stay the same.
-`contentLoaded({content, actions})` calls `actions.setGlobalData` with Workspace 14 entry target,
+`contentLoaded({content, actions})` calls `actions.setGlobalData` with Workspace 15 entry target,
 page metadata without Markdown bodies and architecture nodes/edges. `getPathsToWatch()` returns
 absolute configuration, registry, Spec and diagram-source paths. `postBuild({outDir, routesPaths})`
 requires the fresh source digest and materialization identity to match the loaded model, and every expected page route to be in
 the rendered route inventory after base-URL normalization. Otherwise it throws before emitting
-verification artifacts. These are the complete collaborator promises this Profile 8 path relies on.
+verification artifacts. After the build manifest and architecture graph, it writes one legacy
+redirect stub per alias at `<outDir>/<alias without its leading slash>.html`: a minimal HTML
+document with a base-URL-prefixed `<meta http-equiv="refresh">` and `<link rel="canonical">` to the
+document's canonical page, plus a visible link, mirroring the root redirect page. These are the
+complete collaborator promises this Profile 8 path relies on.
 
 ## Build artifacts, validation and promotion
 
@@ -176,18 +199,20 @@ Successful plugin post-build writes these JSON artifacts in `outDir`:
 
 ```typescript
 // build-manifest.json
-{ schema_version: 14, sourceDigest: string,
-  pages: {sourcePath: string; route: string; contentDigest: string}[] }
+{ schema_version: 15, sourceDigest: string,
+  pages: {sourcePath: string; route: string; contentDigest: string; targets: string[]; aliases: string[]}[] }
 // architecture-graph.json
 { schema_version: 1, sourceDigest: string, nodes: Target[], edges: Edge[] }
 ```
 
 `validateScopedBuild(root, directory)` reloads the current model and reads both artifacts from the
 candidate directory. It resolves with no value only when schema versions, source digests, ordered
-page path/route/digest entries and complete ordered graph nodes/edges match exactly. Stale or
-incomplete manifest/graph, missing files or malformed JSON reject. This function does not repair
-artifacts or promote output. Route coverage is measured by the plugin's post-build hook; callers
-must not manufacture a manifest to bypass that hook.
+page path/route/digest/targets/aliases entries and complete ordered graph nodes/edges match exactly,
+and every alias has a redirect stub in the candidate directory whose content contains that page's
+canonical route. Stale or incomplete manifest/graph, missing files, a missing or non-matching
+redirect stub, or malformed JSON reject. This function does not repair artifacts or promote output.
+Route coverage is measured by the plugin's post-build hook; callers must not manufacture a manifest
+to bypass that hook.
 
 `buildSite` owns `docsite/.generated/candidate`, `docsite/build` and
 `docsite/.generated/previous-build`. It clears the candidate, prepares sources, runs Docusaurus,

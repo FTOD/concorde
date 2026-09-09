@@ -13,20 +13,26 @@ export interface Target {
   diagrams: {source: string; kind: string; title: string; recipe?: 'system-overview'}[];
 }
 export interface Page {
-  targetId: string; kind: Kind; title: string; sourcePath: string; contentDigest: string;
-  route: string; stagedPath: string; content: string; documentId: string;
-  documentTargets: string[]; mainVisible: boolean; contextSection: 'target_spec' | 'shared_specs';
-  primary: boolean;
+  sourcePath: string; route: string; stagedPath: string; title: string; content: string; contentDigest: string;
+  documentId: string; documentTargets: string[]; mainVisible: boolean; contextSection: 'target_spec' | 'shared_specs';
+  memberships: {targetId: string; kind: Kind; primary: boolean}[];
+  aliases: string[];
+  kind: Kind;
+  primaryOf: string | null;
   inlineOverview: boolean;
   architectureDiagrams?: {kind: string; title: string; source: string; sourceSha256: string; route: string}[];
 }
 export interface Edge {source: string; target: string; kind: 'scope_contains' | 'composes' | 'participates_in' | 'requires'; contract?: string}
 export interface ScopedRegistry {
-  schema_version: 14; projectRoot: string; registryPath: string; entryTarget: string;
+  schema_version: 15; projectRoot: string; registryPath: string; entryTarget: string;
   sourceDigest: string; targets: Target[]; pages: Page[]; edges: Edge[];
 }
 export const hash = (value: string | Buffer) => 'sha256:' + createHash('sha256').update(value).digest('hex');
 function requireThat(value: unknown, message: string): asserts value {if (!value) throw new Error(message);}
+/** The legacy `/specs/<target-id>/<source-path-hash>` route a document's membership was once published at, kept as a redirect. */
+export function legacyAliasRoute(targetId: string, sourcePath: string): string {
+  return `/specs/${targetId}/${hash(sourcePath).slice(7, 23)}`;
+}
 export function primaryDocument(target: Target): string {
   if (target.kind !== 'domain') return target.documents[0];
   const main = target.documents.filter(path => posix.basename(path) === 'ontology.md');
@@ -82,7 +88,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
   requireThat(registry.schema_version === 1 && Array.isArray(registry.targets), 'Spec registry schema 1 required');
   const targets = registry.targets as Target[]; const byId = new Map<string, Target>(); const allIds = new Set<string>();
   const documentTargets=new Map<string,string[]>();
-  const pages: Page[] = []; const edges: Edge[] = [];
+  const edges: Edge[] = [];
   const inputs: [string, string][] = [['.concorde/config.json', hash(configText)], [config.registry, hash(registryText)]];
   for (const t of targets) {
     requireThat(ids.test(t.id) && !allIds.has(t.id), `Duplicate/invalid target identity: ${t.id}`); allIds.add(t.id);
@@ -125,6 +131,12 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     requireThat(!allIds.has(context.id),`Document identity collides with target: ${context.id}`);
     allIds.add(context.id);documentIds.set(context.id,path);documentContexts.set(path,context);
   }
+  // A project whose Specs are not entirely rooted at specs/ keeps full paths; Concorde's own
+  // repository (and every project that follows its convention) gets a readable specs/-relative route.
+  const stripSpecsRoot = [...documentTargets.keys()].every(path => path.startsWith('specs/'));
+  const contentCache = new Map<string, {raw: string; content: string}>();
+  const membershipsByPath = new Map<string, {targetId: string; kind: Kind; primary: boolean}[]>();
+  const diagramAttachments: {targetId: string; diagram: NonNullable<Page['architectureDiagrams']>[number]}[] = [];
   for (const t of targets) {
     if (t.kind === 'domain') {
       const main = primaryDocument(t); const declaration = documentContexts.get(main)!;
@@ -147,18 +159,19 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     for (const scope of t.participates_in) {requireThat(byId.get(scope)?.kind === 'domain', `Unknown participating scope: ${scope}`); edges.push({source:t.id,target:scope,kind:'participates_in'});}
     for (const path of t.documents) {
       requireThat(path.endsWith('.md'), `Spec member must be Markdown: ${path}`);
-      const raw = safeRead(root,path); const content = matter(raw).content; requireThat(content.trim(), `Empty Spec: ${path}`);
-      const context=documentContexts.get(path)!;
-      const title = /^#\s+(.+)$/m.exec(content)?.[1] ?? t.title; const key = hash(path).slice(7,23);
-      pages.push({targetId:t.id,kind:t.kind,title,sourcePath:path,contentDigest:hash(raw),route:`/specs/${t.id}/${key}`,stagedPath:`${t.id}/${key}.md`,content,
-        documentId:context.id,documentTargets:context.targets,mainVisible:context.main_visible,
-        contextSection:context.targets.length>1?'shared_specs':'target_spec',primary:path===primaryDocument(t),
-        inlineOverview:t.kind==='domain'&&path===primaryDocument(t)&&/^## Architecture overview\s*$/m.test(ontologyProse(content))});
-      inputs.push([path,hash(raw)]);
+      let cached = contentCache.get(path);
+      if (!cached) {
+        const raw = safeRead(root,path); const content = matter(raw).content; requireThat(content.trim(), `Empty Spec: ${path}`);
+        cached = {raw, content}; contentCache.set(path, cached);
+      }
+      inputs.push([path,hash(cached.raw)]);
+      const memberships = membershipsByPath.get(path) ?? [];
+      memberships.push({targetId: t.id, kind: t.kind, primary: path === primaryDocument(t)});
+      membershipsByPath.set(path, memberships);
     }
     for (const focus of [...t.features,...t.apis]) {
       requireThat(ids.test(focus.id) && !allIds.has(focus.id), `Duplicate/invalid focus: ${focus.id}`); allIds.add(focus.id);
-      requireThat(t.documents.includes(focus.document) && pages.some(p => p.targetId === t.id && p.sourcePath === focus.document && p.content.includes(focus.id)), `Foreign or undefined local focus: ${focus.id}`);
+      requireThat(t.documents.includes(focus.document) && (contentCache.get(focus.document)?.content.includes(focus.id) ?? false), `Foreign or undefined local focus: ${focus.id}`);
     }
     for (const d of t.diagrams) {
       const raw = safeRead(root,d.source); const source = JSON.parse(raw);
@@ -168,17 +181,50 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
       inputs.push([d.source,hash(raw)]);
       const output = posix.normalize(posix.join(posix.dirname(d.source),source.meta.output ?? ''));
       requireThat(output.startsWith('generated/diagrams/') && output.endsWith('.html'), `Diagram output must be HTML under generated/diagrams/: ${d.source}`);
-      const page = pages.find(p=>p.targetId===t.id && p.primary)!;
-      (page.architectureDiagrams ??= []).push({kind:d.kind,title:d.title,source:d.source,sourceSha256:hash(raw).slice(7),route:'/diagrams/'+hash(d.source).slice(7,23)+'.html'});
+      diagramAttachments.push({targetId:t.id,diagram:{kind:d.kind,title:d.title,source:d.source,sourceSha256:hash(raw).slice(7),route:'/diagrams/'+hash(d.source).slice(7,23)+'.html'}});
     }
+  }
+  // One Page per distinct registered physical document: a shared Spec is published once, in the
+  // order its sourcePath was first registered, and carries every declared membership alongside it.
+  const pages: Page[] = []; const pageByPath = new Map<string, Page>(); const routeOwners = new Map<string, string>();
+  const allAliases = new Set<string>();
+  for (const [path, memberships] of membershipsByPath) {
+    const {raw, content} = contentCache.get(path)!;
+    const context = documentContexts.get(path)!;
+    const relative = stripSpecsRoot ? path.slice('specs/'.length) : path;
+    const route = `/specs/${relative.replace(/\.md$/, '')}`;
+    const stagedPath = relative;
+    requireThat(!stagedPath.startsWith('projections/'), `Staged path reserved for the Projections group: ${path}`);
+    requireThat(!routeOwners.has(route), `Duplicate canonical route ${route}: ${routeOwners.get(route)} and ${path}`);
+    routeOwners.set(route, path);
+    const primaryMembership = memberships.find(m => m.primary);
+    const kind = (primaryMembership ?? memberships[0]).kind;
+    const primaryOf = primaryMembership?.targetId ?? null;
+    const fallbackTitleOwner = byId.get((primaryMembership ?? memberships[0]).targetId)!;
+    const title = /^#\s+(.+)$/m.exec(content)?.[1] ?? fallbackTitleOwner.title;
+    const aliases = memberships.map(m => legacyAliasRoute(m.targetId, path));
+    for (const alias of aliases) allAliases.add(alias);
+    const page: Page = {
+      sourcePath: path, route, stagedPath, title, content, contentDigest: hash(raw),
+      documentId: context.id, documentTargets: context.targets, mainVisible: context.main_visible,
+      contextSection: context.targets.length > 1 ? 'shared_specs' : 'target_spec',
+      memberships, aliases, kind, primaryOf,
+      inlineOverview: kind === 'domain' && primaryOf !== null && /^## Architecture overview\s*$/m.test(ontologyProse(content)),
+    };
+    pages.push(page); pageByPath.set(path, page);
+  }
+  for (const route of routeOwners.keys()) requireThat(!allAliases.has(route), `Canonical route collides with a legacy alias route: ${route}`);
+  for (const attachment of diagramAttachments) {
+    const page = pageByPath.get(primaryDocument(byId.get(attachment.targetId)!))!;
+    (page.architectureDiagrams ??= []).push(attachment.diagram);
   }
   const providers = new Map<string,{owner:string;schema:string}>();
   const required: {owner:string;peer:string;key:string;schema:string}[] = [];
   // Contract links are navigation/consistency edges, never context inheritance.
-  for (const page of pages) for (const match of page.content.matchAll(/^```concorde-contract\s*\n([\s\S]*?)^```\s*$/gm)) {
+  for (const t of targets) for (const path of t.documents) for (const match of contentCache.get(path)!.content.matchAll(/^```concorde-contract\s*\n([\s\S]*?)^```\s*$/gm)) {
     const c = JSON.parse(match[1]); const key = `${c.id}@${c.version}`; const schema = stable(c.schema);
-    if (c.role === 'provided') {requireThat(!providers.has(key), `Duplicate contract provider: ${key}`);providers.set(key,{owner:page.targetId,schema});}
-    else if (c.role === 'required') required.push({owner:page.targetId,peer:c.peer,key,schema});
+    if (c.role === 'provided') {requireThat(!providers.has(key), `Duplicate contract provider: ${key}`);providers.set(key,{owner:t.id,schema});}
+    else if (c.role === 'required') required.push({owner:t.id,peer:c.peer,key,schema});
     else throw new Error(`Invalid contract role: ${key}`);
   }
   for (const c of required) {
@@ -186,7 +232,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     const p = providers.get(c.key);requireThat(p?.owner === c.peer && p.schema === c.schema, `Incompatible shared contract: ${c.key}`);
     edges.push({source:c.owner,target:c.peer,kind:'requires',contract:c.key});
   }
-  return {schema_version:14,projectRoot:root,registryPath:config.registry,entryTarget:registry.entry_target,sourceDigest:hash(JSON.stringify(inputs)),targets,pages,edges};
+  return {schema_version:15,projectRoot:root,registryPath:config.registry,entryTarget:registry.entry_target,sourceDigest:hash(JSON.stringify(inputs)),targets,pages,edges};
 }
 function stable(value: unknown): string {
   if (Array.isArray(value)) return '['+value.map(stable).join(',')+']';
@@ -202,8 +248,8 @@ export function rewriteLinks(registry: ScopedRegistry,page: Page): string {
     return line.replace(/(!?\[[^\]]*\])\(([^\s)]+)\)/g,(whole,label:string,url:string)=> {
       if (/^(?:[a-z]+:|#|\/)/i.test(url)) return whole;
       const [path,anchor] = url.split('#'); const source = posix.normalize(posix.join(posix.dirname(page.sourcePath),path));
-      const matches = registry.pages.filter(p=>p.sourcePath===source);const target = matches.find(p=>p.targetId===page.targetId) ?? (matches.length===1?matches[0]:undefined);
-      requireThat(target, `Unregistered or ambiguous local link: ${page.sourcePath} -> ${url}`);
+      const target = registry.pages.find(p=>p.sourcePath===source);
+      requireThat(target, `Unregistered local link: ${page.sourcePath} -> ${url}`);
       return `${label}(${target.route}${anchor?'#'+anchor:''})`;
     });
   }).join('\n');

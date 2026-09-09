@@ -29,13 +29,16 @@ The embedded **Spec publication** System overview shows the Domain boundary and 
 
 This Domain scopes a human publication of explicitly registered architecture knowledge. Source
 Markdown, registered diagram JSON and the target registry are authored inputs; generated pages,
-sidebars, rendered diagrams and relationship graph JSON are derived views. A Page represents one target's membership of one Markdown document. A Route
-is stable under title edits and contains target identity plus a digest of its source path. A Build
+sidebars, rendered diagrams and relationship graph JSON are derived views. A Page represents one
+registered physical Markdown document, published once regardless of how many targets reference it.
+Its Route is derived from its source path and is stable under title edits; a page also carries every
+declared membership for that source. Each membership's previously published Route is kept as a
+compatible redirect to the page's current Route. A Build
 manifest binds route inventory to exact source bytes. A Relationship view separates Domain nesting,
 component composition, scope participation and required/provided contract edges.
 Every source displays its `concorde-document` identity, exact referencing targets and main visibility.
-A shared physical truth produces one target-specific Page/Route for each declared membership without
-copying or reinterpreting its content.
+A shared physical truth is published once, listing every declared membership, without copying or
+reinterpreting its content.
 
 The Publication Service scaffolds a project-local Docusaurus site using a reviewed proposal. Its
 Spec publication Module reads only explicitly registered documents, validates membership, rewrites

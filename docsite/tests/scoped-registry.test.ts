@@ -2,10 +2,11 @@ import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync,symlinkSync} fro
 import {tmpdir} from 'node:os';
 import {resolve,dirname} from 'node:path';
 import {beforeEach,afterEach,it,expect} from 'vitest';
-import {loadScopedRegistry,rewriteLinks,primaryDocument,type Target} from '../plugins/scoped-content/model';
+import {hash,legacyAliasRoute,loadScopedRegistry,rewriteLinks,primaryDocument,type Target} from '../plugins/scoped-content/model';
 import {materializeScoped,scopedSidebar} from '../plugins/scoped-content/materialize';
-import scopedContent from '../plugins/scoped-content';
+import scopedContent,{validateScopedBuild} from '../plugins/scoped-content';
 import type {LoadContext} from '@docusaurus/types';
+interface SidebarItem {type:string; label:string; href?:string; id?:string; collapsed?:boolean; items?:SidebarItem[]}
 let root:string,targets:Target[];
 function put(path:string,text:string){mkdirSync(dirname(resolve(root,path)),{recursive:true});writeFileSync(resolve(root,path),text);}
 function target(id:string,kind:Target['kind'],documents:string[]):Target{return{id,kind,title:id,documents,scope_parent:null,component_parent:null,participates_in:[],implementation:[],features:[],apis:[],checks:[],diagrams:[]};}
@@ -36,21 +37,44 @@ afterEach(()=>rmSync(root,{recursive:true,force:true}));
 it('admits arbitrary multi-document collections without frontmatter or ambient discovery',()=>{put('specs/ignored.md','UNREGISTERED');const r=loadScopedRegistry(root);expect(r.pages).toHaveLength(5);expect(r.pages.some(p=>p.content.includes('UNREGISTERED'))).toBe(false);});
 it('separates component composition and multiple scope participation',()=>{const r=loadScopedRegistry(root);expect(r.edges.filter(e=>e.kind==='participates_in')).toHaveLength(2);expect(r.edges.find(e=>e.kind==='composes')).toMatchObject({source:'service.transfer',target:'module.ledger'});});
 it('rejects cycles and incorrect parent dimensions',()=>{targets[0].scope_parent='scope.audit';targets[1].scope_parent='scope.bank';save();expect(()=>loadScopedRegistry(root)).toThrow(/cycle/);targets[0].scope_parent=null;targets[1].scope_parent=null;targets[3].component_parent='scope.bank';save();expect(()=>loadScopedRegistry(root)).toThrow(/dimension/);});
-it('supports explicitly shared documents but rejects duplicate members in one collection',()=>{targets[3].documents.push('specs/promises.md');save();updateDocument('specs/promises.md',{targets:['service.transfer','module.ledger']});const r=loadScopedRegistry(root);expect(r.pages).toHaveLength(6);expect(r.pages.filter(p=>p.sourcePath==='specs/promises.md').every(p=>p.contextSection==='shared_specs')).toBe(true);targets[3].documents.push('specs/promises.md');save();expect(()=>loadScopedRegistry(root)).toThrow(/unique/);});
+it('supports explicitly shared documents but rejects duplicate members in one collection',()=>{
+ targets[3].documents.push('specs/promises.md');save();updateDocument('specs/promises.md',{targets:['service.transfer','module.ledger']});
+ const r=loadScopedRegistry(root);expect(r.pages).toHaveLength(5);
+ const shared=r.pages.find(p=>p.sourcePath==='specs/promises.md')!;
+ expect(shared.memberships.map(m=>m.targetId).sort()).toEqual(['module.ledger','service.transfer']);
+ expect(shared.contextSection).toBe('shared_specs');
+ targets[3].documents.push('specs/promises.md');save();expect(()=>loadScopedRegistry(root)).toThrow(/unique/);
+});
 it('validates document identity, exact references and visibility type',()=>{updateDocument('specs/promises.md',{targets:['service.transfer','module.ledger']});expect(()=>loadScopedRegistry(root)).toThrow(/differ/);updateDocument('specs/promises.md',{targets:['service.transfer']});updateDocument('specs/api.md',{id:'document.specs.promises'});expect(()=>loadScopedRegistry(root)).toThrow(/Duplicate document identity/);updateDocument('specs/api.md',{id:'document.specs.api'});updateDocument('specs/promises.md',{main_visible:'yes'});expect(()=>loadScopedRegistry(root)).toThrow(/main_visible/);});
 it('binds source identity to content and membership order',()=>{const first=loadScopedRegistry(root).sourceDigest;targets[2].documents.reverse();save();const second=loadScopedRegistry(root).sourceDigest;expect(second).not.toBe(first);put('specs/promises.md',readFileSync(resolve(root,'specs/promises.md'),'utf8')+'\nChanged');expect(loadScopedRegistry(root).sourceDigest).not.toBe(second);});
 it('rejects symlink path components',()=>{rmSync(resolve(root,'specs/arbitrary.md'));symlinkSync(resolve(root,'specs/promises.md'),resolve(root,'specs/arbitrary.md'));expect(()=>loadScopedRegistry(root)).toThrow(/Symlink/);});
-it('rewrites only registered navigation and leaves code examples intact',()=>{putSpec('specs/arbitrary.md',['service.transfer'],'# Use\n\n[Promise](promises.md)\n\n```md\n[Example](unknown.md)\n```');let r=loadScopedRegistry(root);let p=r.pages.find(p=>p.sourcePath==='specs/arbitrary.md')!;expect(rewriteLinks(r,p)).toContain('/specs/service.transfer/');expect(rewriteLinks(r,p)).toContain('[Example](unknown.md)');p.content+='\n[Wrong](unknown.md)';expect(()=>rewriteLinks(r,p)).toThrow(/Unregistered/);});
-it('exposes Module APIs directly and independent navigation trees',()=>{const r=loadScopedRegistry(root);expect(scopedSidebar(r).map(g=>g.label)).toEqual(['Domain scopes','Components']);targets[3].features=[{id:'feature.ledger',title:'Artificial',document:'specs/api.md'}];save();expect(()=>loadScopedRegistry(root)).toThrow(/APIs/);});
+it('rewrites only registered navigation to canonical routes and leaves code examples intact',()=>{
+ putSpec('specs/arbitrary.md',['service.transfer'],'# Use\n\n[Promise](promises.md)\n\n```md\n[Example](unknown.md)\n```');
+ let r=loadScopedRegistry(root);let p=r.pages.find(p=>p.sourcePath==='specs/arbitrary.md')!;
+ expect(rewriteLinks(r,p)).toContain('[Promise](/specs/promises)');
+ expect(rewriteLinks(r,p)).toContain('[Example](unknown.md)');
+ p.content+='\n[Wrong](unknown.md)';expect(()=>rewriteLinks(r,p)).toThrow(/Unregistered/);
+});
+it('exposes Module APIs directly and independent navigation trees',()=>{const r=loadScopedRegistry(root);expect(scopedSidebar(r).map(g=>g.label)).toEqual(['Specs by source path','Specs by target']);targets[3].features=[{id:'feature.ledger',title:'Artificial',document:'specs/api.md'}];save();expect(()=>loadScopedRegistry(root)).toThrow(/APIs/);});
+it('derives readable canonical routes, staged paths and legacy alias routes from source paths',()=>{
+ const r=loadScopedRegistry(root);
+ const arbitrary=r.pages.find(p=>p.sourcePath==='specs/arbitrary.md')!;
+ expect(arbitrary.route).toBe('/specs/arbitrary');expect(arbitrary.stagedPath).toBe('arbitrary.md');
+ expect(arbitrary.aliases).toEqual([legacyAliasRoute('service.transfer','specs/arbitrary.md')]);
+ const bank=r.pages.find(p=>p.sourcePath==='specs/bank/ontology.md')!;
+ expect(bank.route).toBe('/specs/bank/ontology');expect(bank.stagedPath).toBe('bank/ontology.md');
+ expect(bank.aliases).toEqual([legacyAliasRoute('scope.bank','specs/bank/ontology.md')]);
+});
 it('binds the Domain category and diagram to ontology.md even when it is not the first member',()=>{
  const topic='specs/bank/routing.md';targets[0].documents.unshift(topic);putSpec(topic,['scope.bank'],'# Routing\nLocal routing facts.');save();
- const registry=loadScopedRegistry(root);const main=registry.pages.find(p=>p.targetId==='scope.bank'&&p.primary)!;
+ const registry=loadScopedRegistry(root);const main=registry.pages.find(p=>p.memberships.some(m=>m.targetId==='scope.bank'&&m.primary))!;
  expect(primaryDocument(targets[0])).toBe('specs/bank/ontology.md');expect(main.sourcePath).toBe('specs/bank/ontology.md');
  expect(main.architectureDiagrams).toHaveLength(1);expect(registry.pages.find(p=>p.sourcePath===topic)?.architectureDiagrams).toBeUndefined();
- const domain=scopedSidebar(registry)[0].items[0] as {link:{type:string;id:string};items:{type:string;id?:string}[]};
- expect(domain.link).toEqual({type:'doc',id:main.stagedPath.replace(/\.md$/,'')});
- expect(domain.items.some(i=>i.id===domain.link.id)).toBe(false);
- expect(registry.pages.filter(p=>p.targetId==='scope.bank')).toHaveLength(2);
+ const sidebar=scopedSidebar(registry) as SidebarItem[];
+ const domain=sidebar[1].items![0].items![0];
+ expect(domain.items![0]).toEqual({type:'link',label:'scope.bank · Main Spec',href:main.route});
+ expect(domain.items!.filter(i=>i.href===main.route)).toHaveLength(1);
+ expect(registry.pages.filter(p=>p.memberships.some(m=>m.targetId==='scope.bank'))).toHaveLength(2);
 });
 it('rejects missing, duplicate, shared or hidden Domain main Specs',()=>{
  const main=targets[0].documents[0];targets[0].documents=['specs/unknown.md'];save();expect(()=>loadScopedRegistry(root)).toThrow(/ontology.md/);
@@ -81,4 +105,57 @@ it('invalidates the previous materialization identity before a failed preparatio
  await expect(materializeScoped(loadScopedRegistry(root))).rejects.toThrow(/Unregistered/);
  const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
  await expect(plugin.loadContent!()).rejects.toThrow(/ENOENT/);
+});
+it('mirrors the registered source-path directory structure with directories before files, both alphabetical',()=>{
+ targets[0].documents.push('specs/bank/routing.md');putSpec('specs/bank/routing.md',['scope.bank'],'# Routing\nLocal routing facts.');save();
+ const registry=loadScopedRegistry(root);
+ const tree=scopedSidebar(registry)[0] as {label:string;collapsed:boolean;items:{type:string;label:string;collapsed?:boolean;items?:{type:string;label:string}[]}[]};
+ expect(tree.label).toBe('Specs by source path');expect(tree.collapsed).toBe(false);
+ const [audit,bank,...files]=tree.items;
+ expect(audit).toMatchObject({type:'category',label:'audit',collapsed:false});
+ expect(bank).toMatchObject({type:'category',label:'bank',collapsed:false});
+ expect(bank.items!.map(i=>({type:i.type,label:i.label}))).toEqual([{type:'doc',label:'ontology.md'},{type:'doc',label:'routing.md'}]);
+ expect(files.map(f=>f.label)).toEqual(['api.md','arbitrary.md','promises.md']);
+ expect(files.every(f=>f.type==='doc')).toBe(true);
+});
+it('strips the specs/ root only when every registered document is under it',()=>{
+ targets[3].documents.push('docs/outside.md');putSpec('docs/outside.md',['module.ledger'],'# Outside\nNot under specs.');save();
+ const registry=loadScopedRegistry(root);
+ const outside=registry.pages.find(p=>p.sourcePath==='docs/outside.md')!;
+ expect(outside.route).toBe('/specs/docs/outside');expect(outside.stagedPath).toBe('docs/outside.md');
+ const bank=registry.pages.find(p=>p.sourcePath==='specs/bank/ontology.md')!;
+ expect(bank.route).toBe('/specs/specs/bank/ontology');expect(bank.stagedPath).toBe('specs/bank/ontology.md');
+});
+it('rejects a canonical route that collides with a legacy alias route',()=>{
+ const alias=legacyAliasRoute('service.transfer','specs/arbitrary.md');
+ const collidingPath='specs'+alias.slice('/specs'.length)+'.md';
+ targets[1].documents.push(collidingPath);putSpec(collidingPath,['scope.audit'],'# Colliding\nCrafted to collide with a legacy alias.');save();
+ expect(()=>loadScopedRegistry(root)).toThrow(/collides with a legacy alias route/);
+});
+it('rejects a registered document staged under the reserved projections/ prefix',()=>{
+ targets[1].documents.push('specs/projections/foo.md');putSpec('specs/projections/foo.md',['scope.audit'],'# Foo\nReserved staged path.');save();
+ expect(()=>loadScopedRegistry(root)).toThrow(/[Pp]rojections/);
+});
+it('writes a legacy redirect stub for every alias during postBuild, and validateScopedBuild checks them',async()=>{
+ const registry=loadScopedRegistry(root);await materializeScoped(registry);
+ const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
+ await plugin.loadContent!();
+ const outDir=mkdtempSync(resolve(tmpdir(),'concorde-outdir-'));
+ const routesPaths=registry.pages.map(p=>p.route);
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ await plugin.postBuild!({outDir,routesPaths} as any);
+ for(const page of registry.pages) for(const alias of page.aliases){
+  const stub=readFileSync(resolve(outDir,alias.slice(1)+'.html'),'utf8');
+  expect(stub).toContain(page.route);expect(stub).toContain('refresh');
+ }
+ await expect(validateScopedBuild(root,outDir)).resolves.toBeUndefined();
+ const manifestPath=resolve(outDir,'build-manifest.json');
+ const manifest=JSON.parse(readFileSync(manifestPath,'utf8'));
+ writeFileSync(manifestPath,JSON.stringify({...manifest,schema_version:14}));
+ await expect(validateScopedBuild(root,outDir)).rejects.toThrow(/Build Manifest 15/);
+ writeFileSync(manifestPath,JSON.stringify(manifest));
+ const [firstPage]=registry.pages;const [firstAlias]=firstPage.aliases;
+ rmSync(resolve(outDir,firstAlias.slice(1)+'.html'));
+ await expect(validateScopedBuild(root,outDir)).rejects.toThrow(/redirect stub/);
+ rmSync(outDir,{recursive:true,force:true});
 });

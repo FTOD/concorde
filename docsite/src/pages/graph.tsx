@@ -217,5 +217,5 @@ function FeatureGraphPage() {
 
 export default function ArchitectureGraphPage() {
   const data = usePluginData('concorde-content') as unknown as {schema_version?:number};
-  return data.schema_version===14 ? <ScopedGraph/> : <FeatureGraphPage/>;
+  return data.schema_version===15 ? <ScopedGraph/> : <FeatureGraphPage/>;
 }

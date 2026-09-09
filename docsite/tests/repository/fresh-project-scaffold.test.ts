@@ -92,10 +92,15 @@ describe('a project holding only Profile 8 initialization outputs', () => {
     const build = run(process.execPath, ['--import','tsx','scripts/build.ts'], resolve(root, 'docsite'));
     expect(build.status, `${build.stdout}\n${build.stderr}`).toBe(0);
     const manifest = JSON.parse(await readFile(resolve(root,'docsite/build/build-manifest.json'),'utf8'));
-    expect(manifest.schema_version).toBe(14);expect(manifest.pages).toHaveLength(1);
-    expect(manifest.pages[0].route).toMatch(/^\/specs\/domain.atlas\//);
+    expect(manifest.schema_version).toBe(15);expect(manifest.pages).toHaveLength(1);
+    expect(manifest.pages[0].route).toBe('/specs/project/ontology');
+    expect(manifest.pages[0].targets).toEqual(['domain.atlas']);
+    expect(manifest.pages[0].aliases).toEqual([expect.stringMatching(/^\/specs\/domain\.atlas\/[0-9a-f]{16}$/)]);
     const homepage=await readFile(resolve(root,'docsite/build/index.html'),'utf8');expect(homepage).toContain(manifest.pages[0].route);
     expect(existsSync(resolve(root,'docsite/build',manifest.pages[0].route.slice(1)+'.html'))).toBe(true);
+    const [legacyAlias]=manifest.pages[0].aliases as string[];
+    const redirectStub=await readFile(resolve(root,'docsite/build',legacyAlias.slice(1)+'.html'),'utf8');
+    expect(redirectStub).toContain(manifest.pages[0].route);
     expect(await readFile(resolve(root,'generated/protocol/framework-owned.txt'),'utf8')).toBe('Preserve Framework build assets.');
     const mainPage=await readFile(resolve(root,'docsite/build',manifest.pages[0].route.slice(1)+'.html'),'utf8');
     expect(mainPage).toContain('<iframe');
