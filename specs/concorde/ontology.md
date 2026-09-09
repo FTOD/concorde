@@ -28,8 +28,8 @@ organization of Project Specs, including both consumer projects and Concorde's o
 installation distribute the rule assets and produce installed Skill entries; those entries invoke
 Framework Capabilities from a project's Codex or Claude integration. Agent Graphs coordinate
 invocations and feedback loops; each Agent binds its `spec.md`, Harness and Constraints/Permissions.
-The context Service resolves registered Specs for execution, and developer views present project
-knowledge for inspection and feedback.
+The context Service resolves registered Specs for execution under the Protocol's organization and
+resolution rules, and developer views present project knowledge for inspection and feedback.
 
 The boundary describes the Framework's supplied rules and software, not a process or deployment
 location. Installed Skill entries are shown at their project-side use location; their definitions
