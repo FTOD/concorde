@@ -39,7 +39,7 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 ## Install and initialize
 
 The installer distributes a deterministic build's output — seven Skills exposing thirteen
-capabilities, nine rendered Agent instructions (from `agents/<name>/spec.md`), and six Markdown
+capabilities, eight rendered Agent instructions (from `agents/<name>/spec.md`), and six Markdown
 templates — to Codex or Claude.
 Check `python scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
@@ -85,8 +85,10 @@ Send this invocation on stdin to `scripts/run-capability.py concorde-dev-loop` (
 ```
 
 Null configuration asks the trusted host to load initialized settings. The `ask` action of
-`concorde-main` may omit target_id: a separate coordinator discovers complete Module Specs, routes one or more fresh
-target readers, then synthesizes only their typed results. A supplied target_id is a routing hint,
+`concorde-main` may omit target_id: the coordinator selects needed Module Spec contexts, Python
+resolves their complete documents and declared diagram sources, and the coordinator answers
+directly from the injected originals. Shared source bodies are deduplicated while preserving each
+Module's membership. A supplied target_id is a routing hint,
 not a context grant. The loop executes specification,
 context assessment, plan, tasks, implementation and checks, ending at a ready candidate.
 

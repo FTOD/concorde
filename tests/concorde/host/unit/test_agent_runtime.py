@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from concorde.host.agent_executor import AgentProcessExecutor
 from concorde.host.agent_runtime import (RuntimeAgent, AgentGrant, AgentLimits, AgentRuntime, AgentStep)
+from concorde.host import agent_model
 from concorde.host.agent_model import Agent, Constraints, agent_definition
 from concorde.host.harness import SPEC_CAPSULE, LoopPolicy
 from concorde.host.effects import EffectDeclaration
@@ -39,7 +40,16 @@ class AgentRuntimeTests(unittest.TestCase):
 
     def definition(self, id, decide, children=(), targets=('service.transfer',), max_steps=8):
         if isinstance(decide, NativeAgentAdapter):
-            agent = agent_definition('reader')
+            # A test-only loop contract exercises the generic native runtime without a
+            # production question-answering Agent. Binding and native enforcement stay real.
+            catalog = agent_model.load_agents()
+            base = catalog['planner']
+            agent = replace(base, constraints=replace(base.constraints,
+                contexts=('concorde-agent-task', 'concorde-agent-loop-context'),
+                results=('concorde-agent-answer', 'concorde-agent-loop-step'),
+                allow_delegation=True))
+            self.enterContext(patch.object(agent_model, 'load_agents',
+                return_value={**catalog, 'planner': agent}))
             assert id == agent.name
             binding = load_agent(PACKAGE, id).binding
         else:
@@ -113,14 +123,11 @@ class AgentRuntimeTests(unittest.TestCase):
         decision = self.invoke([replace(definition, decision_reference='test-decision/v2')]).events[0]
         self.assertNotEqual(first['binding_digest'], decision['binding_digest'])
 
-    def test_unregistered_harness_and_unidentified_injected_executor_are_rejected(self):
+    def test_unregistered_harness_is_rejected(self):
         definition = self.definition('A', lambda frame: self.fail('must not execute'))
         with self.assertRaises(ValueError):
             self.invoke([replace(definition, agent=replace(definition.agent,
                 harness=replace(SPEC_CAPSULE, state='forged configuration')))])
-        from agents.reader import runtime
-        with self.assertRaisesRegex(ValueError, 'executor_reference'):
-            runtime(self.root, PACKAGE, 'service.transfer', executor=lambda launch: None)
 
     def test_undeclared_self_call_is_denied_before_context_admission(self):
         def decide(frame):
@@ -349,25 +356,23 @@ class AgentRuntimeTests(unittest.TestCase):
                 self.assertEqual(result.outcome,'limit_exhausted' if mode=='deadline' else 'cancelled')
                 self.assertEqual(calls,[])
 
-    def test_reader_factory_uses_real_context_service_and_requires_host_grant(self):
-        from agents.reader import runtime
-        reader=runtime(self.root,PACKAGE,'service.transfer',executor=lambda launch, *, deadline: None,
-                       executor_reference='test-null-executor/v1')
-        result=reader.invoke('reader',self.task(target='module.ledger'),
-            AgentGrant(frozenset({'service.transfer'}),frozenset({'reader'}))).result
-        self.assertEqual(result.error,'admission_failed')
-        result=reader.invoke('reader',self.task(),
-            AgentGrant(frozenset({'service.transfer'}),frozenset())).result
-        self.assertEqual(result.error,'agent_not_admitted')
-        frames=[]
-        with patch('concorde.host.native_agent.NativeAgentAdapter.__call__',
-                   lambda adapter,frame: frames.append(frame) or self.done(source='model-driven')):
-            result=reader.invoke('reader',self.task(),
-                AgentGrant(frozenset({'service.transfer'}),frozenset({'reader'}))).result
-        self.assertEqual(result.outcome,'completed')
-        snapshot=decode(frames[0].context_json)['data']
-        self.assertEqual(snapshot['document_order'],['specs/transfer/module.md','specs/transfer/promises.md'])
-        self.assertEqual(snapshot['implementation_artifacts'],[])
+    def test_runtime_uses_real_context_service_and_requires_host_grant(self):
+        frames = []
+        runtime = AgentRuntime([self.definition('A',
+            lambda frame: frames.append(frame) or self.done())], self.context)
+        result = runtime.invoke('A', self.task(target='module.ledger'),
+            AgentGrant(frozenset({'service.transfer'}), frozenset({'A'}))).result
+        self.assertEqual(result.error, 'admission_failed')
+        result = runtime.invoke('A', self.task(),
+            AgentGrant(frozenset({'service.transfer'}), frozenset())).result
+        self.assertEqual(result.error, 'agent_not_admitted')
+        result = runtime.invoke('A', self.task(),
+            AgentGrant(frozenset({'service.transfer'}), frozenset({'A'}))).result
+        self.assertEqual(result.outcome, 'completed')
+        snapshot = decode(frames[0].context_json)['data']
+        self.assertEqual(snapshot['document_order'],
+            ['specs/transfer/module.md', 'specs/transfer/promises.md'])
+        self.assertEqual(snapshot['implementation_artifacts'], [])
 
     def test_native_codex_and_claude_yield_to_code_agent_and_continue_fresh(self):
         for integration in ('codex','claude'):
@@ -401,9 +406,9 @@ class AgentRuntimeTests(unittest.TestCase):
                     deadlines.append(deadline)
                     return executor(launch)
                 adapter=NativeAgentAdapter(integration,injected)
-                runtime=AgentRuntime([self.definition('reader',adapter,['B']),self.definition('B',lambda f:self.done())],self.context)
+                runtime=AgentRuntime([self.definition('planner',adapter,['B']),self.definition('B',lambda f:self.done())],self.context)
                 host=CapabilityHost(self.root,PACKAGE)
-                run=host.invoke_agent(runtime,'reader',self.task(),AgentGrant(frozenset({'service.transfer'}),frozenset({'reader','B'})))
+                run=host.invoke_agent(runtime,'planner',self.task(),AgentGrant(frozenset({'service.transfer'}),frozenset({'planner','B'})))
                 self.assertEqual(run.result.outcome,'completed')
                 self.assertEqual(len(calls),2)
                 self.assertEqual(len(deadlines), 2)
@@ -445,11 +450,11 @@ class AgentRuntimeTests(unittest.TestCase):
                 observed = []
                 def parent(frame):
                     if not frame.feedback:
-                        return AgentStep('code-driven', 'delegate', 'reader', self.task('child'))
+                        return AgentStep('code-driven', 'delegate', 'planner', self.task('child'))
                     observed.extend(frame.feedback)
                     return self.done()
-                run = self.invoke([self.definition('A', parent, ['reader']),
-                    self.definition('reader', NativeAgentAdapter('codex',
+                run = self.invoke([self.definition('A', parent, ['planner']),
+                    self.definition('planner', NativeAgentAdapter('codex',
                         lambda launch, *, deadline: executor(launch)))])
                 self.assertEqual(run.result.outcome, 'completed')
                 self.assertEqual(len(observed), 1)

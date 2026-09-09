@@ -7,7 +7,7 @@ and belongs to Package assets (``module.package-assets``). Each ``agents/<name>/
 its ``spec.md`` instead belong to the Implementation Spec that binds that Agent: ``agents/coordinator``,
 ``agents/planner``, ``agents/task_author``, ``agents/implementation_worker``,
 ``agents/spec_reviewer`` and ``agents/code_reviewer`` belong to ``module.workflows``;
-``agents/reader``, ``agents/spec_author`` and ``agents/context_assessor`` belong to
+``agents/spec_author`` and ``agents/context_assessor`` belong to
 ``module.spec-context``.
 
 A module named here with no matching ``agents/<name>/__init__.py`` package, or a package present
@@ -18,7 +18,6 @@ from __future__ import annotations
 
 AGENTS = (
     "coordinator",
-    "reader",
     "spec_author",
     "context_assessor",
     "planner",

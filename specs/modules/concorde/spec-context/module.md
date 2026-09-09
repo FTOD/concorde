@@ -25,7 +25,7 @@ Authored source: `specs/modules/concorde/spec-context/module.md` (the Mermaid fe
 ```mermaid
 flowchart TB
     accTitle: Module contexts entities and relationships
-    accDescr: A selection identifies one providing Module and an optional local focus. Its registered collection supplies the complete project contract. Context assembly combines those authored bytes with the phase, task, pinned rules, instructions and admitted stage inputs; the resulting immutable snapshot is identified by all admitted bytes and lifecycle identity.
+    accDescr: A bounded task selects one Module; the global coordinator may explicitly select several complete Module contexts. Python resolves registered Markdown and diagram sources, deduplicates original bodies and preserves membership. Task, phase, rules and lifecycle identity bind the immutable input.
     selection["Module selection and optional focus"]
     collection["Registered Markdown collection<br/>includes Mermaid source"]
     inputs["Task, phase, rules and stage inputs"]
@@ -33,17 +33,25 @@ flowchart TB
     identity["Context identity"]
     realization["Referenced Implementation Specs<br/>and exact file bindings"]
     worker["Bounded invocation"]
+    selections["Explicit global Module selections"]
+    pool["Python source assembly<br/>unique original bodies + membership"]
+    coordinator["Global coordinator<br/>direct answers and routing"]
     selection -->|resolves complete| collection
     collection -->|supplies authored bytes to| snapshot
     inputs -->|are frozen into| snapshot
     realization -.->|is appended only for code writing| snapshot
     snapshot -->|is bound by| identity
     snapshot -->|is supplied to| worker
+    selections -->|resolve complete contexts through| pool
+    collection -->|supplies complete original sources to| pool
+    inputs -->|are frozen into| pool
+    pool -->|is bound by| identity
+    pool -->|is injected directly into| coordinator
 ```
 
 A selection identifies one providing Module and an optional local focus. Its registered collection supplies the complete project contract. Context assembly combines those authored bytes with the phase, task, pinned rules, instructions and admitted stage inputs; the resulting immutable snapshot is identified by all admitted bytes and lifecycle identity.
 
-Implementation references identify a separate realization view. Only a code-writing phase appends its Implementation Spec bodies; code review receives its separately declared file read grant. Neither focus nor an inline diagram narrows or expands membership. Initialization and topology authoring propose complete sources; the transaction boundary applies only current, admitted replacements. The reader factory composes asset loading and execution without making those siblings structural children.
+Implementation references identify a separate realization view. Only a code-writing phase appends its Implementation Spec bodies; code review receives its separately declared file read grant. Neither focus nor an inline diagram narrows or expands membership. Initialization and topology authoring propose complete sources; the transaction boundary applies only current, admitted replacements. Global context assembly deterministically combines explicitly selected complete Module contexts, deduplicates source bodies and preserves membership for direct coordinator reasoning.
 
 ## Features
 
@@ -53,7 +61,7 @@ For an explicit Module/Implementation inventory, admit stable identities, exact 
 
 ### feature.context.resolve
 
-For one Module ID, phase, task and optional local Feature/Interface focus, freeze its complete registered Markdown and declared architecture sources with the accepted rules and admitted stage inputs. Focus changes the question, not membership. Code writing additionally receives referenced Implementation Specs and exact file bindings; invalid input or stale binding yields no reusable partial snapshot.
+For one Module ID, phase, task and optional local Feature/Interface focus, freeze its complete registered Markdown and declared architecture sources with the accepted rules and admitted stage inputs. Global assembly supports several explicit Module selections and injects complete deduplicated source pools directly into the coordinator. Focus changes the question, not membership. Code writing additionally receives referenced Implementation Specs and exact file bindings; invalid input or stale binding yields no reusable partial snapshot.
 
 ### feature.context.initialize
 
@@ -63,7 +71,7 @@ For an uninitialized project, propose configuration, a schema-2 registry and an 
 
 ### interface.spec-context.use
 
-resolve_context selects one Module and its complete registered documents. Feature focus never trims the collection. Non-code phases do not receive Implementation Specs or source. The implementation phase adds only the referenced Implementation Specs and exact bound files. Membership, bytes, rules and admitted stage inputs determine context identity.
+resolve_context selects one Module and its complete registered documents. Feature focus never trims the collection. Non-code phases do not receive Implementation Specs or source. The implementation phase adds only the referenced Implementation Specs and exact bound files. resolve_discovery_context resolves several explicit Module selections with source pools and per-Module references for questions, routing and topology design. Membership, bytes, rules and admitted stage inputs determine context identity.
 
 The [local interface contract](interfaces.md) defines accepted inputs, outputs, effects, errors and compatibility. A successful shape check alone does not establish successful execution or a complete business contract.
 
@@ -103,14 +111,6 @@ These entries describe the exact direct providers and children registered for th
     "selection_condition": "When loading current generated instructions and their source-bound Agent definitions.",
     "relied_upon_promises": [
       "For authored Framework assets and an integration selection, render deterministic Agent, Skill, rule, schema and documentation outputs; write them only to owned projection locations or compare them without writes. Source digests bind runtime freshness. Invalid includes, bindings, package contracts or stale assets produce findings or BuildError and cannot authorize stale execution."
-    ]
-  },
-  {
-    "target_id": "module.agent-execution",
-    "responsibility": "Execute separately bound Agent invocations through their Harness and admit typed results.",
-    "selection_condition": "When running a separately admitted Agent and receiving its typed completion.",
-    "relied_upon_promises": [
-      "For an admitted Agent binding and launch, execute its Harness under the effective permissions and accept only a matching typed completion with enforcement evidence. For a host-assembled recursive graph, give each child its own context and identity while retaining shared limits and typed feedback. Process exit alone is insufficient; cancellation, exhaustion, rejection and execution failure remain distinct."
     ]
   }
 ]

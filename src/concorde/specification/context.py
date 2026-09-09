@@ -11,7 +11,7 @@ from .repository import SpecError, SpecRepository, digest, read_file
 
 PHASES = frozenset({"ask", "specify", "plan", "tasks", "implementation", "spec-review", "code-review",
                     "validate", "deliver", "context-solve"})
-DISCOVERY_PHASES = frozenset({"route", "synthesize"})
+DISCOVERY_PHASES = frozenset({"route"})
 DISCOVERY_KINDS = frozenset({"module"})
 
 
@@ -31,7 +31,7 @@ class ContextSnapshot:
 
 @dataclass(frozen=True)
 class DiscoveryContext:
-    """Explicit Module contracts for the global routing agent, never implementation."""
+    """Complete Module contexts for global reasoning, with each source body included once."""
 
     serialized: str
 
@@ -143,9 +143,13 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
                               target_hint: str | None = None,
                               focus_hint: str | None = None,
                               constraints: tuple[str, ...] = (), instructions: str = "",
-                              worker_results: tuple[dict, ...] = (),
                               workspace: dict | None = None) -> DiscoveryContext:
-    """Resolve explicitly admitted, complete Module contracts for routing."""
+    """Resolve complete selected Module contexts without model interpretation or summaries.
+
+    Target sections retain document membership and diagram declarations. Sorted source pools
+    carry each physical file's complete bytes once, including shared and non-main documents.
+    Relationships never implicitly select another Module's collection.
+    """
 
     if phase not in DISCOVERY_PHASES:
         raise SpecError("unsupported discovery phase", "invalid_phase")
@@ -159,11 +163,9 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
         raise SpecError("a focus hint requires a target hint", "invalid_focus")
     if target_hint is not None:
         repository.select(target_hint, focus_hint)
-    from ..host.typed_data import validate_typed
-    admitted_results = []
-    for item in worker_results:
-        admitted_results.append(validate_typed(item, "concorde-main-worker-result"))
     targets = []
+    documents = {}
+    diagrams = {}
     for target_id in target_ids:
         target = repository.select(target_id)
         if target.kind not in DISCOVERY_KINDS:
@@ -174,12 +176,20 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
             )
         document_order, target_spec, shared_specs = _spec_sections(
             repository.documents(target))
+        for document in (*target_spec, *shared_specs):
+            documents[document["path"]] = document
+        for source in repository.diagram_sources(target):
+            diagrams[source["path"]] = {key: value for key, value in source.items()
+                                       if key != "declaration"}
         targets.append({
             "target_id": target.id,
             "kind": target.kind,
             "document_order": document_order,
-            "target_spec": target_spec,
-            "shared_specs": shared_specs,
+            "target_spec": [{key: value for key, value in document.items() if key != "content"}
+                            for document in target_spec],
+            "shared_specs": [{key: value for key, value in document.items() if key != "content"}
+                             for document in shared_specs],
+            "diagram_sources": list(target.diagrams),
         })
     # Implementation definitions and bodies are deliberately absent from non-code cognition.
     protocol_paths = ["generated/protocol/principles.md", "generated/protocol/kinds/module.md"]
@@ -203,8 +213,9 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
         # routing learns business ownership from Module Specs and sees no code locators.
         "topology": repository.registry if action == "design-topology" else None,
         "targets": targets,
+        "documents": [documents[path] for path in sorted(documents)],
+        "diagram_sources": [diagrams[path] for path in sorted(diagrams)],
         "instructions": instructions,
-        "worker_results": admitted_results,
         "workspace": workspace if workspace is not None else workspace_context(repository.root),
     }
     return DiscoveryContext(canonical({**manifest, "context_id": digest(manifest)}))
@@ -308,7 +319,6 @@ def recheck_discovery_context(repository: SpecRepository, snapshot: DiscoveryCon
         focus_hint=value["focus_hint"],
         constraints=tuple(value["constraints"]),
         instructions=value["instructions"],
-        worker_results=tuple(value["worker_results"]),
         workspace=value["workspace"],
     )
     if resolved.serialized != snapshot.serialized:

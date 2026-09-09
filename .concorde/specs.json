@@ -179,8 +179,7 @@
         "module.registry",
         "module.wire-contracts",
         "module.file-transactions",
-        "module.package-assets",
-        "module.agent-execution"
+        "module.package-assets"
       ],
       "implementations": [
         "implementation.spec-engine",
@@ -574,8 +573,6 @@
         "agents/implementation_worker/spec.md",
         "agents/planner/__init__.py",
         "agents/planner/spec.md",
-        "agents/reader/__init__.py",
-        "agents/reader/spec.md",
         "agents/spec_author/__init__.py",
         "agents/spec_author/spec.md",
         "agents/spec_reviewer/__init__.py",
@@ -587,7 +584,6 @@
         "tests/concorde/fixtures/build/golden/agents/coordinator.md",
         "tests/concorde/fixtures/build/golden/agents/implementation-worker.md",
         "tests/concorde/fixtures/build/golden/agents/planner.md",
-        "tests/concorde/fixtures/build/golden/agents/reader.md",
         "tests/concorde/fixtures/build/golden/agents/spec-author.md",
         "tests/concorde/fixtures/build/golden/agents/spec-reviewer.md",
         "tests/concorde/fixtures/build/golden/agents/task-author.md"

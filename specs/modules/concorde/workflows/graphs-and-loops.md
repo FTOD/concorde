@@ -97,7 +97,7 @@ downstream inputs.
 
 ## Concorde graph responsibilities
 
-The query graph coordinates routing, reader invocations and synthesis. The topology graph
+The query graph coordinates explicit context selection, deterministic source injection and direct answers. The topology graph
 coordinates design, human acceptance and separately bound Spec authors. The development graph
 coordinates authoring, assessment, planning, implementation and independent review, with explicit
 repair or human-clarification loops. Reflection handling may select an investigation or development

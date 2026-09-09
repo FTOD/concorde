@@ -146,10 +146,11 @@ The review host adds a separately typed, target-scoped changes/revision input; o
 cannot smuggle patches or arbitrary artifacts into a Spec worker.
 Membership, configuration, Protocol or admitted bytes changing after resolution invalidates reuse.
 
-Main discovery admits explicitly selected complete Module collections for global routing.
-A new admitted collection produces a new context identity and a fresh coordinator invocation.
-Implementation Specs and source bodies never enter this context. Selected target readers each
-receive only their own complete Module Spec; synthesis receives their typed results.
+Main discovery admits explicitly selected complete Module collections for global reasoning,
+questions and routing. A new admitted collection produces a new context identity and a fresh
+coordinator invocation. Python injects deduplicated original documents and declared diagram
+sources with per-Module membership. The coordinator answers directly from those complete contexts.
+Implementation Specs and implementation source bodies never enter this context.
 During design-topology, exact registry metadata additionally describes Module composition,
 dependencies and Implementation bindings. It supplies structure, not hidden behavioral meaning.
 After the design is accepted, each fresh target-local Spec author receives one proposed descriptor,
@@ -358,134 +359,60 @@ code review and revision, admits that declared result only to `tasks`/`implement
 contexts, and removes write authority during review. A structurally valid review result alone
 neither authorizes a repair nor proves review completion, currentness or semantic completeness.
 
-## Reader Agent and recursive factory
+## Global Spec context assembly
 
-This Module provides the reader factory and its fixed-target context behavior. The registered
-`implementation.agent-definitions` realization binds the shared reader definition and authored
-responsibility asset; implementation-file ownership is separate from Module ownership. The same canonical Agent supports an ordinary one-decision stage and an
-explicitly assembled recursive invocation. Legacy stage input receives only its stage result and
-no child interface. `concorde-agent-loop-context@1` admits one typed loop action, advertised child
-contracts and typed feedback. Neither path enables provider-native delegation. The registered
-reader declares `allow_delegation=True`; effective child edges and target access still come from
-the host's graph binding and invocation grant.
+The host-internal Python API resolves several explicitly selected Module contexts for a
+coordinator with a global view:
 
 ```python
-agents.reader.runtime(project_root, package_root, target_id, *, integration="codex", executor=None,
-                      executor_reference=None, limits=None, cancelled=lambda: False) -> AgentRuntime
+resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str, ...], *,
+    capability: str, phase: str, task: str, action: str = "route",
+    target_hint: str | None = None, focus_hint: str | None = None,
+    constraints: tuple[str, ...] = (), instructions: str = "",
+    workspace: dict | None = None) -> DiscoveryContext
 ```
 
-The factory requires a nonblank target ID and codex/claude integration. It loads the reader through
-`module.package-assets.load_agent(package_root, "reader")`, whose result supplies `.body: str`
-and an immutable, current `.binding: AgentBinding` (the local runtime-value document defines that
-record). It creates a fixed-target, explicit self-edge graph node named `reader`, with eight local
-steps. It accepts typed `concorde-agent-task@1` data `{task: nonblank str, target_id: nonblank str}`
-and returns `concorde-agent-answer@1` data `{answer: nonblank str}`. A mismatched task target is
-rejected before target context resolution. The resolver passes the loaded instruction body and
-actual task to the existing complete-context service and rechecks build freshness on every call.
-No authority or execution is created by constructing this factory result.
+Here each selected Spec's context means its complete registered Markdown collection plus its
+declared authored diagram sources. The Python resolver determines membership without model
+judgment. It includes non-main documents in full, never follows dependencies or hyperlinks
+implicitly, and never substitutes an answer or summary for an original source.
 
-The required execution collaborator supplies
-`RuntimeAgent(agent: Agent, decide, package_root: Path, targets: frozenset[str],
-delegates: frozenset[str], decision_reference: str, input_type="concorde-agent-task",
-result_type="concorde-agent-answer", max_steps=8, binding: AgentBinding|None=None)` and
-`AgentRuntime(nodes, resolver, *, limits=AgentLimits(), cancelled=callback)`. The node is a graph
-binding of the canonical Agent, not a new definition model; the callback reference identifies the
-native integration and executor configuration. The native adapter consumes one private frame and
-returns a typed loop decision. It uses the supplied canonical binding and rendered prompt in the
-existing process executor, verifies native receipts, and restricts execution to a private
-read-only context capsule. The callback interface for an injected executor is
-`executor(launch: LaunchSpecification, *, deadline: float) -> CapabilityExecutionResult`; deadline
-is absolute on `time.monotonic()` and must bound its preflight and execution. Injection requires a
-nonblank versioned `executor_reference`; omission or invalid configuration raises `ValueError`.
-The default executor uses deadline-bound runner/probe callbacks, never a permissive retry.
+Inputs require a nonempty, duplicate-free ordered tuple of Module IDs, a nonblank task,
+capability concorde-main or concorde-dev-loop, phase route, and action route, ask or
+design-topology. A focus hint requires a target hint and must belong to that Module. Unsupported
+phases/actions, invalid selections, unavailable required files and inconsistent membership reject
+resolution; no partial context is returned. Hints do not themselves add a Module's documents.
 
-`AgentLimits(max_calls=16, max_depth=4, max_decisions=64, timeout_seconds=300)` has positive integer
-counts except depth may be zero, and a positive finite timeout; `limits=None` uses these defaults.
-An enclosing host invokes the returned runtime with `AgentGrant(targets: frozenset[str],
-agents: frozenset[str])`; its `invoke(agent_id, typed_input, grant)` returns `AgentRun(result, events)`.
-The frozen result has invocation/parent/Agent identities, outcome, nullable serialized typed
-`value_json`, stable nullable `error` and nullable serialized typed interruption `details_json`.
-Outcomes distinguish completed, spec_incomplete, waiting, cancelled, failed, limit_exhausted and
-rejected. Only completed has a value. Gaps/waiting use `concorde-agent-interruption@1`
-`{gaps, decision}`; each gap has question/blocked_step/needed_contract/target_id/context_id matching
-its snapshot, and waiting has only a nonblank decision. Events are host-only admission/decision/
-return evidence. The execution collaborator enforces explicit edges, inherited target/Agent
-allowlists, immutable contexts, and shared and per-Agent deadlines. Failed/rejected children are
-bounded feedback; cancellation or exhaustion terminates ancestors. Native cancellation and timeout
-classifications are retained. No persistent resume or parallel scheduling is implied.
+DiscoveryContext has serialized, value and id accessors like ContextSnapshot. Its canonical
+concorde-discovery-context@1 payload contains context_id, schema_version, capability, phase,
+action, task, constraints, target_hint, focus_hint, protocol_binding, protocol, topology,
+targets, documents, diagram_sources, instructions and workspace. Topology is the exact registry
+only for design-topology; otherwise it is null.
 
-The resolver callback is `resolver(node: RuntimeAgent, input: dict, grant: AgentGrant) -> dict`.
-The host passes the selected node, validated typed input envelope and effective grant (inherited
-Agent allowlist and intersection of inherited/node target sets). It must return the full typed
-`concorde-context-snapshot@1` envelope, not a ContextSnapshot object or serialized string. The
-reader factory wraps `resolve_context(...).value` in that envelope using phase `ask`, the task's
-text and loaded instructions. The runtime validates the envelope and recomputes its context ID,
-requires no implementation artifacts, requires phase `ask` and a target in the effective grant,
-and for `concorde-agent-task` requires the task and context targets to match. Initial resolver
-exceptions or invalid returns reject admission with `admission_failed`, unless cancellation or
-exhaustion has already taken precedence. Before every decision it calls the resolver again with
-the same node, decoded typed input and effective grant; a changed valid envelope is rejected as
-`stale_context`. Exceptions or malformed returns during this subsequent check are execution
-failures (`failed`/`execution_failed`), again subject to cancellation/deadline precedence. Resolver
-calls do not broaden the grant and do not themselves start native processes.
+Each target has target_id, kind (module), document_order, target_spec, shared_specs and
+diagram_sources. Target Spec and Shared Specs contain document metadata references
+{document_id, path, digest, targets, main_visible}; they contain no duplicate source bodies.
+The target's diagram_sources are its exact declarations {source, kind, title, recipe?}.
 
-### Recursive decision and feedback interface
+The top-level documents pool contains complete {document_id, path, digest, targets, main_visible,
+content} records, once per physical Markdown path. The top-level diagram_sources pool contains
+{path, digest, content} records, once per declared source path. Both pools are sorted by path;
+per-target registration order and attribution remain in the target records. A shared document's
+other owners remain metadata and do not select those owners' remaining contexts. An inline
+diagram is already part of its Markdown body.
 
-The graph callback is `decide(frame: AgentFrame) -> AgentStep`. `AgentFrame` is frozen and has
-`invocation_id: str`, `parent_id: str|None`, `agent_id: str`, `input_json: str`,
-`context_json: str`, `spec: str`, `feedback: tuple[AgentResult, ...]`, `children_json: str`,
-`result_schema_json: str`, `remaining_seconds: float`, `deadline: float`, and
-`agent_binding_json: str|None = None`. The input and complete bound context are serialized typed
-values; `spec` contains the admitted instructions. The child list and result schema are serialized
-JSON; time values describe the shared absolute monotonic deadline and its remaining duration.
-The native adapter requires the serialized canonical binding. A frame and its context are private
-to this invocation; children receive their own host-resolved contexts.
+The coordinator reads these original pools directly, combines facts across selected contexts,
+and returns an answer or an attributed Spec gap. No separate reading Agent, recursive reading
+factory or worker-result synthesis is provided. Mutating workers retain their single-Module
+context and separately bound permissions.
 
-`AgentStep(source: str, action: str, agent_id: str|None=None, value: dict|None=None,
-outcome: str="completed", details: dict|None=None)` is frozen. The native adapter's public call
-shape is `NativeAgentAdapter(integration="codex", executor=None)(frame) -> AgentStep`. It launches
-one fresh model decision and converts its validated wire result into this record, decoding
-`value_json` to `value`. Native decisions require `source="model-driven"`; graph callbacks can
-also identify `code-driven` decisions. Invalid typed decisions or malformed JSON raise
-`InvalidAgentStep(ValueError)` and the runtime rejects them with `invalid_step`. Invalid native
-evidence raises `ValueError` and is classified as execution failure; enforced cancellation and
-deadline exhaustion retain their distinct outcomes.
-
-The native input/output use exact envelopes `{type_id, schema_version: 1, data}` with no other
-properties. All following payload fields are required and closed. `S` means nonblank string,
-`N` means `S|null`, and `Outcome` is the outcome enumeration above:
-
-| Type ID | Data |
-| --- | --- |
-| `concorde-agent-loop-context` | `invocation_id: S`, `parent_id: N`, `agent_id: S`, `input_json: S`, `context_json: S`, `feedback: Feedback[]`, `children: Child[]`, `result_schema_json: S` |
-| `concorde-agent-loop-step` | `source: "code-driven"|"model-driven"`, `action: "delegate"|"complete"`, `agent_id: N`, `value_json: N`, `outcome: Outcome`, `details: TypedValue<concorde-agent-interruption>|null` |
-
-`Feedback` contains `invocation_id: S`, `parent_id: N`, `agent_id: S`, `outcome: Outcome`,
-`value_json: N`, `error: N`, and nullable typed interruption `details`. `Child` contains
-`agent_id`, `input_type`, `result_type`, `input_schema_json` and `result_schema_json`, all `S`.
-These nested objects are also closed. Schemas describe the complete typed input/result envelopes;
-`_json` values are JSON strings, never additional authority. Interruption payloads have exactly
-`gaps: Gap[]` and `decision: N`; Gap's five fields listed above are nonblank strings and its
-context ID is `sha256:` plus 64 lowercase hexadecimal digits.
-
-Delegation sets `agent_id` to the advertised recipient, `value_json` to its serialized typed
-input, `outcome="completed"`, and `details=null`; it requests a child and does not claim that
-child has completed. The host checks the edge, effective grants and input type, allocates a fresh
-child invocation ID, and sets its `parent_id` to the current invocation. Direct-child results are
-appended in call order to cumulative feedback for the parent's next fresh decision; descendants'
-private results are not automatically propagated. Denied delegation returns a correlated rejected
-feedback item with `error="delegation_denied"`. Failed and rejected children permit another bounded
-parent decision; cancelled or exhausted children terminate their ancestors immediately.
-
-Completion requires `agent_id=null`. Successful completion supplies a serialized value matching
-the advertised result type and `details=null`. Other outcomes require `value_json=null`;
-`spec_incomplete` requires nonempty gaps matching the bound target/context and no decision,
-`waiting` requires only a nonblank decision, and the remaining outcomes require `details=null`.
-The runtime rejects inconsistent combinations with `invalid_step`. `AgentResult.wire()` produces
-the Feedback shape, decoding `details_json` into `details`. No untyped transcript, arbitrary child
-file, or provider-native delegation becomes an implicit input to the next decision.
+recheck_discovery_context(repository, snapshot) reconstructs the same selection from current
+repository inputs. Membership, document order, original bytes, diagram declarations or sources,
+Protocol, instructions and lifecycle metadata bind context identity; changes reject reuse with
+SpecError/stale_context. Context assembly and rechecking launch no model and grant no write or
+network authority.
 
 The Protocol schema asset is produced by the wire provider from its registered schemas: stable
 IDs, exact closed versioned payloads and self-contained local definitions. This Module verifies
 manifest/asset byte binding through the repository constructor rather than reconstructing schema
-export. Missing assets prevent construction; digest mismatches report `protocol_mismatch`.
+export. Missing assets prevent construction; digest mismatches report protocol_mismatch.

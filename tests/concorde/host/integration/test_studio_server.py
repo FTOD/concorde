@@ -148,7 +148,7 @@ class StudioServerTests(unittest.TestCase):
         self.assertIn('"agent_started"', stream)
         state = self.request(f"/threads/{thread}/state")["values"]
         self.assertEqual("succeeded", state["result"]["status"], state)
-        self.assertEqual(["route", "route", "ask", "synthesize"],
+        self.assertEqual(["route", "route"],
                          [e["stage"] for e in state["events"] if e["event"] == "agent_finished"])
         self.assertEqual("capability_finished", state["events"][-1]["event"])
 

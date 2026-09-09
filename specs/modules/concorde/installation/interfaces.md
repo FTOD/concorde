@@ -63,7 +63,7 @@ It seeds project-owned Reflection defaults and
 installation receipt and never overwritten on update.
 
 The distributable manifest is concorde.json schema 3, Concorde 4.0.0, Architecture Profile 9,
-Workspace Protocol 14 and Delivery Proposal 10. It contains exactly 9 roles and 13
+Workspace Protocol 14 and Delivery Proposal 10. It contains exactly 8 roles and 13
 capabilities, of which 7 are Skills (global or lifecycle) and 6 are stages reachable
 only through a composing capability, explicit package roots including prompts/capabilities/protocol, and 7
 templates. Codex .agents/skills and Claude .claude/skills expose the same 7 Skills;

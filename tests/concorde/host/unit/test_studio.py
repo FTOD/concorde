@@ -76,8 +76,8 @@ class StudioTests(unittest.TestCase):
         self.assertEqual("succeeded", actual["result"]["status"], actual)
         self.assertEqual(custom, actual["events"])
         started = [e for e in custom if e["event"] == "agent_started"]
-        self.assertEqual(["route", "route", "ask", "synthesize"], [e["stage"] for e in started])
-        self.assertEqual(4, len({e["invocation_id"] for e in started}))
+        self.assertEqual(["route", "route"], [e["stage"] for e in started])
+        self.assertEqual(2, len({e["invocation_id"] for e in started}))
         self.assertTrue(all(p["read_paths"] == ["context.json"] for p in actual["policies"]))
         second = graph.invoke({"invocation": value})
         self.assertEqual(len(actual["events"]), len(second["events"]))

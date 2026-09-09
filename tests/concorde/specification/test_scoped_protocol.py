@@ -107,30 +107,32 @@ class ScopedProtocolTests(unittest.TestCase):
         self.registry['entry_target']='module.ledger'
         (self.root/'.concorde/specs.json').write_text(json.dumps(self.registry))
         self.assertEqual('module.ledger',SpecRepository(self.root).entry_target)
-    def test_main_discovers_complete_module_specs_then_starts_fresh_worker(self):
+    def test_main_answers_directly_from_complete_injected_contexts(self):
         double=ModelProcessDouble()
         result=self.run_op('concorde-main',{'task':'Explain transfer'},double)
         self.assertEqual('succeeded',result['status'],result)
         data=result['output']['data']
         self.assertEqual(['scope.bank','service.transfer'],data['discovered_targets'])
-        self.assertEqual(['service.transfer'],[route['target_id'] for route in data['routes']])
-        self.assertEqual(['route','route','ask','synthesize'],[call['stage'] for call in double.calls])
-        self.assertEqual(['concorde-coordinator','concorde-coordinator','concorde-reader','concorde-coordinator'],
-                         [call['capability'] for call in double.calls])
-        first,second,worker,final=double.calls
+        self.assertEqual([],data['routes'])
+        self.assertNotIn('worker_results',data)
+        self.assertEqual(['route','route'],[call['stage'] for call in double.calls])
+        self.assertEqual(['concorde-coordinator']*2,[call['capability'] for call in double.calls])
+        first,second=double.calls
         self.assertEqual(['scope.bank'],[item['target_id'] for item in first['snapshot']['targets']])
         self.assertEqual(['scope.bank','service.transfer'],[item['target_id'] for item in second['snapshot']['targets']])
-        self.assertEqual('service.transfer',worker['snapshot']['target_id'])
-        self.assertEqual(second['snapshot']['targets'],final['snapshot']['targets'])
-        self.assertEqual(4,len({str(call['cwd']) for call in double.calls}))
+        source={item['path']:item['content'] for item in second['snapshot']['documents']}
+        for path in ('specs/transfer/module.md','specs/transfer/promises.md'):
+            self.assertEqual((self.root/path).read_text(),source[path])
+        self.assertEqual(2,len({str(call['cwd']) for call in double.calls}))
         self.assertEqual(['generated/protocol/principles.md','generated/protocol/kinds/module.md'],
             [item['path'] for item in first['snapshot']['protocol']])
         invocation_ids=[item.completion.invocation_id for item in self.host.evidence]
-        self.assertEqual(4,len(invocation_ids));self.assertEqual(4,len(set(invocation_ids)))
-        for call in (first,second,final):
+        self.assertEqual(2,len(invocation_ids));self.assertEqual(2,len(set(invocation_ids)))
+        for call in double.calls:
             text=json.dumps(call['snapshot'])
             self.assertNotIn('# Ledger API',text)
             self.assertNotIn('PRIVATE_CODE',text)
+
     def test_main_design_accept_and_exact_apply_create_topology_atomically(self):
         def callback(stage,snapshot,data,cwd):
             if stage=='route' and snapshot['action']=='design-topology':
@@ -323,64 +325,79 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('blocked',result['status'],result)
         self.assertEqual('invalid_proposal',result['errors'][0]['code'])
         self.assertIn('Module tasks',result['errors'][0]['message'])
-    def test_main_can_route_and_admit_modules_but_not_implementation_specs(self):
-        def route(stage,snapshot,data,cwd):
-            if stage=='route':
-                data.update(outcome='routed',expand_targets=[],gaps=[],routes=[{
-                    'target_id':'module.ledger','focus_id':'api.ledger','task':'Explain ledger reads','constraints':[]}])
-        double=ModelProcessDouble(route)
-        result=self.run_op('concorde-main',{'task':'Explain ledger reads'},double)
+    def test_main_can_admit_modules_and_answer_but_not_read_implementation_specs(self):
+        double=ModelProcessDouble()
+        result=self.run_op('concorde-main',{'task':'Explain ledger reads',
+            'target_id':'module.ledger','focus_id':'api.ledger'},double)
         self.assertEqual('succeeded',result['status'],result)
-        self.assertEqual(['route','ask','synthesize'],[call['stage'] for call in double.calls])
-        self.assertEqual('module.ledger',double.calls[1]['snapshot']['target_id'])
-        self.assertTrue(all(item['kind']=='module' for call in (double.calls[0],double.calls[2])
+        self.assertEqual(['route','route'],[call['stage'] for call in double.calls])
+        snapshot=double.calls[-1]['snapshot']
+        self.assertEqual('api.ledger',snapshot['focus_hint'])
+        self.assertIn('# Ledger API',json.dumps(snapshot))
+        self.assertNotIn('INTERNAL_LEDGER_IMPLEMENTATION_SPEC',json.dumps(snapshot))
+        self.assertTrue(all(item['kind']=='module' for call in double.calls
                             for item in call['snapshot']['targets']))
-        def expand(stage,snapshot,data,cwd):
-            if stage=='route':
-                if 'module.ledger' not in [item['target_id'] for item in snapshot['targets']]:
-                    data.update(outcome='expand',expand_targets=['module.ledger'],routes=[],gaps=[])
-                else:
-                    data.update(outcome='routed',expand_targets=[],gaps=[],routes=[{
-                        'target_id':'module.ledger','focus_id':'api.ledger','task':snapshot['task'],'constraints':snapshot['constraints']}])
-        expanded=self.run_op('concorde-main',{'task':'Open the ledger Spec'},ModelProcessDouble(expand))
-        self.assertEqual('succeeded',expanded['status'],expanded)
         with self.assertRaises(SpecError):
-            resolve_discovery_context(SpecRepository(self.root),('implementation.ledger',),capability='concorde-main',phase='route',task='Read implementation')
-    def test_main_can_split_one_request_into_separate_target_workers(self):
-        def routes(stage,snapshot,data,cwd):
-            if stage=='route':data.update(outcome='routed',expand_targets=[],gaps=[],routes=[
-                {'target_id':'service.transfer','focus_id':'feature.transfer','task':'Explain transfer','constraints':[]},
-                {'target_id':'module.ledger','focus_id':'api.ledger','task':'Explain ledger reads','constraints':[]}])
-        double=ModelProcessDouble(routes)
+            resolve_discovery_context(SpecRepository(self.root),('implementation.ledger',),
+                capability='concorde-main',phase='route',task='Read implementation')
+
+    def test_main_combines_original_sources_from_multiple_target_contexts(self):
+        def answer(stage,snapshot,data,cwd):
+            discovered={item['target_id'] for item in snapshot['targets']}
+            needed=['service.transfer','module.ledger']
+            missing=[target for target in needed if target not in discovered]
+            if missing:
+                data.update(outcome='expand',expand_targets=missing,routes=[])
+            else:
+                sources={item['path']:item['content'] for item in snapshot['documents']}
+                self.assertIn('# Ledger API',sources['specs/ledger/module.md'])
+                self.assertEqual((self.root/'specs/transfer/promises.md').read_text(),
+                                 sources['specs/transfer/promises.md'])
+                data.update(outcome='completed',answer='Transfer and ledger explained from their original Specs.',
+                            expand_targets=[],routes=[])
+        double=ModelProcessDouble(answer)
         result=self.run_op('concorde-main',{'task':'Explain transfer and ledger'},double)
         self.assertEqual('succeeded',result['status'],result)
-        workers=[call for call in double.calls if call['capability']=='concorde-reader']
-        self.assertEqual(['service.transfer','module.ledger'],[call['snapshot']['target_id'] for call in workers])
-        self.assertEqual(2,len(result['output']['data']['worker_results']))
-        main=[call for call in double.calls if call['capability']=='concorde-coordinator']
-        self.assertTrue(all(item['kind']=='module' for call in main for item in call['snapshot']['targets']))
-    def test_main_reports_routing_and_worker_spec_gaps_without_hidden_context(self):
+        self.assertEqual(2,len(double.calls))
+        self.assertTrue(all(call['capability']=='concorde-coordinator' for call in double.calls))
+        self.assertEqual(['scope.bank','service.transfer','module.ledger'],
+                         result['output']['data']['discovered_targets'])
+        self.assertEqual('Transfer and ledger explained from their original Specs.',
+                         result['output']['data']['answer'])
+
+    def test_main_reports_gaps_with_owning_module_and_complete_context_identity(self):
         def routing_gap(stage,snapshot,data,cwd):
-            if stage=='route':data.update(outcome='spec_incomplete',answer='Routing facts are missing.',
+            data.update(outcome='spec_incomplete',answer='Routing facts are missing.',
                 expand_targets=[],routes=[],gaps=[{'question':'Which target owns settlement?',
-                'blocked_step':'Select a worker','needed_contract':'Settlement routing responsibility',
+                'blocked_step':'Select a context','needed_contract':'Settlement routing responsibility',
                 'target_id':'scope.bank'}])
         blocked=self.run_op('concorde-main',{'task':'Explain settlement'},ModelProcessDouble(routing_gap))
-        self.assertEqual('blocked',blocked['status']);gap=blocked['output']['data']['gaps'][0]
-        self.assertEqual('scope.bank',gap['target_id']);self.assertEqual(blocked['output']['data']['context_id'],gap['context_id'])
-        def worker_gap(stage,snapshot,data,cwd):
-            if stage=='route':data.update(outcome='routed',expand_targets=[],gaps=[],routes=[{
-                'target_id':'module.ledger','focus_id':'api.ledger','task':'Explain settlement ledger','constraints':[]}])
-            if stage=='ask':data.update(outcome='spec_incomplete',answer='Ledger settlement is unspecified.',gaps=[{
-                'question':'When is settlement final?','blocked_step':'Explain settlement ledger',
-                'needed_contract':'Settlement completion rule'}])
-            if stage=='synthesize':
-                gap=snapshot['worker_results'][0]['data']['gaps'][0]
-                data.update(outcome='spec_incomplete',answer='The selected Module Spec is incomplete.',gaps=[gap])
-        result=self.run_op('concorde-main',{'task':'Explain settlement ledger'},ModelProcessDouble(worker_gap))
-        self.assertEqual('blocked',result['status'],result);gap=result['output']['data']['gaps'][0]
-        worker=result['output']['data']['worker_results'][0]['data']
-        self.assertEqual('module.ledger',gap['target_id']);self.assertEqual(worker['context_id'],gap['context_id'])
+        self.assertEqual('blocked',blocked['status'])
+        gap=blocked['output']['data']['gaps'][0]
+        self.assertEqual('scope.bank',gap['target_id'])
+        self.assertEqual(blocked['output']['data']['context_id'],gap['context_id'])
+        def contract_gap(stage,snapshot,data,cwd):
+            if 'module.ledger' not in [item['target_id'] for item in snapshot['targets']]:
+                data.update(outcome='expand',expand_targets=['module.ledger'],routes=[])
+            else:
+                data.update(outcome='spec_incomplete',answer='Ledger settlement is unspecified.',
+                    expand_targets=[],routes=[],gaps=[{'question':'When is settlement final?',
+                    'blocked_step':'Explain settlement ledger','needed_contract':'Settlement completion rule',
+                    'target_id':'module.ledger'}])
+        result=self.run_op('concorde-main',{'task':'Explain settlement ledger'},ModelProcessDouble(contract_gap))
+        self.assertEqual('blocked',result['status'],result)
+        gap=result['output']['data']['gaps'][0]
+        self.assertEqual('module.ledger',gap['target_id'])
+        self.assertEqual(result['output']['data']['context_id'],gap['context_id'])
+
+    def test_main_questions_reject_worker_routes(self):
+        def route(stage,snapshot,data,cwd):
+            data.update(outcome='routed',expand_targets=[],routes=[{
+                'target_id':'module.ledger','focus_id':None,'task':snapshot['task'],'constraints':[]}])
+        result=self.run_op('concorde-main',{'task':'Explain ledger'},ModelProcessDouble(route))
+        self.assertEqual('blocked',result['status'])
+        self.assertEqual('invalid_completion',result['errors'][0]['code'])
+
     def test_global_loop_routes_once_before_its_first_internal_stage(self):
         double=ModelProcessDouble()
         result=self.run_op('concorde-dev-loop',{'task':'Plan the transfer promise','specify':False,'run_reviews':False},double)
@@ -415,8 +432,7 @@ class ScopedProtocolTests(unittest.TestCase):
         result=self.run_op('concorde-main',{'task':'Explain transfer'},ModelProcessDouble(expand))
         self.assertEqual('blocked',result['status']);self.assertEqual('incompatible_handoff',result['errors'][0]['code'])
         def route(stage,snapshot,data,cwd):
-            if stage=='route':data.update(outcome='routed',expand_targets=[],gaps=[],routes=[{
-                'target_id':'module.ledger','focus_id':None,'task':snapshot['task'],'constraints':[]}])
+            if stage=='route':data.update(outcome='expand',expand_targets=['module.ledger'],gaps=[],routes=[])
         result=self.run_op('concorde-main',{'task':'Explain ledger'},ModelProcessDouble(route))
         self.assertEqual('blocked',result['status']);self.assertEqual('incompatible_handoff',result['errors'][0]['code'])
     def test_discovery_context_is_digest_bound_and_module_only(self):
@@ -447,6 +463,73 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertNotIn('INTERNAL_TRANSFER_IMPLEMENTATION_SPEC',json.dumps(visible))
         worker=resolve_context(SpecRepository(self.root),'service.transfer').value
         self.assertEqual(worker['document_order'],transfer['document_order'])
+    def test_global_context_deduplicates_complete_sources_and_preserves_each_membership(self):
+        shared='specs/transfer/promises.md'
+        self.registry['targets'][3]['documents'].append(shared)
+        bank_diagram=self.registry['targets'][0]['diagrams'][0]
+        ledger_diagram={**bank_diagram,'title':'Ledger perspective'}
+        self.registry['targets'][3]['diagrams']=[ledger_diagram]
+        (self.root/'.concorde/specs.json').write_text(json.dumps(self.registry))
+        update_document_declaration(self.root,shared,
+            targets=['service.transfer','module.ledger'],main_visible=False)
+        snapshot=resolve_discovery_context(SpecRepository(self.root),
+            ('scope.bank','service.transfer','module.ledger'),
+            capability='concorde-main',phase='route',action='ask',task='Compare contracts')
+        typed('concorde-discovery-context',snapshot.value)
+        value=snapshot.value
+        paths=[document['path'] for document in value['documents']]
+        self.assertEqual(sorted(set(paths)),paths)
+        self.assertEqual(1,paths.count(shared))
+        for document in value['documents']:
+            self.assertEqual((self.root/document['path']).read_text(),document['content'])
+        modules={target['target_id']:target for target in value['targets']}
+        for target_id in ('service.transfer','module.ledger'):
+            refs=modules[target_id]['shared_specs']
+            self.assertEqual([shared],[document['path'] for document in refs])
+            self.assertFalse(refs[0]['main_visible'])
+            self.assertNotIn('content',refs[0])
+        self.assertNotIn('specs/audit/module.md',paths)
+        self.assertEqual([bank_diagram['source']],[source['path'] for source in value['diagram_sources']])
+        self.assertEqual([bank_diagram],modules['scope.bank']['diagram_sources'])
+        self.assertEqual([ledger_diagram],modules['module.ledger']['diagram_sources'])
+        self.assertEqual((self.root/bank_diagram['source']).read_text(),
+                         value['diagram_sources'][0]['content'])
+        self.assertNotIn('PRIVATE_CODE',snapshot.serialized)
+
+    def test_global_context_rechecks_declared_diagram_bytes_and_metadata(self):
+        repository=SpecRepository(self.root)
+        snapshot=resolve_discovery_context(repository,('scope.bank',),
+            capability='concorde-main',phase='route',task='Explain architecture')
+        path=self.root/self.registry['targets'][0]['diagrams'][0]['source']
+        original=path.read_bytes()
+        path.write_bytes(original+b'\n')
+        with self.assertRaisesRegex(SpecError,'changed'):
+            recheck_discovery_context(repository,snapshot)
+        path.write_bytes(original)
+        self.registry['targets'][0]['diagrams'][0]['title']='Revised view'
+        (self.root/'.concorde/specs.json').write_text(json.dumps(self.registry))
+        with self.assertRaisesRegex(SpecError,'changed'):
+            recheck_discovery_context(repository,snapshot)
+
+    def test_global_context_rejects_unavailable_required_source(self):
+        path=self.root/self.registry['targets'][0]['diagrams'][0]['source']
+        path.unlink()
+        with self.assertRaises(SpecError):
+            resolve_discovery_context(SpecRepository(self.root),('scope.bank',),
+                capability='concorde-main',phase='route',task='Explain architecture')
+
+    def test_main_can_answer_from_initial_spec_context_in_one_invocation(self):
+        def answer(stage,snapshot,data,cwd):
+            self.assertIn('# Banking',snapshot['documents'][0]['content'])
+            self.assertTrue(snapshot['diagram_sources'])
+            data.update(outcome='completed',answer='Banking coordinates transfer, ledger and audit.',
+                        expand_targets=[],routes=[])
+        double=ModelProcessDouble(answer)
+        result=self.run_op('concorde-main',{'task':'What does Banking coordinate?'},double)
+        self.assertEqual('succeeded',result['status'],result)
+        self.assertEqual(1,len(double.calls))
+        self.assertEqual(['scope.bank'],result['output']['data']['discovered_targets'])
+
     def test_membership_changes_invalidate_snapshot(self):
         repo=SpecRepository(self.root); snapshot=resolve_context(repo,'service.transfer')
         self.registry['targets'][2]['documents'].reverse()

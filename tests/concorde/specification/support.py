@@ -135,12 +135,16 @@ class ModelProcessDouble:
             stdout=json.dumps({'structured_output':payload}) if '--json-schema' in argv else '\n'.join(json.dumps(event) for event in [{'type':'item.completed','item':{'type':'agent_message','text':json.dumps(payload)}},{'type':'turn.completed'}])
             return subprocess.CompletedProcess(argv,0,stdout,'')
         if value['type_id']=='concorde-main-stage-context':
-            data={'context_id':snapshot['context_id'],'outcome':'completed','answer':'Main synthesized bounded worker results.',
+            data={'context_id':snapshot['context_id'],'outcome':'completed','answer':'Main answered from complete Spec contexts.',
                   'expand_targets':[],'routes':[],'gaps':[],'topology_design':None}
             if stage=='route':
                 hint=snapshot['target_hint']
                 discovered=[item['target_id'] for item in snapshot['targets']]
-                if hint:
+                if snapshot['action']=='ask':
+                    target=hint or 'service.transfer'
+                    if target not in discovered:
+                        data.update(outcome='expand',expand_targets=[target])
+                elif hint:
                     data.update(outcome='routed',routes=[{'target_id':hint,'focus_id':snapshot['focus_hint'],
                         'task':snapshot['task'],'constraints':snapshot['constraints']}])
                 elif 'service.transfer' not in discovered:

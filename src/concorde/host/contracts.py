@@ -45,7 +45,6 @@ STAGE_ROLES = {
     "concorde-implement": ("implementation", "concorde-implementation-worker"),
     "concorde-context-solve": ("context-solve", "concorde-context-assessor"),
 }
-TARGET_AGENT_STAGES = {"concorde-read-target": ("ask", "concorde-reader")}
 REVIEW_STAGES = {"spec": ("spec-review", "concorde-spec-reviewer"),
                  "code": ("code-review", "concorde-code-reviewer")}
 MAIN_CAPABILITY = "concorde-main"
@@ -62,8 +61,7 @@ MAIN_ROUTED_CAPABILITIES = frozenset({MAIN_CAPABILITY, "concorde-dev-loop"})
 # Capabilities whose module declares a nonempty USES (it composes other capabilities in-process).
 COMPOSITE_CAPABILITIES = ("concorde-dev-loop", "concorde-reflections-triage")
 INTERNAL_SKILLS = tuple(sorted({"concorde-coordinator", *(role for _, role in STAGE_ROLES.values()),
-                                *(role for _, role in REVIEW_STAGES.values()),
-                                *(role for _, role in TARGET_AGENT_STAGES.values())}))
+                                *(role for _, role in REVIEW_STAGES.values())}))
 INTERNAL_DATA_TYPES = (
     "concorde-agent-task",
     "concorde-agent-answer",
@@ -80,7 +78,6 @@ INTERNAL_DATA_TYPES = (
     "concorde-discovery-context",
     "concorde-main-stage-context",
     "concorde-main-stage-result",
-    "concorde-main-worker-result",
     "concorde-topology-author-context",
     "concorde-topology-author-result",
     "concorde-topology-application",
@@ -91,7 +88,7 @@ INTERNAL_DATA_TYPES = (
 
 def dependencies(capability: str) -> tuple[str, ...]:
     if capability == MAIN_CAPABILITY:
-        result = ("concorde-coordinator", "concorde-reader", "concorde-spec-author")
+        result = ("concorde-coordinator", "concorde-spec-author")
     elif capability == "concorde-plan":
         result = ("concorde-context-assessor", "concorde-planner")
     elif capability == "concorde-review":
@@ -232,9 +229,6 @@ def schemas() -> dict:
           "intervention_rationale":STRING,"human_intervention":{"enum":["required","not-required"]},
           "route":{"enum":["fast-loop","plan","dismiss","blocked"]},"effort":{"enum":["small","medium","large"]},
           "files":array(PATH,unique=True),"steps":STRING,"validation":STRING,"risks":STRING,"protocol_change":{"type":"boolean"}}))}, ("reflection_findings", "diagrams"))
-    result["concorde-main-worker-result"] = obj({"target_id": STRING, "focus_id": NULLABLE_ID,
-        "context_id": DIGEST, "outcome": WORKER_OUTCOMES, "answer": {"type": "string"},
-        "gaps": array(GAP)})
     result["concorde-topology-design"] = obj({"summary": STRING, "registry": REGISTRY,
         "spec_tasks": {**array(SPEC_TASK), "minItems": 1},
         "migration_constraints": array(STRING), "acceptance": {**array(STRING), "minItems": 1}})
@@ -250,16 +244,18 @@ def schemas() -> dict:
         "files": {**array(PROPOSAL_FILE), "minItems": 1}})
     discovery_target = obj({"target_id": STRING, "kind": {"const": "module"},
                             "document_order": array(PATH, unique=True),
-                            "target_spec": array(document), "shared_specs": array(document)})
+                            "target_spec": array(document_ref), "shared_specs": array(document_ref),
+                            "diagram_sources": array(DIAGRAM)})
     result["concorde-discovery-context"] = obj({"context_id": DIGEST, "schema_version": {"const": 1},
-        "capability": {"enum": sorted(MAIN_ROUTED_CAPABILITIES)}, "phase": {"enum": ["route", "synthesize"]},
+        "capability": {"enum": sorted(MAIN_ROUTED_CAPABILITIES)}, "phase": {"const": "route"},
         "action": {"enum": ["route", "ask", "design-topology"]},
         "task": STRING, "constraints": array(STRING), "target_hint": NULLABLE_ID,
         "focus_hint": NULLABLE_ID, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
         "protocol": array(protocol_document), "topology": {"anyOf": [REGISTRY, {"type": "null"}]},
         "targets": array(discovery_target),
+        "documents": array(document),
+        "diagram_sources": array(protocol_document),
         "instructions": {"type": "string"},
-        "worker_results": array(typed_schema("concorde-main-worker-result")),
         "workspace": WORKSPACE_CONTEXT})
     result["concorde-main-stage-context"] = obj({
         "snapshot": typed_schema("concorde-discovery-context")})

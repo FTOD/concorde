@@ -16,8 +16,10 @@ starts from the project's entry Module and may expand only registered Module
 complete Target Spec and explicitly registered Shared Specs. Shared membership never expands another entity's remaining
 documents. It understands the Module contract and never reads Implementation Specs or implementation code.
 
-Action `ask` (the default when action is omitted) routes one or more fresh target readers and then
-synthesizes only their typed results. Action `design-topology` returns a digest-bound architecture
+Action `ask` (the default when action is omitted) answers directly from complete Spec contexts
+resolved by Python and injected into the coordinator. Each source body is included once, with
+explicit per-Module membership; additional contexts are loaded only on explicit selection.
+Action `design-topology` returns a digest-bound architecture
 proposal without changing files. Action `accept-topology` explicitly accepts that design, launches
 private target-local Spec authors and stores the resulting exact application as a host artifact;
 only its path and digest return to ambient cognition. After the developer reviews that artifact,
@@ -31,13 +33,15 @@ and constraints. Accept-topology requires the exact topology_proposal returned b
 topology requires only the exact application ArtifactRef returned by accept.
 The hint never grants Spec access to the coordinator. The global development loop
 (`concorde-dev-loop`) accepts the same task, with optional target_id, focus_id, constraints, and
-change_id, and routes through main exactly like this capability's own ask action; its internal
+change_id, and uses main's discovery to select one mutation target; its internal
 stages are bound to one target by the loop and are never invoked directly.
 Initialization uses its typed propose/apply request; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
 The coordinator expands complete Module collections only as needed and records the exact
-Target Spec/Shared Specs membership and digests in every discovery identity. A route selects a Module from admitted responsibilities; the fresh worker receives only its own
+Target Spec/Shared Specs membership, declared diagram sources and digests in every discovery identity.
+The coordinator can reason across all admitted complete contexts and answer without a reader or
+intermediate summaries. A mutation route selects a Module from admitted responsibilities; the fresh worker receives only its own
 complete Module collection. Main visibility metadata does not trim that collection or admit an Implementation Spec.
 Topology design receives exact registry metadata and explicitly admits affected Module contracts. Target authors' complete output
 is never returned through this capability; it stays in the ignored host application artifact. Report

@@ -25,7 +25,7 @@ from .agent_executor import CapabilityExecutionError
 from .permissions import (PolicyBinding, PermissionPolicyError, compile_policy, render_codex_configuration,
     render_claude_configuration, build_launch_specification, CapabilityExecutionResult)
 from .build import BuildError, load_role_prompt, verify_fresh
-from .contracts import (STAGE_ROLES, TARGET_AGENT_STAGES,
+from .contracts import (STAGE_ROLES,
     MAIN_CAPABILITY, MAIN_ROUTED_CAPABILITIES, LIFECYCLE_CAPABILITIES, load_capability_inventory)
 from .change_worktree import (STATE_PATH, WORK_PATH, bind_owner, create_worktree,
     ensure_change, graph_state, progress, read_change, record_transition, refresh_registry,
@@ -256,7 +256,7 @@ class MainInvocation:
         self.last_snapshot: DiscoveryContext | None = None
         self.completed: list[str] = []
 
-    def main_response(self, outcome: str, answer: str = "", *, routes=(), worker_results=(),
+    def main_response(self, outcome: str, answer: str = "", *, routes=(),
                       topology_proposal=None, application=None, files=(), gaps=()) -> dict:
         if self.last_context is None:
             raise SpecError("main response has no discovery context", "invalid_completion")
@@ -268,7 +268,6 @@ class MainInvocation:
             "answer": answer,
             "discovered_targets": list(self.discovered),
             "routes": list(routes),
-            "worker_results": list(worker_results),
             "topology_proposal": topology_proposal,
             "application": application,
             "files": list(files),
@@ -294,7 +293,7 @@ class MainInvocation:
             **({"reviews": []} if self.capability == "concorde-review" else {}),
         })
 
-    def stage(self, phase: str, occurrence: int, *, worker_results: tuple[dict, ...] = ()) -> dict:
+    def stage(self, phase: str, occurrence: int) -> dict:
         role = "concorde-coordinator"
         prompt = load_role_prompt(self.host.package_root, role)
         snapshot = resolve_discovery_context(
@@ -308,7 +307,6 @@ class MainInvocation:
             focus_hint=self.task.get("focus_id"),
             constraints=tuple(self.task.get("constraints", [])),
             instructions=prompt.body,
-            worker_results=worker_results,
         )
         self.last_context = snapshot.id
         self.last_snapshot = snapshot
@@ -424,12 +422,12 @@ class MainInvocation:
             if outcome == "completed":
                 if (self.capability != MAIN_CAPABILITY or self.action != "ask"
                         or expansions or routes or gaps or topology is not None or not data["answer"].strip()):
-                    raise SpecError("direct main answers require only an answer from admitted workspace metadata", "invalid_completion")
+                    raise SpecError("direct main answers require only an answer from admitted Spec context or workspace metadata", "invalid_completion")
             elif outcome == "expand":
                 if not expansions or routes or gaps or topology is not None:
                     raise SpecError("expand requires only nonempty Module targets", "invalid_completion")
             elif outcome == "routed":
-                if expansions or not routes or gaps or topology is not None:
+                if (self.action == "ask" or expansions or not routes or gaps or topology is not None):
                     raise SpecError("routed requires only nonempty worker routes", "invalid_completion")
             elif outcome == "topology_proposed":
                 if (self.action != "design-topology" or expansions or routes or gaps
@@ -441,23 +439,12 @@ class MainInvocation:
                     raise SpecError("blocked main routing has inconsistent fields", "invalid_completion")
             else:
                 raise SpecError("route phase returned an unsupported outcome", "invalid_completion")
-        elif outcome not in {"completed", "spec_incomplete", "unsupported", "conflicting", "failed"}:
-            raise SpecError("synthesis returned an unsupported outcome", "invalid_completion")
-        elif expansions or routes or topology is not None or ((outcome == "spec_incomplete") != bool(gaps)):
-            raise SpecError("synthesis result has inconsistent fields", "invalid_completion")
+        else:
+            raise SpecError("main returned an unsupported phase", "invalid_completion")
         admitted = set(self.discovered)
-        worker_gaps = []
-        if phase == "synthesize":
-            admitted.update(item["data"]["target_id"] for item in snapshot.value["worker_results"])
-            worker_gaps = [gap for item in snapshot.value["worker_results"]
-                           for gap in item["data"]["gaps"]]
-            if any(gap not in gaps for gap in worker_gaps):
-                raise SpecError("main synthesis omitted a worker Spec gap", "invalid_completion")
         for gap in gaps:
             if gap.get("target_id") not in admitted:
-                raise SpecError("main gap must identify an admitted discovery or worker target", "incompatible_handoff")
-            if gap in worker_gaps:
-                continue
+                raise SpecError("main gap must identify an admitted target", "incompatible_handoff")
             if gap.get("context_id", snapshot.id) != snapshot.id:
                 raise SpecError("main gap has a different context identity", "incompatible_handoff")
             gap["context_id"] = snapshot.id
@@ -465,7 +452,7 @@ class MainInvocation:
     def discover_routes(self) -> tuple[list[dict], dict | None]:
         if self.host.mode == "describe-policy":
             decision = self.stage("route", 0)
-            if self.task.get("target_id"):
+            if self.action != "ask" and self.task.get("target_id"):
                 return [{"target_id": self.task["target_id"], "focus_id": self.task.get("focus_id"),
                          "task": self.task["task"], "constraints": self.task.get("constraints", [])}], None
             return [], decision
@@ -475,10 +462,7 @@ class MainInvocation:
         for occurrence in range(routable_targets + 1):
             decision = self.stage("route", occurrence)
             if decision["outcome"] == "expand":
-                admitted_text = "\n".join(document["content"]
-                    for target in self.stage_context_targets(decision)
-                    for section in ("target_spec", "shared_specs")
-                    for document in target[section])
+                admitted_text = self.stage_context_text(decision)
                 for target_id in decision["expand_targets"]:
                     if target_id in self.discovered:
                         raise SpecError("main discovery requested an already admitted target", "invalid_completion")
@@ -493,10 +477,7 @@ class MainInvocation:
             if decision["outcome"] == "routed":
                 routes = decision["routes"]
                 original_constraints = self.task.get("constraints", [])
-                routing_text = "\n".join(document["content"]
-                    for target in self.stage_context_targets(decision)
-                    for section in ("target_spec", "shared_specs")
-                    for document in target[section])
+                routing_text = self.stage_context_text(decision)
                 for route in routes:
                     self.repository.select(route["target_id"], route["focus_id"])
                     if route["target_id"] not in self.discovered and route["target_id"] not in routing_text:
@@ -513,12 +494,14 @@ class MainInvocation:
             return [], decision
         raise SpecError("main discovery step limit exceeded", "context_limit")
 
-    def stage_context_targets(self, decision: dict) -> list[dict]:
-        """Return the exact collections bound to the decision's discovery identity."""
+    def stage_context_text(self, decision: dict) -> str:
+        """Return only source text bound to the decision's complete context identity."""
 
         if decision["context_id"] != self.last_context or self.last_snapshot is None:
             raise SpecError("main route no longer matches its discovery context", "stale_context")
-        return self.last_snapshot.value["targets"]
+        value = self.last_snapshot.value
+        return "\n".join(source["content"] for source in
+                         (*value["documents"], *value["diagram_sources"]))
 
     def select_one(self) -> tuple[dict | None, dict | None]:
         routes, decision = self.discover_routes()
@@ -534,46 +517,11 @@ class MainInvocation:
         return routes[0], None
 
     def run_answer(self) -> dict:
-        routes, decision = self.discover_routes()
-        if decision is not None:
-            outcome = "described" if self.host.mode == "describe-policy" else decision["outcome"]
-            return self.main_response(outcome, decision["answer"], gaps=decision["gaps"])
-
-        if self.host.mode == "describe-policy":
-            for route in routes:
-                worker_task = {"target_id": route["target_id"], "task": route["task"],
-                               "constraints": route["constraints"]}
-                if route["focus_id"] is not None:
-                    worker_task["focus_id"] = route["focus_id"]
-                Invocation(MAIN_CAPABILITY, self.configuration, worker_task, self.host).stage("concorde-read-target")
-            self.completed.extend(["concorde-coordinator-route", *("concorde-reader" for _ in routes)])
-            return self.main_response("described", routes=routes)
-
-        worker_results = []
-        for route in routes:
-            self.repository.select(route["target_id"], route["focus_id"])
-            worker_task = {"target_id": route["target_id"], "task": route["task"],
-                           "constraints": route["constraints"]}
-            if route["focus_id"] is not None:
-                worker_task["focus_id"] = route["focus_id"]
-            worker = Invocation(MAIN_CAPABILITY, self.configuration, worker_task, self.host)
-            result = worker.stage("concorde-read-target")
-            outcome = "completed" if result["outcome"] == "sufficient" else result["outcome"]
-            worker_results.append(typed("concorde-main-worker-result", {
-                "target_id": route["target_id"],
-                "focus_id": route["focus_id"],
-                "context_id": result["context_id"],
-                "outcome": outcome,
-                "answer": result["answer"],
-                "gaps": result["gaps"],
-            }))
-        self.completed.extend(["concorde-coordinator-route", *("concorde-reader" for _ in routes)])
-        synthesis = self.stage("synthesize", len(self.discovered), worker_results=tuple(worker_results))
-        if any(item["data"]["outcome"] != "completed" for item in worker_results) and synthesis["outcome"] == "completed":
-            raise SpecError("main synthesis cannot hide a blocked worker outcome", "invalid_completion")
-        self.completed.append("concorde-coordinator-synthesize")
-        return self.main_response(synthesis["outcome"], synthesis["answer"], routes=routes,
-                                  worker_results=worker_results, gaps=synthesis["gaps"])
+        _, decision = self.discover_routes()
+        if decision is None:
+            raise SpecError("questions require a direct coordinator result", "invalid_completion")
+        outcome = "described" if self.host.mode == "describe-policy" else decision["outcome"]
+        return self.main_response(outcome, decision["answer"], gaps=decision["gaps"])
 
     def run_topology_design(self) -> dict:
         routes, decision = self.discover_routes()
@@ -833,7 +781,7 @@ def _main_topology_response(action: str, repository: SpecRepository, proposal: d
     return typed("concorde-main-response", {"action": action,
         "entry_target": design["registry"]["entry_target"], "context_id": data["context_id"],
         "outcome": outcome, "answer": answer,
-        "discovered_targets": data["discovered_targets"], "routes": [], "worker_results": [],
+        "discovered_targets": data["discovered_targets"], "routes": [],
         "topology_proposal": proposal if action == "accept-topology" else None,
         "application": application, "files": list(files), "gaps": list(gaps),
         "completed_capabilities": list(completed),
@@ -1121,7 +1069,7 @@ class Invocation:
 
     def stage(self, capability: str, *, inputs: tuple[dict, ...] = (), readonly=False,
               defer_gap_resolution=False) -> dict:
-        phase, role = {**STAGE_ROLES, **TARGET_AGENT_STAGES}[capability]
+        phase, role = STAGE_ROLES[capability]
         prompt = load_role_prompt(self.host.package_root, role)
         snapshot = resolve_context(self.repository, self.target.id, phase=phase, task=self.task["task"],
             focus_id=self.task.get("focus_id"), constraints=tuple(self.task.get("constraints", [])),

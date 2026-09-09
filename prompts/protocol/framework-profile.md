@@ -17,12 +17,16 @@ migration; the runtime must not infer their meaning from paths or names.
 A bounded invocation selects one Module and freezes its complete document collection, task,
 constraints, phase, Protocol and role instructions. Feature/interface focus does not trim that
 collection. Planner and task-author inputs contain no Implementation Specs or source locators.
-A global coordinator may discover explicitly admitted Module contracts for routing; each selected
-worker is a fresh invocation with only its own complete Module context. Routing metadata and typed
-worker results are explicit inputs, not permission to inspect implementation. Coordinator discovery
+A global coordinator may reason across explicitly selected complete Module Spec contexts for
+questions, routing and topology design. The host deterministically resolves their registered
+documents and authored diagram sources, injects each source body once, and preserves per-Module
+membership and source digests. Questions are answered directly from these original sources;
+additional Module contexts require explicit selection. For mutations, each selected worker is a
+fresh invocation with only its own complete Module context. Routing metadata is an explicit input,
+not permission to inspect implementation. Coordinator discovery
 never loads Implementation Specs. Source-code phases use the selected Module's explicit file bindings.
 
-Readers, Spec authors, assessors, planners and task authors use only the selected Module's complete
+Spec authors, assessors, planners and task authors use only the selected Module's complete
 project-Spec collection. They MUST NOT read Implementation Specs or source code to supply missing
 Module meaning. Only the code-writing phase appends referenced Implementation Spec bodies and
 their bound files. Code review has its separately declared contract and code read authority.

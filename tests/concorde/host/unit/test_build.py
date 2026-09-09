@@ -60,14 +60,14 @@ class BuildGoldenTests(unittest.TestCase):
             mine = self.by_path[f"{INTEGRATION_ROOTS[integration]}/concorde-main/SKILL.md"].content.decode("utf-8")
             self.assertIn('source: "skills/concorde-main/SKILL.md"', mine)
 
-    def test_exactly_fourteen_skill_outputs_nine_agent_outputs_and_one_langgraph_config(self):
+    def test_exactly_fourteen_skill_outputs_eight_agent_outputs_and_one_langgraph_config(self):
         skill_outputs = [
             path for path in self.by_path
             if path.startswith(".claude/skills/") or path.startswith(".agents/skills/")
         ]
         agent_outputs = [path for path in self.by_path if path.startswith("generated/agents/")]
         self.assertEqual(len(skill_outputs), 14)
-        self.assertEqual(len(agent_outputs), 9)
+        self.assertEqual(len(agent_outputs), 8)
         self.assertIn("generated/langgraph.json", self.by_path)
 
     def test_langgraph_config_names_one_graph_per_skill(self):

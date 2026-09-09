@@ -14,7 +14,7 @@
 
 ## Responsibility
 
-Bind each named runtime responsibility asset to a canonical Python Agent record; supply the same definitions to workflow stages and the context reader factory.
+Bind each named runtime responsibility asset to a canonical Python Agent record; supply the same definitions to workflow stages.
 
 ## Bound files
 
@@ -28,8 +28,6 @@ Bind each named runtime responsibility asset to a canonical Python Agent record;
 - `agents/implementation_worker/spec.md`
 - `agents/planner/__init__.py`
 - `agents/planner/spec.md`
-- `agents/reader/__init__.py`
-- `agents/reader/spec.md`
 - `agents/spec_author/__init__.py`
 - `agents/spec_author/spec.md`
 - `agents/spec_reviewer/__init__.py`
@@ -41,7 +39,6 @@ Bind each named runtime responsibility asset to a canonical Python Agent record;
 - `tests/concorde/fixtures/build/golden/agents/coordinator.md`
 - `tests/concorde/fixtures/build/golden/agents/implementation-worker.md`
 - `tests/concorde/fixtures/build/golden/agents/planner.md`
-- `tests/concorde/fixtures/build/golden/agents/reader.md`
 - `tests/concorde/fixtures/build/golden/agents/spec-author.md`
 - `tests/concorde/fixtures/build/golden/agents/spec-reviewer.md`
 - `tests/concorde/fixtures/build/golden/agents/task-author.md`
@@ -57,12 +54,12 @@ The following paths identify responsibility groups; the exact authority remains 
 
 ## Implementation interfaces, dependencies and constraints
 
-Agent definitions expose catalog records and, for the reader, a fixed-target runtime factory. They depend on the host Agent/Harness primitives, typed context/result contracts, and current rendered assets. A definition binds its authored spec.md, effective effects, context/result type IDs, capability references and loop limits. The reader factory composes context resolution and native execution; construction alone must not launch a process or grant authority. Golden prompt files are expected build outputs used as test inputs, not additional authored rules.
+Agent definitions expose catalog records. They depend on the host Agent/Harness primitives, typed context/result contracts, and current rendered assets. A definition binds its authored spec.md, effective effects, context/result type IDs, capability references and loop limits. The coordinator consumes deterministically resolved complete source contexts and answers directly. Golden prompt files are expected build outputs used as test inputs, not additional authored rules.
 
 The exact ownership list above agrees with the registered binding. Source-family labels in the responsibility table are explanatory groups and never own additional or future files. A Module reference does not duplicate this ownership or make these documents part of a Module collection.
 
 ## Verification and shared changes
 
-Check catalog uniqueness, missing Spec/Harness rejection, context/result compatibility, reader target mismatch and explicit recursive edges. Build fixtures must show that changes to responsibilities alter the expected rendered body without admitting unrelated instructions; golden-byte equality alone does not prove role behavior.
+Check catalog uniqueness, missing Spec/Harness rejection, context/result compatibility, direct coordinator answers and explicit recursive edges in the generic execution runtime. Build fixtures must show that changes to responsibilities alter the expected rendered body without admitting unrelated instructions; golden-byte equality alone does not prove role behavior.
 
 These are verification obligations for implementation work, not a claim that checks were run during this Spec revision. A changed file, binding or Implementation Spec invalidates evidence for every registered using Module. Assess each consumer contract separately; missing public promises must be resolved in its Module Spec.

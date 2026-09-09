@@ -108,12 +108,11 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
         for policy in self.host.descriptions:
             if policy['phase'] not in {'implementation','code-review'}:self.assertEqual(['context.json'],policy['read_paths']);self.assertEqual([],policy['write_paths'])
-    def test_ask_policy_describes_separate_main_and_hinted_worker_without_launching(self):
+    def test_ask_policy_describes_only_coordinator_without_launching(self):
         result=self.run_op('concorde-main',{'task':'Explain transfer','target_id':'service.transfer'},mode='describe-policy')
         self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
-        self.assertEqual(['route','ask'],[item['phase'] for item in self.host.descriptions])
+        self.assertEqual(['route'],[item['phase'] for item in self.host.descriptions])
         self.assertEqual(['context.json'],self.host.descriptions[0]['read_paths'])
-        self.assertEqual(['context.json'],self.host.descriptions[1]['read_paths'])
         self.assertEqual(['scope.bank'],self.host.descriptions[0]['discovered_targets'])
         self.assertTrue(all(item['write_paths']==[] for item in self.host.descriptions))
     def test_changed_spec_requires_replanning_the_change(self):

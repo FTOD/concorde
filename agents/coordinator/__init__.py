@@ -1,4 +1,4 @@
-"""Coordinator Agent: routes work and designs/synthesizes system topology (A1)."""
+"""Coordinator Agent: answers from complete Spec contexts, routes work and designs topology (A1)."""
 
 from __future__ import annotations
 

@@ -112,8 +112,8 @@ Codex bootstrap. Finalization preserves every task read/write/deny/network/crede
 ## Agent binding
 
 The single canonical definition is `agent_model.Agent(name: str, spec: str, harness: Harness,
-constraints: Constraints)`. `name` is its catalog key (for example `reader`); a native role uses
-the external name `concorde-reader`. Its frozen `Constraints` has `effects: EffectDeclaration`,
+constraints: Constraints)`. `name` is its catalog key (for example `planner`); a native role uses
+the external name `concorde-planner`. Its frozen `Constraints` has `effects: EffectDeclaration`,
 `capabilities: tuple[str, ...]=()`, `contexts: tuple[str, ...]=()`, `results: tuple[str, ...]=()`,
 `limits: LoopPolicy | None=None` and `allow_delegation: bool=False`. The last field permits only
 host-mediated loop delegation through explicit graph edges and invocation grants; it does not

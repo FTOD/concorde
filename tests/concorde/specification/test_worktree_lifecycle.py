@@ -115,7 +115,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before["gaps"], after["gaps"])
         self.assertTrue(after["gaps"])
 
-    def test_main_answers_workspace_metadata_without_target_reader(self):
+    def test_main_answers_workspace_metadata_directly(self):
         def status(stage, snapshot, data, cwd):
             if stage == "route":
                 data.update(outcome="completed", answer="One change is in progress on candidate.",

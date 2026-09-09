@@ -69,13 +69,13 @@ class AlignmentExplorerContractTests(unittest.TestCase):
         self.assertNotIn("operation", schema["$defs"]["response"]["properties"])
 
     def test_distribution_does_not_add_a_conversational_explorer_skill(self):
-        # The 9 roles and 13 capabilities are derived (Python data), not manifest inventories;
+        # The 8 roles and 13 capabilities are derived (Python data), not manifest inventories;
         # this guards the same historical mistake against their current source instead.
         from concorde.host.contracts import INTERNAL_SKILLS, CAPABILITY_NAMES
         from concorde.host.roles import ROLES
 
-        self.assertEqual(len(ROLES), 9)
-        self.assertEqual(len(INTERNAL_SKILLS), 9)
+        self.assertEqual(len(ROLES), 8)
+        self.assertEqual(len(INTERNAL_SKILLS), 8)
         self.assertIn("concorde-coordinator", INTERNAL_SKILLS)
         self.assertIn("concorde-main", CAPABILITY_NAMES)
         self.assertFalse(any("explore" in role for role in ROLES))

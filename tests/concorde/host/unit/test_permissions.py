@@ -386,7 +386,7 @@ class AgentBindingLaunchTests(unittest.TestCase):
 
     def test_agent_binding_participates_in_the_launch_digest(self):
         with_binding = self.build(agent_binding_json=binding_json(self.binding))
-        other_binding = resolve_agent(REPOSITORY_ROOT, "reader")
+        other_binding = resolve_agent(REPOSITORY_ROOT, "planner")
         different_binding = self.build(agent_binding_json=binding_json(other_binding))
         self.assertNotEqual(with_binding.digest, different_binding.digest)
         self.assertEqual(with_binding.agent_binding_json, binding_json(self.binding))

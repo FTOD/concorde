@@ -183,14 +183,14 @@ class ResolveAgentInvalidBindingTests(unittest.TestCase):
         self.assertEqual(failure.exception.code, "invalid_agent_binding")
 
     def test_constraints_that_widen_effects_beyond_the_harness_are_invalid(self):
-        base = agent_model.load_agents()["reader"]
+        base = agent_model.load_agents()["planner"]
         self.assertEqual(base.harness.name, SPEC_CAPSULE.name)
         widened_effects = dataclasses.replace(base.constraints.effects, writes=("implementation",))
         widened = dataclasses.replace(base, constraints=dataclasses.replace(base.constraints, effects=widened_effects))
-        self._resolve_with("reader", widened)
+        self._resolve_with("planner", widened)
 
     def test_unregistered_harness_is_invalid(self):
-        base = agent_model.load_agents()["reader"]
+        base = agent_model.load_agents()["planner"]
         bogus = make_harness(
             name="fixture-bogus-harness",
             workspace="capsule",
@@ -201,45 +201,45 @@ class ResolveAgentInvalidBindingTests(unittest.TestCase):
         )
         self.assertNotIn(bogus.name, HARNESSES)
         broken = dataclasses.replace(base, harness=bogus)
-        self._resolve_with("reader", broken)
+        self._resolve_with("planner", broken)
 
     def test_unknown_capability_reference_is_invalid(self):
-        base = agent_model.load_agents()["reader"]
+        base = agent_model.load_agents()["planner"]
         broken = dataclasses.replace(
             base, constraints=dataclasses.replace(base.constraints, capabilities=("concorde-not-a-real-capability",))
         )
-        self._resolve_with("reader", broken)
+        self._resolve_with("planner", broken)
 
     def test_context_not_admitted_by_the_harness_is_invalid(self):
-        base = agent_model.load_agents()["reader"]
+        base = agent_model.load_agents()["planner"]
         self.assertNotIn("concorde-main-stage-context", base.harness.contexts)
         broken = dataclasses.replace(
             base, constraints=dataclasses.replace(base.constraints, contexts=("concorde-main-stage-context",))
         )
-        self._resolve_with("reader", broken)
+        self._resolve_with("planner", broken)
 
     def test_wrong_spec_path_is_invalid(self):
-        base = agent_model.load_agents()["reader"]
-        broken = dataclasses.replace(base, spec="agents/reader/wrong.md")
-        self._resolve_with("reader", broken)
+        base = agent_model.load_agents()["planner"]
+        broken = dataclasses.replace(base, spec="agents/planner/wrong.md")
+        self._resolve_with("planner", broken)
 
     def test_limits_that_widen_the_harness_timeout_are_invalid(self):
-        base = agent_model.load_agents()["reader"]
+        base = agent_model.load_agents()["planner"]
         widened = dataclasses.replace(
             base, constraints=dataclasses.replace(base.constraints, limits=LoopPolicy(999999))
         )
         self.assertGreater(widened.constraints.limits.timeout_seconds, widened.harness.loop.timeout_seconds)
-        self._resolve_with("reader", widened)
+        self._resolve_with("planner", widened)
 
     def test_effective_loop_is_the_tighter_timeout_when_limits_is_given(self):
-        base = agent_model.load_agents()["reader"]
+        base = agent_model.load_agents()["planner"]
         self.assertLess(300, base.harness.loop.timeout_seconds)
         tightened = dataclasses.replace(
             base, constraints=dataclasses.replace(base.constraints, limits=LoopPolicy(300))
         )
-        modified = _with_one_agent_replaced("reader", tightened)
+        modified = _with_one_agent_replaced("planner", tightened)
         with mock.patch.object(agent_model, "load_agents", return_value=modified):
-            binding = resolve_agent(self.root, "reader")
+            binding = resolve_agent(self.root, "planner")
         self.assertEqual(binding.effective_loop, LoopPolicy(300))
 
 

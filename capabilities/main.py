@@ -1,11 +1,11 @@
 """Global entry: answer questions, route work, and design or apply system topology."""
 from concorde.host import contract_shapes as shapes
-from agents import coordinator, reader, spec_author
+from agents import coordinator, spec_author
 
 from . import external_name
 
 CLASS = "global"
-AGENTS = (coordinator.AGENT, reader.AGENT, spec_author.AGENT)
+AGENTS = (coordinator.AGENT, spec_author.AGENT)
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 
@@ -25,7 +25,6 @@ RESPONSE = shapes.obj({
     "answer": {"type": "string"},
     "discovered_targets": shapes.array(shapes.STRING, unique=True),
     "routes": shapes.array(shapes.ROUTE),
-    "worker_results": shapes.array(shapes.typed_schema("concorde-main-worker-result")),
     "topology_proposal": {"anyOf": [shapes.typed_schema("concorde-topology-proposal"), {"type": "null"}]},
     "application": {"anyOf": [shapes.ARTIFACT, {"type": "null"}]},
     "files": shapes.array(shapes.PATH, unique=True),

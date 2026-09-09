@@ -272,7 +272,7 @@ Host events distinguish admission, decision source/action and return. Admission 
 Harness name and complete canonical Harness configuration for inspection. Events do not become
 model feedback and do not replace the native execution receipt.
 
-### Native decisions and the existing reader
+### Native decisions
 
 `NativeAgentAdapter(integration="codex", executor=None)` uses the same registered Agent and
 `AgentProcessExecutor` as ordinary stages. Every decision creates a new private read-only capsule,
@@ -289,25 +289,6 @@ loop timeout. It never renews the tree deadline. A successfully attested step wi
 serialized JSON or a non-model-driven source raises `InvalidAgentStep`; failed native attestation
 remains an execution failure. Existing single-process runner and executor interfaces are unchanged.
 
-As a caller-composition example, a host may use the context Module’s factory
-`agents.reader.runtime(project_root, package_root, target_id, *,
-integration="codex", executor=None, executor_reference=None, limits=None, cancelled=lambda: False)`.
-It loads the same registered `agents.reader.AGENT` and `agents/reader/spec.md` used by ordinary
-reader stages, resolves its current rendered binding, and installs one `reader` node with a fixed
-target, explicit self-edge and eight local steps. It consumes typed `concorde-agent-task@1`
-`{task, target_id}` and completes with `concorde-agent-answer@1` `{answer}`; strings are nonblank.
-An injected executor requires a nonblank versioned reference. `limits=None` uses `AgentLimits()`.
-The factory resolves actual complete target snapshots for admission and freshness checks, grants
-no authority and starts no invocation. This is a consumer of the execution API, not a required
-execution-to-context Module dependency; the runtime itself receives an explicit resolver callback. A mismatched task target is rejected before context reads.
-
-```python
-from agents.reader import runtime
-from concorde.host.agent_runtime import AgentGrant
-from concorde.host.typed_data import typed
-
-reader = runtime(host.project_root, host.package_root, target_id)
-run = host.invoke_agent(reader, "reader",
-    typed("concorde-agent-task", {"task": task, "target_id": target_id}),
-    AgentGrant(frozenset({target_id}), frozenset({"reader"})))
-```
+A trusted host composes RuntimeAgent records and a resolver callback explicitly, then invokes
+the graph through CapabilityHost.invoke_agent. The generic runtime provides no question-reading
+factory. Ordinary question answering uses the coordinator's directly injected Spec contexts.

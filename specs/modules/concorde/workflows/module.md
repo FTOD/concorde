@@ -58,7 +58,7 @@ For an installed global or lifecycle Skill, admit its versioned request, select 
 
 ### feature.workflows.query
 
-For a question and optional routing hints, discover explicitly admitted Module collections, invoke readers separately and synthesize their typed answers. Return an answer with attributed gaps or limitations without authoring project files. A routing hint cannot grant context, and discovery stops at its declared limits.
+For a question and optional routing hints, Python resolves explicitly selected complete Module Spec contexts and injects deduplicated original document and diagram bodies directly into the coordinator. The coordinator reasons across those contexts and returns an answer with attributed gaps or limitations without authoring project files. A routing hint cannot grant context, and discovery stops at its declared limits.
 
 ### feature.workflows.develop
 
@@ -91,7 +91,7 @@ These entries describe the exact direct providers and children registered for th
     "responsibility": "Resolve complete Module contracts, bind code-writing implementation context and validate explicit Spec structure.",
     "selection_condition": "When resolving a complete Module context or preparing initial project Spec state.",
     "relied_upon_promises": [
-      "resolve_context selects one Module and its complete registered documents. Feature focus never trims the collection. Non-code phases do not receive Implementation Specs or source. The implementation phase adds only the referenced Implementation Specs and exact bound files. Membership, bytes, rules and admitted stage inputs determine context identity."
+      "resolve_context selects one Module and its complete registered documents. resolve_discovery_context deterministically resolves several explicitly selected complete Module contexts, with deduplicated original document and diagram bodies and per-Module membership for direct coordinator reasoning. Feature focus never trims the collection. Non-code phases do not receive Implementation Specs or implementation source. The implementation phase adds only the referenced Implementation Specs and exact bound files. Membership, bytes, rules and admitted stage inputs determine context identity."
     ]
   },
   {

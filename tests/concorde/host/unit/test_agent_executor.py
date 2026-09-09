@@ -604,7 +604,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
             executor(spec)
 
     def test_wrong_context_and_result_type_is_refused(self):
-        spec = self.structured_specification(agent_name="reader", role="concorde-reader",
+        spec = self.structured_specification(agent_name="planner", role="concorde-planner",
             context_type="concorde-topology-author-context")
         executor = AgentProcessExecutor(runner=self._unreachable_runner(self),
             version_probe=lambda *a: "claude-code 4.2", environment={"PATH": "/bin"})

@@ -28,7 +28,7 @@ Current public Skill files expose exactly one global or lifecycle entry through
 
 | Capability | Class | Skill | Launches | Uses | Behavior |
 | --- | --- | --- | --- | --- | --- |
-| main | global | concorde-main | coordinator, reader, spec-author | — | Answer through fresh readers, or design, prepare and atomically apply an explicitly accepted topology |
+| main | global | concorde-main | coordinator, spec-author | — | Answer directly from complete injected Spec contexts, or design, prepare and atomically apply an explicitly accepted topology |
 | dev-loop | global | concorde-dev-loop | coordinator | specify, review, plan, tasks, implement, validate | Route one change, then specify unless `specify=false`, review the Spec, plan, task, implement, validate and review code to ready; `run_reviews=false` records explicit skips and cannot cancel a recorded requirement |
 | reflections-triage | global | concorde-reflections-triage | implementation-worker | dev-loop | Report status, capture recorded gaps, investigate read-only, implement through the development loop, merge or close owned reflections |
 | init | lifecycle | concorde-init | — | — | Propose and apply explicit project initialization with a pinned Protocol |
@@ -48,7 +48,7 @@ boundary document.
 
 ## Agents and Harnesses
 
-The nine identifiers a capability "Launches" above are its named Agents: each one Python module
+The eight identifiers a capability "Launches" above are its named Agents: each one Python module
 under the top-level `agents/` package, binding an authored `agents/<name>/spec.md`, a registered
 Harness, and its effective Constraints/Permissions (`spec.md` + Harness + Constraints/Permissions,
 per [Agents and Harnesses](agents-and-harnesses.md)). `agents/__init__.py` declares the
@@ -66,17 +66,16 @@ Every Agent is bound to exactly one of three registered Harnesses:
 | spec-capsule | capsule | spec-context | — | concorde-agent-stage-context, concorde-review-stage-context, concorde-topology-author-context | 1800s |
 | implementation-workspace | project | spec-context, implementation | implementation | concorde-agent-stage-context, concorde-review-stage-context | 3600s |
 
-`coordinator` binds `discovery-capsule`; `reader`, `spec-author`, `context-assessor`, `planner`,
+`coordinator` binds `discovery-capsule`; `spec-author`, `context-assessor`, `planner`,
 `task-author` and `spec-reviewer` bind `spec-capsule`; `implementation-worker` and `code-reviewer`
 bind `implementation-workspace`. Each Agent's own Constraints/Permissions never widen its bound
-Harness. The table shows ordinary stage contexts; an explicitly admitted recursive reader also
-uses the local `concorde-agent-loop-context`/`concorde-agent-loop-step` contracts. Those additional
-interfaces still require the canonical Agent constraint and host graph/grant checks.
+Harness. The table shows ordinary stage contexts. The generic execution runtime also supports
+`concorde-agent-loop-context`/`concorde-agent-loop-step` for explicitly bound Agent graphs; those
+interfaces require the canonical Agent constraint and host graph/grant checks.
 
 ```concorde-agents
 [
   {"id": "coordinator", "harness": "discovery-capsule", "capabilities": ["dev-loop", "main"]},
-  {"id": "reader", "harness": "spec-capsule", "capabilities": ["main"]},
   {"id": "spec-author", "harness": "spec-capsule", "capabilities": ["main", "specify"]},
   {"id": "context-assessor", "harness": "spec-capsule", "capabilities": ["context-solve", "plan"]},
   {"id": "planner", "harness": "spec-capsule", "capabilities": ["plan"]},
@@ -135,8 +134,8 @@ none for a stage. The block is intentional redundancy so that this Spec explains
 without reading Python; it never adds a capability that code does not implement.
 
 Target workers use `concorde-agent-stage-context@1`/`concorde-agent-stage-result@1` with explicit
-document order, Target Spec and Shared Specs. Coordinator routing, topology design and synthesis
-use `concorde-main-stage-context@1`/`concorde-main-stage-result@1` with an explicit complete Module discovery context and typed `concorde-main-worker-result@1` handoffs. Accepted topology design uses
+document order, Target Spec and Shared Specs. Coordinator questions, routing and topology design
+use `concorde-main-stage-context@1`/`concorde-main-stage-result@1` with explicit complete Module contexts, deduplicated original source pools and per-Module membership. Accepted topology design uses
 `concorde-topology-proposal@1`, `concorde-topology-author-context@1`/`concorde-topology-author-result@1`
 and a host-private `concorde-topology-application@1` artifact; shared replacements require every
 reference and identical bytes. Plan artifacts, implementation tasks and selected reflections have

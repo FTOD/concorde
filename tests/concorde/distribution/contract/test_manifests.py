@@ -62,7 +62,7 @@ class ManifestContractTests(unittest.TestCase):
         capabilities = load_capability_inventory()
         templates = sorted(path.name for path in (REPOSITORY_ROOT / "templates").glob("*.md"))
         self.assertEqual(sorted(self.manifest["templates"]), templates)
-        self.assertEqual((len(ROLES), len(capabilities.CAPABILITIES), len(SKILL_NAMES), len(templates)), (9, 13, 7, 6))
+        self.assertEqual((len(ROLES), len(capabilities.CAPABILITIES), len(SKILL_NAMES), len(templates)), (8, 13, 7, 6))
         self.assertEqual(
             (REPOSITORY_ROOT / "scripts/requirements.lock").read_text(),
             "langgraph==1.2.11\n",

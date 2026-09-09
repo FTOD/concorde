@@ -18,7 +18,7 @@ from .support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
 class DistributionTests(unittest.TestCase):
     def test_catalog_roles_and_exported_schemas_are_executable_package_contracts(self):
         self.assertEqual([],validate_package(PACKAGE))
-        self.assertEqual(13,len(CAPABILITY_NAMES));self.assertEqual(9,len(INTERNAL_SKILLS))
+        self.assertEqual(13,len(CAPABILITY_NAMES));self.assertEqual(8,len(INTERNAL_SKILLS))
         self.assertIn('concorde-main',CAPABILITY_NAMES);self.assertNotIn('concorde-ask',CAPABILITY_NAMES)
         self.assertIn('concorde-coordinator',INTERNAL_SKILLS);self.assertNotIn('concorde-main',INTERNAL_SKILLS)
         for role in INTERNAL_SKILLS:
@@ -80,7 +80,7 @@ print(json.dumps({'result':result,'ask':ask,'module_source':actual_host.__file__
                 self.assertEqual(0,completed.returncode,completed.stderr);value=json.loads(completed.stdout)
                 self.assertIn('.concorde/framework/src',value['module_source']);self.assertEqual('succeeded',value['result']['status'],value)
                 self.assertEqual('ready',value['result']['output']['data']['outcome']);self.assertEqual('passed',value['result']['output']['data']['checks'][0]['status'])
-                self.assertEqual('succeeded',value['ask']['status'],value);self.assertEqual(['route','route','ask','synthesize'],value['ask_stages'])
+                self.assertEqual('succeeded',value['ask']['status'],value);self.assertEqual(['route','route'],value['ask_stages'])
     def test_completion_from_previous_invocation_cannot_be_replayed(self):
         from concorde.host.capability_service import CapabilityHost,run_capability
         with tempfile.TemporaryDirectory() as directory:

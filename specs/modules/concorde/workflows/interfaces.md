@@ -81,9 +81,12 @@ Main discovery can
 admit registered complete Module collections on demand; each admission starts a fresh process with a new context identity. Main never reads Implementation Spec bodies or implementation code. For capabilities other than
 the `ask` action of `concorde-main`, main must return one owning target; cross-target mutation is
 routed through a Module. The host
-then starts the capability's different bounded worker or composite flow. `concorde-main` may route one
-or more fresh `concorde-reader` workers, after which a final fresh main invocation receives only typed
-worker results for synthesis. An optional caller target/focus is a routing hint, not a context grant.
+then starts the capability's different bounded worker or composite flow. For questions,
+`concorde-main` answers directly from complete contexts resolved by Python and injected into the
+coordinator. Source pools deduplicate full document and declared diagram bodies, while target
+records retain their exact membership. Additional selections restart the coordinator with the
+expanded complete context; no reading worker or synthesis stage intervenes. An optional caller
+target/focus is a routing hint, not a context grant.
 
 `concorde-main` also owns topology evolution. `design-topology` admits exact registry metadata and
 the Module kind definition while withholding Implementation Spec bodies and code. It returns a
@@ -216,7 +219,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-main-request@1` / `concorde-main-response@1` | main | Every request field is optional at the wire level. Request adds `action` (ask\|design-topology\|accept-topology\|apply-topology, default ask), `topology_proposal` (a `concorde-topology-proposal@1` TypedValue, required for accept-topology) and `application` (an ArtifactRef, required for apply-topology). Response adds `entry_target`, `discovered_targets`, `routes`, `worker_results` (`concorde-main-worker-result@1` TypedValues), nullable `topology_proposal`/`application`, `files` and `workspace`. |
+| `concorde-main-request@1` / `concorde-main-response@1` | main | Every request field is optional at the wire level. Request adds `action` (ask\|design-topology\|accept-topology\|apply-topology, default ask), `topology_proposal` (a `concorde-topology-proposal@1` TypedValue, required for accept-topology) and `application` (an ArtifactRef, required for apply-topology). Response adds `entry_target`, `discovered_targets`, `routes`, nullable `topology_proposal`/`application`, `files` and `workspace`. |
 | `concorde-dev-loop-request@1` / `concorde-dev-loop-response@1` | dev-loop | Only `task` is required. Request adds `specify` (default true; false skips Spec authoring) and `run_reviews` (default true; false records an explicit per-mode skip). Response is the common shape only. |
 | `concorde-reflections-triage-request@1` / `concorde-reflections-triage-response@1` | reflections-triage | Requires `target_id`, `action` (status\|record-gaps\|investigate\|implement\|merge\|close) and `reflection_ids` (a unique array, possibly empty); `task` is optional here, unlike other capabilities, because status and record-gaps need none. Adds optional `gap_ids`. Response adds `reflections` and `gap_records`. |
 | `concorde-init-request@1` / `concorde-init-response@1` | init | Requires only `action` (propose\|apply); adds optional `name`, `target_id`, `configuration` and `proposal` (a `concorde-project-proposal@1` TypedValue). Response replaces the common shape with `status` (proposed\|applied), a nullable `proposal` and `files`. |
@@ -236,7 +239,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | --- | --- | --- |
 | `concorde-context-snapshot@1` | Every stage capability's frozen input | Carries `target_id`, `kind`, `focus_id`, `phase`, `task`, `constraints`, `protocol_binding`, `protocol`, `document_order`, `target_spec`, `shared_specs`, `diagram_sources`, `instructions`, `stage_inputs`, `implementation_artifacts` (populated only for implementation/code-review) and `workspace`. A changed membership or byte digest is rejected as `stale_context`. |
 | `concorde-agent-task@1` | Host or admitted parent to Agent | `{task, target_id}`; nonempty task and explicit target hint, validated against the host grant. |
-| `concorde-agent-answer@1` | Reader Agent to parent | `{answer}`; nonempty task-relevant answer, never a context snapshot. |
+| `concorde-agent-answer@1` | Generic Agent to parent | `{answer}`; nonempty task-relevant answer, never a context snapshot. |
 | `concorde-agent-interruption@1` | Agent to parent | `{gaps, decision}`; gaps contain question, blocked_step, needed_contract, target_id and context_id. Spec incomplete requires nonempty bound gaps and null decision; waiting requires a nonempty decision question and no gaps. |
 | `concorde-agent-loop-context@1` | Host to fresh native decision | `{invocation_id, parent_id, agent_id, input_json, context_json, feedback, children, result_schema_json}`. JSON transport strings contain host-validated typed values. Each child descriptor has agent_id, input_type, result_type, input_schema_json and result_schema_json. Feedback has invocation_id, parent_id, agent_id, outcome, value_json, error and nullable typed details; no child private context. |
 | `concorde-agent-loop-step@1` | Native decision to host | `{source, action, agent_id, value_json, outcome, details}`. Source is code-driven or model-driven (native must use model-driven). Delegate requires a child ID and typed input, completed decision outcome and null details. Complete has no child ID and returns a typed result only for completed. Other outcomes are spec_incomplete, waiting, cancelled, failed, limit_exhausted or rejected; only gaps/waiting carry typed interruption details. |
@@ -256,15 +259,30 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-discovery-context@1` | Host to coordinator/reader, during main routing, synthesis or topology design | `{capability: main\|dev-loop, phase: route\|synthesize, action: route\|ask\|design-topology, task, constraints, target_hint, focus_hint, protocol_binding, protocol, topology (nullable registry, design-topology only), targets, instructions, worker_results, workspace}`. |
+| `concorde-discovery-context@1` | Host to coordinator, during direct questions, routing or topology design | `{context_id, schema_version: 1, capability: main\|dev-loop, phase: route, action: route\|ask\|design-topology, task, constraints, target_hint, focus_hint, protocol_binding, protocol, topology (nullable registry, design-topology only), targets, documents, diagram_sources, instructions, workspace}`. |
 | `concorde-main-stage-context@1` | Wraps the discovery context for launch | `{snapshot: concorde-discovery-context@1}`. |
 | `concorde-main-stage-result@1` | Coordinator to host, the completion | `{context_id, outcome, answer, expand_targets, routes, gaps, topology_design (nullable)}`. |
-| `concorde-main-worker-result@1` | Fresh reader/worker to main, for synthesis | `{target_id, focus_id, context_id, outcome, answer, gaps}`; never carries raw Spec bodies back into main cognition. |
 | `concorde-topology-design@1` | design-topology's output, embedded in the main stage result | `{summary, registry, spec_tasks (nonempty), migration_constraints, acceptance (nonempty)}`. |
 | `concorde-topology-proposal@1` | design-topology's response, and accept-topology's request | `{proposal_id, base_registry_digest, protocol_binding, context_id, discovered_targets (nonempty), task, constraints, target_hint, focus_hint, design: concorde-topology-design@1, workspace}`; a stale `base_registry_digest` or `protocol_binding` is rejected as `stale_proposal`. |
 | `concorde-topology-author-context@1` | Host to target-local Spec author, during accept-topology | `{context_id, base_registry_digest, target, task, protocol_binding, protocol, candidate_document_references, current_document_order, target_spec, shared_specs, diagram_sources, instructions, workspace}`. |
 | `concorde-topology-author-result@1` | Author to host, the completion | `{context_id, target_id, outcome, answer, gaps, documents, diagrams?}`. |
 | `concorde-topology-application@1` | Host-private, produced by accept-topology and consumed by apply-topology | `{application_id, topology_proposal: concorde-topology-proposal@1, base_registry_digest, protocol_binding, files (nonempty)}`; the public response exposes only its ArtifactRef, never these bytes. |
+
+In the discovery context, each target records `target_id`, `kind: module`, `document_order`,
+`target_spec`, `shared_specs` and `diagram_sources`. The two Spec sections contain document
+references `{document_id, path, digest, targets, main_visible}`; diagram_sources contains that
+Module's exact declarations `{source, kind, title, recipe?}`. The top-level documents pool supplies
+each referenced document's full record with `content` once per path. The top-level diagram_sources
+pool supplies `{path, digest, content}` once per declared source path. Pools are sorted by path;
+target registration order and shared ownership remain explicit. Inline diagrams are already in
+their Markdown bodies. No visibility flag trims these complete contexts.
+
+For ask, the coordinator may expand explicitly selected contexts or complete directly from their
+original contents with no routes. Other routed capabilities preserve one target task and its
+constraints. Spec gaps identify an admitted Module and the current combined context identity.
+Old reading-worker results and the synthesis phase are not accepted; clients must use the current
+build-bound schemas and instructions. Existing Protocol bindings remain pinned until explicitly
+updated; a mismatched package/context is rejected instead of reinterpreted.
 
 ### Project proposal
 
@@ -385,7 +403,7 @@ change Spec authority or grant agent writes outside the selected target.
 
 Every discovery and worker snapshot admits `workspace` lifecycle metadata. Main can answer a pure
 workspace-status question directly from this metadata; target-behavior answers still use separate
-readers. The current workspace identity and status are rechecked after a stage. Other live worktree
+coordinator. The current workspace identity and status are rechecked after a stage. Other live worktree
 summaries are frozen observations and their progress does not invalidate unrelated main cognition.
 A change's `status` may also become `cancelled` or `limit_exhausted` after an executor outcome of
 the same name (`execution_cancelled`/`execution_limit`), distinguishing a cancelled or time-limited
@@ -649,36 +667,10 @@ their existing one-decision contract until an enclosing host explicitly composes
 The execution collaborator supplies an already constructed `AgentRuntime` whose
 `invoke(agent_id: str, input: dict, grant: AgentGrant) -> AgentRun` performs admission and execution.
 This host entry accepts that runtime instance; it does not accept raw Agent definitions, discover
-Python modules or construct arbitrary Harnesses from task fields. A concrete supported construction
-path is the collaborator's factory:
-
-```python
-agents.reader.runtime(project_root, package_root, target_id, *, integration="codex", executor=None,
-                      executor_reference=None, limits=None, cancelled=lambda: False) -> AgentRuntime
-```
-
-The factory installs the canonical `reader` with its authored
-`agents/reader/spec.md`, an inspectable native Harness configuration, one fixed nonblank
-`target_id`, an explicit self-delegation edge and a local maximum of eight steps. This is the same registered Agent used by ordinary reader stages;
-its canonical `Constraints.allow_delegation` permits only the host graph's explicit edges. It declares
-`concorde-agent-task@1` input (`{task: nonblank str, target_id: nonblank str}`) and
-`concorde-agent-answer@1` output (`{answer: nonblank str}`). Each value has the closed envelope
-`{type_id, schema_version: 1, data}`. The factory uses the existing context service to resolve the
-complete fixed target closure for every child and freshness check; a mismatched task target is
-rejected before context resolution. `integration` is codex or claude. An injected trusted executor
-requires a nonblank versioned `executor_reference` identifying its configuration. Its callable
-signature is `executor(launch: LaunchSpecification, *, deadline: float) -> CapabilityExecutionResult`;
-the launch/result records are defined in the local runtime-value document. `deadline` is the exact
-absolute shared tree deadline on Python's `time.monotonic()` clock. The callable must honor the
-compiled native policy, reject an expired deadline, and limit all preflight and process work to
-`deadline - time.monotonic()`, raising a timeout exception on expiration. Once the shared deadline
-has elapsed, the runtime returns `limit_exhausted`; it never turns that timeout into successful
-completion. This adapter-specific hook can wrap the existing single-process executor with
-deadline-bound runner/probe callbacks; the legacy executor interface itself remains unchanged.
-The default adapter installs those callbacks and does not renew the deadline across continuations.
-The factory verifies build freshness and
-returns no execution grant. Custom Agent catalogs are installed by the trusted execution provider
-before this host call, under the same admission and result contract.
+Python modules or construct arbitrary Harnesses from task fields. Trusted Python code constructs
+RuntimeAgent nodes and an explicit complete-context resolver under the execution provider's
+admission contract. No built-in question-reading factory is provided. The normal main question
+flow directly injects resolved Spec contexts into the coordinator.
 
 `AgentGrant(targets: frozenset[str], agents: frozenset[str])` identifies the permitted project
 targets and the tree's Agent allowlist. The root ID must be admitted. Every child must satisfy its
@@ -686,7 +678,7 @@ parent's explicit edge and the inherited host allowlist; effective targets inter
 invocation. Installing a definition cannot add authority. `AgentLimits(max_calls=16, max_depth=4,
 max_decisions=64, timeout_seconds=300)` bounds the entire tree; the first three fields are integers,
 positive except depth may be zero, and timeout is a positive finite number. Root depth is zero.
-`limits=None` uses these defaults. A malformed grant or invalid factory/limit configuration raises
+`limits=None` uses these defaults. A malformed grant or invalid graph/limit configuration raises
 `ValueError`. A valid but insufficient grant returns `rejected`, not a widened retry. The host
 entry itself rejects non-`AgentRuntime` inputs and non-execute mode with `ValueError`, and a stale
 package build with `BuildError(code="stale_build")`.

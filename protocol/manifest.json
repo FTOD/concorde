@@ -14,11 +14,11 @@
     },
     {
       "path": "generated/protocol/principles.md",
-      "digest": "sha256:f64b1a3d279999d5deb69e8cbf5174067852a8dd57ba9016c2b4a40508be61e3"
+      "digest": "sha256:9a25ba34f2e3e085a1a63f850327515bba83995bbc706d9e548ed333ac95bfbe"
     },
     {
       "path": "generated/protocol/schemas.json",
-      "digest": "sha256:46750fc094cc6c0b165ccce97e4594d50b2121e4dd5e14138e9c3b5378cd303a"
+      "digest": "sha256:9c2c8ae6deb3bb84101cb4a7cc1886cdc8b6a9d69fcb12ff1af1f5f36ab3595a"
     }
   ]
 }
