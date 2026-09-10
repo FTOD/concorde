@@ -5,27 +5,25 @@
   "protocolDocs": true,
   "repository": "https://github.com/FTOD/concorde",
   "schema_version": 1,
-  "tagline": "Give every agent a contract. From intent to a verified candidate.",
+  "tagline": "Architecture-aware Specs, project understanding, and scoped agents.",
   "title": "Concorde Framework",
   "url": "https://ftod.github.io",
   "homepage": {
-    "eyebrow": "Specification-driven development · Codex + Claude",
-    "title": "Give every agent a contract.",
-    "description": "Turn a change request into a reviewed, validated candidate. Concorde gives each agent a complete Module contract, explicit file access and evidence you can inspect.",
+    "eyebrow": "Architecture-aware Specs · Codex + Claude",
+    "title": "Specify the architecture.",
+    "description": "Write and maintain Specs that explain your software’s behavior and architecture. Understand the project through its docsite and Understand Anything graph view, guide agents with explicit context and permissions, and use built-in agents for specification and development.",
     "features": {
-      "title": "Know what changed. Know why it’s ready.",
+      "title": "Specify. Understand. Guide. Build.",
       "items": [
-        {"title": "Complete contracts. Bounded context.", "description": "Each task receives its Module’s entire Spec collection. Planners reason from its promises; code writers receive the declared implementation files. Dependencies never silently expand context."},
-        {"title": "Boundaries the host enforces.", "description": "Agents receive explicit context and file permissions. Configured checks run with OS-enforced read-only project access and external scratch space. Unsupported enforcement blocks execution."},
-        {"title": "Shared code. Every consumer counted.", "description": "A reverse index tracks every Module that lists a file. Change shared code, and each affected contract needs its own checks and evidence in a separate Module context."},
-        {"title": "Evidence that stays honest.", "description": "Reviews and validation identify the inputs they assessed. Relevant changes invalidate old evidence. Missing promises become named Spec gaps, with progress preserved for the next invocation."},
-        {"title": "A worktree for every change.", "description": "The development loop stops at a ready candidate. Delivery verifies integration and stages an independent branch. Merging into primary requires a separate, explicit request."},
-        {"title": "Explore the system behind the patch.", "description": "Read contracts alongside their entity diagrams and browse composition and dependency graphs. Optional LangGraph Studio exposes the execution graphs and live events behind the workflow."}
+        {"title": "Write and maintain architecture-aware Specs.", "description": "Describe each Module’s purpose, requirements, scenarios and architecture together. Author and review entities, relationships, dependencies and implementation file bindings, and keep the Specs consistent as the software evolves."},
+        {"title": "Understand the project. Observe the work.", "description": "Browse Specs and architecture diagrams in the docsite, and explore code relationships in the Understand Anything graph view. Concorde can export or overlay Module structure from the Spec registry; viewer startup uses an existing graph. Recorded context and evidence, plus optional Studio graphs and live events, make agent work inspectable."},
+        {"title": "Guide agents with Specs and permissions.", "description": "Give each subagent its complete Module Spec and only the file access its phase needs. The host enforces these boundaries. Good results within them increase confidence in the solution, the Spec’s sufficiency and the Modules’ decoupling; tests and review provide further evidence."},
+        {"title": "Start with built-in agents.", "description": "A coordinator handles questions, routing and topology design. A Spec engineer authors and reviews Specs, plans work and defines tasks. A programmer implements, reviews and investigates code. Public Skills compose these basic agents into development workflows."}
       ]
     },
     "workflow": {
-      "title": "From intent to a ready candidate.",
-      "description": "One change, an inspectable path. The default loop authors the Spec and runs reviews; missing contracts and failed checks preserve progress instead of claiming completion.",
+      "title": "Put the Specs to work.",
+      "description": "The built-in development loop applies these foundations to a change: update its Module Spec, plan and implement within explicit permissions, then validate and review. Missing contracts and failed checks preserve inspectable progress.",
       "steps": [
         {"title": "Route & specify", "description": "Select the responsible Module, establish its contract and review the Spec."},
         {"title": "Plan & implement", "description": "Turn the contract into tasks, then write code with the declared file access."},
@@ -34,7 +32,7 @@
       ]
     },
     "quickstart": {
-      "title": "Bring a contract to your next change.",
+      "title": "Start specifying your project.",
       "description": "Clone and build Concorde, then preview installation into your Git project. Use Python 3.11+, Node.js 18+ and npm; configured checks require Linux with bubblewrap, working namespaces and pidfd support. Choose Codex or Claude and initialize through the installed Skills.",
       "code": "git clone https://github.com/FTOD/concorde.git\ncd concorde\npython3 scripts/concorde.py build\n\n# Replace the path with your Git project.\npython3 scripts/install-concorde.py \\\n  --target /absolute/path/to/project \\\n  --integration codex --preview\n\n# Review the preview, then rerun with --apply."
     }

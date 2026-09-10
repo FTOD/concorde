@@ -1,4 +1,15 @@
-# Official Understand Anything Viewer lock
+# Understand Anything graph view
+
+Concorde uses the official Understand Anything Viewer to help developers explore a project's code
+relationships alongside its Module architecture. The [`ua-graph` exporter](../specs/concorde/views/ua-graph.md)
+can derive a graph from the Spec registry or overlay Module structure onto an existing Understand
+Anything graph. The [viewer launcher](../specs/concorde/views/viewer.md) opens an existing graph;
+starting it does not analyze code, generate a graph or validate the graph's contents.
+
+The [docsite](../docsite/README.md) provides the complementary view of authored Module Specs,
+composition, dependencies and architecture diagrams.
+
+## Official viewer runtime lock
 
 This package root pins the self-contained official Viewer published by
 [`Egonex-AI/Understand-Anything`](https://github.com/Egonex-AI/Understand-Anything):

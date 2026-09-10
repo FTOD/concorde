@@ -1,7 +1,7 @@
 [project]
 name = "concorde-development"
 version = "0.0.0"
-description = "Development environment for the standalone Concorde workflow"
+description = "Development environment for Concorde: architecture-aware Specs, project understanding and scoped agents"
 requires-python = ">=3.11"
 dependencies = []
 

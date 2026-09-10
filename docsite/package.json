@@ -2,7 +2,7 @@
   "name": "@concorde/project-docsite",
   "version": "0.7.0",
   "private": true,
-  "description": "Generated read model for Concorde project documentation and feature specifications.",
+  "description": "Publish and explore architecture-aware Module Specs, diagrams and project relationships.",
   "engines": {
     "node": ">=20.0.0"
   },

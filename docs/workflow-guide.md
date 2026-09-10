@@ -5,8 +5,14 @@
 Detailed installation, execution, delivery and maintenance reference. Shell commands assume
 the Concorde checkout root unless an installed consumer path is shown.
 
-Concorde combines the **Spec Protocol**, installable Skills, agent execution, validation and developer
-views. Protocol **4.0.0** defines one specification category:
+Concorde centers on writing and maintaining **architecture-aware Specs**. Its docsite and Understand
+Anything graph view help developers understand the project; recorded execution and optional Studio
+views make agent work observable. Specs guide each agent's task, while the host limits its context
+and permissions to the declared scope. Built-in coordinator, Spec engineer and programmer agents
+support this work through installable Skills.
+
+The development and delivery workflows below build on these foundations. The **Spec Protocol
+4.0.0** defines one specification category:
 
 - **Module Spec:** a self-contained contract in four mandatory parts. Purpose, Requirements (one
   decidable SHALL statement each, about the Module) and Scenarios (testable GIVEN/WHEN/THEN

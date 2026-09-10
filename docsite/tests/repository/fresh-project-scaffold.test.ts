@@ -99,7 +99,7 @@ describe('a project holding only Profile 11 initialization outputs', () => {
     expect(manifest.pages[0].aliases).toEqual([expect.stringMatching(/^\/specs\/module\.atlas\/[0-9a-f]{16}$/)]);
     const homepage=await readFile(resolve(root,'docsite/build/index.html'),'utf8');expect(homepage).toContain(manifest.pages[0].route);
     expect(homepage).toMatch(/http-equiv="refresh"/i);
-    expect(homepage).not.toContain('Give every agent a contract.');
+    expect(homepage).not.toContain('Specify the architecture.');
     expect(existsSync(resolve(root,'docsite/build',manifest.pages[0].route.slice(1)+'.html'))).toBe(true);
     const [legacyAlias]=manifest.pages[0].aliases as string[];
     const redirectStub=await readFile(resolve(root,'docsite/build',legacyAlias.slice(1)+'.html'),'utf8');

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/concorde-hero.svg" alt="Concorde — Give every agent a contract. From intent to a verified candidate." width="100%" />
+  <img src="docs/assets/concorde-hero.svg" alt="Concorde — Specify the architecture. Understand the system. Guide your agents." width="100%" />
 </p>
 
 <p align="center">
@@ -18,38 +18,58 @@
 
 # Concorde
 
-**A specification-driven development framework for Codex and Claude.**
+**Architecture-aware Specs, project understanding, and scoped agents for Codex and Claude.**
 
-Concorde turns a change request into a reviewed, validated candidate through explicit software
-contracts. Each agent task gets a complete Module Spec, phase-specific file access, and a recorded
-context. When a shared file changes, Concorde tracks the Modules that depend on it. When the inputs
-change, old evidence stops counting.
+Concorde helps you write and maintain software Specs that explain both behavior and architecture:
+what each Module is responsible for, how its entities relate, what it depends on, and which files
+realize it. These Specs give people a way to understand the project and agents a clear contract
+to work within as the software evolves.
 
-The result is a development workflow you can inspect: what was promised, what each agent could
-see and change, which checks ran, and what is ready to deliver.
+The framework brings together a Spec docsite, an Understand Anything graph view, explicit agent
+context and permissions, and a small set of built-in agents for specification and development.
 
 ## Why Concorde
 
-| Capability | What you get |
-| :--- | :--- |
-| **Complete contracts, bounded context** | Every task selects a Module's entire registered Spec collection. Planners work from its promises; code writers receive its declared implementation files. Dependencies never silently import more context. |
-| **Enforced execution boundaries** | The host binds agents to explicit context and file permissions. Configured checks run with OS-enforced read-only project access and external scratch space. Unsupported enforcement blocks execution. |
-| **Shared-code impact tracking** | One file can serve several Modules. A reverse index identifies every listing Module, so a shared change requires evidence for each affected contract. |
-| **Evidence tied to the actual change** | Context, reviews and validation bind to the inputs they assessed. Changed contracts or implementation invalidate relevant evidence. Missing promises become named Spec gaps. |
-| **Isolated changes, deliberate delivery** | One change lives in one host-created worktree. The loop stops at a ready candidate. Delivery verifies integration and stages an independent branch; merging into primary is a separate, explicit step. |
-| **Architecture you can explore** | Browse Module Specs, composition and dependency graphs, inline Mermaid diagrams, and generated instruction and wire-contract views. Inspect execution graphs and events in optional LangGraph Studio. |
+### 1. Write and maintain architecture-aware Specs
 
-### A shared change, made concrete
+A Module Spec describes purpose, requirements, scenarios and architecture together. Its entities,
+relationships, dependencies and implementation file bindings make software structure explicit.
+Concorde supports authoring, reviewing and updating these Specs, checking their consistency, and
+tracking which Module contracts are affected as shared code changes.
 
-Suppose Checkout and Billing both list `src/money.py`. A change requested for Checkout also affects
-Billing's implementation context. Concorde identifies both consumers and requires their own
-contract checks in separate Module contexts. If either contract changes afterward, the relevant
-evidence must be refreshed before delivery.
+### 2. Understand the project and observe the work
 
-This is especially useful for repositories where several responsibilities share code and where
-understanding the effect of a change matters as much as producing the patch.
+The **[docsite](docsite/README.md)** publishes Specs with Module navigation, composition and
+dependency graphs, and inline architecture diagrams. The **[Understand Anything graph
+view](viewer/README.md)** lets you explore an existing code graph; Concorde can export a graph
+from its Spec registry or overlay Module structure onto an existing graph. Opening the viewer
+does not itself analyze code or generate a graph.
 
-## From intent to a ready candidate
+Recorded context, checks and reviews show what each agent could see and change and what evidence
+supports its work. Optional [LangGraph Studio](scripts/development/STUDIO.md) exposes execution
+graphs and live events.
+
+### 3. Guide agents with Specs and explicit permissions
+
+Each subagent should receive the information and authority its task needs. A bounded task gets
+its Module's complete Spec collection, with file access narrowed by phase. Planners reason from
+the Spec; code writers receive the declared implementation files. The host enforces these
+boundaries, and a dependency never silently imports another Module's context.
+
+The design premise is that good results within these limits increase confidence in both the
+solution and the architecture: the agent can work from the declared contract without relying on
+hidden implementation knowledge or changes outside its responsibility. That is useful evidence
+that the Spec is sufficient and the Modules are well decoupled. It is not a proof of correctness;
+tests and review still matter. Missing promises are reported as Spec gaps.
+
+### 4. Use built-in agents for everyday development
+
+Concorde includes three basic agents: a **coordinator** for questions, routing and topology design;
+a **Spec engineer** for authoring, reviewing, planning and task definition; and a **programmer** for
+implementation, code review and investigation. Public Skills compose them into workflows with
+explicit context and permissions for each invocation.
+
+## A development workflow using these foundations
 
 ```text
 Request → Route → Specify → Review Spec → Plan → Tasks → Implement → Validate / Review
@@ -102,7 +122,11 @@ Apply the reviewed proposal, then define the root Module's Purpose, Requirements
 Ontology. Initialization creates an honest stub; unresolved behavior still needs to be specified.
 Commit the installed framework and root guidance so candidate worktrees inherit them.
 
-**4. Ask for a change.**
+**4. Explore and evolve your project.**
+
+Use `concorde-main` to ask questions against selected Specs or design Module topology. Publish
+the [docsite](docsite/README.md#scaffold-a-docsite) to browse the architecture. For a development
+change, use the built-in loop:
 
 ```text
 Use concorde-dev-loop to implement the next change described below: …

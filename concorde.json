@@ -2,7 +2,7 @@
   "schema_version": 3,
   "name": "concorde",
   "version": "5.0.0",
-  "description": "Concorde Framework: self-contained four-part Module Specs whose entities list their implementation files",
+  "description": "Concorde Framework: architecture-aware Spec authoring and maintenance, project understanding, explicit agent context and permissions, and built-in agents",
   "license": "MIT",
   "license_file": "LICENSE",
   "repository": "https://github.com/FTOD/concorde",

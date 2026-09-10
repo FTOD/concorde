@@ -57,7 +57,7 @@
 .sectionLabel {color: var(--home-accent); margin-bottom: .9rem;}
 .section > h2, .quickstart h2 {max-width: 22ch; font-size: clamp(2rem, 3.4vw, 3rem); line-height: 1.15; letter-spacing: -.04em; margin-bottom: 1.5rem;}
 .sectionIntro {max-width: 43rem; color: var(--home-muted); font-size: 1.0625rem; line-height: 1.75;}
-.features {display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 2.5rem; margin-top: 3rem;}
+.features {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 2.5rem; margin-top: 3rem;}
 .feature {border-top: 1px solid var(--home-border); padding: 1.7rem 0 1.5rem;}
 .featureNumber {display: block; margin-bottom: 1.2rem; color: var(--home-accent); font-size: .8125rem; font-family: var(--ifm-font-family-monospace);}
 .feature h3 {font-size: 1.25rem; letter-spacing: -.02em; line-height: 1.35;}

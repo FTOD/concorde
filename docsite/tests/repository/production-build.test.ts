@@ -43,8 +43,8 @@ it('publishes the independent standard with chapter navigation and no Spec wrapp
 });
 it('publishes the configured introduction at the root while preserving direct Spec navigation',async()=>{
  const home=await readFile(resolve(output,'index.html'),'utf8');
- expect(home).toContain('Give every agent a contract.');
- expect(home).toContain('Shared code. Every consumer counted.');
+ expect(home).toContain('Specify the architecture.');
+ expect(home).toContain('Write and maintain architecture-aware Specs.');
  expect(home).toContain('id="get-started"');
  expect(home).toContain('href="/concorde/specs/concorde/module"');
  expect(home).toContain('href="/concorde/graph"');

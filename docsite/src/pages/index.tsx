@@ -73,7 +73,7 @@ export default function Home() {
       </nav>
 
       <section className={styles.section} aria-labelledby="features-title">
-        <p className={styles.sectionLabel}>Built for changes that matter</p>
+        <p className={styles.sectionLabel}>Core capabilities</p>
         <h2 id="features-title">{page.features.title}</h2>
         <div className={styles.features}>
           {page.features.items.map((feature, index) => <article className={styles.feature} key={index}>

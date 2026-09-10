@@ -12,7 +12,13 @@
 
 ## Purpose
 
-Concorde Framework turns a developer's specified intent into inspectable, evidence-backed changes, and distributes the tools and views needed to work with those changes. It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 4.0.0; its complete contract is the Markdown collection explicitly registered for `module.concorde` in `.concorde/specs.json`, and this reading entry is that collection's only document. This root Module owns no implementation files of its own; its promises are realized entirely by its six child Modules.
+Concorde Framework helps developers author and maintain architecture-aware Module Specs, understand
+their projects through a Spec docsite and Understand Anything graph views, and guide agents with
+explicit context and permissions. Specs describe software responsibilities, behavior, entities and
+relationships together. Built-in coordinator, Spec engineer and programmer agents support
+specification and development, with recorded execution and evidence that developers can inspect.
+
+It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 4.0.0; its complete contract is the Markdown collection explicitly registered for `module.concorde` in `.concorde/specs.json`, and this reading entry is that collection's only document. This root Module owns no implementation files of its own; its promises are realized entirely by its six child Modules.
 
 ## Requirements
 
