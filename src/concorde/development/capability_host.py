@@ -22,6 +22,7 @@ from ..spec.typed_data import (CAPABILITY_CONTRACTS, TypedDataError, canonical, 
 from .configuration import load_configuration
 from ..harness.agent_model import agent_definition, binding_json, external_agent_name
 from ..harness.agent_executor import CapabilityExecutionError
+from ..harness.check_executor import CHECK_POLICY, CheckSandboxError, execute_check
 from ..harness.permissions import (PolicyBinding, PermissionPolicyError, compile_policy, render_codex_configuration,
     render_claude_configuration, build_launch_specification, CapabilityExecutionResult)
 from ..distribution.build import BuildError, load_role_prompt, verify_fresh
@@ -207,7 +208,8 @@ def _check_revision(repository: SpecRepository, target) -> str:
             if path.is_dir() and any(p.is_symlink() for p in path.rglob("*")):
                 raise SpecError("check input cannot contain symlinks", "unsafe_path")
             inputs.extend((member,digest(read_file(repository.root,member))) for member in members)
-    return digest({"implementation":_implementation_digest(repository,target),"check_inputs":inputs})
+    return digest({"implementation":_implementation_digest(repository,target),"check_inputs":inputs,
+                   "execution_policy": CHECK_POLICY})
 
 
 def _check(repository: SpecRepository, target, invocation_id: str) -> list[dict]:
@@ -219,19 +221,24 @@ def _check(repository: SpecRepository, target, invocation_id: str) -> list[dict]
         argv = list(configured["argv"])
         if argv[0] == "{python}":
             argv[0] = sys.executable
+        failure = None
         try:
-            result = subprocess.run(argv, cwd=repository.root, capture_output=True,
-                timeout=configured["timeout_seconds"], env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONPATH": str(repository.package_root / "src")})
+            result = execute_check(repository.root, argv, timeout=configured["timeout_seconds"],
+                environment={**os.environ, "PYTHONPATH": str(repository.package_root / "src")})
             log = result.stdout + b"\n" + result.stderr
-            status, code = ("passed" if result.returncode == 0 else "failed"), result.returncode
-        except subprocess.TimeoutExpired as error:
-            log = (error.stdout or b"") + b"\n" + (error.stderr or b"")
-            status, code = "timeout", -1
+            status = "timeout" if result.timed_out else ("passed" if result.returncode == 0 else "failed")
+            code = result.returncode
+        except CheckSandboxError as error:
+            log = error.stdout + b"\n" + error.stderr + b"\n" + str(error).encode()
+            failure = error
         path = f".concorde/runs/{invocation_id}/{check_id}.log"
         # Logs are host/implementation evidence, absent from non-implementation context manifests.
         destination = checked_path(repository.root, path)
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(log)
+        if failure is not None:
+            raise SpecError(f"configured check {check_id} requires an enforceable read-only sandbox; "
+                            f"see host log {path}", "check_sandbox_unavailable") from failure
         results.append({"check_id": check_id, "target_id": target.id, "status": status, "exit_code": code,
                         "source_digest": before, "log_digest": digest(log)})
     if _check_revision(repository, target) != before:

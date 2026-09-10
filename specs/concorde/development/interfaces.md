@@ -305,6 +305,7 @@ invocation envelope, and every exported identity appears here at least once with
 | `ambiguous_route` | Main routing found more than one owning target for a capability that requires exactly one; route cross-target work through a Module instead. |
 | `cancelled` | `CapabilityExecutionError.outcome` when the injected runner raised `KeyboardInterrupt`; the host maps this to the `execution_cancelled` result error code. |
 | `child_blocked` | A composed child capability returned a blocked or otherwise non-successful outcome and stopped the composing capability. |
+| `check_sandbox_unavailable` | Harness could not enforce the configured check's read-only filesystem boundary or launch it inside that boundary; diagnostics remain in the host log and readiness is blocked. |
 | `configuration_mismatch` | The invocation's, a child's, or a native launch's configuration differs from the initialized project settings or the host's own snapshot. |
 | `context_limit` | Main discovery exceeded its bounded expansion-step limit. |
 | `delivery_in_progress` | The candidate is already being delivered; resume delivery from either participating worktree instead of starting a new mutation. |
@@ -409,6 +410,39 @@ resumption in every case. A development loop stopping for a necessary Spec gap, 
 code-review feedback that repeats unchanged across a bounded repair attempt, records status
 `waiting` instead of the generic `blocked`: both name a concrete point where a human decision or a
 Spec/code change is needed before the loop can usefully resume.
+
+## Configured check execution
+
+Only the host admits configured argv, expands an initial `{python}` to its interpreter, and calls
+Harness's `execute_check(project_root, argv, timeout=..., environment=...)`. The supplied environment
+retains the host environment and sets `PYTHONPATH` to the package's `src`; Harness installs it only
+inside the sandbox and directs temporary/cache/report paths to independent external scratch.
+Checks may read project files. The operating system denies creation, modification, movement and
+deletion by the check and its descendants, including transient writes that are later restored.
+The rule covers listed and unlisted files, ignored caches, `.concorde/runs` and lifecycle records.
+
+Harness returns byte `stdout`, byte `stderr`, integer `returncode` and boolean `timed_out` after
+terminating the check's descendants. Development alone writes `stdout + b"\n" + stderr` to
+`.concorde/runs/<invocation_id>/<check_id>.log`. No project log handle or lifecycle write grant enters
+the sandbox. Public evidence contains exactly `check_id`, `target_id`, `status` (`passed`, `failed`
+or `timeout`), `exit_code`, `source_digest` and `log_digest`; raw output remains private. Timeout
+uses exit code -1. Other exit codes retain Harness's shell encoding; zero is passed and nonzero
+is failed. Disposable report files stay outside the project and are removed after execution.
+
+An unavailable backend, unsupported OS, failed sandbox setup or failed isolated launch raises
+Harness's `CheckSandboxError`, carrying private diagnostic streams. The host saves that diagnostic
+log, then raises `SpecError/check_sandbox_unavailable` naming the check and host log path, without
+including raw diagnostics or recording passing evidence. It never runs a less restricted fallback.
+Linux currently requires a system bubblewrap and working namespace/pidfd support; no other OS
+backend is implemented. There is no task/configuration option to disable enforcement. Project cache
+or report writers must migrate to the issued scratch paths, while source-formatting writes belong
+to implementation. Finer read, network and credential policy is outside this interface's scope.
+
+Before and after execution, check freshness covers registered commands and explicit inputs plus
+the selected Module's implementation. The execution-policy identity `project-read-only-v1` also
+participates in the digest, invalidating evidence from the former unrestricted runner. Candidate
+tree and affected-Module revision comparisons remain additional defenses against concurrent
+external changes; they do not supply the write boundary or claim semantic completeness.
 
 ## Independent review contract
 `concorde-review` requires target_id, task and review_mode=spec|code, with the usual optional focus,
@@ -591,7 +625,7 @@ implementation imports.
   package_root: Path|str|None=None) -> ToolResult` returns status=success|invalid, findings and a result
   containing source_digest for the assessed Spec state. Findings have rule_id/message/remediation.
   It checks structure/references/types/permissions and explicitly does not prove semantics.
-  Configured implementation checks execute separately on the host using registered argv/timeouts;
+  Configured implementation checks execute separately through Harness's read-only executor using registered argv/timeouts;
   they return check_id/target_id/status/exit_code/source_digest/log_digest as locally defined, with
   raw output retained privately. No check result is an arbitrary source-read proxy for an agent.
 

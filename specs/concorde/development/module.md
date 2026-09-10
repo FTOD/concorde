@@ -12,7 +12,7 @@
 
 ## Purpose
 
-Development provides the capability invocation boundary and the deterministic host adapter that Concorde's own tooling runs on: capability admission and dispatch, the coordinator that answers questions and evolves project topology, the development graph that carries one intended change from an authored Spec to a ready candidate, deterministic validation, and delivery. It serves developers and their external agent runtimes submitting requests through installed `concorde-*` Skills, and every other Concorde capability that composes through this same boundary. Its promises end at a ready, delivered or primary-merged candidate; it relies on Harness to run every Agent invocation, Spec to resolve and validate project Specs, Reflections to retain gap history, and Distribution to own, build, install and verify instruction projections, including Skills.
+Development provides the capability invocation boundary and the deterministic host adapter that Concorde's own tooling runs on: capability admission and dispatch, the coordinator that answers questions and evolves project topology, the development graph that carries one intended change from an authored Spec to a ready candidate, deterministic validation, and delivery. It serves developers and their external agent runtimes submitting requests through installed `concorde-*` Skills, and every other Concorde capability that composes through this same boundary. Its promises end at a ready, delivered or primary-merged candidate; it relies on Harness to run every Agent invocation and isolate configured checks, Spec to resolve and validate project Specs, Reflections to retain gap history, and Distribution to own, build, install and verify instruction projections, including Skills.
 
 ## Requirements
 
@@ -83,6 +83,10 @@ target's author returns identical bytes for it.
 ### req.development.single-primary-writer — Only one agent writes to primary
 
 At most one agent SHALL own writes in the primary worktree at a time.
+
+### req.development.check-isolation — Configured checks use enforced read-only execution
+
+Development SHALL execute configured checks through Harness's OS-enforced project-read-only executor.
 
 ### req.development.primary-writes-serialized — Repository lock serializes primary writes
 
@@ -248,6 +252,15 @@ Validating a candidate:
 - WHEN readiness is evaluated
 - THEN the candidate is not recorded ready and the failing or stale check is reported
 
+### scenario.development.validate-check-isolation — Checks cannot write their inputs or host logs
+
+- GIVEN a configured implementation check and the current candidate
+- WHEN validation runs the check
+- THEN project writes, including writes to lifecycle records and logs, are denied by Harness
+- AND the outside host saves private stdout/stderr and records passed, failed or timeout evidence with exit and digest identities
+- AND unavailable enforcement blocks readiness with check_sandbox_unavailable while raw diagnostics stay in the host log
+- AND check input, candidate tree and affected Module freshness checks still reject external changes
+
 Delivering a ready change:
 
 ### scenario.development.deliver-branch — Publish an independent delivery branch
@@ -351,7 +364,7 @@ Two programs realize this Module's own code: the host adapter and the capability
     "title": "Harness",
     "kind": "used module",
     "target_id": "module.harness",
-    "responsibility": "Configure and run every Agent invocation: freeze its context kinds, bind its Agent and Harness definition, compile its effective permissions, execute it natively and coordinate it through LangGraph control flow."
+    "responsibility": "Configure and run every Agent invocation: freeze context, bind definitions, compile permissions and execute natively; also isolate configured deterministic checks with OS-enforced project read-only access and external scratch."
   },
   {
     "id": "entity.development.spec",
@@ -415,7 +428,7 @@ flowchart TB
     developmentHost -->|dispatches contracts declared by| developmentCapabilities
     developmentHost -->|prepares and delivers candidates through| worktreeLifecycle
     developmentHost -->|applies accepted replacements through| fileTransactions
-    developmentHost -->|resolves context, compiles permissions and runs Agents through| harness
+    developmentHost -->|resolves context, compiles permissions and runs Agents and isolated checks through| harness
     developmentHost -->|selects targets and validates Spec structure through| spec
     developmentHost -->|records attributed gaps in| reflections
     developmentHost -->|verifies build freshness through| distribution
@@ -431,11 +444,12 @@ Development's sole structural parent is `module.concorde`; it has no submodules 
 [
   {
     "target_id": "module.harness",
-    "responsibility": "Freeze context kinds, bind Agents, compile permissions and execute invocations under LangGraph control flow.",
-    "selection_condition": "When a capability graph reaches an Agent invocation or needs a policy preview.",
+    "responsibility": "Freeze context kinds, bind Agents, compile permissions, execute invocations and isolate configured checks.",
+    "selection_condition": "When a capability graph reaches an Agent invocation, policy preview or configured deterministic check.",
     "relied_upon_promises": [
       "A stage receives exactly its frozen context kinds and compiled authority, and only a matching typed completion with enforcement evidence is returned; nothing retries with wider permissions.",
-      "A recursive delegation tree shares finite budgets and cancellation and returns only typed results."
+      "A recursive delegation tree shares finite budgets and cancellation and returns only typed results.",
+      "Configured checks and descendants cannot mutate project files; they receive independent external scratch and host-only output, terminate before cleanup and fail closed when enforcement is unavailable."
     ]
   },
   {

@@ -149,6 +149,21 @@ For a directly authored candidate without generated plans, `concorde-validate` c
 same worktree state. Any already authored plans and tasks must still be completed. No placeholder
 attempt is needed for a Spec-only change.
 
+Configured checks run with OS-enforced read-only project access, including ignored files and
+`.concorde/runs`. Linux currently requires a system-installed
+[bubblewrap](https://github.com/containers/bubblewrap) with working user, mount and PID namespaces
+and libc/kernel pidfd support. Unsupported platforms or denied sandbox setup block checks with
+`check_sandbox_unavailable`; there is no unrestricted fallback. Agent integration settings do not
+disable this check boundary.
+
+Checks can read inputs and write temporary output under the supplied `TMPDIR`, `XDG_CACHE_HOME`
+and `CONCORDE_CHECK_REPORT_DIR`; `CONCORDE_CHECK_TMPDIR` names each check's independent external
+scratch directory. These files disappear after the entire check process tree exits. Move project
+cache/report outputs to those paths, and run source-changing formatters during implementation.
+Only the outside host saves stdout/stderr and lifecycle evidence in the project. The source
+checkout's docsite type check prepares its sidebar and any missing dependencies in an external copy.
+This boundary does not define finer read, network or credential policies.
+
 For architecture changes, invoke `concorde-main` with `action:design-topology`. It returns a complete
 candidate registry and target-local Spec tasks without writing. Send the exact returned proposal with
 `action:accept-topology` only after developer review. The host then runs private target authors and

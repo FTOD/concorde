@@ -297,7 +297,8 @@
         "unittest",
         "tests.concorde.harness.test_scoped_protocol",
         "tests.concorde.harness.test_boundaries",
-        "tests.concorde.harness.test_agent_binding"
+        "tests.concorde.harness.test_agent_binding",
+        "tests.concorde.harness.test_check_executor"
       ],
       "timeout_seconds": 180,
       "inputs": [
@@ -311,14 +312,21 @@
       "target_id": "module.development",
       "argv": [
         "{python}",
-        "-m",
-        "unittest",
+        "scripts/development/run-tests.py",
+        "-j",
+        "4",
+        "--filter",
         "tests.concorde.harness.test_scoped_protocol",
+        "--filter",
         "tests.concorde.development.test_review",
+        "--filter",
+        "tests.concorde.development.test_check_execution",
+        "--filter",
         "tests.concorde.harness.test_worktree_lifecycle"
       ],
       "timeout_seconds": 180,
       "inputs": [
+        "scripts/development/run-tests.py",
         "src",
         "protocol",
         "tests/concorde/harness",

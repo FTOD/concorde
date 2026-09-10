@@ -9,6 +9,103 @@
 ```
 # Agent execution
 
+## Configured deterministic checks
+
+This host-only service runs configured commands without a model invocation. It is independent of
+native Agent integration and enforcement settings. Checks can read project files; their own
+temporary files, caches and reports belong in fresh host-managed space outside the project.
+Creating, modifying, moving or deleting a project file is denied at the attempted system call,
+including a write followed by restoration. Project-local lifecycle and log paths are read-only too.
+
+```python
+execute_check(project_root: Path, argv: Sequence[str], *, timeout: float,
+              environment: Mapping[str, str]) -> CheckResult
+CheckResult(stdout: bytes, stderr: bytes, returncode: int, timed_out: bool = False)
+CheckBackend.run(project: Path, argv: Sequence[str], scratch: Path,
+                 environment: Mapping[str, str], timeout: float) -> CheckResult
+```
+
+The backend interface is trusted host code, never a registry field or a task-supplied executable.
+Only Linux's BubblewrapBackend is currently supported. It requires a root-owned system bubblewrap,
+user/mount/PID/IPC namespace support and kernel pidfds exposed by Python or libc. System file owners
+unmapped by a parent check namespace are admitted only on its already read-only system mounts.
+Missing binaries, unsupported
+platforms, denied namespace setup, unsafe project locations and unavailable external temporary
+storage raise `CheckSandboxError(RuntimeError)`. That exception retains byte `stdout`/`stderr`
+diagnostics for the host. No failure retries through ordinary subprocess or weaker permissions.
+An empty command, non-directory project or nonpositive/nonfinite timeout is also rejected.
+
+Linux recursively maps the host filesystem read-only so another pathname, hard link or external
+dependency directory cannot supply a writable alias. It replaces `/proc` with the sandbox's PID
+view and `/dev` with minimal private devices, drops capabilities, disconnects the terminal and
+gives only the new scratch directory a writable host mount. Shared memory uses scratch as well.
+Project roots at `/` or below `/proc`, `/dev` or `/sys` are unsupported. Additional user namespaces
+remain available for nested checks; inherited read-only mounts cannot be remounted writable there.
+The bootstrap binary uses a fixed system search and minimal loader environment; the supplied
+check environment travels through an anonymous options descriptor rather than the public process
+command line and is installed for sandbox execution. This service defines no finer read,
+network or credential policy and does not mediate effects requested from external services.
+
+Every call creates independent scratch storage even when ambient TMPDIR points into the project.
+`TMPDIR`, `TMP`, `TEMP`, `XDG_CACHE_HOME` and `npm_config_cache` point into that storage;
+`CONCORDE_CHECK_TMPDIR` names its root and `CONCORDE_CHECK_REPORT_DIR` its reports directory.
+`PYTHONDONTWRITEBYTECODE=1` avoids routine Python cache attempts but is not the write boundary.
+Hardcoded project cache/report paths must migrate; tools that modify sources belong in implementation.
+Scratch and reports are ephemeral and disappear after the check. No report import into the project
+is implicit. Standard output/error remain separate byte streams for outside-host persistence.
+
+The host closes inherited descriptors, supplies null stdin and captures output through pipes,
+never by passing an open project log to the process. Bubblewrap's host-only metadata descriptors
+are closed before command execution. A launch gate keeps the command stopped until the host pins
+namespace PID 1 with a pidfd. On timeout, cancellation, failure and normal completion, the host
+terminates the namespace and waits for cleanup before removing scratch. This includes descendants
+that double-fork, create sessions or reset parent-death signals. Both output pipes drain while the
+initial command runs, and a background process holding them open cannot prevent cleanup.
+
+The result preserves command exit status using bubblewrap's shell encoding, including `128+signal`
+for signal termination. A timeout, including sandbox setup time, returns `timed_out=True` and
+`returncode=-1` with captured partial output. Host cancellation propagates after cleanup. A missing
+trusted successful-exec status is an isolation/launch error, not an ordinary check failure. A
+successful sandbox exit establishes execution under this boundary, not test adequacy or semantic
+completeness. The calling host remains responsible for digest and candidate freshness checks;
+`CHECK_POLICY="project-read-only-v1"` identifies this execution guarantee for evidence invalidation.
+
+### scenario.harness.check-read-only — Project mutation is denied during execution
+
+- GIVEN a configured command with project read access
+- WHEN it or a descendant attempts creation, modification, deletion, rename or modification followed by restoration
+- THEN the operating system rejects the operation before project bytes or directory entries change
+- AND alternative pathnames, inherited descriptors and nested namespace remounts cannot grant project writes
+
+### scenario.harness.check-scratch — Each check can read inputs and write disposable output
+
+- GIVEN an admitted command and an available external temporary directory
+- WHEN the host executes the check
+- THEN project reads and writes to the issued temporary and cache/report directories succeed
+- AND repeated calls receive separate scratch directories that are removed after execution
+- AND an ambient project-local temporary path cannot become a writable project mount
+
+### scenario.harness.check-result — Output and exit status are returned only to the host
+
+- GIVEN a check that writes standard output and standard error and exits with a specified code
+- WHEN its isolated execution finishes
+- THEN the executor returns both byte streams and that exit code without exposing a project log descriptor
+- AND large output on both pipes is drained without blocking command completion
+
+### scenario.harness.check-unavailable — Unsupported enforcement prevents execution
+
+- GIVEN an unsupported OS, missing sandbox backend or a real sandbox setup failure
+- WHEN the host requests a configured check
+- THEN execution fails closed with CheckSandboxError and host-only diagnostics
+- AND no ordinary subprocess fallback runs the configured command
+
+### scenario.harness.check-lifetime — Descendants cannot outlive their check
+
+- GIVEN a check that spawns detached descendants
+- WHEN the initial command completes or its deadline expires
+- THEN the host terminates every descendant before returning and removes scratch afterward
+- AND a timeout preserves partial output with timeout status instead of successful evidence
+
 ## Required Agent and Harness boundary
 
 The local companion contract **Agents and Harnesses** defines A1–A5 for this Module. Execution MUST

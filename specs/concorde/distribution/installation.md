@@ -140,6 +140,23 @@ runtime, or input sent to an already running shell, is outside its reach. Concor
 are unaffected: Claude workers start with `--restricted`, which ignores project settings, and Codex
 workers start with `--ignore-user-config`, which leaves the project `.codex/` layer untrusted.
 
+## Source-checkout type check
+
+### scenario.distribution.check-docsite-external — Type-check preparation uses disposable external files
+
+- GIVEN a source checkout with a configured docsite type check
+- WHEN the maintenance type-check command runs
+- THEN it prepares a disposable external docsite copy and derives the sidebar from the actual project registry
+- AND dependency installation and generated sidebar files are confined to that copy
+- AND installed project dependencies may be reused read-only only when their dependency marker matches package and lock bytes
+- AND the command returns the type compiler's exit status and removes the temporary copy
+
+`scripts/development/check-docsite-types.py` uses the temporary directory selected by the host's
+environment. Configured invocation supplies external scratch through TMPDIR. Existing matching
+dependencies are linked for reads; otherwise `npm ci --ignore-scripts` installs into the temporary
+copy. It never updates a dependency marker or `.generated` files in the actual checkout. Checks
+that need persistent source or dependency changes must prepare them in the implementation phase.
+
 ## Main routing view
 
 Select `module.distribution` for manifest inventory, canonical Skill/role rendering, the build's

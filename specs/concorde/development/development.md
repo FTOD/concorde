@@ -76,8 +76,10 @@ consumer/provider contract views must agree before any component implementation 
 ancestry and scope membership never grant extra reads. Successful component revisions are checked
 again before Module delivery.
 
-Checks are trusted deterministic argv declared by project configuration, not commands invented by
-an agent. Raw logs stay out of later Spec-only sessions. A stale Spec, changed task intent, modified
+Checks use deterministic argv declared by project configuration. Harness enforces read-only project
+access for the entire check process tree and gives each check external temporary/cache/report space;
+unsupported enforcement blocks execution. Development persists output outside that sandbox, and
+raw logs stay out of later Spec-only sessions. A stale Spec, changed task intent, modified
 code, failed check or missing completion blocks delivery and preserves the candidate worktree. Resuming a
 change reuses its target records and typed artifacts but starts a fresh agent session. The host does not copy unrelated
 conversation or free-form predecessor output into context.

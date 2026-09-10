@@ -27,7 +27,8 @@ a fresh native process, and coordinates every control flow as a LangGraph graph.
 Concorde capability that needs a Spec- or task-bound model invocation relies on it, as does every
 Agent author who defines a new named Agent. Its boundary stops at the Spec Module it consults for
 project truth and the Distribution Module it consults for rendered instructions and Protocol
-assets; it does not itself decide project topology, author Specs or implement business
+assets. It also supplies the host's OS-enforced read-only executor for configured deterministic
+checks; it does not itself decide project topology, author Specs or implement business
 capabilities.
 
 ## Requirements
@@ -95,6 +96,20 @@ the registry.
 No permission failure SHALL be retried with a wider grant.
 
 ### Native and recursive execution
+
+#### req.harness.check-project-read-only — Checks cannot mutate project files
+
+The configured-check executor SHALL enforce project filesystem read-only access in the operating
+system for the check and every descendant throughout execution.
+
+#### req.harness.check-fail-closed — Unavailable check isolation fails closed
+
+The configured-check executor SHALL refuse execution when its read-only boundary cannot be enforced.
+
+#### req.harness.check-scratch — Checks receive independent external scratch space
+
+Every configured check SHALL receive a fresh host-managed writable temporary directory outside the
+project, removed after its process tree has terminated.
 
 #### req.harness.execute-no-retry — No automatic retry after execution failure
 
@@ -240,6 +255,9 @@ See [the no-wider-retry bound](#req.harness.permission-no-retry).
 Realized by `AgentProcessExecutor`, `AgentRuntime` and `CapabilityHost.invoke_agent`; see
 [execution](execution.md) and [host](host.md).
 
+The deterministic check executor's read-only filesystem, scratch, result, unavailable-backend and
+process-lifetime scenarios are defined in [execution](execution.md#scenario.harness.check-read-only).
+
 #### scenario.harness.execute-success — Execute a bound Harness and accept a matching typed completion
 
 - GIVEN a host-built LaunchSpecification carrying a verified AgentBinding and effective policy
@@ -327,7 +345,7 @@ the most specific entry owns a file.
     "id": "entity.harness.agent-model",
     "title": "Agent and Harness model",
     "kind": "program",
-    "responsibility": "Realize `Agent = spec.md + Harness + Constraints` as frozen Python records, the closed Harness catalog, the effect-declaration vocabulary and the reproducible `AgentBinding` resolved and verified against the current build.",
+    "responsibility": "Realize `Agent = spec.md + Harness + Constraints` as frozen Python records, the closed Harness catalog, effect declarations, reproducible AgentBinding and shared execution-environment primitives, including OS-enforced read-only configured checks.",
     "files": [
       "src/concorde/harness/",
       "tests/concorde/harness/"

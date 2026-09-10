@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from concorde.development.capability_host import Invocation, _implementation_digest, _target_revision
 from concorde.spec.changes import confirm_pending_files
@@ -538,8 +539,27 @@ class ModuleImplementationTests(unittest.TestCase):
             host=SimpleNamespace(coordinated=True, package_root=PACKAGE, invocation_id="mutating-check"),
             work_directory=None, completed=[],
             response=lambda outcome="completed", answer="", **kwargs: {"outcome": outcome, **kwargs})
-        with self.assertRaisesRegex(SpecError, "using Module"):
-            Invocation.validate(run)
+        peer = self.root / "specs/b/module.md"
+        original = peer.read_bytes()
+        result = Invocation.validate(run)
+        self.assertEqual("failed", result["outcome"])
+        self.assertEqual("failed", result["checks"][0]["status"])
+        self.assertEqual(original, peer.read_bytes())
+
+        # Retain the second-layer peer freshness regression using an actual external host
+        # change. The check itself no longer has permission to make the old test's mutation.
+        self.registry["checks"][0]["argv"] = ["{python}", "-c", "print('read-only check')"]
+        self.save_registry()
+        run.repository = self.repository()
+        run.target = run.repository.select("module.a")
+        from concorde.harness.check_executor import execute_check
+        def external_change(*args, **kwargs):
+            result = execute_check(*args, **kwargs)
+            peer.write_bytes(original + b"\nChanged by a concurrent host writer.\n")
+            return result
+        with patch("concorde.development.capability_host.execute_check", external_change):
+            with self.assertRaisesRegex(SpecError, "using Module"):
+                Invocation.validate(run)
 
     @verifies("scenario.spec.shared-file")
     def test_shared_code_review_preserves_separate_module_contexts_and_peer_findings(self):
