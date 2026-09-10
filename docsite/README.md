@@ -25,9 +25,13 @@ remain visible in provenance. Additional documents, including explicitly shared 
 remain part of the complete registered collection.
 
 The relationship graph distinguishes `composes`, `uses` and matched provided/required structured
-contracts. Shared capability Modules are siblings of their consumers. An implementation file listed
-by several Modules' entities appears once, with an edge from every listing Module. Publication does
-not read or publish implementation file bytes beyond their listed names. Every Module's Architecture
+contracts. Shared capability Modules are siblings of their consumers. A listing entry declared by
+several Modules' entities appears once, with an edge from every listing Module. Each Module's Files
+section repeats its declared entries as written: an exact file, or a directory prefix ending in `/`
+that binds the regular files below it. Publication validates that an existing exact entry is a file
+and an existing directory entry a directory, and that no listed directory contains a registered Spec
+document; it does not read or publish implementation file bytes, and it never expands a directory
+entry into file names. Every Module's Architecture
 section renders its own inline Mermaid flowchart directly from the registered Markdown, with node
 labels equal to the declared entity titles and every edge labeled; there is no separate diagram
 source or build step.

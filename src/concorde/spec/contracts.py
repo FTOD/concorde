@@ -19,11 +19,14 @@ WORKER_OUTCOMES = {"enum": ["completed", "spec_incomplete", "unsupported", "conf
 CHECK = obj({"id": STRING, "target_id": STRING, "argv": {**array(STRING), "minItems": 1},
              "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600},
              "inputs": array(PATH, unique=True)}, ("inputs",))
+LISTING_ENTRY = {**STRING, "pattern": r"^[^/](?:[^/]*/)*[^/]*$"}
 TARGET_DESCRIPTOR = obj({"id": STRING, "kind": {"const": "module"},
     "title": STRING, "documents": {**array(PATH, unique=True), "minItems": 1},
     "parent": NULLABLE_ID, "uses": array(STRING, unique=True),
-    "files": array(PATH, unique=True), "checks": array(STRING, unique=True)})
+    "files": array(LISTING_ENTRY, unique=True), "checks": array(STRING, unique=True)})
 IMPLEMENTATION_FILE = obj({"path": PATH, "entity_id": NULLABLE_ID, "pending": {"type": "boolean"}})
+IMPLEMENTATION_ENTRY = obj({"path": LISTING_ENTRY, "entity_id": NULLABLE_ID, "pending": {"type": "boolean"},
+                            "directory": {"type": "boolean"}})
 REGISTRY = obj({"schema_version": {"const": 3}, "project_id": STRING,
     "entry_target": STRING, "targets": {**array(TARGET_DESCRIPTOR), "minItems": 1},
     "checks": array(CHECK)})
@@ -173,7 +176,7 @@ def schemas() -> dict:
     result["concorde-implementation-task"] = obj({"plan": STRING, "tasks": array(TASK_ITEM)})
     result["concorde-reflection-selection"] = obj({"head": STRING, "records": array(obj({"id":STRING,"path":PATH,"digest":DIGEST,"content":STRING}))})
     stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-implementation-task","concorde-reflection-selection","concorde-review-result")]}
-    result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 2},
+    result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 3},
         "target_id": STRING, "kind": {"const": "module"}, "focus_id": NULLABLE_ID,
         "phase": STRING, "task": STRING, "constraints": array(STRING),
         "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
@@ -181,6 +184,7 @@ def schemas() -> dict:
         "document_order": array(PATH, unique=True), "target_spec": array(document),
         "shared_specs": array(document), "instructions": {"type": "string"},
         "stage_inputs": array(stage_input),
+        "implementation_entries": array(IMPLEMENTATION_ENTRY),
         "implementation_files": array(IMPLEMENTATION_FILE),
         "implementation_artifacts": array(ARTIFACT),
         "workspace": WORKSPACE_CONTEXT})

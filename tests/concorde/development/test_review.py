@@ -122,6 +122,52 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("succeeded", result["status"], result)
         self.assertIn("NEW_LOCAL_CHECK", json.dumps(self.model.calls[0]["review"]["changes"]))
 
+    def relist_checks_directory(self):
+        """List the transfer check entity as the whole `checks/` directory instead of one file."""
+        document = self.root / "specs/transfer/module.md"
+        text = document.read_text()
+        prefix, rest = text.split("```concorde-entities\n", 1)
+        payload, suffix = rest.split("\n```", 1)
+        entities = json.loads(payload)
+        for entity in entities:
+            if entity["id"] == "entity.transfer.check":
+                entity["files"] = ["checks/"]
+        document.write_text(prefix + "```concorde-entities\n" + json.dumps(entities, indent=2)
+                            + "\n```" + suffix)
+        self.registry["targets"][2]["files"] = ["app/transfer.py", "checks/"]
+        (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
+
+    def test_a_directory_entry_scopes_history_and_grants_its_subtree(self):
+        self.relist_checks_directory()
+        (self.root / "checks/.tool.json").write_text('{"excluded": true}\n')
+        self.commit_fixture()
+        (self.root / "app/transfer.py").write_text("CHANGED_LOCAL_CODE\n")
+        (self.root / "app/ledger.py").write_text("UNGRANTED_OTHER_CODE\n")
+        # A file created below the listed directory needs no new declaration.
+        (self.root / "checks/extra_check.py").write_text("NEW_LISTED_CHECK\n")
+        (self.root / "checks/transfer_check.py").unlink()
+        (self.root / "checks/__pycache__").mkdir()
+        (self.root / "checks/__pycache__/transfer_check.pyc").write_bytes(b"cached")
+        result = self.review("code")
+        self.assertEqual("succeeded", result["status"], result)
+        review = self.model.calls[0]["review"]
+        # History is scoped by the directory root: the deleted listed file appears, the ungranted
+        # peer file does not, and neither do the skipped dot file and cache the walk excludes.
+        self.assertEqual({"app/transfer.py", "checks/extra_check.py", "checks/transfer_check.py"},
+                         {item["path"] for item in review["changes"]})
+        self.assertNotIn("UNGRANTED_OTHER_CODE", json.dumps(review))
+        self.assertNotIn(".tool.json", json.dumps(review))
+        policy = self.host.descriptions[0]
+        self.assertIn("checks/extra_check.py", policy["read_paths"])
+        self.assertNotIn("checks/.tool.json", policy["read_paths"])
+        self.assertEqual([], policy["write_paths"])
+        snapshot = self.model.calls[0]["snapshot"]
+        self.assertEqual([("app/transfer.py", False), ("checks/", True)],
+                         [(item["path"], item["directory"])
+                          for item in snapshot["implementation_entries"]])
+        self.assertEqual(["app/transfer.py", "checks/extra_check.py"],
+                         [item["path"] for item in snapshot["implementation_files"]])
+
     def test_describe_policy_is_not_a_completed_review(self):
         for mode in ("spec", "code"):
             result = self.review(mode, mode="describe-policy")

@@ -518,8 +518,10 @@ implementation imports.
 
 - Registry (`module.spec`): `SpecRepository(project_root, package_root=None, *, registry_bytes=None,
   document_overrides=None)` returns the read-only admitted repository described in the local registry-value document.
-  `select(target_id, focus_id=None)` returns SpecTarget; documents/contracts/implementation_files use
-  that descriptor and the complete locally defined return shapes. Reconstruct after changes; reject
+  `select(target_id, focus_id=None)` returns SpecTarget; documents/contracts/implementation_entries/
+  implementation_paths/implementation_files/missing_entries use that descriptor and the complete
+  locally defined return shapes: declared listing entries, their base paths, the existing files those
+  entries bind, and the entries that do not exist yet. Reconstruct after changes; reject
   unknown/foreign selection, unsafe paths, invalid bindings and stale sources before granting access.
 - Context (`module.harness`): `resolve_context(repository: SpecRepository, target_id: str, *,
   phase: str="ask", task: str="Understand this Spec", focus_id: str|None=None,
@@ -530,7 +532,9 @@ implementation imports.
   inputs. Implementation/code-review phases include only registered code ArtifactRefs.
   `recheck_context(repository, snapshot, *, check_implementation: bool=True) -> None` reconstructs
   current context and rejects changed membership, classification, bytes or worktree identity via
-  SpecError(code="stale_context"). These APIs read but never write project sources or execute an
+  SpecError(code="stale_context"). Declared listing entries are always compared; the bound file names
+  and code ArtifactRefs are compared only when `check_implementation` is true, so a code writer may
+  create a file below a listed directory without invalidating its own frozen context. These APIs read but never write project sources or execute an
   agent, and this Module is host-internal: no Skill exposes its return values directly.
 - Permissions (`module.harness`): `compile_policy(effects, binding, role_paths, *, deny_paths=(),
   outer_sandbox_required=False) -> NormalizedPolicy`, the Codex/Claude renderers, and
@@ -626,16 +630,19 @@ before-digest. Syntax and publication failures remain distinct from an incomplet
 behavioral contract. Publication renders the same Mermaid source as part of the Markdown page.
 
 ## Reusable implementation context and evidence
-Each Module's entities carry its exact file bindings directly in its own Spec; the registry's
-`files` field mirrors their union, and together they determine the Module's implementation
-context. A declared file that does not yet exist is marked `pending` on its entity instead of
-receiving a separate stub document; delivery removes that marker once the file exists. Code
-writers may create or change a Module's own listed files, but cannot change entity identity,
-membership, the registry, or a Module Spec document. Non-code authors never read those files'
-contents, only their names through the entity declarations they can already see.
+Each Module's entities carry its file bindings directly in its own Spec, as exact files or as
+directory prefixes that bind every regular file below them; the registry's `files` field mirrors
+their union entry for entry, and together they determine the Module's implementation context. A
+declared entry that does not yet exist, a file or a whole directory, is marked `pending` on its
+entity instead of receiving a separate stub document; delivery removes that marker once it exists.
+Code writers may create or change the files their Module's own entries bind, including new files
+below a listed directory, but cannot change entity identity, membership, the registry, or a Module
+Spec document. Non-code authors never read those files' contents, only the declared entries and
+bound names through the entity declarations they can already see.
 
-Implementation revisions hash each Module's listed files' current digests. Validation derives
-every listing Module from the reverse index, runs their configured checks and records each
+Implementation revisions hash each Module's declared entries together with the current digests of
+the files they bind. Validation derives every listing Module from the reverse index, in which a
+directory entry covers every path below it, runs their configured checks and records each
 Module's contract and implementation revisions. Code review uses a separate Module-only contract
 context for each consumer plus its authorized code. Required peer review artifacts are retained
 with their own intent; later source, Spec or membership changes invalidate those results. A single

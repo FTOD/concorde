@@ -11,7 +11,7 @@
 
 ## Framework configuration and storage versions
 
-`Profile 10` is the Framework's project-configuration compatibility version for the four-part Module model (Purpose, Scenarios, Entities, Architecture). It is distinct from Spec Protocol 3.0.0 and from registry schema 3, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
+`Profile 10` is the Framework's project-configuration compatibility version for the four-part Module model (Purpose, Scenarios, Entities, Architecture). It is distinct from Spec Protocol 3.1.0 and from registry schema 3, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
 
 The Framework reads `.concorde/config.json` with exactly `profile_version: 10`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest) and `capability_configuration` (the typed integration/enforcement configuration). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
 
@@ -42,11 +42,16 @@ the exact concorde-document identity and membership. contracts(target) parses lo
 provided/required contracts and checks schemas/examples offline. dependencies(target) parses local
 concorde-dependencies promises without following those edges. definitions(target) parses the
 Module's own scenarios, requirements and entities from its registered documents; entities(target) and
-scenarios(target) project that same result. entity_files(target) maps each declared file to its
-owning entity. children(target) and descendants(target) return structural metadata, never inherited
-context. affected_modules(paths) resolves changed files through the reverse index, which maps each
-file to every Module whose entity lists it; a shared file therefore names several Modules, never one
-exclusive owner.
+scenarios(target) project that same result. entity_files(target) maps each declared listing entry, an exact
+file or a directory prefix, to its owning entity, and entity_for_path(target, path) resolves a
+concrete file through the most specific covering entry. implementation_entries(target),
+implementation_paths(target), implementation_files(target) and missing_entries(target) return the
+declared entries, their base paths, the existing files those entries bind and the entries whose file
+or directory is still missing. children(target) and descendants(target) return structural metadata, never inherited
+context. listing_users(path) and affected_modules(paths) resolve changed files or entries through the reverse
+index, in which a directory prefix covers every path below it, and covering_modules(target) applies it
+to one Module's complete listing; a shared file therefore names several
+Modules, never one exclusive owner.
 
 SpecDocument carries path, content, digest, document_id, targets, main_visible, metadata and body.
 A shared Module document is returned only by explicit membership. Paths are safe project-relative

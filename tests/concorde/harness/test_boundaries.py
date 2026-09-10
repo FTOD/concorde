@@ -19,6 +19,11 @@ class BoundaryTests(unittest.TestCase):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.root=Path(self.tmp.name)
         self.registry=project(self.root);self.task={'target_id':'service.transfer','task':'Implement the specified transfer'}
     def save(self): (self.root/'.concorde/specs.json').write_text(json.dumps(self.registry))
+    def entities(self,path):
+        document=self.root/path;text=document.read_text()
+        prefix,rest=text.split('```concorde-entities\n',1);payload,suffix=rest.split('\n```',1)
+        return json.loads(payload),(lambda value: document.write_text(
+            prefix+'```concorde-entities\n'+json.dumps(value,indent=2)+'\n```'+suffix))
     def run_op(self,name,data=None,callback=None,mode='execute'):
         double=ModelProcessDouble(callback);self.double=double
         self.host=CapabilityHost(self.root,PACKAGE,executor=double.executor,allow_primary_worktree=True,mode=mode)
@@ -65,14 +70,30 @@ class BoundaryTests(unittest.TestCase):
             if stage=='specify':data['documents']=[{'path':'specs/transfer/module.md','content':replacement}]
         result=self.run_op('concorde-specify',callback=cb)
         self.assertEqual('succeeded',result['status'],result);self.assertEqual(replacement,path.read_text())
-    def test_a_directory_is_never_a_listed_implementation_file(self):
+    def test_a_directory_is_listed_only_with_an_explicit_trailing_slash(self):
         self.registry['targets'][3]['files']=['app'];self.save()
-        with self.assertRaisesRegex(SpecError,'explicit files'):SpecRepository(self.root)
-    def test_control_and_spec_files_cannot_be_listed_implementation_files(self):
-        for path in ('.concorde/config.json','generated/protocol/principles.md','specs/ledger/module.md'):
+        with self.assertRaisesRegex(SpecError,'use a trailing slash for a directory'):SpecRepository(self.root)
+        # The trailing slash binds every regular file below the directory, including a new one.
+        self.registry['targets'][3]['files']=['app/'];self.save()
+        entities,save=self.entities('specs/ledger/module.md')
+        entities[1]['files']=['app/']
+        save(entities)
+        repo=SpecRepository(self.root);ledger=repo.select('module.ledger')
+        self.assertEqual(('app/',),repo.implementation_entries(ledger))
+        self.assertEqual(('app',),repo.implementation_paths(ledger))
+        self.assertEqual(('app/ledger.py','app/transfer.py'),repo.implementation_files(ledger))
+        self.assertEqual('entity.ledger.store',repo.entity_for_path(ledger,'app/transfer.py').id)
+        self.assertEqual(('service.transfer','module.ledger'),
+                         tuple(t.id for t in repo.affected_modules(['app/transfer.py'])))
+    def test_control_and_spec_paths_cannot_be_listed_implementation_entries(self):
+        for path,message in (('.concorde/config.json','control or generated path'),
+                             ('.concorde/','control or generated path'),
+                             ('generated/protocol/principles.md','control or generated path'),
+                             ('specs/ledger/module.md','listed file cannot be a project Spec document'),
+                             ('specs/','listed directory cannot contain a project Spec document')):
             with self.subTest(path=path):
                 self.registry['targets'][2]['files']=[path];self.save()
-                with self.assertRaisesRegex(SpecError,'control, generated or project Spec file'):
+                with self.assertRaisesRegex(SpecError,message):
                     SpecRepository(self.root)
     def test_module_and_scenario_share_one_global_identity_namespace(self):
         from concorde.spec.validation import validate_repository

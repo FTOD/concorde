@@ -39,7 +39,9 @@ implementation and disposition are registered in [lifecycle](lifecycle.md).
 ## Entities
 
 The triage engine and its collaborators below realize triage; the concept and record entities
-describe the domain vocabulary the registered scenarios rely on.
+describe the domain vocabulary the registered scenarios rely on. The triage engine lists the
+`src/concorde/reflections/` and `tests/concorde/reflections/` package directories and its own
+fixture directory; the shared file-transaction entry stays exact.
 
 ```concorde-entities
 [
@@ -52,19 +54,9 @@ describe the domain vocabulary the registered scenarios rely on.
       "capabilities/reflections_triage.py",
       "scripts/reflections_queue.py",
       "skills/concorde-reflections-triage/SKILL.md",
-      "src/concorde/reflections/__init__.py",
-      "src/concorde/reflections/config.default.json",
-      "src/concorde/reflections/configuration.py",
-      "src/concorde/reflections/investigation.py",
-      "src/concorde/reflections/reflections.py",
-      "src/concorde/reflections/scoped_triage.py",
-      "tests/concorde/fixtures/interfaces/reflections/index.json",
-      "tests/concorde/fixtures/interfaces/reflections/needs-comments/R-001.md",
-      "tests/concorde/fixtures/interfaces/reflections/pending/R-002.md",
-      "tests/concorde/reflections/__init__.py",
-      "tests/concorde/reflections/test_reflection_parser.py",
-      "tests/concorde/reflections/test_reflections_queue.py",
-      "tests/concorde/reflections/test_scope_and_reflections.py",
+      "src/concorde/reflections/",
+      "tests/concorde/fixtures/interfaces/reflections/",
+      "tests/concorde/reflections/",
       "tests/concorde/support/reflection_triage.py"
     ]
   },

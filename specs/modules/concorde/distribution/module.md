@@ -39,7 +39,10 @@ provisioning the managed Python and viewer runtime are registered in [runtime](r
 
 The three programs below realize build, installation and runtime provisioning; the interface
 entities are their means of use, and the remaining entities name the data and actors those
-interfaces exchange.
+interfaces exchange. Installation lists the `src/concorde/distribution/`,
+`tests/concorde/distribution/` and `templates/` directories, build and runtime provisioning list the
+golden Skill fixture directories and `viewer/`, and the exact entries those two keep inside a listed
+directory stay with them.
 
 ```concorde-entities
 [
@@ -59,20 +62,8 @@ interfaces exchange.
       "tests/concorde/distribution/test_build.py",
       "tests/concorde/distribution/test_package_validation.py",
       "tests/concorde/distribution/test_prompt_resolver.py",
-      "tests/concorde/fixtures/build/golden/claude/concorde-configure/SKILL.md",
-      "tests/concorde/fixtures/build/golden/claude/concorde-deliver/SKILL.md",
-      "tests/concorde/fixtures/build/golden/claude/concorde-dev-loop/SKILL.md",
-      "tests/concorde/fixtures/build/golden/claude/concorde-init/SKILL.md",
-      "tests/concorde/fixtures/build/golden/claude/concorde-main/SKILL.md",
-      "tests/concorde/fixtures/build/golden/claude/concorde-reflections-triage/SKILL.md",
-      "tests/concorde/fixtures/build/golden/claude/concorde-validate/SKILL.md",
-      "tests/concorde/fixtures/build/golden/codex/concorde-configure/SKILL.md",
-      "tests/concorde/fixtures/build/golden/codex/concorde-deliver/SKILL.md",
-      "tests/concorde/fixtures/build/golden/codex/concorde-dev-loop/SKILL.md",
-      "tests/concorde/fixtures/build/golden/codex/concorde-init/SKILL.md",
-      "tests/concorde/fixtures/build/golden/codex/concorde-main/SKILL.md",
-      "tests/concorde/fixtures/build/golden/codex/concorde-reflections-triage/SKILL.md",
-      "tests/concorde/fixtures/build/golden/codex/concorde-validate/SKILL.md",
+      "tests/concorde/fixtures/build/golden/claude/",
+      "tests/concorde/fixtures/build/golden/codex/",
       "tests/concorde/support/build_fixture.py",
       "uv.lock"
     ]
@@ -93,21 +84,9 @@ interfaces exchange.
       "scripts/run-capability.py",
       "scripts/worktree-guard.py",
       "skills/concorde-configure/SKILL.md",
-      "src/concorde/distribution/__init__.py",
-      "src/concorde/distribution/cli.py",
-      "src/concorde/distribution/protocol_guidance.py",
-      "templates/module-template.md",
-      "templates/plan-template.md",
-      "templates/reflections-template.md",
-      "templates/scenario-template.md",
-      "templates/tasks-template.md",
-      "tests/concorde/distribution/__init__.py",
-      "tests/concorde/distribution/test_consumer_install_end_to_end.py",
-      "tests/concorde/distribution/test_fresh_clone_bootstrap.py",
-      "tests/concorde/distribution/test_install_concorde.py",
-      "tests/concorde/distribution/test_manifests.py",
-      "tests/concorde/distribution/test_protocol_guidance.py",
-      "tests/concorde/distribution/test_worktree_guard.py"
+      "src/concorde/distribution/",
+      "templates/",
+      "tests/concorde/distribution/"
     ]
   },
   {
@@ -118,9 +97,7 @@ interfaces exchange.
     "files": [
       "src/concorde/distribution/managed_runtime.py",
       "tests/concorde/support/managed_runtime.py",
-      "viewer/README.md",
-      "viewer/package-lock.json",
-      "viewer/package.json"
+      "viewer/"
     ]
   },
   {

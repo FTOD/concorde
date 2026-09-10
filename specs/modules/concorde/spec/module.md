@@ -20,7 +20,7 @@ The registered companion documents [registry](registry.md), [values](values.md),
 
 ### scenario.spec.admit-inventory — Admitting a consistent Module inventory
 
-- GIVEN an explicit registry with Module identities, one structural parent per Module, directed uses, entity file listings and document membership
+- GIVEN an explicit registry with Module identities, one structural parent per Module, directed uses, entity listing entries and document membership
 - AND a Protocol binding that matches the installed Protocol assets
 - WHEN the repository is constructed
 - THEN it admits immutable Module descriptors, file-ownership and reverse-user indexes
@@ -28,27 +28,40 @@ The registered companion documents [registry](registry.md), [values](values.md),
 
 ### scenario.spec.reject-inconsistent-inventory — Rejecting a structurally inconsistent inventory
 
-- GIVEN a registry with an unresolved parent or use, a composition cycle, a duplicate file owner within one Module, a non-sibling shared provider, or a listed file that is a control, generated or Spec document path
+- GIVEN a registry with an unresolved parent or use, a composition cycle, a duplicate entry owner within one Module, a non-sibling shared provider, or a listing entry that is a control or generated path, an existing path of the wrong kind, a registered Spec document or a directory containing one
 - WHEN the repository is constructed
 - THEN admission fails before any Agent runs
 - AND no partial repository is returned
 
 ### scenario.spec.shared-file — A file shared by several Modules
 
-- GIVEN two Modules each declare an entity that lists the same implementation file
+- GIVEN two Modules each declare an entity whose listing entry binds the same implementation file, as an exact file or as a directory prefix that covers it
 - WHEN the repository is admitted
-- THEN both Modules keep that file in their own entity file listing
-- AND the reverse index reports every Module that lists the file, so a change to it can be assessed against each of their contracts
-- BUT within one Module the file belongs to exactly one of its entities
+- THEN both Modules keep their own entry in their own entity listing
+- AND the reverse index reports every Module whose entries cover the file, so a change to it can be assessed against each of their contracts
+- BUT within one Module the file belongs to exactly one of its entities, the one whose most specific entry covers it
+
+### scenario.spec.directory-entry — A directory prefix binds a whole directory
+
+- GIVEN an entity whose listing entry ends with `/` and names a directory this Module alone owns
+- WHEN the repository resolves that Module's implementation files
+- THEN every existing regular file below the directory is bound, excluding the Framework's skipped directories, dot-prefixed names, symlinks and skipped suffixes
+- AND a file created below that directory later needs no new declaration
+- BUT a more specific entry of the same Module still owns the file it names
 
 ## Requirements
 
 - req.spec.no-body-read: Resolving a Module's identity, membership or file listing SHALL NOT read a collaborator Module's Spec body or a listed file's contents.
-- req.spec.one-owner-per-module: Within one Module, a listed implementation file SHALL belong to exactly one entity.
+- req.spec.one-owner-per-module: Within one Module, a bound implementation file SHALL belong to exactly one entity, the owner of the most specific entry that covers it.
+- req.spec.directory-entry: A listing entry that ends with `/` SHALL bind every regular file below that directory, and a listed directory SHALL NOT contain a registered Spec document.
 - req.spec.sibling-sharing: A Module used by more than one consumer SHALL share the same structural parent as its consumers.
 - req.spec.no-structural-proof: Structural validation SHALL NOT be represented as proof of semantic completeness.
 
 ## Entities
+
+The entities below realize the Spec model. The Spec model entity lists the Python package and
+test package directories it owns; the typed-values, file-transaction and Protocol-asset entities keep
+the exact entries they realize, and the most specific entry decides which entity owns a file.
 
 ```concorde-entities
 [
@@ -56,7 +69,7 @@ The registered companion documents [registry](registry.md), [values](values.md),
     "id": "entity.spec.registry",
     "title": "Registry",
     "kind": "concept",
-    "responsibility": "The explicit schema-3 JSON inventory of Module identities, document membership, parent/uses relationships, entity file listings and checks that the repository admits."
+    "responsibility": "The explicit schema-3 JSON inventory of Module identities, document membership, parent/uses relationships, entity listing entries (exact files and directory prefixes) and checks that the repository admits."
   },
   {
     "id": "entity.spec.protocol-binding",
@@ -92,19 +105,10 @@ The registered companion documents [registry](registry.md), [values](values.md),
       "skills/concorde-init/SKILL.md",
       "src/concorde/__init__.py",
       "src/concorde/__main__.py",
-      "src/concorde/spec/__init__.py",
-      "src/concorde/spec/diagnostics.py",
-      "src/concorde/spec/initialize.py",
-      "src/concorde/spec/model.py",
-      "src/concorde/spec/repository.py",
-      "src/concorde/spec/validation.py",
+      "src/concorde/spec/",
       "tests/__init__.py",
       "tests/concorde/__init__.py",
-      "tests/concorde/spec/__init__.py",
-      "tests/concorde/spec/support.py",
-      "tests/concorde/spec/test_distribution.py",
-      "tests/concorde/spec/test_module_architecture.py",
-      "tests/concorde/spec/test_module_model.py",
+      "tests/concorde/spec/",
       "tests/concorde/support/__init__.py",
       "tests/concorde/support/paths.py"
     ]
@@ -137,16 +141,9 @@ The registered companion documents [registry](registry.md), [values](values.md),
     "id": "entity.spec.protocol-text",
     "title": "Protocol text",
     "kind": "authored standard",
-    "responsibility": "Authors the independent Spec Protocol 3.0.0 chapters and templates: principles, Module specifications, Spec management, Spec and Context, Required format, and the Module and Scenario templates.",
+    "responsibility": "Authors the independent Spec Protocol 3.1.0 chapters and templates: principles, Module specifications, Spec management, Spec and Context, Required format, and the Module and Scenario templates.",
     "files": [
-      "protocol/README.md",
-      "protocol/format.md",
-      "protocol/module.md",
-      "protocol/principles.md",
-      "protocol/spec-management.md",
-      "protocol/spec-management/spec-and-context.md",
-      "protocol/templates/module.md",
-      "protocol/templates/scenario.md"
+      "protocol/"
     ]
   },
   {
@@ -155,9 +152,7 @@ The registered companion documents [registry](registry.md), [values](values.md),
     "kind": "program",
     "responsibility": "Adapts the independent Protocol text and the Framework execution profile into packaged prompt assets, and pins the exported rule version and generated asset digests in the manifest.",
     "files": [
-      "prompts/protocol/framework-profile.md",
-      "prompts/protocol/kinds/module.md",
-      "prompts/protocol/principles.md",
+      "prompts/protocol/",
       "protocol/manifest.json"
     ]
   }
@@ -166,7 +161,7 @@ The registered companion documents [registry](registry.md), [values](values.md),
 
 ## Architecture
 
-The registry separates semantic Module identities from implementation-file ownership: Modules register documents and entities, entities bind exact files, and a file may be listed by several Modules while belonging to one entity within each. Admission creates immutable selection records and reverse indexes from exact declarations; overlay bytes support candidate inspection without writes. Selection never walks a dependency to read another Module's body. The Spec model's own package entry points, the Validator and the Initialization capability are three ways of using the same admitted Registry and Protocol binding; the Protocol assets entity packages the authored Protocol text for runtime distribution without becoming a second authority over its meaning.
+The registry separates semantic Module identities from implementation-file ownership: Modules register documents and entities, entities bind listing entries that are exact files or directory prefixes, and a file may be bound by several Modules while belonging to one entity within each, the owner of its most specific entry. Admission creates immutable selection records and reverse indexes from exact declarations; overlay bytes support candidate inspection without writes. Selection never walks a dependency to read another Module's body. The Spec model's own package entry points, the Validator and the Initialization capability are three ways of using the same admitted Registry and Protocol binding; the Protocol assets entity packages the authored Protocol text for runtime distribution without becoming a second authority over its meaning.
 
 ```mermaid
 flowchart TB

@@ -42,7 +42,9 @@ viewer launch command are registered in [viewer](viewer.md).
 
 The three programs below realize scaffolding, publication and viewer launch; the interface
 entities are their means of use; the remaining entities name the publication and viewer data the
-scenarios exchange.
+scenarios exchange. The docsite entity lists the whole `docsite/` directory and the scaffold entity
+its `src/concorde/views/` and `tests/concorde/views/` packages; the viewer launcher keeps its two
+exact entries, one of them inside a listed test package.
 
 ```concorde-entities
 [
@@ -52,47 +54,7 @@ scenarios exchange.
     "kind": "program",
     "responsibility": "Realizes registry-driven Markdown publication: materializes one canonical page and inline Mermaid rendering per physical document, derives navigation and the relationship graph, binds a candidate to exact source digests and route coverage, and promotes only a complete current candidate while preserving the previous successful build on failure.",
     "files": [
-      "docsite/README.md",
-      "docsite/docusaurus.config.ts",
-      "docsite/package-lock.json",
-      "docsite/package.json",
-      "docsite/plugins/scoped-content/build-freshness.ts",
-      "docsite/plugins/scoped-content/index.ts",
-      "docsite/plugins/scoped-content/materialize.ts",
-      "docsite/plugins/scoped-content/model.ts",
-      "docsite/plugins/scoped-content/projections.ts",
-      "docsite/plugins/scoped-content/routes.ts",
-      "docsite/plugins/scoped-content/site-identity.ts",
-      "docsite/scaffold/deploy-docsite.yml",
-      "docsite/scripts/build.ts",
-      "docsite/scripts/prepare-publication.ts",
-      "docsite/scripts/start.ts",
-      "docsite/scripts/validate.ts",
-      "docsite/sidebars.protocol.ts",
-      "docsite/sidebars.specs.ts",
-      "docsite/site.json",
-      "docsite/src/components/ContentProvenance.tsx",
-      "docsite/src/components/ScopedGraph.tsx",
-      "docsite/src/css/custom.css",
-      "docsite/src/pages/graph.tsx",
-      "docsite/src/pages/index.tsx",
-      "docsite/src/theme/DocItem/Layout/index.tsx",
-      "docsite/static/img/favicon.svg",
-      "docsite/tests/contract/build-interface.test.ts",
-      "docsite/tests/integration/accessibility.test.ts",
-      "docsite/tests/integration/atomic-promotion.test.ts",
-      "docsite/tests/repository/framework-guides.test.ts",
-      "docsite/tests/repository/fresh-project-scaffold.test.ts",
-      "docsite/tests/repository/github-pages.test.ts",
-      "docsite/tests/repository/module-graph.test.ts",
-      "docsite/tests/repository/production-build.test.ts",
-      "docsite/tests/scoped-registry.test.ts",
-      "docsite/tests/setup.ts",
-      "docsite/tests/unit/build-freshness.test.ts",
-      "docsite/tests/unit/projections.test.ts",
-      "docsite/tests/unit/site-identity.test.ts",
-      "docsite/tsconfig.json",
-      "docsite/vitest.config.ts"
+      "docsite/"
     ]
   },
   {
@@ -101,12 +63,8 @@ scenarios exchange.
     "kind": "program",
     "responsibility": "Realizes exact docsite scaffold proposals and deploys the current publishing template for a registered project, without reading code to infer architecture.",
     "files": [
-      "src/concorde/views/__init__.py",
-      "src/concorde/views/docsite_scaffold.py",
-      "src/concorde/views/docsite_template.py",
-      "tests/concorde/views/__init__.py",
-      "tests/concorde/views/test_docsite_scaffold.py",
-      "tests/concorde/views/test_docsite_template.py"
+      "src/concorde/views/",
+      "tests/concorde/views/"
     ]
   },
   {

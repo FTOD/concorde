@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from concorde.development.capability_host import Invocation, _implementation_digest, _target_revision
 from concorde.spec.changes import confirm_pending_files
 from concorde.harness.context import resolve_context, recheck_context
+from concorde.spec.initialize import protocol_binding
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.validation import validate_repository
 
@@ -40,10 +41,8 @@ class ModuleImplementationTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.configuration = {"type_id": "concorde-capability-configuration", "schema_version": 1,
                               "data": {"integration": "claude", "enforcement": "native"}}
-        manifest = (PACKAGE / "protocol/manifest.json").read_bytes()
         self.write(".concorde/config.json", json.dumps({"profile_version": 10,
-            "registry": ".concorde/specs.json", "protocol": {
-                "version": "3.0.0", "digest": digest(manifest)},
+            "registry": ".concorde/specs.json", "protocol": protocol_binding(PACKAGE),
             "capability_configuration": self.configuration}))
         self.write("source/shared.py", "def value():\n    return 42\n# PRIVATE_SOURCE_MARKER\n")
         self.write("source/a.py", "def adapt(value):\n    return value\n")
@@ -159,6 +158,191 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual(("source/a.py", "source/shared.py"),
                          repository.implementation_paths(repository.select("module.a")))
 
+    def relist(self, path, entries, target_index):
+        """Rewrite one Module's declared entries and keep the registry files exactly equal."""
+        entities, save = self.entity_block(path)
+        for entity in entities:
+            if entity["id"] not in entries:
+                continue
+            files, pending = entries[entity["id"]]
+            entity["files"] = list(files)
+            if pending:
+                entity["pending"] = list(pending)
+            else:
+                entity.pop("pending", None)
+        save(entities)
+        self.registry["targets"][target_index]["files"] = sorted(
+            {entry for entity in entities for entry in entity.get("files", [])})
+        self.save_registry()
+
+    def test_a_directory_entry_binds_existing_files_and_skips_excluded_ones(self):
+        for path in ("source/nested/deep.py", "source/__pycache__/cached.py", "source/build/out.py",
+                     "source/.hidden.py", "source/stale.pyc"):
+            self.write(path, "# excluded from every directory binding\n")
+        self.relist("specs/a/module.md", {"entity.a.adapter": (["source/"], ()),
+                                          "entity.a.shared": (["source/shared.py"], ())}, 1)
+        report = validate_repository(self.root, package_root=PACKAGE)
+        self.assertEqual("success", report.status, [f.message for f in report.findings])
+        # A file below a listed directory is listed; CONCORDE-ENTITY-006 no longer warns about it.
+        self.assertEqual([], [f.message for f in report.findings if f.rule_id == "CONCORDE-ENTITY-006"])
+        repository = self.repository()
+        target = repository.select("module.a")
+        self.assertEqual(("source/", "source/shared.py"), repository.implementation_entries(target))
+        self.assertEqual(("source", "source/shared.py"), repository.implementation_paths(target))
+        self.assertEqual(("source/a.py", "source/nested/deep.py", "source/shared.py"),
+                         repository.implementation_files(target))
+        self.assertEqual((), repository.missing_entries(target))
+        # The most specific entry owns a covered path: an exact entry beats the directory.
+        self.assertEqual("entity.a.adapter",
+                         repository.entity_for_path(target, "source/nested/deep.py").id)
+        self.assertEqual("entity.a.shared", repository.entity_for_path(target, "source/shared.py").id)
+        self.assertIsNone(repository.entity_for_path(target, "elsewhere/other.py"))
+
+    def test_the_longest_directory_entry_owns_a_nested_file(self):
+        self.write("source/nested/deep.py", "def deep():\n    return 1\n")
+        self.relist("specs/a/module.md",
+                    {"entity.a.adapter": (["source/"], ()),
+                     "entity.a.shared": (["source/nested/", "source/shared.py"], ())}, 1)
+        report = validate_repository(self.root, package_root=PACKAGE)
+        self.assertEqual("success", report.status, [f.message for f in report.findings])
+        repository = self.repository()
+        target = repository.select("module.a")
+        self.assertEqual("entity.a.shared", repository.entity_for_path(target, "source/nested/deep.py").id)
+        self.assertEqual("entity.a.adapter", repository.entity_for_path(target, "source/a.py").id)
+
+    def test_a_file_created_under_a_listed_directory_needs_no_pending_declaration(self):
+        self.relist("specs/a/module.md", {"entity.a.adapter": (["source/"], ()),
+                                          "entity.a.shared": (["source/shared.py"], ())}, 1)
+        repository = self.repository()
+        coding = resolve_context(repository, "module.a", phase="implementation")
+        planned = resolve_context(repository, "module.a", phase="plan")
+        self.write("source/added.py", "def added():\n    return 1\n")
+        # A code writer may create a file below a listed directory: the entries did not change.
+        recheck_context(repository, coding, check_implementation=False)
+        with self.assertRaisesRegex(SpecError, "implementation file names changed"):
+            recheck_context(repository, planned)
+        report = validate_repository(self.root, package_root=PACKAGE)
+        self.assertEqual("success", report.status, [f.message for f in report.findings])
+        fresh = resolve_context(self.repository(), "module.a", phase="implementation")
+        self.assertEqual([("source/", "entity.a.adapter", False, True),
+                          ("source/shared.py", "entity.a.shared", False, False)],
+                         [(item["path"], item["entity_id"], item["pending"], item["directory"])
+                          for item in fresh.value["implementation_entries"]])
+        self.assertEqual([("source/a.py", "entity.a.adapter"), ("source/added.py", "entity.a.adapter"),
+                          ("source/shared.py", "entity.a.shared")],
+                         [(item["path"], item["entity_id"]) for item in fresh.value["implementation_files"]])
+        self.assertIn("source/added.py",
+                      [item["path"] for item in fresh.value["implementation_artifacts"]])
+
+    def test_a_directory_and_an_exact_entry_share_one_file_across_modules(self):
+        from concorde.development.capability_host import _implementation_users
+        self.write("source/nested/deep.py", "def deep():\n    return 1\n")
+        self.relist("specs/a/module.md", {"entity.a.adapter": (["source/"], ()),
+                                          "entity.a.shared": (["source/shared.py"], ())}, 1)
+        repository = self.repository()
+        self.assertEqual(("module.a", "module.b"), repository.listing_users("source/shared.py"))
+        self.assertEqual(("module.a",), repository.listing_users("source/nested/deep.py"))
+        self.assertEqual(("module.a", "module.b"),
+                         tuple(t.id for t in repository.affected_modules(["source/shared.py"])))
+        self.assertEqual(("module.a",),
+                         tuple(t.id for t in repository.affected_modules(["source/nested/deep.py"])))
+        # A directory entry and an exact entry that name the same file share it across Modules.
+        for module in ("module.a", "module.b"):
+            with self.subTest(module=module):
+                selected = repository.select(module)
+                self.assertEqual(("module.a", "module.b"),
+                                 tuple(t.id for t in repository.covering_modules(selected)))
+                self.assertEqual(("module.a", "module.b"),
+                                 tuple(t.id for t in _implementation_users(repository, selected)))
+
+    def test_a_pending_directory_validates_until_delivery_confirms_it(self):
+        self.relist("specs/a/module.md",
+                    {"entity.a.adapter": (["source/a.py", "source/generated/"], ["source/generated/"]),
+                     "entity.a.shared": (["source/shared.py"], ())}, 1)
+        report = validate_repository(self.root, package_root=PACKAGE)
+        self.assertEqual("success", report.status, [f.message for f in report.findings])
+        repository = self.repository()
+        target = repository.select("module.a")
+        self.assertEqual(("source/generated/",), repository.missing_entries(target))
+        self.assertEqual(("source/a.py", "source/shared.py"), repository.implementation_files(target))
+        snapshot = resolve_context(repository, "module.a", phase="plan")
+        self.assertEqual([("source/a.py", False, False), ("source/generated/", True, True),
+                          ("source/shared.py", False, False)],
+                         [(item["path"], item["pending"], item["directory"])
+                          for item in snapshot.value["implementation_entries"]])
+        # A pending directory declares intent; it never invents a file name for the planner.
+        self.assertEqual(["source/a.py", "source/shared.py"],
+                         [item["path"] for item in snapshot.value["implementation_files"]])
+        self.write("source/generated/emitted.py", "def emitted():\n    return 1\n")
+        report = validate_repository(self.root, package_root=PACKAGE)
+        self.assertEqual("success", report.status, [f.message for f in report.findings])
+        self.assertIn("CONCORDE-ENTITY-005", {f.rule_id for f in report.findings})
+        confirmed, still_pending = confirm_pending_files(self.root, PACKAGE)
+        self.assertEqual([{"module": "module.a", "entity": "entity.a.adapter",
+                           "path": "source/generated/"}], confirmed)
+        self.assertEqual([], still_pending)
+        self.assertNotIn("pending", (self.root / "specs/a/module.md").read_text())
+        report = validate_repository(self.root, package_root=PACKAGE)
+        self.assertEqual("success", report.status, [f.message for f in report.findings])
+        self.assertEqual([], [f for f in report.findings if f.rule_id == "CONCORDE-ENTITY-005"])
+        self.assertEqual(("source/a.py", "source/generated/emitted.py", "source/shared.py"),
+                         self.repository().implementation_files(self.repository().select("module.a")))
+
+    def test_a_missing_directory_that_is_not_pending_is_an_error(self):
+        self.relist("specs/a/module.md",
+                    {"entity.a.adapter": (["source/a.py", "source/generated/"], ()),
+                     "entity.a.shared": (["source/shared.py"], ())}, 1)
+        report = validate_repository(self.root, package_root=PACKAGE)
+        self.assertEqual("invalid", report.status)
+        self.assertIn("CONCORDE-ENTITY-002", {f.rule_id for f in report.findings})
+        self.assertIn("a directory that does not exist",
+                      " ".join(f.message for f in report.findings))
+
+    def test_registry_files_must_repeat_every_entity_entry_exactly(self):
+        entities, save = self.entity_block("specs/a/module.md")
+        entities[0]["files"] = ["source/"]
+        save(entities)
+        # The expanded file names are not a substitute for the declared directory entry.
+        self.registry["targets"][1]["files"] = ["source/a.py", "source/shared.py"]
+        self.save_registry()
+        report = validate_repository(self.root, package_root=PACKAGE)
+        self.assertEqual("invalid", report.status)
+        self.assertIn("CONCORDE-ENTITY-003", {f.rule_id for f in report.findings})
+
+    def test_the_implementation_digest_covers_entries_and_the_files_they_bind(self):
+        self.relist("specs/a/module.md", {"entity.a.adapter": (["source/"], ()),
+                                          "entity.a.shared": (["source/shared.py"], ())}, 1)
+        repository = self.repository()
+        before = _implementation_digest(repository, repository.select("module.a"))
+        self.write("source/added.py", "def added():\n    return 1\n")
+        created = self.repository()
+        with_new_file = _implementation_digest(created, created.select("module.a"))
+        self.assertNotEqual(before, with_new_file)
+        self.write("source/added.py", "def added():\n    return 2\n")
+        changed = self.repository()
+        changed_digest = _implementation_digest(changed, changed.select("module.a"))
+        self.assertNotEqual(with_new_file, changed_digest)
+        # The declared entries are part of the digest, not only the files they currently bind.
+        self.relist("specs/a/module.md",
+                    {"entity.a.adapter": (["source/a.py", "source/added.py"], ()),
+                     "entity.a.shared": (["source/shared.py"], ())}, 1)
+        expanded = self.repository()
+        self.assertNotEqual(changed_digest, _implementation_digest(expanded, expanded.select("module.a")))
+
+    def test_unconfirmed_entries_report_only_missing_declarations(self):
+        from concorde.development.capability_host import _unconfirmed_files
+        self.relist("specs/a/module.md",
+                    {"entity.a.adapter": (["source/", "source/generated/"], ["source/generated/"]),
+                     "entity.a.shared": (["source/missing.py", "source/shared.py"], ())}, 1)
+        repository = self.repository()
+        # A pending entry is declared intent; only a missing entry that is not pending is unconfirmed.
+        self.assertEqual(["source/missing.py"],
+                         _unconfirmed_files(repository, repository.select("module.a")))
+        self.write("source/missing.py", "def missing():\n    return 1\n")
+        (self.root / "source/generated").mkdir()
+        current = self.repository()
+        self.assertEqual([], _unconfirmed_files(current, current.select("module.a")))
+
     def test_two_entities_of_one_module_cannot_list_the_same_file(self):
         entities, save = self.entity_block("specs/a/module.md")
         entities[1]["files"] = ["source/a.py"]
@@ -166,16 +350,26 @@ class ModuleImplementationTests(unittest.TestCase):
         with self.assertRaisesRegex(SpecError, "listed by two entities"):
             self.repository().entities(self.repository().select("module.a"))
 
-    def test_directory_is_not_a_file_listing(self):
+    def test_a_directory_must_be_listed_with_a_trailing_slash(self):
         self.registry["targets"][1]["files"] = ["source"]
         self.save_registry()
-        with self.assertRaisesRegex(SpecError, "explicit files"):
+        with self.assertRaisesRegex(SpecError, "use a trailing slash for a directory"):
+            self.repository()
+        self.registry["targets"][1]["files"] = ["source/a.py/"]
+        self.save_registry()
+        with self.assertRaisesRegex(SpecError, "listed directory entry is not a directory"):
             self.repository()
 
     def test_a_spec_document_cannot_be_listed_as_an_implementation_file(self):
         self.registry["targets"][2]["files"] = ["source/shared.py", "specs/a/details.md"]
         self.save_registry()
-        with self.assertRaisesRegex(SpecError, "project Spec file"):
+        with self.assertRaisesRegex(SpecError, "project Spec document"):
+            self.repository()
+
+    def test_a_listed_directory_cannot_contain_a_registered_spec_document(self):
+        self.registry["targets"][1]["files"] = ["source/a.py", "source/shared.py", "specs/"]
+        self.save_registry()
+        with self.assertRaisesRegex(SpecError, "listed directory cannot contain a project Spec document"):
             self.repository()
 
     def test_registry_files_must_equal_the_union_of_entity_files(self):
@@ -255,7 +449,7 @@ class ModuleImplementationTests(unittest.TestCase):
         target = repository.select("module.a")
         self.assertIn("source/new.py", repository.implementation_paths(target))
         self.assertNotIn("source/new.py", repository.implementation_files(target))
-        self.assertEqual(("source/new.py",), repository.missing_files(target))
+        self.assertEqual(("source/new.py",), repository.missing_entries(target))
         snapshot = resolve_context(repository, "module.a", phase="plan")
         self.assertEqual([("source/a.py", False), ("source/new.py", True), ("source/shared.py", False)],
             [(item["path"], item["pending"]) for item in snapshot.value["implementation_files"]])
@@ -380,6 +574,52 @@ class ModuleImplementationTests(unittest.TestCase):
             self.assertIn("cannot author Spec documents", result["errors"][0]["message"])
             # The refused proposal never reached the registered Spec document.
             self.assertIn("# Transfer money", (root / "specs/transfer/module.md").read_text())
+
+    def test_a_code_writer_may_create_a_file_below_a_listed_directory(self):
+        from concorde.development.capability_host import CapabilityHost, run_capability
+        from concorde.spec.typed_data import typed
+        from tests.concorde.spec.support import project, ModelProcessDouble
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            registry = project(root)
+            # The transfer calculation lists the whole app/ directory, shared with the ledger Module.
+            document = root / "specs/transfer/module.md"
+            text = document.read_text()
+            prefix, rest = text.split("```concorde-entities\n", 1)
+            payload, suffix = rest.split("\n```", 1)
+            entities = json.loads(payload)
+            for entity in entities:
+                if entity["id"] == "entity.transfer.calculation":
+                    entity["files"] = ["app/"]
+            document.write_text(prefix + "```concorde-entities\n" + json.dumps(entities, indent=2)
+                                + "\n```" + suffix)
+            registry["targets"][2]["files"] = ["app/", "checks/transfer_check.py"]
+            (root / ".concorde/specs.json").write_text(json.dumps(registry))
+            report = validate_repository(root, package_root=PACKAGE)
+            self.assertEqual("success", report.status, [f.message for f in report.findings])
+            written = []
+            def implement(stage, snapshot, result, cwd):
+                if stage != "implementation":
+                    return
+                written.append([item["path"] for item in snapshot["implementation_files"]])
+                (cwd / "app/helper.py").write_text("HELPER_CREATED_BELOW_A_LISTED_DIRECTORY = True\n")
+            double = ModelProcessDouble(implement)
+            self.addCleanup(double.runtime_directory.cleanup)
+            result = run_capability("concorde-dev-loop", self.configuration,
+                typed("concorde-dev-loop-request", {"target_id": "service.transfer",
+                    "task": "Implement the pure transfer contract", "run_reviews": False}),
+                host_context=CapabilityHost(root, PACKAGE, executor=double.executor,
+                                            allow_primary_worktree=True))
+            self.assertEqual("succeeded", result["status"], result)
+            self.assertEqual([["app/ledger.py", "app/transfer.py", "checks/transfer_check.py"]], written)
+            # No pending declaration was needed, and the new file is bound by the same entry.
+            self.assertTrue((root / "app/helper.py").is_file())
+            repository = SpecRepository(root, PACKAGE)
+            target = repository.select("service.transfer")
+            self.assertIn("app/helper.py", repository.implementation_files(target))
+            self.assertEqual("entity.transfer.calculation",
+                             repository.entity_for_path(target, "app/helper.py").id)
+            self.assertEqual("success", validate_repository(root, package_root=PACKAGE).status)
 
     def test_composite_keeps_its_plan_and_verifies_shared_code_after_all_writers(self):
         from concorde.development.capability_host import CapabilityHost, run_capability

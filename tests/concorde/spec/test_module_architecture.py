@@ -141,7 +141,7 @@ class ModuleArchitectureTests(unittest.TestCase):
         self.registry["targets"][2]["files"] = ["app/extra.py", "app/transfer.py",
                                                 "checks/transfer_check.py"]
         self.save()
-        with self.assertRaisesRegex(SpecError, "listed implementation files"):
+        with self.assertRaisesRegex(SpecError, "listed implementation entries"):
             recheck_context(repository, snapshot)
 
     def test_spec_author_can_update_its_own_inline_diagram_but_not_a_foreign_document(self):

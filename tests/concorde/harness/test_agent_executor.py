@@ -38,6 +38,7 @@ from concorde.harness.permissions import (  # noqa: E402
     runtime_bootstrap_file,
 )
 from concorde.harness.effects import EffectDeclaration  # noqa: E402
+from concorde.spec.repository import PROTOCOL_VERSION  # noqa: E402
 
 
 class AgentExecutorTests(unittest.TestCase):
@@ -560,14 +561,14 @@ class AgentBindingPreflightTests(unittest.TestCase):
 
         snapshot_data = {
             "context_id": "sha256:" + "3" * 64,
-            "schema_version": 2,
+            "schema_version": 3,
             "target_id": "service.fixture",
             "kind": "module",
             "focus_id": None,
             "phase": "plan",
             "task": "Plan the selected change",
             "constraints": [],
-            "protocol_binding": {"version": "3.0.0", "digest": "sha256:" + "4" * 64},
+            "protocol_binding": {"version": PROTOCOL_VERSION, "digest": "sha256:" + "4" * 64},
             "protocol": [],
             "document_order": ["specs/fixture.md"],
             "target_spec": [{
@@ -578,6 +579,10 @@ class AgentBindingPreflightTests(unittest.TestCase):
             "shared_specs": [],
             "instructions": "Fixture role instructions.",
             "stage_inputs": [],
+            "implementation_entries": [{"path": "app/fixture.py", "entity_id": "entity.fixture.code",
+                                        "pending": False, "directory": False},
+                                       {"path": "app/generated/", "entity_id": "entity.fixture.code",
+                                        "pending": True, "directory": True}],
             "implementation_files": [{"path": "app/fixture.py", "entity_id": "entity.fixture.code",
                                       "pending": False}],
             "implementation_artifacts": [],

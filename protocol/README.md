@@ -1,6 +1,6 @@
 # Spec Protocol
 
-Concorde Spec Protocol 3.0.0 defines a standard for describing software: what a component is for,
+Concorde Spec Protocol 3.1.0 defines a standard for describing software: what a component is for,
 how it behaves in its usage scenarios, which entities make it up and how those entities relate to
 each other and to the files that realize them. Its purpose is to make that meaning explicit enough
 for people and tools to reach a consistent understanding.
@@ -8,9 +8,9 @@ for people and tools to reach a consistent understanding.
 The standard defines one kind of specification. A **Module Spec** has a functional half and an
 architecture half. The functional half states the Module's **purpose** and its **scenarios** with
 their **requirements**. The architecture half states the Module's **entities** and their
-**relationships**; entities may bind the implementation files that realize them. **Spec
-management** gives Modules stable identities, explicit document collections and unambiguous
-relationships.
+**relationships**; entities may bind the implementation files that realize them, as exact files or
+as directory prefixes. **Spec management** gives Modules stable identities, explicit document
+collections and unambiguous relationships.
 
 Spec management also defines [Spec and Context](spec-management/spec-and-context.md): which
 entities can be queried, how their Spec context files are determined from explicit declarations,
@@ -24,7 +24,7 @@ each form describes, references or organizes. They do not model the Protocol its
 ```mermaid
 flowchart TB
     accTitle: Information represented by project specifications
-    accDescr: Spec management declarations identify and organize Module Specs. A Module Spec describes a functional specification of purpose, scenarios and requirements, and an architecture specification of entities and relationships. Architecture entities bind the exact implementation files that realize them.
+    accDescr: Spec management declarations identify and organize Module Specs. A Module Spec describes a functional specification of purpose, scenarios and requirements, and an architecture specification of entities and relationships. Architecture entities bind the implementation files that realize them, as exact files or directory prefixes.
     organization["IDs, metadata and relationships"]
     moduleSpec["Module Spec"]
     functional["Functional spec<br/>purpose, scenarios, requirements"]

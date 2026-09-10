@@ -60,6 +60,20 @@ it('admits files pending creation but rejects directories, generated paths and s
  symlinkSync(resolve(root,'missing'),resolve(root,'src/link'));targets[0].files=['src/link/file.ts'];save();
  expect(()=>loadScopedRegistry(root)).toThrow(/Symlink file binding/);
 });
+it('admits a directory prefix entry, shares it, and rejects a file or Spec document under it',()=>{
+ // A trailing slash binds the regular files below the directory, existing and future alike.
+ targets[0].files=['src/'];targets[1].files=['src/ledger.ts'];save();
+ const r=loadScopedRegistry(root);
+ expect(r.targets.find(t=>t.id==='scope.bank')?.files).toEqual(['src/']);
+ expect(r.targets.find(t=>t.id==='scope.audit')?.files).toEqual(['src/ledger.ts']);
+ // A directory pending creation is admitted; an existing entry must be the declared kind.
+ targets[0].files=['src/future/'];save();expect(()=>loadScopedRegistry(root)).not.toThrow();
+ targets[0].files=['src/ledger.ts/'];save();expect(()=>loadScopedRegistry(root)).toThrow(/must name a directory/);
+ targets[0].files=['generated/'];save();expect(()=>loadScopedRegistry(root)).toThrow(/Unsafe file binding/);
+ targets[0].files=['specs/'];save();expect(()=>loadScopedRegistry(root)).toThrow(/cannot contain a Spec document/);
+ symlinkSync(resolve(root,'missing'),resolve(root,'src/linked'));targets[0].files=['src/linked/'];save();
+ expect(()=>loadScopedRegistry(root)).toThrow(/Symlink file binding/);
+});
 it('rejects a file binding that names a registered Spec document',()=>{
  targets[0].files=['specs/audit/module.md'];save();
  expect(()=>loadScopedRegistry(root)).toThrow(/Unsafe file binding/);
@@ -161,6 +175,12 @@ it('renders a Files section on a Module primary page from its bound files, and o
  expect(ledgerPage).toContain('## Files');expect(ledgerPage).toContain('`src/ledger.ts`');
  const bankPage=readFileSync(resolve(root,'docsite/.generated/content/specs/bank/module.md'),'utf8');
  expect(bankPage).not.toContain('## Files');
+});
+it('renders a directory prefix entry exactly as declared',async()=>{
+ targets[3].files=['src/'];save();
+ await materializeScoped(loadScopedRegistry(root));
+ const ledgerPage=readFileSync(resolve(root,'docsite/.generated/content/specs/ledger/module.md'),'utf8');
+ expect(ledgerPage).toContain('- `src/`');expect(ledgerPage).not.toContain('`src/ledger.ts`');
 });
 it('keeps one sidebar without duplicate document entries when a document is shared',()=>{
  targets[3].documents.push('specs/transfer/promises.md');save();

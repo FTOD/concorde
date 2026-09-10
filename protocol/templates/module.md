@@ -60,8 +60,8 @@ its promises. No lists, tables or code.]
     "title": "[Entity title]",
     "kind": "[program | file | record | concept | interface | actor | submodule | used module]",
     "responsibility": "[What this entity does or represents.]",
-    "files": ["[exact/project-relative/file]"],
-    "pending": ["[a declared file that does not exist yet, or omit this field]"]
+    "files": ["[exact/project-relative/file]", "[project-relative/directory/]"],
+    "pending": ["[a declared entry that does not exist yet, or omit this field]"]
   },
   {
     "id": "entity.[module].[collaborator]",
@@ -109,4 +109,5 @@ flowchart TB
 
 Every relied-upon collaborator promise must be understandable locally; a link to another Spec
 cannot supply missing meaning. Optional section headings may change without changing identity.
-The inventory's `files` for this Module must equal the union of the entity `files` above.
+The inventory's `files` for this Module must equal the union of the entity `files` above, entry
+for entry: an entry ending in `/` stays that directory prefix and is never expanded into names.

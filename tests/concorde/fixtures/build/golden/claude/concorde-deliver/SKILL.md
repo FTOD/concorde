@@ -26,8 +26,9 @@ and input (concorde-deliver-request@1). Supply the selected change_id from the p
 cannot replace change ownership. No domain flags or positional arguments are accepted.
 
 Default delivery verifies the candidate and its integration with the current primary commit,
-confirms every entity file marked `pending` that now exists on disk and clears its marker as part
-of the delivered commit (a file still missing stays pending and is reported), creates
+confirms every entity entry marked `pending`, an exact file or a directory prefix, that now exists on
+disk and clears its marker as part of the delivered commit (an entry still missing stays pending and
+is reported), creates
 `concorde/delivered/<change_id>` without checking it out, and removes the source worktree
 and its local state. Each change has an independent delivery branch. The primary worktree's
 checked-out branch, index and project files are unchanged. `keep_worktree:true` explicitly retains

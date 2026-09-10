@@ -143,14 +143,19 @@ nonempty JSON array whose entries have exactly the required fields `id`, `title`
 - `title`: a nonempty string, unique within the Module; the diagram node label.
 - `kind`: a nonempty free-text string.
 - `responsibility`: a nonempty string.
-- `files`: a nonempty array of distinct project-relative file paths that realize the entity.
-- `pending`: an array of distinct paths, each also present in `files`, declared but not yet created.
+- `files`: a nonempty array of distinct project-relative entries that realize the entity. An entry
+  ending in `/` is a directory prefix and binds every regular file below it; any other entry is
+  an exact file.
+- `pending`: an array of distinct entries, each also present in `files`, declared but not yet
+  created.
 - `target_id`: the ID of a child or used Module the entity stands for; not combined with `files`.
 
-Spec management gives a complete example. A listed file MUST NOT be a registered Spec document, a
-generated output or a project-control record. Within one Module each file appears under one
-entity; the union of a Module's entity files MUST equal its inventory `files`. Every child and
-used Module MUST have exactly one entity with its `target_id`.
+Spec management gives a complete example. A listed entry MUST NOT be a registered Spec document,
+a generated output or a project-control record, and a directory prefix MUST NOT contain a
+registered Spec document. Within one Module each entry appears under one entity and a file covered
+by several entries belongs to the most specific one; the union of a Module's entity entries MUST
+equal its inventory `files`. Every child and used Module MUST have exactly one entity with its
+`target_id`.
 
 ## Architecture diagrams
 

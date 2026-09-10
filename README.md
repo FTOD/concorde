@@ -1,21 +1,24 @@
 # Concorde Framework
 
 Concorde combines the **Spec Protocol**, installable Skills, agent execution, validation and developer
-views. Protocol **3.0.0** defines one specification category:
+views. Protocol **3.1.0** defines one specification category:
 
 - **Module Spec:** a self-contained contract in four mandatory parts. Purpose and Scenarios (with
   their SHALL requirements) state what the Module promises; Entities and Architecture state how it
   is built. An entity may be a submodule, a program, a file, a record, a concept, an interface at
-  the Module boundary or an external actor, and may bind the exact files that realize it.
+  the Module boundary or an external actor, and may bind the files that realize it, as exact paths or
+  as directory prefixes ending in `/`.
 
 Each Module has one structural parent at most. Shared capabilities are independent siblings;
 `uses` does not create another parent. Module composition and file reuse are separate
-relationships: several Modules may list the same implementation file. Every Module registers its
+relationships: several Modules may bind the same implementation file. Within one Module the most
+specific entry owns a file, an exact path before a directory prefix, so a directory prefix can list a
+whole package while a shared file keeps its own entry. Every Module registers its
 complete Markdown collection and one local `module.md` reading entry. A dependency link does not
 import the provider's Spec or source.
 
 Readers, planners and task authors determine behavior from their selected Module Spec alone; its
-entity declarations name the files that realize the Module, but never their contents. Only the
+entity declarations name the entries and the files they bind, but never their contents. Only the
 code-writing and code-review phases receive those file contents, in their declared subsets. The
 Framework maintains a reverse file-listing index and checks each listing Module separately after a
 shared file changes. Context, checks and reviews identify the exact contracts and revisions they
@@ -188,8 +191,8 @@ checked before promotion. Human navigation does not grant agent context access.
 ## Concorde Spec Protocol entry and upgrades
 
 The Framework execution profile defines session handoffs in [P10](prompts/protocol/framework-profile.md#p10-explicit-session-handoffs).
-Concorde Spec Protocol 3.0.0 defines self-contained, four-part Module Specs whose entities list the
-files that realize them. Root instructions and runtime drafts refer to that rule; public Skills do
+Concorde Spec Protocol 3.1.0 defines self-contained, four-part Module Specs whose entities list the
+files that realize them, as exact paths or directory prefixes. Root instructions and runtime drafts refer to that rule; public Skills do
 not carry another copy.
 The installer adds a receipt-owned `concorde-protocol` block at the start of the selected root file:
 

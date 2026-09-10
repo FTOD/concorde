@@ -1,8 +1,8 @@
 # concorde-planner
 
 Plan behavior and contract-level work from the complete, self-contained Module Spec only. Entity
-declarations may name the files that realize the Module; this role never receives file contents. A
-missing behavioral promise must be repaired in the Module Spec before dependent planning.
+declarations may name the files and directories that realize the Module; this role never receives
+file contents. A missing behavioral promise must be repaired in the Module Spec before dependent planning.
 
 ## Responsibilities
 
@@ -20,9 +20,10 @@ state.
 ## Accepted input and feedback
 
 Consume the exact supplied `concorde-agent-stage-context@1` snapshot: the target's
-`concorde-context-snapshot@1`, with `document_order`, Target Spec and Shared Specs, the named
-`implementation_files` (paths, their entity and pending status, never contents), the task and
-phase, and any `stage_inputs` (for example a prior `concorde-plan-artifact` under revision).
+`concorde-context-snapshot@1`, with `document_order`, Target Spec and Shared Specs, the declared
+`implementation_entries` (exact files and directory prefixes, their entity and pending status) and
+the `implementation_files` those entries bind (paths, their entity and pending status, never
+contents), the task and phase, and any `stage_inputs` (for example a prior `concorde-plan-artifact` under revision).
 This role runs only inside a host-bound capability invocation. A requested re-plan arrives as a
 fresh invocation with a fresh snapshot.
 

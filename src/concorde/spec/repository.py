@@ -19,7 +19,7 @@ from .schema import ContractError, admit, validate
 
 
 PROFILE_VERSION = 10
-PROTOCOL_VERSION = "3.0.0"
+PROTOCOL_VERSION = "3.1.0"
 REGISTRY_SCHEMA = 3
 KINDS = frozenset({"module"})
 SPEC_KINDS = frozenset({"module"})
@@ -36,6 +36,8 @@ REQUIREMENT = re.compile(r"^(req\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)[ \t]*:[ \t]+(\S.
 SHALL = re.compile(r"\bSHALL(?: NOT)?\b")
 MANDATORY_SECTIONS = ("Purpose", "Scenarios", "Entities", "Architecture")
 CONTROL_PREFIXES = (".concorde/", ".git/", ".agents/", ".claude/", ".codex/", "generated/")
+SKIPPED_DIRECTORIES = frozenset({"node_modules", "__pycache__", ".venv", "build", "dist"})
+SKIPPED_SUFFIXES = (".pyc", ".log")
 STEP_ORDER = {"GIVEN": 0, "WHEN": 1, "THEN": 2}
 
 
@@ -71,6 +73,77 @@ def identifier(value: Any) -> str:
     if not isinstance(value, str) or not IDENTITY.fullmatch(value):
         raise SpecError(f"invalid stable identity: {value!r}")
     return value
+
+
+def is_directory_entry(entry: str) -> bool:
+    """A listing entry with a trailing slash binds every regular file below the directory."""
+    return entry.endswith("/")
+
+
+def entry_base(entry: str) -> str:
+    return entry[:-1] if entry.endswith("/") else entry
+
+
+def check_entry(entry: str) -> str:
+    """Validate the spelling of one listing entry and return its base path."""
+    if not isinstance(entry, str) or entry.endswith("//") or entry == "/":
+        raise SpecError(f"invalid listing entry: {entry!r}")
+    base = entry_base(entry)
+    safe_path(base)
+    if (base + "/").startswith(CONTROL_PREFIXES):
+        raise SpecError(f"listed entry cannot be a control or generated path: {entry}")
+    return base
+
+
+def covers(entry: str, path: str) -> bool:
+    """Whether a listing entry binds the given concrete file path."""
+    return path.startswith(entry) if is_directory_entry(entry) else path == entry
+
+
+def most_specific(entries, path: str) -> str | None:
+    """The entry that owns a covered path: an exact file first, then the longest directory."""
+    matches = [entry for entry in entries if covers(entry, path)]
+    if not matches:
+        return None
+    return max(matches, key=lambda entry: (not is_directory_entry(entry), len(entry)))
+
+
+def skipped_path(relative: str) -> bool:
+    """Whether the directory walk excludes this path, expressed below a listed directory."""
+    return (any(part in SKIPPED_DIRECTORIES or part.startswith(".") for part in relative.split("/"))
+            or relative.endswith(SKIPPED_SUFFIXES))
+
+
+def bound_by(entry: str, path: str) -> bool:
+    """Whether one listing entry binds a concrete file path, applying directory exclusions."""
+    return covers(entry, path) and (not is_directory_entry(entry)
+                                    or not skipped_path(path[len(entry):]))
+
+
+def entry_exists(root: Path, entry: str) -> bool:
+    candidate = checked_path(root, entry_base(entry))
+    return candidate.is_dir() if is_directory_entry(entry) else candidate.is_file()
+
+
+def expand_entry(root: Path, entry: str) -> list[str]:
+    """Existing regular files bound by one entry, skipping excluded directories and files."""
+    if not is_directory_entry(entry):
+        return [entry] if checked_path(root, entry).is_file() else []
+    directory = checked_path(root, entry_base(entry))
+    if directory.is_symlink() or not directory.is_dir():
+        return []
+    result = []
+    for current, names, files in os.walk(directory):
+        names[:] = sorted(name for name in names if name not in SKIPPED_DIRECTORIES
+                          and not name.startswith(".") and not (Path(current) / name).is_symlink())
+        for name in sorted(files):
+            if name.startswith(".") or name.endswith(SKIPPED_SUFFIXES):
+                continue
+            candidate = Path(current) / name
+            if candidate.is_symlink() or not candidate.is_file():
+                continue
+            result.append(candidate.relative_to(root).as_posix())
+    return sorted(result)
 
 
 def walk_lines(body: str) -> list[tuple[int, str, str]]:
@@ -276,15 +349,22 @@ class SpecRepository:
                 raise SpecError(f"shared Module {provider.id} and its consumers must be siblings")
         users: dict[str, list[str]] = {}
         for target in self.targets.values():
-            for path in target.files:
-                safe_path(path)
-                if path.startswith(CONTROL_PREFIXES) or path in self.document_targets:
-                    raise SpecError(f"listed file cannot be a control, generated or project Spec file: {path}")
-                candidate = checked_path(self.root, path)
-                if candidate.exists() and not candidate.is_file():
-                    raise SpecError(f"entities list explicit files, not directories: {path}")
-                users.setdefault(path, []).append(target.id)
-        self.file_users = {path: tuple(owners) for path, owners in users.items()}
+            for entry in target.files:
+                base = check_entry(entry)
+                if is_directory_entry(entry):
+                    if any(covers(entry, document) for document in self.document_targets):
+                        raise SpecError(f"a listed directory cannot contain a project Spec document: {entry}")
+                    candidate = checked_path(self.root, base)
+                    if candidate.exists() and not candidate.is_dir():
+                        raise SpecError(f"listed directory entry is not a directory: {entry}")
+                else:
+                    if entry in self.document_targets:
+                        raise SpecError(f"listed file cannot be a project Spec document: {entry}")
+                    candidate = checked_path(self.root, entry)
+                    if candidate.exists() and not candidate.is_file():
+                        raise SpecError(f"listed file entry is not a regular file; use a trailing slash for a directory: {entry}")
+                users.setdefault(entry, []).append(target.id)
+        self.file_users = {entry: tuple(owners) for entry, owners in users.items()}
         for raw in self.registry["checks"]:
             if not isinstance(raw, dict) or not {"id", "target_id", "argv", "timeout_seconds"}.issubset(raw) or set(raw) - {"id", "target_id", "argv", "timeout_seconds", "inputs"}:
                 raise SpecError("check requires id, target_id, argv, timeout_seconds")
@@ -470,8 +550,19 @@ class SpecRepository:
         return self.definitions(target).scenarios
 
     def entity_files(self, target: SpecTarget) -> dict[str, SpecEntity]:
-        """Exact declared files of the Module's entities, keyed by path."""
-        return {path: entity for entity in self.entities(target) for path in entity.files}
+        """Declared listing entries of the Module's entities, keyed by entry (exact file or directory)."""
+        return {entry: entity for entity in self.entities(target) for entry in entity.files}
+
+    def entity_for_path(self, target: SpecTarget, path: str) -> SpecEntity | None:
+        """The entity whose most specific entry covers a concrete file path, if any."""
+        entries = self.entity_files(target)
+        entry = most_specific(entries, path)
+        return entries[entry] if entry is not None else None
+
+    def listing_users(self, path: str) -> tuple[str, ...]:
+        """Modules whose listings cover a concrete file path."""
+        return tuple(dict.fromkeys(user for entry, users in self.file_users.items()
+                                   if covers(entry, path) for user in users))
 
     def children(self, target: SpecTarget) -> tuple[SpecTarget, ...]:
         return tuple(t for t in self.targets.values() if t.parent == target.id)
@@ -482,19 +573,32 @@ class SpecRepository:
             result.extend((child, *self.descendants(child)))
         return tuple(result)
 
-    def implementation_paths(self, target: SpecTarget) -> tuple[str, ...]:
-        """Exact registered file authority, including files yet to be authored."""
+    def implementation_entries(self, target: SpecTarget) -> tuple[str, ...]:
+        """The registered listing entries, exact files and directory prefixes, including pending ones."""
         return target.files
 
-    def implementation_files(self, target: SpecTarget) -> tuple[str, ...]:
-        return tuple(path for path in target.files if checked_path(self.root, path).is_file())
+    def implementation_paths(self, target: SpecTarget) -> tuple[str, ...]:
+        """Registered file authority roots without trailing slashes, for permissions and history."""
+        return tuple(dict.fromkeys(entry_base(entry) for entry in target.files))
 
-    def missing_files(self, target: SpecTarget) -> tuple[str, ...]:
-        return tuple(path for path in target.files if not checked_path(self.root, path).is_file())
+    def implementation_files(self, target: SpecTarget) -> tuple[str, ...]:
+        """Existing regular files the Module's entries bind, directory prefixes expanded."""
+        return tuple(sorted({path for entry in target.files for path in expand_entry(self.root, entry)}))
+
+    def missing_entries(self, target: SpecTarget) -> tuple[str, ...]:
+        """Entries whose file or directory does not exist yet."""
+        return tuple(entry for entry in target.files if not entry_exists(self.root, entry))
+
+    def covering_modules(self, target: SpecTarget) -> tuple[SpecTarget, ...]:
+        """Modules whose entries cover this Module's own entries or the files those entries bind."""
+        return self.affected_modules((*target.files, *self.implementation_files(target)))
 
     def affected_modules(self, paths: tuple[str, ...] | list[str]) -> tuple[SpecTarget, ...]:
-        """Reverse lookup for changed listed files; no Spec bodies read."""
-        users = {user for path in paths for user in self.file_users.get(path, ())}
+        """Reverse lookup for changed files or entries; no Spec bodies read."""
+        users = set()
+        for path in paths:
+            users.update(self.file_users.get(path, ()))
+            users.update(self.listing_users(path))
         return tuple(target for target in self.targets.values() if target.id in users)
 
 
@@ -604,10 +708,8 @@ def _parse_entities(document: SpecDocument, owner: str) -> list[SpecEntity]:
                 if not isinstance(value[key], str) or not value[key].strip():
                     raise SpecError(f"entity {entity_id} {key} must be a nonempty string: {document.path}")
             files = strings(value["files"], f"entity {entity_id} files", nonempty=True) if "files" in value else ()
-            for path in files:
-                safe_path(path)
-                if path.startswith(CONTROL_PREFIXES):
-                    raise SpecError(f"entity {entity_id} lists a control or generated file: {path}")
+            for entry in files:
+                check_entry(entry)
             pending = strings(value["pending"], f"entity {entity_id} pending") if "pending" in value else ()
             if set(pending) - set(files):
                 raise SpecError(f"entity {entity_id} pending files must also be listed in files: {document.path}")

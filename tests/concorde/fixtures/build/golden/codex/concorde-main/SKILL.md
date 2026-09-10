@@ -55,9 +55,12 @@ promises. Candidate overlay validation rejects a registry edge without that self
 routing view.
 
 A topology proposal that adds, removes or moves an entry in a Module's implementation `files` list
-likewise tasks that Module -- and every other Module already listing the same file -- to reconcile
-its entity declarations, since the registry `files` must equal the sorted union of a Module's
-entity files.
+likewise tasks that Module -- and every other Module whose entries already bind the same file -- to
+reconcile its entity declarations, since the registry `files` must equal the sorted union of a
+Module's entity entries, entry for entry. An entry is an exact file or a directory prefix ending in
+`/` that binds every regular file below it; a directory prefix suits a directory one Module alone
+owns, a file bound by several Modules stays an exact entry in each of them, and a listed directory
+must not contain a registered Spec document.
 
 Every physical Spec document declares stable ID, exact target references and main visibility.
 Changing document references tasks every retained current/candidate target. Shared truth has no
@@ -659,7 +662,8 @@ This complete schema is the invocation's input field. It does not grant project 
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "minLength": 1
+                      "minLength": 1,
+                      "pattern": "^[^/](?:[^/]*/)*[^/]*$"
                     },
                     "uniqueItems": true
                   },

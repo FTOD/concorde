@@ -44,8 +44,9 @@ export async function materializeScoped(registry:ScopedRegistry) {
   const filesByTargetId=new Map(registry.targets.map(t=>[t.id,t.files]));
   for(const page of registry.pages){
     const path=resolve(generated,'content/specs',page.stagedPath);await mkdir(dirname(path),{recursive:true});
-    // A Module's exact bound files, listed on its own primary Spec page; the complete inventory
-    // stays in the registered `concorde-entities` blocks, this is a reading convenience only.
+    // A Module's declared listing entries, exact files and directory prefixes alike, listed on its
+    // own primary Spec page; the complete inventory stays in the registered `concorde-entities`
+    // blocks, this is a reading convenience only.
     const files=page.primaryOf?filesByTargetId.get(page.primaryOf):undefined;
     const filesSection=files?.length?`\n\n## Files\n\n${files.map(f=>`- \`${f}\``).join('\n')}\n`:'';
     // Identity is displayed by ContentProvenance; keep machine-readable metadata out of the

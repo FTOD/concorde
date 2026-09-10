@@ -151,20 +151,25 @@ linking to its Spec is insufficient.
 
 ## Implementation files
 
-An entity MAY bind exact project-relative files: code, tests, configuration or authored runtime
-assets. Generated views, project-control records and the project Spec documents themselves are
-not implementation files. A binding names a file, not a directory, wildcard or rule that
-implicitly owns future files.
+An entity MAY bind project-relative files: code, tests, configuration or authored runtime
+assets. A listing entry is either an exact file path or a directory prefix written with a
+trailing slash, such as `src/inventory/`. A directory prefix binds every regular file below it at
+any depth, including files created later; a tool MAY exclude dependency installations, caches
+and build outputs from that expansion by an explicit deterministic rule. Generated views,
+project-control records and the project Spec documents themselves are not implementation files,
+and a directory prefix MUST NOT contain a registered Spec document.
 
-Within one Module a file belongs to one entity. Several Modules MAY list the same file: for
-example, Import and Export may both list `src/encoding.py` under an entity of their own when one
-encoding realization serves both contracts. The file then has several using Modules, and a change
-to it must be assessed against each of their contracts. Compatibility with one consumer does not
-imply compatibility with every consumer.
+Within one Module a file belongs to one entity. When a Module's entries overlap, the most
+specific entry owns the file: an exact file beats a directory, and `src/inventory/ledger/` beats
+`src/inventory/`. Several Modules MAY list the same file or directory: for example, Import and
+Export may both list `src/encoding.py` under an entity of their own when one encoding
+realization serves both contracts. The file then has several using Modules, and a change to it
+must be assessed against each of their contracts. Compatibility with one consumer does not imply
+compatibility with every consumer.
 
-A declared file MAY be marked pending while it does not yet exist. The marker records an intended
-output. Once the file exists the marker SHOULD be removed; a development tool MAY remove it
-automatically when it delivers the change that created the file. Moving or renaming a file
+A declared entry MAY be marked pending while the file or directory does not yet exist. The marker
+records an intended output. Once it exists the marker SHOULD be removed; a development tool MAY
+remove it automatically when it delivers the change that created it. Moving or renaming a file
 changes its listing, but does not by itself change a Module's identity, purpose or parent.
 
 The declared listings MUST make it possible to determine which files realize a Module and which

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from ..spec.typed_data import canonical
-from ..spec.repository import SpecError, SpecRepository, digest, read_file
+from ..spec.repository import SpecError, SpecRepository, digest, is_directory_entry, most_specific, read_file
 
 
 PHASES = frozenset({"ask", "specify", "plan", "tasks", "implementation", "spec-review", "code-review",
@@ -98,18 +98,35 @@ def _protocol(repository: SpecRepository) -> list[dict]:
     return protocol
 
 
-def _implementation_files(repository: SpecRepository, target) -> list[dict]:
-    """File names of the Module's implementation context; declarations only, never contents."""
+def _implementation_entries(repository: SpecRepository, target) -> list[dict]:
+    """The Module's declared listing entries; declarations only, never contents."""
     try:
         entities = repository.entity_files(target)
     except SpecError:
         entities = {}
     result = []
-    for path in target.files:
-        entity = entities.get(path)
-        result.append({"path": path, "entity_id": entity.id if entity else None,
-                       "pending": bool(entity and path in entity.pending)})
+    for entry in target.files:
+        entity = entities.get(entry)
+        result.append({"path": entry, "entity_id": entity.id if entity else None,
+                       "pending": bool(entity and entry in entity.pending),
+                       "directory": is_directory_entry(entry)})
     return result
+
+
+def _implementation_files(repository: SpecRepository, target) -> list[dict]:
+    """File names of the Module's implementation context: existing bound files plus pending files."""
+    try:
+        entities = repository.entity_files(target)
+    except SpecError:
+        entities = {}
+    names: dict[str, dict] = {}
+    for path in repository.implementation_files(target):
+        entry = most_specific(entities, path)
+        names[path] = {"path": path, "entity_id": entities[entry].id if entry else None, "pending": False}
+    for entry, entity in entities.items():
+        if entry in entity.pending and not is_directory_entry(entry) and entry not in names:
+            names[entry] = {"path": entry, "entity_id": entity.id, "pending": True}
+    return [names[path] for path in sorted(names)]
 
 
 def _implementation_artifacts(repository: SpecRepository, target) -> list[dict]:
@@ -135,12 +152,13 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
     document_order, target_spec, shared_specs = _spec_sections(repository.documents(target))
     # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
     from .change_worktree import workspace_context
-    manifest = {"schema_version": 2, "target_id": target.id, "kind": target.kind,
+    manifest = {"schema_version": 3, "target_id": target.id, "kind": target.kind,
         "focus_id": focus_id, "phase": phase, "task": task, "constraints": list(constraints),
         "protocol_binding": repository.config["protocol"], "protocol": _protocol(repository),
         "document_order": document_order, "target_spec": target_spec,
         "shared_specs": shared_specs, "instructions": instructions,
         "stage_inputs": list(stage_inputs),
+        "implementation_entries": _implementation_entries(repository, target),
         "implementation_files": _implementation_files(repository, target),
         "implementation_artifacts": _implementation_artifacts(repository, target) if phase in CODE_PHASES else [],
         "workspace": workspace if workspace is not None else workspace_context(repository.root)}
@@ -273,8 +291,10 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, ch
     if (document_order != value["document_order"] or target_spec != value["target_spec"]
             or shared_specs != value["shared_specs"]):
         raise SpecError("context document membership, classification, declarations or bytes changed", "stale_context")
-    if _implementation_files(current, target) != value["implementation_files"]:
-        raise SpecError("listed implementation files or their entities changed", "stale_context")
+    if _implementation_entries(current, target) != value["implementation_entries"]:
+        raise SpecError("listed implementation entries or their entities changed", "stale_context")
+    if check_implementation and _implementation_files(current, target) != value["implementation_files"]:
+        raise SpecError("implementation file names changed", "stale_context")
     if check_implementation and value["phase"] in CODE_PHASES:
         if _implementation_artifacts(current, target) != value["implementation_artifacts"]:
             raise SpecError("implementation input membership or bytes changed", "stale_context")

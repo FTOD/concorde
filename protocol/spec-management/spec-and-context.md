@@ -134,17 +134,20 @@ such as `src/reservations.py` likewise do not become contract context through th
 ## Implementation context
 
 **Implementation context** is the Protocol term for the implementation knowledge that belongs to a
-Module: the exact files its entities bind, each identified as existing or pending. Let `F(E)` be
-the files bound by entity `E` and `entities(M)` the entities declared by Module `M`. Then:
+Module: the files its entities bind, each identified as existing or pending. Let `F(E)` be the
+files bound by entity `E`, that is its exact entries together with every regular file below its
+directory prefixes that the tool's explicit exclusion rule does not remove, and `entities(M)` the
+entities declared by Module `M`. Then:
 
 ```text
 ImplementationContext(M) = union over E in entities(M) of F(E)
 ImplementationContext(scenario S) = ImplementationContext(owner(S))
 ```
 
-Implementation context is determined from the entity declarations alone, without model judgment,
-directory inspection or interpretation of prose links. It is disjoint from `Context(M)`: the
-Module's own Spec collection is never part of it, and a file shared with another Module never adds
+Implementation context is determined from the entity declarations alone, without model judgment
+or interpretation of prose links; expanding a directory prefix is a deterministic listing of the
+files below it, not a judgment about them. It is disjoint from `Context(M)`: the Module's own Spec
+collection is never part of it, and a file shared with another Module never adds
 that Module's contract. Those other users remain metadata identified by the reverse index.
 Declared files pending creation are identified as pending rather than represented as available
 contents. A Module whose entities bind no files has an empty implementation context; that is a

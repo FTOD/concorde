@@ -10,7 +10,7 @@
 
 # Harness
 
-`module.harness` follows Spec Protocol 3.0.0. Its sole structural parent is `module.concorde`. The
+`module.harness` follows Spec Protocol 3.1.0. Its sole structural parent is `module.concorde`. The
 complete contract is the Markdown collection explicitly registered in `.concorde/specs.json`; links
 and entity file listings do not expand it. This reading entry introduces the collection; the
 registered companion documents explain [Agents and Harnesses](agents-and-harnesses.md), [Agent
@@ -211,6 +211,9 @@ evaluator; see [typed values](typed-values.md).
 
 The Module's implementation is realized by the programs below. The two Modules it uses each appear
 as one used-Module entity so the diagram in Architecture shows composition and dependency together.
+The Agent and Harness model entity lists the `src/concorde/harness/` and `tests/concorde/harness/`
+package directories; every other entity keeps the exact entries it realizes, and within this Module
+the most specific entry owns a file.
 
 ```concorde-entities
 [
@@ -231,14 +234,8 @@ as one used-Module entity so the diagram in Architecture shows composition and d
     "kind": "program",
     "responsibility": "Realize `Agent = spec.md + Harness + Constraints` as frozen Python records, the closed Harness catalog, the effect-declaration vocabulary and the reproducible `AgentBinding` resolved and verified against the current build.",
     "files": [
-      "src/concorde/harness/__init__.py",
-      "src/concorde/harness/agent_model.py",
-      "src/concorde/harness/effects.py",
-      "src/concorde/harness/harness.py",
-      "src/concorde/harness/roles.py",
-      "tests/concorde/harness/__init__.py",
-      "tests/concorde/harness/test_agent_binding.py",
-      "tests/concorde/harness/test_agent_model.py"
+      "src/concorde/harness/",
+      "tests/concorde/harness/"
     ]
   },
   {
@@ -247,30 +244,8 @@ as one used-Module entity so the diagram in Architecture shows composition and d
     "kind": "program",
     "responsibility": "Bind each named runtime responsibility asset to a canonical Python Agent record; supply the same definitions to workflow stages.",
     "files": [
-      "agents/code_reviewer/__init__.py",
-      "agents/code_reviewer/spec.md",
-      "agents/context_assessor/__init__.py",
-      "agents/context_assessor/spec.md",
-      "agents/coordinator/__init__.py",
-      "agents/coordinator/spec.md",
-      "agents/implementation_worker/__init__.py",
-      "agents/implementation_worker/spec.md",
-      "agents/planner/__init__.py",
-      "agents/planner/spec.md",
-      "agents/spec_author/__init__.py",
-      "agents/spec_author/spec.md",
-      "agents/spec_reviewer/__init__.py",
-      "agents/spec_reviewer/spec.md",
-      "agents/task_author/__init__.py",
-      "agents/task_author/spec.md",
-      "tests/concorde/fixtures/build/golden/agents/code-reviewer.md",
-      "tests/concorde/fixtures/build/golden/agents/context-assessor.md",
-      "tests/concorde/fixtures/build/golden/agents/coordinator.md",
-      "tests/concorde/fixtures/build/golden/agents/implementation-worker.md",
-      "tests/concorde/fixtures/build/golden/agents/planner.md",
-      "tests/concorde/fixtures/build/golden/agents/spec-author.md",
-      "tests/concorde/fixtures/build/golden/agents/spec-reviewer.md",
-      "tests/concorde/fixtures/build/golden/agents/task-author.md"
+      "agents/",
+      "tests/concorde/fixtures/build/golden/agents/"
     ]
   },
   {
@@ -418,7 +393,7 @@ relied-upon behavior from this Module's perspective without importing another Mo
     "responsibility": "Admit the registry and resolve identities, document collections, entity file listings and file ownership.",
     "selection_condition": "When freezing any context kind or checking a target, focus or binding.",
     "relied_upon_promises": [
-      "Selection returns the complete registered collection and exact entity file listings of one identity without following relationships, and a changed source is visible as a changed digest."
+      "Selection returns the complete registered collection and declared entity listing entries of one identity without following relationships, and a changed source is visible as a changed digest."
     ]
   },
   {

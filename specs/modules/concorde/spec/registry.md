@@ -17,7 +17,7 @@ This document defines `SpecRepository`'s selection and query behavior: what a ca
 
 - GIVEN a registered Module identity
 - WHEN a caller selects it
-- THEN the repository returns that Module's complete descriptor: its documents, dependencies, contracts and entity file listings
+- THEN the repository returns that Module's complete descriptor: its documents, dependencies, contracts and entity listing entries
 - AND no other Module's Spec body is read to produce that result
 
 ### scenario.spec.select-scenario-focus — Selecting through a scenario focus
@@ -39,7 +39,7 @@ This document defines `SpecRepository`'s selection and query behavior: what a ca
 - GIVEN a registered Module identity or a registered scenario identity
 - WHEN a caller queries its Spec file set
 - THEN the query returns the owning Module's complete registered document collection, deduplicated and in a reproducible order
-- BUT it neither follows uses, parentage nor entity file bindings, and it never reads the returned files' contents
+- BUT it neither follows uses, parentage nor entity listing entries, and it never reads the returned files' contents
 
 ## Requirements
 
@@ -63,14 +63,32 @@ SpecRepository.definitions(target: SpecTarget) -> ModuleDefinitions
 SpecRepository.entities(target: SpecTarget) -> tuple[SpecEntity, ...]
 SpecRepository.scenarios(target: SpecTarget) -> tuple[Scenario, ...]
 SpecRepository.entity_files(target: SpecTarget) -> dict[str, SpecEntity]
+SpecRepository.entity_for_path(target: SpecTarget, path: str) -> SpecEntity | None
+SpecRepository.implementation_entries(target: SpecTarget) -> tuple[str, ...]
+SpecRepository.implementation_paths(target: SpecTarget) -> tuple[str, ...]
+SpecRepository.implementation_files(target: SpecTarget) -> tuple[str, ...]
+SpecRepository.missing_entries(target: SpecTarget) -> tuple[str, ...]
 SpecRepository.children(target: SpecTarget) -> tuple[SpecTarget, ...]
 SpecRepository.descendants(target: SpecTarget) -> tuple[SpecTarget, ...]
+SpecRepository.listing_users(path: str) -> tuple[str, ...]
 SpecRepository.affected_modules(paths: tuple[str, ...]) -> tuple[SpecTarget, ...]
+SpecRepository.covering_modules(target: SpecTarget) -> tuple[SpecTarget, ...]
 digest(value: bytes | Any) -> str
 read_file(root: Path, relative: str) -> bytes
 strings(value: Any, label: str, *, nonempty: bool = False) -> tuple[str, ...]
 identifier(value: Any) -> str
 ```
+
+Listing queries separate declarations from current disk state. `implementation_entries` returns the
+declared entries unchanged, exact files and directory prefixes alike; `implementation_paths` returns
+their base paths without a trailing slash, for permission and history roots; `implementation_files`
+expands each directory entry into the existing regular files below it, skipping the Framework's
+skipped directories, dot-prefixed names, symlinks and skipped suffixes; `missing_entries` returns the
+entries whose file or directory does not exist yet. `entity_files` is keyed by declared entry, and
+`entity_for_path` answers which entity owns a concrete file through the most specific covering entry.
+`listing_users` and `affected_modules` resolve a path or entry through the reverse index, in which a
+directory prefix covers every path below it, and `covering_modules` answers the same question for one
+Module's whole listing, so a peer that binds a file inside a listed directory is found as well.
 
 No call above writes project files. Host candidate overlays stay in memory. A repository is a snapshot-oriented reader with document caching; reconstruct it after source changes. Selection returns the full target descriptor even with a scenario focus. Module document membership is exactly registered and one-hop; paths, links and entity file listings never add another Module's remaining body.
 
@@ -123,16 +141,16 @@ identity:
 
 The returned paths are unique exact project-relative paths. A document identity, heading, directory
 or unknown ID raises `SpecError/invalid_target`; identity prefixes and file locations never supply
-missing ownership. A query does not follow uses, parentage or entity file bindings. It neither reads
+missing ownership. A query does not follow uses, parentage or entity listing entries. It neither reads
 implementation source files nor grants a worker access to the returned paths.
 
 The retired `spec_pair` query, which paired a Module with one of its Implementation Specs, has no
-replacement now that Implementation Specs no longer exist: a Module's entity file bindings are
-visible directly inside its own Spec context, as file names, and in its separately defined
+replacement now that Implementation Specs no longer exist: a Module's entity listing entries are
+visible directly inside its own Spec context, as declared entries and bound file names, and in its separately defined
 implementation context, as file contents for code-writing and code-review phases. A normal
 `select(target_id, focus_id)` call remains Module-oriented and unchanged.
 
 This query returns locators only, preserves explicit membership and performs no writes or network
 I/O. Repeat queries against the same admitted repository yield the same order. Reconstruct the
 repository after source changes. This query interface is a specified addition; its implementation
-must be supplied before claiming complete Framework query support for Spec Protocol 3.0.0.
+must be supplied before claiming complete Framework query support for Spec Protocol 3.1.0.

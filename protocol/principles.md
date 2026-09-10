@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 3.0.0 defines Module Specs and their organization. These requirements apply
+Concorde Spec Protocol 3.1.0 defines Module Specs and their organization. These requirements apply
 to project specifications, including the specifications of software that implements this
 Protocol. They do not require the Protocol text to describe itself as a Module.
 
@@ -37,19 +37,23 @@ A capability shared by several consumers has one identity and is a sibling of th
 
 ### P2. Implementation files are Module metadata
 
-An entity MAY bind a set of exact, project-relative implementation files. The Module's
-**implementation files** are the union of its entities' files. Binding a file records which
-files realize the Module; it does not make those files part of the Spec and does not let the code
-supply a promise the Spec omits.
+An entity MAY bind project-relative implementation files, each listing entry naming either an
+exact file or a directory prefix. A directory prefix binds every regular file below it, including
+files created later. The Module's **implementation files** are the union of what its entities'
+entries bind. Binding files records which files realize the Module; it does not make those files
+part of the Spec and does not let the code supply a promise the Spec omits.
 
-Within one Module each file belongs to exactly one entity. Several Modules MAY list the same file
-when one realization serves several contracts; that file then has several using Modules and a
-change to it concerns all of them. Reuse does not merge Module identities or create another
-structural parent. A directory or source layout does not establish a Module boundary.
+Within one Module each file belongs to exactly one entity: when several entries of the same
+Module cover a file, the most specific entry owns it, an exact file before a directory and a
+longer directory before a shorter one. Several Modules MAY list the same file or directory when
+one realization serves several contracts; that file then has several using Modules and a change
+to it concerns all of them. Reuse does not merge Module identities or create another structural
+parent. Listing a directory does not by itself establish a Module boundary; the Module's declared
+purpose, scenarios and entities do.
 
-A declared file MAY be pending: intended but not yet created. A pending declaration describes an
-intended output, not evidence that the file exists. A file that is declared without a pending
-marker MUST exist.
+A declared entry MAY be pending: intended but not yet created. A pending declaration describes an
+intended output, not evidence that the file or directory exists. An entry that is declared without
+a pending marker MUST exist.
 
 The files a Module lists, together with their pending status, form that Module's
 **implementation context**; Spec management defines how it is resolved and keeps it separate from

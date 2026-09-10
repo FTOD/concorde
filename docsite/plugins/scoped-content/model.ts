@@ -130,19 +130,25 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
       requireThat(!seen.has(cursor), `Module composition cycle: ${module.id}`); seen.add(cursor); cursor = parent.parent;
     }
   }
-  // A file is a safe project path outside project-control directories, never a registered Spec
-  // document; unlike a document, a file may be listed by several Modules (schema 3 has no single
-  // implementation owner).
-  for (const t of targets) for (const path of t.files) {
+  // A listing entry is a safe project path outside project-control directories: either an exact
+  // file, or a directory prefix ending in `/` that binds the regular files below it. No entry
+  // names a registered Spec document and no directory entry contains one. Unlike a document, one
+  // entry may be listed by several Modules (schema 3 has no single implementation owner).
+  for (const t of targets) for (const entry of t.files) {
+    const directory = entry.endsWith('/'); const path = directory ? entry.slice(0, -1) : entry;
     safePath(path);
-    requireThat(!/^(?:\.concorde|\.git|\.agents|\.claude|\.codex|generated)\//.test(path) && !documentTargets.has(path), `Unsafe file binding: ${path}`);
+    requireThat(!/^(?:\.concorde|\.git|\.agents|\.claude|\.codex|generated)\//.test(path + '/'), `Unsafe file binding: ${entry}`);
+    if (directory) requireThat(![...documentTargets.keys()].some(document => document.startsWith(entry)),
+      `A listed directory cannot contain a Spec document: ${entry}`);
+    else requireThat(!documentTargets.has(entry), `Unsafe file binding: ${entry}`);
     let cursor = root;
     for (const part of path.split('/')) {
       cursor = resolve(cursor, part);
-      try {requireThat(!lstatSync(cursor).isSymbolicLink(), `Symlink file binding: ${path}`);}
+      try {requireThat(!lstatSync(cursor).isSymbolicLink(), `Symlink file binding: ${entry}`);}
       catch (error) {if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;}
     }
-    if (existsSync(cursor)) requireThat(lstatSync(cursor).isFile(), `File binding must name a file: ${path}`);
+    if (existsSync(cursor)) requireThat(directory ? lstatSync(cursor).isDirectory() : lstatSync(cursor).isFile(),
+      directory ? `Directory binding must name a directory: ${entry}` : `File binding must name a file: ${entry}`);
   }
   const cache = new Map<string, {raw: string; content: string; declaration: DocumentContext}>();
   for (const [path, references] of documentTargets) {

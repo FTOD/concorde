@@ -87,7 +87,7 @@ conversation or free-form predecessor output into context.
 A coordinating Module can have both its own code tasks and separately bound submodule or dependency
 tasks. Its original plan and task identity remain intact; local code tasks do not recursively open
 a new development loop for the same Module. Each child is specified, planned and implemented from
-its own complete Module contract and its own listed implementation files.
+its own complete Module contract and the implementation files its own entries bind.
 
 Within a coordinated change, nested loops finish explicit code drafts. The enclosing coordinator
 waits for all writers, including its own coordination code, before checking the final candidate.

@@ -20,7 +20,7 @@ The Framework identifies its supported project configuration as Profile 10. Init
 `.concorde/config.json` with `profile_version: 10`, the `registry` path, an accepted Protocol
 `version` and manifest `digest` under `protocol`, and the typed `capability_configuration` for
 integration and enforcement. Its registry uses JSON schema version 3. Profile 10 and registry
-schema 3 are Framework compatibility and storage versions; Spec Protocol 3.0.0 identifies the
+schema 3 are Framework compatibility and storage versions; Spec Protocol 3.1.0 identifies the
 independent specification standard. Installation and initialization preserve these separate roles.
 
 ## Installing and updating a target project

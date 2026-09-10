@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 import uuid
 from dataclasses import asdict, replace
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from ..harness.change_worktree import git, git_value, progress, read_change, save_change, workspace_identity
 from ..spec.typed_data import artifact, canonical, checked_path, typed, validate_typed, verify_artifacts
@@ -24,17 +24,14 @@ from ..harness.permissions import (EnforcementReceipt, CapabilityExecutionResult
 from ..spec.contracts import REVIEW_STAGES
 from ..distribution.build import load_role_prompt
 from ..harness.context import resolve_context, recheck_context
-from ..spec.repository import SpecError, SpecRepository, digest, read_file
-
-
-def _under(path: str, roots) -> bool:
-    candidate = PurePosixPath(path)
-    return any(candidate == PurePosixPath(root) or PurePosixPath(root) in candidate.parents for root in roots)
+from ..spec.repository import SpecError, SpecRepository, bound_by, digest, read_file
 
 
 def _changes(repository, target, mode, baseline) -> list[dict]:
     """Read history only for the current grant; never admit a project-wide diff."""
     spec_paths = target.documents
+    # Directory entries scope history by their base path; only the files they bind are admitted.
+    entries = spec_paths if mode == "spec" else repository.implementation_entries(target)
     roots = spec_paths if mode == "spec" else repository.implementation_paths(target)
     current = set(spec_paths if mode == "spec" else repository.implementation_files(target))
     previous = {}
@@ -45,8 +42,7 @@ def _changes(repository, target, mode, baseline) -> list[dict]:
                 continue
             header, path = entry.split("\t", 1)
             _, kind, oid = header.split()
-            if (kind == "blob" and _under(path, roots)
-                    and not set(PurePosixPath(path).parts) & {"__pycache__", ".venv", "node_modules", ".git"}):
+            if kind == "blob" and any(bound_by(item, path) for item in entries):
                 previous[path] = oid
     changes = []
     for path in sorted(current | previous.keys()):
@@ -308,7 +304,7 @@ def review_scope(run, mode: str) -> dict:
     work = (change or {}).get("targets", {}).get(run.target.id, {})
     components = dict(work.get("coordination", {}))
     if mode == "code":
-        affected = run.repository.affected_modules(run.target.files)
+        affected = run.repository.covering_modules(run.target)
         for target in affected:
             if target.id != run.target.id:
                 components.setdefault(target.id, {"task":
@@ -317,7 +313,7 @@ def review_scope(run, mode: str) -> dict:
         return review(run, mode)
     outputs = [review(run, mode)["data"]] if mode == "spec" or run.target.files else []
     from .capability_host import invoke_capability
-    affected_ids = {target.id for target in run.repository.affected_modules(run.target.files)}
+    affected_ids = {target.id for target in run.repository.covering_modules(run.target)}
     allowed = {run.target.id, *run.target.uses, *affected_ids,
                *(child.id for child in run.repository.children(run.target))}
     for target_id, record in components.items():
@@ -420,7 +416,7 @@ def verify_required(run) -> None:
             # Each consumer review keeps its own intent and Module context. It is not replaced
             # by another consumer's current review or a later unrelated review of the same Module.
             from .capability_host import Invocation
-            peers = [target for target in run.repository.affected_modules(run.target.files)
+            peers = [target for target in run.repository.covering_modules(run.target)
                      if target.id != run.target.id]
             records = state.get("shared_implementation_reviews", {}).get(run.target.id, {})
             if set(records) != {target.id for target in peers}:

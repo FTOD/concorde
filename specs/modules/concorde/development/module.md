@@ -123,7 +123,7 @@ Developing one change:
 
 - GIVEN a Module task has both local code tasks and separately bound submodule or used-Module tasks
 - WHEN implementation runs
-- THEN each component is specified, planned and implemented from its own complete Module contract and its own listed files, and the coordinator waits for every writer, including its own coordination code, before checking the final candidate
+- THEN each component is specified, planned and implemented from its own complete Module contract and the files its own entries bind, and the coordinator waits for every writer, including its own coordination code, before checking the final candidate
 - AND a repair that changes a file listed by several Modules invalidates the already-recorded evidence of every listing Module, and finalization repeats until every participant is stable
 
 Evolving topology:
@@ -213,7 +213,7 @@ Delivering a ready change:
 
 ## Entities
 
-Two programs realize this Module's own code: the host adapter and the capability/Skill declarations that expose it. Two shared programs realize mechanics also listed by other Modules. Four used-Module entities name the direct dependencies this Module relies on.
+Two programs realize this Module's own code: the host adapter and the capability/Skill declarations that expose it. Two shared programs realize mechanics also listed by other Modules. Four used-Module entities name the direct dependencies this Module relies on. The host adapter lists the `src/concorde/development/` and `tests/concorde/development/` package directories and the capability declarations list `prompts/workflow-host/`; files shared with another Module stay exact entries here and there.
 
 ```concorde-entities
 [
@@ -223,16 +223,8 @@ Two programs realize this Module's own code: the host adapter and the capability
     "kind": "program",
     "responsibility": "Realize capability admission and dispatch, the global discovery loop, the development graph with its bounded repair edge, topology preparation and application, review evidence and candidate readiness.",
     "files": [
-      "src/concorde/development/__init__.py",
-      "src/concorde/development/capability_host.py",
-      "src/concorde/development/capability_service.py",
-      "src/concorde/development/configuration.py",
-      "src/concorde/development/review.py",
-      "tests/concorde/development/__init__.py",
-      "tests/concorde/development/test_capability_modules.py",
-      "tests/concorde/development/test_review.py",
-      "tests/concorde/development/test_run_capability.py",
-      "tests/concorde/development/test_structured_results.py",
+      "src/concorde/development/",
+      "tests/concorde/development/",
       "tests/concorde/support/operation_json.py"
     ]
   },
@@ -252,21 +244,7 @@ Two programs realize this Module's own code: the host adapter and the capability
       "capabilities/specify.py",
       "capabilities/tasks.py",
       "capabilities/validate.py",
-      "prompts/workflow-host/dev-loop-flags.md",
-      "prompts/workflow-host/gap-reporting.md",
-      "prompts/workflow-host/host-bound-invocation.md",
-      "prompts/workflow-host/init-request-and-no-flags.md",
-      "prompts/workflow-host/invoke-capability-opener.md",
-      "prompts/workflow-host/lifecycle-no-cognition.md",
-      "prompts/workflow-host/loop-completion-and-reviews.md",
-      "prompts/workflow-host/loop-task-request-fields.md",
-      "prompts/workflow-host/main-may-inspect.md",
-      "prompts/workflow-host/review-scope-and-result.md",
-      "prompts/workflow-host/stdin-invocation-config-input.md",
-      "prompts/workflow-host/stdin-invocation-open.md",
-      "prompts/workflow-host/target-identity-opener.md",
-      "prompts/workflow-host/task-request-fields.md",
-      "prompts/workflow-host/worktree-handoff.md",
+      "prompts/workflow-host/",
       "skills/concorde-deliver/SKILL.md",
       "skills/concorde-dev-loop/SKILL.md",
       "skills/concorde-main/SKILL.md",

@@ -30,10 +30,15 @@ its scenarios, not a separate declaration. Missing business facts remain explici
 stub. The entry does not replace the collection.
 
 An ordinary author may edit an entity's title, kind, responsibility, and which of its already-listed
-files are marked `pending`. Changing which files an entity lists is a topology change: the
-candidate registry's `files` must equal the sorted union of every entity's `files`, and only a
-topology-author context may add, remove or move a listed path. Recommend a topology update when
-the task needs a file no entity lists; do not widen the ordinary author's file authority. When an
+entries are marked `pending`. A listing entry is an exact project file or a directory prefix ending
+in `/` that binds every regular file below it; within one Module the most specific entry owns a
+covered file, an exact file before a directory and a longer directory before a shorter one, and a
+listed directory must not contain a registered Spec document. Changing which entries an entity lists
+is a topology change: the candidate registry's `files` must equal the sorted union of every entity's
+`files` entry for entry, so a directory prefix appears as that prefix and never as its expanded file
+names, and only a topology-author context may add, remove or move an entry. Recommend a topology
+update when the task needs a file that no entry of any entity covers; do not widen the ordinary
+author's file authority. When an
 entity or its title changes, keep the Architecture Mermaid flowchart consistent: its node labels
 must be exactly the entity titles and every edge must keep its relationship-verb label. Never read
 implementation files; file names come from the entity declarations, not from inspecting source.

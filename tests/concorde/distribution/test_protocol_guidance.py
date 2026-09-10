@@ -8,6 +8,7 @@ from unittest.mock import patch
 from tests.concorde.distribution.test_install_concorde import installer
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from concorde.distribution import protocol_guidance as guidance
+from concorde.spec.repository import PROTOCOL_VERSION
 
 
 class ProtocolGuidanceTests(unittest.TestCase):
@@ -154,4 +155,5 @@ class ProtocolGuidanceTests(unittest.TestCase):
         config.write_bytes(before)
         self.install()
         self.assertEqual(before, config.read_bytes())
-        self.assertIn('"version": "3.0.0"', (self.root / ".concorde/framework/protocol/manifest.json").read_text())
+        self.assertIn(f'"version": "{PROTOCOL_VERSION}"',
+                      (self.root / ".concorde/framework/protocol/manifest.json").read_text())

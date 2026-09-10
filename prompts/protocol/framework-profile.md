@@ -16,13 +16,16 @@ migration; the runtime must not infer their meaning from paths or names.
 
 A bounded invocation selects one Module and freezes four kinds of context. Its **Spec context**
 is that Module's complete registered document collection; scenario focus does not trim it. Its
-**implementation context** is the Protocol-defined set of files bound by the Module's entities.
-Every phase may see those file names, because the entity declarations are part of the Spec
-context; only code-writing and code-review phases receive file contents, in their declared
-subsets. Its **capability context** is the set of admitted Capability and Tool contracts the
-invocation may use. Its **task context** is the task, constraints, admitted stage artifacts and
-lifecycle metadata. A kind may be empty for a phase, but the frozen closure is never empty.
-Planner and task-author inputs contain no file contents. A global coordinator may reason across
+**implementation context** is the Protocol-defined set of files bound by the Module's entities:
+their exact entries plus every regular file below their directory prefixes, excluding directories
+named `node_modules`, `__pycache__`, `.venv`, `build` or `dist`, directories and files whose
+names start with a dot, and `.pyc` and `.log` files. Every phase may see the declared entries and
+the resulting file names, because the entity declarations are part of the Spec context; only
+code-writing and code-review phases receive file contents, in their declared subsets. Its
+**capability context** is the set of admitted Capability and Tool contracts the invocation may use.
+Its **task context** is the task, constraints, admitted stage artifacts and lifecycle metadata.
+A kind may be empty for a phase, but the frozen closure is never empty. Planner and task-author
+inputs contain no file contents. A global coordinator may reason across
 explicitly selected complete Module Spec contexts for questions, routing and topology design. The
 host deterministically resolves their registered documents, injects each source body once, and
 preserves per-Module membership and source digests. Questions are answered directly from these
@@ -39,9 +42,10 @@ not context: instructions belong to the Agent definition, and a Skill is the ins
 of a global or lifecycle capability for the developer's own agent runtime.
 
 Context identities cover document membership and bytes, Protocol and instructions, declared stage
-artifacts and lifecycle identity. Code-phase context identities additionally cover the listed
-files and their current digests. A changed input requires a new snapshot. Implementation-only
-changes do not add implementation knowledge to a planner.
+artifacts, declared listing entries and lifecycle identity. Code-phase context identities
+additionally cover the bound file names and their current digests; a code writer may create files
+below a listed directory without a prior pending declaration. A changed input requires a new
+snapshot. Implementation-only changes do not add implementation knowledge to a planner.
 
 ### P6. Gaps and review are tied to the affected contract
 
@@ -81,12 +85,15 @@ category of project Spec.
 ### P8. Structure and file listings change together
 
 Topology changes reconcile Module parentage, uses, document memberships and file listings as one
-consistent proposal. A candidate registry states each Module's `files`; the private author of
-that Module writes entity declarations whose file union equals it, marking files that do not yet
-exist as pending. The reverse index identifies every listing Module before a shared file changes.
-A new or changed Module's author sees only that Module's contract collection; code-writing work
-receives the listed files. Other Module contracts are reviewed separately. An atomic application
-checks source versions and preserves prior bytes if applying the proposed structure fails. Human
+consistent proposal. A candidate registry states each Module's `files` as exact files and
+directory prefixes; the private author of that Module writes entity declarations whose entry
+union equals it, entry for entry, marking files and directories that do not yet exist as pending.
+Within one Module the most specific entry owns a file, and a listed directory never contains a
+registered Spec document. The reverse index identifies every listing Module before a shared file
+changes. A new or changed Module's author sees only that Module's contract collection; code-writing
+work receives the listed entries and the files they bind. Other Module contracts are reviewed
+separately. An atomic application checks source versions and preserves prior bytes if applying the
+proposed structure fails. Human
 acceptance is explicit where the selected workflow requires it; direct maintenance follows the
 developer's explicit task authorization.
 
@@ -98,9 +105,9 @@ Validation and review evidence bind to actual candidate inputs. Changes to a fil
 several Modules invalidate evidence for every listing Module even if only one Module initiated the
 change. Delivery preserves unrelated local changes, checks the actual integration and records
 incomplete cleanup separately from a completed merge. After the candidate is verified, delivery
-confirms pending files: every declared pending file that now exists has its marker removed by a
-deterministic host edit included in the delivered commit, and the receipt names the confirmed
-files; a pending file that still does not exist stays pending and is reported. No component
+confirms pending entries: every declared pending file or directory that now exists has its marker
+removed by a deterministic host edit included in the delivered commit, and the receipt names the
+confirmed entries; an entry that still does not exist stays pending and is reported. No component
 independently delivers its enclosing change.
 
 ### P10. Explicit session handoffs
@@ -119,8 +126,11 @@ Every Concorde Module's `module.md` carries the four mandatory parts in order: P
 Entities and Architecture. Its Architecture section holds an inline Mermaid flowchart with English
 `accTitle` and `accDescr` lines whose nodes are exactly the declared entity titles and whose edge
 labels are the relationship verbs. Show real responsibilities and connections; do not invent
-nodes to satisfy a diagram shape. Files that realize an entity are listed on that entity; a
-program shared by several Modules is listed by each of them under its own entity. Publication
-renders each fence inside its own Markdown page; rendered views and navigation are derived and
-create no additional membership. These conventions implement the Protocol's architecture
-requirements for this project; they are not requirements on every Protocol implementation.
+nodes to satisfy a diagram shape. Files that realize an entity are listed on that entity: a
+Module's own package directories (`src/concorde/<module>/`, `tests/concorde/<module>/`) and the
+directories it alone owns are listed as directory prefixes on the entity that owns that directory's
+core responsibility, and a file shared by several Modules is listed exactly by each of them under
+its own entity. Publication renders each fence inside its own Markdown page; rendered views and
+navigation are derived and create no additional membership. These conventions implement the
+Protocol's architecture requirements for this project; they are not requirements on every Protocol
+implementation.

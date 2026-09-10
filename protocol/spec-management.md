@@ -98,8 +98,9 @@ An inventory MUST distinguish these relationships:
   single-parent, acyclic structure described by the Module model.
 - **Dependency:** a Module's `uses` references identify the Modules whose capabilities it consumes.
   These are directed references and do not confer structural ownership.
-- **File listing:** a Module's `files` identify the exact implementation files its entities bind.
-  The inventory value MUST equal the union of the Module's entity file declarations.
+- **File listing:** a Module's `files` identify the implementation files its entities bind, as
+  exact files or directory prefixes. The inventory value MUST equal the union of the Module's
+  entity file declarations, entry for entry.
 - **Document membership:** a Module's `documents` identify its complete registered collection.
 
 All references MUST resolve to the appropriate kind of entity. File paths and display titles MUST
@@ -163,7 +164,7 @@ documents. Each entry identifies one entity:
     "title": "Stock ledger",
     "kind": "program",
     "responsibility": "Keeps the available quantity per item and applies reservations atomically.",
-    "files": ["src/inventory/ledger.py", "tests/inventory/test_ledger.py"],
+    "files": ["src/inventory/ledger/", "tests/inventory/test_ledger.py"],
     "pending": ["tests/inventory/test_ledger.py"]
   },
   {
@@ -178,16 +179,18 @@ documents. Each entry identifies one entity:
 
 `id` is the entity's stable identity. `title` names the entity in prose and diagrams and is unique
 within the Module. `kind` is free text. `responsibility` states what the entity does or represents.
-`files` lists the exact files that realize the entity; `pending` names the subset of those files
-that are declared but not yet created. `target_id` identifies a child or used Module the entity
-stands for; such an entity lists no files, because those files belong to that Module. An entity
-without `files` and without `target_id` is a concept, record, interface or actor.
+`files` lists the entries that realize the entity, each an exact file or a directory prefix with a
+trailing slash; `pending` names the subset of those entries that are declared but not yet created.
+`target_id` identifies a child or used Module the entity stands for; such an entity lists no files,
+because those files belong to that Module. An entity without `files` and without `target_id` is a
+concept, record, interface or actor.
 
-Within one Module each file appears under one entity. The union of a Module's entity files is its
-implementation file set and MUST equal the inventory's `files` for that Module. Every child and
-every used Module MUST be represented by an entity with the corresponding `target_id`, and every
-`target_id` MUST name a child or used Module. Listing a file grants nothing by itself; a
-development tool decides which phases may read or change listed files.
+Within one Module each entry appears under one entity, and a file covered by several entries of
+the Module belongs to the most specific one. The union of a Module's entity entries is its
+implementation file listing and MUST equal the inventory's `files` for that Module, entry for entry.
+Every child and every used Module MUST be represented by an entity with the corresponding
+`target_id`, and every `target_id` MUST name a child or used Module. Listing a file grants nothing
+by itself; a development tool decides which phases may read or change listed files.
 
 ## Structured interface agreements
 

@@ -80,6 +80,17 @@ requirement、entity、dependencies、contract。普通 Spec 作者可以改 ent
 - Profile 7 legacy `understanding` 包保留在仓库里（pending removal），只作为 `module.views`
   的一个 entity 列出；它不参与任何 Profile 10 路径。
 
+### D09：目录前缀绑定（Protocol 3.1.0）
+
+entity 的 `files` 条目可以是精确文件，也可以是以 `/` 结尾的目录前缀；目录前缀绑定其下现有和将来
+的全部普通文件（Framework 排除 `node_modules`、`__pycache__`、`.venv`、`build`、`dist`、点开头的
+目录和文件、`.pyc` 与 `.log`）。同一 Module 内多个条目覆盖同一文件时最具体的条目拥有它：精确文件
+优先于目录，长目录优先于短目录。跨 Module 的重叠是共享列出。目录前缀不能包含注册的 Spec 文档。
+注册表 `files` 仍是条目并集；`pending` 可以标记尚未创建的目录。上下文快照升到 schema 3，增加
+`implementation_entries`（声明的条目）并把 `implementation_files` 改为展开后的文件名；code writer
+在已列出的目录下新建文件不再需要预先声明 pending。项目自身的代码此前已按 Module 重排为一包一
+Module，所以每个 Module 的包目录和独占目录用一个前缀列出，共享文件仍精确列出。
+
 ## 涉及的实现改动
 
 Protocol 文本与模板、`prompts/protocol/framework-profile.md`、`.concorde/constitution.md`、

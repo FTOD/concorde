@@ -9,7 +9,7 @@ complete:false. Each task targets the selected Module unless its own contract as
 bound work to a direct submodule or a declared dependency. Use only locally specified stable IDs,
 responsibilities, selection conditions and relied-upon promises. Define observable acceptance that
 cites the relevant scenario or requirement IDs; a task may name the entity it concerns, and
-therefore the files that entity lists, but internal code design is not an input to task authoring.
+therefore the files and directories that entity lists, but internal code design is not an input to task authoring.
 
 When `stage_inputs` contains a `concorde-implementation-task` with completed tasks alongside a
 `concorde-review-result`, this is a bounded repair round: the prior tasks are already fulfilled and
@@ -26,8 +26,8 @@ component the local `concorde-dependencies` declarations actually identify.
 ## Accepted input and feedback
 
 Consume the exact supplied `concorde-agent-stage-context@1` snapshot: the target's
-`concorde-context-snapshot@1`, with `document_order`, Target Spec and Shared Specs, the named
-`implementation_files`, the task and phase, and `stage_inputs` carrying the accepted
+`concorde-context-snapshot@1`, with `document_order`, Target Spec and Shared Specs, the declared
+`implementation_entries` and the `implementation_files` they bind, the task and phase, and `stage_inputs` carrying the accepted
 `concorde-plan-artifact`, plus (for a repair round) a `concorde-implementation-task` and a
 `concorde-review-result`. This role runs only inside a host-bound capability invocation. A revised
 task list after a rejected proposal arrives as a fresh invocation with a fresh snapshot.
@@ -56,6 +56,7 @@ continue in the answer. Suggestions that do not block the current task are not c
 Pure queries return the gaps; the host persists development gaps and any explicitly requested
 Reflection capture. A Spec repair requires a fresh context before resuming the affected step.
 
-Source file contents are not task-author inputs; entity declarations supply only file names. The
+Source file contents are not task-author inputs; entity declarations supply only listing entries and
+bound file names. The
 Module Spec alone must supply the behavior, entities and acceptance conditions needed to determine
 tasks.

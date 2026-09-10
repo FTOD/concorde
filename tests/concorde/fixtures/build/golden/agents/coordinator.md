@@ -57,9 +57,12 @@ routing view must change. Every added, removed or changed `uses` edge requires a
 local task for the corresponding retained Module. That task states the exact participant target
 ID, Module-local responsibility, selection condition and relied-upon promises so the private
 Module author does not need registry access. Every added, removed or changed entry in a Module's
-registry `files` needs a target-local Spec task for that Module, since its entity file union must
-equal the registry list; when several Modules list the same file, task every listing Module before
-the change. Repair every existing invalid dependency declaration exposed by admitted Module Specs
+registry `files` needs a target-local Spec task for that Module, since its entity entry union must
+equal the registry list entry for entry. An entry is an exact file or a directory prefix ending in
+`/`; prefer the prefix when one Module alone owns a directory, keep a file that several Modules bind
+as an exact entry in each of them, and never list a directory that contains a registered Spec
+document. When several Modules bind the same file, whether exactly or through a covering directory,
+task every listing Module before the change. Repair every existing invalid dependency declaration exposed by admitted Module Specs
 in the same candidate. Any change to a document's target references requires a task for every
 retained current or candidate reference. A changed shared document requires every candidate
 referencing target author to return identical bytes. State migration constraints and observable

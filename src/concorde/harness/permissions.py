@@ -534,8 +534,9 @@ def finalize_codex_configuration(
     )
 
 
-def _claude_rule(tool: str, path: str) -> str:
-    return f"{tool}(./{path})"
+def _claude_rules(tool: str, path: str) -> tuple[str, ...]:
+    """Grant the path itself and, when the granted root is a directory, everything below it."""
+    return (f"{tool}(./{path})", f"{tool}(./{path}/**)")
 
 
 def render_claude_configuration(
@@ -548,18 +549,13 @@ def render_claude_configuration(
         raise PermissionPolicyError(
             "Claude native sandbox enforcement is unavailable and no outer enforcement was verified"
         )
-    allow = [_claude_rule("Read", path) for path in policy.read_paths]
+    allow = [rule for path in policy.read_paths for rule in _claude_rules("Read", path)]
     for path in policy.write_paths:
-        allow.extend((_claude_rule("Edit", path), _claude_rule("Write", path)))
+        allow.extend((*_claude_rules("Edit", path), *_claude_rules("Write", path)))
     deny: list[str] = ["Agent", "Task"]
     for path in policy.deny_paths:
-        deny.extend(
-            (
-                _claude_rule("Read", path),
-                _claude_rule("Edit", path),
-                _claude_rule("Write", path),
-            )
-        )
+        for tool in ("Read", "Edit", "Write"):
+            deny.extend(_claude_rules(tool, path))
     if not policy.network_enabled:
         deny.extend(("WebFetch", "WebSearch"))
     settings = {

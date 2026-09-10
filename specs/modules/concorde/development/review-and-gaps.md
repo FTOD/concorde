@@ -12,7 +12,8 @@
 
 `concorde-review` uses separate fresh Spec and code reviewers. Spec review sees the complete Target
 Spec and Shared Specs, task and scoped Spec patches; code review additionally sees only the owning
-target's registered implementation files and scoped code patches. Neither has project write authority.
+target's registered implementation files, the files its declared entries currently bind, and scoped
+code patches. Neither has project write authority.
 Each reviewer resolves a separate Agent definition and Harness under read-only permissions.
 The host records input versions, coverage, concrete findings, gaps and completion. No-findings,
 findings, incomplete, not-run and skipped are distinct, and all conclusions remain task-specific.
@@ -43,5 +44,6 @@ lifecycle. A failed process or incomplete review never becomes an empty successf
 
 Read-only reflection investigation receives the selected Module contract and explicitly granted
 code files. It receives no write permission for those files.
-Code-writing tasks separately receive the Module's own listed implementation files, with write
-authority limited to exactly those paths.
+Code-writing tasks separately receive the Module's own listed implementation entries, with write
+authority limited to exactly those paths: an exact file, or the whole directory a directory prefix
+names, so a new file below it needs no separate declaration.

@@ -7,12 +7,12 @@ from collections import Counter
 from pathlib import Path
 
 from .model import Finding, ToolResult
-from .repository import (HEADING, LIST_ITEM, MANDATORY_SECTIONS, ENTITIES_BLOCK, SpecError,
-                         SpecRepository, SpecTarget, digest, read_file, walk_lines)
+from .repository import (HEADING, LIST_ITEM, MANDATORY_SECTIONS, ENTITIES_BLOCK, SKIPPED_DIRECTORIES,
+                         SKIPPED_SUFFIXES, SpecError, SpecRepository, SpecTarget, digest, entry_exists,
+                         is_directory_entry, read_file, walk_lines)
 from .typed_data import checked_path
 
 
-SKIPPED_DIRECTORIES = frozenset({"node_modules", "__pycache__", ".venv", "build", "dist"})
 DIAGRAM_KEYWORDS = ("flowchart", "graph", "subgraph", "end", "classDef", "class", "style",
                     "linkStyle", "direction", "click", "accTitle", "accDescr")
 EDGE = re.compile(r"(?P<op>x--x|o--o|<-->|-->|---|-\.->|-\.-|==>|===|--x|--o|<--|<==)"
@@ -253,15 +253,16 @@ def definition_findings(repository: SpecRepository, target_id: str | None = None
                 f"child or used Module {missing} has no entity with that target_id in {target.id}",
                 "Declare an entity with target_id for every child and used Module.",
                 subject_id=target.id))
-        for path, entity in sorted(entity_files.items()):
-            exists = checked_path(repository.root, path).is_file()
-            if not exists and path not in entity.pending:
+        for entry, entity in sorted(entity_files.items()):
+            exists = entry_exists(repository.root, entry)
+            kind = "directory" if is_directory_entry(entry) else "file"
+            if not exists and entry not in entity.pending:
                 findings.append(Finding("CONCORDE-ENTITY-002", "error", entity.document,
-                    f"entity {entity.id} lists {path}, which does not exist and is not marked pending",
-                    "Create the file or mark it pending.", subject_id=entity.id))
-            elif exists and path in entity.pending:
+                    f"entity {entity.id} lists {entry}, a {kind} that does not exist and is not marked pending",
+                    f"Create the {kind} or mark it pending.", subject_id=entity.id))
+            elif exists and entry in entity.pending:
                 findings.append(Finding("CONCORDE-ENTITY-005", "warning", entity.document,
-                    f"entity {entity.id} still marks {path} pending although the file exists",
+                    f"entity {entity.id} still marks {entry} pending although the {kind} exists",
                     "Delivery confirms created files and removes the marker.", subject_id=entity.id))
         findings.extend(architecture_findings(repository, target, definitions.entities))
     return tuple(findings)
@@ -300,9 +301,8 @@ def architecture_findings(repository: SpecRepository, target: SpecTarget, entiti
 
 
 def unlisted_file_findings(repository: SpecRepository) -> tuple[Finding, ...]:
-    """Warn about regular files under listed roots that no Module lists."""
-    listed = set(repository.file_users)
-    roots = sorted({path.split("/", 1)[0] for path in listed if "/" in path})
+    """Warn about regular files under listed roots that no Module's entries cover."""
+    roots = sorted({entry.split("/", 1)[0] for entry in repository.file_users if "/" in entry})
     findings = []
     for root_name in roots:
         base = repository.root / root_name
@@ -312,10 +312,10 @@ def unlisted_file_findings(repository: SpecRepository) -> tuple[Finding, ...]:
             names[:] = sorted(name for name in names if name not in SKIPPED_DIRECTORIES
                               and not name.startswith(".") and not (Path(directory) / name).is_symlink())
             for name in sorted(files):
-                if name.startswith(".") or name.endswith((".pyc", ".log")):
+                if name.startswith(".") or name.endswith(SKIPPED_SUFFIXES):
                     continue
                 relative = (Path(directory) / name).relative_to(repository.root).as_posix()
-                if relative in listed or relative in repository.document_targets:
+                if relative in repository.document_targets or repository.listing_users(relative):
                     continue
                 findings.append(Finding("CONCORDE-ENTITY-006", "warning", relative,
                     "no Module entity lists this file", "List the file under the entity it realizes, or leave it unlisted deliberately."))

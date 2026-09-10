@@ -12,7 +12,7 @@
 
 ## Purpose
 
-Concorde Framework turns a developer's specified intent into inspectable, evidence-backed changes, and distributes the tools and views needed to work with those changes. It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 3.0.0; its complete contract is the Markdown collection explicitly registered for `module.concorde` in `.concorde/specs.json`, and this reading entry is that collection's only document. This root Module owns no implementation files of its own; its promises are realized entirely by its six child Modules.
+Concorde Framework turns a developer's specified intent into inspectable, evidence-backed changes, and distributes the tools and views needed to work with those changes. It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 3.1.0; its complete contract is the Markdown collection explicitly registered for `module.concorde` in `.concorde/specs.json`, and this reading entry is that collection's only document. This root Module owns no implementation files of its own; its promises are realized entirely by its six child Modules.
 
 ## Scenarios
 
@@ -122,7 +122,7 @@ These scenarios state what a developer request accomplishes at the Framework's s
     "id": "entity.concorde.protocol",
     "title": "Spec Protocol",
     "kind": "external standard",
-    "responsibility": "The independent Spec Protocol 3.0.0 that defines what a Module Spec must explain; Spec admits and pins it but does not own its meaning."
+    "responsibility": "The independent Spec Protocol 3.1.0 that defines what a Module Spec must explain; Spec admits and pins it but does not own its meaning."
   },
   {
     "id": "entity.concorde.spec",

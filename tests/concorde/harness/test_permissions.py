@@ -201,6 +201,37 @@ class PermissionTests(unittest.TestCase):
         self.assertEqual(settings["sandbox"]["network"]["allowedDomains"], [])
         self.assertTrue(compare_effective_boundaries(codex, claude))
 
+    def test_a_directory_root_grants_its_whole_subtree_in_both_integrations(self):
+        """A Module's package directory reaches the policy as one base path, from
+        ``implementation_paths``; both renderers must grant everything below it."""
+        roles = {**self.roles, "attempt": ("src/concorde/spec",),
+                 "module-architecture": ("src/concorde/harness/context.py",)}
+        policy = compile_policy(self.effect, self.binding, roles)
+        self.assertIn("src/concorde/spec", policy.read_paths)
+        self.assertIn("src/concorde/spec", policy.write_paths)
+        # A declared entry's trailing slash normalizes to the same base path.
+        trailing = compile_policy(self.effect, self.binding, {**self.roles, "attempt": ("src/concorde/spec/",)})
+        self.assertIn("src/concorde/spec", trailing.read_paths)
+
+        claude = render_claude_configuration(policy, native_enforcement=True)
+        settings = json.loads(claude.settings_json)
+        allow = settings["permissions"]["allow"]
+        for tool in ("Read", "Edit", "Write"):
+            self.assertIn(f"{tool}(./src/concorde/spec)", allow)
+            self.assertIn(f"{tool}(./src/concorde/spec/**)", allow)
+        self.assertIn("Read(./src/concorde/harness/context.py)", allow)
+        filesystem = settings["sandbox"]["filesystem"]
+        self.assertIn("src/concorde/spec", filesystem["allowRead"])
+        self.assertIn("src/concorde/spec", filesystem["allowWrite"])
+        for path in filesystem["denyWrite"]:
+            self.assertNotIn("src/concorde/spec", path)
+
+        codex = render_codex_configuration(policy, native_enforcement=True)
+        rules = codex.configuration["permissions"][codex.permission_profile]["filesystem"][":workspace_roots"]
+        self.assertEqual("write", rules["src/concorde/spec"])
+        self.assertEqual("read", rules["src/concorde/harness/context.py"])
+        self.assertTrue(compare_effective_boundaries(codex, claude))
+
     @unittest.skipUnless(shutil.which("codex"), "Codex CLI is not installed")
     def test_codex_launch_argv_loads_configuration_in_installed_cli_without_a_model(self):
         policy = compile_policy(self.effect, self.binding, self.roles)

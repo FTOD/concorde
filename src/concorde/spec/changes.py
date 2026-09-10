@@ -97,7 +97,7 @@ def confirm_pending_files(root: Path, package_root: Path | None = None) -> tuple
     system on every run. Delivery is the one deterministic moment that clears a confirmed marker,
     so the delivered Spec no longer claims a file is still to be written.
     """
-    from .repository import SpecError, SpecRepository, read_file
+    from .repository import SpecError, SpecRepository, entry_exists, read_file
 
     repository = SpecRepository(root, package_root)
     confirmed: list[dict] = []
@@ -110,7 +110,7 @@ def confirm_pending_files(root: Path, package_root: Path | None = None) -> tuple
             continue
         for entity in entities:
             for path in entity.pending:
-                if checked_path(repository.root, path).is_file():
+                if entry_exists(repository.root, path):
                     documents.setdefault(entity.document, {}).setdefault(entity.id, set()).add(path)
                     confirmed.append({"module": target.id, "entity": entity.id, "path": path})
                 else:

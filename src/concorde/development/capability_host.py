@@ -166,23 +166,23 @@ def _worktree(host: CapabilityHost, mutation: bool, task: dict) -> tuple[Capabil
 
 
 def _implementation_digest(repository: SpecRepository, target) -> str:
-    """Digest the Module's exact listed files and the bytes of the ones that already exist."""
+    """Digest the declared listing entries and the bytes of every file they currently bind."""
     return digest({"listed": list(target.files),
         "files": [(path, digest(read_file(repository.root, path)))
                   for path in repository.implementation_files(target)]})
 
 
 def _implementation_users(repository: SpecRepository, target) -> tuple:
-    """Include every Module that lists one of these files, with no context union."""
-    affected = {target.id, *(module.id for module in repository.affected_modules(target.files))}
+    """Every Module whose entries cover one of these entries or bound files, with no context union."""
+    affected = {target.id, *(module.id for module in repository.covering_modules(target))}
     return tuple(module for module in repository.targets.values() if module.id in affected)
 
 
 def _unconfirmed_files(repository: SpecRepository, target) -> list[str]:
-    """Listed files that neither exist nor are explicitly declared pending by their entity."""
+    """Listed entries that neither exist nor are explicitly declared pending by their entity."""
     entities = repository.entity_files(target)
-    return sorted(path for path in repository.missing_files(target)
-                  if path not in entities or path not in entities[path].pending)
+    return sorted(entry for entry in repository.missing_entries(target)
+                  if entry not in entities or entry not in entities[entry].pending)
 
 
 def _impact_revisions(repository: SpecRepository, targets) -> list[dict]:

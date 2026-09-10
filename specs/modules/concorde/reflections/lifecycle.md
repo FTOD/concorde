@@ -12,9 +12,9 @@
 
 A Reflection retains a problem, its observed effects, evidence, investigation and developer
 comments. Investigation runs as read-only implementation with selected record bytes and HEAD; it
-receives the selected Module's Spec context and the exact files its entities list, and no write
-permission for those files. Code-writing tasks separately receive write permission for the same
-entity-listed files. The independent Spec Protocol standard is outside the registered Module
+receives the selected Module's Spec context and the files its entities' listing entries bind, and no
+write permission for those files. Code-writing tasks separately receive write permission for the
+same entity-bound roots. The independent Spec Protocol standard is outside the registered Module
 ownership available to a reflection investigation; a result that requires changing that standard
 cannot be applied through this Module-bound investigation.
 
