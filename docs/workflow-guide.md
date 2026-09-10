@@ -49,8 +49,8 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 ## Install and initialize
 
 The installer distributes a deterministic build's output — eight Skills exposing thirteen
-capabilities, eight rendered Agent instructions (from `agents/<name>/spec.md`), and five Markdown
-templates — to Codex or Claude.
+capabilities, three common Agent instruction sets and twelve explicit mode projections (from
+`agents/<name>/spec.md` and `agents/<name>/modes/`), and five Markdown templates — to Codex or Claude.
 Check `python3 scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project, then invoke the paired init entry in an isolated worktree (or use the trusted host's explicit
@@ -318,9 +318,23 @@ new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-pr
 Each named Agent is defined under `agents/<name>/`: an authored `spec.md` plus a Python
 `__init__.py` binding it to a registered Harness and its effective Constraints (Agent = `spec.md` +
 Harness + Constraints). The build renders each Agent's instruction view to
-`generated/agents/<hyphenated-name>.md`, traceable back to its `spec.md` source through the build
-manifest; `describe-policy` mode (see above) shows the bound agent, harness and effective loop
+`generated/agents/<hyphenated-name>/<mode>.md`, combining common responsibilities and only the
+selected mode instructions, traceable through the build manifest; `describe-policy` mode (see above) shows the bound agent, harness and effective loop
 timeout for every stage it previews, alongside its read/write grants.
+
+The Agent inventory follows stable context and authority boundaries: coordinator handles ask,
+route and design-topology; spec-engineer handles specify, context-solve, plan, tasks, spec-review
+and topology-author; programmer handles implementation, code-review and reflection investigation.
+A mode explicitly pairs input and output types, admits specific stage artifacts and narrows the
+Agent permission ceiling. The Host applies structured Spec replacements. Only programmer's
+implementation mode may write granted code; reviews and investigations remain read-only. Every
+phase and target gets a fresh invocation and context identity, so a reviewer never inherits the
+author's conversation, artifacts or write authority merely because they share an Agent definition.
+
+The thirteen capability names and eight public Skills remain distinct. Their required boolean
+DETERMINISTIC metadata means no supported model-call path when true, including Host routing and
+transitive USES. Only init, configure, validate and deliver are true. USES is Host composition; all
+three Agents and their modes still have empty callable capability context.
 
 **Capability** is the canonical name for a callable or composed Framework function; the former
 Operation name is retired. Development owns the capability invocation boundary and workflow

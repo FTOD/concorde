@@ -77,6 +77,22 @@ no audience front matter. The build records included chapter bytes in source ide
 invalidate runtime outputs. Modules refer to their own entity file listings rather than owning file
 prefixes themselves.
 
+### scenario.distribution.capability-determinism — Capability metadata accounts for model calls
+
+- GIVEN capability modules declaring their class, Agents, host routing and acyclic `USES` composition
+- WHEN package validation checks their metadata
+- THEN each module must declare a boolean `DETERMINISTIC`, rejecting missing values, strings and integers
+- AND the flag must be true exactly when neither its Agents, host routing nor any transitive composed capability can call a model
+- AND lifecycle capabilities must remain deterministic
+- AND the single registered `concorde-capabilities` block must contain the same boolean `deterministic` for every capability alongside its `id`, `class` and `skill`
+- BUT a path that skips model execution does not make a model-backed capability deterministic
+
+Validation checks declared model-call paths, not arbitrary Python or subprocess behavior. It
+reports invalid metadata with `CONCORDE-CAPABILITY-CONSTANTS-001`, inconsistent classification
+with `CONCORDE-CAPABILITY-DETERMINISTIC-001`, and Spec metadata drift with
+`CONCORDE-SPEC-CAPABILITIES-001`. Unknown or cyclic composition remains a composition error;
+validation cannot certify its determinism.
+
 ## Interface signatures
 
 These signatures identify public call shapes; bodies and private helpers are outside this Spec.
@@ -84,8 +100,8 @@ These signatures identify public call shapes; bodies and private helpers are out
 Public functions of build:
 
 ```text
-render_agent(project_root: Path, agent: str) -> BuildOutput
-render_role(project_root: Path, role: str) -> BuildOutput
+render_agent(project_root: Path, agent: str, mode: str | None=None) -> BuildOutput
+render_role(project_root: Path, agent: str, mode: str | None=None) -> BuildOutput
 render_skill(project_root: Path, name: str, integration: str, *, framework_prefix: str='') -> BuildOutput
 render_langgraph(project_root: Path) -> BuildOutput
 render_protocol_principles(project_root: Path) -> BuildOutput
@@ -96,8 +112,8 @@ write_build(project_root: str | Path, integration: str='all', *, framework_prefi
 check_build(project_root: str | Path, integration: str='all') -> tuple[bool, tuple[str, ...]]
 recompute_protocol_manifest(project_root: str | Path) -> dict
 verify_fresh(project_root: str | Path) -> None
-load_agent(package_root: str | Path, name: str) -> SkillPrompt
-load_role_prompt(package_root: str | Path, role_name: str) -> SkillPrompt
+load_agent(package_root: str | Path, name: str, mode: str | None=None) -> SkillPrompt
+load_role_prompt(package_root: str | Path, name: str, mode: str | None=None) -> SkillPrompt
 ```
 
 Public functions of prompt_resolver:
@@ -147,7 +163,7 @@ the host must narrow for a concrete invocation, not automatically effective perm
 
 `AgentBinding` has string fields `agent`, `spec_path`, `spec_digest`, `instructions_path`,
 `instructions_digest`, `harness`, `harness_digest`, `constraints_digest`, `build_manifest_digest`
-and `digest`, plus `effective_loop`. Its loop has `timeout_seconds: int` and nullable
+and `digest`, nullable string fields `mode` and `mode_digest`, plus `effective_loop`. Its loop has `timeout_seconds: int` and nullable
 `max_turns: int`; effective limits cannot exceed the bound Agent/Harness limits. Digest values
 identify exact admitted bytes/configuration, using `sha256:` and 64 lowercase hex digits. The
 binding digest covers the complete binding except its own digest field. Source locators remain
@@ -161,3 +177,13 @@ changed, so runtime freshness must be re-established before use. Rebuild from au
 repair projections, never edit generated output as a new source. Public aliases preserve the same
 inputs, records and failure semantics; unsupported integration or asset identities require explicit
 repair.
+
+Agent builds publish three common responsibility projections and twelve independent mode
+projections. Each mode projection concatenates only its Agent common source and selected mode
+source; the manifest records both source sets. The instructions documentation exposes each mode
+and its contract separately. Package validation compares sorted mode names in concorde-agents
+with the Python inventory and rejects mode constraints wider than the owning Agent.
+
+Mode instruction file membership must equal the declared mode inventory. Agent Python bindings,
+mode bodies and available capability/wire sources are recorded build inputs; changing them makes
+verify_fresh reject the old build even when a common instruction body is unchanged.

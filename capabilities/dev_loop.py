@@ -18,6 +18,7 @@ from agents import coordinator
 from . import external_name
 
 CLASS = "global"
+DETERMINISTIC = False
 AGENTS = (coordinator.AGENT,)
 USES = ("specify", "review", "plan", "tasks", "implement", "validate")
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])

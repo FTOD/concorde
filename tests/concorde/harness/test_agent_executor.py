@@ -510,11 +510,11 @@ class AgentBindingPreflightTests(unittest.TestCase):
     invalid_completion outcomes (A1, A4)."""
 
     def binding_and_prompt(self, agent_name):
-        binding = resolve_agent(REPOSITORY_ROOT, agent_name)
+        binding = resolve_agent(REPOSITORY_ROOT, agent_name, "plan")
         prompt_body = (REPOSITORY_ROOT / binding.instructions_path).read_text(encoding="utf-8")
         return binding, prompt_body
 
-    def structured_specification(self, *, agent_name="planner", role=None,
+    def structured_specification(self, *, agent_name="spec_engineer", role=None,
                                   context_type="concorde-agent-stage-context",
                                   prompt_override=None, binding_override=None,
                                   write_roles=(), policy_effect=None):
@@ -531,7 +531,9 @@ class AgentBindingPreflightTests(unittest.TestCase):
         native = render_claude_configuration(policy, native_enforcement=True)
         agent_binding_json = binding_override if binding_override is not None else binding_json(binding)
         if context_type == "concorde-agent-stage-context":
-            runtime_input_json = self._valid_agent_stage_context_json()
+            runtime_value = json.loads(self._valid_agent_stage_context_json())
+            runtime_value["data"]["snapshot"]["data"]["instructions"] = prompt_body
+            runtime_input_json = json.dumps(runtime_value, sort_keys=True, separators=(",", ":"))
         else:
             # Only used by the wrong-context-type check, which raises inside the Agent-binding
             # preflight before the launch's own full typed-data revalidation is ever reached.
@@ -541,7 +543,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
              "data": {"integration": "claude", "enforcement": "native"}},
             sort_keys=True, separators=(",", ":"),
         )
-        receipt_json = json.dumps({"source_digest": "sha256:" + "1" * 64}, sort_keys=True, separators=(",", ":"))
+        receipt_json = json.dumps({"source_digest": "sha256:" + "1" * 64, "role_paths": {"spec-context": ["context.json"]}}, sort_keys=True, separators=(",", ":"))
         return LaunchSpecification(
             capability="concorde-plan", stage="plan", occurrence=0, role=role,
             integration="claude", agent=role, project_root="/fixture/project",
@@ -620,27 +622,27 @@ class AgentBindingPreflightTests(unittest.TestCase):
 
     @verifies("scenario.harness.execute-success")
     def test_wrong_context_and_result_type_is_refused(self):
-        spec = self.structured_specification(agent_name="planner", role="concorde-planner",
+        spec = self.structured_specification(agent_name="spec_engineer", role="concorde-spec-engineer",
             context_type="concorde-topology-author-context")
         executor = AgentProcessExecutor(runner=self._unreachable_runner(self),
             version_probe=lambda *a: "claude-code 4.2", environment={"PATH": "/bin"})
-        with self.assertRaisesRegex(CapabilityExecutionError, "not declared by the bound Agent"):
+        with self.assertRaisesRegex(CapabilityExecutionError, "mode preflight failed"):
             executor(spec)
 
     @verifies("scenario.harness.execute-success")
     def test_policy_writes_beyond_a_no_write_agent_are_refused(self):
-        spec = self.structured_specification(agent_name="planner", role="concorde-planner",
+        spec = self.structured_specification(agent_name="spec_engineer", role="concorde-spec-engineer",
             write_roles=("spec-context",),
             policy_effect=EffectDeclaration(reads=("spec-context",), writes=("spec-context",),
                                             network=False, credentials="none"))
         executor = AgentProcessExecutor(runner=self._unreachable_runner(self),
             version_probe=lambda *a: "claude-code 4.2", environment={"PATH": "/bin"})
-        with self.assertRaisesRegex(CapabilityExecutionError, "writes the bound Agent does not declare"):
+        with self.assertRaisesRegex(CapabilityExecutionError, "widens writable paths"):
             executor(spec)
 
     @verifies("scenario.harness.execute-success")
     def test_unknown_agent_is_refused(self):
-        binding, _ = self.binding_and_prompt("planner")
+        binding, _ = self.binding_and_prompt("spec_engineer")
         tampered = dataclass_replace(binding, agent="not-a-real-agent")
         tampered = dataclass_replace(tampered, digest=binding_digest(tampered))
         spec = self.structured_specification(binding_override=binding_json(tampered))
@@ -651,7 +653,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
 
     @verifies("scenario.harness.execute-success")
     def test_wrong_harness_digest_is_refused(self):
-        binding, _ = self.binding_and_prompt("planner")
+        binding, _ = self.binding_and_prompt("spec_engineer")
         tampered = dataclass_replace(binding, harness_digest="sha256:" + "0" * 64)
         tampered = dataclass_replace(tampered, digest=binding_digest(tampered))
         spec = self.structured_specification(binding_override=binding_json(tampered))
@@ -662,7 +664,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
 
     @verifies("scenario.harness.execute-success")
     def test_tampered_binding_digest_is_refused(self):
-        binding, _ = self.binding_and_prompt("planner")
+        binding, _ = self.binding_and_prompt("spec_engineer")
         payload = json.loads(binding_json(binding))
         payload["digest"] = "sha256:" + "f" * 64
         tampered_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
@@ -674,7 +676,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
 
     @verifies("scenario.harness.execute-failure")
     def test_runner_timeout_yields_limit_exhausted_outcome_with_binding_digest_and_no_retry(self):
-        binding, _ = self.binding_and_prompt("planner")
+        binding, _ = self.binding_and_prompt("spec_engineer")
         spec = self.structured_specification()
         calls = []
 
@@ -708,7 +710,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
 
     @verifies("scenario.harness.execute-success")
     def test_successful_structured_run_carries_agent_binding_digest(self):
-        binding, _ = self.binding_and_prompt("planner")
+        binding, _ = self.binding_and_prompt("spec_engineer")
         spec = self.structured_specification()
         result_data = {"context_id": "sha256:" + "2" * 64, "outcome": "completed",
             "answer": "fixture answer", "gaps": [], "documents": [], "plan": "", "tasks": []}

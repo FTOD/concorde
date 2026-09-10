@@ -44,13 +44,13 @@ class AgentRuntimeTests(unittest.TestCase):
             # A test-only loop contract exercises the generic native runtime without a
             # production question-answering Agent. Binding and native enforcement stay real.
             catalog = agent_model.load_agents()
-            base = catalog['planner']
-            agent = replace(base, constraints=replace(base.constraints,
+            base = catalog['spec_engineer']
+            agent = replace(base, modes=(), constraints=replace(base.constraints,
                 contexts=('concorde-agent-task', 'concorde-agent-loop-context'),
                 results=('concorde-agent-answer', 'concorde-agent-loop-step'),
                 allow_delegation=True))
             self.enterContext(patch.object(agent_model, 'load_agents',
-                return_value={**catalog, 'planner': agent}))
+                return_value={**catalog, 'spec_engineer': agent}))
             assert id == agent.name
             binding = load_agent(PACKAGE, id).binding
         else:
@@ -426,9 +426,9 @@ class AgentRuntimeTests(unittest.TestCase):
                     deadlines.append(deadline)
                     return executor(launch)
                 adapter=NativeAgentAdapter(integration,injected)
-                runtime=AgentRuntime([self.definition('planner',adapter,['B']),self.definition('B',lambda f:self.done())],self.context)
+                runtime=AgentRuntime([self.definition('spec_engineer',adapter,['B']),self.definition('B',lambda f:self.done())],self.context)
                 host=CapabilityHost(self.root,PACKAGE)
-                run=host.invoke_agent(runtime,'planner',self.task(),AgentGrant(frozenset({'service.transfer'}),frozenset({'planner','B'})))
+                run=host.invoke_agent(runtime,'spec_engineer',self.task(),AgentGrant(frozenset({'service.transfer'}),frozenset({'spec_engineer','B'})))
                 self.assertEqual(run.result.outcome,'completed')
                 self.assertEqual(len(calls),2)
                 self.assertEqual(len(deadlines), 2)
@@ -470,11 +470,11 @@ class AgentRuntimeTests(unittest.TestCase):
                 observed = []
                 def parent(frame):
                     if not frame.feedback:
-                        return AgentStep('code-driven', 'delegate', 'planner', self.task('child'))
+                        return AgentStep('code-driven', 'delegate', 'spec_engineer', self.task('child'))
                     observed.extend(frame.feedback)
                     return self.done()
-                run = self.invoke([self.definition('A', parent, ['planner']),
-                    self.definition('planner', NativeAgentAdapter('codex',
+                run = self.invoke([self.definition('A', parent, ['spec_engineer']),
+                    self.definition('spec_engineer', NativeAgentAdapter('codex',
                         lambda launch, *, deadline: executor(launch)))])
                 self.assertEqual(run.result.outcome, 'completed')
                 self.assertEqual(len(observed), 1)

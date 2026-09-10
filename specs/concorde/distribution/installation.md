@@ -100,10 +100,10 @@ separate and versioned. Check verifies receipt hashes and required runtime ident
 changing project behavior.
 
 The distributable manifest is `concorde.json` schema_version 3, Concorde 5.0.0, Architecture
-Profile 11, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 8 roles and 13
+Profile 11, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 3 Agents with 12 explicit modes and 13
 capabilities, of which 7 are Skills (global or lifecycle) and 6 are stages reachable only through a
 composing capability, explicit package roots including `prompts`/`capabilities`/`protocol`, and 5
-templates. Codex `.agents/skills` and Claude `.claude/skills` expose the same 7 Skills; canonical
+templates. Codex `.agents/skills` and Claude `.claude/skills` expose the same 8 Skills; canonical
 roles and stage capabilities stay private. Every Skill sends a typed `invocation@3` to
 `scripts/run-capability.py` and does not inspect project context.
 

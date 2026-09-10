@@ -113,8 +113,8 @@ Codex bootstrap. Finalization preserves every task read/write/deny/network/crede
 ## Agent binding
 
 The single canonical definition is `agent_model.Agent(name: str, spec: str, harness: Harness,
-constraints: Constraints)`. `name` is its catalog key (for example `planner`); a native role uses
-the external name `concorde-planner`. Its frozen `Constraints` has `effects: EffectDeclaration`,
+constraints: Constraints, modes: tuple[Mode, ...]=())`. `name` is its catalog key (for example
+`spec_engineer`); a native role uses the external name `concorde-spec-engineer`. Its frozen `Constraints` has `effects: EffectDeclaration`,
 `capabilities: tuple[str, ...]=()`, `contexts: tuple[str, ...]=()`, `results: tuple[str, ...]=()`,
 `limits: LoopPolicy | None=None` and `allow_delegation: bool=False`. The last field permits only
 host-mediated loop delegation through explicit graph edges and invocation grants; it does not
@@ -122,6 +122,21 @@ enable provider-native sub-agent tools or change existing coordinator routing co
 Enabling it requires the declared `concorde-agent-loop-context` and `concorde-agent-loop-step`
 interfaces. `resolve_agent` rejects a non-boolean flag or missing loop interfaces with
 `BuildError/invalid_agent_binding`. The flag participates in the existing constraints digest.
+
+`Mode` is a frozen record with `name: str`, `instructions: str`, `constraints: Constraints`,
+`phase: str`, `action: str | None=None`, and string tuples `stage_inputs`, `required_inputs`,
+`output_fields`, `outcomes` (all default empty). It declares exactly one context/result pair.
+`mode_definition(agent, name)` validates uniqueness, the authored mode path and the constraint
+subset. Required input types are a subset of admitted input types. The mode cannot enlarge
+read/write roles, capability calls, network, credentials, delegation or loop limits.
+`validate_mode_input` checks typed context, phase/action, artifact admission and source-content
+authority. `validate_mode_output` checks the paired type, outcomes and permitted result fields.
+`validate_mode_policy` checks concrete implementation membership and recompiles the grant against
+mode effects. The Host and executor both enforce admission; modes are not prompt-only rules.
+
+A missing mode turn limit inherits the Agent and Harness cap. A narrowed Agent timeout does not
+erase an inherited Harness max_turns value; mode limits are intersected with both enclosing limits.
+
 
 `harness.Harness` is the existing frozen configuration record: `name: str`,
 `model: "project-configured"`, `integrations: tuple[str, ...]`, `workspace: "capsule"|"project"`,
@@ -138,7 +153,7 @@ There is no separate recursive Agent or Harness definition model.
 The host-only lookup API is `agent_definition(name: str) -> Agent`; it accepts the bare catalog
 key, its hyphenated spelling or its `concorde-` external name and raises `BuildError/unknown_agent`
 when absent. `external_agent_name(name: str) -> str` prefixes a bare key and replaces underscores
-with hyphens. `resolve_agent(package_root: str|Path, name: str) -> AgentBinding` verifies the
+with hyphens. `resolve_agent(package_root: str|Path, name: str, mode: str | None=None) -> AgentBinding` verifies the
 current built Spec/instructions, registered Harness and narrowed constraints and returns the
 immutable binding below. Unknown names, stale builds and inconsistent definitions raise
 `BuildError` with `unknown_agent`, `stale_build` or `invalid_agent_binding`. These APIs do not
@@ -149,7 +164,10 @@ invoke an Agent, select a project target or grant its context.
 model this binding resolves). It is a frozen record with `agent: str`, `spec_path: str`,
 `spec_digest: str`, `instructions_path: str`, `instructions_digest: str`, `harness: str`,
 `harness_digest: str`, `constraints_digest: str`, `build_manifest_digest: str`,
-`effective_loop: LoopPolicy`, and `digest: str`.
+`effective_loop: LoopPolicy`, `digest: str`, `mode: str | None=None` and
+`mode_digest: str | None=None`. Mode fields are part of the canonical binding digest. Catalog
+launches require a selected mode; definition inspection may omit it. Old bindings without an
+explicit mode cannot launch catalog Agents and old evidence is not upgraded implicitly.
 
 ```python
 canonical_binding(binding: AgentBinding) -> str   # sorted-key, compact JSON, digest field excluded
@@ -187,6 +205,7 @@ launches supply runtime input, configuration and a fresh invocation ID together,
 version admission remains the host's obligation. A configuration/policy/integration mismatch or
 unbound workspace receipt raises `PermissionPolicyError` before process execution.
 
+A catalog Agent cannot execute through the legacy untyped launch path.
 A structured (typed) launch additionally requires `agent_binding_json`: the canonical JSON of one
 resolved `AgentBinding` (`agent_model.binding_json`), including its own `digest` field -- unlike
 `canonical_binding`, which excludes `digest` because it is that digest's own input. It must decode
@@ -248,7 +267,7 @@ CapabilityExecutionResult(output: str, receipt: EnforcementReceipt,
                          domain_output: dict[str, Any] | None = None)
 CapabilityExecutionError(message: str, receipt: EnforcementReceipt | None = None,
                          outcome: Literal["failed", "cancelled",
-                                          "limit_exhausted", "invalid_completion"] = "failed")
+                                          "limit_exhausted", "invalid_completion"] = "failed", code: str | None = None)
 ```
 
 The executor returns `CapabilityExecutionResult` only for a successful native process and validated
@@ -268,6 +287,12 @@ silently retries with wider permissions or rolls back already authorized impleme
 host stops the affected transition and preserves the candidate for repair. Raw subprocess
 stdout/stderr remain host execution evidence, not downstream Spec-agent inputs or public review
 findings.
+
+A ModeContractError preserves the existing Host rejection classification: disallowed authored
+fields use permission_denied and incompatible mode outcomes use invalid_completion. The executor
+retains that code alongside its failed completion receipt; the Host reports a blocked invocation.
+Other process failures, cancellations and limits retain their existing distinct outcomes.
+
 
 ## Relationships diagrams
 

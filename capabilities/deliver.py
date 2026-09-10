@@ -5,6 +5,7 @@ from concorde.spec import contract_shapes as shapes
 from . import external_name
 
 CLASS = "lifecycle"
+DETERMINISTIC = True
 AGENTS = ()
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])

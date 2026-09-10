@@ -59,7 +59,8 @@ The host-internal Python call is:
 resolve_context(repository: SpecRepository, target_id: str, *, phase: str = "ask",
                 task: str = "Understand this Spec", focus_id: str | None = None,
                 constraints: tuple[str, ...] = (), instructions: str = "",
-                stage_inputs: tuple[dict, ...] = (), workspace: dict | None = None
+                stage_inputs: tuple[dict, ...] = (), workspace: dict | None = None,
+                mode: Mode | None = None
                 ) -> ContextSnapshot
 ```
 
@@ -192,7 +193,7 @@ directly, as long as the fence's node labels keep naming the Module's declared e
 preserves the entire `concorde-document` declaration; document ID, reference and visibility
 changes are topology changes even for a currently local document.
 
-Context solving is a separate fresh context-assessor stage, run directly by the
+Context solving is a separate fresh spec-engineer context-solve mode, run directly by the
 `concorde-context-solve` stage capability or as `concorde-plan`'s preliminary sufficiency check. It returns
 sufficient, spec_incomplete, unsupported, conflicting or failed. A gap
 must name question, blocked_step and needed_contract. It cannot fetch missing context. Known missing
@@ -299,7 +300,7 @@ resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str, ...
     capability: str, phase: str, task: str, action: str = "route",
     target_hint: str | None = None, focus_hint: str | None = None,
     constraints: tuple[str, ...] = (), instructions: str = "",
-    workspace: dict | None = None) -> DiscoveryContext
+    workspace: dict | None = None, mode: Mode | None = None) -> DiscoveryContext
 ```
 
 Here each selected Spec's context means its complete registered Markdown collection, including its
@@ -343,3 +344,13 @@ The Protocol schema asset is produced by the wire provider from its registered s
 IDs, exact closed versioned payloads and self-contained local definitions. This Module verifies
 manifest/asset byte binding through the repository constructor rather than reconstructing schema
 export. Missing assets prevent construction; digest mismatches report protocol_mismatch.
+
+Mode admission precedes launch: the instruction digest identifies common responsibilities plus one
+selected task mode. Stage artifact types are restricted by that mode; Spec and code reviews admit
+no author stage_inputs. Programmer investigation receives code read-only and only the selected
+reflection artifact, while implementation receives the implementation task and optional review
+feedback. Neither mode inherits conversation or private reasoning.
+
+The optional host-only Mode argument to resolve_context rejects incompatible phases and artifact
+types before resolving implementation digests. It permits missing prerequisites only for policy
+preview; actual launch admission requires every mode-required input.

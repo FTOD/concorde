@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from .agent_model import Mode, validate_mode_artifacts
 
 from ..spec.typed_data import canonical
 from ..spec.repository import SpecError, SpecRepository, digest, is_directory_entry, most_specific, read_file
@@ -137,11 +138,20 @@ def _implementation_artifacts(repository: SpecRepository, target) -> list[dict]:
 def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = "ask",
                     task: str = "Understand this Spec", focus_id: str | None = None,
                     constraints: tuple[str, ...] = (), instructions: str = "",
-                    stage_inputs: tuple[dict, ...] = (), workspace: dict | None = None) -> ContextSnapshot:
+                    stage_inputs: tuple[dict, ...] = (), workspace: dict | None = None,
+                    mode: Mode | None = None) -> ContextSnapshot:
     if phase not in PHASES:
         raise SpecError("unsupported context phase", "invalid_phase")
     if not isinstance(task, str) or not task.strip():
         raise SpecError("task intent is required", "invalid_input")
+    if mode is not None:
+        if mode.phase != phase or (phase in CODE_PHASES and "implementation" not in mode.constraints.effects.reads):
+            raise SpecError("context phase exceeds the selected mode", "permission_denied")
+        try:
+            # Policy previews can omit not-yet-authored prerequisites; launches require them all.
+            validate_mode_artifacts(mode, stage_inputs, require_all=False)
+        except ValueError as error:
+            raise SpecError(str(error), "incompatible_handoff") from error
     target = repository.select(target_id, focus_id)
     from ..spec.typed_data import validate_typed
     for item in stage_inputs:

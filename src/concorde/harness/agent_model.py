@@ -1,4 +1,4 @@
-"""Agent = spec.md + Harness + Constraints/Permissions (workflow/agents-and-harnesses.md A1, A4).
+"""Stable Agent responsibilities, Harness ceilings and explicit per-task Mode contracts.
 
 Binds one Python module per named Agent (the top-level ``agents/`` package) to its authored Spec,
 Harness reference and effective Constraints, and resolves that binding against the current build
@@ -26,9 +26,18 @@ from .effects import EffectDeclaration
 from .harness import HARNESSES, Harness, LoopPolicy
 
 
+class ModeContractError(ValueError):
+    """A bounded result violated the selected mode, preserving Host rejection semantics."""
+
+    def __init__(self, message: str, code: str = "invalid_completion"):
+        super().__init__(message)
+        self.code = code
+        self.field = ""
+
+
 @dataclass(frozen=True)
 class Constraints:
-    """Effective Constraints/Permissions for one Agent (A4): always a subset of its Harness."""
+    """An Agent ceiling or Mode restriction, always beneath the enclosing authority."""
 
     effects: EffectDeclaration
     capabilities: tuple[str, ...] = ()
@@ -39,13 +48,29 @@ class Constraints:
 
 
 @dataclass(frozen=True)
+class Mode:
+    """One task contract; all authority is bounded by the owning Agent ceiling."""
+
+    name: str
+    instructions: str
+    constraints: Constraints
+    phase: str
+    action: str | None = None
+    stage_inputs: tuple[str, ...] = ()
+    required_inputs: tuple[str, ...] = ()
+    output_fields: tuple[str, ...] = ()
+    outcomes: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class Agent:
-    """One named Agent definition (A1): its authored Spec, Harness and effective Constraints."""
+    """One capability boundary: common responsibility, Harness, authority ceiling and modes."""
 
     name: str
     spec: str
     harness: Harness
     constraints: Constraints
+    modes: tuple[Mode, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -63,10 +88,128 @@ class AgentBinding:
     build_manifest_digest: str
     effective_loop: LoopPolicy
     digest: str
+    mode: str | None = None
+    mode_digest: str | None = None
+
+
+def mode_definition(agent: Agent, name: str) -> Mode:
+    from ..distribution.build import BuildError
+
+    matches = [mode for mode in agent.modes if mode.name == name]
+    if len(matches) != 1:
+        raise BuildError(f"unknown or ambiguous mode {agent.name}/{name}", "invalid_agent_binding")
+    mode = matches[0]
+    ceiling, actual = agent.constraints, mode.constraints
+    for field in ("contexts", "results", "capabilities"):
+        if set(getattr(actual, field)) - set(getattr(ceiling, field)):
+            raise BuildError(f"mode widens Agent {field}", "invalid_agent_binding")
+    if (set(actual.effects.reads) - set(ceiling.effects.reads)
+            or set(actual.effects.writes) - set(ceiling.effects.writes)
+            or actual.effects.network and not ceiling.effects.network
+            or actual.effects.credentials == "declared" and ceiling.effects.credentials != "declared"
+            or actual.allow_delegation and not ceiling.allow_delegation):
+        raise BuildError("mode widens Agent authority", "invalid_agent_binding")
+    limit = _narrow_loop(agent.harness.loop, ceiling.limits)
+    if actual.limits and (actual.limits.timeout_seconds > limit.timeout_seconds
+            or limit.max_turns is not None and actual.limits.max_turns is not None
+                and actual.limits.max_turns > limit.max_turns):
+        raise BuildError("mode widens Agent loop limits", "invalid_agent_binding")
+    if (len(actual.contexts) != 1 or len(actual.results) != 1
+            or set(mode.required_inputs) - set(mode.stage_inputs)
+            or mode.instructions != f"agents/{agent.name}/modes/{mode.name}.md"):
+        raise BuildError("invalid mode contract", "invalid_agent_binding")
+    pairs = {f"concorde-{kind}-context": f"concorde-{kind}-result"
+             for kind in ("agent-stage", "review-stage", "main-stage", "topology-author")}
+    if pairs.get(actual.contexts[0]) != actual.results[0]:
+        raise BuildError("mode context/result pair is incompatible", "invalid_agent_binding")
+    return mode
+
+
+def _narrow_loop(parent: LoopPolicy, limits: LoopPolicy | None) -> LoopPolicy:
+    if limits is None:
+        return parent
+    turns = [value for value in (parent.max_turns, limits.max_turns) if value is not None]
+    return LoopPolicy(min(parent.timeout_seconds, limits.timeout_seconds), min(turns) if turns else None)
+
+
+def effective_mode_loop(agent: Agent, mode: Mode) -> LoopPolicy:
+    return _narrow_loop(_narrow_loop(agent.harness.loop, agent.constraints.limits), mode.constraints.limits)
+
+
+def validate_mode_input(agent: Agent, mode_name: str, value: dict, *, phase: str) -> Mode:
+    """Validate admitted cognition independently of prompt text and caller policy."""
+    from ..spec.typed_data import validate_typed
+    mode = mode_definition(agent, mode_name)
+    validate_typed(value, mode.constraints.contexts[0])
+    if phase != mode.phase:
+        raise ValueError("launch phase does not match mode")
+    data = value["data"]
+    snapshot = data.get("snapshot", {}).get("data", data)
+    if snapshot.get("phase", phase) != phase:
+        raise ValueError("snapshot phase does not match mode")
+    if mode.action is not None and snapshot.get("action") != mode.action:
+        raise ValueError("discovery action does not match mode")
+    validate_mode_artifacts(mode, snapshot.get("stage_inputs", []))
+    if "implementation" not in mode.constraints.effects.reads and snapshot.get("implementation_artifacts"):
+        raise ValueError("mode cannot admit implementation contents")
+    if mode.name.endswith("-review") and data["review"]["data"]["review_mode"] != mode.name.split("-")[0]:
+        raise ValueError("review input does not match mode")
+    if mode.name == "spec-review" and any(change["path"] not in snapshot["document_order"]
+            for change in data["review"]["data"]["changes"]):
+        raise ValueError("Spec review cannot admit implementation patches")
+    if data.get("expected_artifacts"):
+        raise ValueError("current modes do not admit extra expected artifact paths")
+    return mode
+
+
+def validate_mode_artifacts(mode: Mode, inputs, *, require_all: bool = True) -> None:
+    types = [item["type_id"] for item in inputs]
+    if (len(types) != len(set(types)) or set(types) - set(mode.stage_inputs)
+            or require_all and set(mode.required_inputs) - set(types)):
+        raise ValueError("stage inputs do not match mode")
+
+
+def validate_mode_output(agent: Agent, mode_name: str, value: dict) -> None:
+    from ..spec.typed_data import validate_typed
+    mode = mode_definition(agent, mode_name)
+    data = validate_typed(value, mode.constraints.results[0])["data"]
+    if mode.outcomes and data.get("outcome") not in mode.outcomes:
+        raise ModeContractError("result outcome does not match mode")
+    for field in ("documents", "plan", "tasks", "reflection_findings", "routes", "topology_design"):
+        if field not in mode.output_fields and data.get(field):
+            message = "this mode cannot author Spec documents" if field == "documents" else f"mode cannot return {field}"
+            raise ModeContractError(message, "permission_denied")
+    if mode.name.endswith("-review") and data["review_mode"] != mode.name.split("-")[0]:
+        raise ModeContractError("review result does not match mode")
+
+
+def validate_mode_policy(mode: Mode, value: dict, policy, receipt: dict) -> None:
+    """Recompile the concrete grant against mode effects, including code path membership."""
+    from .permissions import PolicyBinding, compile_policy, verify_effective_subset
+    role_paths = {key: tuple(paths) for key, paths in receipt["role_paths"].items()}
+    context_role = "discovery-context" if mode.action is not None else "spec-context"
+    capsule_paths = role_paths.get(context_role, ())
+    if len(capsule_paths) != 1 or Path(capsule_paths[0]).name != "context.json":
+        raise ValueError("mode requires exactly one frozen context capsule")
+    snapshot = value["data"].get("snapshot", {}).get("data", value["data"])
+    entries = [item["path"].rstrip("/") for item in snapshot.get("implementation_entries", [])]
+    names = [item["path"] for item in snapshot.get("implementation_files", [])]
+    directories = [item["path"] for item in snapshot.get("implementation_entries", []) if item["directory"]]
+    artifacts = {item["path"] for item in snapshot.get("implementation_artifacts", [])}
+    for path in role_paths.get("implementation", ()):
+        if "implementation" not in mode.constraints.effects.reads:
+            raise ValueError("mode cannot grant implementation reads")
+        if not mode.constraints.effects.writes and path not in artifacts:
+            raise ValueError("read-only mode grant exceeds the frozen implementation files")
+        if path not in entries + names and not any(path.startswith(directory) for directory in directories):
+            raise ValueError("implementation grant is outside the selected Module")
+    bound = PolicyBinding(policy.capability, policy.stage, policy.occurrence, policy.role, policy.agent)
+    ceiling = compile_policy(mode.constraints.effects, bound, role_paths)
+    verify_effective_subset(ceiling, policy)
 
 
 def agent_key(name: str) -> str:
-    """Normalize an external (``concorde-spec-author``) or bare (``spec-author``) agent name."""
+    """Normalize an external (``concorde-spec-engineer``) or bare Agent name."""
 
     key = name[len("concorde-"):] if name.startswith("concorde-") else name
     return key.replace("-", "_")
@@ -115,8 +258,7 @@ def load_agents() -> dict[str, Agent]:
 
 
 def agent_definition(name: str) -> Agent:
-    """Look up one Agent by its external (``concorde-spec-author``), hyphenated (``spec-author``)
-    or underscored (``spec_author``) name."""
+    """Look up one Agent by its external, hyphenated or underscored name."""
 
     from ..distribution.build import BuildError
 
@@ -169,7 +311,15 @@ def _sha256_json(payload: object) -> str:
     return "sha256:" + hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
-def resolve_agent(package_root: str | Path, name: str) -> AgentBinding:
+def mode_digest(mode: Mode) -> str:
+    return _sha256_json(dataclasses.asdict(mode))
+
+
+def constraints_digest(constraints: Constraints) -> str:
+    return _sha256_json(dataclasses.asdict(constraints))
+
+
+def resolve_agent(package_root: str | Path, name: str, mode: str | None = None) -> AgentBinding:
     """Resolve one named Agent's complete binding against the current build.
 
     Fails closed with ``BuildError``: ``stale_build`` when sources drifted since the last build or
@@ -185,6 +335,9 @@ def resolve_agent(package_root: str | Path, name: str) -> AgentBinding:
     verify_fresh(root)
 
     agent = agent_definition(name)
+    selected = mode_definition(agent, mode) if mode is not None else None
+    for declared_mode in agent.modes:
+        mode_definition(agent, declared_mode.name)
 
     expected_spec = f"agents/{agent.name}/spec.md"
     if agent.spec != expected_spec:
@@ -294,6 +447,11 @@ def resolve_agent(package_root: str | Path, name: str) -> AgentBinding:
 
     hyphenated = agent.name.replace("_", "-")
     instructions_path = f"generated/agents/{hyphenated}.md"
+    if selected:
+        instructions_path = f"generated/agents/{hyphenated}/{selected.name}.md"
+        if manifest.get("sources", {}).get(selected.instructions) != _sha256_bytes((root / selected.instructions).read_bytes()):
+            raise BuildError("mode instructions are stale", "stale_build")
+        effective_loop = effective_mode_loop(agent, selected)
     rendered_path = root / instructions_path
     if rendered_path.is_symlink() or not rendered_path.is_file():
         raise BuildError(
@@ -301,7 +459,7 @@ def resolve_agent(package_root: str | Path, name: str) -> AgentBinding:
         )
     instructions_digest = _sha256_bytes(rendered_path.read_bytes())
 
-    constraints_digest = _sha256_json(dataclasses.asdict(agent.constraints))
+    constraint_hash = constraints_digest(agent.constraints)
 
     binding = AgentBinding(
         agent=agent.name,
@@ -311,9 +469,11 @@ def resolve_agent(package_root: str | Path, name: str) -> AgentBinding:
         instructions_digest=instructions_digest,
         harness=declared_harness.name,
         harness_digest=declared_harness.digest,
-        constraints_digest=constraints_digest,
+        constraints_digest=constraint_hash,
         build_manifest_digest=build_manifest_digest,
         effective_loop=effective_loop,
         digest="",
+        mode=mode,
+        mode_digest=mode_digest(selected) if selected else None,
     )
     return dataclasses.replace(binding, digest=binding_digest(binding))

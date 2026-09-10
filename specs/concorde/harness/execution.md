@@ -149,7 +149,7 @@ resolve_runtime_bootstrap(integration: str, executable: str, project_root: str,
 verify_runtime_bootstrap(files: tuple[RuntimeBootstrapFile, ...]) -> None
 CapabilityExecutionError(message: str, receipt: EnforcementReceipt | None = None,
                          outcome: Literal["failed", "cancelled",
-                                          "limit_exhausted", "invalid_completion"] = "failed")
+                                          "limit_exhausted", "invalid_completion"] = "failed", code: str | None = None)
 ```
 
 `host_subprocess_runner` and `host_version_probe` label default behavior, not exported Python symbols.

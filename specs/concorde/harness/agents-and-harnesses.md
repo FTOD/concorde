@@ -18,12 +18,14 @@ Concorde Spec Protocol target kinds. Their providing Modules retain the explicit
 ## The Agent and Harness model
 
 **Harness = context + control flow + Agents or models + permissions and environment, per Agent.**
-**Agent = `spec.md` + Harness + Constraints/Permissions.**
+**Agent = common `spec.md` + Harness + authority ceiling + explicit Modes.**
+**Invocation = Agent + selected Mode + Module/version + admitted artifacts + actual grant.**
 
 | Entity | Meaning | Relationships |
 | --- | --- | --- |
 | Agent Spec | The Agent's authored `spec.md`, defining its responsibilities, goals and behavioral contract | Is bound by its Python Agent definition and constrains every invocation |
 | Agent definition | A Python module defining one named Agent by binding its Spec, Harness and constraints | Can be reused for different invocations without sharing their private state |
+| Mode | One explicit task instruction and context/result/permission restriction beneath an Agent ceiling | Selects one input/output pair and admitted artifacts; cannot widen the Agent |
 | Agent invocation | One execution of an Agent definition for a specific task | Receives its frozen context kinds, effective permissions and a fresh execution identity |
 | Harness | The organized execution environment supporting an Agent | Integrates context assembly, the control loop, Capability and Tool references, model access, state handling, permissions and system environment |
 | Capability | Functionality an Agent can use, or that can be composed to provide further functionality | Deterministic when it makes no model call; otherwise an Agent operated through a Harness |
@@ -160,13 +162,15 @@ yield/delegate/continue path; it grants only a private context capsule, not proj
 
 ## Registered Agents and Harnesses
 
-The eight named Agents are each one Python module under the top-level `agents/` package, binding
+The three named Agents are each one Python module under the top-level `agents/` package, binding
 an authored `agents/<name>/spec.md`, a registered Harness, and its effective Constraints/Permissions
 per the model above. `agents/__init__.py` declares the inventory. Exact Agent source files have the
 single authoritative owner `entity.harness.agent-definitions`; a capability that launches an Agent
 does not own its definition. A rendered
-`generated/agents/<hyphenated>.md` projection remains traceable to its `spec.md` source; role
-identity alone never stands in for this complete Agent model.
+`generated/agents/<hyphenated>.md` projection contains common responsibilities only. Each
+`generated/agents/<hyphenated>/<mode>.md` contains those common instructions plus exactly one
+`agents/<name>/modes/<mode>.md` task instruction. Other modes are never injected. Both source
+sets and the mode contract contribute to the binding and freshness evidence.
 
 Every Agent is bound to exactly one of three registered Harnesses:
 
@@ -176,9 +180,8 @@ Every Agent is bound to exactly one of three registered Harnesses:
 | spec-capsule | capsule | spec-context | — | concorde-agent-stage-context, concorde-review-stage-context, concorde-topology-author-context | 1800s |
 | implementation-workspace | project | spec-context, implementation | implementation | concorde-agent-stage-context, concorde-review-stage-context | 3600s |
 
-`coordinator` binds `discovery-capsule`; `spec-author`, `context-assessor`, `planner`,
-`task-author` and `spec-reviewer` bind `spec-capsule`; `implementation-worker` and `code-reviewer`
-bind `implementation-workspace`. Each Agent's own Constraints/Permissions never widen its bound
+`coordinator` binds `discovery-capsule`; `spec-engineer` binds `spec-capsule`; `programmer`
+binds `implementation-workspace`. Workflow phases reuse these definitions through explicit modes. Each Agent's own Constraints/Permissions never widen its bound
 Harness. `capsule` and `project` are the two workspace kinds; their physical form and the
 enforcement each receives are defined under Native enforcement boundary in
 [execution](execution.md). The table shows ordinary stage contexts. The generic execution runtime
@@ -189,23 +192,112 @@ currently admits a Capability reference, so every current capability context is 
 
 ```concorde-agents
 [
-  {"id": "coordinator", "harness": "discovery-capsule", "capabilities": ["dev-loop", "main"]},
-  {"id": "spec-author", "harness": "spec-capsule", "capabilities": ["main", "specify"]},
-  {"id": "context-assessor", "harness": "spec-capsule", "capabilities": ["context-solve", "plan"]},
-  {"id": "planner", "harness": "spec-capsule", "capabilities": ["plan"]},
-  {"id": "task-author", "harness": "spec-capsule", "capabilities": ["tasks"]},
-  {"id": "implementation-worker", "harness": "implementation-workspace", "capabilities": ["implement", "reflections-triage"]},
-  {"id": "spec-reviewer", "harness": "spec-capsule", "capabilities": ["review"]},
-  {"id": "code-reviewer", "harness": "implementation-workspace", "capabilities": ["review"]}
+  {
+    "id": "coordinator",
+    "harness": "discovery-capsule",
+    "capabilities": [
+      "dev-loop",
+      "main"
+    ],
+    "modes": [
+      "ask",
+      "design-topology",
+      "route"
+    ]
+  },
+  {
+    "id": "spec-engineer",
+    "harness": "spec-capsule",
+    "capabilities": [
+      "context-solve",
+      "main",
+      "plan",
+      "review",
+      "specify",
+      "tasks"
+    ],
+    "modes": [
+      "context-solve",
+      "plan",
+      "spec-review",
+      "specify",
+      "tasks",
+      "topology-author"
+    ]
+  },
+  {
+    "id": "programmer",
+    "harness": "implementation-workspace",
+    "capabilities": [
+      "implement",
+      "reflections-triage",
+      "review"
+    ],
+    "modes": [
+      "code-review",
+      "implementation",
+      "investigation"
+    ]
+  }
 ]
 ```
 
 Deterministic validation requires this block to equal the Agent inventory declared in code: the
-same identifiers, bound Harness names, and the sorted hyphenated names of every capability module
+same identifiers, bound Harness names, sorted mode names, and the sorted hyphenated names of every capability module
 whose `AGENTS` includes that Agent. The block is intentional redundancy so that this Spec explains
 the Agent/Harness binding without reading Python; it never adds an Agent that code does not
 implement. The `capabilities` field records which Development capabilities launch the Agent; it is
 not the Agent's capability context.
+
+## Mode contracts
+
+Modes are stable task contracts within capability boundaries, not independent Agents. The Host
+selects a mode explicitly before freezing instructions and compiling permissions. The executor
+independently checks that selection before any model process starts. Unknown modes, mismatched
+phase/action or context/result pairs, unadmitted or missing required artifacts, incompatible
+result fields and wider authority are rejected. Agent capability context and every current mode's
+capability context are empty; the callers listed above and their transitive `USES` are Host
+composition only.
+
+All ordinary bounded modes receive one complete Module Spec, declared implementation entries and
+resolved file names. Spec-engineer never receives source contents or direct project writes.
+Programmer receives only the bound Module's authorized code. Read-only code review and investigation
+grants enumerate the frozen implementation artifacts; a listed directory cannot widen those read
+grants to hidden, excluded or later-created files. Implementation mode retains declared directory
+write roots for authorized file creation. The table uses these exact typed
+pairs: **stage** = `concorde-agent-stage-context` / `concorde-agent-stage-result`, **review** =
+`concorde-review-stage-context` / `concorde-review-stage-result`, **discovery** =
+`concorde-main-stage-context` / `concorde-main-stage-result`, and **topology** =
+`concorde-topology-author-context` / `concorde-topology-author-result`.
+
+| Agent | Mode | Pair and phase/action | Admitted stage artifacts | Mode result and authority |
+| --- | --- | --- | --- | --- |
+| coordinator | ask | discovery; route/ask | none | Direct answer or expansion/gap; no routes, topology design or writes |
+| coordinator | route | discovery; route/route | none | One owning Module route or expansion/gap; no implementation or writes |
+| coordinator | design-topology | discovery; route/design-topology | none | Candidate topology from selected complete Specs and explicit inventory; no document bodies or writes |
+| spec-engineer | specify | stage; specify | none | Structured document replacements, applied by Host |
+| spec-engineer | context-solve | stage; context-solve | none | Sufficient, incomplete, unsupported or conflicting assessment; no authored artifacts |
+| spec-engineer | plan | stage; plan | optional concorde-plan-artifact | Plan only; no source contents or writes |
+| spec-engineer | tasks | stage; tasks | required concorde-plan-artifact; optional concorde-implementation-task and concorde-review-result for repair | Acceptance tasks only; no source contents or writes |
+| spec-engineer | spec-review | review; spec-review | none | Independent Spec findings; no inherited author artifacts or writes |
+| spec-engineer | topology-author | topology; topology-author | none | Accepted target descriptor, target-local task, current complete collection, kind definition and candidate_document_references remain special inputs; return all target documents for Host application |
+| programmer | implementation | stage; implementation | required concorde-implementation-task; optional concorde-review-result | Fulfilled tasks only; may write granted implementation paths |
+| programmer | code-review | review; code-review | none | Independent code findings; authorized code read-only |
+| programmer | investigation | stage; implementation | required concorde-reflection-selection | Reflection findings only; authorized code read-only |
+
+The investigation retains the existing implementation phase on the stage wire while the explicit
+binding selects `investigation`; the reflection selection cannot be admitted to implementation
+mode. Reusing a wire pair does not merge its mode-specific artifact or result permissions. Unused
+`documents`, `plan`, `tasks`, `reflection_findings`, `routes` and `topology_design` fields remain
+empty. Reviews additionally bind the matching `review_mode`. Native completion and Host result
+admission both enforce these restrictions.
+
+Every phase, target, repair and review has a fresh invocation identity and frozen context. Sharing
+an Agent definition never shares an author conversation, private reasoning, stage inputs or write
+grant with a reviewer. Only explicitly admitted structured artifacts cross stages. A no-mode
+binding exposes common definition metadata for inspection; it cannot launch any catalog Agent.
+Generic host-loop fixtures may define their own explicit contracts; no current catalog Agent
+admits those loop interfaces or delegation.
 
 ## Responsibilities and implementation boundaries
 

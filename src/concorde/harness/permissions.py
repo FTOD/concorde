@@ -730,6 +730,14 @@ def build_launch_specification(
             raise PermissionPolicyError("Agent binding does not match the AgentBinding fields")
         if agent_binding_json != canonical(decoded_binding):
             raise PermissionPolicyError("structured launch data must use canonical serialization")
+        from .agent_model import agent_definition, validate_mode_input, validate_mode_policy
+        definition = agent_definition(decoded_binding["agent"])
+        if definition.modes:
+            try:
+                mode = validate_mode_input(definition, decoded_binding.get("mode"), runtime_input, phase=stage)
+                validate_mode_policy(mode, runtime_input, policy, workspace_receipt)
+            except (ValueError, KeyError, TypeError) as error:
+                raise PermissionPolicyError(f"mode admission failed: {error}") from error
         payload["runtime_input"] = runtime_input
         payload["capability_configuration"] = configuration
         payload["invocation_id"] = invocation_id

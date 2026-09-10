@@ -17,7 +17,8 @@ from pathlib import Path
 from ..harness.change_worktree import git, git_value, progress, read_change, save_change, workspace_identity
 from ..spec.typed_data import artifact, canonical, checked_path, typed, validate_typed, verify_artifacts
 from .configuration import load_configuration
-from ..harness.agent_model import agent_definition, binding_json, external_agent_name
+from ..harness.agent_model import (ModeContractError, agent_definition, binding_json,
+    external_agent_name, mode_definition, validate_mode_output)
 from ..harness.agent_executor import CapabilityExecutionError
 from ..harness.permissions import (EnforcementReceipt, CapabilityExecutionResult, PermissionPolicyError, PolicyBinding,
     build_launch_specification, compile_policy, render_claude_configuration, render_codex_configuration)
@@ -76,7 +77,7 @@ def inputs(run, mode: str) -> tuple[dict, object]:
     if mode == "code" and not target.files:
         raise SpecError("code review requires a Module whose entities list implementation files", "unsupported_target")
     phase, role = REVIEW_STAGES[mode]
-    prompt = load_role_prompt(run.host.package_root, role)
+    prompt = load_role_prompt(run.host.package_root, role, phase)
     change = read_change(repository.root)
     _, current = workspace_identity(repository.root)
     head = current["head"] if current else None
@@ -90,6 +91,7 @@ def inputs(run, mode: str) -> tuple[dict, object]:
         "task": run.task["task"], "constraints": run.task.get("constraints", []),
         "change_id": run.change_id, "review_mode": mode, "revision": revision, "changes": changes,
         "instructions": prompt.body, "role_effects": asdict(prompt.effects),
+        "agent_binding_digest": prompt.binding.digest,
         "host_runtime": {path: digest(read_file(run.host.package_root, path)) for path in (
             "src/concorde/development/review.py", "src/concorde/harness/agent_executor.py",
             "src/concorde/harness/permissions.py", "src/concorde/harness/context.py")},
@@ -183,7 +185,7 @@ def review(run, mode: str) -> dict:
     phase, role = REVIEW_STAGES[mode]
     snapshot = resolve_context(run.repository, run.target.id, phase=phase, task=run.task["task"],
         focus_id=run.task.get("focus_id"), constraints=tuple(run.task.get("constraints", [])),
-        instructions=prompt.body)
+        instructions=prompt.body, mode=mode_definition(agent_definition(prompt.binding.agent), phase))
     run.last_context = snapshot.id
     pending = run.pending_gaps(phase, snapshot)
     if pending and run.host.track_gaps:
@@ -237,7 +239,7 @@ def review(run, mode: str) -> dict:
                 "project_root": str(project), "read_paths": list(policy.read_paths), "write_paths": [],
                 "network": False, "fresh_session": True, "policy_digest": policy.digest,
                 "agent": external_agent_name(prompt.binding.agent), "harness": prompt.binding.harness,
-                "agent_binding_digest": prompt.binding.digest,
+                "agent_binding_digest": prompt.binding.digest, "mode": prompt.binding.mode,
                 "instructions_digest": prompt.binding.instructions_digest,
                 "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds})
             if run.host.mode == "describe-policy":
@@ -252,6 +254,7 @@ def review(run, mode: str) -> dict:
                     or result.completion.workspace_digest != snapshot.id
                     or result.receipt.agent_binding_digest != prompt.binding.digest):
                 raise SpecError("review evidence is not bound to this launch", "invalid_completion")
+            validate_mode_output(agent_definition(prompt.binding.agent), prompt.binding.mode, result.completion.domain_output)
             data = validate_typed(result.completion.domain_output, "concorde-review-stage-result")["data"]
             _validate(run, snapshot, info, data)
             recheck_context(run.repository, snapshot)
@@ -277,7 +280,7 @@ def review(run, mode: str) -> dict:
             raise
         # Failures remain failures even when the model supplied no findings.
         if isinstance(error, CapabilityExecutionError):
-            code = ("execution_cancelled" if error.outcome == "cancelled" else
+            code = error.code or ("execution_cancelled" if error.outcome == "cancelled" else
                    "execution_limit" if error.outcome == "limit_exhausted" else "execution_failed")
             lifecycle_status = ("cancelled" if error.outcome == "cancelled" else
                                 "limit_exhausted" if error.outcome == "limit_exhausted" else "failed")
@@ -288,7 +291,7 @@ def review(run, mode: str) -> dict:
             # content judgment a read-only query should withhold.
             progress(run.repository.root, status=lifecycle_status)
         else:
-            code = error.code if isinstance(error, SpecError) else "execution_failed"
+            code = error.code if isinstance(error, (SpecError, ModeContractError)) else "execution_failed"
         reviewed = _empty(run, info, "incomplete", f"Review could not complete ({code}).")
         receipt = getattr(error, "receipt", None)
         reference = _persist(run, reviewed,

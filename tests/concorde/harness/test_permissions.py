@@ -404,39 +404,46 @@ class AgentBindingLaunchTests(unittest.TestCase):
     """A structured launch must carry the resolved Agent binding that authorized it (P2)."""
 
     def setUp(self) -> None:
-        self.binding = resolve_agent(REPOSITORY_ROOT, "spec_author")
+        self.binding = resolve_agent(REPOSITORY_ROOT, "spec_engineer", "specify")
         self.effect = EffectDeclaration(reads=("spec-context",), writes=(), network=False, credentials="none")
         self.roles = {"spec-context": ("context.json",)}
         self.policy = compile_policy(
             self.effect,
             PolicyBinding(
                 capability="concorde-specify", stage="specify", occurrence=0,
-                role="concorde-spec-author", agent="concorde-spec-author", write_roles=(),
+                role="concorde-spec-engineer", agent="concorde-spec-engineer", write_roles=(),
             ),
             self.roles,
         )
         self.native = render_claude_configuration(self.policy, native_enforcement=True)
         self.configuration = typed("concorde-capability-configuration", {"integration": "claude", "enforcement": "native"})
 
+    def runtime_input_json(self):
+        from tests.concorde.harness.test_agent_executor import AgentBindingPreflightTests
+        value = json.loads(AgentBindingPreflightTests._valid_agent_stage_context_json())
+        value["data"]["snapshot"]["data"]["phase"] = "specify"
+        value["data"]["snapshot"]["data"]["instructions"] = (REPOSITORY_ROOT / self.binding.instructions_path).read_text()
+        return canonical(value)
+
     def build(self, **overrides):
         kwargs = dict(
             capability="concorde-specify",
             stage="specify",
             occurrence=0,
-            role="concorde-spec-author",
+            role="concorde-spec-engineer",
             integration="claude",
-            agent="concorde-spec-author",
+            agent="concorde-spec-engineer",
             project_root="/fixture/project",
             request="Author the Spec",
-            prompt="# fixture spec-author instructions",
+            prompt=(REPOSITORY_ROOT / self.binding.instructions_path).read_text(),
             prior_results=(),
             workspace_receipt_json=json.dumps(
-                {"source_digest": "sha256:" + "1" * 64}, sort_keys=True, separators=(",", ":")
+                {"source_digest": "sha256:" + "1" * 64, "role_paths": self.roles}, sort_keys=True, separators=(",", ":")
             ),
             workspace_digest="sha256:" + "1" * 64,
             policy=self.policy,
             native_configuration=self.native,
-            runtime_input_json=canonical(self.configuration),
+            runtime_input_json=self.runtime_input_json(),
             capability_configuration_json=canonical(self.configuration),
             invocation_id="fixture-invocation",
         )
@@ -458,13 +465,15 @@ class AgentBindingLaunchTests(unittest.TestCase):
 
     def test_agent_binding_field_set_and_canonical_serialization_are_enforced(self):
         with self.assertRaisesRegex(PermissionPolicyError, "AgentBinding fields"):
-            self.build(agent_binding_json=json.dumps({"agent": "spec_author"}, sort_keys=True, separators=(",", ":")))
+            self.build(agent_binding_json=json.dumps({"agent": "spec_engineer"}, sort_keys=True, separators=(",", ":")))
         with self.assertRaisesRegex(PermissionPolicyError, "canonical serialization"):
             self.build(agent_binding_json=binding_json(self.binding) + " ")
 
     def test_agent_binding_participates_in_the_launch_digest(self):
         with_binding = self.build(agent_binding_json=binding_json(self.binding))
-        other_binding = resolve_agent(REPOSITORY_ROOT, "planner")
+        from concorde.harness.agent_model import binding_digest
+        other_binding = replace(self.binding, spec_digest="sha256:" + "a" * 64)
+        other_binding = replace(other_binding, digest=binding_digest(other_binding))
         different_binding = self.build(agent_binding_json=binding_json(other_binding))
         self.assertNotEqual(with_binding.digest, different_binding.digest)
         self.assertEqual(with_binding.agent_binding_json, binding_json(self.binding))

@@ -1,11 +1,12 @@
 """Global entry: answer questions, route work, and design or apply system topology."""
 from concorde.spec import contract_shapes as shapes
-from agents import coordinator, spec_author
+from agents import coordinator, spec_engineer
 
 from . import external_name
 
 CLASS = "global"
-AGENTS = (coordinator.AGENT, spec_author.AGENT)
+DETERMINISTIC = False
+AGENTS = (coordinator.AGENT, spec_engineer.AGENT)
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 

@@ -54,7 +54,7 @@ def triage(run):
     head=queue._captured_head(root);before=_implementation_digest(run.repository,run.target)
     selection=typed("concorde-reflection-selection",{"head":head,"records":[
         {"id":i,"path":entries[i].path,"digest":digest(raw[entries[i].path]),"content":raw[entries[i].path].decode()} for i in ids]})
-    result=run.stage("concorde-implement",inputs=(selection,),readonly=True,defer_gap_resolution=True)
+    result=run.stage("concorde-implement",inputs=(selection,),mode="investigation",readonly=True,defer_gap_resolution=True)
     if result["outcome"] not in {"completed","sufficient"}:
         return run.response(result["outcome"],result["answer"],gaps=result["gaps"])
     if _implementation_digest(run.repository,run.target)!=before:

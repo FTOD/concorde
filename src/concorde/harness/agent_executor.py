@@ -43,10 +43,12 @@ class CapabilityExecutionError(RuntimeError):
         message: str,
         receipt: EnforcementReceipt | None = None,
         outcome: Literal["failed", "cancelled", "limit_exhausted", "invalid_completion"] = "failed",
+        code: str | None = None,
     ):
         super().__init__(message)
         self.receipt = receipt
         self.outcome = outcome
+        self.code = code
 
 
 ProcessRunner = Callable[..., subprocess.CompletedProcess[str]]
@@ -238,6 +240,22 @@ def _completion_schema(specification: LaunchSpecification) -> dict[str, Any]:
             definitions = domain.pop("$defs")
             domain.pop("$schema")
             properties["domain_output"] = {"anyOf": [domain, {"type": "null"}]}
+            if specification.agent_binding_json:
+                binding = agent_model.binding_from_json(specification.agent_binding_json)
+                agent = agent_model.agent_definition(binding.agent)
+                if agent.modes:
+                    mode = agent_model.mode_definition(agent, binding.mode)
+                    fields = definitions[domain_type]["properties"]
+                    for key in ("documents", "plan", "tasks", "reflection_findings", "routes", "topology_design"):
+                        if key in fields and key not in mode.output_fields:
+                            if key == "plan":
+                                fields[key] = {"type": "string", "const": ""}
+                            elif key == "topology_design":
+                                fields[key] = {"type": "null"}
+                            else:
+                                fields[key] = {**fields[key], "maxItems": 0}
+                    if mode.outcomes:
+                        fields["outcome"] = {"type": "string", "enum": list(mode.outcomes)}
             if domain_type == "concorde-review-stage-result":
                 admitted = json.loads(specification.runtime_input_json)["data"]
                 snapshot = admitted["snapshot"]["data"]
@@ -456,6 +474,10 @@ def _validate_completion(payload: dict[str, Any], specification: LaunchSpecifica
         from ..spec.typed_data import validate_typed
 
         domain_output = validate_typed(domain_output, expected_domain, "/domain_output")
+        binding = agent_model.binding_from_json(specification.agent_binding_json)
+        definition = agent_model.agent_definition(binding.agent)
+        if definition.modes:
+            agent_model.validate_mode_output(definition, binding.mode, domain_output)
     elif domain_output is not None:
         raise ValueError("this completion must have null domain_output")
     return CapabilityCompletion(
@@ -518,107 +540,19 @@ def _role_prompt(specification: LaunchSpecification) -> str:
             "or return typed gap/decision details for spec_incomplete/waiting. "
             "No parent transcripts, project searches, ambient Skills or context expansion are admitted.\n"
         )
-    if _domain_type(specification) == "concorde-review-stage-result":
+    if specification.runtime_input_json is not None:
         return (
-            "Execute one independent Concorde review in a fresh session. You have no project write authority.\n"
+            "Execute one fresh Concorde invocation using only the bound common and mode instructions.\n"
             f"Capability: {specification.capability}\nStage: {specification.stage}\n"
             f"Host workspace grant:\n{specification.workspace_receipt_json}\n"
             f"Configuration snapshot:\n{specification.capability_configuration_json}\n"
-            f"Complete admitted context and task:\n{specification.runtime_input_json}\n\n"
-            f"Review instructions:\n{specification.prompt}\n\n"
-            "Read the entire admitted Target Spec and Shared Specs, not just patches. Spec review must judge "
-            "whether these documents alone support representative tasks; it cannot inspect implementation. "
-            "Code review may read only granted target implementation files and compare their behavior with "
-            "the supplied contracts. Do not load repository guidance, other Skills, ancestor/provider/child "
-            "Specs, other worktrees, prior conversations, or remote sources. Do not run checks or modify "
-            "Spec, source, tests, or control files. The host owns result persistence.\n"
-            "Report concrete missing promises or behavior defects and affected tasks; avoid speculative "
-            "completeness claims. Each finding identifies its target, local contract document, contract, "
-            "location, problem, affected_task and blocking/advisory severity. The document field is the exact "
-            "admitted Markdown path from document_order. A blocking Spec finding needs "
-            "a gap whose blocked_step equals affected_task and needed_contract equals contract. Missing "
-            "contracts encountered during code review also use gaps. No raw source snippets, patches or "
-            "process logs may appear in answers or findings.\n"
-            "Return Capability Completion Envelope 3 with typed concorde-review-stage-result in domain_output. "
-            "For a valid bounded assessment, including findings, gaps or declared incomplete coverage, set "
-            "the envelope status to success, limitations to exactly 'none', and every envelope gate to passed. "
-            "The domain result status describes review coverage; findings are not process failures. A failed "
-            "envelope instead requires a nonempty limitation and at least one failed gate. "
-            "Bind context_id, input_digest and review_mode exactly to the supplied inputs. Use status=no_findings "
-            "only after covering nonempty representative_tasks with no findings/gaps; findings means a "
-            "completed review with concrete findings/gaps. If the review cannot complete, use incomplete and "
-            "explain why; never treat failure or skipped coverage as no_findings. Neither successful status "
-            "proves universal semantic completeness.\n"
-            f"Invocation: {specification.invocation_id}\nLaunch digest: {specification.digest}\n"
-        )
-    if _domain_type(specification) == "concorde-topology-author-result":
-        return (
-            "Execute one Concorde topology Spec-author stage in a fresh target-local context.\n"
-            f"Capability: {specification.capability}\nStage: {specification.stage}\n"
-            f"Host workspace grant:\n{specification.workspace_receipt_json}\n"
-            f"Configuration snapshot:\n{specification.capability_configuration_json}\n"
-            f"Complete provisional target context:\n{specification.runtime_input_json}\n\n"
-            "Use only the supplied target descriptor, matching kind definition, task, candidate document references, "
-            "and current documents separated as Target Spec and Shared Specs. "
-            "Return the complete content for every path in target.documents and no other path. Do not load another "
-            "target, registry file, Module body outside this target, implementation code, prior conversation, or remote "
-            "source. A shared document is collective truth: preserve its exact declared target set and return the same "
-            "proposed bytes as every other referencing target author. Report missing target-local facts as structured gaps.\n"
-            "Return Capability Completion Envelope 3 matching the supplied schema, with a typed "
-            "concorde-topology-author-result in domain_output. Bind every identity exactly.\n"
-            f"Invocation: {specification.invocation_id}\nLaunch digest: {specification.digest}\n"
-        )
-    if _domain_type(specification) == "concorde-main-stage-result":
-        return (
-            "Execute one Concorde Profile 11 main-coordinator stage in a fresh context.\n"
-            f"Capability: {specification.capability}\nStage: {specification.stage}\n"
-            f"Host discovery grant:\n{specification.workspace_receipt_json}\n"
-            f"Configuration snapshot:\n{specification.capability_configuration_json}\n"
-            f"Complete admitted discovery context and task:\n{specification.runtime_input_json}\n\n"
-            "Use the complete Module documents in the supplied source pool; every architecture diagram is "
-            "inline in them. Target Spec and Shared Specs references identify each Module's membership; read "
-            "their full bodies. Never load implementation code, repository guidance, another Skill, a prior "
-            "conversation, or a remote source. "
-            "In route phase, request only Module IDs identified by an admitted Spec, or the explicit target "
-            "hint, in expand_targets. For ask, answer directly from the admitted complete contexts with completed, "
-            "or request more contexts; never return worker routes. Non-ask capabilities require one route and "
-            "unchanged task intent. For design-topology, return topology_proposed with one complete candidate registry, "
-            "target-local Spec tasks, migration constraints, and acceptance conditions after sufficient discovery; do "
-            "not include document bodies or code facts. Do not perform routed mutations. "
-            "Report missing required promises as structured Spec gaps owned by an "
-            "admitted Module.\n"
-            "Return Capability Completion Envelope 3 matching the supplied schema. Put a typed "
-            "concorde-main-stage-result in domain_output with context_id, outcome, answer, expand_targets, routes, "
-            "gaps, and nullable topology_design. Bind every launch, invocation, workspace, and context identity exactly.\n"
-            f"Invocation: {specification.invocation_id}\nLaunch digest: {specification.digest}\n"
-        )
-    if _domain_type(specification) == "concorde-agent-stage-result":
-        return (
-            "Execute one Concorde Profile 11 agent stage in a fresh context.\n"
-            f"Capability: {specification.capability}\nStage: {specification.stage}\n"
-            f"Host workspace grant:\n{specification.workspace_receipt_json}\n"
-            f"Configuration snapshot:\n{specification.capability_configuration_json}\n"
-            f"Complete admitted context and task:\n{specification.runtime_input_json}\n\n"
-            "Use only the supplied snapshot, whose document bodies are separated as Target Spec and Shared Specs, "
-            "and enforced paths. Do not load repository guidance, "
-            "other Skills, ancestor/provider Specs, prior conversations, or remote sources. "
-            "Only the implementation stage may inspect or change the granted implementation files. Other stages "
-            "see those file names as Spec facts and determine tasks solely from the complete Module Spec. "
-            "When the current task requires a missing or ambiguous contract, report question, blocked_step "
-            "and needed_contract as structured Spec gaps, and pause the judgments or steps that depend on it. "
-            "Do not silently supply a contract by convention or infer it from code. Independent reasoning may "
-            "continue in the answer; do not broaden retrieval or mark dependent tasks complete. "
-            "Do not run framework resolvers or validation commands; the trusted host performs these.\n"
-            "Return Capability Completion Envelope 3 matching the supplied schema, binding every identity "
-            "and launch/context digest. Its status describes completion of this bounded role, including "
-            "a valid gap assessment. Workflow progress is controlled by domain_output.data.outcome. "
-            "Put the typed concorde-agent-stage-result in domain_output. Include context_id, outcome, "
-            "answer, gaps, documents, plan, and tasks. Use empty arrays/strings for unused domain_output fields; "
-            "this does not apply to the envelope limitations field. "
-            "A spec_incomplete outcome requires concrete question/blocked_step/needed_contract gaps; "
-            "other outcomes have no gaps. Only the specification stage may return Module document replacements; "
-            "every other stage returns an empty documents array. "
-            "Do not transmit raw code or implementation logs in a result for a later Spec-only stage.\n"
+            f"Complete admitted context and task:\n{specification.runtime_input_json}\n"
+            f"Bound instructions:\n{specification.prompt}\n"
+            "Return Capability Completion Envelope 3 with the selected mode's typed domain_output. "
+            "For a valid bounded result, including gaps or findings, set envelope status=success, "
+            "limitations=none and every gate=passed. Domain outcomes describe task progress. Keep unused domain_output fields empty as required by the selected mode. "
+            "Bind context, invocation and launch identities exactly. Never inherit conversations, "
+            "load ambient guidance or Skills, or use authority outside the supplied grant.\n"
             f"Invocation: {specification.invocation_id}\nLaunch digest: {specification.digest}\n"
         )
     prior = "\n".join(
@@ -722,6 +656,8 @@ class AgentProcessExecutor:
         binding = None
         if specification.runtime_input_json is not None:
             binding = self._preflight_agent_binding(specification)
+        elif agent_model.agent_key(specification.agent) in agent_model.load_agents():
+            raise CapabilityExecutionError("catalog Agent launches require an explicit typed mode binding")
         try:
             bootstrap = (
                 ()
@@ -790,7 +726,38 @@ class AgentProcessExecutor:
         runtime_type = json.loads(specification.runtime_input_json).get("type_id")
         if runtime_type not in agent.constraints.contexts:
             raise CapabilityExecutionError("launch context type is not declared by the bound Agent")
+        if runtime_type != "concorde-agent-loop-context" and not agent.modes:
+            raise CapabilityExecutionError("stage launches require an explicit mode contract")
         effects = agent.constraints.effects
+        if agent.modes:
+            try:
+                mode = agent_model.validate_mode_input(agent, binding.mode,
+                    json.loads(specification.runtime_input_json), phase=specification.stage)
+                if binding.mode_digest != agent_model.mode_digest(mode):
+                    raise ValueError("mode binding digest does not match current contract")
+                if result_type != mode.constraints.results[0]:
+                    raise ValueError("launch result type does not match mode")
+                if binding.constraints_digest != agent_model.constraints_digest(agent.constraints):
+                    raise ValueError("Agent constraints digest is stale")
+                limit = agent_model.effective_mode_loop(agent, mode)
+                if binding.effective_loop != limit:
+                    raise ValueError("launch loop limits do not match mode")
+                from ..distribution.build import render_agent
+                package_root = Path(__file__).resolve().parents[3]
+                if binding != agent_model.resolve_agent(package_root, agent.name, mode.name):
+                    raise ValueError("Agent and mode binding differs from current build")
+                rendered = render_agent(package_root, agent.name.replace("_", "-"), mode.name)
+                if rendered.content.decode() != specification.prompt:
+                    raise ValueError("launch instructions differ from current common and mode projection")
+                data = json.loads(specification.runtime_input_json)["data"]
+                snapshot = data.get("snapshot", {}).get("data", data)
+                if snapshot["instructions"] != specification.prompt:
+                    raise ValueError("snapshot instructions differ from bound mode projection")
+                agent_model.validate_mode_policy(mode, json.loads(specification.runtime_input_json),
+                    specification.policy, json.loads(specification.workspace_receipt_json))
+                effects = mode.constraints.effects
+            except Exception as error:
+                raise CapabilityExecutionError(f"mode preflight failed: {error}") from error
         policy = specification.policy
         if effects.writes == () and policy.write_paths != ():
             raise CapabilityExecutionError("launch policy grants writes the bound Agent does not declare")
@@ -884,6 +851,7 @@ class AgentProcessExecutor:
             raise CapabilityExecutionError(
                 limitations, receipt("failed", limitations, exit_code=completed.returncode),
                 outcome="invalid_completion",
+                code=error.code if isinstance(error, agent_model.ModeContractError) else None,
             ) from error
         if completion.status == "failed":
             raise CapabilityExecutionError(

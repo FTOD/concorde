@@ -21,7 +21,8 @@ export const PROJECTION_NOTE =
   'schemas actually keep.';
 
 export interface SkillProjection {name: string; description: string; capability: string; body: string}
-export interface AgentProjection {name: string; spec: string; harness: string; instructions: string; sources: string[]}
+export interface ModeProjection {name: string; instructions: string; contract: Record<string, unknown>}
+export interface AgentProjection {name: string; spec: string; harness: string; instructions: string; sources: string[]; modes: ModeProjection[]}
 export interface InstructionsProjection {skills: SkillProjection[]; agents: AgentProjection[]}
 export type WireProjection = Record<string, unknown>;
 
@@ -45,14 +46,19 @@ function fence(body: string, language: string): string {
 
 export function renderInstructionsPage(doc: InstructionsProjection): string {
   const lines: string[] = ['# Agent instructions', '', PROJECTION_NOTE, ''];
-  lines.push('## Skills', '', 'The seven Skills are the only executable boundary; each exposes exactly one global or lifecycle capability through `scripts/run-capability.py`.', '');
+  lines.push('## Skills', '', 'The eight public Skills expose global and lifecycle capabilities through `scripts/run-capability.py`.', '');
   for (const skill of doc.skills) {
     lines.push(`### ${skill.name}`, '', `Capability: \`${skill.capability}\`. ${skill.description}`, '', fence(skill.body, 'text'), '');
   }
-  lines.push('## Agents', '', 'Each Agent binds an authored `spec.md`, a registered Harness, and its effective Constraints/Permissions; its rendered instruction file is contributed by the listed prompts.', '');
+  lines.push('## Agents', '', 'Each Agent binds common responsibilities, a Harness and an authority ceiling. Each invocation selects one explicit mode and receives only the common and selected mode instructions below.', '');
   for (const agent of doc.agents) {
     const sources = agent.sources.map((source) => `\`${source}\``).join(', ');
     lines.push(`### ${agent.name}`, '', `Spec: \`${agent.spec}\``, '', `Harness: \`${agent.harness}\``, '', `Contributing prompts: ${sources}`, '', fence(agent.instructions, 'text'), '');
+    for (const mode of agent.modes) {
+      lines.push(`#### ${agent.name} / ${mode.name}`, '', 'Mode contract:', '',
+        fence(JSON.stringify(mode.contract, null, 2), 'json'), '',
+        'Complete instructions for this mode:', '', fence(mode.instructions, 'text'), '');
+    }
   }
   return lines.join('\n');
 }
