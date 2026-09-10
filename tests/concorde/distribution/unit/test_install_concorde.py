@@ -84,7 +84,7 @@ class NativeInstallerTests(unittest.TestCase):
     def test_desired_codex_outputs_use_native_paths_only(self):
         outputs = installer.desired_outputs(self.package, "codex")
         self.assertIn(".concorde/framework/src/concorde/host/cli.py", outputs)
-        self.assertIn(".concorde/framework/src/concorde/understanding/alignment.py", outputs)
+        self.assertIn(".concorde/framework/src/concorde/specification/validation.py", outputs)
         self.assertIn(".concorde/framework/docsite/docusaurus.config.ts", outputs)
         self.assertIn(".concorde/framework/docsite/scaffold/deploy-docsite.yml", outputs)
         self.assertNotIn(".concorde/framework/docsite/site.json", outputs)

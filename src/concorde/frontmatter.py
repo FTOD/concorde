@@ -1,4 +1,4 @@
-"""Constrained YAML-front-matter parser used by Concorde Source Profile 7."""
+"""Constrained YAML-front-matter parser shared by Concorde's Markdown readers."""
 
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ def _scalar(value: str, source: str, line: int) -> Any:
             raise FrontMatterError("unterminated quoted string", source, line)
         return value[1:-1].replace("''", "'")
     if value.startswith(("|", ">")):
-        raise FrontMatterError("block scalars are not supported by Profile 7", source, line)
+        raise FrontMatterError("block scalars are not supported", source, line)
     return value
 
 

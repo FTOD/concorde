@@ -1,20 +1,16 @@
-import React from 'react';
-import {useLocation} from '@docusaurus/router';
 import type {WrapperProps} from '@docusaurus/types';
+import {useLocation} from '@docusaurus/router';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import {usePluginData} from '@docusaurus/useGlobalData';
 import OriginalLayout from '@theme-original/DocItem/Layout';
 import type OriginalLayoutType from '@theme/DocItem/Layout';
 
-import type {ContentPage} from '../../../../plugins/concorde-content/types';
-import {canonicalRoute, normalizeRoute} from '../../../../plugins/concorde-content/routes';
-import ArchitectureView from '../../../components/ArchitectureView';
+import type {Page} from '../../../../plugins/scoped-content/model';
+import {canonicalRoute, normalizeRoute} from '../../../../plugins/scoped-content/routes';
 import ContentProvenance from '../../../components/ContentProvenance';
-import FeatureNeighborhood from '../../../components/FeatureNeighborhood';
-import FeatureRelations from '../../../components/FeatureRelations';
 
 type Props = WrapperProps<typeof OriginalLayoutType>;
-interface GlobalData {pages: (ContentPage & {inlineOverview?:boolean})[]}
+interface GlobalData {pages: Page[]}
 
 export default function LayoutWrapper(props: Props) {
   const location = useLocation();
@@ -23,10 +19,7 @@ export default function LayoutWrapper(props: Props) {
   const pathname = canonicalRoute(location.pathname, baseUrl);
   const page = data.pages.find((candidate) => normalizeRoute(candidate.route) === normalizeRoute(pathname));
   return <>
-    {page?.architectureDiagrams?.length && !page.inlineOverview ? <div className="architectureViewShell"><ArchitectureView page={page} /></div> : null}
     {page && <div className="provenanceShell"><ContentProvenance page={page} /></div>}
-    {page?.relatedFeatures?.length ? <div className="featureRelationsShell"><FeatureRelations page={page} /></div> : null}
-    {page?.featureId ? <div className="featureNeighborhoodShell"><FeatureNeighborhood featureId={page.featureId} /></div> : null}
     <OriginalLayout {...props} />
   </>;
 }

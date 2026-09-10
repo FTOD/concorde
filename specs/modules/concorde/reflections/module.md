@@ -58,7 +58,6 @@ describe the domain vocabulary the registered scenarios rely on.
       "src/concorde/reflections/investigation.py",
       "src/concorde/reflections/reflections.py",
       "src/concorde/reflections/scoped_triage.py",
-      "src/concorde/reflections/validation.py",
       "tests/concorde/fixtures/interfaces/reflections/index.json",
       "tests/concorde/fixtures/interfaces/reflections/needs-comments/R-001.md",
       "tests/concorde/fixtures/interfaces/reflections/pending/R-002.md",
@@ -67,7 +66,6 @@ describe the domain vocabulary the registered scenarios rely on.
       "tests/concorde/reflections/integration/__init__.py",
       "tests/concorde/reflections/unit/__init__.py",
       "tests/concorde/reflections/unit/test_reflection_parser.py",
-      "tests/concorde/reflections/unit/test_reflection_rules.py",
       "tests/concorde/reflections/unit/test_reflections_queue.py",
       "tests/concorde/specification/test_scope_and_reflections.py",
       "tests/concorde/support/reflection_triage.py"
@@ -202,11 +200,3 @@ runs through Development.
   }
 ]
 ```
-
-## Unresolved information
-
-`src/concorde/reflections/validation.py` imports `RepositoryError` and `safe_relative_path`, and
-`scripts/reflections_queue.py` calls `validate_project`, both from the Profile 7 legacy
-understanding package. That package's files are listed only under `module.views`, pending its
-removal; migrating these two call sites to their Profile 10 equivalents (`validate_repository` and
-the typed-value safe-path helpers) is outstanding.

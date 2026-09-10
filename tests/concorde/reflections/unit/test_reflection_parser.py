@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.feature_workspace import reflection_entry, write_reflection_collection
+from tests.concorde.support.reflection_triage import reflection_entry, write_reflection_collection
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
@@ -40,9 +40,6 @@ def parse_collection(directory: Path):
 
 
 class ReflectionParserTests(unittest.TestCase):
-    def test_feature_implementation_narratives_are_absent_from_profile_seven_specs(self):
-        self.assertEqual(sorted((REPOSITORY_ROOT / "specs").rglob("implementation.md")), [])
-
     def test_contract_examples_parse_without_problems(self):
         directory = REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/reflections"
         documents = {
@@ -113,15 +110,15 @@ class ReflectionParserTests(unittest.TestCase):
             directory = write_reflection_collection(Path(temporary), [
                 reflection_entry("R-001"),
                 reflection_entry("R-002", status="resolved"),
-                reflection_entry("R-003", feature="feature.example.api.invoke"),
-                reflection_entry("R-004", status="dismissed", occurrences=["analyze 2026-08-29 feature.example.deliver — seen again"]),
+                reflection_entry("R-003", feature="module.example.api"),
+                reflection_entry("R-004", status="dismissed", occurrences=["analyze 2026-08-29 module.example — seen again"]),
             ])
             parsed = parse_collection(directory)
             self.assertEqual(parsed.problems, ())
-            self.assertEqual([entry.identifier for entry in parsed.entries_for("feature.example.deliver")], ["R-001", "R-002", "R-004"])
-            self.assertEqual(parsed.open_count("feature.example.deliver"), 1)
-            self.assertEqual(parsed.summary("feature.example.deliver"), {"entries": 3, "open": 1, "resolved": 1, "dismissed": 1})
-            self.assertEqual(parsed.entries[3].occurrences, ("analyze 2026-08-29 feature.example.deliver — seen again",))
+            self.assertEqual([entry.identifier for entry in parsed.entries_for("module.example")], ["R-001", "R-002", "R-004"])
+            self.assertEqual(parsed.open_count("module.example"), 1)
+            self.assertEqual(parsed.summary("module.example"), {"entries": 3, "open": 1, "resolved": 1, "dismissed": 1})
+            self.assertEqual(parsed.entries[3].occurrences, ("analyze 2026-08-29 module.example — seen again",))
             self.assertEqual([entry.identifier for entry in parsed.closed()], ["R-002", "R-004"])
 
     def test_pending_record_contains_only_problem_description(self):
@@ -195,7 +192,7 @@ class ReflectionParserTests(unittest.TestCase):
             directory = write_reflection_collection(Path(temporary), [complete])
             path = directory / "needs-comments" / "R-007.md"
             before, _ = parse_reflection_document(path.read_text(), ".concorde/reflections/needs-comments/R-007.md")
-            rewritten = path.read_text().replace("specs/example/architecture.md", "specs/example/features/001-deliver.md")
+            rewritten = path.read_text().replace("src/example.py", "src/other.py")
             after, problems = parse_reflection_document(rewritten, ".concorde/reflections/needs-comments/R-007.md")
             self.assertEqual(problems, ())
             self.assertEqual((after.identifier, after.status), (before.identifier, before.status))

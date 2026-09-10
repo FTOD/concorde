@@ -7,20 +7,18 @@ const siteDir = resolve(__dirname, '../..');
 
 describe('accessible presentation contract', () => {
   it('provides semantic landmarks and named provenance', async () => {
-    const [config, rootPage, provenance, architectureView] = await Promise.all([
+    const [config, rootPage, provenance, graph] = await Promise.all([
       readFile(resolve(siteDir, 'docusaurus.config.ts'), 'utf8'),
       readFile(resolve(siteDir, 'src/pages/index.tsx'), 'utf8'),
       readFile(resolve(siteDir, 'src/components/ContentProvenance.tsx'), 'utf8'),
-      readFile(resolve(siteDir, 'src/components/ArchitectureView.tsx'), 'utf8'),
+      readFile(resolve(siteDir, 'src/components/ScopedGraph.tsx'), 'utf8'),
     ]);
-    expect(config).toContain("label: scoped ? 'Module Specs' : 'Architecture'");
-    expect(config).toContain("label: 'Features'");
+    expect(config).toContain("label: 'Module Specs'");
+    expect(config).toContain("label: 'Graph'");
     expect(rootPage).toContain('httpEquiv="refresh"');
     expect(rootPage).toContain('<Link to={root.route}>');
     expect(provenance).toContain('aria-label="Content provenance"');
-    expect(architectureView).toContain('title={`Interactive architecture view for ${page.title}: ${diagram.title}`}');
-    expect(architectureView).toContain('sandbox="allow-downloads allow-scripts"');
-    expect(architectureView).toContain('Structural source: <code>{diagram.source}</code>');
+    expect(graph).toContain('aria-label="Interactive architecture graph"');
   });
 
   it('keeps visible keyboard focus and a narrow-layout breakpoint', async () => {

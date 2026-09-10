@@ -14,9 +14,6 @@ from .model import Finding, ToolResult
 STATUS_EXIT_CODES = {
     "success": 0,
     "proposal": 0,
-    "eligible": 0,
-    "selected": 0,
-    "delivered": 0,
     "unchanged": 0,
     "invalid": 1,
     "conflict": 2,
@@ -59,33 +56,6 @@ def envelope(
 
 
 def tool_envelope(value: ToolResult) -> dict[str, Any]:
-    if value.tool == "deliver":
-        return {
-            "schema_version": 13,
-            "tool": value.tool,
-            "target": value.target,
-            "status": value.status,
-            "workspace": value.result.get("workspace"),
-            "changes": value.result.get("changes", []),
-            "artifacts": sorted(set(value.artifacts)),
-            "findings": [finding_dict(item) for item in sorted(value.findings, key=finding_key)],
-            "source_digest": value.result.get("source_digest", "sha256:" + "0" * 64),
-            **{
-                key: value.result[key]
-                for key in (
-                    "proposal_path",
-                    "proposal_version",
-                    "task_summary",
-                    "checklist_summary",
-                    "evidence_summary",
-                    "removed_artifacts",
-                    "retained_artifacts",
-                    "retained_digests",
-                    "reflection_summary",
-                )
-                if key in value.result
-            },
-        }
     return envelope(
         value.tool,
         value.target,

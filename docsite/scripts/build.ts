@@ -1,13 +1,10 @@
-import {isScoped} from '../plugins/scoped-content/model';
-import {validateScopedBuild} from '../plugins/scoped-content';
 import {spawn} from 'node:child_process';
-import {readFile, rename, rm, stat} from 'node:fs/promises';
+import {rename, rm, stat} from 'node:fs/promises';
 import {resolve} from 'node:path';
 
-import Ajv2020 from 'ajv/dist/2020';
-
-import {validateBuildManifest} from '../plugins/concorde-content/manifest';
-import {preparePublication,productionGeneratedDirectory} from './prepare-publication';
+import {requireScoped} from '../plugins/scoped-content/model';
+import {validateScopedBuild} from '../plugins/scoped-content';
+import {preparePublication, productionGeneratedDirectory} from './prepare-publication';
 
 const siteDir = resolve(__dirname, '..');
 const projectRoot = resolve(siteDir, '..');
@@ -48,28 +45,8 @@ async function runDocusaurus(candidate: string): Promise<void> {
   });
 }
 
-async function validateGeneratedManifest(candidate: string): Promise<void> {
-  const [schemaText, manifestText] = await Promise.all([
-    readFile(resolve(siteDir, 'tests/fixtures/interfaces/build-manifest.schema.json'), 'utf8'),
-    readFile(resolve(candidate, 'build-manifest.json'), 'utf8'),
-  ]);
-  const manifest = JSON.parse(manifestText) as unknown;
-  validateBuildManifest(manifest);
-  const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(JSON.parse(schemaText));
-  if (!validate(manifest)) throw new Error(`Generated manifest violates Build Manifest 13 schema: ${JSON.stringify(validate.errors)}`);
-}
-
-async function validateGeneratedFeatureGraph(candidate: string): Promise<void> {
-  const [schemaText, graphText] = await Promise.all([
-    readFile(resolve(siteDir, 'tests/fixtures/interfaces/feature-graph.schema.json'), 'utf8'),
-    readFile(resolve(candidate, 'feature-graph.json'), 'utf8'),
-  ]);
-  const graph = JSON.parse(graphText) as unknown;
-  const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(JSON.parse(schemaText));
-  if (!validate(graph)) throw new Error(`Generated feature graph violates Feature Graph 2 schema: ${JSON.stringify(validate.errors)}`);
-}
-
 export async function buildSite(): Promise<void> {
+  requireScoped(projectRoot);
   const candidate = resolve(siteDir, '.generated/candidate');
   const destination = resolve(siteDir, 'build');
   const backup = resolve(siteDir, '.generated/previous-build');
@@ -77,8 +54,7 @@ export async function buildSite(): Promise<void> {
   try {
     await preparePublication(projectRoot,{mode:'build'});
     await runDocusaurus(candidate);
-    if (isScoped(projectRoot)) await validateScopedBuild(projectRoot,candidate);
-    else {await validateGeneratedManifest(candidate);await validateGeneratedFeatureGraph(candidate);}
+    await validateScopedBuild(projectRoot,candidate);
     await promoteCandidate(candidate, destination, backup);
     process.stdout.write(`Verified site promoted to ${destination}\n`);
   } catch (error) {

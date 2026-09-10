@@ -73,9 +73,17 @@ export function safeRead(root: string, path: string): string {
   requireThat(lstatSync(current).isFile(), `Source is not a regular file: ${path}`);
   return readFileSync(current, 'utf8');
 }
-export function isScoped(root: string): boolean {
-  try {return JSON.parse(safeRead(root, '.concorde/config.json')).profile_version === 10;}
-  catch (error) {if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error;}
+/** The adapter publishes Profile 10 projects only; anything else is an explicit error. */
+export function requireScoped(root: string): void {
+  let profile: unknown;
+  try {profile = JSON.parse(safeRead(root, '.concorde/config.json')).profile_version;}
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new Error(`No Concorde project configuration at ${root}/.concorde/config.json; initialize the project first.`);
+    }
+    throw error;
+  }
+  if (profile !== 10) throw new Error(`Profile 10 is required to publish this project; .concorde/config.json declares profile_version ${String(profile)}.`);
 }
 interface DocumentContext {id: string; targets: string[]; main_visible: boolean}
 function documentContext(source: string, path: string, expected: string[]): DocumentContext {

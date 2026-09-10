@@ -18,7 +18,7 @@ sys.path.insert(0, str(RUNTIME_ROOT))
 from concorde.host.cli import main  # noqa: E402
 from concorde.autodocs.docsite_scaffold import apply_docsite, propose_docsite  # noqa: E402
 from concorde.autodocs.docsite_template import TEMPLATE_ROOT, adapter_files, workflow_template  # noqa: E402
-from concorde.understanding.initialize import apply_proposal, propose_initialization  # noqa: E402
+from concorde.specification.initialize import apply_project_proposal, project_proposal  # noqa: E402
 
 
 from tests.concorde.support.operation_json import CONFIGURATION
@@ -28,11 +28,8 @@ IGNORED_PACKAGE_DIRS = {"node_modules", "build", ".generated", ".docusaurus", "c
 
 
 def _init_project(root: Path, module_id: str = "module.atlas", name: str = "Atlas") -> None:
-    proposed = propose_initialization(root, module_id, name, capability_configuration=CONFIGURATION)
-    (root / ".concorde").mkdir(parents=True, exist_ok=True)
-    (root / ".concorde/init-proposal.json").write_text(json.dumps(proposed.result["proposal"]), encoding="utf-8")
-    applied = apply_proposal(root, ".concorde/init-proposal.json")
-    assert applied.status == "success", applied.findings
+    apply_project_proposal(root, REPOSITORY_ROOT,
+                           project_proposal(root, REPOSITORY_ROOT, name, CONFIGURATION, module_id))
 
 
 def _copy_light_package(destination: Path) -> Path:
@@ -240,14 +237,13 @@ class DocsiteScaffoldTests(unittest.TestCase):
         baseline = propose_docsite(self.root)
         missing = [
             {"name": "node", "status": "missing", "detail": "not found"},
-            {"name": "npm", "status": "missing", "detail": "not found"},
-            {"name": "archify", "status": "missing", "detail": "not found"},
+            {"name": "npm", "status": "outdated", "detail": "npm 8 was found"},
         ]
         with mock.patch("concorde.autodocs.docsite_scaffold._detect_prerequisites", return_value=missing):
             patched = propose_docsite(self.root)
         self.assertEqual(patched.result["proposal"], baseline.result["proposal"])
         rule_ids = [finding.rule_id for finding in patched.findings if finding.rule_id == "CONCORDE-DOCSITE-007"]
-        self.assertEqual(len(rule_ids), 3)
+        self.assertEqual(len(rule_ids), 2)
         self.assertEqual({finding.severity for finding in patched.findings if finding.rule_id == "CONCORDE-DOCSITE-007"}, {"warning"})
 
     def test_cli_propose_round_trip(self) -> None:

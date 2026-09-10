@@ -10,17 +10,19 @@ from importlib import util
 from pathlib import Path
 from unittest import mock
 
-from tests.concorde.support.feature_workspace import reflection_entry, write_reflection_collection
 from tests.concorde.support.reflection_triage import (
+    MODULE_ID,
     commit_change,
     create_triage_project,
     git,
     initialize_git,
+    reflection_entry,
     sha256,
     tree_hashes,
     write_config,
     write_high_water,
     write_plan,
+    write_reflection_collection,
 )
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
@@ -74,8 +76,8 @@ class ReflectionsQueueTests(unittest.TestCase):
             self.assertEqual([item["id"] for item in pending], ["R-003", "R-002"])
             self.assertEqual(entry["path"], ".concorde/reflections/pending/R-001.md")
             self.assertEqual(entry["bucket"], "pending")
-            self.assertEqual(entry["feature_path"], "specs/example/features/001-deliver.md")
-            self.assertEqual(entry["concerns_path"], "specs/example/architecture.md")
+            self.assertEqual(entry["feature_path"], "specs/modules/project/module.md")
+            self.assertEqual(entry["concerns_path"], "src/example.py")
             self.assertEqual(plans["R-003"]["route"], "fast-loop")
             self.assertEqual(tree_hashes(root), before)
 
@@ -209,7 +211,7 @@ class ReflectionsQueueTests(unittest.TestCase):
             self.assertIn("effort", result.stderr)
             self.assertEqual(tree_hashes(root), before)
 
-            write_plan(root, "R-002", status="merged", commit=commit, recorded_under="feature.example.other")
+            write_plan(root, "R-002", status="merged", commit=commit, recorded_under="module.other")
             before = tree_hashes(root)
             result = run_queue(root, "--remove-merged", "R-002", check=False)
             self.assertEqual(result.returncode, 2)
@@ -720,11 +722,11 @@ class ReflectionsQueueTests(unittest.TestCase):
             self.assertEqual(payload, json.loads(second.stdout))
             self.assertEqual(tree_hashes(root), before)
 
-    def test_validate_entry_reports_attributable_finding_for_broken_concern(self):
+    def test_validate_entry_reports_attributable_finding_for_unregistered_attribution(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = create_triage_project(Path(temporary), entry_count=1)
             collection = root / ".concorde/reflections"
-            write_reflection_collection(root, [reflection_entry("R-001", Concerns="specs/example/missing.md")])
+            write_reflection_collection(root, [reflection_entry("R-001", Feature="module.missing")])
             write_high_water(collection, 1)
 
             result = run_queue(root, "--validate-entry", "R-001", check=False)
@@ -746,7 +748,7 @@ class ReflectionsQueueTests(unittest.TestCase):
                 root,
                 [
                     reflection_entry("R-001"),
-                    reflection_entry("R-002", Concerns="specs/example/missing.md"),
+                    reflection_entry("R-002", Feature="module.missing"),
                 ],
             )
             write_high_water(collection, 2)
@@ -761,21 +763,24 @@ class ReflectionsQueueTests(unittest.TestCase):
             self.assertIn("CONCORDE-REFLECT-004", payload["unrelated"]["rules"])
 
     def test_validate_entry_still_runs_for_document_in_wrong_bucket(self):
+        # A misplaced document makes the whole collection unloadable, so project validation reports
+        # one source finding that is attributable to no single document; locating and reporting the
+        # requested entry still succeeds instead of failing the command.
         with tempfile.TemporaryDirectory() as temporary:
             root = create_triage_project(Path(temporary), entry_count=1)
             collection = root / ".concorde/reflections"
             write_reflection_collection(root, [reflection_entry("R-001")], bucket="planned")
             write_high_water(collection, 1)
 
-            result = run_queue(root, "--validate-entry", "R-001", check=False)
+            result = run_queue(root, "--validate-entry", "R-001")
 
-            self.assertEqual(result.returncode, 1)
+            self.assertEqual(result.returncode, 0)
             payload = json.loads(result.stdout)
             self.assertEqual(payload["bucket"], "planned")
             self.assertEqual(payload["path"], ".concorde/reflections/planned/R-001.md")
-            self.assertEqual(payload["status"], "invalid")
-            finding = next(item for item in payload["findings"] if item["rule_id"] == "CONCORDE-REFLECT-005")
-            self.assertEqual(finding["source"], ".concorde/reflections/planned/R-001.md")
+            self.assertEqual(payload["status"], "valid")
+            self.assertEqual(payload["project_status"], "invalid")
+            self.assertIn("CONCORDE-SOURCE-008", payload["unrelated"]["rules"])
 
     def test_validate_entry_rejects_unknown_noncanonical_ids_and_json_combination(self):
         with tempfile.TemporaryDirectory() as temporary:

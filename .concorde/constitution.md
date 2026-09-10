@@ -6,7 +6,8 @@ Sync Impact Report
 - Modified principles: P1–P10; entity file listings replace Implementation Spec bindings, pending
   files are confirmed at delivery, planners see file names but never contents.
 - Added sections: four-part Module Specs, entity file listings.
-- Removed sections: Implementation Spec reuse, Archify System overview declarations.
+- Removed sections: Implementation Spec reuse, external diagram-source declarations, the retained
+  pre-Profile-10 compatibility utilities and their fixtures.
 - Deferred placeholders: none.
 -->
 
@@ -40,8 +41,8 @@ entities list the exact files that realize them; the registry mirrors that union
 workers receive file contents; other workers use their own complete Module contracts and see file
 names only. Changes to a shared file require fresh evidence for every listing Module. Delivery
 confirms declared pending files that now exist. Runtime, distribution, self Specs and human
-publication evolve together. Legacy Profile 7 utilities may inspect old fixtures deterministically
-but never supply cognitive inputs to a Profile 10 agent.
+publication evolve together. Older profiles have no compatibility path: the runtime, the validator
+and publication accept Profile 10 only, and an older project requires an explicit migration.
 
 ### Independent Protocol standard
 

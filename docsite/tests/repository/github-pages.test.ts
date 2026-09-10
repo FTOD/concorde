@@ -3,8 +3,8 @@ import {resolve} from 'node:path';
 
 import {describe, expect, it} from 'vitest';
 
-import {loadSiteIdentity} from '../../plugins/concorde-content/site-identity';
-import {canonicalRoute} from '../../plugins/concorde-content/routes';
+import {loadSiteIdentity} from '../../plugins/scoped-content/site-identity';
+import {canonicalRoute} from '../../plugins/scoped-content/routes';
 
 const siteDir = resolve(__dirname, '../..');
 const projectRoot = resolve(siteDir, '..');
@@ -18,7 +18,7 @@ describe('Concorde repository GitHub Pages deployment', () => {
     expect(identity.organizationName).toBe('FTOD');
     expect(identity.projectName).toBe('concorde');
     expect(identity.repository).toBe('https://github.com/FTOD/concorde');
-    expect(canonicalRoute('/concorde/architecture/module.concorde', identity.baseUrl)).toBe('/architecture/module.concorde');
+    expect(canonicalRoute('/concorde/specs/modules/concorde/module', identity.baseUrl)).toBe('/specs/modules/concorde/module');
     expect(canonicalRoute('/concorde/', identity.baseUrl)).toBe('/');
   });
 
@@ -30,13 +30,13 @@ describe('Concorde repository GitHub Pages deployment', () => {
     expect(workflow).toBe(scaffold);
   });
 
-  it('builds with project-local Archify and deploys only the verified output', async () => {
+  it('checks out once and deploys only the verified output', async () => {
     const workflow = await readFile(resolve(projectRoot, '.github/workflows/deploy-docsite.yml'), 'utf8');
     expect(workflow).toContain('name: Deploy project docsite');
     expect(workflow).toContain('branches: [main]');
-    expect(workflow).toMatch(/name: Check out repository[\s\S]*?fetch-depth: 0/);
+    expect(workflow).toContain('name: Check out repository');
     expect(workflow.match(/uses: actions\/checkout@v6/g)).toHaveLength(1);
-    expect(workflow).not.toContain('repository: tt-a1i/archify');
+    expect(workflow).not.toContain('fetch-depth');
     expect(workflow).not.toMatch(/Build verified docsite\n\s+env:/);
     expect(workflow).toContain('run: npm ci --prefix docsite');
     expect(workflow).toContain('run: npm --prefix docsite run build');

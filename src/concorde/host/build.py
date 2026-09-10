@@ -438,7 +438,7 @@ def check_build(project_root: str | Path, integration: str = "all") -> tuple[boo
     build-owned locations in ``generated/`` -- see ``GENERATED_OWNED_DIRS``/``GENERATED_OWNED_FILES``
     -- and, for our own seven skills, ``.claude/skills``/``.agents/skills``) that is missing,
     unexpected, or byte-different. Nothing under project_root is written or modified. A third
-    party's own Skill directories (for example ``.claude/skills/archify``) are never inspected or
+    party's own Skill directories (for example ``.claude/skills/<vendor-skill>``) are never inspected or
     reported, and neither is any other path under ``generated/`` that the build does not own (for
     example diagram renders under ``generated/architecture/``): ``generated/`` is a shared, ignored
     root and this check only judges what the build itself produces there.

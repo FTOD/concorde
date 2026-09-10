@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import json
 import sys
 import tempfile
@@ -12,34 +11,11 @@ from tests.concorde.support.paths import RUNTIME_ROOT
 sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.host.configuration import apply_configuration, load_configuration, propose_configuration
-from concorde.host.typed_data import TypedDataError, artifact, decode, typed, validate_typed, verify_artifacts
-from concorde.understanding.initialize import apply_proposal, propose_initialization
+from concorde.host.typed_data import TypedDataError, artifact, decode, verify_artifacts
 from tests.concorde.support.operation_json import CONFIGURATION
 
 
 class TypedDataTests(unittest.TestCase):
-    def test_triage_conditional_fields_are_enforced(self):
-        valid = [
-            {"action": "status", "reflection_ids": []},
-            {"action": "close", "reflection_ids": ["R-001"]},
-            {"action": "investigate", "reflection_ids": ["R-001"], "feature_path": "specs/example/features/001-change.md", "request": "Investigate"},
-            {"action": "implement", "reflection_ids": ["R-001"], "feature_path": "specs/example/features/001-change.md", "request": "Implement", "route": "plan"},
-        ]
-        for data in valid:
-            typed("concorde-reflections-triage-context", data)
-        invalid = [
-            {"action": "close", "reflection_ids": []},
-            {"action": "status", "reflection_ids": [], "feature_path": "specs/example/features/001-change.md"},
-            {"action": "status", "reflection_ids": ["R-001", "R-001"]},
-            {"action": "investigate", "reflection_ids": ["R-001"]},
-            {**valid[2], "route": "plan"},
-            {key: value for key, value in valid[3].items() if key != "route"},
-            {**valid[3], "constraints": None},
-        ]
-        for data in invalid:
-            with self.subTest(data=data), self.assertRaises(TypedDataError):
-                typed("concorde-reflections-triage-context", data)
-
     def test_artifact_references_detect_staleness_missing_files_and_symlinks(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -63,27 +39,12 @@ class TypedDataTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(TypedDataError):
                 decode(value)
 
-    def test_new_initialization_requires_explicit_configuration_and_applies_it(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            self.assertEqual(propose_initialization(root).status, "invalid")
-            proposed = propose_initialization(root, "module.sample", "Sample", CONFIGURATION)
-            self.assertEqual(proposed.status, "proposal", proposed.findings)
-            self.assertEqual(proposed.result["proposal"]["proposal_version"], 4)
-            self.assertEqual(len(proposed.result["proposal"]["files"]), 5)
-            (root / "accepted.json").write_text(json.dumps(proposed.result["proposal"]))
-            applied = apply_proposal(root, "accepted.json")
-            self.assertEqual(applied.status, "success", applied.findings)
-            self.assertEqual(load_configuration(root), CONFIGURATION)
-            self.assertTrue((root / ".concorde/reflections/config.json").is_file())
-            self.assertEqual(apply_proposal(root, "accepted.json").status, "unchanged")
-
     def test_existing_configuration_migration_preserves_fields_and_rejects_stale_proposal(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             path = root / ".concorde/config.json"
             path.parent.mkdir()
-            original = {"profile_version": 7, "root_module_id": "module.example", "specification_root": "specs/example", "project_setting": {"keep": True}}
+            original = {"profile_version": 10, "registry": ".concorde/specs.json", "project_setting": {"keep": True}}
             path.write_text(json.dumps(original))
             with self.assertRaises(TypedDataError):
                 load_configuration(root)

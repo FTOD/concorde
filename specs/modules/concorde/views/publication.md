@@ -88,8 +88,7 @@ pages; both retain accessible titles and descriptions.
 
 These generated views are human navigation, not agent context grants. The publication Tool may read
 multiple registered collections deterministically; an agent still receives one host-bound target
-snapshot. Legacy Profile 7 publication readers remain isolated diagnostics and do not admit agent
-work.
+snapshot.
 
 ## Main routing view
 

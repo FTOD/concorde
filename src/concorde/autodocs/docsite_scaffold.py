@@ -19,15 +19,16 @@ from .docsite_template import (
     verify_package_root,
     workflow_template,
 )
+from ..host.typed_data import TypedDataError, checked_path, safe_path
 from ..model import Finding, ToolResult
-from ..understanding.repository import ProjectRepository, RepositoryError, safe_relative_path
+from ..specification.changes import apply_files, file_change
+from ..specification.repository import SpecError, SpecRepository
 
 PROPOSAL_VERSION = 1
 SITE_IDENTITY_PATH = f"{TEMPLATE_ROOT}/site.json"
 WORKFLOW_SOURCE = f"{TEMPLATE_ROOT}/{WORKFLOW_TEMPLATE}"
 WORKFLOW_TARGET = ".github/workflows/deploy-docsite.yml"
 
-_H1_PATTERN = re.compile(r"^#\s+(?:Architecture:\s*)?(.+)$", re.MULTILINE)
 _ABSOLUTE_HTTP_URL = re.compile(r"^https?://\S+$")
 _ORIGIN_SECTION = 'remote "origin"'
 _SSH_GITHUB = re.compile(r"^git@github\.com:(?P<owner>[^/]+)/(?P<repo>.+?)(?:\.git)?$")
@@ -43,33 +44,13 @@ def _slug(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-") or "project"
 
 
-def _configured_root_architecture(project_root: Path) -> str | None:
-    config = project_root / ".concorde/config.json"
-    if not config.exists():
-        return None
+def _entry_module_title(project_root: Path) -> str | None:
+    """The registered entry Module's title, or None when the project is not initialized."""
     try:
-        if json.loads(config.read_text()).get("profile_version")==10:
-            from ..specification.repository import SpecRepository
-            repo=SpecRepository(project_root)
-            return repo.targets[repo.entry_target].documents[0]
-        package = ProjectRepository(project_root).load()
-    except RepositoryError:
+        repository = SpecRepository(project_root)
+        return repository.targets[repository.entry_target].title
+    except (SpecError, TypedDataError, OSError, ValueError, KeyError):
         return None
-    roots = package.by_id.get(package.root_module_id, ())
-    if len(roots) != 1 or roots[0].kind != "module":
-        return None
-    return roots[0].path
-
-
-def _default_title(root: Path, architecture_path: str) -> str:
-    try:
-        text = (root / architecture_path).read_text(encoding="utf-8")
-    except OSError:
-        return root.name
-    match = _H1_PATTERN.search(text)
-    if match and match.group(1).strip():
-        return match.group(1).strip()
-    return root.name
 
 
 def _origin_repository(root: Path) -> str | None:
@@ -201,25 +182,6 @@ def _detect_prerequisites(root: Path) -> list[dict[str, Any]]:
         prerequisites.append({"name": "npm", "status": "missing", "detail": "npm was not found on PATH."})
     else:
         prerequisites.append({"name": "npm", "status": "present", "detail": npm})
-    archify_package = root / ".agents/skills/archify/package.json"
-    lock_path = root / "skills-lock.json"
-    archify_present = False
-    if archify_package.is_file() and not archify_package.is_symlink():
-        try:
-            lock_value = json.loads(lock_path.read_text(encoding="utf-8"))
-            archify_present = isinstance(lock_value, dict) and isinstance(lock_value.get("skills"), dict) and "archify" in lock_value["skills"]
-        except (OSError, json.JSONDecodeError):
-            archify_present = False
-    if archify_present:
-        prerequisites.append({"name": "archify", "status": "present", "detail": str(archify_package)})
-    else:
-        prerequisites.append(
-            {
-                "name": "archify",
-                "status": "missing",
-                "detail": "Pinned Archify skill tt-a1i/archify was not found at .agents/skills/archify with a skills-lock.json entry.",
-            }
-        )
     return prerequisites
 
 
@@ -228,17 +190,13 @@ def _prerequisite_findings(prerequisites: list[dict[str, Any]]) -> list[Finding]
     for item in prerequisites:
         if item["status"] not in {"missing", "outdated"}:
             continue
-        if item["name"] == "archify":
-            remediation = "Install the pinned Archify skill tt-a1i/archify at .agents/skills/archify with a matching skills-lock.json entry."
-        else:
-            remediation = "Install Node.js 20+ and npm, then retry."
         findings.append(
             Finding(
                 "CONCORDE-DOCSITE-007",
                 "warning",
                 f"{TEMPLATE_ROOT}/",
                 f"{item['name']} is {item['status']}: {item['detail']}",
-                remediation,
+                "Install Node.js 20+ and npm, then retry.",
             )
         )
     return findings
@@ -257,8 +215,8 @@ def propose_docsite(
     root = Path(project_root).resolve()
     package = Path(package_root).resolve() if package_root is not None else _default_package_root()
 
-    architecture_path = _configured_root_architecture(root)
-    if architecture_path is None:
+    entry_title = _entry_module_title(root)
+    if entry_title is None:
         finding = Finding(
             "CONCORDE-DOCSITE-001",
             "error",
@@ -291,7 +249,7 @@ def propose_docsite(
         )
         return ToolResult("docsite", ".", "invalid", findings=(finding,))
 
-    resolved_title = title if title is not None else _default_title(root, architecture_path)
+    resolved_title = title if title is not None else (entry_title.strip() or root.name)
     resolved_repository = repository if repository is not None else _origin_repository(root)
     identity, identity_finding = _resolve_identity(resolved_title, resolved_repository, url, base_url)
 
@@ -336,7 +294,7 @@ def propose_docsite(
 
 
 def _load_accepted(root: Path, package: Path, proposal_path: str) -> tuple[dict[str, bytes], dict[str, Any], bool, str]:
-    path = ProjectRepository(root).resolve(safe_relative_path(proposal_path))
+    path = checked_path(root, safe_path(proposal_path))
     value = json.loads(path.read_text(encoding="utf-8"))
     value = value.get("result", {}).get("proposal", value.get("proposal", value))
     if not isinstance(value, dict) or value.get("proposal_version") != PROPOSAL_VERSION:
@@ -358,7 +316,7 @@ def _load_accepted(root: Path, package: Path, proposal_path: str) -> tuple[dict[
     for item in files:
         if not isinstance(item, dict) or not isinstance(item.get("path"), str):
             raise ValueError("proposal file entry must declare a path")
-        relative = safe_relative_path(item["path"])
+        relative = safe_path(item["path"])
         expected_sha = item.get("sha256")
         if "source" in item:
             source = item["source"]
@@ -397,7 +355,7 @@ def apply_docsite(
     package = Path(package_root).resolve() if package_root is not None else _default_package_root()
     try:
         resolved, identity, github_pages, digest = _load_accepted(root, package, proposal_path)
-    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError, RepositoryError, DocsiteTemplateError) as error:
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError, DocsiteTemplateError) as error:
         finding = Finding(
             "CONCORDE-DOCSITE-004",
             "error",
@@ -444,8 +402,9 @@ def apply_docsite(
             result={"conflicts": [path for path, state in sorted(states.items()) if state != "missing"]},
         )
     try:
-        created = ProjectRepository(root).stage_and_promote({path: content.decode("utf-8") for path, content in resolved.items()})
-    except (OSError, RepositoryError) as error:
+        changes = [file_change(root, path, content.decode("utf-8")) for path, content in sorted(resolved.items())]
+        created = apply_files(root, changes, set(resolved))
+    except (OSError, SpecError, TypedDataError, UnicodeError) as error:
         finding = Finding(
             "CONCORDE-DOCSITE-006",
             "error",

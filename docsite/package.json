@@ -7,10 +7,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "inspect": "node --import tsx scripts/inspect.ts",
     "validate": "node --import tsx scripts/validate.ts",
-    "render-diagrams": "node --import tsx scripts/render-diagrams.ts",
-    "prepare-content": "node --import tsx scripts/materialize-content.ts",
     "start": "node --import tsx scripts/start.ts",
     "build": "node --import tsx scripts/build.ts",
     "typecheck": "tsc --noEmit",
@@ -24,16 +21,10 @@
     "@docusaurus/theme-mermaid": "3.10.2",
     "@easyops-cn/docusaurus-search-local": "0.55.3",
     "@mermaid-js/layout-elk": "0.1.9",
-    "ajv": "8.17.1",
     "cytoscape": "^3.34.2",
-    "cytoscape-fcose": "^2.2.0",
-    "fast-glob": "3.3.3",
     "gray-matter": "4.0.3",
     "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "remark-parse": "11.0.0",
-    "unified": "11.0.5",
-    "unist-util-visit": "5.0.0"
+    "react-dom": "19.2.0"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.10.2",

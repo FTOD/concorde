@@ -108,9 +108,9 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                     ),
                 ),
             )
-    from ..understanding.validate import validate_project
+    from ..specification.validation import validate_repository
 
-    return validate_project(root, arguments.target)
+    return validate_repository(root, arguments.target)
 
 
 def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:

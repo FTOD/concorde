@@ -59,7 +59,7 @@ digest.
 
 ```typescript
 // plugins/scoped-content/model.ts
-isScoped(root: string): boolean;
+requireScoped(root: string): void;
 loadScopedRegistry(root: string): ScopedRegistry;
 safeRead(root: string, path: string): string;
 rewriteLinks(registry: ScopedRegistry, page: Page): string;
@@ -80,11 +80,11 @@ promoteCandidate(candidate: string, destination: string, backup: string): Promis
 
 `root` is a project-root filesystem path. `safeRead` requires a regular file and returns UTF-8
 text; invalid paths throw `Error`, and OS read errors retain their Node error code. `hash` returns
-`sha256:` followed by 64 lowercase hexadecimal digits. `isScoped` returns false for missing
-configuration or a non-10 profile, true for `profile_version === 10`, and propagates malformed
-JSON/unsafe path/read errors. Consumers of this API select the Profile 10 branch with `isScoped`.
-This public build contract accepts Profile 10 only. Legacy fixture readers remain separate
-diagnostic utilities; their records and rendering paths are not another supported publication mode.
+`sha256:` followed by 64 lowercase hexadecimal digits. `requireScoped` returns normally only for
+`profile_version === 10`; a missing configuration, a different profile, and a malformed JSON,
+unsafe path or read error each throw an `Error` naming the reason. Every entry point of this public
+build contract calls it first: publication accepts Profile 10 projects only, and no other profile
+has a compatibility rendering path.
 
 `loadScopedRegistry` reads `.concorde/config.json`, which must contain `profile_version: 10` and a
 safe relative `registry` path. The registry is
@@ -267,9 +267,9 @@ rollback can still require operator recovery. The helper itself does not validat
 must not be called on unchecked or stale output.
 
 ```typescript
-if (!isScoped(projectRoot)) throw new Error('This consumer requires Profile 10');
+requireScoped(projectRoot);       // throws unless the project declares profile_version 10
 const registry = loadScopedRegistry(projectRoot);
-await materializeScoped(registry); // inspect derived assets; not yet a published build
+await materializeScoped(registry); // stage derived assets; not yet a published build
 await buildSite();                // integrated prepare/build/validate/promotion path
 ```
 

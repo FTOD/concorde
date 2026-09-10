@@ -12,9 +12,10 @@ stays outside `docsite/`; `.concorde/specs.json` names the documents, Module rel
 Module's implementation file listing. Nearby Markdown is not discovered as authority. Control state
 under `.concorde/` is excluded from published prose.
 
-## Profile 10 navigation
+## Navigation
 
-A Profile 10 project uses `plugins/scoped-content` and registry schema 3. Every registered document
+The adapter publishes Profile 10 projects only: it reads `plugins/scoped-content` and registry
+schema 3, and refuses any other `profile_version` with an explicit error. Every registered document
 publishes once at a readable source-derived route: `specs/modules/project/module.md` becomes
 `/specs/modules/project/module`. The navbar exposes a single `Module Specs` tab alongside `Graph`;
 there is no separate Implementation Specs tab, because Implementation Specs no longer exist. A
@@ -33,9 +34,7 @@ source or build step.
 
 Stable target/path-hash aliases redirect to current canonical document routes. Changed source
 paths require deliberate migration of external links. Human navigation does not widen agent context.
-The older Architecture/Features adapter and its fixtures remain for Profile 7 diagnostic publication;
-its directory-discovery rules do not govern Profile 10 projects. Profile 8 and 9 require explicit
-migration.
+Older profiles require explicit migration; there is no compatibility publishing path for them.
 
 ## Site identity
 
@@ -59,7 +58,7 @@ illustrate the specification language and do not register additional software Mo
 assets in the project Spec registry.
 
 The adapter reads exactly one project-specific file, `docsite/site.json` (site identity schema 1),
-through `plugins/concorde-content/site-identity.ts`. No other adapter byte varies between projects.
+through `plugins/scoped-content/site-identity.ts`. No other adapter byte varies between projects.
 
 | Field | Type | Rule |
 |---|---|---|
@@ -95,10 +94,9 @@ digest-bound to the package. It neither requires nor creates a project README.
 
 - Node.js 20 or newer
 - npm with lockfile support
-- the pinned project-local Archify 2.16 skill at `../.agents/skills/archify`
 
-Install dependencies with `npm ci`. `node_modules/`, `.docusaurus/`, `.generated/`,
-`../generated/`, `coverage/`, and `build/` are disposable.
+Install dependencies with `npm ci`. `node_modules/`, `.docusaurus/`, `.generated/`, `coverage/`
+and `build/` are disposable.
 
 ## Commands
 
@@ -106,28 +104,25 @@ Run commands from `docsite/`:
 
 | Command | Purpose |
 |---|---|
-| `npm run inspect` | Print stable source-to-route mappings, exclusions, and finding counts. |
 | `npm run validate` | Validate registered sources, identities, relations, routes, provenance and links. |
-| `npm run render-diagrams` | Validate and atomically deliver all architecture-owned diagrams. |
-| `npm run start` | Prepare current content and diagrams, then start Docusaurus preview. |
+| `npm run start` | Materialize the current registered content, then start Docusaurus preview. |
 | `npm test` | Run unit, contract, fixture, and integration evidence. |
 | `npm run build` | Build, validate, and atomically promote the verified site. |
 | `npm run typecheck` | Type-check maintained TypeScript. |
 | `npm run check` | Run typechecking, all tests, source validation, and a production build. |
 
-Successful Profile 10 builds emit `build/build-manifest.json` using Build Manifest 17. It records
-registered document routes, typed relationships, exact source identities and completed build
-checks. A stale materialization or changed source prevents candidate promotion.
-The retained Profile 7 adapter uses its own Build Manifest 13 boundary. Neither publication model
-stores a claim that a Module's implementation currently satisfies its promises.
+Successful builds emit `build/build-manifest.json` using Build Manifest 17. It records registered
+document routes, typed relationships, exact source identities and completed build checks. A stale
+materialization or changed source prevents candidate promotion. The manifest stores no claim that
+a Module's implementation currently satisfies its promises.
 
-A failed candidate is removed and never replaces the last verified `build/`. Ordinary builds do not
-run Archify `visual-check`; perceptual review remains an explicit human-evidence step.
+A failed candidate is removed and never replaces the last verified `build/`. Perceptual review of
+a published page remains an explicit human-evidence step.
 
 ## Repository-specific evidence
 
 `docsite/tests/repository/` holds tests that assert facts about the Concorde repository itself —
-its own diagram inventory, its own maintained specifications, and that `docsite/site.json` and
+its own Module relationship graph, its own maintained specifications, and that `docsite/site.json` and
 `.github/workflows/deploy-docsite.yml` reproduce Concorde's identity and deployment workflow. These
 tests are not part of the template: every other project that scaffolds the adapter carries its own
 `docsite/site.json` and no `tests/repository/` content.

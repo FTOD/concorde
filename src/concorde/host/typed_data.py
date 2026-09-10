@@ -13,6 +13,8 @@ import re
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from .wire_shapes import ARTIFACT, PATH, STRING, array, obj, typed_schema
+
 
 class TypedDataError(ValueError):
     def __init__(self, code: str, field: str, message: str):
@@ -45,97 +47,30 @@ def decode(text: str) -> Any:
         raise TypedDataError("invalid_json", "", str(error)) from error
 
 
-def obj(properties: dict, optional: tuple[str, ...] = ()) -> dict:
-    return {"type": "object", "properties": properties,
-            "required": [key for key in properties if key not in optional],
-            "additionalProperties": False}
-
-
-def array(items: dict, *, unique: bool = False) -> dict:
-    return {"type": "array", "items": items, **({"uniqueItems": True} if unique else {})}
-
-
-STRING = {"type": "string", "minLength": 1}
-PATH = {**STRING, "format": "project-path"}
-DIGEST = {**STRING, "pattern": r"^sha256:[0-9a-f]{64}$"}
-FEATURE_ID = {**STRING, "pattern": r"^feature\.[a-z0-9]+(?:[.-][a-z0-9-]+)*$"}
 REFLECTION_ID = {**STRING, "pattern": r"^R-[0-9]{3,}$"}
 COMMIT = {**STRING, "pattern": r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$"}
-CONSTRAINTS = array(STRING)
-ARTIFACT = obj({"id": STRING, "path": PATH, "digest": DIGEST})
-TASK = {"feature_path": PATH, "request": STRING, "constraints": CONSTRAINTS}
-SELECTION = {"feature_id": FEATURE_ID, "feature_path": PATH, "attempt_dir": PATH,
-             "source_digest": DIGEST, "artifacts": array(ARTIFACT, unique=True)}
-ACTIONS = {"enum": ["status", "investigate", "implement", "merge", "close"]}
-CAPABILITY_CONTRACTS = {
-    "concorde-plan": ("concorde-plan-context", "concorde-plan-result"),
-    "concorde-standard-dev-loop": ("concorde-standard-dev-loop-context", "concorde-standard-dev-loop-result"),
-    "concorde-reflections-triage": ("concorde-reflections-triage-context", "concorde-reflections-triage-result"),
-}
-
-
-def typed_schema(type_id: str) -> dict:
-    return obj({"type_id": {"const": type_id}, "schema_version": {"type": "integer", "const": 1},
-                "data": {"$ref": type_id}})
+# Capability identities and their paired context/result type IDs are declared by ``contracts``;
+# this mapping is populated from it at the end of this module.
+CAPABILITY_CONTRACTS: dict[str, tuple[str, str]] = {}
 
 
 DATA_SCHEMAS = {
     "concorde-capability-configuration": obj({"integration": {"enum": ["codex", "claude"]},
                                             "enforcement": {"enum": ["native", "outer"]}}),
-    "concorde-plan-context": obj({**TASK, "source_artifacts": array(ARTIFACT, unique=True)}, ("constraints", "source_artifacts")),
-    "concorde-standard-dev-loop-context": obj(TASK, ("constraints",)),
-    "concorde-plan-author-context": obj({"task": typed_schema("concorde-plan-context"),
-                                        "planning_context": typed_schema("concorde-planning-context")}),
-    "concorde-planning-context": obj({
-        "feature_id": FEATURE_ID, "feature_path": PATH, "module_id": STRING,
-        "module_architecture": ARTIFACT, "attempt_dir": PATH, "source_digest": DIGEST,
-        "owned_artifacts": array(ARTIFACT, unique=True),
-        "provider_features": array(obj({"feature_id": FEATURE_ID, "artifact": ARTIFACT,
-                                         "interface_ids": {**array(STRING, unique=True), "minItems": 1}}), unique=True),
-        "denied_paths": array(PATH, unique=True),
+    "concorde-reflection-investigation-result": obj({
+        "findings": array(obj({
+            "reflection_id": REFLECTION_ID, "verified_commit": COMMIT,
+            "observed_state": {"enum": ["reproduced", "not-reproduced"]},
+            "verification": STRING, "analysis": STRING, "resolution": STRING,
+            "intervention_rationale": STRING,
+            "human_intervention": {"enum": ["required", "not-required"]},
+            "route": {"enum": ["fast-loop", "plan", "dismiss", "blocked"]},
+            "effort": {"enum": ["small", "medium", "large"]}, "files": array(PATH, unique=True),
+            "steps": STRING, "validation": STRING, "risks": STRING,
+            "protocol_change": {"type": "boolean"},
+        })),
     }),
-    "concorde-plan-result": obj(SELECTION),
-    "concorde-standard-dev-loop-result": obj({
-        "feature_id": FEATURE_ID, "feature_path": PATH,
-        "completed_capabilities": {"const": ["concorde-specify", "concorde-plan", "concorde-tasks",
-                                               "concorde-implement", "concorde-validate", "concorde-deliver"]},
-        "delivery": obj({"status": {"const": "delivered"}, "attempt_dir": PATH,
-                          "retained_source_digest": DIGEST}),
-    }),
-    "concorde-reflections-triage-context": obj({
-        "action": ACTIONS, "reflection_ids": array(REFLECTION_ID, unique=True),
-        "route": {"enum": ["fast-loop", "plan"]}, **TASK,
-    }, ("route", "feature_path", "request", "constraints")),
-    "concorde-reflections-triage-result": obj({
-        "action": ACTIONS, "reflection_ids": array(REFLECTION_ID, unique=True),
-        "dispositions": array(obj({"reflection_id": REFLECTION_ID,
-                                   "outcome": {"enum": ["inspected", "planned", "implemented", "merged", "closed", "needs-comments"]}})),
-        "plan_result": typed_schema("concorde-plan-result"),
-    }, ("plan_result",)),
 }
-
-# Leaf adapters have fixed identities too; their results are derived from verified
-# workspace state, never by parsing an agent's narrative completion output.
-for _name in ("specify", "tasks", "implement", "validate", "deliver", "fast-loop"):
-    DATA_SCHEMAS[f"concorde-{_name}-context"] = obj({
-        "task": {"type": "object", "format": "typed-task"}, **SELECTION,
-        "source_artifacts": array(ARTIFACT, unique=True),
-    }, ("source_artifacts",))
-    DATA_SCHEMAS[f"concorde-{_name}-result"] = obj(SELECTION)
-DATA_SCHEMAS["concorde-specify-context"] = obj({"task": {"type": "object", "format": "typed-task"}, "feature_path": PATH})
-DATA_SCHEMAS["concorde-reflection-investigation-result"] = obj({
-    "findings": array(obj({
-        "reflection_id": REFLECTION_ID, "verified_commit": COMMIT,
-        "observed_state": {"enum": ["reproduced", "not-reproduced"]},
-        "verification": STRING, "analysis": STRING, "resolution": STRING,
-        "intervention_rationale": STRING,
-        "human_intervention": {"enum": ["required", "not-required"]},
-        "route": {"enum": ["fast-loop", "plan", "dismiss", "blocked"]},
-        "effort": {"enum": ["small", "medium", "large"]}, "files": array(PATH, unique=True),
-        "steps": STRING, "validation": STRING, "risks": STRING,
-        "protocol_change": {"type": "boolean"},
-    })),
-})
 
 
 def _pointer(field: str, key: Any) -> str:
@@ -230,29 +165,6 @@ def validate_typed(value: Any, expected: str | None = None, field: str = "") -> 
     check_schema(value, typed_schema(type_id), field)
     result = copy.deepcopy(value)
     data = result["data"]
-    if type_id in {"concorde-plan-context", "concorde-standard-dev-loop-context"}:
-        data.setdefault("constraints", [])
-    if type_id == "concorde-plan-context":
-        data.setdefault("source_artifacts", [])
-    if type_id == "concorde-reflections-triage-context":
-        action = data["action"]
-        if action != "status" and not data["reflection_ids"]:
-            raise TypedDataError("invalid_field", field + "/data/reflection_ids", "this action requires an explicit nonempty selection")
-        required = {"route"} if action == "implement" else set()
-        forbidden = set() if action == "implement" else {"route"}
-        if action in {"status", "close"}:
-            forbidden.update(TASK)
-        else:
-            required.update(("feature_path", "request"))
-            data.setdefault("constraints", [])
-        for key in required - data.keys():
-            raise TypedDataError("invalid_field", _pointer(field + "/data", key), f"required for {action}")
-        for key in forbidden & data.keys():
-            raise TypedDataError("invalid_field", _pointer(field + "/data", key), f"forbidden for {action}")
-    if type_id == "concorde-reflections-triage-result":
-        ids = [item["reflection_id"] for item in data["dispositions"]]
-        if ids != data["reflection_ids"]:
-            raise TypedDataError("incompatible_handoff", field + "/data/dispositions", "dispositions must match the exact selected IDs in order")
     if type_id == "concorde-main-request":
         action = data.setdefault("action", "ask")
         if action in {"ask", "design-topology"}:
@@ -279,9 +191,6 @@ def validate_typed(value: Any, expected: str | None = None, field: str = "") -> 
                 raise TypedDataError("invalid_field", field + "/data", f"apply-topology forbids {sorted(forbidden)}")
         if "focus_id" in data and "target_id" not in data:
             raise TypedDataError("invalid_field", field + "/data/focus_id", "focus hint requires target hint")
-    if "feature_id" in data and "attempt_dir" in data:
-        if data["attempt_dir"] != f".concorde/attempts/{data['feature_id']}":
-            raise TypedDataError("workspace_mismatch", field + "/data/attempt_dir", "attempt does not belong to selected feature")
     return result
 
 
@@ -337,9 +246,8 @@ def json_schema(type_id: str) -> dict:
     return {"$schema": "https://json-schema.org/draft/2020-12/schema",
             **expand(typed_schema(type_id)), "$defs": definitions}
 
-# Public capability admission now uses Spec targets. Retained low-level data helpers are not
-# registered capability entry points and cannot re-enable the retired feature-path workflow.
-from .contracts import contracts as _profile8_contracts, schemas as _profile8_schemas
-DATA_SCHEMAS.update(_profile8_schemas())
-CAPABILITY_CONTRACTS.clear()
-CAPABILITY_CONTRACTS.update(_profile8_contracts())
+# Every registered capability entry point and its wire schemas are declared by ``contracts``;
+# the two shapes above are the host-owned values that no single capability owns.
+from .contracts import contracts as _capability_contracts, schemas as _capability_schemas
+DATA_SCHEMAS.update(_capability_schemas())
+CAPABILITY_CONTRACTS.update(_capability_contracts())

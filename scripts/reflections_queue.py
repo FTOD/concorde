@@ -33,7 +33,7 @@ import re
 import stat
 import subprocess
 import sys
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
@@ -56,7 +56,7 @@ from concorde.reflections.reflections import (  # noqa: E402
     split_reflection_path,
     strip_reference_suffix,
 )
-from concorde.understanding.validate import validate_project  # noqa: E402
+from concorde.specification.validation import validate_repository  # noqa: E402
 
 
 ROUTES = frozenset({"fast-loop", "plan", "specify", "dismiss", "blocked"})
@@ -95,13 +95,6 @@ VERIFIED_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 class QueueError(ValueError):
     pass
-
-
-def _safe_relative(value: str, field: str) -> str:
-    path = PurePosixPath(value)
-    if not value or path.is_absolute() or ".." in path.parts or "\\" in value:
-        raise QueueError(f"{field} must be a safe project-relative path: {value!r}")
-    return path.as_posix()
 
 
 def _sha256(data: bytes) -> str:
@@ -174,39 +167,19 @@ def load_config(root: Path) -> dict[str, Any]:
         raise QueueError(str(error)) from error
 
 
-def _specification_root(root: Path) -> tuple[str, Path]:
+def _document_map(root: Path) -> dict[str, str]:
+    """Every Module and scenario identity mapped to the local document that defines it."""
+    from concorde.specification.repository import SpecRepository
+
     try:
-        config = json.loads((root / ".concorde/config.json").read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        raise QueueError(f"invalid .concorde/config.json: {error}") from error
-    if config.get("profile_version")==10:return ".",root
-    relative = _safe_relative(str(config.get("specification_root", "")), "specification_root")
-    path = root / relative
-    if not path.is_dir():
-        raise QueueError(f"specification root does not exist: {relative}")
-    return relative, path
-
-
-def _document_map(specification_root: Path, root: Path) -> dict[str, str]:
-    config=json.loads((root/".concorde/config.json").read_text())
-    if config.get("profile_version")==10:
-        from concorde.specification.repository import SpecRepository
-        repo=SpecRepository(root)
-        result={t.id:t.primary_document for t in repo.targets.values()}
-        for target in repo.targets.values():
-            for scenario in repo.scenarios(target):
-                result[scenario.id]=scenario.document
-        return result
-    result: dict[str, str] = {}
-    for path in sorted(specification_root.rglob("*.md")):
-        try:
-            metadata, _ = parse_document(path.read_text(encoding="utf-8"), path.as_posix())
-        except (OSError, UnicodeError, FrontMatterError):
-            continue
-        identifier = metadata.get("id")
-        if isinstance(identifier, str) and identifier:
-            result[identifier] = path.relative_to(root).as_posix()
-    return result
+        repository = SpecRepository(root)
+    except (OSError, ValueError) as error:
+        raise QueueError(f"invalid registered Spec: {error}") from error
+    documents = {target.id: target.primary_document for target in repository.targets.values()}
+    for target in repository.targets.values():
+        for scenario in repository.scenarios(target):
+            documents[scenario.id] = scenario.document
+    return documents
 
 
 def _bucket_directory(root: Path, bucket: str, *, create: bool = False) -> Path:
@@ -226,8 +199,7 @@ def _bucket_directory(root: Path, bucket: str, *, create: bool = False) -> Path:
 def _load_reflections(
     root: Path, *, required: bool = False, allow_misplaced: bool = False
 ) -> tuple[Path, bytes, ParsedReflections, dict[str, str], dict[str, bytes]]:
-    _, specification_root = _specification_root(root)
-    documents_by_id = _document_map(specification_root, root)
+    documents_by_id = _document_map(root)
     directory = root / reflections_path()
     index = root / index_path()
     if not directory.exists() and not directory.is_symlink():
@@ -951,7 +923,7 @@ def validate_entry(root: Path, identifier: str) -> dict[str, Any]:
         raise QueueError(f"validate-entry ID must be canonical: {identifier!r}")
     path, relative, bucket = _locate_reflection_document(root, identifier)
     data = path.read_bytes()
-    result = validate_project(root)
+    result = validate_repository(root)
     attributable: list[Any] = []
     unrelated: list[Any] = []
     for finding in result.findings:

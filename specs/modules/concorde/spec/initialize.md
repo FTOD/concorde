@@ -82,7 +82,7 @@ changing project files; apply returns `status: "applied"`, `proposal: null` and 
 
 - req.spec.init-allowed-files: Application SHALL touch only .concorde/config.json, .concorde/specs.json, .concorde/topology-proposals/.gitignore, .concorde/reflections/index.json, .concorde/reflections/config.json and the explicit document paths named in the proposed registry.
 - req.spec.init-null-digests: Every proposed file SHALL have a null before_digest, and application SHALL require each destination to still be absent.
-- req.spec.init-no-overwrite: A new initialization SHALL NOT overwrite an existing file, and Profile 7 configurations SHALL NOT be treated as migratable.
+- req.spec.init-no-overwrite: A new initialization SHALL NOT overwrite an existing file, and an existing configuration declaring an older profile SHALL NOT be treated as migratable.
 - req.spec.init-explicit-envelope: Apply SHALL admit the proposal by its exact concorde-project-proposal@1 envelope and SHALL NOT accept an issuance token or a store lookup in its place.
 - req.spec.init-configuration-roles: The invocation's outer configuration SHALL control host settings for the call itself, and the propose request's configuration SHALL control the project settings written into the proposal; apply SHALL use the accepted proposal's configuration bytes rather than a replacement from either invocation field.
 - req.spec.init-configuration-required: A null outer configuration SHALL load existing project settings; before initialization no such settings exist, so the caller SHALL supply a valid outer configuration or receive configuration_mismatch.

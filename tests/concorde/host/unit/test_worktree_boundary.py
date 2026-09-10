@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.paths import CONTEXT_PROJECT, REPOSITORY_ROOT, RUNTIME_ROOT
+from tests.concorde.support.paths import RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 

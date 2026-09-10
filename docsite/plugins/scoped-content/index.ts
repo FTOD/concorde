@@ -2,7 +2,7 @@ import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
 import type {LoadContext,Plugin} from '@docusaurus/types';
 import {loadScopedRegistry,type Page,type ScopedRegistry} from './model';
-import {canonicalRoute,normalizeRoute} from '../concorde-content/routes';
+import {canonicalRoute,normalizeRoute} from './routes';
 async function requireMaterialized(registry:ScopedRegistry):Promise<void> {
   const identity=JSON.parse(await readFile(resolve(registry.projectRoot,'docsite/.generated/scoped-materialization.json'),'utf8'));
   if(identity.schema_version!==1||identity.sourceDigest!==registry.sourceDigest)throw new Error('Materialized Spec source identity differs; prepare publication again');

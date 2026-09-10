@@ -4,7 +4,7 @@ import {resolve} from 'node:path';
 
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {loadSiteIdentity, parseSiteIdentity, type SiteIdentity} from '../../plugins/concorde-content/site-identity';
+import {loadSiteIdentity, parseSiteIdentity, type SiteIdentity} from '../../plugins/scoped-content/site-identity';
 
 const validValue = {
   schema_version: 1,

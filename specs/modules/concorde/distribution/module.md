@@ -284,10 +284,6 @@ flowchart TB
 
 ## Unresolved information
 
-`src/concorde/host/cli.py`'s `validate` subcommand currently calls `validate_project` from the
-Profile 7 legacy understanding package retained under `module.views` pending removal; migrating it
-to `validate_repository` is outstanding.
-
 Managed runtime's replacement design intends to preserve the previous valid runtime until a rebuild
 is verified and to restore it after a failed rebuild, but the current provisioning implementation
 still removes an owned environment before rebuilding; this preservation promise is not yet fulfilled

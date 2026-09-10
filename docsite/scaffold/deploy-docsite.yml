@@ -18,9 +18,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-        with:
-          # Archify validates diagram evidence against pinned historical commits.
-          fetch-depth: 0
 
       - name: Set up Python
         if: hashFiles('scripts/concorde.py') != ''
