@@ -31,7 +31,7 @@ from ..spec.contracts import (STAGE_ROLES,
     MAIN_CAPABILITY, MAIN_ROUTED_CAPABILITIES, LIFECYCLE_CAPABILITIES, load_capability_inventory)
 from ..harness.change_worktree import (STATE_PATH, WORK_PATH, bind_owner, create_worktree,
     ensure_change, graph_state, progress, read_change, record_transition, refresh_registry,
-    save_change, save_target_state, snapshot_tree, target_state, work_path, workspace_context,
+    save_change, save_target_state, snapshot_tree, target_state, work_path, workspace_context, resume_owner,
     workspace_identity)
 from ..spec.repository import SpecRepository, SpecError, digest, read_file, identifier
 from ..harness.context import (DiscoveryContext, resolve_context,
@@ -144,6 +144,10 @@ def invoke_capability(parent_capability: str, child_capability: str, configurati
 
 
 def _worktree(host: CapabilityHost, mutation: bool, task: dict) -> tuple[CapabilityHost, dict | None]:
+    if task.get("change_id") is not None:
+        state = read_change(host.project_root, required=True)
+        if task["change_id"] != state["change_id"]:
+            raise SpecError("change ID does not own this worktree", "incompatible_handoff")
     if host.mode == "describe-policy":
         return host, None
     primary, current = workspace_identity(host.project_root)
@@ -2030,7 +2034,21 @@ def _dispatch(capability, configuration, task, host):
     if (capability in MAIN_ROUTED_CAPABILITIES and host.routed_target is not None
             and task.get("target_id") != host.routed_target):
         raise SpecError("child target differs from the host's main route", "incompatible_handoff")
-    if capability in MAIN_ROUTED_CAPABILITIES and not task.get("change_id"):
+    if capability in MAIN_ROUTED_CAPABILITIES:
+        if host.routed_target is None and (task.get("change_id") or capability == "concorde-dev-loop"):
+            change = read_change(host.project_root)
+            if change is not None:
+                task = resume_owner(change, task)
+                if change["target_id"] is not None:
+                    try:
+                        SpecRepository(host.project_root, host.package_root).select(
+                            change["target_id"], change["focus_id"])
+                    except SpecError as error:
+                        if error.code not in {"unknown_target", "invalid_focus"}:
+                            raise
+                        raise SpecError("recorded owner no longer resolves: " + str(error),
+                                        "invalid_worktree_state") from error
+                    host = replace(host, routed_target=change["target_id"])
         if host.routed_target is None:
             main = MainInvocation(capability, configuration, task, host)
             route, blocked = main.select_one()
@@ -2048,6 +2066,7 @@ def _dispatch(capability, configuration, task, host):
     readonly = readonly or (capability == "concorde-reflections-triage" and task["action"] == "status")
     if (host.mode == "execute" and not readonly
             and not (capability == "concorde-reflections-triage" and task["action"] == "record-gaps")):
+        SpecRepository(host.project_root, host.package_root).select(task.get("target_id"), task.get("focus_id"))
         bind_owner(host.project_root, task, coordinated=host.coordinated)
     run = Invocation(capability, configuration, task, host)
     run.completed.extend(main_completed)
@@ -2122,7 +2141,6 @@ def run_capability(capability: str, configuration: dict | None, runtime_input: d
         task = copy.deepcopy(task)
         if capability != "concorde-deliver" and not (capability == MAIN_CAPABILITY
                 and task.get("action") in {"accept-topology", "apply-topology"}):
-            task.setdefault("constraints", [])
             task.setdefault("task", "Inspect the selected records")
         mutation = capability not in {"concorde-main", "concorde-context-solve", "concorde-review"}
         if capability == "concorde-init":

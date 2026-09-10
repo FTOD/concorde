@@ -477,6 +477,7 @@ class ReviewTests(unittest.TestCase):
                 finally:
                     self.root = previous_root
 
+    @verifies("scenario.development.resume-bound")
     def test_review_binds_actual_worktree_even_with_identical_unversioned_bytes(self):
         original = inputs(self.invocation(), "spec")[0]["input_digest"]
         with tempfile.TemporaryDirectory() as directory:
@@ -485,7 +486,7 @@ class ReviewTests(unittest.TestCase):
             peer = Invocation("concorde-review", self.configuration, self.task, CapabilityHost(root, PACKAGE))
             self.assertNotEqual(original, inputs(peer, "spec")[0]["input_digest"])
         rejected = self.call_capability("concorde-review", {**self.task, "review_mode": "spec", "change_id": "change.foreign"})
-        self.assertEqual("incompatible_handoff", rejected["errors"][0]["code"])
+        self.assertEqual("missing_change", rejected["errors"][0]["code"])
         self.assertEqual([], self.model.calls)
 
     @verifies("scenario.development.dev-loop-coordinated")

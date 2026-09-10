@@ -355,7 +355,7 @@ invocation envelope, and every exported identity appears here at least once with
 | `legacy_attempt` | The worktree still carries an unsupported legacy `.concorde/attempts/` state that must be removed before it can be adopted. |
 | `limit_exhausted` | `CapabilityExecutionError.outcome` when the injected runner raised `subprocess.TimeoutExpired`; the host maps this to the `execution_limit` result error code. |
 | `merge_conflict` | Integration conflicts with the primary branch. Resolve and revalidate in the candidate worktree, or a new candidate if delivery already removed the source. |
-| `missing_change` | Task authoring was requested without a managed change. |
+| `missing_change` | A requested existing change or task authoring has no managed change in the current worktree. |
 | `missing_plan` | Task authoring was requested without an authored plan. |
 | `missing_tasks` | Implementation was requested without authored tasks. |
 | `permission_denied` | A request or worker tried to act outside its granted target, Module composition/dependencies, or write scope. |
