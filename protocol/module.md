@@ -5,6 +5,13 @@ requirements and scenarios say what the Module promises; its Ontology says how t
 built. Together they answer what the Module is for, what it guarantees, how it reacts in each
 situation it is used in, what it consists of and how those parts collaborate.
 
+A Module is a unit of specification, not a unit of implementation. It need not correspond to a
+package, directory, process, service or other physical unit: its realization may be spread across
+several such units, shared with other Modules, or supplied entirely by its children, and a Module
+whose promises are met wholly by its children binds no files of its own. Its boundary is what its
+purpose, requirements, scenarios and entities declare; the file bindings of its entities record
+where that responsibility is realized and do not define it.
+
 ```mermaid
 flowchart TB
     accTitle: Information inside a Module Spec
@@ -139,10 +146,10 @@ architecture. A diagram MUST name exactly the Module's entities and label every 
 around it explains invariants, state transitions and completion or failure conditions the edges
 cannot show.
 
-A leaf Module may be realized directly by its entities' files. A composite Module may also have
-coordination code of its own, bound by one of its entities. The Protocol prescribes the Mermaid
-flowchart form defined in the Required format chapter; it does not prescribe a visual theme or
-page layout.
+A leaf Module may be realized directly by its entities' files. A composite Module may have
+coordination code of its own, bound by one of its entities, or none at all. The Protocol
+prescribes the Mermaid flowchart form defined in the Required format chapter; it does not
+prescribe a visual theme or page layout.
 
 ## Composition and dependencies
 

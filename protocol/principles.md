@@ -12,7 +12,14 @@ Examples illustrate the rules; their names, paths and subject matter are not pre
 
 ### P1. A Module describes a cohesive software responsibility in four parts
 
-A **Module** is a cohesive software responsibility. Its Spec MUST contain four parts:
+A **Module** is a cohesive software responsibility. It is a unit of specification, not a unit of
+implementation: a Module need not correspond to a package, directory, process, service or other
+physical unit. Its realization may be spread across several such units, shared with other
+Modules, or supplied entirely by its children. The Module's boundary is established by its
+purpose, requirements, scenarios and entities; its file bindings record where that
+responsibility is realized and do not define it.
+
+A Module's Spec MUST contain four parts:
 
 1. **Purpose**: a concise plain-prose statement of what the Module is for and for whom.
 2. **Requirements**: what the Module as a whole must guarantee. Each requirement is one SHALL

@@ -170,6 +170,17 @@ Protocol 只规定方向和身份：声明写在测试里、以 scenario ID 命�
 补标题、把 scenario 段落并入步骤或提升为 Module requirement、修正描述旧布局的散文。测试侧由每个
 Module 的代理给现有测试补 `@verifies` 声明，只标注明确覆盖某个 scenario 的测试。
 
+### D15：Module 是规格单元，不是实现单元（2026-09-10 澄清）
+
+Module 不必对应任何物理实体：不要求有对应的包、目录、进程或服务，其实现可以分散在多个物理单元、
+与其他 Module 共享，或完全由子 Module 提供；承诺完全由子 Module 兑现的 Module 自身不绑定文件。
+Module 的边界由 purpose、requirements、scenarios 和 entities 确定，文件绑定只记录责任在哪里
+被实现，不定义边界。Protocol 此前处处暗示这一点（P2 的目录列表不构成边界、空 implementation
+context 的定义、composite Module 可有自身协调代码），但从未正面陈述；Concorde 自身的根 Module
+零文件、`module.spec` 横跨多个目录，已是这种形态。本次在 P1 与 Module 章开头各补一段正面定义，
+不引入 "domain" 作为术语（Ontology 章已用该词指 Module 的世界）。这是澄清而非规则变化，版本
+保持 4.0.0，`protocol/manifest.json` 摘要与 `.concorde/config.json` 的 Protocol 绑定随之刷新。
+
 ### 涉及的实现改动（4.0.0）
 
 `protocol/`（principles、module、format、spec-management、spec-and-context、README、两个模板）、

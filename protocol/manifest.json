@@ -6,11 +6,11 @@
   "assets": [
     {
       "path": "generated/protocol/kinds/module.md",
-      "digest": "sha256:4fb70aa7f2e9707dd1d49e13f1346ba6f5f36d83c39b1432fb70d3afd553ddc7"
+      "digest": "sha256:547dc5cf8f625d4e163f441798efc267e5dd1182c4583292da8fbe10751cbea9"
     },
     {
       "path": "generated/protocol/principles.md",
-      "digest": "sha256:94ebd1b610b976ea7e477daffb8691caf8361a05f73bfa26a276c698d50df55a"
+      "digest": "sha256:c1c673c8518454f61cb561f1d441dcf2ea648ae11c25a93064565930817e9605"
     },
     {
       "path": "generated/protocol/schemas.json",
