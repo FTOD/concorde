@@ -237,6 +237,45 @@ class PermissionTests(unittest.TestCase):
         self.assertEqual("read", rules["src/concorde/harness/context.py"])
         self.assertTrue(compare_effective_boundaries(codex, claude))
 
+    @verifies("scenario.harness.native-boundary-claude")
+    def test_claude_launch_has_no_shell_and_confines_file_tools(self):
+        """Restricted mode removes the command-running tools unless ``--tools`` names them, so the
+        host never passes ``--tools``; the remaining file tools are bounded by the rendered rules."""
+        policy = compile_policy(self.effect, self.binding, self.roles)
+        claude = render_claude_configuration(policy, native_enforcement=True)
+
+        argv = claude.argv
+        self.assertEqual(argv[0], "claude")
+        for flag in ("-p", "--restricted", "--no-session-persistence"):
+            self.assertIn(flag, argv)
+        self.assertEqual(argv[argv.index("--permission-mode") + 1], "dontAsk")
+        self.assertNotIn("--tools", argv)
+        self.assertNotIn("--add-dir", argv)
+        self.assertEqual(json.loads(argv[argv.index("--settings") + 1]), json.loads(claude.settings_json))
+
+        settings = json.loads(claude.settings_json)
+        permissions = settings["permissions"]
+        self.assertEqual(permissions["defaultMode"], "dontAsk")
+        self.assertEqual(permissions["ask"], [])
+        expected_allow: set[str] = set()
+        for path in policy.read_paths:
+            expected_allow.update((f"Read(./{path})", f"Read(./{path}/**)"))
+        for path in policy.write_paths:
+            for tool in ("Edit", "Write"):
+                expected_allow.update((f"{tool}(./{path})", f"{tool}(./{path}/**)"))
+        self.assertEqual(set(permissions["allow"]), expected_allow)
+        for tool in ("Agent", "Task", "WebFetch", "WebSearch"):
+            self.assertIn(tool, permissions["deny"])
+
+        sandbox = settings["sandbox"]
+        self.assertTrue(sandbox["enabled"])
+        self.assertTrue(sandbox["failIfUnavailable"])
+        self.assertFalse(sandbox["allowUnsandboxedCommands"])
+        self.assertEqual(sandbox["excludedCommands"], [])
+        for root in ("/", "~", "."):
+            self.assertIn(root, sandbox["filesystem"]["denyRead"])
+            self.assertIn(root, sandbox["filesystem"]["denyWrite"])
+
     @unittest.skipUnless(shutil.which("codex"), "Codex CLI is not installed")
     @verifies("scenario.harness.permission-compile")
     def test_codex_launch_argv_loads_configuration_in_installed_cli_without_a_model(self):
@@ -260,7 +299,7 @@ class PermissionTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform == "linux" and shutil.which("codex") and Path("/usr/bin/python3").exists(),
                          "Native Linux Codex sandbox is not installed")
-    @verifies("scenario.harness.permission-compile")
+    @verifies("scenario.harness.permission-compile", "scenario.harness.native-boundary-codex")
     def test_native_review_grants_allow_owned_reads_and_protect_host_files(self):
         from concorde.harness.agent_executor import resolve_runtime_bootstrap
         probe = '''import json, os, socket, sys

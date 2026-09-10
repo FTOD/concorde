@@ -111,6 +111,21 @@ The configured-check executor SHALL refuse execution when its read-only boundary
 Every configured check SHALL receive a fresh host-managed writable temporary directory outside the
 project, removed after its process tree has terminated.
 
+#### req.harness.native-boundary — Agent processes run only under native or attested outer enforcement
+
+An Agent process SHALL run only under the selected integration's native enforcement configured
+exactly from its compiled policy, or under a host-attested outer sandbox.
+
+#### req.harness.capsule-closed — A capsule grants only its own snapshot
+
+A capsule-workspace invocation SHALL be granted read access to its own snapshot file and to no
+other path.
+
+#### req.harness.process-inputs-closed — Agent processes receive only closed inputs
+
+An Agent process SHALL receive only the allowlisted environment variables, its frozen snapshot,
+task and instructions on stdin, and its rendered native configuration.
+
 #### req.harness.execute-no-retry — No automatic retry after execution failure
 
 No execution failure SHALL trigger an automatic retry with the same or wider permissions.
@@ -258,6 +273,13 @@ Realized by `AgentProcessExecutor`, `AgentRuntime` and `CapabilityHost.invoke_ag
 The deterministic check executor's read-only filesystem, scratch, result, unavailable-backend and
 process-lifetime scenarios are defined in [execution](execution.md#scenario.harness.check-read-only).
 
+The native enforcement boundary of an Agent process, the capsule and project workspace kinds and
+the Codex and Claude confinement scenarios are defined in
+[execution](execution.md#scenario.harness.native-boundary-codex). See
+[native or attested outer enforcement only](#req.harness.native-boundary),
+[a capsule grants only its own snapshot](#req.harness.capsule-closed) and
+[closed process inputs](#req.harness.process-inputs-closed).
+
 #### scenario.harness.execute-success — Execute a bound Harness and accept a matching typed completion
 
 - GIVEN a host-built LaunchSpecification carrying a verified AgentBinding and effective policy
@@ -323,7 +345,8 @@ process.
 ### Entities
 
 The Module's implementation is realized by the programs below. The two Modules it uses each appear
-as one used-Module entity so the diagram in Relationships shows composition and dependency together.
+as one used-Module entity so the diagram in Relationships shows composition and dependency together,
+and the native client that enforces every Agent process's boundary appears as an external actor.
 The Agent and Harness model entity lists the `src/concorde/harness/` and `tests/concorde/harness/`
 package directories; every other entity keeps the exact entries it realizes, and within this Module
 the most specific entry owns a file.
@@ -431,6 +454,12 @@ the most specific entry owns a file.
     ]
   },
   {
+    "id": "entity.harness.native-integration",
+    "title": "Native integration",
+    "kind": "external actor",
+    "responsibility": "The Codex or Claude Code client selected by project configuration. Its own permission profile, or its restricted mode and permission engine, enforces the rendered default-deny boundary around every Agent process; the client runs as the developer's user and is not itself sandboxed."
+  },
+  {
     "id": "entity.harness.spec",
     "title": "Spec",
     "kind": "used module",
@@ -460,7 +489,10 @@ An Agent definition binds an authored `spec.md`, one of three registered Harness
 constraints. Resolution against the current build yields an `AgentBinding` that every structured
 launch carries and the executor reverifies. Permissions are compiled purely from declared effects
 and host authority and rendered into native enforcement or refused, guarded by the isolated-worktree
-check before any unsafe mutation. Every control flow is a LangGraph graph whose nodes are
+check before any unsafe mutation. That enforcement belongs to the selected native integration: the
+host renders a default-deny configuration, verifies that it equals the compiled policy and starts
+the process in a capsule or in the candidate worktree; it does not wrap the process in a sandbox
+of its own. Every control flow is a LangGraph graph whose nodes are
 deterministic steps or Agent invocations; a leaf may be either. Recursive delegation runs inside the
 same graphs under shared budgets, depth limits and cancellation. Failures never retry with broader
 permissions, and process exit alone never establishes completion.
@@ -468,7 +500,7 @@ permissions, and process exit alone never establishes completion.
 ```mermaid
 flowchart TB
     accTitle: Harness entities and relationships
-    accDescr: The Agent and Harness model defines the canonical Agent, Harness and AgentBinding records that Agent definitions bind and that Agent execution runs directly. Agent definitions resolve a verified binding for Agent execution and render instructions through Distribution. Permissions compiles the effective policy that Agent execution enforces, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Agent execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Agent execution admits. Studio starts or observes the same capability host as Agent execution.
+    accDescr: The Agent and Harness model defines the canonical Agent, Harness and AgentBinding records that Agent definitions bind and that Agent execution runs directly. Agent definitions resolve a verified binding for Agent execution and render instructions through Distribution. Permissions compiles the effective policy that Agent execution enforces, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Agent execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Agent execution admits. Studio starts or observes the same capability host as Agent execution. Agent execution starts each Agent process under the enforcement of the Native integration, for which Permissions renders a default-deny launch configuration.
     agentModel["Agent and Harness model"]
     agentDefs["Agent definitions"]
     permissions["Permissions"]
@@ -479,12 +511,14 @@ flowchart TB
     studio["Studio"]
     spec["Spec"]
     distribution["Distribution"]
+    native["Native integration"]
     agentModel -->|defines Agent, Harness and Constraints records for| agentDefs
     agentModel -->|supplies canonical Agent, Harness and AgentBinding records to| execution
     agentModel -->|declares maximum effects for| permissions
     agentDefs -->|resolves a verified AgentBinding for| execution
     agentDefs -->|renders instructions and attests freshness through| distribution
     permissions -->|renders the effective policy and native launch configuration for| execution
+    permissions -->|renders a default-deny launch configuration for| native
     worktree -->|verifies an isolated mutation boundary for| permissions
     context -->|supplies Spec, implementation and task context to| execution
     context -->|resolves documents, identities and entity file listings from| spec
@@ -492,6 +526,7 @@ flowchart TB
     context -->|freezes typed stage inputs and records through| typedValues
     execution -->|validates typed completions and schemas through| typedValues
     studio -->|starts or observes the same capability host as| execution
+    execution -->|starts each Agent process under the enforcement of| native
 ```
 
 ## Local collaboration agreements
@@ -534,3 +569,17 @@ relied-upon behavior from this Module's perspective without importing another Mo
   Migrating the discovery loop, topology flow, reflection triage, the deterministic lifecycle
   capabilities and the recursive `AgentRuntime` onto explicit `StateGraph` composition, and pointing
   `generated/langgraph.json` at those graphs, is pending implementation work.
+- The Claude boundary has no physical probe. The Codex boundary is exercised by a real
+  `codex sandbox` probe, but the Claude scenario checks only the rendered launch; that an Agent
+  under restricted mode cannot reach files outside its grant rests on Claude Code's documented
+  restricted-mode and permission semantics, which no test in this repository exercises against an
+  installed client.
+- Claude launches pass no `--strict-mcp-config`, so MCP servers from the developer's user
+  configuration may still be started for a worker. Their tools are expected to be denied by
+  `dontAsk`, which is unverified; whether the renderer must pass `--strict-mcp-config` is pending.
+- Behavior when the host itself already runs inside a sandbox is not documented by either
+  integration: nested bubblewrap for configured checks and `enableWeakerNestedSandbox` for Claude
+  are set to fail closed, but neither is verified.
+- The distributed local and Studio launchers supply no outer-sandbox attestation, so a project
+  configured with `enforcement: outer` cannot launch an Agent through them; this is recorded as
+  reflection R-063.

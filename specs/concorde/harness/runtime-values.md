@@ -83,7 +83,9 @@ the host's explicit Agent delegation protocol. Code-driven and model-driven Agen
 children through the host, while the process executor remains a single-decision client interface. Native Codex uses a named default-deny
 filesystem/network profile, ignores user configuration, and sets `project_doc_max_bytes=0` so
 ambient AGENTS.md discovery neither supplements nor prevents the frozen host context. Claude
-receives a native permission policy and disabled ambient settings. If native enforcement is not
+receives a native permission policy in restricted mode, which removes the command-running tools
+and ignores user, project and local settings files; the resulting boundary is described under
+Native enforcement boundary in [execution](execution.md). If native enforcement is not
 available, rendering requires the trusted host's verified outer sandbox; otherwise it raises
 `PermissionPolicyError`. A string supplied by task JSON is never evidence of outer enforcement.
 `verify_effective_subset` rejects widening; `compare_effective_boundaries` compares effective grants.

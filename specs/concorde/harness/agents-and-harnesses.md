@@ -179,8 +179,11 @@ Every Agent is bound to exactly one of three registered Harnesses:
 `coordinator` binds `discovery-capsule`; `spec-author`, `context-assessor`, `planner`,
 `task-author` and `spec-reviewer` bind `spec-capsule`; `implementation-worker` and `code-reviewer`
 bind `implementation-workspace`. Each Agent's own Constraints/Permissions never widen its bound
-Harness. The table shows ordinary stage contexts. The generic execution runtime also supports
-`concorde-agent-loop-context`/`concorde-agent-loop-step` for explicitly bound Agent graphs; those
+Harness. `capsule` and `project` are the two workspace kinds; their physical form and the
+enforcement each receives are defined under Native enforcement boundary in
+[execution](execution.md). The table shows ordinary stage contexts. The generic execution runtime
+also supports `concorde-agent-loop-context`/`concorde-agent-loop-step` for explicitly bound Agent
+graphs; those
 interfaces require the canonical Agent constraint and host graph/grant checks. No registered Agent
 currently admits a Capability reference, so every current capability context is empty.
 

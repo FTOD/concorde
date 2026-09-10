@@ -206,6 +206,116 @@ of a prior completion. Authorized implementation edits made before failure can r
 candidate; the executor does not promise rollback. Read-only reviewers cannot edit project files.
 Raw stdout/stderr are host diagnostics and cannot substitute for typed downstream inputs.
 
+## Native enforcement boundary
+
+An Agent process is not wrapped in a sandbox of this Module's own. The configured-check executor
+above is the only boundary Concorde implements with operating-system primitives itself; an Agent
+process runs under the enforcement mechanism of the selected native integration, configured
+exactly from the compiled policy. This section states what the host itself guarantees, what each
+integration is relied on for and where that reliance is not yet verified. Text in the prompt is
+never part of the boundary.
+
+### Workspace kinds
+
+A Harness declares `workspace: capsule` or `workspace: project`; the registered Harnesses and
+their kinds are listed in [Agents and Harnesses](agents-and-harnesses.md).
+
+- A **capsule** is a host-created temporary directory outside the project root, created for one
+  invocation immediately before launch and removed after the host has verified it. It contains
+  exactly one file, `context.json`, holding the frozen snapshot bytes. It is the process's working
+  directory and its workspace root for policy rendering, so the compiled policy grants reading that
+  one file and nothing else: the project root, the candidate worktree, other worktrees and the
+  developer's home directory are outside the grant. The same snapshot travels on stdin. The
+  `discovery-capsule` and `spec-capsule` Harnesses use this kind, and a recursive Agent decision
+  receives a fresh capsule per decision.
+- A **project** workspace is the candidate worktree itself. The snapshot is written below
+  `.concorde/runs/<invocation>/<uuid>/context.json` inside that worktree; the policy grants reading
+  it together with the selected Module's listed implementation entries, and only a code-writing
+  invocation additionally receives write authority over those entries. The
+  `implementation-workspace` Harness uses this kind.
+
+In both kinds the host rereads the snapshot file after the process exits and rejects a result whose
+file bytes, registry digest or document digests changed during execution with `stale_context`.
+
+### What the host itself enforces
+
+- **Fresh process, closed inputs.** Every launch is a new process whose stdin carries the complete
+  snapshot, task and Agent instructions. No predecessor transcript, conversation or session state
+  is passed, and `--no-session-persistence` (Claude) or `--ephemeral` (Codex) keeps the integration
+  from persisting one.
+- **Environment allowlist.** The process environment is rebuilt from `SAFE_ENVIRONMENT` in
+  `harness.py`: `HOME`, `PATH`, `LANG`, `LC_ALL`, `LC_CTYPE`, `LOGNAME`, `USER`, `TMPDIR`, `TMP`,
+  `TEMP` and their Windows equivalents. Provider keys, proxy settings and every other variable of
+  the calling shell are absent.
+- **Configuration equality.** Preflight rejects a launch whose rendered read, write, deny,
+  default-deny, network and credential fields differ from the compiled policy, whose policy digest
+  is stale, whose executable name is not the selected integration or whose client version is below
+  the floor. Codex additionally receives one attested native executable.
+- **Receipt.** The `EnforcementReceipt` records the requested enforcement kind, the client version
+  and the launch, policy, configuration and bootstrap digests. It is the host's record of what it
+  configured and observed, not an attestation from the operating system that the integration
+  engaged its sandbox.
+
+### Codex
+
+Native Codex runs `codex exec --ephemeral --ignore-user-config --strict-config` with
+`approval_policy = "never"`, `project_doc_max_bytes = 0`, `multi_agent` disabled and a named
+permission profile passed on the command line: `:root` denied, the `:minimal` system paths
+readable and, under the workspace root, exactly the policy's read, write and deny paths. Codex's
+own sandbox applies that profile to every command the model runs, and on Linux it is an
+operating-system boundary. The host verifies it physically: the permission tests run a probe
+process under `codex sandbox -P <profile>` with a rendered review profile and require that the
+granted file is readable, sibling and parent files are not, every write fails and a loopback
+connection is refused (see [the Codex scenario](#scenario.harness.native-boundary-codex)).
+
+### Claude
+
+Native Claude runs `claude -p --restricted --no-session-persistence --permission-mode dontAsk
+--settings <json>`. The host passes no `--tools`, and restricted mode removes the built-in tools
+that run commands or code (Bash, PowerShell, REPL and the other code-running tools) and WebFetch
+unless `--tools` names them. An Agent under Claude therefore has no shell and starts no
+subprocess. Its remaining file tools are bounded twice inside the Claude Code process: restricted
+mode confines them to the working directory, and `dontAsk` denies every call that no `allow` rule
+matches, where the rendered rules allow exactly the policy's read paths for `Read` and its write
+paths for `Edit` and `Write`. `Agent` and `Task` are denied, so no native sub-agent exists;
+`WebFetch` and `WebSearch` are denied when the policy has no network. Restricted mode also ignores
+user, project and local settings files, so a project's `.claude/settings.json` or `CLAUDE.md`
+cannot widen or narrow a worker; managed settings and the host's `--settings` still apply. The
+rendered `sandbox` block (`enabled`, `failIfUnavailable`, `denyRead` and `denyWrite` of `/`, `~`
+and `.`, `allowUnsandboxedCommands: false`) describes the operating-system boundary any
+subprocess would receive; with no command-running tool it is a fail-closed declaration rather than
+an engaged sandbox. This boundary is enforced by the Claude Code process, not by the kernel (see
+[the Claude scenario](#scenario.harness.native-boundary-claude)).
+
+### Common limits
+
+The native client process itself is outside the boundary in both integrations: it runs as the
+developer's user, reads its own login credentials from `HOME` and talks to its provider. The
+boundary bounds what the model's tools can reach, not the client. The credential paths the
+compiler always denies (`.env`, `.aws`, `.ssh` and the other listed entries) are project-relative
+entries under the workspace root; home-directory secrets are outside the grant because the grant
+is default-deny, not because they are listed. Outer enforcement (`enforcement: outer`) replaces the
+native mechanism with a host-attested external sandbox as specified in
+[runtime values](runtime-values.md); the distributed launchers do not yet supply that attestation.
+
+### scenario.harness.native-boundary-codex — Codex sandbox confines a rendered grant
+
+- GIVEN a policy compiled for a read-only review grant over `context.json` and one implementation file
+- AND its rendered and finalized native Codex configuration on a Linux host with the Codex CLI installed
+- WHEN a probe process runs under `codex sandbox` with that permission profile in the workspace root
+- THEN it reads the granted files
+- AND it cannot read sibling files, ungranted Spec documents or the parent directory
+- AND every attempted write, including a new file, fails and leaves the fixture bytes unchanged
+- AND a loopback network connection is refused
+
+### scenario.harness.native-boundary-claude — Claude launch has no shell and confines file tools
+
+- GIVEN a compiled policy and its rendered native Claude configuration
+- WHEN the host inspects the launch argument vector and settings
+- THEN the argument vector carries `-p`, `--restricted`, `--no-session-persistence` and `--permission-mode dontAsk` and no `--tools`
+- AND the settings allow only the policy's read paths for `Read` and its write paths for `Edit` and `Write`, with `Agent` and `Task` denied and `WebFetch` and `WebSearch` denied without network
+- AND the sandbox block is enabled, fails if unavailable and permits no unsandboxed command
+
 ## Local loop policy and outcomes
 
 A structured launch's control-loop timeout is the bound Agent's effective loop (`AgentBinding.
