@@ -53,9 +53,12 @@ interfaces exchange.
       "capabilities/__init__.py",
       "concorde.json",
       "pyproject.toml",
-      "src/concorde/host/build.py",
-      "src/concorde/host/package_validation.py",
-      "src/concorde/host/prompt_resolver.py",
+      "src/concorde/distribution/build.py",
+      "src/concorde/distribution/package_validation.py",
+      "src/concorde/distribution/prompt_resolver.py",
+      "tests/concorde/distribution/test_build.py",
+      "tests/concorde/distribution/test_package_validation.py",
+      "tests/concorde/distribution/test_prompt_resolver.py",
       "tests/concorde/fixtures/build/golden/claude/concorde-configure/SKILL.md",
       "tests/concorde/fixtures/build/golden/claude/concorde-deliver/SKILL.md",
       "tests/concorde/fixtures/build/golden/claude/concorde-dev-loop/SKILL.md",
@@ -70,9 +73,6 @@ interfaces exchange.
       "tests/concorde/fixtures/build/golden/codex/concorde-main/SKILL.md",
       "tests/concorde/fixtures/build/golden/codex/concorde-reflections-triage/SKILL.md",
       "tests/concorde/fixtures/build/golden/codex/concorde-validate/SKILL.md",
-      "tests/concorde/host/unit/test_build.py",
-      "tests/concorde/host/unit/test_package_validation.py",
-      "tests/concorde/host/unit/test_prompt_resolver.py",
       "tests/concorde/support/build_fixture.py",
       "uv.lock"
     ]
@@ -94,24 +94,20 @@ interfaces exchange.
       "scripts/worktree-guard.py",
       "skills/concorde-configure/SKILL.md",
       "src/concorde/distribution/__init__.py",
+      "src/concorde/distribution/cli.py",
       "src/concorde/distribution/protocol_guidance.py",
-      "src/concorde/host/cli.py",
       "templates/module-template.md",
       "templates/plan-template.md",
       "templates/reflections-template.md",
       "templates/scenario-template.md",
       "templates/tasks-template.md",
       "tests/concorde/distribution/__init__.py",
-      "tests/concorde/distribution/acceptance/__init__.py",
-      "tests/concorde/distribution/acceptance/test_consumer_install_end_to_end.py",
-      "tests/concorde/distribution/acceptance/test_fresh_clone_bootstrap.py",
-      "tests/concorde/distribution/contract/__init__.py",
-      "tests/concorde/distribution/contract/test_manifests.py",
-      "tests/concorde/distribution/integration/__init__.py",
-      "tests/concorde/distribution/unit/__init__.py",
-      "tests/concorde/distribution/unit/test_install_concorde.py",
-      "tests/concorde/distribution/unit/test_protocol_guidance.py",
-      "tests/concorde/distribution/unit/test_worktree_guard.py"
+      "tests/concorde/distribution/test_consumer_install_end_to_end.py",
+      "tests/concorde/distribution/test_fresh_clone_bootstrap.py",
+      "tests/concorde/distribution/test_install_concorde.py",
+      "tests/concorde/distribution/test_manifests.py",
+      "tests/concorde/distribution/test_protocol_guidance.py",
+      "tests/concorde/distribution/test_worktree_guard.py"
     ]
   },
   {
@@ -162,7 +158,7 @@ interfaces exchange.
     "id": "entity.distribution.authored-sources",
     "title": "Authored sources",
     "kind": "concept",
-    "responsibility": "The root `concorde.json`, canonical `prompts/`, `skills/`, `capabilities/`, Protocol chapters and the contract modules under `src/concorde/host` that the build resolves through `@include` graphs into deterministic outputs."
+    "responsibility": "The root `concorde.json`, canonical `prompts/`, `skills/`, `capabilities/`, Protocol chapters and the contract modules under `src/concorde/spec` that the build resolves through `@include` graphs into deterministic outputs."
   },
   {
     "id": "entity.distribution.build-manifest",

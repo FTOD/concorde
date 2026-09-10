@@ -83,13 +83,17 @@ requirement、entity、dependencies、contract。普通 Spec 作者可以改 ent
 ## 涉及的实现改动
 
 Protocol 文本与模板、`prompts/protocol/framework-profile.md`、`.concorde/constitution.md`、
-`.concorde/config.json`、`.concorde/specs.json`、`src/concorde/specification/*`、
-`src/concorde/host/{contracts,capability_host,review,worktree_delivery,package_validation,build,cli}.py`、
-`src/concorde/reflections/*`、Agent 指令、Skills、workflow prompts、docsite scoped-content 插件、
+`.concorde/config.json`、`.concorde/specs.json`、`src/concorde/spec/*`、
+`src/concorde/development/{capability_host,review}.py`、`src/concorde/harness/worktree_delivery.py`、
+`src/concorde/distribution/{package_validation,build,cli}.py`、`src/concorde/reflections/*`、
+Agent 指令、Skills、workflow prompts、docsite scoped-content 插件、
 全部项目 Specs 及测试。
 
 ## 实现备注
 
+- Python 源码与测试按 Module 分包：`src/concorde/{spec,harness,development,distribution,reflections,views}/`
+  与 `tests/concorde/<module>/`（每个 Module 一个扁平测试包），共享文件放在排序靠前的那个 Module 的包里，
+  但仍由每个使用它的 Module 的 entity 列出；`src/concorde/{host,specification,autodocs}` 不再存在。
 - 解析器把列表项的懒续行（缩进的下一行）并入同一步骤或 requirement，所以换行书写的 GIVEN/WHEN/THEN
   和 SHALL 句子都可以正常解析。
 - `_implementation_users(target)` 返回 `{target} ∪ affected_modules(target.files)`，没有文件的 Module

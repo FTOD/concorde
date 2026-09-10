@@ -1,7 +1,7 @@
 """Internal stage: turn an admitted plan into tasks with observable acceptance conditions.
 
 Never projected as a user-invocable Skill; the executable boundary has no direct entry for it."""
-from concorde.host import contract_shapes as shapes
+from concorde.spec import contract_shapes as shapes
 from agents import task_author
 
 from . import external_name
@@ -16,5 +16,5 @@ RESPONSE = shapes.stage_response()
 
 
 def run(host, configuration, request):
-    from concorde.host.capability_service import run_capability
+    from concorde.development.capability_service import run_capability
     return run_capability(EXTERNAL_NAME, configuration, request, host_context=host)

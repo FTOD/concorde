@@ -9,7 +9,7 @@ import sys
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PACKAGE_ROOT / "src"))
 
-from concorde.host.studio import build_studio_graph
+from concorde.harness.studio import build_studio_graph
 
 SKILL_NAMES = tuple(sorted(
     path.parent.name for path in (PACKAGE_ROOT / "skills").glob("*/SKILL.md")

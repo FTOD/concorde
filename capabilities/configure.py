@@ -1,6 +1,6 @@
 """Lifecycle: apply the initialized integration and enforcement configuration. Deterministic;
 runs no agent cognition and selects no context."""
-from concorde.host import contract_shapes as shapes
+from concorde.spec import contract_shapes as shapes
 
 from . import external_name
 
@@ -16,5 +16,5 @@ RESPONSE = shapes.obj({"configuration": _CONFIGURATION, "status": {"const": "app
 
 
 def run(host, configuration, request):
-    from concorde.host.capability_service import run_capability
+    from concorde.development.capability_service import run_capability
     return run_capability(EXTERNAL_NAME, configuration, request, host_context=host)

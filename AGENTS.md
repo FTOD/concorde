@@ -70,7 +70,7 @@ preserves local edits. A generic request to deliver does not authorize the final
 ## Building this worktree
 
 Run `python3 scripts/concorde.py build` after changing `prompts/`, `skills/`, `capabilities/` or
-wire contracts (`src/concorde/host/contracts.py`, `contract_shapes.py`, or a
+wire contracts (`src/concorde/spec/contracts.py`, `contract_shapes.py`, or a
 module under the top-level `capabilities/` package). This always operates on the worktree
 containing the sources; never point one worktree's build at another worktree's outputs. Run
 `python3 scripts/concorde.py build --check` to verify the outputs are current without writing.

@@ -10,8 +10,8 @@ import json
 import subprocess
 from pathlib import Path
 
-from concorde.host.typed_data import typed
-from concorde.host.agent_executor import AgentProcessExecutor
+from concorde.spec.typed_data import typed
+from concorde.harness.agent_executor import AgentProcessExecutor
 
 
 CONFIGURATION = typed("concorde-capability-configuration", {"integration": "claude", "enforcement": "native"})
@@ -19,7 +19,7 @@ CONFIGURATION = typed("concorde-capability-configuration", {"integration": "clau
 
 def invocation(capability: str, data: dict, *, configuration: dict | None = None,
                mode: str = "describe-policy") -> dict:
-    from concorde.host.typed_data import CAPABILITY_CONTRACTS
+    from concorde.spec.typed_data import CAPABILITY_CONTRACTS
 
     return {"type_id": "concorde-capability-invocation", "schema_version": 3,
             "capability_id": capability, "mode": mode,

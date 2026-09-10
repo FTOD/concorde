@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 
-from ..host.typed_data import safe_path
+from ..spec.typed_data import safe_path
 
 
 def validate_configuration(value: object) -> dict:

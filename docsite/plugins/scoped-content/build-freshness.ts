@@ -3,8 +3,8 @@
  * TypeScript. The docsite's "Agent instructions" and "Wire contracts" pages are rendered from
  * `generated/docs/*.json`, themselves Concorde build outputs; if a prompt or capability changed
  * since the last `python3 scripts/concorde.py build`, those pages would silently publish stale
- * instructions. This mirrors `concorde.host.build.verify_fresh`'s semantics without shelling out
- * to Python: `npm run validate` must fail closed the same way the host does.
+ * instructions. This mirrors `concorde.distribution.build.verify_fresh`'s semantics without
+ * shelling out to Python: `npm run validate` must fail closed the same way the host does.
  */
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';

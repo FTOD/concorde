@@ -62,12 +62,9 @@ describe the domain vocabulary the registered scenarios rely on.
       "tests/concorde/fixtures/interfaces/reflections/needs-comments/R-001.md",
       "tests/concorde/fixtures/interfaces/reflections/pending/R-002.md",
       "tests/concorde/reflections/__init__.py",
-      "tests/concorde/reflections/contract/__init__.py",
-      "tests/concorde/reflections/integration/__init__.py",
-      "tests/concorde/reflections/unit/__init__.py",
-      "tests/concorde/reflections/unit/test_reflection_parser.py",
-      "tests/concorde/reflections/unit/test_reflections_queue.py",
-      "tests/concorde/specification/test_scope_and_reflections.py",
+      "tests/concorde/reflections/test_reflection_parser.py",
+      "tests/concorde/reflections/test_reflections_queue.py",
+      "tests/concorde/reflections/test_scope_and_reflections.py",
       "tests/concorde/support/reflection_triage.py"
     ]
   },
@@ -77,7 +74,7 @@ describe the domain vocabulary the registered scenarios rely on.
     "kind": "shared program",
     "responsibility": "Realizes exact replacement proposals as staged filesystem operations with before-digest checks and original-byte recovery, for every Module that applies an accepted proposal.",
     "files": [
-      "src/concorde/specification/changes.py"
+      "src/concorde/spec/changes.py"
     ]
   },
   {

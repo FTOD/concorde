@@ -220,9 +220,9 @@ as one used-Module entity so the diagram in Architecture shows composition and d
     "kind": "program",
     "responsibility": "Realize the four context kinds of the Harness Module as immutable canonical snapshots: single-Module resolution for bounded stages, global discovery assembly for the coordinator, topology-author context and the rechecks that reject drift.",
     "files": [
-      "src/concorde/specification/context.py",
-      "tests/concorde/specification/test_boundaries.py",
-      "tests/concorde/specification/test_scoped_protocol.py"
+      "src/concorde/harness/context.py",
+      "tests/concorde/harness/test_boundaries.py",
+      "tests/concorde/harness/test_scoped_protocol.py"
     ]
   },
   {
@@ -231,12 +231,14 @@ as one used-Module entity so the diagram in Architecture shows composition and d
     "kind": "program",
     "responsibility": "Realize `Agent = spec.md + Harness + Constraints` as frozen Python records, the closed Harness catalog, the effect-declaration vocabulary and the reproducible `AgentBinding` resolved and verified against the current build.",
     "files": [
-      "src/concorde/host/agent_model.py",
-      "src/concorde/host/effects.py",
-      "src/concorde/host/harness.py",
-      "src/concorde/host/roles.py",
-      "tests/concorde/host/unit/test_agent_model.py",
-      "tests/concorde/specification/test_agent_binding.py"
+      "src/concorde/harness/__init__.py",
+      "src/concorde/harness/agent_model.py",
+      "src/concorde/harness/effects.py",
+      "src/concorde/harness/harness.py",
+      "src/concorde/harness/roles.py",
+      "tests/concorde/harness/__init__.py",
+      "tests/concorde/harness/test_agent_binding.py",
+      "tests/concorde/harness/test_agent_model.py"
     ]
   },
   {
@@ -277,8 +279,8 @@ as one used-Module entity so the diagram in Architecture shows composition and d
     "kind": "program",
     "responsibility": "Realize immutable policy records, authority intersection, integration-specific (Codex/Claude) launch configuration and the runtime bootstrap attestation that finalizes a launch without widening its authority.",
     "files": [
-      "src/concorde/host/permissions.py",
-      "tests/concorde/host/unit/test_permissions.py"
+      "src/concorde/harness/permissions.py",
+      "tests/concorde/harness/test_permissions.py"
     ]
   },
   {
@@ -287,11 +289,11 @@ as one used-Module entity so the diagram in Architecture shows composition and d
     "kind": "program",
     "responsibility": "Realize single native launches, explicit recursive scheduling and typed completion admission using separate execution and Harness primitives.",
     "files": [
-      "src/concorde/host/agent_executor.py",
-      "src/concorde/host/agent_runtime.py",
-      "src/concorde/host/native_agent.py",
-      "tests/concorde/host/unit/test_agent_executor.py",
-      "tests/concorde/host/unit/test_agent_runtime.py"
+      "src/concorde/harness/agent_executor.py",
+      "src/concorde/harness/agent_runtime.py",
+      "src/concorde/harness/native_agent.py",
+      "tests/concorde/harness/test_agent_executor.py",
+      "tests/concorde/harness/test_agent_runtime.py"
     ]
   },
   {
@@ -300,13 +302,13 @@ as one used-Module entity so the diagram in Architecture shows composition and d
     "kind": "shared program",
     "responsibility": "Realize versioned value schemas, canonical encoding, artifact references, safe project paths, the offline interface-schema evaluator and the constrained front-matter parser that every boundary of the Framework uses.",
     "files": [
-      "src/concorde/frontmatter.py",
-      "src/concorde/host/contract_shapes.py",
-      "src/concorde/host/contracts.py",
-      "src/concorde/host/typed_data.py",
-      "src/concorde/host/wire_shapes.py",
-      "src/concorde/specification/schema.py",
-      "tests/concorde/host/unit/test_typed_data.py"
+      "src/concorde/spec/contract_shapes.py",
+      "src/concorde/spec/contracts.py",
+      "src/concorde/spec/frontmatter.py",
+      "src/concorde/spec/schema.py",
+      "src/concorde/spec/typed_data.py",
+      "src/concorde/spec/wire_shapes.py",
+      "tests/concorde/spec/test_typed_data.py"
     ]
   },
   {
@@ -317,11 +319,11 @@ as one used-Module entity so the diagram in Architecture shows composition and d
     "files": [
       "scripts/development/STUDIO.md",
       "scripts/development/studio.py",
-      "src/concorde/host/studio.py",
-      "src/concorde/host/studio_client.py",
-      "tests/concorde/host/integration/test_studio_server.py",
-      "tests/concorde/host/unit/test_studio.py",
-      "tests/concorde/host/unit/test_studio_client.py"
+      "src/concorde/harness/studio.py",
+      "src/concorde/harness/studio_client.py",
+      "tests/concorde/harness/test_studio.py",
+      "tests/concorde/harness/test_studio_client.py",
+      "tests/concorde/harness/test_studio_server.py"
     ]
   },
   {
@@ -330,14 +332,14 @@ as one used-Module entity so the diagram in Architecture shows composition and d
     "kind": "shared program",
     "responsibility": "Realize shared worktree identity, candidate state, session handoff and delivery mechanics for its two Module consumers.",
     "files": [
-      "src/concorde/host/change_worktree.py",
-      "src/concorde/host/session_handoff.py",
-      "src/concorde/host/worktree.py",
-      "src/concorde/host/worktree_delivery.py",
-      "tests/concorde/host/unit/test_change_worktree.py",
-      "tests/concorde/host/unit/test_session_handoff.py",
-      "tests/concorde/host/unit/test_worktree_boundary.py",
-      "tests/concorde/specification/test_worktree_lifecycle.py"
+      "src/concorde/harness/change_worktree.py",
+      "src/concorde/harness/session_handoff.py",
+      "src/concorde/harness/worktree.py",
+      "src/concorde/harness/worktree_delivery.py",
+      "tests/concorde/harness/test_change_worktree.py",
+      "tests/concorde/harness/test_session_handoff.py",
+      "tests/concorde/harness/test_worktree_boundary.py",
+      "tests/concorde/harness/test_worktree_lifecycle.py"
     ]
   },
   {

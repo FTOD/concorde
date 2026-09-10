@@ -101,14 +101,12 @@ scenarios exchange.
     "kind": "program",
     "responsibility": "Realizes exact docsite scaffold proposals and deploys the current publishing template for a registered project, without reading code to infer architecture.",
     "files": [
-      "src/concorde/autodocs/__init__.py",
-      "src/concorde/autodocs/docsite_scaffold.py",
-      "src/concorde/autodocs/docsite_template.py",
-      "tests/concorde/autodocs/__init__.py",
-      "tests/concorde/autodocs/integration/__init__.py",
-      "tests/concorde/autodocs/integration/test_docsite_scaffold.py",
-      "tests/concorde/autodocs/unit/__init__.py",
-      "tests/concorde/autodocs/unit/test_docsite_template.py"
+      "src/concorde/views/__init__.py",
+      "src/concorde/views/docsite_scaffold.py",
+      "src/concorde/views/docsite_template.py",
+      "tests/concorde/views/__init__.py",
+      "tests/concorde/views/test_docsite_scaffold.py",
+      "tests/concorde/views/test_docsite_template.py"
     ]
   },
   {
@@ -118,7 +116,7 @@ scenarios exchange.
     "responsibility": "Realizes the deterministic admission and process-launch boundary that selects the first existing raw graph, verifies the installed runtime and launches the official viewer without generating the graph or installing dependencies.",
     "files": [
       "scripts/run-viewer.py",
-      "tests/concorde/distribution/unit/test_viewer_launcher.py"
+      "tests/concorde/views/test_viewer_launcher.py"
     ]
   },
   {
@@ -127,7 +125,7 @@ scenarios exchange.
     "kind": "shared program",
     "responsibility": "Realizes exact replacement proposals as staged filesystem operations with before-digest checks and original-byte recovery, for every Module that applies an accepted proposal.",
     "files": [
-      "src/concorde/specification/changes.py"
+      "src/concorde/spec/changes.py"
     ]
   },
   {

@@ -1,5 +1,5 @@
 """Global entry: answer questions, route work, and design or apply system topology."""
-from concorde.host import contract_shapes as shapes
+from concorde.spec import contract_shapes as shapes
 from agents import coordinator, spec_author
 
 from . import external_name
@@ -35,5 +35,5 @@ RESPONSE = shapes.obj({
 
 
 def run(host, configuration, request):
-    from concorde.host.capability_service import run_capability
+    from concorde.development.capability_service import run_capability
     return run_capability(EXTERNAL_NAME, configuration, request, host_context=host)

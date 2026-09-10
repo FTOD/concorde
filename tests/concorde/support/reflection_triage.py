@@ -159,8 +159,8 @@ def tree_hashes(root: Path) -> dict[str, str]:
 
 def initialize_project(root: Path) -> Path:
     """Apply a real Profile 10 initialization proposal, the only supported project shape."""
-    from concorde.specification.initialize import apply_project_proposal, project_proposal
-    from concorde.host.typed_data import typed
+    from concorde.spec.initialize import apply_project_proposal, project_proposal
+    from concorde.spec.typed_data import typed
 
     configuration = typed("concorde-capability-configuration",
                           {"integration": "claude", "enforcement": "native"})

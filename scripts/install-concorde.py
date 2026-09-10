@@ -15,7 +15,7 @@ from typing import Any, Mapping, NamedTuple, Sequence
 SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPT_ROOT / "src"))
 
-from concorde.autodocs.docsite_template import DocsiteTemplateError, template_files  # noqa: E402
+from concorde.views.docsite_template import DocsiteTemplateError, template_files  # noqa: E402
 from concorde.distribution.managed_runtime import (  # noqa: E402
     ManagedRuntimeError,
     load_runtime_spec,
@@ -42,7 +42,7 @@ PACKAGE_ROOTS = [
     "templates",
     "viewer",
 ]
-from concorde.host import build as concorde_build
+from concorde.distribution import build as concorde_build
 RUNTIME = {
     "launcher": "scripts/run-capability.py",
     "python": ">=3.11",
@@ -184,7 +184,7 @@ def load_package(root: Path) -> Package:
         load_runtime_spec(root, manifest)
     except ManagedRuntimeError as error:
         raise InstallError(str(error)) from error
-    from concorde.host.package_validation import validate_package
+    from concorde.distribution.package_validation import validate_package
     findings = validate_package(root)
     if findings:
         raise InstallError("; ".join(f.message for f in findings))

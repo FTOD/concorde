@@ -301,6 +301,7 @@ invocation envelope, and every exported identity appears here at least once with
 
 | Error code | Meaning |
 | --- | --- |
+| `already_initialized` | The project is already configured; use `configure` to change settings instead of initializing again. |
 | `ambiguous_route` | Main routing found more than one owning target for a capability that requires exactly one; route cross-target work through a Module instead. |
 | `cancelled` | `CapabilityExecutionError.outcome` when the injected runner raised `KeyboardInterrupt`; the host maps this to the `execution_cancelled` result error code. |
 | `child_blocked` | A composed child capability returned a blocked or otherwise non-successful outcome and stopped the composing capability. |
@@ -308,6 +309,10 @@ invocation envelope, and every exported identity appears here at least once with
 | `context_limit` | Main discovery exceeded its bounded expansion-step limit. |
 | `delivery_in_progress` | The candidate is already being delivered; resume delivery from either participating worktree instead of starting a new mutation. |
 | `delivery_session_required` | The current session is not recognized as the change's selected source or destination worktree. |
+| `invalid_assessment` | A returned context assessment is internally inconsistent: only a Spec-incomplete outcome may carry structured gaps. |
+| `invalid_context` | A resolved context is structurally invalid, for example discovery without nonempty, unique, ordered targets. |
+| `invalid_phase` | The requested context or discovery phase is not one this host supports. |
+| `missing_source` | A required regular file named by the registry or by a resolved context is missing from the project. |
 | `primary_session_required` | Final primary merging requires the primary owning outer session. |
 | `delivery_required` | Final primary merging requires a completed staged delivery; finish staging or cleanup first. |
 | `detached_primary` | The destination (primary) worktree has no attached branch to deliver onto. |
@@ -339,6 +344,7 @@ invocation envelope, and every exported identity appears here at least once with
 | `missing_plan` | Task authoring was requested without an authored plan. |
 | `missing_tasks` | Implementation was requested without authored tasks. |
 | `permission_denied` | A request or worker tried to act outside its granted target, Module composition/dependencies, or write scope. |
+| `protocol_mismatch` | The project's pinned Protocol binding does not match the installed Protocol assets, or a bound asset has changed. |
 | `review_required` | A required Spec or code review is missing, incomplete, blocking, or stale for the current revision. |
 | `spec_incomplete` | The current task still has open, unresolved Spec gaps. |
 | `stale_build` | The rendered build is missing, or a recorded source has changed since the last `python -m concorde build`. |
@@ -354,8 +360,10 @@ invocation envelope, and every exported identity appears here at least once with
 | `unknown_agent` | The named Agent has no matching `agents/<name>/` definition. |
 | `unknown_capability` | The named capability is not registered, or a parent capability referenced a capability that does not exist. |
 | `unknown_change` | Delivery named a `change_id` with no registered live worktree or delivery receipt. |
+| `unknown_target` | The requested Spec target ID is not registered. |
 | `unknown_type` | A TypedValue's `type_id` does not name a schema the wire module recognizes. |
 | `unsafe_path` | A path escapes the project root, aliases a control path, or crosses a symlink. |
+| `unsupported_profile` | The registry declares a profile older than the Module model this runtime implements; migrate it explicitly. |
 | `unsupported_target` | The selected target has no registered implementation for the requested code-owning behavior. |
 | `unsupported_version` | The invocation's `schema_version` is not the one this host implements. |
 | `use_proposal` | `describe-policy` cannot preview `init`/`configure`; use their deterministic proposal flow instead. |

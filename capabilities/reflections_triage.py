@@ -1,6 +1,6 @@
 """Global reflection queue: report status, capture recorded gaps, and investigate, implement,
 merge or close owned reflections."""
-from concorde.host import contract_shapes as shapes
+from concorde.spec import contract_shapes as shapes
 from agents import implementation_worker
 
 from . import external_name
@@ -37,5 +37,5 @@ RESPONSE = {
 
 
 def run(host, configuration, request):
-    from concorde.host.capability_service import run_capability
+    from concorde.development.capability_service import run_capability
     return run_capability(EXTERNAL_NAME, configuration, request, host_context=host)

@@ -8,7 +8,7 @@ import re
 import tempfile
 from pathlib import Path
 
-from ..host.typed_data import TypedDataError, checked_path, validate_typed, verify_artifacts
+from ..spec.typed_data import TypedDataError, checked_path, validate_typed, verify_artifacts
 from .reflections import bucket_for_intervention, parse_reflection_document
 
 

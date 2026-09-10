@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from concorde.host.agent_model import Agent, Constraints
-from concorde.host.effects import EffectDeclaration
-from concorde.host.harness import SPEC_CAPSULE
+from concorde.harness.agent_model import Agent, Constraints
+from concorde.harness.effects import EffectDeclaration
+from concorde.harness.harness import SPEC_CAPSULE
 
 AGENT = Agent(
     name="spec_reviewer",

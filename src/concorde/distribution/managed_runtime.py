@@ -190,7 +190,7 @@ def load_runtime_spec(
         raise ManagedRuntimeError("runtime.python must be '>=3.11'")
     if venv != ".concorde/.venv":
         raise ManagedRuntimeError("runtime.venv must be .concorde/.venv")
-    from ..host.build import SKILL_NAMES
+    from .build import SKILL_NAMES
     requirement_path = package_root / requirements
     launcher_path = package_root / launcher
     for label, path in (("requirements", requirement_path), ("launcher", launcher_path)):

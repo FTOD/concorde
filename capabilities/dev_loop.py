@@ -12,7 +12,7 @@ limit, stops the Graph for a human instead of retrying forever (G2). ``GRAPH`` i
 target in ``.concorde/worktree.json`` (``change["graph"][target_id]["policy"]``) when the loop
 first runs for that target, so a resumed loop keeps using the policy it started with.
 """
-from concorde.host import contract_shapes as shapes
+from concorde.spec import contract_shapes as shapes
 from agents import coordinator
 
 from . import external_name
@@ -36,5 +36,5 @@ RESPONSE = shapes.stage_response()
 
 
 def run(host, configuration, request):
-    from concorde.host.capability_service import run_capability
+    from concorde.development.capability_service import run_capability
     return run_capability(EXTERNAL_NAME, configuration, request, host_context=host)

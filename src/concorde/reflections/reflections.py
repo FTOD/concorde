@@ -26,7 +26,7 @@ import re
 from dataclasses import dataclass
 from typing import Mapping
 
-from ..frontmatter import FrontMatterError, parse_document
+from ..spec.frontmatter import FrontMatterError, parse_document
 
 REFLECTIONS_PATH = ".concorde/reflections"
 INDEX_PATH = f"{REFLECTIONS_PATH}/index.json"

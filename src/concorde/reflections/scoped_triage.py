@@ -5,8 +5,8 @@ import sys
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
-from ..host.typed_data import typed, artifact
-from ..specification.repository import SpecError, read_file, digest
+from ..spec.typed_data import typed, artifact
+from ..spec.repository import SpecError, read_file, digest
 from .investigation import apply_investigation
 
 
@@ -18,8 +18,8 @@ def queue_module(package):
 
 
 def triage(run):
-    from ..host.capability_host import Invocation, invoke_capability, _implementation_digest
-    from ..host.change_worktree import progress, read_change, target_state
+    from ..development.capability_host import Invocation, invoke_capability, _implementation_digest
+    from ..harness.change_worktree import progress, read_change, target_state
     root=run.repository.root;queue=queue_module(run.host.package_root)
     action=run.task["action"];ids=run.task["reflection_ids"]
     if action == "record-gaps":
@@ -107,8 +107,8 @@ def triage(run):
 
 def record_gaps(run, queue):
     """Explicitly promote selected existing gaps, preserving their actual owners."""
-    from ..host.change_worktree import read_change, save_change
-    from ..specification.changes import apply_files, file_change
+    from ..harness.change_worktree import read_change, save_change
+    from ..spec.changes import apply_files, file_change
     from .reflections import parse_reflection_document
     ids = run.task.get("gap_ids", [])
     if not ids or run.task["reflection_ids"]:
@@ -180,7 +180,7 @@ def record_gaps(run, queue):
 
 def gap_records(run):
     """Public selection metadata around the existing gap contract, without source reads."""
-    from ..host.change_worktree import read_change
+    from ..harness.change_worktree import read_change
     state = read_change(run.repository.root)
     result = []
     for item in (state or {}).get("gap_history", []):

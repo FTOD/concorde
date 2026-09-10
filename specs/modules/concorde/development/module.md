@@ -223,20 +223,16 @@ Two programs realize this Module's own code: the host adapter and the capability
     "kind": "program",
     "responsibility": "Realize capability admission and dispatch, the global discovery loop, the development graph with its bounded repair edge, topology preparation and application, review evidence and candidate readiness.",
     "files": [
-      "src/concorde/host/__init__.py",
-      "src/concorde/host/capability_host.py",
-      "src/concorde/host/capability_service.py",
-      "src/concorde/host/configuration.py",
-      "src/concorde/host/review.py",
-      "tests/concorde/host/__init__.py",
-      "tests/concorde/host/acceptance/__init__.py",
-      "tests/concorde/host/contract/__init__.py",
-      "tests/concorde/host/contract/test_structured_results.py",
-      "tests/concorde/host/integration/__init__.py",
-      "tests/concorde/host/unit/__init__.py",
-      "tests/concorde/host/unit/test_capability_modules.py",
-      "tests/concorde/host/unit/test_run_capability.py",
-      "tests/concorde/specification/test_review.py",
+      "src/concorde/development/__init__.py",
+      "src/concorde/development/capability_host.py",
+      "src/concorde/development/capability_service.py",
+      "src/concorde/development/configuration.py",
+      "src/concorde/development/review.py",
+      "tests/concorde/development/__init__.py",
+      "tests/concorde/development/test_capability_modules.py",
+      "tests/concorde/development/test_review.py",
+      "tests/concorde/development/test_run_capability.py",
+      "tests/concorde/development/test_structured_results.py",
       "tests/concorde/support/operation_json.py"
     ]
   },
@@ -283,14 +279,14 @@ Two programs realize this Module's own code: the host adapter and the capability
     "kind": "shared program",
     "responsibility": "Realize shared worktree identity, candidate state, session handoff and delivery mechanics for its two Module consumers.",
     "files": [
-      "src/concorde/host/change_worktree.py",
-      "src/concorde/host/session_handoff.py",
-      "src/concorde/host/worktree.py",
-      "src/concorde/host/worktree_delivery.py",
-      "tests/concorde/host/unit/test_change_worktree.py",
-      "tests/concorde/host/unit/test_session_handoff.py",
-      "tests/concorde/host/unit/test_worktree_boundary.py",
-      "tests/concorde/specification/test_worktree_lifecycle.py"
+      "src/concorde/harness/change_worktree.py",
+      "src/concorde/harness/session_handoff.py",
+      "src/concorde/harness/worktree.py",
+      "src/concorde/harness/worktree_delivery.py",
+      "tests/concorde/harness/test_change_worktree.py",
+      "tests/concorde/harness/test_session_handoff.py",
+      "tests/concorde/harness/test_worktree_boundary.py",
+      "tests/concorde/harness/test_worktree_lifecycle.py"
     ]
   },
   {
@@ -299,7 +295,7 @@ Two programs realize this Module's own code: the host adapter and the capability
     "kind": "shared program",
     "responsibility": "Realize exact replacement proposals as staged filesystem operations with before-digest checks and original-byte recovery, for every Module that applies an accepted proposal.",
     "files": [
-      "src/concorde/specification/changes.py"
+      "src/concorde/spec/changes.py"
     ]
   },
   {

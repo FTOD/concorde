@@ -92,19 +92,19 @@ The registered companion documents [registry](registry.md), [values](values.md),
       "skills/concorde-init/SKILL.md",
       "src/concorde/__init__.py",
       "src/concorde/__main__.py",
-      "src/concorde/diagnostics.py",
-      "src/concorde/model.py",
-      "src/concorde/specification/__init__.py",
-      "src/concorde/specification/initialize.py",
-      "src/concorde/specification/repository.py",
-      "src/concorde/specification/validation.py",
+      "src/concorde/spec/__init__.py",
+      "src/concorde/spec/diagnostics.py",
+      "src/concorde/spec/initialize.py",
+      "src/concorde/spec/model.py",
+      "src/concorde/spec/repository.py",
+      "src/concorde/spec/validation.py",
       "tests/__init__.py",
       "tests/concorde/__init__.py",
-      "tests/concorde/specification/__init__.py",
-      "tests/concorde/specification/support.py",
-      "tests/concorde/specification/test_distribution.py",
-      "tests/concorde/specification/test_module_architecture.py",
-      "tests/concorde/specification/test_module_model.py",
+      "tests/concorde/spec/__init__.py",
+      "tests/concorde/spec/support.py",
+      "tests/concorde/spec/test_distribution.py",
+      "tests/concorde/spec/test_module_architecture.py",
+      "tests/concorde/spec/test_module_model.py",
       "tests/concorde/support/__init__.py",
       "tests/concorde/support/paths.py"
     ]
@@ -115,13 +115,13 @@ The registered companion documents [registry](registry.md), [values](values.md),
     "kind": "shared program",
     "responsibility": "Realizes versioned value schemas, canonical encoding, safe project paths, the offline interface-schema evaluator and the constrained front-matter parser that every boundary of the Framework uses.",
     "files": [
-      "src/concorde/frontmatter.py",
-      "src/concorde/host/contract_shapes.py",
-      "src/concorde/host/contracts.py",
-      "src/concorde/host/typed_data.py",
-      "src/concorde/host/wire_shapes.py",
-      "src/concorde/specification/schema.py",
-      "tests/concorde/host/unit/test_typed_data.py"
+      "src/concorde/spec/contract_shapes.py",
+      "src/concorde/spec/contracts.py",
+      "src/concorde/spec/frontmatter.py",
+      "src/concorde/spec/schema.py",
+      "src/concorde/spec/typed_data.py",
+      "src/concorde/spec/wire_shapes.py",
+      "tests/concorde/spec/test_typed_data.py"
     ]
   },
   {
@@ -130,7 +130,7 @@ The registered companion documents [registry](registry.md), [values](values.md),
     "kind": "shared program",
     "responsibility": "Realizes exact replacement proposals as staged filesystem operations with before-digest checks and original-byte recovery, for every Module that applies an accepted proposal.",
     "files": [
-      "src/concorde/specification/changes.py"
+      "src/concorde/spec/changes.py"
     ]
   },
   {

@@ -1,6 +1,6 @@
 """Concorde's Agent inventory (workflow/agents-and-harnesses.md A1): one Python package per named
 Agent, each binding its authored ``spec.md``, Harness reference and Constraints/Permissions
-(``concorde.host.agent_model.Agent``) in its own ``agents/<name>/__init__.py``.
+(``concorde.harness.agent_model.Agent``) in its own ``agents/<name>/__init__.py``.
 
 This file is the package-owned inventory declaration -- it mirrors ``capabilities/__init__.py`` --
 and belongs to the build (``implementation.build``, referenced by ``module.distribution``). Each
