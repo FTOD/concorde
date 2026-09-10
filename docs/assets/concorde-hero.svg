@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">Concorde — Give every agent a contract.</title>
+  <desc id="description">An indigo Concorde emblem and a field of connected points frame the promise: from intent to a verified candidate.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1200" y2="440" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111A30"/><stop offset="1" stop-color="#17152E"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(1030 175) rotate(135) scale(460 380)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6465E9" stop-opacity=".23"/><stop offset="1" stop-color="#6465E9" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <circle cx="20" cy="20" r="1" fill="#A3ADD0" fill-opacity=".14"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="440" rx="24" fill="url(#background)"/>
+  <rect width="1200" height="440" rx="24" fill="url(#glow)"/>
+  <rect width="1200" height="440" rx="24" fill="url(#grid)"/>
+  <g transform="translate(56 48)">
+    <rect width="44" height="44" rx="12" fill="#6264E8"/>
+    <path d="M30.25 12.375a13.75 13.75 0 1 0 0 19.25l-4.125-4.8125a7.5625 7.5625 0 1 1 0-9.625z" fill="#FFF"/>
+    <text x="60" y="30" fill="#EEF0FF" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="27" font-weight="650" letter-spacing="-.6">concorde</text>
+  </g>
+  <g font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+    <text x="56" y="157" fill="#ACB0FF" font-size="12" font-weight="650" letter-spacing="2.5">SPECIFICATION-DRIVEN DEVELOPMENT</text>
+    <text x="52" y="223" fill="#F5F5FF" font-size="56" font-weight="700" letter-spacing="-2.2">Give every agent</text>
+    <text x="52" y="285" fill="#F5F5FF" font-size="56" font-weight="700" letter-spacing="-2.2">a contract.</text>
+    <text x="56" y="332" fill="#B7BED5" font-size="20">From intent to a verified candidate.</text>
+    <text x="56" y="399" fill="#8791B0" font-size="12" font-weight="550" letter-spacing="1.4">EXPLICIT CONTEXT  /  TRACEABLE EVIDENCE  /  CONTROLLED DELIVERY</text>
+  </g>
+  <g stroke="#7375D8" stroke-opacity=".3">
+    <path d="M835 119 1020 89 1120 213 1002 341 811 299 835 119Z"/>
+    <path d="M835 119 950 219 1020 89M1120 213 950 219 1002 341M811 299 950 219"/>
+    <circle cx="950" cy="219" r="138" stroke-dasharray="3 9"/>
+    <circle cx="950" cy="219" r="181" stroke-opacity=".12"/>
+  </g>
+  <g fill="#272743" stroke="#8587E8">
+    <circle cx="835" cy="119" r="7"/><circle cx="1020" cy="89" r="5"/>
+    <circle cx="1120" cy="213" r="7"/><circle cx="1002" cy="341" r="5"/>
+    <circle cx="811" cy="299" r="7"/>
+  </g>
+  <rect x="894" y="163" width="112" height="112" rx="30" fill="#6264E8"/>
+  <path d="M971 194.5a35 35 0 1 0 0 49l-10.5-12.25a19.25 19.25 0 1 1 0-24.5z" fill="#FFF"/>
+  <circle cx="1120" cy="213" r="3" fill="#8CE5C3" stroke="none"/>
+  <path d="M1081 344h52" stroke="#8CE5C3" stroke-width="2"/>
+  <text x="1081" y="367" fill="#99A5C6" font-family="ui-monospace, monospace" font-size="11" letter-spacing="1">SPEC → CODE</text>
+</svg>

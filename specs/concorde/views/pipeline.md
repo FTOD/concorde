@@ -168,6 +168,15 @@ Markdown digest includes every Mermaid fence and source declaration. Inline diag
 additional source or route record. This is a byte/version identity, not a semantic-completeness
 claim.
 
+## Project introduction
+
+Site identity schema 1 optionally carries the `homepage` presentation object described in
+[publication](publication.md#scenario.views.publish-homepage). The content plugin passes the
+validated identity to the root renderer and watches `docsite/site.json` for changes. When the
+option is absent, the root preserves its redirect to the registered entry Module. The introduction
+is a human navigation surface outside registered Spec membership and `sourceDigest`; the existing
+registered-page manifest and architecture graph retain their registry-derived meanings.
+
 ## Independent Protocol documentation
 
 When `docsite/site.json` sets optional boolean `protocolDocs` to true, publication adds a
@@ -238,7 +247,7 @@ inventory after base-URL normalization. Otherwise it throws before emitting veri
 After the build manifest and architecture graph, it writes one legacy redirect stub per alias at
 `<outDir>/<alias without its leading slash>.html`: a minimal HTML document with a
 base-URL-prefixed `<meta http-equiv="refresh">` and `<link rel="canonical">` to the document's
-canonical page, plus a visible link, mirroring the root redirect page. These are the complete
+canonical page, plus a visible link, mirroring the default root redirect. These are the complete
 collaborator promises this Profile 11 path relies on.
 
 ## Build artifacts, validation and promotion

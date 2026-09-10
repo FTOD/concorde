@@ -18,6 +18,12 @@ const validValue = {
 };
 
 const roots: string[] = [];
+const homepage = {
+  eyebrow: 'Project documentation', title: 'Build with a clear contract.', description: 'Explore the project.',
+  features: {title: 'Capabilities', items: [{title: 'Contracts', description: 'Explicit promises.'}]},
+  workflow: {title: 'Workflow', description: 'An inspectable path.', steps: [{title: 'Specify', description: 'Define the behavior.'}]},
+  quickstart: {title: 'Get started', description: 'Install the project.', code: 'echo example'},
+};
 afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, {recursive: true, force: true}))));
 
 async function siteDirWith(content: unknown): Promise<string> {
@@ -59,6 +65,26 @@ describe('site identity schema 1', () => {
     expect(parseSiteIdentity({...validValue, protocolDocs: true}).protocolDocs).toBe(true);
     expect(parseSiteIdentity({...validValue, protocolDocs: false}).protocolDocs).toBe(false);
     expect(() => parseSiteIdentity({...validValue, protocolDocs: 'true'})).toThrow(/protocolDocs/);
+  });
+
+  it('keeps the landing page opt-in and preserves project-owned copy', () => {
+    expect(parseSiteIdentity(validValue).homepage).toBeUndefined();
+    expect(parseSiteIdentity({...validValue, homepage}).homepage).toEqual(homepage);
+    expect(parseSiteIdentity({...validValue, homepage: {...homepage, title: '  Atlas  '}}).homepage?.title).toBe('Atlas');
+  });
+
+  it.each([
+    ['null', null, /homepage must be an object/],
+    ['empty title', {...homepage, title: ' '}, /homepage.title/],
+    ['missing features', {...homepage, features: undefined}, /homepage.features/],
+    ['empty features', {...homepage, features: {...homepage.features, items: []}}, /homepage.features.items/],
+    ['invalid feature', {...homepage, features: {...homepage.features, items: [null]}}, /homepage.features.items\[0\]/],
+    ['missing description', {...homepage, features: {...homepage.features, items: [{title: 'Feature'}]}}, /homepage.features.items\[0\].description/],
+    ['invalid steps', {...homepage, workflow: {...homepage.workflow, steps: 'steps'}}, /homepage.workflow.steps/],
+    ['empty code', {...homepage, quickstart: {...homepage.quickstart, code: ''}}, /homepage.quickstart.code/],
+  ])('rejects an invalid homepage: %s', (_label, value, field) => {
+    expect(() => parseSiteIdentity({...validValue, homepage: value})).toThrow(/docsite\/site.json/);
+    expect(() => parseSiteIdentity({...validValue, homepage: value})).toThrow(field);
   });
 
   it('reports a missing file by its project-relative name', async () => {

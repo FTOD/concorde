@@ -2,6 +2,16 @@ import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 
 /** Site identity schema 1 — the only project-specific configuration the adapter reads. */
+export interface HomepageItem {title: string; description: string}
+export interface Homepage {
+  eyebrow: string;
+  title: string;
+  description: string;
+  features: {title: string; items: HomepageItem[]};
+  workflow: {title: string; description: string; steps: HomepageItem[]};
+  quickstart: {title: string; description: string; code: string};
+}
+
 export interface SiteIdentity {
   schemaVersion: 1;
   title: string;
@@ -12,6 +22,7 @@ export interface SiteIdentity {
   repository?: string;
   tagline?: string;
   protocolDocs?: boolean;
+  homepage?: Homepage;
 }
 
 const SITE_JSON_LABEL = 'docsite/site.json';
@@ -23,6 +34,42 @@ function isNonEmptyString(value: unknown): value is string {
 
 function invalid(rule: string): never {
   throw new Error(`${SITE_JSON_LABEL} is invalid: ${rule}`);
+}
+
+function object(value: unknown, field: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) invalid(`${field} must be an object.`);
+  return value as Record<string, unknown>;
+}
+
+function string(value: unknown, field: string): string {
+  if (!isNonEmptyString(value)) invalid(`${field} must be a non-empty string.`);
+  return value.trim();
+}
+
+function items(value: unknown, field: string): HomepageItem[] {
+  if (!Array.isArray(value) || value.length === 0) invalid(`${field} must be a non-empty array.`);
+  return value.map((item, index) => {
+    const entry = object(item, `${field}[${index}]`);
+    return {title: string(entry.title, `${field}[${index}].title`),
+      description: string(entry.description, `${field}[${index}].description`)};
+  });
+}
+
+function parseHomepage(value: unknown): Homepage {
+  const page = object(value, 'homepage');
+  const features = object(page.features, 'homepage.features');
+  const workflow = object(page.workflow, 'homepage.workflow');
+  const quickstart = object(page.quickstart, 'homepage.quickstart');
+  return {
+    eyebrow: string(page.eyebrow, 'homepage.eyebrow'),
+    title: string(page.title, 'homepage.title'),
+    description: string(page.description, 'homepage.description'),
+    features: {title: string(features.title, 'homepage.features.title'), items: items(features.items, 'homepage.features.items')},
+    workflow: {title: string(workflow.title, 'homepage.workflow.title'),
+      description: string(workflow.description, 'homepage.workflow.description'), steps: items(workflow.steps, 'homepage.workflow.steps')},
+    quickstart: {title: string(quickstart.title, 'homepage.quickstart.title'),
+      description: string(quickstart.description, 'homepage.quickstart.description'), code: string(quickstart.code, 'homepage.quickstart.code')},
+  };
 }
 
 /** Parses and validates a decoded `docsite/site.json` value against site identity schema 1. */
@@ -60,6 +107,7 @@ export function parseSiteIdentity(value: unknown): SiteIdentity {
     ...(record.repository !== undefined ? {repository: (record.repository as string).trim()} : {}),
     ...(record.tagline !== undefined ? {tagline: (record.tagline as string).trim()} : {}),
     ...(record.protocolDocs !== undefined ? {protocolDocs: record.protocolDocs as boolean} : {}),
+    ...(record.homepage !== undefined ? {homepage: parseHomepage(record.homepage)} : {}),
   };
 }
 

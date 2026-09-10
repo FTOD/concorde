@@ -41,6 +41,20 @@ it('publishes the independent standard with chapter navigation and no Spec wrapp
  const graph=JSON.parse(await readFile(resolve(output,'architecture-graph.json'),'utf8'));
  expect(graph.nodes.some((node:{id:string})=>node.id==='module.protocol')).toBe(false);
 });
+it('publishes the configured introduction at the root while preserving direct Spec navigation',async()=>{
+ const home=await readFile(resolve(output,'index.html'),'utf8');
+ expect(home).toContain('Give every agent a contract.');
+ expect(home).toContain('Shared code. Every consumer counted.');
+ expect(home).toContain('id="get-started"');
+ expect(home).toContain('href="/concorde/specs/concorde/module"');
+ expect(home).toContain('href="/concorde/graph"');
+ expect(home).toContain('href="/concorde/protocol"');
+ expect(home).toContain('name="description"');
+ expect(home).not.toMatch(/http-equiv="refresh"/i);
+ expect(home).not.toContain('provenanceShell');
+ const manifest=JSON.parse(await readFile(resolve(output,'build-manifest.json'),'utf8'));
+ expect(manifest.pages.some((page:{route:string})=>page.route==='/')).toBe(false);
+});
 it('preserves every legacy membership route as a redirect stub to its canonical page',async()=>{
  const r=loadScopedRegistry(root);
  for(const page of r.pages) for(const alias of page.aliases){

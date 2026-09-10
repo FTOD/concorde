@@ -1,0 +1,107 @@
+.home {
+  --home-ink: #182138;
+  --home-muted: #535e73;
+  --home-border: #dfe3ed;
+  --home-accent: #4b4dca;
+  --home-soft: #f4f5fa;
+  color: var(--home-ink);
+  background: var(--ifm-background-color);
+}
+
+:global([data-theme='dark']) .home {
+  --home-ink: #eef0fa;
+  --home-muted: #b4bdd2;
+  --home-border: #343b4e;
+  --home-accent: #a9aaff;
+  --home-soft: #1a1e2b;
+}
+
+.hero {
+  color: #f4f5ff;
+  background: radial-gradient(ellipse at 90% 20%, #323166 0, transparent 55%), #11192e;
+  padding: 6rem 2rem 5.5rem;
+}
+
+.heroInner, .section, .explore {
+  max-width: 1160px;
+  margin-inline: auto;
+}
+
+.heroInner {display: grid; grid-template-columns: 1.3fr 1fr; gap: 5rem; align-items: center;}
+.eyebrow, .sectionLabel {font-size: .875rem; font-weight: 650; letter-spacing: .11em; text-transform: uppercase;}
+.eyebrow {color: #b5b6ff; margin-bottom: 1.6rem;}
+.hero h1 {max-width: 10ch; font-size: clamp(3.25rem, 5.8vw, 5.4rem); line-height: 1.03; letter-spacing: -.055em; margin-bottom: 1.8rem;}
+.intro {max-width: 34rem; color: #bdc6dd; font-size: 1.125rem; line-height: 1.75;}
+.actions {display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 2rem;}
+.primary, .secondary {display: inline-flex; align-items: center; gap: 1.4rem; padding: .85rem 1.15rem; border: 1px solid transparent; border-radius: .45rem; font-size: 1rem; font-weight: 600; transition: background .15s ease;}
+.primary {color: #181c34; background: #c4c5ff;}
+.primary:hover {color: #181c34; background: #dadaff; text-decoration: none;}
+.secondary {border-color: #626984; color: #f4f5ff;}
+.secondary:hover {background: #ffffff0c; color: #fff; text-decoration: none;}
+.contract {border: 1px solid #565b80; border-radius: .9rem; background: #11192ec9; box-shadow: 0 24px 80px #080f2440; transform: rotate(1.5deg);}
+.contractHeading {display: flex; align-items: center; gap: .8rem; padding: 1.5rem; border-bottom: 1px solid #3f4665; font-size: .9375rem; font-weight: 600;}
+.contractMark {color: #b5b6ff; font-size: 1.5rem; line-height: 1;}
+.contract ol {padding: 0 1.5rem; margin: 0; list-style: none;}
+.contract li {display: flex; gap: 1.1rem; padding: 1.25rem 0; border-bottom: 1px solid #303953;}
+.contract li:last-child {border: 0;}
+.number {padding-top: .2rem; color: #a6a9ef; font-family: var(--ifm-font-family-monospace); font-size: .8125rem;}
+.contract h2 {font-size: 1.0625rem; letter-spacing: -.015em; margin: 0 0 .35rem;}
+.contract p {color: #b6c0d7; margin: 0; font-size: .9375rem; line-height: 1.5;}
+.contractLink {display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1.1rem 1.5rem; color: #c3c4ff; background: #ffffff04; border-top: 1px solid #3f4665; border-radius: 0 0 .9rem .9rem; font-size: .9375rem;}
+.contractLink:hover {color: #fff; background: #ffffff09; text-decoration: none;}
+.explore {display: flex; justify-content: space-between; align-items: center; gap: 1.25rem; flex-wrap: wrap; padding: 1.6rem 2rem; border-bottom: 1px solid var(--home-border);}
+.explore > span {font-size: .875rem; color: var(--home-muted);}
+.explore a {font-size: .9375rem; color: var(--home-ink); font-weight: 550;}
+.explore a span {margin-left: .6rem; color: var(--home-accent);}
+.section {padding: 5.5rem 2rem;}
+.sectionLabel {color: var(--home-accent); margin-bottom: .9rem;}
+.section > h2, .quickstart h2 {max-width: 22ch; font-size: clamp(2rem, 3.4vw, 3rem); line-height: 1.15; letter-spacing: -.04em; margin-bottom: 1.5rem;}
+.sectionIntro {max-width: 43rem; color: var(--home-muted); font-size: 1.0625rem; line-height: 1.75;}
+.features {display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 2.5rem; margin-top: 3rem;}
+.feature {border-top: 1px solid var(--home-border); padding: 1.7rem 0 1.5rem;}
+.featureNumber {display: block; margin-bottom: 1.2rem; color: var(--home-accent); font-size: .8125rem; font-family: var(--ifm-font-family-monospace);}
+.feature h3 {font-size: 1.25rem; letter-spacing: -.02em; line-height: 1.35;}
+.feature p, .steps p {color: var(--home-muted); font-size: 1rem; line-height: 1.7; margin: 0;}
+.workflow {background: var(--home-soft); border-block: 1px solid var(--home-border);}
+.steps {display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2rem; padding: 0; list-style: none; margin: 3rem 0 0;}
+.steps li {border-top: 2px solid var(--home-border); padding-top: 1.2rem;}
+.steps li:last-child {border-color: var(--home-accent);}
+.stepNumber {display: inline-block; font-size: .875rem; font-family: var(--ifm-font-family-monospace); color: var(--home-accent); margin-bottom: 1.5rem;}
+.steps h3 {font-size: 1.125rem; line-height: 1.4; letter-spacing: -.015em;}
+.quickstart {display: grid; grid-template-columns: 1fr 1.15fr; align-items: center; gap: 3rem; scroll-margin-top: 5rem;}
+.quickstart h2 {scroll-margin-top: 5rem;}
+.setupLink {display: inline-block; color: var(--home-accent); font-weight: 600; margin-top: .5rem;}
+.code {min-width: 0;}
+.code pre {font-size: .875rem;}
+.home a:focus-visible {outline: 3px solid var(--home-accent); outline-offset: 5px;}
+.hero a:focus-visible {outline-color: #c4c5ff;}
+
+@media (max-width: 996px) {
+  .hero {padding-block: 4rem;}
+  .heroInner {gap: 2.5rem;}
+  .hero h1 {font-size: 3.75rem;}
+  .features {grid-template-columns: repeat(2, minmax(0, 1fr));}
+  .steps {grid-template-columns: repeat(2, minmax(0, 1fr));}
+  .quickstart {grid-template-columns: 1fr; gap: 1.5rem;}
+}
+
+@media (max-width: 700px) {
+  .hero {padding: 3.5rem 1.25rem 3rem;}
+  .heroInner {grid-template-columns: 1fr; gap: 3rem;}
+  .hero h1 {font-size: clamp(3rem, 13vw, 4.5rem); max-width: 11ch;}
+  .contract {transform: none;}
+  .explore {padding: 1.5rem 1.25rem; justify-content: flex-start; gap: 1rem 1.75rem;}
+  .explore > span {width: 100%;}
+  .section {padding: 3.5rem 1.25rem;}
+  .features {grid-template-columns: 1fr; margin-top: 2rem;}
+  .steps {gap: 1.5rem;}
+}
+
+@media (max-width: 380px) {
+  .steps {grid-template-columns: 1fr;}
+  .primary, .secondary {width: 100%; justify-content: space-between;}
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary, .secondary {transition: none;}
+}

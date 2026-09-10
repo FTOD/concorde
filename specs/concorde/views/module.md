@@ -27,10 +27,11 @@ access beyond its own host-bound Spec context.
 
 ### req.views.registry-derived-pages — Pages and navigation derive from the registry
 
-Publication SHALL derive pages and navigation only from the explicit registry.
+Publication SHALL derive Module Spec pages and their navigation only from the explicit registry.
 
-This is the positive half of the registry-only promise: everything publication shows a reader is
-traceable to a registered entry. The companion prohibition on directory scanning is
+This is the positive half of the registry-only promise: every published Module Spec is
+traceable to a registered entry. The optional project introduction and independent Protocol
+collection are presentation surfaces outside that membership. The companion prohibition on directory scanning is
 [req.views.no-directory-scanning](#req.views.no-directory-scanning).
 
 ### req.views.no-directory-scanning — No directory scanning or link-based discovery

@@ -14,7 +14,7 @@ under `.concorde/` is excluded from published prose.
 
 ## Navigation
 
-The adapter publishes Profile 10 projects only: it reads `plugins/scoped-content` and registry
+The adapter publishes Profile 11 projects only: it reads `plugins/scoped-content` and registry
 schema 3, and refuses any other `profile_version` with an explicit error. Every registered document
 publishes once at a readable source-derived route: `specs/project/module.md` becomes
 `/specs/project/module`. The navbar exposes a single `Module Specs` tab alongside `Graph`;
@@ -75,6 +75,21 @@ through `plugins/scoped-content/site-identity.ts`. No other adapter byte varies 
 | `repository` | string, optional | Absolute URL; enables the navbar repository link (a GitHub host renders the icon-only link; any other host renders a labeled "Source" link). |
 | `tagline` | string, optional | Falls back to a generic tagline when absent. |
 | `protocolDocs` | boolean, optional | Enables the independent `../protocol/` Markdown collection and Spec Protocol tab; defaults to disabled. |
+| `homepage` | object, optional | Enables the project introduction at `/`; omitted by default so the root redirects to the registered entry Module. |
+
+The optional `homepage` object contains project-owned presentation copy. Its required fields are
+nonempty strings `eyebrow`, `title` and `description`; `features` with a nonempty `title` and `items`
+array; `workflow` with nonempty `title`, `description` and `steps` array; and `quickstart` with
+nonempty `title`, `description` and `code`. Each feature or step has nonempty `title` and
+`description` strings. Invalid or incomplete configuration fails with the field path in the error.
+Text renders as text, and the quickstart code block supports copying through the docsite theme.
+
+Concorde enables this introduction to present its core capabilities and installation steps. The
+renderer is the same packaged template every project receives; consumer scaffolding does not copy
+Concorde's homepage content. The main Spec link resolves from the registered entry Module, the
+architecture link uses `/graph`, and Protocol and repository links appear only when configured.
+All local navigation respects `baseUrl`. Homepage copy is outside Spec membership, graph nodes and
+the registered-page manifest; it grants no agent context and does not replace any Module's Spec.
 
 `docusaurus.config.ts` loads the identity once at startup and fails with an actionable error naming
 `docsite/site.json` and the violated rule when the file is missing or invalid.

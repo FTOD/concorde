@@ -3,6 +3,7 @@ import {dirname,resolve} from 'node:path';
 import type {LoadContext,Plugin} from '@docusaurus/types';
 import {loadScopedRegistry,type Page,type ScopedRegistry} from './model';
 import {canonicalRoute,normalizeRoute} from './routes';
+import {loadSiteIdentity} from './site-identity';
 async function requireMaterialized(registry:ScopedRegistry):Promise<void> {
   const identity=JSON.parse(await readFile(resolve(registry.projectRoot,'docsite/.generated/scoped-materialization.json'),'utf8'));
   if(identity.schema_version!==1||identity.sourceDigest!==registry.sourceDigest)throw new Error('Materialized Spec source identity differs; prepare publication again');
@@ -14,7 +15,7 @@ function manifestPages(registry:ScopedRegistry) {
 function withBaseUrl(baseUrl:string,route:string):string {
   return (baseUrl==='/'?'':baseUrl.replace(/\/$/,''))+route;
 }
-/** A minimal static redirect, mirroring src/pages/index.tsx, for a legacy `/specs/<target-id>/<hash>`
+/** A minimal static redirect for a legacy `/specs/<target-id>/<hash>`
  * route kept compatible after the source-path canonical route replaced it. */
 function redirectStub(target:string,title:string):string {
   return '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"/>'+
@@ -42,8 +43,9 @@ export default function scopedContent(context:LoadContext,options:unknown):Plugi
   return {name:'concorde-content',
     async loadContent(){loaded=loadScopedRegistry(root);await requireMaterialized(loaded);return loaded;},
     async contentLoaded({content,actions}){actions.setGlobalData({schema_version:content.schema_version,entryTarget:content.entryTarget,
-      pages:content.pages.map(({content:_,...page})=>page),architectureGraph:{nodes:content.targets,edges:content.edges}});},
-    getPathsToWatch(){return ['.concorde/config.json','generated/docs/instructions.json','generated/docs/wire.json',
+      pages:content.pages.map(({content:_,...page})=>page),architectureGraph:{nodes:content.targets,edges:content.edges},
+      siteIdentity:loadSiteIdentity(context.siteDir)});},
+    getPathsToWatch(){return ['docsite/site.json','.concorde/config.json','generated/docs/instructions.json','generated/docs/wire.json',
       ...(loaded?[loaded.registryPath,...loaded.pages.map(p=>p.sourcePath)]:[])].map(p=>resolve(root,p));},
     async postBuild({outDir,routesPaths}){
       const current=loadScopedRegistry(root);if(current.sourceDigest!==loaded.sourceDigest)throw new Error('Spec source changed during publication');

@@ -5,7 +5,38 @@
   "protocolDocs": true,
   "repository": "https://github.com/FTOD/concorde",
   "schema_version": 1,
-  "tagline": "Concorde Spec Protocol, Skills and verified workflows",
+  "tagline": "Give every agent a contract. From intent to a verified candidate.",
   "title": "Concorde Framework",
-  "url": "https://ftod.github.io"
+  "url": "https://ftod.github.io",
+  "homepage": {
+    "eyebrow": "Specification-driven development · Codex + Claude",
+    "title": "Give every agent a contract.",
+    "description": "Turn a change request into a reviewed, validated candidate. Concorde gives each agent a complete Module contract, explicit file access and evidence you can inspect.",
+    "features": {
+      "title": "Know what changed. Know why it’s ready.",
+      "items": [
+        {"title": "Complete contracts. Bounded context.", "description": "Each task receives its Module’s entire Spec collection. Planners reason from its promises; code writers receive the declared implementation files. Dependencies never silently expand context."},
+        {"title": "Boundaries the host enforces.", "description": "Agents receive explicit context and file permissions. Configured checks run with OS-enforced read-only project access and external scratch space. Unsupported enforcement blocks execution."},
+        {"title": "Shared code. Every consumer counted.", "description": "A reverse index tracks every Module that lists a file. Change shared code, and each affected contract needs its own checks and evidence in a separate Module context."},
+        {"title": "Evidence that stays honest.", "description": "Reviews and validation identify the inputs they assessed. Relevant changes invalidate old evidence. Missing promises become named Spec gaps, with progress preserved for the next invocation."},
+        {"title": "A worktree for every change.", "description": "The development loop stops at a ready candidate. Delivery verifies integration and stages an independent branch. Merging into primary requires a separate, explicit request."},
+        {"title": "Explore the system behind the patch.", "description": "Read contracts alongside their entity diagrams and browse composition and dependency graphs. Optional LangGraph Studio exposes the execution graphs and live events behind the workflow."}
+      ]
+    },
+    "workflow": {
+      "title": "From intent to a ready candidate.",
+      "description": "One change, an inspectable path. The default loop authors the Spec and runs reviews; missing contracts and failed checks preserve progress instead of claiming completion.",
+      "steps": [
+        {"title": "Route & specify", "description": "Select the responsible Module, establish its contract and review the Spec."},
+        {"title": "Plan & implement", "description": "Turn the contract into tasks, then write code with the declared file access."},
+        {"title": "Validate & review", "description": "Run configured checks and code review. Bind the resulting evidence to the actual inputs."},
+        {"title": "Ready to deliver", "description": "Inspect the candidate. Request delivery when ready; request the primary merge separately."}
+      ]
+    },
+    "quickstart": {
+      "title": "Bring a contract to your next change.",
+      "description": "Clone and build Concorde, then preview installation into your Git project. Use Python 3.11+, Node.js 18+ and npm; configured checks require Linux with bubblewrap, working namespaces and pidfd support. Choose Codex or Claude and initialize through the installed Skills.",
+      "code": "git clone https://github.com/FTOD/concorde.git\ncd concorde\npython3 scripts/concorde.py build\n\n# Replace the path with your Git project.\npython3 scripts/install-concorde.py \\\n  --target /absolute/path/to/project \\\n  --integration codex --preview\n\n# Review the preview, then rerun with --apply."
+    }
+  }
 }

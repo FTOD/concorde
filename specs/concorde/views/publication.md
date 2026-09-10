@@ -71,6 +71,38 @@ source identity. No external diagram JSON, standalone diagram HTML, renderer Ski
 diagram installation is used. Local links resolve only registered document membership; unknown or
 ambiguous links fail validation.
 
+## Project introduction
+
+### scenario.views.publish-homepage — Publishing an explicitly configured project introduction
+
+- GIVEN site identity schema 1 in `docsite/site.json` includes a valid `homepage` object
+- WHEN the site builds
+- THEN the root page renders the configured introduction, features, workflow and quickstart with the site's title and description metadata
+- AND its primary Spec navigation resolves to the registered entry Module's canonical page, with local links respecting the configured base URL
+- AND Protocol and repository links appear only when their corresponding site identity options are enabled
+- BUT the introduction does not join any Module collection, add a graph node or registered-page manifest entry, or grant agent context
+
+### scenario.views.publish-homepage-default — Preserving the default entry redirect
+
+- GIVEN the site identity omits `homepage`
+- WHEN the site builds
+- THEN its root redirects to the registered entry Module's canonical page and includes a visible continuation link
+- AND the packaged renderer introduces no Concorde-specific marketing content into the consumer project
+
+### scenario.views.publish-homepage-invalid — Rejecting incomplete introduction content
+
+- GIVEN the site identity includes an invalid or incomplete `homepage` object
+- WHEN publication loads that identity
+- THEN it fails with an error naming `docsite/site.json` and the invalid field
+- AND no candidate is promoted
+
+The optional object contains nonempty `eyebrow`, `title` and `description` strings. Its `features`
+object contains a nonempty `title` and nonempty `items` array; its `workflow` object contains
+nonempty `title` and `description` strings and a nonempty `steps` array. Each array entry has
+nonempty `title` and `description` strings. Its `quickstart` object contains nonempty `title`,
+`description` and `code` strings. These values are project-owned presentation text, rendered
+without interpreting HTML. The adapter remains project-neutral and scaffolding omits the option.
+
 ## Independent Protocol documentation
 
 ### scenario.views.protocol-docs-tab — Enabling the optional Protocol documentation collection
