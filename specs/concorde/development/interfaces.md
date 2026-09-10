@@ -47,6 +47,18 @@ blocked/failed. Describe-policy does not launch agents or mutate project state; 
 go to stderr. Before any launch or policy description the host verifies the build manifest and
 refuses a stale build with `stale_build`.
 
+The invocation's project root is the working directory of that entry process, exactly as resolved
+and without searching parent directories. The registry, Spec collections, lifecycle state and listed
+implementation files it reads are those of the worktree at that directory; the stale-build check
+inspects the framework checkout that contains the launched script. A working directory at a Git
+worktree root is admitted as a `primary` or `change` workspace and a directory outside any Git
+repository as `unversioned`; a directory inside a Git worktree that is not its root is refused with
+`workspace_mismatch`. The Skill's entry command is project-relative, so a rendered Skill carries no
+worktree identity: the worktree in which the developer's agent session started, the worktree whose
+Skill projection supplied the instructions and every other linked worktree contribute no registry,
+document or file to the invocation, and changing the working directory selects a different project
+rather than a wider one.
+
 A mutating request in the primary worktree creates an isolated branch from committed HEAD and
 returns worktree_handoff_required with its path, branch, base commit and change_id. It does not copy
 uncommitted primary changes or continue the originating agent session in the new worktree. A new
@@ -370,7 +382,7 @@ invocation envelope, and every exported identity appears here at least once with
 | `unsupported_target` | The selected target has no registered implementation for the requested code-owning behavior. |
 | `unsupported_version` | The invocation's `schema_version` is not the one this host implements. |
 | `use_proposal` | `describe-policy` cannot preview `init`/`configure`; use their deterministic proposal flow instead. |
-| `workspace_mismatch` | The current worktree, branch, or worktree topology does not match what the requested capability or transition requires. |
+| `workspace_mismatch` | The current worktree, branch, or worktree topology does not match what the requested capability or transition requires, including an entry process whose working directory lies inside a Git worktree but not at its root. |
 | `worktree_handoff_required` | A mutating request in the primary worktree needs a new agent session opened in the linked worktree the host just prepared. |
 | `execution_failed` | The host caught an exception outside the named Spec/typed-data/build error vocabulary. |
 
@@ -395,7 +407,8 @@ build outputs do not alter the deliverable tree. Build or validation failure pre
 participants and prevents the primary update; no stale-output gate is disabled or bypassed.
 
 The primary worktree maintains `.concorde/worktrees.json` from Git's live worktree inventory, including
-unmanaged worktrees. Each entry has its path, branch, head, managed/locked status and, when available,
+unmanaged worktrees, and from each linked worktree's own `.concorde/worktree.json`, the only file of
+another worktree the host reads. Each entry has its path, branch, head, managed/locked status and, when available,
 change_id, owning target, task summary, phase and status. A secondary worktree registers its own
 `.concorde/worktree.json` and receives managed AGENTS.md/CLAUDE.md instructions to treat partial work as
 a candidate and request delivery from either participating worktree. Host updates to these control files do not

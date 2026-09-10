@@ -73,6 +73,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("ready", result["output"]["data"]["outcome"], result)
         return read_change(self.change, required=True)["change_id"]
 
+    @verifies("scenario.development.workspace-inventory")
     def test_main_sees_primary_inventory_and_secondary_draft_identity(self):
         result = self.call_capability(self.change, "concorde-main", {"task": "Explain transfer"})
         self.assertEqual("succeeded", result["status"], result)
@@ -96,9 +97,41 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual({"candidate", "another-change"}, {x["branch"] for x in workspace["active_worktrees"]})
         managed = next(x for x in workspace["active_worktrees"] if x["branch"] == "candidate")
         self.assertEqual(state["change_id"], managed["change_id"])
+        self.assertTrue(managed["managed"])
+        self.assertEqual((state["phase"], state["status"]), (managed["phase"], managed["status"]))
+        other = next(x for x in workspace["active_worktrees"] if x["branch"] == "another-change")
+        self.assertEqual((False, "unmanaged", None), (other["managed"], other["status"], other["change_id"]))
         stored = json.loads((self.primary / REGISTRY_PATH).read_text())
         self.assertEqual(workspace["active_worktrees"], stored["worktrees"])
         self.assertEqual("", git_value(self.primary, "status", "--porcelain"))
+
+    @verifies("scenario.development.invocation-worktree-binding")
+    def test_invocation_binds_to_the_worktree_at_its_working_directory(self):
+        marker = "DRAFT_PROMISE_ONLY_IN_CANDIDATE"
+        entry = self.change / "specs/bank/module.md"
+        entry.write_text(entry.read_text() + f"\n{marker}\n")
+        result = self.call_capability(self.change, "concorde-main", {"task": "Explain transfer"})
+        self.assertEqual("succeeded", result["status"], result)
+        candidate = self.last_double.calls[0]["snapshot"]
+        self.assertEqual("change", candidate["workspace"]["kind"])
+        self.assertEqual(str(self.change), candidate["workspace"]["current_worktree"])
+        self.assertIn(marker, json.dumps(candidate))
+        result = self.call_capability(self.primary, "concorde-main", {"task": "Explain transfer"})
+        self.assertEqual("succeeded", result["status"], result)
+        primary = self.last_double.calls[0]["snapshot"]
+        self.assertEqual("primary", primary["workspace"]["kind"])
+        self.assertEqual(str(self.primary), primary["workspace"]["current_worktree"])
+        self.assertNotIn(marker, json.dumps(primary))
+        result = self.call_capability(self.primary / "app", "concorde-main", {"task": "Explain transfer"})
+        self.assertNotEqual("succeeded", result["status"], result)
+        self.assertEqual(["workspace_mismatch"], [error["code"] for error in result["errors"]])
+        self.assertEqual([], self.last_double.calls)
+        unversioned = self.directory / "unversioned"
+        unversioned.mkdir()
+        project(unversioned)
+        result = self.call_capability(unversioned, "concorde-main", {"task": "Explain transfer"})
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("unversioned", self.last_double.calls[0]["snapshot"]["workspace"]["kind"])
 
     def test_failed_delivery_preserves_visible_unresolved_task_gaps(self):
         def missing(stage, snapshot, data, cwd):

@@ -27,8 +27,10 @@ owns its authored source under `skills/`, shared invocation instructions under
 `prompts/workflow-host/`, and rendered integration-specific installation. Each public Skill maps to
 one global or lifecycle Capability; stage capabilities have no Skill. The external runtime reads
 the Skill and submits the declared typed request through `scripts/run-capability.py`; Development
-admits and executes that request. Building or installing a Skill does not execute its Capability
-or add it to a Concorde Agent's Harness. Capability behavior remains with its providing Module.
+admits and executes that request. That entry path is project-relative, so a rendered Skill
+carries no worktree identity: it binds to the worktree in which the developer's runtime executes
+it, and Development derives the project root from that working directory. Building or installing
+a Skill does not execute its Capability or add it to a Concorde Agent's Harness. Capability behavior remains with its providing Module.
 
 ### scenario.distribution.build-render — Build renders deterministic projections from authored sources
 

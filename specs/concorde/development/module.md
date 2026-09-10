@@ -44,6 +44,17 @@ by an earlier enabled invocation.
 Every capability invocation SHALL pass through this Module's host adapter, with no direct
 agent-to-agent channel bypassing it.
 
+### req.development.project-root-is-working-directory — Project root is the entry process's working directory
+
+The host SHALL bind every invocation's project root to the working directory of its entry
+process, exactly as resolved and without searching parent directories.
+
+The registry, Spec collections, lifecycle state and listed implementation files an invocation
+reads are therefore those of the worktree at that directory. The worktree in which the
+developer's agent session started, the worktree whose rendered Skill supplied the instructions
+and every other linked worktree are not inputs; see
+[invocation worktree binding](#scenario.development.invocation-worktree-binding).
+
 ### req.development.distinct-outcomes — Results distinguish admission, domain and execution outcomes
 
 A capability result SHALL distinguish admission, domain and execution outcomes instead of collapsing
@@ -141,6 +152,28 @@ See [stage capabilities have no installed Skill](#req.development.stage-no-skill
 - WHEN the host processes it
 - THEN it returns status `described`, naming the bound Agent, Harness, `agent_binding_digest`, `instructions_digest` and effective loop timeout for each previewed stage
 - AND no Agent is launched and no project file changes
+
+### scenario.development.invocation-worktree-binding — An invocation binds to the worktree at its working directory
+
+- GIVEN a public Skill submits an invocation through the entry script from some working directory
+- WHEN the host admits the request
+- THEN it binds the project root to exactly that directory, without searching parent directories
+- AND it reads the registry, every Spec collection, the lifecycle state and the listed implementation files from that worktree alone
+- AND a working directory at a Git worktree root yields workspace kind `primary` or `change`, and a directory outside any Git repository yields kind `unversioned`
+- AND a working directory inside a Git worktree that is not its root is refused with `workspace_mismatch` and no Agent is launched
+- BUT the worktree in which the developer's agent session started, the worktree whose rendered Skill supplied the instructions and every other linked worktree contribute no registry, document or file to the invocation
+
+See [project root is the entry process's working directory](#req.development.project-root-is-working-directory).
+
+### scenario.development.workspace-inventory — The primary inventory reads only linked worktrees' lifecycle state
+
+- GIVEN the primary worktree and one or more live linked worktrees, some managed by their own `.concorde/worktree.json` and some not
+- WHEN a capability invoked in the primary worktree resolves its `workspace` metadata
+- THEN `active_worktrees` lists every live linked worktree from Git's worktree inventory with its path, branch, head and lock status
+- AND a managed worktree contributes only the change_id, target, task summary, phase, status and outcome recorded in its own `.concorde/worktree.json`, and an unmanaged worktree is reported with status `unmanaged`
+- AND the same inventory is persisted to the primary's `.concorde/worktrees.json`
+- BUT no linked worktree's registry, Spec document or implementation file is read, so a candidate's draft Spec edits stay invisible to the primary until they are delivered
+- AND a capability invoked in a linked worktree instead sees kind `change` with its own candidate identity and status
 
 ### scenario.development.worktree-handoff — Mutating request in the primary worktree hands off
 

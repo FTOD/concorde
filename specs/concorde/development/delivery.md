@@ -17,9 +17,12 @@ component Specs may remain as draft bytes if another component blocks. Recovery 
 state, and global consumer/provider agreement is checked only after the affected authors finish.
 
 The primary worktree retains `.concorde/worktrees.json` with basic information about all live linked
-worktrees. Primary main cognition sees that inventory; secondary main cognition also sees its own
-candidate identity and status. These are declared lifecycle inputs, not hidden reads of another
-worktree's Specs or code. Secondary AGENTS.md/CLAUDE.md blocks remind newly opened agents of this scope.
+worktrees, built from Git's worktree list and each linked worktree's own `.concorde/worktree.json`;
+no other file of a linked worktree is read. Primary main cognition sees that inventory; secondary
+main cognition also sees its own candidate identity and status. These are declared lifecycle inputs,
+not hidden reads of another worktree's Specs or code: a candidate's draft Spec edits stay invisible
+to an invocation in the primary worktree until they are delivered. Secondary AGENTS.md/CLAUDE.md
+blocks remind newly opened agents of this scope.
 
 Standard and fast loops end at ready. Request concorde-deliver with the selected change_id from
 either its source worktree or the primary worktree. A third-worktree or nested session cannot

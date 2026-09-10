@@ -228,7 +228,8 @@ their kinds are listed in [Agents and Harnesses](agents-and-harnesses.md).
   developer's home directory are outside the grant. The same snapshot travels on stdin. The
   `discovery-capsule` and `spec-capsule` Harnesses use this kind, and a recursive Agent decision
   receives a fresh capsule per decision.
-- A **project** workspace is the candidate worktree itself. The snapshot is written below
+- A **project** workspace is the candidate worktree itself: it is the process's working directory
+  and its workspace root for policy rendering. The snapshot is written below
   `.concorde/runs/<invocation>/<uuid>/context.json` inside that worktree; the policy grants reading
   it together with the selected Module's listed implementation entries, and only a code-writing
   invocation additionally receives write authority over those entries. The
