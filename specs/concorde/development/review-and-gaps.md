@@ -47,3 +47,7 @@ code files. It receives no write permission for those files.
 Code-writing tasks separately receive the Module's own listed implementation entries, with write
 authority limited to exactly those paths: an exact file, or the whole directory a directory prefix
 names, so a new file below it needs no separate declaration.
+
+The review input identity includes the selected Agent/Mode binding digest. Changes to the mode
+contract, common or selected instructions, authority ceiling or recorded build invalidate review
+evidence. Sharing a definition with an author does not admit the author conversation or artifacts.

@@ -47,7 +47,8 @@ describe('renderInstructionsPage', () => {
   it('opens with the projection note and renders every Skill and Agent', () => {
     const page = renderInstructionsPage({
       skills: [{name: 'concorde-main', description: 'Global entry.', capability: 'main', body: 'Invoke this capability.'}],
-      agents: [{name: 'concorde-coordinator', spec: 'agents/coordinator/spec.md', harness: 'discovery-capsule', instructions: 'Act only as the coordinator.', sources: ['agents/coordinator/spec.md']}],
+      agents: [{name: 'concorde-coordinator', spec: 'agents/coordinator/spec.md', harness: 'discovery-capsule', instructions: 'Act only as the coordinator.', sources: ['agents/coordinator/spec.md'],
+        modes: [{name: 'ask', instructions: 'Answer from the admitted complete Specs.', contract: {phase: 'route', action: 'ask'}}]}],
     });
     expect(page.startsWith('# Agent instructions')).toBe(true);
     expect(page).toContain(PROJECTION_NOTE);
@@ -57,6 +58,9 @@ describe('renderInstructionsPage', () => {
     expect(page).toContain('agents/coordinator/spec.md');
     expect(page).toContain('discovery-capsule');
     expect(page).toContain('Act only as the coordinator.');
+    expect(page).toContain('#### concorde-coordinator / ask');
+    expect(page).toContain('Answer from the admitted complete Specs.');
+    expect(page).toContain('"action": "ask"');
   });
 });
 

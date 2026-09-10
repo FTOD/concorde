@@ -11,6 +11,8 @@ perform any network or process I/O.
 
 from __future__ import annotations
 
+import dataclasses
+
 import copy
 import hashlib
 import json
@@ -29,7 +31,7 @@ from .prompt_resolver import (
     resolve_role_prompt,
     resolve_skill_source,
 )
-from ..harness.agent_model import agent_definition, load_agents, resolve_agent
+from ..harness.agent_model import agent_definition, load_agents, resolve_agent, mode_definition
 
 if TYPE_CHECKING:
     from ..harness.agent_model import AgentBinding
@@ -143,12 +145,18 @@ def _skill_metadata(project_root: Path, name: str) -> dict[str, object]:
     return metadata
 
 
-def render_agent(project_root: Path, agent: str) -> BuildOutput:
+def render_agent(project_root: Path, agent: str, mode: str | None = None) -> BuildOutput:
     try:
         resolved = resolve_agent_spec(project_root, AGENT_ROOTS[agent])
     except PromptResolverError as error:
         raise BuildError(f"agent {agent}: {error.rule_id}: {error}") from error
     content = resolved.body.encode("utf-8")
+    if mode is not None:
+        selected = mode_definition(agent_definition(agent), mode)
+        task = resolve_agent_spec(project_root, selected.instructions)
+        return BuildOutput(path=f"generated/agents/{agent}/{mode}.md",
+            content=content + b"\n" + task.body.encode("utf-8"),
+            sources=tuple(sorted(set(resolved.sources + task.sources))))
     return BuildOutput(path=f"generated/agents/{agent}.md", content=content, sources=resolved.sources)
 
 
@@ -287,8 +295,13 @@ def render_docs_instructions(project_root: Path) -> BuildOutput:
             "harness": definition.harness.name,
             "instructions": rendered.content.decode("utf-8"),
             "sources": sorted(rendered.sources),
+            "modes": [{"name": mode.name,
+                       "instructions": render_agent(project_root, hyphenated, mode.name).content.decode(),
+                       "contract": dataclasses.asdict(mode)} for mode in definition.modes],
         })
         all_sources.update(rendered.sources)
+        for mode in definition.modes:
+            all_sources.update(render_agent(project_root, hyphenated, mode.name).sources)
     payload = {"skills": skills, "agents": agents}
     content = (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
     return BuildOutput(path="generated/docs/instructions.json", content=content, sources=tuple(sorted(all_sources)))
@@ -315,6 +328,14 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
     all_sources: set[str] = set()
     for output in outputs:
         all_sources.update(output.sources)
+    # Mode/Agent declarations and capability wire metadata are authored build inputs too.
+    for directory in ("agents", "capabilities"):
+        all_sources.update(path.relative_to(project_root).as_posix()
+            for path in (project_root / directory).rglob("*.py") if path.is_file())
+    for relative in ("src/concorde/spec/contracts.py", "src/concorde/spec/contract_shapes.py",
+                     "src/concorde/harness/agent_model.py"):
+        if (project_root / relative).is_file():
+            all_sources.add(relative)
     sources = {relative: _sha256_file(project_root, relative) for relative in sorted(all_sources)}
     output_entries = {
         output.path: {"sha256": _sha256_bytes(output.content), "sources": sorted(output.sources)}
@@ -338,6 +359,8 @@ def build(project_root: str | Path, integration: str = "all", *, framework_prefi
     outputs: list[BuildOutput] = []
     for agent in sorted(AGENT_ROOTS):
         outputs.append(render_agent(root, agent))
+        for mode in agent_definition(agent).modes:
+            outputs.append(render_agent(root, agent, mode.name))
     for name in SKILL_NAMES:
         for one_integration in integrations:
             outputs.append(render_skill(root, name, one_integration, framework_prefix=framework_prefix))
@@ -349,7 +372,8 @@ def build(project_root: str | Path, integration: str = "all", *, framework_prefi
     outputs.append(render_docs_instructions(root))
     outputs.append(render_docs_wire(root))
 
-    roots = (list(AGENT_ROOTS.values()) + list(SKILL_SOURCES.values()) + ["prompts/protocol/principles.md"]
+    roots = (list(AGENT_ROOTS.values()) + [m.instructions for a in load_agents().values() for m in a.modes]
+             + list(SKILL_SOURCES.values()) + ["prompts/protocol/principles.md"]
              + [f"prompts/protocol/kinds/{kind}.md" for kind in PROTOCOL_KINDS])
     unreachable = find_unreachable_prompts(root, roots)
     if unreachable:
@@ -545,15 +569,15 @@ def verify_fresh(project_root: str | Path) -> None:
             raise BuildError(f"build source changed since the last build: {relative}", "stale_build")
 
 
-def load_agent(package_root: str | Path, name: str) -> SkillPrompt:
+def load_agent(package_root: str | Path, name: str, mode: str | None = None) -> SkillPrompt:
     """Load one Agent's rendered instructions and complete binding from the build.
 
     Verifies freshness first (via ``resolve_agent``). ``name`` accepts either the external
     ``concorde-<hyphenated>`` identity used throughout the host (for example
-    ``concorde-spec-author``) or the bare hyphenated/underscored Agent name.
+    ``concorde-spec-engineer``) or the bare hyphenated/underscored Agent name.
     """
 
-    binding = resolve_agent(package_root, name)
+    binding = resolve_agent(package_root, name, mode)
     root = Path(package_root)
     try:
         body = (root / binding.instructions_path).read_text(encoding="utf-8")
@@ -566,7 +590,8 @@ def load_agent(package_root: str | Path, name: str) -> SkillPrompt:
         source_path=binding.spec_path,
         kind="skill",
         body=body,
-        effects=agent_definition(binding.agent).constraints.effects,
+        effects=(mode_definition(agent_definition(binding.agent), mode).constraints.effects if mode
+                 else agent_definition(binding.agent).constraints.effects),
         binding=binding,
     )
 

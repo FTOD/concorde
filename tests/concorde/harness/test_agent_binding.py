@@ -49,8 +49,8 @@ class AgentBindingTests(unittest.TestCase):
     def test_narrowed_implementation_agent_write_authority_is_never_widened(self):
         from concorde.distribution.build import load_role_prompt as real_load
 
-        def narrowed_prompt(package_root, role_name):
-            prompt = real_load(package_root, role_name)
+        def narrowed_prompt(package_root, role_name, mode):
+            prompt = real_load(package_root, role_name, mode)
             return replace(prompt, effects=replace(prompt.effects, writes=()))
 
         with patch.object(capability_host, "load_role_prompt", side_effect=narrowed_prompt):
@@ -62,7 +62,7 @@ class AgentBindingTests(unittest.TestCase):
     def test_readonly_investigation_path_has_empty_write_paths(self):
         host = CapabilityHost(self.root, PACKAGE, mode="describe-policy", allow_primary_worktree=True)
         Invocation("concorde-implement", CONFIGURATION, self.task, host).stage(
-            "concorde-implement", readonly=True)
+            "concorde-implement", mode="investigation", readonly=True)
         policy = next(item for item in host.descriptions if item["phase"] == "implementation")
         self.assertEqual([], policy["write_paths"])
 
@@ -84,10 +84,10 @@ class AgentBindingTests(unittest.TestCase):
         host = CapabilityHost(self.root, PACKAGE, mode="describe-policy", allow_primary_worktree=True)
         Invocation("concorde-context-solve", CONFIGURATION, self.task, host).stage("concorde-context-solve")
         policy = host.descriptions[0]
-        expected = resolve_agent(PACKAGE, "context_assessor")
+        expected = resolve_agent(PACKAGE, "spec_engineer", "context-solve")
         self.assertEqual(expected.digest, policy["agent_binding_digest"])
         self.assertEqual(expected.instructions_digest, policy["instructions_digest"])
-        self.assertEqual("concorde-context-assessor", policy["agent"])
+        self.assertEqual("concorde-spec-engineer", policy["agent"])
         self.assertEqual("spec-capsule", policy["harness"])
         self.assertEqual(expected.effective_loop.timeout_seconds, policy["loop_timeout_seconds"])
 

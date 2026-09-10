@@ -131,3 +131,8 @@ construction, diagram staging or build-manifest validation.
 Production builds keep their Docusaurus-generated modules separate from the development preview.
 Building the site does not clear the preview's `.docusaurus` directory. Both views still derive
 from the current registered sources and independently verify their publication inputs.
+
+For this Framework repository, the Agent instructions projection shows common responsibilities
+and separate mode sections. Each mode section displays its explicit context/result/authority
+contract and its complete common-plus-selected-mode instruction text. This human browsing view
+never combines all modes into one runtime prompt or grants an Agent additional context.

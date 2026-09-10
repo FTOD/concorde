@@ -45,6 +45,6 @@ def external_role_name(role_name: str) -> str:
 
 
 def role_key(name: str) -> str:
-    """Normalize an external (``concorde-spec-author``) or bare (``spec-author``) role name."""
+    """Normalize an external (``concorde-spec-engineer``) or bare (``spec-engineer``) role name."""
 
     return agent_key(name)

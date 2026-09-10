@@ -14,16 +14,7 @@ with no matching name here, is a validation error (``CONCORDE-AGENT-INVENTORY-00
 
 from __future__ import annotations
 
-AGENTS = (
-    "coordinator",
-    "spec_author",
-    "context_assessor",
-    "planner",
-    "task_author",
-    "implementation_worker",
-    "spec_reviewer",
-    "code_reviewer",
-)
+AGENTS = ("coordinator", "spec_engineer", "programmer")
 
 
 def external_name(module_name: str) -> str:

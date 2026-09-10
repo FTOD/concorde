@@ -33,6 +33,7 @@ from agents import coordinator
 from . import external_name
 
 CLASS = "stage"
+DETERMINISTIC = False
 AGENTS = (coordinator.AGENT,)
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
@@ -258,6 +259,69 @@ class CapabilityModuleRuleTests(unittest.TestCase):
     def test_missing_capabilities_package_is_reported(self) -> None:
         findings = package_validation._validate_capability_modules(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-INVENTORY-001" for f in findings), findings)
+
+    @verifies("scenario.distribution.capability-determinism")
+    def test_deterministic_requires_an_explicit_boolean(self) -> None:
+        for declaration in ("", 'DETERMINISTIC = "false"\n', "DETERMINISTIC = 0\n",
+                            "DETERMINISTIC = 1\n", "DETERMINISTIC = None\n"):
+            with self.subTest(declaration=declaration):
+                source = VALID_ALPHA.replace("DETERMINISTIC = False\n", declaration)
+                _capabilities_package(self.root, alpha_source=source)
+                findings = package_validation._validate_capability_modules(self.root)
+                self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings), findings)
+
+    @verifies("scenario.distribution.capability-determinism")
+    def test_deterministic_matches_direct_model_calls_independently_of_stage_class(self) -> None:
+        for agents in ("()", "(coordinator.AGENT,)"):
+            for deterministic in (True, False):
+                with self.subTest(agents=agents, deterministic=deterministic):
+                    source = VALID_ALPHA.replace("AGENTS = (coordinator.AGENT,)", f"AGENTS = {agents}")
+                    source = source.replace("DETERMINISTIC = False", f"DETERMINISTIC = {deterministic}")
+                    _capabilities_package(self.root, alpha_source=source)
+                    findings = package_validation._validate_capability_modules(self.root)
+                    invalid = any(f.rule_id == "CONCORDE-CAPABILITY-DETERMINISTIC-001" for f in findings)
+                    self.assertEqual(invalid, deterministic != (agents == "()"), findings)
+
+    @verifies("scenario.distribution.capability-determinism")
+    def test_transitive_model_calls_do_not_trust_a_childs_false_deterministic_claim(self) -> None:
+        init = VALID_CAPABILITY_INIT.replace('("alpha",)', '("alpha", "beta", "gamma")')
+        pure = VALID_ALPHA.replace("AGENTS = (coordinator.AGENT,)", "AGENTS = ()")
+        pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
+        _capabilities_package(self.root, alpha_source=pure.replace("USES = ()", 'USES = ("beta",)'), init_source=init)
+        (self.root / "capabilities/beta.py").write_text(pure.replace("USES = ()", 'USES = ("gamma",)'), encoding="utf-8")
+        # All three incorrectly claim determinism; gamma launches an Agent.
+        (self.root / "capabilities/gamma.py").write_text(
+            VALID_ALPHA.replace("DETERMINISTIC = False", "DETERMINISTIC = True"), encoding="utf-8")
+        findings = package_validation._validate_capability_modules(self.root)
+        self.assertEqual(
+            {f.source for f in findings if f.rule_id == "CONCORDE-CAPABILITY-DETERMINISTIC-001"},
+            {f"capabilities/{name}.py" for name in ("alpha", "beta", "gamma")}, findings)
+
+    @verifies("scenario.distribution.capability-determinism")
+    def test_deterministic_composition_without_agents_is_valid(self) -> None:
+        init = VALID_CAPABILITY_INIT.replace('("alpha",)', '("alpha", "beta")')
+        pure = VALID_ALPHA.replace("AGENTS = (coordinator.AGENT,)", "AGENTS = ()")
+        pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
+        _capabilities_package(self.root, alpha_source=pure.replace("USES = ()", 'USES = ("beta",)'), init_source=init)
+        (self.root / "capabilities/beta.py").write_text(pure, encoding="utf-8")
+        self.assertEqual([], package_validation._validate_capability_modules(self.root))
+
+    @verifies("scenario.distribution.capability-determinism")
+    def test_host_routing_counts_as_a_model_call(self) -> None:
+        pure = VALID_ALPHA.replace("AGENTS = (coordinator.AGENT,)", "AGENTS = ()")
+        pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
+        _capabilities_package(self.root, alpha_source=pure)
+        with mock.patch.object(package_validation, "MAIN_ROUTED_CAPABILITIES", {"concorde-alpha"}):
+            findings = package_validation._validate_capability_modules(self.root)
+        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-DETERMINISTIC-001" for f in findings), findings)
+
+    @verifies("scenario.distribution.capability-determinism")
+    def test_lifecycle_cannot_admit_model_calls_even_when_flag_is_false(self) -> None:
+        source = VALID_ALPHA.replace('CLASS = "stage"', 'CLASS = "lifecycle"')
+        _capabilities_package(self.root, alpha_source=source)
+        _skill(self.root)
+        findings = package_validation._validate_capability_modules(self.root)
+        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-DETERMINISTIC-001" for f in findings), findings)
 
 
 class AgentRuleTests(unittest.TestCase):
@@ -496,6 +560,21 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
         findings = package_validation._validate_spec_alignment(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
 
+    @verifies("scenario.distribution.capability-determinism")
+    def test_spec_deterministic_must_be_a_matching_boolean(self) -> None:
+        _capabilities_package(self.root)
+        for value in (False, True, "false", 0, 1, None, "missing"):
+            with self.subTest(value=value):
+                entry = {"id": "alpha", "class": "stage", "skill": None}
+                if value != "missing":
+                    entry["deterministic"] = value
+                body = "```concorde-capabilities\n" + json.dumps([entry]) + "\n```"
+                findings = package_validation._validate_spec_capabilities_block(self.root, {"specs/one.md": body})
+                if value is False:
+                    self.assertEqual([], findings)
+                else:
+                    self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
+
     def test_no_capabilities_block_is_reported(self) -> None:
         _capabilities_package(self.root)
         _document(self.root, "specs/doc.md", "document.doc", "No block here.")
@@ -506,7 +585,7 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
 
     def test_two_capabilities_blocks_is_reported(self) -> None:
         _capabilities_package(self.root)
-        block = '```concorde-capabilities\n[{"id": "alpha", "class": "stage", "skill": null}]\n```'
+        block = '```concorde-capabilities\n[{"id": "alpha", "class": "stage", "deterministic": false, "skill": null}]\n```'
         _document(self.root, "specs/one.md", "document.one", block)
         _document(self.root, "specs/two.md", "document.two", block)
         _registry(self.root, documents=["specs/one.md", "specs/two.md"])
@@ -527,7 +606,7 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
         _capabilities_package(self.root, alpha_source=global_alpha)
         _skill(self.root)
         block = "```concorde-capabilities\n" + json.dumps(
-            [{"id": "alpha", "class": "global", "skill": "concorde-alpha"}]) + "\n```"
+            [{"id": "alpha", "class": "global", "deterministic": False, "skill": "concorde-alpha"}]) + "\n```"
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_capabilities_block(
@@ -539,7 +618,7 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
         _capabilities_package(self.root, alpha_source=global_alpha)
         _skill(self.root)
         block = "```concorde-capabilities\n" + json.dumps(
-            [{"id": "alpha", "class": "lifecycle", "skill": "concorde-alpha"}]) + "\n```"
+            [{"id": "alpha", "class": "lifecycle", "deterministic": False, "skill": "concorde-alpha"}]) + "\n```"
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_capabilities_block(
@@ -557,8 +636,8 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
     def test_extra_capability_entry_is_reported(self) -> None:
         _capabilities_package(self.root)
         block = "```concorde-capabilities\n" + json.dumps([
-            {"id": "alpha", "class": "stage", "skill": None},
-            {"id": "ghost", "class": "stage", "skill": None},
+            {"id": "alpha", "class": "stage", "deterministic": False, "skill": None},
+            {"id": "ghost", "class": "stage", "deterministic": False, "skill": None},
         ]) + "\n```"
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
@@ -585,7 +664,7 @@ class SpecAlignmentAgentsRuleTests(unittest.TestCase):
 
     def test_two_agents_blocks_is_reported(self) -> None:
         _agents_package(self.root)
-        block = '```concorde-agents\n[{"id": "alpha", "harness": "spec-capsule", "capabilities": []}]\n```'
+        block = '```concorde-agents\n[{"id": "alpha", "harness": "spec-capsule", "capabilities": [], "modes": []}]\n```'
         _document(self.root, "specs/one.md", "document.one", block)
         _document(self.root, "specs/two.md", "document.two", block)
         _registry(self.root, documents=["specs/one.md", "specs/two.md"])
@@ -604,17 +683,26 @@ class SpecAlignmentAgentsRuleTests(unittest.TestCase):
     def test_matching_agents_block_has_no_findings(self) -> None:
         _agents_package(self.root)
         block = "```concorde-agents\n" + json.dumps(
-            [{"id": "alpha", "harness": "spec-capsule", "capabilities": []}]) + "\n```"
+            [{"id": "alpha", "harness": "spec-capsule", "capabilities": [], "modes": []}]) + "\n```"
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_agents_block(
             self.root, package_validation._registered_documents(self.root))
         self.assertEqual([], findings)
 
+    @verifies("scenario.distribution.build-check")
+    def test_spec_mode_inventory_must_match_the_agent_definition(self) -> None:
+        _agents_package(self.root)
+        block = "```concorde-agents\n" + json.dumps([
+            {"id": "alpha", "harness": "spec-capsule", "capabilities": [], "modes": ["invented"]}
+        ]) + "\n```"
+        findings = package_validation._validate_spec_agents_block(self.root, {"specs/one.md": block})
+        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-AGENTS-001" for f in findings), findings)
+
     def test_mismatched_harness_is_reported(self) -> None:
         _agents_package(self.root)
         block = "```concorde-agents\n" + json.dumps(
-            [{"id": "alpha", "harness": "discovery-capsule", "capabilities": []}]) + "\n```"
+            [{"id": "alpha", "harness": "discovery-capsule", "capabilities": [], "modes": []}]) + "\n```"
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_agents_block(
@@ -632,8 +720,8 @@ class SpecAlignmentAgentsRuleTests(unittest.TestCase):
     def test_extra_agent_entry_is_reported(self) -> None:
         _agents_package(self.root)
         block = "```concorde-agents\n" + json.dumps([
-            {"id": "alpha", "harness": "spec-capsule", "capabilities": []},
-            {"id": "ghost", "harness": "spec-capsule", "capabilities": []},
+            {"id": "alpha", "harness": "spec-capsule", "capabilities": [], "modes": []},
+            {"id": "ghost", "harness": "spec-capsule", "capabilities": [], "modes": []},
         ]) + "\n```"
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])

@@ -35,14 +35,14 @@ PROPOSAL_FILE = obj({"path": PATH, "before_digest": {"anyOf": [DIGEST, {"type": 
                      "content": {"type": "string"}})
 
 STAGE_ROLES = {
-    "concorde-specify": ("specify", "concorde-spec-author"),
-    "concorde-plan": ("plan", "concorde-planner"),
-    "concorde-tasks": ("tasks", "concorde-task-author"),
-    "concorde-implement": ("implementation", "concorde-implementation-worker"),
-    "concorde-context-solve": ("context-solve", "concorde-context-assessor"),
+    "concorde-specify": ("specify", "concorde-spec-engineer"),
+    "concorde-plan": ("plan", "concorde-spec-engineer"),
+    "concorde-tasks": ("tasks", "concorde-spec-engineer"),
+    "concorde-implement": ("implementation", "concorde-programmer"),
+    "concorde-context-solve": ("context-solve", "concorde-spec-engineer"),
 }
-REVIEW_STAGES = {"spec": ("spec-review", "concorde-spec-reviewer"),
-                 "code": ("code-review", "concorde-code-reviewer")}
+REVIEW_STAGES = {"spec": ("spec-review", "concorde-spec-engineer"),
+                 "code": ("code-review", "concorde-programmer")}
 MAIN_CAPABILITY = "concorde-main"
 GLOBAL_CAPABILITIES = (MAIN_CAPABILITY, "concorde-dev-loop", "concorde-reflections-triage", "concorde-review")
 LIFECYCLE_CAPABILITIES = ("concorde-init", "concorde-configure", "concorde-validate", "concorde-deliver")
@@ -84,15 +84,15 @@ INTERNAL_DATA_TYPES = (
 
 def dependencies(capability: str) -> tuple[str, ...]:
     if capability == MAIN_CAPABILITY:
-        result = ("concorde-coordinator", "concorde-spec-author")
+        result = ("concorde-coordinator", "concorde-spec-engineer")
     elif capability == "concorde-plan":
-        result = ("concorde-context-assessor", "concorde-planner")
+        result = ("concorde-spec-engineer",)
     elif capability == "concorde-review":
         result = tuple(role for _, role in REVIEW_STAGES.values())
     elif capability == "concorde-dev-loop":
         result = tuple("concorde-"+x for x in ("specify","review","plan","tasks","implement","validate"))
     elif capability == "concorde-reflections-triage":
-        result = ("concorde-implementation-worker", "concorde-dev-loop")
+        result = ("concorde-programmer", "concorde-dev-loop")
     else:
         result = (STAGE_ROLES[capability][1],) if capability in STAGE_ROLES else ()
     return (("concorde-coordinator", *result)

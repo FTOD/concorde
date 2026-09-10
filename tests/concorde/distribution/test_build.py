@@ -43,11 +43,11 @@ class BuildGoldenTests(unittest.TestCase):
 
     @verifies("scenario.distribution.build-render")
     def test_agent_bodies_match_golden_bytes_exactly(self):
-        for agent in AGENT_ROOTS:
-            with self.subTest(agent=agent):
-                golden = (GOLDEN / "agents" / f"{agent}.md").read_bytes()
-                mine = self.by_path[f"generated/agents/{agent}.md"].content
-                self.assertEqual(mine, golden)
+        for path, output in self.by_path.items():
+            if path.startswith("generated/agents/"):
+                with self.subTest(path=path):
+                    golden = (GOLDEN / path.removeprefix("generated/")).read_bytes()
+                    self.assertEqual(output.content, golden)
 
     @verifies("scenario.distribution.build-render")
     def test_skill_projections_match_golden_modulo_source_line(self):
@@ -64,14 +64,15 @@ class BuildGoldenTests(unittest.TestCase):
             self.assertIn('source: "skills/concorde-main/SKILL.md"', mine)
 
     @verifies("scenario.distribution.build-render")
-    def test_exactly_sixteen_skill_outputs_eight_agent_outputs_and_one_langgraph_config(self):
+    def test_sixteen_skills_three_common_agents_twelve_modes_and_one_langgraph_config(self):
         skill_outputs = [
             path for path in self.by_path
             if path.startswith(".claude/skills/") or path.startswith(".agents/skills/")
         ]
         agent_outputs = [path for path in self.by_path if path.startswith("generated/agents/")]
         self.assertEqual(len(skill_outputs), 16)
-        self.assertEqual(len(agent_outputs), 8)
+        self.assertEqual(len(agent_outputs), 15)
+        self.assertEqual(3, len([path for path in agent_outputs if path.count("/") == 2]))
         self.assertIn("generated/langgraph.json", self.by_path)
 
     @verifies("scenario.distribution.build-render")
@@ -267,6 +268,19 @@ class BuildFreshnessTests(unittest.TestCase):
         self.assertEqual(failure.exception.code, "stale_build")
 
     @verifies("scenario.distribution.build-stale-blocks-execution")
+    def test_mode_instruction_and_python_contract_edits_both_invalidate_build(self):
+        write_build(self.root, "all")
+        for relative in ("agents/programmer/modes/investigation.md", "agents/programmer/__init__.py"):
+            path = self.root / relative
+            before = path.read_text()
+            with self.subTest(source=relative):
+                path.write_text(before + "\n# Changed mode contract\n")
+                with self.assertRaises(BuildError) as failure:
+                    verify_fresh(self.root)
+                self.assertEqual("stale_build", failure.exception.code)
+                path.write_text(before)
+
+    @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_verify_fresh_fails_when_a_recorded_source_is_gone(self):
         write_build(self.root, "all")
         (self.root / "prompts/workflow-host/gap-reporting.md").unlink()
@@ -277,28 +291,28 @@ class BuildFreshnessTests(unittest.TestCase):
     @verifies("scenario.distribution.load-agent")
     def test_load_agent_verifies_freshness_and_returns_effects_and_binding(self):
         write_build(self.root, "all")
-        prompt = load_agent(self.root, "concorde-spec-author")
-        self.assertEqual(prompt.name, "concorde-spec-author")
+        prompt = load_agent(self.root, "concorde-spec-engineer")
+        self.assertEqual(prompt.name, "concorde-spec-engineer")
         self.assertEqual(prompt.kind, "skill")
         self.assertIsNotNone(prompt.effects)
         self.assertTrue(prompt.body.strip())
         self.assertIsNotNone(prompt.binding)
-        self.assertEqual(prompt.binding.agent, "spec_author")
-        self.assertEqual(prompt.binding.spec_path, "agents/spec_author/spec.md")
+        self.assertEqual(prompt.binding.agent, "spec_engineer")
+        self.assertEqual(prompt.binding.spec_path, "agents/spec_engineer/spec.md")
 
-        edited = self.root / "agents/spec_author/spec.md"
+        edited = self.root / "agents/spec_engineer/spec.md"
         edited.write_text(edited.read_text(encoding="utf-8") + "\nChanged.\n", encoding="utf-8")
         with self.assertRaises(BuildError) as failure:
-            load_agent(self.root, "concorde-spec-author")
+            load_agent(self.root, "concorde-spec-engineer")
         self.assertEqual(failure.exception.code, "stale_build")
 
     @verifies("scenario.distribution.load-agent")
     def test_load_agent_accepts_underscore_and_hyphenated_names(self):
         write_build(self.root, "all")
-        by_external = load_agent(self.root, "concorde-context-assessor")
-        by_underscore = load_agent(self.root, "context_assessor")
+        by_external = load_agent(self.root, "concorde-spec-engineer")
+        by_underscore = load_agent(self.root, "spec_engineer")
         self.assertEqual(by_external.body, by_underscore.body)
-        self.assertEqual(by_external.name, "concorde-context-assessor")
+        self.assertEqual(by_external.name, "concorde-spec-engineer")
 
     @verifies("scenario.distribution.load-agent")
     def test_load_role_prompt_is_a_compatibility_alias_for_load_agent(self):

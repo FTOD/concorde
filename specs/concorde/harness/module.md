@@ -205,7 +205,7 @@ See [the no-recursive-expansion bound](#req.harness.context-discovery-no-recurse
 #### scenario.harness.context-gap — Report a missing local dependency promise as a Spec gap
 
 - GIVEN a selected Module whose local concorde-dependencies entries do not match its registered uses and parent relationships
-- WHEN the host compares them before launching a context-assessor for that Module
+- WHEN the host compares them before launching spec-engineer in context-solve mode for that Module
 - THEN a missing direct entry yields a Module-owned structured Spec gap, and a malformed, duplicate, unknown or unrelated entry yields a conflicting outcome
 - AND planning stops only for the dependent step while independent reasoning continues
 - BUT no relationship inventory is injected into the worker snapshot when this comparison stops planning
@@ -336,6 +336,16 @@ See [the canonical-encoding bound](#req.harness.typed-canonical).
 - THEN it raises TypedDataError with a stable code and a JSON-pointer field identifying the problem
 - AND the caller stops the affected transition rather than substituting a default
 
+### scenario.harness.mode-boundary — Explicit modes narrow a stable Agent definition
+
+- GIVEN the three catalog Agents, their explicit modes and a selected Module or discovery collection
+- WHEN the Host binds a mode and the executor admits its launch and completion
+- THEN only common instructions and the selected mode instructions enter the invocation
+- AND unknown modes, mismatched phase/action or context/result pairs, unadmitted stage artifacts and outputs, and mode authority exceeding the Agent ceiling are rejected
+- AND forged writable programmer reviews or investigations are rejected before a model process starts
+- AND an author and reviewer sharing an Agent definition have different invocation and context identities with no inherited conversation, stage artifacts or write grant
+- AND the original specification, planning, task, implementation and review workflow still reaches a verified candidate under those restrictions
+
 ## Ontology
 
 The Harness realizes its promises through the programs and used Modules below, wired together by
@@ -368,7 +378,7 @@ the most specific entry owns a file.
     "id": "entity.harness.agent-model",
     "title": "Agent and Harness model",
     "kind": "program",
-    "responsibility": "Realize `Agent = spec.md + Harness + Constraints` as frozen Python records, the closed Harness catalog, effect declarations, reproducible AgentBinding and shared execution-environment primitives, including OS-enforced read-only configured checks.",
+    "responsibility": "Realize `Agent = common spec.md + Harness + Constraints + Modes` as frozen Python records, the closed Harness catalog, effect declarations, reproducible AgentBinding and shared execution-environment primitives, including OS-enforced read-only configured checks.",
     "files": [
       "src/concorde/harness/",
       "tests/concorde/harness/"
@@ -480,13 +490,13 @@ the most specific entry owns a file.
 
 Each invocation is the unit of work this Module executes. Its Spec context is the selected
 Module's complete registered collection; its implementation context is the Protocol-defined set of
-files the Module's own entities bind — every phase sees their names, only code-writing and
-code-review phases see their contents; its capability context is the admitted Capability and Tool
+files the Module's own entities bind — every phase sees their names, only programmer implementation,
+code-review and investigation modes see authorized contents; its capability context is the admitted Capability and Tool
 contracts; its task context is the task, constraints, stage artifacts and lifecycle metadata. The
 frozen closure is never empty and its identity covers every admitted byte.
 
-An Agent definition binds an authored `spec.md`, one of three registered Harnesses and narrowing
-constraints. Resolution against the current build yields an `AgentBinding` that every structured
+An Agent definition binds common responsibilities, one of three registered Harnesses, an authority
+ceiling and explicit modes. Resolution of the selected mode yields an `AgentBinding` that every structured
 launch carries and the executor reverifies. Permissions are compiled purely from declared effects
 and host authority and rendered into native enforcement or refused, guarded by the isolated-worktree
 check before any unsafe mutation. That enforcement belongs to the selected native integration: the
@@ -500,7 +510,7 @@ permissions, and process exit alone never establishes completion.
 ```mermaid
 flowchart TB
     accTitle: Harness entities and relationships
-    accDescr: The Agent and Harness model defines the canonical Agent, Harness and AgentBinding records that Agent definitions bind and that Agent execution runs directly. Agent definitions resolve a verified binding for Agent execution and render instructions through Distribution. Permissions compiles the effective policy that Agent execution enforces, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Agent execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Agent execution admits. Studio starts or observes the same capability host as Agent execution. Agent execution starts each Agent process under the enforcement of the Native integration, for which Permissions renders a default-deny launch configuration.
+    accDescr: The Agent and Harness model defines the canonical Agent, Mode, Harness and AgentBinding records that Agent definitions bind and that Agent execution runs directly. Agent definitions resolve a verified binding for Agent execution and render instructions through Distribution. Permissions compiles the effective policy that Agent execution enforces, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Agent execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Agent execution admits. Studio starts or observes the same capability host as Agent execution. Agent execution starts each Agent process under the enforcement of the Native integration, for which Permissions renders a default-deny launch configuration.
     agentModel["Agent and Harness model"]
     agentDefs["Agent definitions"]
     permissions["Permissions"]
@@ -513,7 +523,7 @@ flowchart TB
     distribution["Distribution"]
     native["Native integration"]
     agentModel -->|defines Agent, Harness and Constraints records for| agentDefs
-    agentModel -->|supplies canonical Agent, Harness and AgentBinding records to| execution
+    agentModel -->|supplies canonical Agent, Mode, Harness and AgentBinding records to| execution
     agentModel -->|declares maximum effects for| permissions
     agentDefs -->|resolves a verified AgentBinding for| execution
     agentDefs -->|renders instructions and attests freshness through| distribution

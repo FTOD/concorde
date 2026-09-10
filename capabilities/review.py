@@ -2,12 +2,13 @@
 
 Composing capabilities may reuse an already bound target without repeating discovery."""
 from concorde.spec import contract_shapes as shapes
-from agents import code_reviewer, spec_reviewer
+from agents import programmer, spec_engineer
 
 from . import external_name
 
 CLASS = "global"
-AGENTS = (spec_reviewer.AGENT, code_reviewer.AGENT)
+DETERMINISTIC = False
+AGENTS = (spec_engineer.AGENT, programmer.AGENT)
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 

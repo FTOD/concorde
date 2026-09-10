@@ -435,7 +435,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('service.transfer',result['output']['data']['target_id'])
         self.assertEqual('concorde-coordinator-route',result['output']['data']['completed_capabilities'][0])
         self.assertEqual(['route','route','context-solve'],[call['stage'] for call in double.calls][:3])
-        self.assertEqual(['concorde-coordinator','concorde-coordinator','concorde-context-assessor'],
+        self.assertEqual(['concorde-coordinator','concorde-coordinator','concorde-spec-engineer'],
                          [call['capability'] for call in double.calls][:3])
     @verifies("scenario.harness.typed-reject")
     def test_internal_stage_capability_requires_target_id_at_the_top_level(self):

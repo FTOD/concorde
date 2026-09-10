@@ -20,7 +20,8 @@ from typing import Any
 from ..spec.typed_data import (CAPABILITY_CONTRACTS, TypedDataError, canonical, checked_path,
     decode, typed, validate_typed, artifact, verify_artifacts)
 from .configuration import load_configuration
-from ..harness.agent_model import agent_definition, binding_json, external_agent_name
+from ..harness.agent_model import (ModeContractError, agent_definition, binding_json,
+    external_agent_name, mode_definition, validate_mode_output)
 from ..harness.agent_executor import CapabilityExecutionError
 from ..harness.check_executor import CHECK_POLICY, CheckSandboxError, execute_check
 from ..harness.permissions import (PolicyBinding, PermissionPolicyError, compile_policy, render_codex_configuration,
@@ -307,7 +308,7 @@ class MainInvocation:
 
     def stage(self, phase: str, occurrence: int) -> dict:
         role = "concorde-coordinator"
-        prompt = load_role_prompt(self.host.package_root, role)
+        prompt = load_role_prompt(self.host.package_root, role, self.action)
         snapshot = resolve_discovery_context(
             self.repository,
             tuple(self.discovered),
@@ -394,7 +395,7 @@ class MainInvocation:
                 "discovered_targets": list(self.discovered),
                 "agent": external_agent_name(prompt.binding.agent),
                 "harness": prompt.binding.harness,
-                "agent_binding_digest": prompt.binding.digest,
+                "agent_binding_digest": prompt.binding.digest, "mode": prompt.binding.mode,
                 "instructions_digest": prompt.binding.instructions_digest,
                 "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds,
             })
@@ -412,6 +413,7 @@ class MainInvocation:
                     or result.completion.workspace_digest != snapshot.id
                     or evidence.agent_binding_digest != prompt.binding.digest):
                 raise SpecError("main completion evidence is not bound to this invocation", "invalid_completion")
+            validate_mode_output(agent_definition(prompt.binding.agent), prompt.binding.mode, result.completion.domain_output)
             data = validate_typed(result.completion.domain_output, "concorde-main-stage-result")["data"]
             self._validate_result(snapshot, phase, data)
             if read_file(self.repository.root, self.repository.registry_path) != before_registry:
@@ -677,7 +679,7 @@ def _validate_topology_proposal(host: CapabilityHost, proposal: dict) -> tuple[S
         raise SpecError("topology proposal registry base changed", "stale_proposal")
     if repository.config["protocol"] != data["protocol_binding"]:
         raise SpecError("topology proposal Protocol binding changed", "stale_proposal")
-    prompt = load_role_prompt(host.package_root, "concorde-coordinator")
+    prompt = load_role_prompt(host.package_root, "concorde-coordinator", "design-topology")
     snapshot = resolve_discovery_context(
         repository,
         tuple(data["discovered_targets"]),
@@ -699,8 +701,8 @@ def _validate_topology_proposal(host: CapabilityHost, proposal: dict) -> tuple[S
 def _topology_author(repository: SpecRepository, configuration: dict, host: CapabilityHost,
                      target: dict, task: str, occurrence: int,
                      candidate_document_references: tuple[dict, ...]) -> dict:
-    role = "concorde-spec-author"
-    prompt = load_role_prompt(host.package_root, role)
+    role = "concorde-spec-engineer"
+    prompt = load_role_prompt(host.package_root, role, "topology-author")
     snapshot = resolve_topology_author_context(repository, target, task=task, instructions=prompt.body,
         candidate_document_references=candidate_document_references)
     before_registry = repository.registry_bytes
@@ -743,7 +745,7 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
             "read_paths": list(policy.read_paths), "write_paths": [], "network": False,
             "fresh_session": True, "policy_digest": policy.digest,
             "agent": external_agent_name(prompt.binding.agent), "harness": prompt.binding.harness,
-            "agent_binding_digest": prompt.binding.digest,
+            "agent_binding_digest": prompt.binding.digest, "mode": prompt.binding.mode,
             "instructions_digest": prompt.binding.instructions_digest,
             "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds})
         if host.mode == "describe-policy":
@@ -760,6 +762,7 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
                 or result.completion.workspace_digest != snapshot.id
                 or evidence.agent_binding_digest != prompt.binding.digest):
             raise SpecError("topology author evidence is not bound to this invocation", "invalid_completion")
+        validate_mode_output(agent_definition(prompt.binding.agent), prompt.binding.mode, result.completion.domain_output)
         data = validate_typed(result.completion.domain_output, "concorde-topology-author-result")["data"]
         if data["context_id"] != snapshot.id or data["target_id"] != target["id"]:
             raise SpecError("topology author returned a different target/context", "incompatible_handoff")
@@ -839,7 +842,7 @@ def _prepare_topology(configuration: dict, proposal: dict, host: CapabilityHost)
                 raise SpecError("topology author cannot replace an unregistered existing file",
                                 "permission_denied", path)
             proposals.setdefault(path, []).append((target_id, item["content"]))
-        completed.append("concorde-spec-author")
+        completed.append("concorde-spec-engineer")
     if host.mode == "describe-policy":
         return _main_topology_response("accept-topology", repository, proposal,
             outcome="described", answer="Topology author policies described.",
@@ -1037,12 +1040,15 @@ class Invocation:
         return gaps
 
     def stage(self, capability: str, *, inputs: tuple[dict, ...] = (), readonly=False,
-              defer_gap_resolution=False) -> dict:
+              defer_gap_resolution=False, mode: str | None = None) -> dict:
         phase, role = STAGE_ROLES[capability]
-        prompt = load_role_prompt(self.host.package_root, role)
+        mode = mode or phase
+        prompt = load_role_prompt(self.host.package_root, role, mode)
+        readonly = readonly or mode == "investigation"
         snapshot = resolve_context(self.repository, self.target.id, phase=phase, task=self.task["task"],
             focus_id=self.task.get("focus_id"), constraints=tuple(self.task.get("constraints", [])),
-            instructions=prompt.body, stage_inputs=inputs)
+            instructions=prompt.body, stage_inputs=inputs,
+            mode=mode_definition(agent_definition(prompt.binding.agent), mode))
         self.last_context = snapshot.id
         if self.capability not in {"concorde-main", "concorde-context-solve"}:
             pending = self.pending_gaps(phase, snapshot, include_prerequisites=not readonly)
@@ -1090,9 +1096,10 @@ class Invocation:
                 context_file.parent.mkdir(parents=True, exist_ok=True)
                 context_file.write_text(snapshot.serialized + "\n")
             roles = ({"spec-context": (relative,),
-                      "implementation": self.repository.implementation_paths(self.target)}
+                      "implementation": (self.repository.implementation_files(self.target) if readonly
+                                         else self.repository.implementation_paths(self.target))}
                      if project_workspace else {"spec-context": (relative,)})
-            write_roles = ("implementation",) if implementation and not readonly else ()
+            write_roles = ("implementation",) if implementation and mode == "implementation" and not readonly else ()
             try:
                 policy = compile_policy(prompt.effects,
                     PolicyBinding(capability, phase, 0, role, role, write_roles=write_roles), roles,
@@ -1109,23 +1116,23 @@ class Invocation:
             value = typed("concorde-agent-stage-context", {"snapshot": typed("concorde-context-snapshot", snapshot.value),
                 "change_id": self.change_id, "expected_artifacts": []})
             invocation_id = str(uuid.uuid4())
+            self.host.descriptions.append({"capability": capability, "phase": phase, "context_id": snapshot.id,
+                "project_root": str(project), "read_paths": list(policy.read_paths),
+                "write_paths": list(policy.write_paths), "network": False, "fresh_session": True,
+                "policy_digest": policy.digest,
+                "agent": external_agent_name(prompt.binding.agent), "harness": prompt.binding.harness,
+                "agent_binding_digest": prompt.binding.digest, "mode": prompt.binding.mode,
+                "instructions_digest": prompt.binding.instructions_digest,
+                "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds})
+            if self.host.mode == "describe-policy":
+                return {"context_id": snapshot.id, "outcome": "completed", "answer": "", "gaps": [],
+                        "documents": [], "plan": "", "tasks": []}
             launch = build_launch_specification(capability=capability, stage=phase, occurrence=0, role=role,
                 integration=integration, agent=role, project_root=str(project), request=self.task["task"],
                 prompt=prompt.body, prior_results=(), workspace_receipt_json=canonical(receipt),
                 workspace_digest=snapshot.id, policy=policy, native_configuration=native,
                 runtime_input_json=canonical(value), capability_configuration_json=canonical(self.configuration),
                 invocation_id=invocation_id, agent_binding_json=binding_json(prompt.binding))
-            self.host.descriptions.append({"capability": capability, "phase": phase, "context_id": snapshot.id,
-                "project_root": str(project), "read_paths": list(policy.read_paths),
-                "write_paths": list(policy.write_paths), "network": False, "fresh_session": True,
-                "policy_digest": policy.digest,
-                "agent": external_agent_name(prompt.binding.agent), "harness": prompt.binding.harness,
-                "agent_binding_digest": prompt.binding.digest,
-                "instructions_digest": prompt.binding.instructions_digest,
-                "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds})
-            if self.host.mode == "describe-policy":
-                return {"context_id": snapshot.id, "outcome": "completed", "answer": "", "gaps": [],
-                        "documents": [], "plan": "", "tasks": []}
             from ..harness.agent_executor import AgentProcessExecutor
             executor = self.host.executor or AgentProcessExecutor()
             result = executor(launch)
@@ -1137,6 +1144,7 @@ class Invocation:
                     or result.completion.workspace_digest != snapshot.id
                     or evidence.agent_binding_digest != prompt.binding.digest):
                 raise SpecError("completion evidence is not bound to this invocation", "invalid_completion")
+            validate_mode_output(agent_definition(prompt.binding.agent), prompt.binding.mode, result.completion.domain_output)
             data = validate_typed(result.completion.domain_output, "concorde-agent-stage-result")["data"]
             if data["context_id"] != snapshot.id:
                 raise SpecError("agent returned a different context identity", "incompatible_handoff")
@@ -2176,7 +2184,10 @@ def run_capability(capability: str, configuration: dict | None, runtime_input: d
                "execution_limit" if error.outcome == "limit_exhausted" else "execution_failed")
         host.lifecycle["status"] = lifecycle_status
         result.update(status="failed", errors=[{"code": code, "field": "", "message": str(error)}])
-    except (SpecError, TypedDataError) as error:
+        if error.code:
+            host.lifecycle["status"] = "blocked"
+            result.update(status="blocked", errors=[{"code": error.code, "field": "", "message": str(error)}])
+    except (SpecError, TypedDataError, ModeContractError) as error:
         result["errors"] = [{"code": error.code, "field": error.field, "message": str(error)}]
     except BuildError as error:
         result["errors"] = [{"code": error.code, "field": "", "message": str(error)}]

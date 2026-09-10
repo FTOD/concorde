@@ -26,7 +26,7 @@ from .prompt_resolver import (
     resolve_role_prompt,
     resolve_skill_source,
 )
-from ..spec.contracts import INTERNAL_SKILLS, CAPABILITY_NAMES, exported_types, schemas
+from ..spec.contracts import INTERNAL_SKILLS, CAPABILITY_NAMES, MAIN_ROUTED_CAPABILITIES, exported_types, schemas
 
 _SUBJECT = "module.distribution"
 
@@ -56,6 +56,7 @@ def _finding(rule: str, source: str, message: str, remediation: str, *, severity
 
 def _prompt_roots() -> tuple[str, ...]:
     return (tuple(build.SKILL_SOURCES.values()) + tuple(build.AGENT_ROOTS.values())
+            + tuple(m.instructions for a in build.load_agents().values() for m in a.modes)
             + ("prompts/protocol/principles.md",)
             + tuple(f"prompts/protocol/kinds/{kind}.md" for kind in build.PROTOCOL_KINDS))
 
@@ -212,6 +213,7 @@ def _validate_capability_modules(root: Path) -> list[Finding]:
         ))
 
     skill_capabilities = _skill_capabilities(root)
+    valid_modules: dict[str, object] = {}
     for name in sorted(declared):
         module = modules.get(name)
         source = f"capabilities/{name}.py"
@@ -220,21 +222,24 @@ def _validate_capability_modules(root: Path) -> list[Finding]:
                 f"capability module {name!r} could not be imported.",
                 "Fix the import error in the capability module."))
             continue
-        missing = [attribute for attribute in ("CLASS", "AGENTS", "USES", "EXTERNAL_NAME", "REQUEST", "RESPONSE", "run")
+        missing = [attribute for attribute in ("CLASS", "DETERMINISTIC", "AGENTS", "USES", "EXTERNAL_NAME", "REQUEST", "RESPONSE", "run")
                    if not hasattr(module, attribute)]
         if missing:
             findings.append(_finding("CONCORDE-CAPABILITY-CONSTANTS-001", source,
                 f"capability module {name!r} is missing mandatory constants: {missing}.",
-                "Declare CLASS, AGENTS, USES, EXTERNAL_NAME, REQUEST, RESPONSE and run()."))
+                "Declare CLASS, DETERMINISTIC, AGENTS, USES, EXTERNAL_NAME, REQUEST, RESPONSE and run()."))
             continue
-        if (not isinstance(module.CLASS, str) or not isinstance(module.AGENTS, tuple)
-                or not isinstance(module.USES, tuple) or not isinstance(module.EXTERNAL_NAME, str)
+        if (not isinstance(module.CLASS, str) or type(module.DETERMINISTIC) is not bool
+                or not isinstance(module.AGENTS, tuple) or not isinstance(module.USES, tuple)
+                or not all(isinstance(used, str) for used in module.USES)
+                or not isinstance(module.EXTERNAL_NAME, str)
                 or not isinstance(module.REQUEST, dict) or not isinstance(module.RESPONSE, dict)
                 or not callable(module.run)):
             findings.append(_finding("CONCORDE-CAPABILITY-CONSTANTS-001", source,
                 f"capability module {name!r} declares a mandatory constant with the wrong type.",
-                "CLASS/EXTERNAL_NAME are str; AGENTS/USES are tuples; REQUEST/RESPONSE are dict; run is callable."))
+                "CLASS/EXTERNAL_NAME are str; DETERMINISTIC is bool; AGENTS is a tuple; USES is a tuple of str; REQUEST/RESPONSE are dict; run is callable."))
             continue
+        valid_modules[name] = module
         if module.CLASS not in {"global", "lifecycle", "stage"}:
             findings.append(_finding("CONCORDE-CAPABILITY-CLASS-001", source,
                 f"capability {name!r} declares CLASS {module.CLASS!r}.",
@@ -266,22 +271,35 @@ def _validate_capability_modules(root: Path) -> list[Finding]:
 
     visiting: set[str] = set()
     visited: set[str] = set()
+    model_calls: dict[str, bool | None] = {}
 
-    def visit(name: str, chain: tuple[str, ...]) -> None:
-        module = modules.get(name)
-        if module is None or name in visited:
-            return
+    def visit(name: str, chain: tuple[str, ...]) -> bool | None:
+        module = valid_modules.get(name)
+        if module is None:
+            return None
+        if name in visited:
+            return model_calls[name]
         if name in visiting:
             findings.append(_finding("CONCORDE-CAPABILITY-USES-001", f"capabilities/{name}.py",
                 "capability USES graph is cyclic: " + " -> ".join((*chain, name)),
                 "Remove one nested USES edge so the composition graph is acyclic."))
-            return
+            return None
         visiting.add(name)
-        for used in module.USES:
-            if used in declared:
-                visit(used, (*chain, name))
+        children = [visit(used, (*chain, name)) for used in module.USES]
+        # Routing may call the coordinator even when it is not in this module's AGENTS.
+        calls_model = bool(module.AGENTS) or module.EXTERNAL_NAME in MAIN_ROUTED_CAPABILITIES or any(children)
+        resolved = all(child is not None for child in children) and all(
+            isinstance(agent, Agent) for agent in module.AGENTS)
+        if resolved and (module.DETERMINISTIC != (not calls_model)
+                         or (module.CLASS == "lifecycle" and not module.DETERMINISTIC)):
+            findings.append(_finding("CONCORDE-CAPABILITY-DETERMINISTIC-001", f"capabilities/{name}.py",
+                f"capability {name!r} declares DETERMINISTIC={module.DETERMINISTIC}, "
+                f"but its Agent, routing and transitive USES declarations imply model_calls={calls_model}.",
+                "Set DETERMINISTIC to true exactly when no supported path calls a model; lifecycle capabilities must remain deterministic."))
         visiting.discard(name)
         visited.add(name)
+        model_calls[name] = calls_model if resolved else None
+        return model_calls[name]
 
     for name in sorted(declared):
         visit(name, ())
@@ -379,6 +397,14 @@ def _validate_agent_harness(agent: Agent, source: str) -> list[Finding]:
             f"agent {agent.name!r} constraints widen its harness {declared_harness.name!r} effects.",
             "Keep Constraints.effects a subset of the bound Harness effects."))
 
+    from ..harness.agent_model import mode_definition
+    for mode in agent.modes:
+        try:
+            mode_definition(agent, mode.name)
+        except ValueError as error:
+            findings.append(_finding("CONCORDE-AGENT-MODE-001", source, str(error),
+                "Declare unique modes that narrow the Agent context, result and authority ceiling."))
+
     limits = agent.constraints.limits
     if limits is not None:
         if limits.timeout_seconds > declared_harness.loop.timeout_seconds:
@@ -470,6 +496,19 @@ def _validate_agents(root: Path) -> list[Finding]:
                                 "Use exactly the six required `## ` headings, in order."))
 
         findings.extend(_validate_agent_harness(agent, source))
+        declared_modes = {mode.instructions for mode in agent.modes}
+        actual_modes = {path.relative_to(root).as_posix()
+                        for path in (root / "agents" / name / "modes").glob("*.md")}
+        if declared_modes != actual_modes:
+            findings.append(_finding("CONCORDE-AGENT-MODE-001", source,
+                "Mode instruction files differ from the declared mode inventory.",
+                "Keep exactly the declared modes/<mode>.md authoring sources."))
+        for mode in agent.modes:
+            try:
+                resolve_agent_spec(root, mode.instructions)
+            except PromptResolverError as error:
+                findings.append(_finding("CONCORDE-AGENT-MODE-001", mode.instructions, str(error),
+                    "Repair the selected mode instruction source."))
     return findings
 
 
@@ -568,7 +607,7 @@ def _find_boundary_document(documents: dict[str, str]) -> tuple[str, str] | None
 
 
 def _capability_code_inventory(root: Path) -> dict[str, dict[str, object]] | None:
-    """``{external-id-without-prefix: {"class": ..., "skill": ...}}`` from the actual code.
+    """``{external-id-without-prefix: {"class": ..., "deterministic": ..., "skill": ...}}`` from code.
 
     Mirrors ``_validate_capability_modules``'s own reads of the capability package and the skill
     sources, so this rule and rule 2 agree on what "the code" declares without a second inventory
@@ -585,7 +624,11 @@ def _capability_code_inventory(root: Path) -> dict[str, dict[str, object]] | Non
         if module is None or not hasattr(module, "CLASS"):
             continue
         skills = skill_capabilities.get(name, [])
-        result[name.replace("_", "-")] = {"class": module.CLASS, "skill": skills[0] if len(skills) == 1 else None}
+        result[name.replace("_", "-")] = {
+            "class": module.CLASS,
+            "deterministic": getattr(module, "DETERMINISTIC", None),
+            "skill": skills[0] if len(skills) == 1 else None,
+        }
     return result
 
 
@@ -606,18 +649,21 @@ def _validate_spec_capabilities_block(root: Path, documents: dict[str, str]) -> 
     except json.JSONDecodeError as error:
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
             f"concorde-capabilities block is not valid JSON: {error}",
-            "Fix the JSON array of {id, class, skill} entries."))
+            "Fix the JSON array of {id, class, deterministic, skill} entries."))
         return findings
     valid_shape = (isinstance(entries, list)
-        and all(isinstance(item, dict) and set(item) == {"id", "class", "skill"} for item in entries))
+        and all(isinstance(item, dict) and set(item) == {"id", "class", "deterministic", "skill"}
+                and isinstance(item["id"], str) and isinstance(item["class"], str)
+                and type(item["deterministic"]) is bool
+                and (item["skill"] is None or isinstance(item["skill"], str)) for item in entries))
     if not valid_shape:
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
-            "concorde-capabilities block must be a JSON array of {id, class, skill} objects.",
-            "Match exactly the three fields id/class/skill for every entry."))
+            "concorde-capabilities block must be a JSON array of {id, class, deterministic, skill} objects.",
+            "Match exactly id/class/deterministic/skill for every entry, with a boolean deterministic value."))
         return findings
-    declared: dict[str, tuple[object, object]] = {}
+    declared: dict[str, tuple[object, object, object]] = {}
     for entry in entries:
-        declared[entry["id"]] = (entry["class"], entry["skill"])
+        declared[entry["id"]] = (entry["class"], entry["deterministic"], entry["skill"])
     if len(declared) != len(entries):
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
             "concorde-capabilities entries must have unique id values.",
@@ -628,11 +674,11 @@ def _validate_spec_capabilities_block(root: Path, documents: dict[str, str]) -> 
             "capabilities/__init__.py is missing, unsafe, or declares no CAPABILITIES tuple.",
             "Add capabilities/__init__.py with an explicit CAPABILITIES inventory."))
         return findings
-    expected = {capability_id: (data["class"], data["skill"]) for capability_id, data in code.items()}
+    expected = {capability_id: (data["class"], data["deterministic"], data["skill"]) for capability_id, data in code.items()}
     for capability_id in sorted(set(expected) - set(declared)):
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
             f"concorde-capabilities block is missing capability {capability_id!r}.",
-            "Add its {id, class, skill} entry to the block."))
+            "Add its {id, class, deterministic, skill} entry to the block."))
     for capability_id in sorted(set(declared) - set(expected)):
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
             f"concorde-capabilities block declares unknown capability {capability_id!r}.",
@@ -642,7 +688,7 @@ def _validate_spec_capabilities_block(root: Path, documents: dict[str, str]) -> 
             findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
                 f"concorde-capabilities entry {capability_id!r} is {declared[capability_id]!r}, "
                 f"code declares {expected[capability_id]!r}.",
-                "Match class and skill exactly to the capability module and its skill."))
+                "Match class, deterministic and skill exactly to the capability module and its skill."))
     return findings
 
 
@@ -677,6 +723,7 @@ def _agent_code_inventory(root: Path) -> dict[str, dict[str, object]] | None:
         result[name.replace("_", "-")] = {
             "harness": agent.harness.name,
             "capabilities": sorted(capability_names),
+            "modes": sorted(mode.name for mode in agent.modes),
         }
     return result
 
@@ -699,19 +746,20 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
     except json.JSONDecodeError as error:
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
             f"concorde-agents block is not valid JSON: {error}",
-            "Fix the JSON array of {id, harness, capabilities} entries."))
+            "Fix the JSON array of {id, harness, capabilities, modes} entries."))
         return findings
     valid_shape = (isinstance(entries, list)
-        and all(isinstance(item, dict) and set(item) == {"id", "harness", "capabilities"}
-                and isinstance(item.get("capabilities"), list) for item in entries))
+        and all(isinstance(item, dict) and set(item) == {"id", "harness", "capabilities", "modes"}
+                and isinstance(item.get("capabilities"), list)
+                and isinstance(item.get("modes"), list) for item in entries))
     if not valid_shape:
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
-            "concorde-agents block must be a JSON array of {id, harness, capabilities} objects.",
-            "Match exactly the three fields id/harness/capabilities for every entry."))
+            "concorde-agents block must be a JSON array of {id, harness, capabilities, modes} objects.",
+            "Match exactly the four fields id/harness/capabilities/modes for every entry."))
         return findings
     declared: dict[str, tuple[object, tuple]] = {}
     for entry in entries:
-        declared[entry["id"]] = (entry["harness"], tuple(entry["capabilities"]))
+        declared[entry["id"]] = (entry["harness"], tuple(entry["capabilities"]), tuple(entry["modes"]))
     if len(declared) != len(entries):
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
             "concorde-agents entries must have unique id values.",
@@ -722,11 +770,11 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
             "agents/__init__.py is missing, unsafe, or declares no AGENTS tuple.",
             "Add agents/__init__.py with an explicit AGENTS inventory."))
         return findings
-    expected = {agent_id: (data["harness"], tuple(data["capabilities"])) for agent_id, data in code.items()}
+    expected = {agent_id: (data["harness"], tuple(data["capabilities"]), tuple(data["modes"])) for agent_id, data in code.items()}
     for agent_id in sorted(set(expected) - set(declared)):
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
             f"concorde-agents block is missing agent {agent_id!r}.",
-            "Add its {id, harness, capabilities} entry to the block."))
+            "Add its {id, harness, capabilities, modes} entry to the block."))
     for agent_id in sorted(set(declared) - set(expected)):
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
             f"concorde-agents block declares unknown agent {agent_id!r}.",

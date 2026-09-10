@@ -121,12 +121,12 @@ class ResolveAgentBuildTests(unittest.TestCase):
     @verifies("scenario.harness.agent-bind")
     def test_resolve_agent_accepts_external_hyphenated_and_underscored_names(self):
         write_build(self.root, "all")
-        by_external = resolve_agent(self.root, "concorde-context-assessor")
-        by_hyphenated = resolve_agent(self.root, "context-assessor")
-        by_underscore = resolve_agent(self.root, "context_assessor")
+        by_external = resolve_agent(self.root, "concorde-spec-engineer")
+        by_hyphenated = resolve_agent(self.root, "spec-engineer")
+        by_underscore = resolve_agent(self.root, "spec_engineer")
         self.assertEqual(by_external, by_hyphenated)
         self.assertEqual(by_external, by_underscore)
-        self.assertEqual(by_external.agent, "context_assessor")
+        self.assertEqual(by_external.agent, "spec_engineer")
 
     @verifies("scenario.harness.agent-bind-reject")
     def test_unknown_agent_name_fails_closed(self):
@@ -153,10 +153,10 @@ class ResolveAgentBuildTests(unittest.TestCase):
     @verifies("scenario.harness.agent-bind")
     def test_load_agent_binding_and_effects_match_resolve_agent(self):
         write_build(self.root, "all")
-        prompt = load_agent(self.root, "concorde-spec-author")
-        binding = resolve_agent(self.root, "concorde-spec-author")
+        prompt = load_agent(self.root, "concorde-spec-engineer")
+        binding = resolve_agent(self.root, "concorde-spec-engineer")
         self.assertEqual(prompt.binding, binding)
-        self.assertEqual(prompt.effects, agent_definition("spec_author").constraints.effects)
+        self.assertEqual(prompt.effects, agent_definition("spec_engineer").constraints.effects)
         self.assertTrue(prompt.body.strip())
 
 
@@ -191,15 +191,15 @@ class ResolveAgentInvalidBindingTests(unittest.TestCase):
 
     @verifies("scenario.harness.agent-bind-reject")
     def test_constraints_that_widen_effects_beyond_the_harness_are_invalid(self):
-        base = agent_model.load_agents()["planner"]
+        base = agent_model.load_agents()["spec_engineer"]
         self.assertEqual(base.harness.name, SPEC_CAPSULE.name)
         widened_effects = dataclasses.replace(base.constraints.effects, writes=("implementation",))
         widened = dataclasses.replace(base, constraints=dataclasses.replace(base.constraints, effects=widened_effects))
-        self._resolve_with("planner", widened)
+        self._resolve_with("spec_engineer", widened)
 
     @verifies("scenario.harness.agent-bind-reject")
     def test_unregistered_harness_is_invalid(self):
-        base = agent_model.load_agents()["planner"]
+        base = agent_model.load_agents()["spec_engineer"]
         bogus = make_harness(
             name="fixture-bogus-harness",
             workspace="capsule",
@@ -210,50 +210,50 @@ class ResolveAgentInvalidBindingTests(unittest.TestCase):
         )
         self.assertNotIn(bogus.name, HARNESSES)
         broken = dataclasses.replace(base, harness=bogus)
-        self._resolve_with("planner", broken)
+        self._resolve_with("spec_engineer", broken)
 
     @verifies("scenario.harness.agent-bind-reject")
     def test_unknown_capability_reference_is_invalid(self):
-        base = agent_model.load_agents()["planner"]
+        base = agent_model.load_agents()["spec_engineer"]
         broken = dataclasses.replace(
             base, constraints=dataclasses.replace(base.constraints, capabilities=("concorde-not-a-real-capability",))
         )
-        self._resolve_with("planner", broken)
+        self._resolve_with("spec_engineer", broken)
 
     @verifies("scenario.harness.agent-bind-reject")
     def test_context_not_admitted_by_the_harness_is_invalid(self):
-        base = agent_model.load_agents()["planner"]
+        base = agent_model.load_agents()["spec_engineer"]
         self.assertNotIn("concorde-main-stage-context", base.harness.contexts)
         broken = dataclasses.replace(
             base, constraints=dataclasses.replace(base.constraints, contexts=("concorde-main-stage-context",))
         )
-        self._resolve_with("planner", broken)
+        self._resolve_with("spec_engineer", broken)
 
     @verifies("scenario.harness.agent-bind-reject")
     def test_wrong_spec_path_is_invalid(self):
-        base = agent_model.load_agents()["planner"]
-        broken = dataclasses.replace(base, spec="agents/planner/wrong.md")
-        self._resolve_with("planner", broken)
+        base = agent_model.load_agents()["spec_engineer"]
+        broken = dataclasses.replace(base, spec="agents/spec_engineer/wrong.md")
+        self._resolve_with("spec_engineer", broken)
 
     @verifies("scenario.harness.agent-bind-reject")
     def test_limits_that_widen_the_harness_timeout_are_invalid(self):
-        base = agent_model.load_agents()["planner"]
+        base = agent_model.load_agents()["spec_engineer"]
         widened = dataclasses.replace(
             base, constraints=dataclasses.replace(base.constraints, limits=LoopPolicy(999999))
         )
         self.assertGreater(widened.constraints.limits.timeout_seconds, widened.harness.loop.timeout_seconds)
-        self._resolve_with("planner", widened)
+        self._resolve_with("spec_engineer", widened)
 
     @verifies("scenario.harness.agent-bind")
     def test_effective_loop_is_the_tighter_timeout_when_limits_is_given(self):
-        base = agent_model.load_agents()["planner"]
+        base = agent_model.load_agents()["spec_engineer"]
         self.assertLess(300, base.harness.loop.timeout_seconds)
         tightened = dataclasses.replace(
             base, constraints=dataclasses.replace(base.constraints, limits=LoopPolicy(300))
         )
-        modified = _with_one_agent_replaced("planner", tightened)
+        modified = _with_one_agent_replaced("spec_engineer", tightened)
         with mock.patch.object(agent_model, "load_agents", return_value=modified):
-            binding = resolve_agent(self.root, "planner")
+            binding = resolve_agent(self.root, "spec_engineer")
         self.assertEqual(binding.effective_loop, LoopPolicy(300))
 
 
