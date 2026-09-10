@@ -108,6 +108,25 @@ export default function Home() {
           <CodeBlock language="bash" title="Install in your project">{page.quickstart.code}</CodeBlock>
         </div>
       </section>
+      {page.reference && <section className={`${styles.section} ${styles.reference}`} aria-labelledby="reference-title">
+        <Heading as="h2" id="reference-title">{page.reference.title}</Heading>
+        <p className={styles.sectionIntro}>{page.reference.description}</p>
+        <nav className={styles.referenceNav} aria-label={page.reference.title}>
+          {page.reference.tables.map((table, index) => <Link key={index} to={`#reference-table-${index}`}>{table.title}</Link>)}
+        </nav>
+        {page.reference.tables.map((table, index) => <div className={styles.referenceGroup} key={index}>
+          <Heading as="h3" id={`reference-table-${index}`}>{table.title}</Heading>
+          <p className={styles.sectionIntro}>{table.description}</p>
+          <div className={styles.tableScroll} role="region" aria-labelledby={`reference-table-${index}`} tabIndex={0}>
+            <table className={styles.referenceTable} aria-labelledby={`reference-table-${index}`}>
+              <thead><tr>{table.columns.map((column, index) => <th key={index} scope="col">{column}</th>)}</tr></thead>
+              <tbody>{table.rows.map((row, index) => <tr key={index}>
+                {row.map((cell, index) => <td key={index}>{cell}</td>)}
+              </tr>)}</tbody>
+            </table>
+          </div>
+        </div>)}
+      </section>}
     </main>
   </Layout>;
 }

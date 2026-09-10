@@ -78,6 +78,7 @@ ambiguous links fail validation.
 - GIVEN site identity schema 1 in `docsite/site.json` includes a valid `homepage` object
 - WHEN the site builds
 - THEN the root page renders the configured introduction, features, workflow and quickstart with the site's title and description metadata
+- AND when `homepage.reference` is configured, a reference section after the quickstart renders its tables with section navigation, column headers and keyboard-accessible horizontal scrolling on narrow screens
 - AND its primary Spec navigation resolves to the registered entry Module's canonical page, with local links respecting the configured base URL
 - AND Protocol and repository links appear only when their corresponding site identity options are enabled
 - BUT the introduction does not join any Module collection, add a graph node or registered-page manifest entry, or grant agent context
@@ -102,6 +103,12 @@ nonempty `title` and `description` strings and a nonempty `steps` array. Each ar
 nonempty `title` and `description` strings. Its `quickstart` object contains nonempty `title`,
 `description` and `code` strings. These values are project-owned presentation text, rendered
 without interpreting HTML. The adapter remains project-neutral and scaffolding omits the option.
+
+The optional `homepage.reference` object contains nonempty `title` and `description` strings and
+a nonempty `tables` array. Each table has nonempty `title` and `description` strings, a nonempty
+`columns` array of nonempty strings and a nonempty `rows` array. Every row contains exactly one
+nonempty string per column. These values also render as plain text. Invalid reference content
+fails with its field path; omitting the object preserves the homepage without a reference section.
 
 ## Independent Protocol documentation
 

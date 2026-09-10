@@ -84,6 +84,13 @@ nonempty `title`, `description` and `code`. Each feature or step has nonempty `t
 `description` strings. Invalid or incomplete configuration fails with the field path in the error.
 Text renders as text, and the quickstart code block supports copying through the docsite theme.
 
+An optional `homepage.reference` adds a reference section after the quickstart. It has nonempty
+`title` and `description` strings and a nonempty `tables` array. Each table has nonempty `title`
+and `description` strings, a nonempty `columns` array of nonempty strings, and a nonempty `rows`
+array. Every row contains one nonempty string per column. All copy renders as plain text.
+The section includes table navigation, column headers and keyboard-accessible horizontal scrolling
+for narrow screens. Omitting it preserves the existing homepage layout.
+
 Concorde enables this introduction to present its core capabilities and installation steps. The
 renderer is the same packaged template every project receives; consumer scaffolding does not copy
 Concorde's homepage content. The main Spec link resolves from the registered entry Module, the

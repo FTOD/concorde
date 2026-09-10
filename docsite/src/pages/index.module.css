@@ -75,6 +75,22 @@
 .code pre {font-size: .875rem;}
 .home a:focus-visible {outline: 3px solid var(--home-accent); outline-offset: 5px;}
 .hero a:focus-visible {outline-color: #c4c5ff;}
+.reference {border-top: 1px solid var(--home-border);}
+.reference h2, .reference h3 {scroll-margin-top: 5rem;}
+.referenceNav {display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; margin-block: 2rem;}
+.referenceNav a {color: var(--home-accent); font-weight: 600;}
+.referenceGroup {margin-top: 3rem; min-width: 0;}
+.referenceGroup h3 {font-size: 1.4rem; letter-spacing: -.02em;}
+.tableScroll {max-width: 100%; overflow-x: auto; border: 1px solid var(--home-border); border-radius: .5rem;}
+.tableScroll:focus-visible {outline: 3px solid var(--home-accent); outline-offset: 4px;}
+.referenceTable {display: table; width: 100%; min-width: 680px; margin: 0; border: 0; font-size: .9375rem; line-height: 1.6;}
+.referenceTable th, .referenceTable td {padding: 1rem; border: 0; border-bottom: 1px solid var(--home-border); text-align: left; vertical-align: top; overflow-wrap: break-word;}
+.referenceTable th {background: var(--home-soft); color: var(--home-ink);}
+.referenceTable tr {background: transparent; border: 0;}
+.referenceTable tr:nth-child(even) {background: var(--home-soft);}
+.referenceTable td {color: var(--home-muted);}
+.referenceTable td:first-child {color: var(--home-ink); font-weight: 600;}
+.referenceTable tbody tr:last-child td {border-bottom: 0;}
 
 @media (max-width: 996px) {
   .hero {padding-block: 4rem;}

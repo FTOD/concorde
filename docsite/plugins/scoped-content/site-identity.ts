@@ -3,6 +3,12 @@ import {resolve} from 'node:path';
 
 /** Site identity schema 1 — the only project-specific configuration the adapter reads. */
 export interface HomepageItem {title: string; description: string}
+export interface HomepageTable {
+  title: string;
+  description: string;
+  columns: string[];
+  rows: string[][];
+}
 export interface Homepage {
   eyebrow: string;
   title: string;
@@ -10,6 +16,7 @@ export interface Homepage {
   features: {title: string; items: HomepageItem[]};
   workflow: {title: string; description: string; steps: HomepageItem[]};
   quickstart: {title: string; description: string; code: string};
+  reference?: {title: string; description: string; tables: HomepageTable[]};
 }
 
 export interface SiteIdentity {
@@ -55,6 +62,34 @@ function items(value: unknown, field: string): HomepageItem[] {
   });
 }
 
+function strings(value: unknown, field: string): string[] {
+  if (!Array.isArray(value) || value.length === 0) invalid(`${field} must be a non-empty array.`);
+  return value.map((entry, index) => string(entry, `${field}[${index}]`));
+}
+
+function parseReference(value: unknown): NonNullable<Homepage['reference']> {
+  const field = 'homepage.reference';
+  const reference = object(value, field);
+  if (!Array.isArray(reference.tables) || reference.tables.length === 0) invalid(`${field}.tables must be a non-empty array.`);
+  return {
+    title: string(reference.title, `${field}.title`),
+    description: string(reference.description, `${field}.description`),
+    tables: reference.tables.map((value, index) => {
+      const path = `${field}.tables[${index}]`;
+      const table = object(value, path);
+      const columns = strings(table.columns, `${path}.columns`);
+      if (!Array.isArray(table.rows) || table.rows.length === 0) invalid(`${path}.rows must be a non-empty array.`);
+      const rows = table.rows.map((value, row) => {
+        const cells = strings(value, `${path}.rows[${row}]`);
+        if (cells.length !== columns.length) invalid(`${path}.rows[${row}] must have one cell per column.`);
+        return cells;
+      });
+      return {title: string(table.title, `${path}.title`),
+        description: string(table.description, `${path}.description`), columns, rows};
+    }),
+  };
+}
+
 function parseHomepage(value: unknown): Homepage {
   const page = object(value, 'homepage');
   const features = object(page.features, 'homepage.features');
@@ -69,6 +104,7 @@ function parseHomepage(value: unknown): Homepage {
       description: string(workflow.description, 'homepage.workflow.description'), steps: items(workflow.steps, 'homepage.workflow.steps')},
     quickstart: {title: string(quickstart.title, 'homepage.quickstart.title'),
       description: string(quickstart.description, 'homepage.quickstart.description'), code: string(quickstart.code, 'homepage.quickstart.code')},
+    ...(page.reference !== undefined ? {reference: parseReference(page.reference)} : {}),
   };
 }
 

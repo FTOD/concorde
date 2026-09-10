@@ -87,6 +87,31 @@ describe('site identity schema 1', () => {
     expect(() => parseSiteIdentity({...validValue, homepage: value})).toThrow(field);
   });
 
+  it('preserves optional reference tables as plain project-owned text', () => {
+    const reference = {title: 'Reference', description: 'Available tools.', tables: [
+      {title: 'Tools', description: 'Commands.', columns: ['Command', 'Purpose'], rows: [['<script>', 'Show <help> & usage']]},
+    ]};
+    expect(parseSiteIdentity({...validValue, homepage: {...homepage, reference}}).homepage?.reference).toEqual(reference);
+    expect(parseSiteIdentity({...validValue, homepage}).homepage?.reference).toBeUndefined();
+  });
+
+  it.each([
+    [null, /homepage.reference must be an object/],
+    [{title: 'Reference', description: 'Tools.', tables: []}, /homepage.reference.tables/],
+    ...[
+      {columns: [], rows: [['command']]},
+      {columns: ['Command'], rows: []},
+      {columns: ['Command'], rows: [['command', 'extra']]},
+      {columns: ['Command'], rows: [[' ']]},
+      {columns: ['Command'], rows: ['command']},
+      {columns: ['Command'], rows: [[42]]},
+    ].map((table): [unknown, RegExp] => [{title: 'Reference', description: 'Tools.', tables: [
+      {title: 'Tools', description: 'Commands.', ...table},
+    ]}, /homepage.reference.tables\[0\]/]),
+  ])('rejects malformed reference content %#', (reference, field) => {
+    expect(() => parseSiteIdentity({...validValue, homepage: {...homepage, reference}})).toThrow(field);
+  });
+
   it('reports a missing file by its project-relative name', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'concorde-site-identity-missing-'));
     roots.push(root);
