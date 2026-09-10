@@ -10,18 +10,23 @@
 
 # Views
 
-Publish registered Module Specs as a navigable documentation site, and open an existing Understand Anything code graph with the verified installed viewer.
+Publish registered Module Specs as a navigable documentation site, deterministically export or
+overlay a skeleton Understand Anything code graph from that same registry, and open an existing
+Understand Anything code graph with the verified installed viewer.
 
 ## Purpose
 
 Views turns the project's explicit Spec registry into a documentation site that developers and
-reviewers read, and separately lets a developer open an already-produced code-structure graph in
+reviewers read, deterministically projects that same registry into a skeleton Understand Anything
+knowledge graph, and separately lets a developer open an already-produced code-structure graph in
 the official Understand Anything viewer. Its publishing promises stop at rendering registered
 Markdown faithfully: it derives pages, navigation and relationship edges only from the registry,
 and it never infers a Module's completeness or correctness from a diagram, a route or a rendered
-page. Its viewer promises stop at admission and launch: it does not generate the graph it opens,
-does not judge whether that graph still agrees with the code, and does not grant an agent any
-access beyond its own host-bound Spec context.
+page. Its graph-export promises stop at deriving Module, document and bound-file structure from the
+registry; it never scans the filesystem for undeclared content, and repeated export replaces only
+the elements it previously added. Its viewer promises stop at admission and launch: the launcher
+does not generate the graph it opens, does not judge whether that graph still agrees with the code,
+and does not grant an agent any access beyond its own host-bound Spec context.
 
 ## Requirements
 
@@ -100,12 +105,23 @@ The viewer launcher SHALL NOT resolve dependencies or perform network acquisitio
 Invalid launch syntax or a port outside 0-65535 SHALL exit through argument parsing with code 2,
 distinct from a failed launch's exit code 3.
 
+### req.views.ua-graph-registry-only — Exported skeleton derives only from the registry
+
+The UA graph exporter SHALL derive every node, edge and layer it adds only from the explicit
+registry and registered documents.
+
+### req.views.ua-graph-idempotent — Re-export replaces only Concorde-produced elements
+
+A repeated export SHALL replace only the nodes, edges and layers the exporter itself produced,
+leaving every other element of an existing graph unchanged.
+
 ## Scenarios
 
 Scenario definitions for the docsite scaffold and top-level publish behavior are registered in
 [publication](publication.md). Scenario definitions for the registry-loading, materialization and
 build/promotion pipeline are registered in [pipeline](pipeline.md). Scenario definitions for the
-viewer launch command are registered in [viewer](viewer.md).
+viewer launch command are registered in [viewer](viewer.md). Scenario definitions for the UA graph
+export command are registered in [ua-graph](ua-graph.md).
 
 ## Ontology
 
@@ -115,11 +131,12 @@ viewer programs, the interfaces that reach them, and the publication and viewer 
 
 ### Entities
 
-The three programs below realize scaffolding, publication and viewer launch; the interface
-entities are their means of use; the remaining entities name the publication and viewer data the
-scenarios exchange. The docsite entity lists the whole `docsite/` directory and the scaffold entity
-its `src/concorde/views/` and `tests/concorde/views/` packages; the viewer launcher keeps its two
-exact entries, one of them inside a listed test package.
+The four programs below realize scaffolding, publication, viewer launch and UA graph export; the
+interface entities are their means of use; the remaining entities name the publication, viewer and
+UA graph data the scenarios exchange. The docsite entity lists the whole `docsite/` directory and
+the scaffold entity its `src/concorde/views/` and `tests/concorde/views/` packages; the viewer
+launcher and the UA graph exporter each keep two exact entries, one of them inside a directory the
+scaffold entity otherwise lists, which the most-specific-entry rule assigns to the exact owner.
 
 ```concorde-entities
 [
@@ -150,6 +167,16 @@ exact entries, one of them inside a listed test package.
     "files": [
       "scripts/run-viewer.py",
       "tests/concorde/views/test_viewer_launcher.py"
+    ]
+  },
+  {
+    "id": "entity.views.ua-graph-exporter",
+    "title": "UA graph exporter",
+    "kind": "program",
+    "responsibility": "Realizes the deterministic export or overlay of a skeleton Understand Anything graph from the registry's Module identities, relationships, documents and entity file listings, replacing on re-export only the nodes, edges and layers it previously added.",
+    "files": [
+      "src/concorde/views/ua_graph.py",
+      "tests/concorde/views/test_ua_graph.py"
     ]
   },
   {
@@ -192,6 +219,12 @@ exact entries, one of them inside a listed test package.
     "title": "Viewer launch command",
     "kind": "interface",
     "responsibility": "The `python3 .../scripts/run-viewer.py --project-root PATH [--port N] [--no-open]` command that admits an existing raw graph and a verified runtime and launches the official viewer, returning its process exit code."
+  },
+  {
+    "id": "entity.views.ua-graph-command",
+    "title": "UA graph export command",
+    "kind": "interface",
+    "responsibility": "The `python -m concorde ua-graph [--check]` command that derives a skeleton Understand Anything graph from the registry, overlays it onto an existing raw graph when one is present, and reports drift without writing under `--check`."
   },
   {
     "id": "entity.views.markdown-documents",
@@ -256,23 +289,27 @@ Publication scaffold and Publication docsite touch disjoint files and never edit
 output: the scaffold's own exact-file transaction creates or updates project structure, and
 rendering project Specs never authorizes editing them. A candidate is promoted only when it is both
 complete and current; any invalid link, diagram or stale source during generation leaves the
-published site exactly as it was. The viewer side is independent of publication: it admits an
-existing graph and a verified runtime and launches a process, and it proves nothing about whether
-that graph still agrees with the Specs this same Module publishes.
+published site exactly as it was. The UA graph exporter only derives and writes a skeleton from the
+registry; it never judges whether the resulting graph still agrees with the code, and the viewer
+launcher still neither generates nor verifies the graph it opens. The viewer side is independent of
+publication: it admits an existing graph and a verified runtime and launches a process, and it
+proves nothing about whether that graph still agrees with the Specs this same Module publishes.
 
 ```mermaid
 flowchart TB
     accTitle: Views entities and relationships
-    accDescr: Spec supplies registered documents and relationships to Publication docsite, which selects Registered Markdown documents and derives the Navigation and relationship graph; documents render as Canonical pages that, together with navigation, contribute to a Candidate site. The Docsite build interface builds and validates the candidate, which is promoted to the Published site only when current and complete. The Docsite scaffold command is realized by Publication scaffold, which feeds Publication docsite and stages accepted proposals through File transactions. The Viewer launch command is realized by the Viewer launcher. A Viewer launch request selects the Raw code graph, which, together with the Verified installed viewer that Distribution supplies, permits the Viewer process.
+    accDescr: Spec supplies registered documents and relationships to Publication docsite, which selects Registered Markdown documents and derives the Navigation and relationship graph; documents render as Canonical pages that, together with navigation, contribute to a Candidate site. The Docsite build interface builds and validates the candidate, which is promoted to the Published site only when current and complete. The Docsite scaffold command is realized by Publication scaffold, which feeds Publication docsite and stages accepted proposals through File transactions. The Viewer launch command is realized by the Viewer launcher. A Viewer launch request selects the Raw code graph, which, together with the Verified installed viewer that Distribution supplies, permits the Viewer process. The UA graph export command is realized by the UA graph exporter, which Spec supplies registry, memberships and file bindings to, and which writes or overlays the Raw code graph.
     spec["Spec"]
     distribution["Distribution"]
     publicationDocsite["Publication docsite"]
     publicationScaffold["Publication scaffold"]
     viewerLauncher["Viewer launcher"]
+    uaGraphExporter["UA graph exporter"]
     fileTransactions["File transactions"]
     docsiteScaffoldCommand["Docsite scaffold command"]
     docsiteBuildInterface["Docsite build interface"]
     viewerLaunchCommand["Viewer launch command"]
+    uaGraphCommand["UA graph export command"]
     markdownDocuments["Registered Markdown documents"]
     canonicalPage["Canonical page"]
     navigation["Navigation and relationship graph"]
@@ -298,6 +335,9 @@ flowchart TB
     codeGraph -->|valid input permits launch of| viewerProcess
     verifiedViewer -->|supplies the official entrypoint to| viewerProcess
     distribution -->|provisions and verifies| verifiedViewer
+    uaGraphCommand -->|is realized by| uaGraphExporter
+    spec -->|supplies registry, memberships and file bindings to| uaGraphExporter
+    uaGraphExporter -->|writes or overlays| codeGraph
 ```
 
 ## Dependencies and composition

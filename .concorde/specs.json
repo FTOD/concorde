@@ -249,7 +249,8 @@
         "specs/concorde/views/module.md",
         "specs/concorde/views/publication.md",
         "specs/concorde/views/pipeline.md",
-        "specs/concorde/views/viewer.md"
+        "specs/concorde/views/viewer.md",
+        "specs/concorde/views/ua-graph.md"
       ],
       "parent": "module.concorde",
       "uses": [
@@ -261,11 +262,14 @@
         "scripts/run-viewer.py",
         "src/concorde/spec/changes.py",
         "src/concorde/views/",
+        "src/concorde/views/ua_graph.py",
         "tests/concorde/views/",
+        "tests/concorde/views/test_ua_graph.py",
         "tests/concorde/views/test_viewer_launcher.py"
       ],
       "checks": [
         "check.views.publication-types",
+        "check.views.ua-graph",
         "check.views.viewer"
       ]
     }
@@ -348,6 +352,22 @@
         "docsite/package.json",
         "docsite/package-lock.json",
         "scripts/development/check-docsite-types.py"
+      ]
+    },
+    {
+      "id": "check.views.ua-graph",
+      "target_id": "module.views",
+      "argv": [
+        "{python}",
+        "-m",
+        "unittest",
+        "tests.concorde.views.test_ua_graph"
+      ],
+      "timeout_seconds": 60,
+      "inputs": [
+        "src/concorde/views/ua_graph.py",
+        "tests/concorde/views/test_ua_graph.py",
+        ".concorde/specs.json"
       ]
     },
     {

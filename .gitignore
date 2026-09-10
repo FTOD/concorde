@@ -52,3 +52,14 @@ Thumbs.db
 .concorde/runs/
 
 node_modules
+
+# Understand Anything: ignore only its own intermediate/tmp/trash/diff-overlay output, per the
+# tool's own guidance to commit the rest of .ua/ (including the ua-graph exporter's output)
+.ua/intermediate/
+.ua/tmp/
+.ua/.trash-*/
+.ua/diff-overlay.json
+.understand-anything/intermediate/
+.understand-anything/tmp/
+.understand-anything/.trash-*/
+.understand-anything/diff-overlay.json
