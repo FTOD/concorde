@@ -46,6 +46,16 @@ it('publishes the configured introduction at the root while preserving direct Sp
  expect(home).toContain('Specify the architecture.');
  expect(home).toContain('Write and maintain architecture-aware Specs.');
  expect(home).toContain('id="get-started"');
+ expect(home).toContain('id="reference-title"');
+ expect(home.indexOf('id="reference-title"')).toBeGreaterThan(home.indexOf('id="get-started"'));
+ expect(home).toContain('Agents and task modes');
+ expect(home).toContain('Capability inventory');
+ expect(home).toContain('Harnesses and native tools');
+ expect(home).toContain('Launchers and supporting tools');
+ expect(home).toContain('concorde-reflections-triage');
+ expect(home).toContain('implementation-workspace');
+ expect(home).toContain('scope="col"');
+ expect(home).toMatch(/role="region"[^>]*tabindex="0"/i);
  expect(home).toContain('href="/concorde/specs/concorde/module"');
  expect(home).toContain('href="/concorde/graph"');
  expect(home).toContain('href="/concorde/protocol"');

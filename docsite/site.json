@@ -36,6 +36,200 @@
       "title": "Start specifying your project.",
       "description": "Clone and build Concorde, then preview installation into your Git project. Use Python 3.11+, Node.js 18+ and npm; configured checks require Linux with bubblewrap, working namespaces and pidfd support. Choose Codex or Claude and initialize through the installed Skills.",
       "code": "git clone https://github.com/FTOD/concorde.git\ncd concorde\npython3 scripts/concorde.py build\n\n# Replace the path with your Git project.\npython3 scripts/install-concorde.py \\\n  --target /absolute/path/to/project \\\n  --integration codex --preview\n\n# Review the preview, then rerun with --apply."
+    },
+    "reference": {
+      "title": "Agents, capabilities and executable entry points",
+      "description": "3 Agents with 12 task modes, 13 capabilities, 8 public Skills and 3 Harnesses. Capabilities orchestrate execution; Agents perform the steps that need model judgment. Public Skills provide instructions for invoking those capabilities from your agent client.",
+      "tables": [
+        {
+          "title": "Agents and task modes",
+          "description": "Three Agents provide twelve task modes. Each invocation receives fresh, explicitly bounded context and permissions.",
+          "columns": [
+            "Agent",
+            "Modes",
+            "Responsibility and authority"
+          ],
+          "rows": [
+            [
+              "coordinator",
+              "ask, route, design-topology",
+              "Answer questions, route tasks and design topology from selected complete Module Specs; read-only, with no implementation contents."
+            ],
+            [
+              "spec-engineer",
+              "specify, context-solve, plan, tasks, spec-review, topology-author",
+              "Author and review Specs, assess information sufficiency, and define plans and tasks. Returns structured results; the host applies document changes."
+            ],
+            [
+              "programmer",
+              "implementation, code-review, investigation",
+              "Implement tasks, review code and investigate problems. Only implementation may write the selected Module's implementation files."
+            ]
+          ]
+        },
+        {
+          "title": "Capability inventory",
+          "description": "Four lifecycle capabilities make no model calls; the other nine may call a model. Eight public Skills each expose one global or lifecycle capability. The five stages run only through declared host composition. Current Agents have no admitted Capability references of their own; the host composes workflows.",
+          "columns": [
+            "Class",
+            "Capability",
+            "Behavior",
+            "Public Skill"
+          ],
+          "rows": [
+            [
+              "Global",
+              "main",
+              "Answer questions, route requests, and design and apply accepted topology changes.",
+              "concorde-main"
+            ],
+            [
+              "Global",
+              "dev-loop",
+              "Route a change through specification, planning, implementation, validation and review to a ready candidate.",
+              "concorde-dev-loop"
+            ],
+            [
+              "Global",
+              "review",
+              "Run a standalone Spec or code review, including source diagnosis.",
+              "concorde-review"
+            ],
+            [
+              "Global",
+              "reflections-triage",
+              "Inspect feedback, capture gaps, investigate, implement resolutions and manage owned records.",
+              "concorde-reflections-triage"
+            ],
+            [
+              "Lifecycle",
+              "init",
+              "Propose and apply project initialization with a pinned Protocol.",
+              "concorde-init"
+            ],
+            [
+              "Lifecycle",
+              "configure",
+              "Apply integration and enforcement configuration.",
+              "concorde-configure"
+            ],
+            [
+              "Lifecycle",
+              "validate",
+              "Run deterministic Spec and configured code checks and record readiness.",
+              "concorde-validate"
+            ],
+            [
+              "Lifecycle",
+              "deliver",
+              "Stage a verified candidate on its own branch and clean up; merge into the primary branch on a separate explicit request.",
+              "concorde-deliver"
+            ],
+            [
+              "Stage",
+              "specify",
+              "Author Spec replacements for the bound Module.",
+              "—"
+            ],
+            [
+              "Stage",
+              "context-solve",
+              "Validate Module participant routing and assess context sufficiency.",
+              "—"
+            ],
+            [
+              "Stage",
+              "plan",
+              "Assess sufficiency and produce a revision-bound plan.",
+              "—"
+            ],
+            [
+              "Stage",
+              "tasks",
+              "Derive acceptance tasks from the accepted plan.",
+              "—"
+            ],
+            [
+              "Stage",
+              "implement",
+              "Implement component tasks or coordinate participating components.",
+              "—"
+            ]
+          ]
+        },
+        {
+          "title": "Harnesses and native tools",
+          "description": "All three Harnesses declare native.filesystem and native.shell Tool interfaces and support Codex and Claude. The Harness and mode define authority ceilings; the host grants concrete access for each invocation.",
+          "columns": [
+            "Harness",
+            "Agent",
+            "Execution environment"
+          ],
+          "rows": [
+            [
+              "discovery-capsule",
+              "coordinator",
+              "Frozen discovery and routing context."
+            ],
+            [
+              "spec-capsule",
+              "spec-engineer",
+              "Frozen Module Spec context."
+            ],
+            [
+              "implementation-workspace",
+              "programmer",
+              "Project implementation workspace with access restricted by the selected mode and host grant."
+            ]
+          ]
+        },
+        {
+          "title": "Launchers and supporting tools",
+          "description": "Commands are relative to the source checkout. Installed projects use the corresponding scripts under .concorde/framework/; Studio and development setup are documented separately. CLI validate performs direct validation; concorde-validate also manages candidate readiness evidence. Studio uses the same host and capabilities as the CLI and Skills.",
+          "columns": [
+            "Entry point",
+            "Available operations"
+          ],
+          "rows": [
+            [
+              "python3 scripts/run-capability.py <skill> < invocation.json",
+              "Invoke one of the eight public capabilities using a typed JSON request, in execute or describe-policy mode."
+            ],
+            [
+              "python3 scripts/concorde.py <command>",
+              "validate, build, docsite, ua-graph, protocol-manifest."
+            ],
+            [
+              "LangGraph Studio",
+              "Start, observe and debug the same eight public workflows through the shared CapabilityHost."
+            ],
+            [
+              "python3 scripts/install-concorde.py",
+              "Preview or apply installation into a project."
+            ],
+            [
+              "python3 scripts/reflections_queue.py",
+              "Query and maintain the reflection queue."
+            ],
+            [
+              "python3 scripts/run-viewer.py",
+              "Launch the code graph viewer."
+            ],
+            [
+              "npm --prefix docsite run <script>",
+              "start, build, validate, typecheck, test, check."
+            ],
+            [
+              "python3 scripts/development/run-tests.py",
+              "Run the project's test suite."
+            ],
+            [
+              "python3 scripts/worktree-guard.py",
+              "Explain or check the source-checkout worktree policy."
+            ]
+          ]
+        }
+      ]
     }
   }
 }
