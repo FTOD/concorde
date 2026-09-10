@@ -63,9 +63,9 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
         self.assertTrue((self.target / ".concorde/framework/generated/protocol/principles.md").is_file())
 
     @verifies("scenario.distribution.install-apply")
-    def test_seven_skills_are_installed_and_receipt_owned(self):
+    def test_public_skills_are_installed_and_receipt_owned(self):
         skill_paths = {f".claude/skills/{name}/SKILL.md" for name in SKILL_NAMES}
-        self.assertEqual(7, len(skill_paths))
+        self.assertEqual(8, len(skill_paths))
         for relative in skill_paths:
             self.assertTrue((self.target / relative).is_file(), relative)
         receipt = json.loads((self.target / ".concorde/install.json").read_text(encoding="utf-8"))

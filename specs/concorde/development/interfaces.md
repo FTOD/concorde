@@ -221,7 +221,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | `concorde-validate-request@1` / `concorde-validate-response@1` | validate | Requires `target_id` and `task`; adds optional `run_checks`. Response is the common shape only. |
 | `concorde-deliver-request@1` / `concorde-deliver-response@1` | deliver | Requires only `change_id`; adds optional `target_id`, `task`, `focus_id`, `constraints`, `keep_worktree` and `merge_primary`. Response is the common shape only. |
 | `concorde-specify-request@1` / `concorde-specify-response@1` | specify (stage) | Requires `target_id` and `task`. Response is the common shape only. |
-| `concorde-review-request@1` / `concorde-review-response@1` | review (stage) | Requires `task` and `review_mode` (spec\|code); `target_id` is optional at the wire level but always supplied by the composing capability. Response adds `reviews` (`concorde-review-result@1` TypedValues). |
+| `concorde-review-request@1` / `concorde-review-response@1` | review (global) | Requires `task` and `review_mode` (spec\|code); optional target/focus are routing hints for a new standalone task. A composing capability or current-change resumption supplies the bound target. Response adds `reviews` (`concorde-review-result@1` TypedValues). |
 | `concorde-context-solve-request@1` / `concorde-context-solve-response@1` | context-solve (stage) | Requires `target_id` and `task`. Response is the common shape only. |
 | `concorde-plan-request@1` / `concorde-plan-response@1` | plan (stage) | Requires `target_id` and `task`. Response is the common shape only. |
 | `concorde-tasks-request@1` / `concorde-tasks-response@1` | tasks (stage) | Requires `target_id` and `task`. Response is the common shape only. |
@@ -445,10 +445,15 @@ tree and affected-Module revision comparisons remain additional defenses against
 external changes; they do not supply the write boundary or claim semantic completeness.
 
 ## Independent review contract
-`concorde-review` requires target_id, task and review_mode=spec|code, with the usual optional focus,
-constraints and current-worktree change_id. It is a stage capability invoked with an already routed
-target by its composing global capability or by another already-bound stage; it is never invoked
-directly with an unrouted task. Spec mode uses the complete admitted Target Spec plus Shared
+`concorde-review` is a public global capability requiring task and review_mode=spec|code, with
+optional target/focus routing hints, constraints and current-worktree change_id. A new standalone
+request uses Spec-only coordinator discovery to select one owning Module, then starts a fresh
+read-only reviewer. A composing capability may supply its trusted bound target without repeating
+discovery; a current-change resumption supplies both target_id and change_id. The public launcher
+and Studio admit this capability directly. Review runs in the current worktree without creating
+a development change or requiring a Reflection record. The host may persist reports and existing
+change evidence, but reviewers receive no project write authority.
+Spec mode uses the complete admitted Target Spec plus Shared
 Specs, Protocol/kind rules, task and only that collection's Spec changes. Code mode uses those
 contracts, the target's exact current registered implementation-file enumeration and scoped code
 changes. Both roles have empty write grants, no network/credentials, fresh sessions, and empty

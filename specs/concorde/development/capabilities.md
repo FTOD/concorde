@@ -44,7 +44,7 @@ interface agreement. It neither loads Skills into its workers nor owns their dis
 | validate | lifecycle | concorde-validate | — | — | Run deterministic Spec and configured code checks and record readiness |
 | deliver | lifecycle | concorde-deliver | — | — | Stage a ready candidate on its own branch and clean up; explicitly merge later from the sole primary writer |
 | specify | stage | — | spec-author | — | Author the bound target's Spec replacements |
-| review | stage | — | spec-reviewer, code-reviewer | — | Independent read-only Spec or code review of the bound target with version-bound findings and gaps |
+| review | global | concorde-review | coordinator, spec-reviewer, code-reviewer | — | Route an observational task, then independently review its Spec or code read-only with version-bound findings and gaps |
 | context-solve | stage | — | context-assessor | — | Validate Module participant routing, then assess information sufficiency without expanding the context |
 | plan | stage | — | context-assessor, planner | — | Assess sufficiency, then create a revision-bound plan |
 | tasks | stage | — | task-author | — | Author acceptance tasks from the accepted plan |
@@ -81,7 +81,7 @@ bound by its caller.
   {"id": "validate", "class": "lifecycle", "skill": "concorde-validate"},
   {"id": "deliver", "class": "lifecycle", "skill": "concorde-deliver"},
   {"id": "specify", "class": "stage", "skill": null},
-  {"id": "review", "class": "stage", "skill": null},
+  {"id": "review", "class": "global", "skill": "concorde-review"},
   {"id": "context-solve", "class": "stage", "skill": null},
   {"id": "plan", "class": "stage", "skill": null},
   {"id": "tasks", "class": "stage", "skill": null},

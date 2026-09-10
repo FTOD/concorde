@@ -44,16 +44,16 @@ STAGE_ROLES = {
 REVIEW_STAGES = {"spec": ("spec-review", "concorde-spec-reviewer"),
                  "code": ("code-review", "concorde-code-reviewer")}
 MAIN_CAPABILITY = "concorde-main"
-GLOBAL_CAPABILITIES = (MAIN_CAPABILITY, "concorde-dev-loop", "concorde-reflections-triage")
+GLOBAL_CAPABILITIES = (MAIN_CAPABILITY, "concorde-dev-loop", "concorde-reflections-triage", "concorde-review")
 LIFECYCLE_CAPABILITIES = ("concorde-init", "concorde-configure", "concorde-validate", "concorde-deliver")
-STAGE_CAPABILITIES = ("concorde-specify", "concorde-review", "concorde-context-solve",
+STAGE_CAPABILITIES = ("concorde-specify", "concorde-context-solve",
                        "concorde-plan", "concorde-tasks", "concorde-implement")
 SKILL_NAMES = tuple(sorted(GLOBAL_CAPABILITIES + LIFECYCLE_CAPABILITIES))
 CAPABILITY_NAMES = tuple(sorted((*GLOBAL_CAPABILITIES, *LIFECYCLE_CAPABILITIES, *STAGE_CAPABILITIES)))
 assert set(SKILL_NAMES) | set(STAGE_CAPABILITIES) == set(CAPABILITY_NAMES), "capability classes must partition CAPABILITY_NAMES"
 assert not (set(SKILL_NAMES) & set(STAGE_CAPABILITIES)), "capability classes must be disjoint"
 assert len(CAPABILITY_NAMES) == len(set(CAPABILITY_NAMES)), "CAPABILITY_NAMES must not contain duplicates"
-MAIN_ROUTED_CAPABILITIES = frozenset({MAIN_CAPABILITY, "concorde-dev-loop"})
+MAIN_ROUTED_CAPABILITIES = frozenset({MAIN_CAPABILITY, "concorde-dev-loop", "concorde-review"})
 # Capabilities whose module declares a nonempty USES (it composes other capabilities in-process).
 COMPOSITE_CAPABILITIES = ("concorde-dev-loop", "concorde-reflections-triage")
 INTERNAL_SKILLS = tuple(sorted({"concorde-coordinator", *(role for _, role in STAGE_ROLES.values()),

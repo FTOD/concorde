@@ -1,12 +1,12 @@
-"""Internal stage: independent read-only Spec or code review of the bound target.
+"""Global: route an observational task, then independently review its Spec or code read-only.
 
-Never projected as a user-invocable Skill; the executable boundary has no direct entry for it."""
+Composing capabilities may reuse an already bound target without repeating discovery."""
 from concorde.spec import contract_shapes as shapes
 from agents import code_reviewer, spec_reviewer
 
 from . import external_name
 
-CLASS = "stage"
+CLASS = "global"
 AGENTS = (spec_reviewer.AGENT, code_reviewer.AGENT)
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])

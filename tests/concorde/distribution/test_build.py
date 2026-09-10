@@ -64,13 +64,13 @@ class BuildGoldenTests(unittest.TestCase):
             self.assertIn('source: "skills/concorde-main/SKILL.md"', mine)
 
     @verifies("scenario.distribution.build-render")
-    def test_exactly_fourteen_skill_outputs_eight_agent_outputs_and_one_langgraph_config(self):
+    def test_exactly_sixteen_skill_outputs_eight_agent_outputs_and_one_langgraph_config(self):
         skill_outputs = [
             path for path in self.by_path
             if path.startswith(".claude/skills/") or path.startswith(".agents/skills/")
         ]
         agent_outputs = [path for path in self.by_path if path.startswith("generated/agents/")]
-        self.assertEqual(len(skill_outputs), 14)
+        self.assertEqual(len(skill_outputs), 16)
         self.assertEqual(len(agent_outputs), 8)
         self.assertIn("generated/langgraph.json", self.by_path)
 

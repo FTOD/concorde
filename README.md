@@ -43,7 +43,7 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 
 ## Install and initialize
 
-The installer distributes a deterministic build's output — seven Skills exposing thirteen
+The installer distributes a deterministic build's output — eight Skills exposing thirteen
 capabilities, eight rendered Agent instructions (from `agents/<name>/spec.md`), and five Markdown
 templates — to Codex or Claude.
 Check `python scripts/install-concorde.py --help` for installation
@@ -97,17 +97,23 @@ not a context grant. The loop executes specification,
 context assessment, plan, tasks, implementation and checks, ending at a ready candidate.
 
 Capabilities fall into three classes, distinguished by who selects context. Global capabilities
-(`concorde-main`, the development loop `concorde-dev-loop`, and `concorde-reflections-triage`)
+(`concorde-main`, the development loop `concorde-dev-loop`, `concorde-review`, and `concorde-reflections-triage`)
 receive only intent, at most with routing hints, and let main select the target. `concorde-dev-loop`
 takes optional `specify`/`run_reviews` flags: `specify=false` skips Spec authoring (the former fast
 loop) and `run_reviews=false` records an explicit skip for each review mode instead of running it; a
 review already required for a change cannot be disabled by a later `run_reviews=false`. Lifecycle
 capabilities (`concorde-init`, `concorde-configure`,
 `concorde-validate`, `concorde-deliver`) are deterministic host behavior with no agent cognition.
-Every other capability — `concorde-specify`, `concorde-review`, `concorde-context-solve`,
+Every other capability — `concorde-specify`, `concorde-context-solve`,
 `concorde-plan`, `concorde-tasks`, `concorde-implement` — is a stage: it receives an
 already bound target and one frozen context from its composing capability, and is never projected as a
 Skill; stage capabilities have no executable entry.
+
+`concorde-review` accepts a `task` and `review_mode: "spec"` or `"code"`, with optional target/focus
+routing hints. It selects the owning Module and starts a fresh read-only reviewer in the current
+worktree, without requiring a development change or Reflection. The host returns structured
+findings and coverage; unmanaged Git checkouts use HEAD as the diff baseline.
+
 No Skill returns a context manifest; `describe-policy` mode previews the exact stage
 grants any capability would receive without launching an agent or mutating project state. One change
 belongs to one linked worktree. `.concorde/worktree.json` records

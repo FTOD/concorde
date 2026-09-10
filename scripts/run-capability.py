@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Executable boundary for Concorde's public skills (proposal section 6.3).
 
-Only skills are directly invocable. This launcher accepts exactly one of the seven skill names,
+Only skills are directly invocable. This launcher accepts exactly one of the public skill names,
 maps it to its capability module through the `capability:` front-matter field of
 `skills/<name>/SKILL.md`, and runs the shared trusted stdin/envelope handling
 (`concorde.development.capability_host.json_main`) through that module's own `run`. Stage
@@ -22,6 +22,7 @@ SKILL_NAMES = (
     "concorde-main",
     "concorde-dev-loop",
     "concorde-reflections-triage",
+    "concorde-review",
     "concorde-init",
     "concorde-configure",
     "concorde-validate",

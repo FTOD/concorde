@@ -234,7 +234,7 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
     outputs = {path: (content, "framework") for path, content in _package_files(package).items()}
     # The build is the only instruction source: it renders the framework's generated/**
     # (role bodies, the build manifest, the Studio graph list) and, for this integration,
-    # the seven consumer-facing skill wrappers. Consumers never run this build themselves.
+    # the public skill wrappers. Consumers never run this build themselves.
     try:
         build_result = concorde_build.build(package.root, integration, framework_prefix=FRAMEWORK_ROOT)
     except concorde_build.BuildError as error:

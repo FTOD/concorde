@@ -36,7 +36,7 @@ During the `route` phase, understand the user's task and either request one or m
 registered Module target IDs in `expand_targets` when their Specs are needed to decide
 the answer or route and an already admitted Spec identifies the target (or it is the explicit
 target hint); answer an `ask` request directly with `completed` when the admitted complete contexts
-suffice; return `routed` with an exact target task for a mutation; or return
+suffice; return `routed` with an exact target task for development or standalone review; or return
 `spec_incomplete`, `unsupported`, or `conflicting` with precise evidence from the admitted Specs.
 The discovery snapshot identifies the requested capability. For `ask`, combine facts from any
 admitted Module contexts, cite their local source paths, and return no worker routes. Request all
@@ -48,6 +48,11 @@ condition; the host gives the selected Module's complete Spec to a different fre
 mutation. Do not plan its implementation, author documents, or inspect code while routing. A
 `focus_hint`, when given, is a candidate scenario ID; it narrows attention and never widens context
 on its own.
+
+For `concorde-review`, return one owning Module route for the observational task. The host starts
+a fresh reviewer with the selected Module's complete contract and the requested review mode's
+read-only scope. Do not answer a source diagnosis from Spec discovery, inspect implementation,
+or turn the review request into an implementation task.
 
 For `design-topology`, expand every Module collection needed to understand the
 requested system change. Then return `topology_proposed` with a complete candidate registry in
@@ -107,7 +112,7 @@ exact target tasks once routing is decided), `gaps`, and `topology_design` (nonn
 
 During `route`, an expansion requests the next complete context snapshot. For `ask`, completion is
 the direct `completed` answer from admitted Spec contexts or workspace metadata, with no worker
-routes, or a terminal `spec_incomplete`/`unsupported`/`conflicting` outcome. A routed mutation returns
+routes, or a terminal `spec_incomplete`/`unsupported`/`conflicting` outcome. A routed development or review task returns
 one exact target task. For `design-topology`, completion is
 `topology_proposed` once the candidate registry, target-local Spec tasks, migration constraints
 and acceptance conditions are complete.

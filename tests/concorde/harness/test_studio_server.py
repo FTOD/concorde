@@ -113,7 +113,7 @@ class StudioServerTests(unittest.TestCase):
 
     def test_all_public_registered_assistants_have_schemas_and_execute_validation(self):
         assistants = self.request("/assistants/search", {"limit": 100})
-        self.assertEqual(7, len(assistants))
+        self.assertEqual(8, len(assistants))
         for assistant in assistants:
             capability = assistant["graph_id"]
             with self.subTest(capability=capability):

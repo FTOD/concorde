@@ -15,7 +15,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.spec.contracts import SKILL_NAMES
 from concorde.spec.verification import verifies
 
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -84,12 +83,15 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
 
         self.assertTrue((self.clone / "generated/build-manifest.json").is_file())
         self.assertTrue((self.clone / "generated/protocol/principles.md").is_file())
+        # This clone tests committed HEAD; the invoking checkout may have a newer, uncommitted
+        # public Skill inventory. Compare projections with the sources of the revision tested.
+        expected_skills = sorted(p.parent.name for p in (self.clone / "skills").glob("concorde-*/SKILL.md"))
+        self.assertTrue(expected_skills)
         for integration_root in (".claude/skills", ".agents/skills"):
             skills = sorted(
                 p.parent.name for p in (self.clone / integration_root).glob("concorde-*/SKILL.md")
             )
-            self.assertEqual(sorted(SKILL_NAMES), skills)
-            self.assertEqual(7, len(skills))
+            self.assertEqual(expected_skills, skills)
 
         # The clone carries the worktree guard and the Claude/Codex files that register it, so a
         # session opened here refuses native worktree creation from its first tool call.

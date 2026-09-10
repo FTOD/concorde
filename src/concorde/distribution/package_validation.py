@@ -165,7 +165,7 @@ def _skill_capabilities(root: Path) -> dict[str, list[str]]:
     """Return {capability_module_name: [skill_name, ...]} from every skills/*/SKILL.md.
 
     Discovers whatever skill directories actually exist at ``root`` rather than assuming the
-    real package's fixed seven names, so a temporary fixture package with its own skill set is
+    real package's fixed public names, so a temporary fixture package with its own skill set is
     validated on its own terms.
     """
 

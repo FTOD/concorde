@@ -145,7 +145,7 @@ class CapabilityModuleContractTests(unittest.TestCase):
             self.assertTrue(callable(module.run))
 
     def test_main_routed_capabilities_match_the_global_class(self):
-        self.assertEqual(set(MAIN_ROUTED_CAPABILITIES), {"concorde-main", "concorde-dev-loop"})
+        self.assertEqual(set(MAIN_ROUTED_CAPABILITIES), {"concorde-main", "concorde-dev-loop", "concorde-review"})
         self.assertTrue(set(MAIN_ROUTED_CAPABILITIES).issubset(GLOBAL_CAPABILITIES))
 
     def test_every_public_capability_class_is_global_or_lifecycle(self):

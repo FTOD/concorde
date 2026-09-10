@@ -46,7 +46,7 @@ class StudioTests(unittest.TestCase):
     def test_inventory_and_all_entries_execute_the_shared_boundary(self):
         manifest = json.loads((PACKAGE / "generated/langgraph.json").read_text())
         self.assertEqual(set(SKILL_NAMES), set(manifest["graphs"]))
-        self.assertEqual(7, len(manifest["graphs"]))
+        self.assertEqual(8, len(manifest["graphs"]))
         for capability in SKILL_NAMES:
             with self.subTest(capability=capability):
                 value = invocation(capability, data={"unrecognized": True})

@@ -11,10 +11,11 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 LAUNCHER = REPOSITORY_ROOT / "scripts/run-capability.py"
 
-SEVEN_SKILLS = (
+PUBLIC_SKILLS = (
     "concorde-main",
     "concorde-dev-loop",
     "concorde-reflections-triage",
+    "concorde-review",
     "concorde-init",
     "concorde-configure",
     "concorde-validate",
@@ -33,8 +34,8 @@ def _run(argv, stdin: str = "") -> subprocess.CompletedProcess:
 
 
 class RunCapabilityLauncherTests(unittest.TestCase):
-    def test_accepts_each_of_the_seven_skill_names(self):
-        for name in SEVEN_SKILLS:
+    def test_accepts_each_public_skill_name(self):
+        for name in PUBLIC_SKILLS:
             with self.subTest(skill=name):
                 invocation = {
                     "type_id": "concorde-capability-invocation", "schema_version": 3,
@@ -84,7 +85,7 @@ class RunCapabilityLauncherTests(unittest.TestCase):
                 self.assertEqual("unknown_capability", output["errors"][0]["code"])
 
     def test_runtime_check_reports_langgraph_and_python_identity_for_each_skill(self):
-        for name in SEVEN_SKILLS:
+        for name in PUBLIC_SKILLS:
             with self.subTest(skill=name):
                 process = _run([name, "--runtime-check"])
                 self.assertEqual(0, process.returncode, process.stderr or process.stdout)
@@ -117,6 +118,22 @@ class RunCapabilityLauncherTests(unittest.TestCase):
         # admitted and dispatched, not refused as an unknown or mismatched capability.
         for error in output["errors"]:
             self.assertNotIn(error["code"], {"unknown_capability", "incompatible_handoff"})
+
+    @verifies("scenario.development.standalone-review", "scenario.development.describe-policy")
+    def test_public_review_launcher_previews_scoped_code_authority(self):
+        invocation = {
+            "type_id": "concorde-capability-invocation", "schema_version": 3,
+            "capability_id": "concorde-review", "mode": "describe-policy", "configuration": None,
+            "input": {"type_id": "concorde-review-request", "schema_version": 1,
+                      "data": {"task": "Review the capability boundary", "review_mode": "code",
+                               "target_id": "module.development"}},
+        }
+        process = _run(["concorde-review"], json.dumps(invocation))
+        self.assertEqual(0, process.returncode, process.stdout + process.stderr)
+        result = json.loads(process.stdout)
+        self.assertEqual("described", result["status"])
+        self.assertEqual("concorde-review-response", result["output"]["type_id"])
+        self.assertEqual("not_run", result["output"]["data"]["reviews"][0]["data"]["status"])
 
 
 if __name__ == "__main__":

@@ -18,11 +18,13 @@ uv run --locked --group studio langgraph dev --config generated/langgraph.json -
 ```
 
 Open <https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024> and select an assistant.
-`generated/langgraph.json` (build output; run the build before starting Studio) registers all seven
-graphs, one per Skill, derived from `skills/`. The six stage capabilities run through their
+`generated/langgraph.json` (build output; run the build before starting Studio) registers all eight
+graphs, one per Skill, derived from `skills/`. The five stage capabilities run through their
 composing Skill and remain visible in stage/process events; stage capabilities have no
 executable entry, and Studio does not restore one. API health
 is available at <http://127.0.0.1:2024/ok> and API documentation at <http://127.0.0.1:2024/docs>.
+The `concorde-review` assistant accepts `task` and `review_mode: "spec"` or `"code"`, plus optional
+target/focus routing hints. It runs a standalone read-only review without creating a development change.
 The local dev API works without model credentials for deterministic capabilities and policy previews.
 The hosted Studio UI requires a LangSmith account; follow the official
 [Studio setup](https://docs.langchain.com/oss/python/langgraph/studio) for its authentication setup.
@@ -197,7 +199,7 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests/concorde -t . -p '
 ```
 
 The opt-in integration suite starts a real Agent Server on an available local port, exercises all
-seven assistants, stage admission, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
+eight assistants, stage admission, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
 and rejection paths, then stops the server. It uses temporary consumer projects and deterministic
 model process responses through the real executor/admission pipeline; it does not require online
 model calls or mutate this checkout's primary-worktree registry.

@@ -76,6 +76,7 @@ SKILL_NAMES: tuple[str, ...] = (
     "concorde-main",
     "concorde-dev-loop",
     "concorde-reflections-triage",
+    "concorde-review",
     "concorde-init",
     "concorde-configure",
     "concorde-validate",
@@ -436,7 +437,7 @@ def check_build(project_root: str | Path, integration: str = "all") -> tuple[boo
 
     Returns (is_current, differences) where differences names every relative path (under the
     build-owned locations in ``generated/`` -- see ``GENERATED_OWNED_DIRS``/``GENERATED_OWNED_FILES``
-    -- and, for our own seven skills, ``.claude/skills``/``.agents/skills``) that is missing,
+    -- and, for our public skills, ``.claude/skills``/``.agents/skills``) that is missing,
     unexpected, or byte-different. Nothing under project_root is written or modified. A third
     party's own Skill directories (for example ``.claude/skills/<vendor-skill>``) are never inspected or
     reported, and neither is any other path under ``generated/`` that the build does not own (for
