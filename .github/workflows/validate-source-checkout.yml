@@ -25,6 +25,15 @@ jobs:
           python3 -m pip install uv
           uv sync --locked --group dev
 
+      - name: Install system sandbox dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bubblewrap
+          # Nested sandbox tests require user namespaces on this disposable Ubuntu runner.
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+
       - name: Build
         run: python3 scripts/concorde.py build
 
@@ -50,7 +59,8 @@ jobs:
         run: npm ci --prefix docsite
 
       - name: Typecheck the docsite
-        run: npm --prefix docsite run typecheck
+        # Prepare the generated sidebar in a temporary copy, including on a fresh checkout.
+        run: python3 scripts/development/check-docsite-types.py
 
       - name: Test the docsite
         run: npm test --prefix docsite
@@ -77,6 +87,15 @@ jobs:
           python3 -m pip install uv
           uv sync --locked --group studio
 
+      - name: Install system sandbox dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bubblewrap
+          # Nested sandbox tests require user namespaces on this disposable Ubuntu runner.
+          if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+
       - name: Build
         run: python3 scripts/concorde.py build
 
@@ -86,6 +105,6 @@ jobs:
           CONCORDE_TEST_STUDIO: "1"
         run: |
           .venv/bin/python -m unittest \
-            tests.concorde.host.unit.test_studio \
-            tests.concorde.host.unit.test_studio_client \
-            tests.concorde.host.integration.test_studio_server
+            tests.concorde.harness.test_studio \
+            tests.concorde.harness.test_studio_client \
+            tests.concorde.harness.test_studio_server

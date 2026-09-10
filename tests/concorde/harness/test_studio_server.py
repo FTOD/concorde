@@ -181,6 +181,8 @@ class StudioServerTests(unittest.TestCase):
 
     @verifies("scenario.harness.recursive-delegate")
     def test_loop_executes_mutations_and_checkpoints_only_inside_fixture_worktree(self):
+        primary_transfer = self.change_fixture.primary / "app/transfer.py"
+        primary_before = primary_transfer.read_bytes()
         thread, state = self.run_graph(invocation("concorde-dev-loop",
             data={**self.change_fixture.task, "specify": False, "run_reviews": False}))
         self.assertEqual("succeeded", state["result"]["status"], state)
@@ -193,8 +195,7 @@ class StudioServerTests(unittest.TestCase):
         saved = self.request(f"/threads/{thread}/state")["values"]
         self.assertEqual(state["result"], saved["result"])
         self.assertIn("return balance - amount", (self.change_fixture.change / "app/transfer.py").read_text())
-        self.assertEqual("def transfer(balance, amount):\n    return balance\n",
-                         (self.change_fixture.primary / "app/transfer.py").read_text())
+        self.assertEqual(primary_before, primary_transfer.read_bytes())
 
     def test_executor_failure_survives_forwarding_with_events_and_exit_three(self):
         value = invocation("concorde-main", data={"task": "Trigger executor failure"})
