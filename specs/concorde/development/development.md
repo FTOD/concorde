@@ -61,6 +61,15 @@ user-authorized delivery remains a separate capability.
 
 ## Failure and recovery
 
+Candidate creation precedes routing. A change ID identifies a worktree, not a completed route.
+An unbound handoff resumes coordinator selection using the recorded task and constraints; optional
+saved target/focus hints only steer that selection. Older records without a saved target hint
+remain valid. Once bound, the recorded owner supplies an omitted target or focus and omitted
+constraints, while explicit incompatible intent is rejected. Standalone reviews without a change
+ID still route their own review task. Trusted child routes retain their own admitted task context
+and cannot replace the root owner. Recovery resolves current contracts and retains all existing
+stage, review and readiness gates; it does not add a topology repair transition.
+
 A known prohibition is unsupported, a contradiction is conflicting, a missing runtime value is
 invalid input, and tool failure is failed. None automatically means Spec incomplete. A gap names
 the unresolved question, blocked step and needed contract; target and snapshot identity accompany it.

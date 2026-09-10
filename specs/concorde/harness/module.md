@@ -257,6 +257,17 @@ over Spec or the registry](#req.harness.permission-no-spec-write).
 
 See [the no-wider-retry bound](#req.harness.permission-no-retry).
 
+#### scenario.harness.change-owner — Preserve and validate candidate ownership
+
+- GIVEN host-owned candidate state in the current worktree, possibly created before routing
+- WHEN the host reads, restores or binds its owner
+- THEN an unbound owner remains distinct from an absent or malformed record, and persisted change, path, branch, owner and intent fields are validated before use
+- AND a requested existing change cannot silently create replacement state in another worktree
+- AND missing binding task or target returns a structured invalid_input error instead of a field lookup exception
+- AND binding preserves the recorded task and constraints, while conflicting bound intent is rejected with incompatible_handoff and its field
+- AND only a trusted coordinated child may use a distinct component intent without rewriting the root owner
+- AND lifecycle metadata supplies recovery identity but never grants implementation access or waives readiness checks
+
 #### scenario.harness.worktree-boundary — Require an isolated worktree before unsafe mutation
 
 - GIVEN a project root and an explicit allow_primary_worktree flag

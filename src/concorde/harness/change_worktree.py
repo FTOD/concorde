@@ -135,7 +135,32 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
             or not isinstance(state.get("phase"), str) or not state["phase"]
             or not isinstance(state.get("status"), str) or not state["status"]):
         raise SpecError("worktree state has an invalid identity or schema", "invalid_worktree_state")
-    identifier(state.get("change_id", ""))
+    try:
+        identifier(state.get("change_id"))
+        for field in ("branch", "base_branch", "base_commit", "primary_worktree"):
+            if field not in state or (state[field] is not None and (
+                    not isinstance(state[field], str) or not state[field].strip())):
+                raise ValueError(f"invalid or missing {field}")
+        if not {"target_id", "focus_id", "task"}.issubset(state):
+            raise ValueError("missing owner fields")
+        if state["target_id"] is not None:
+            identifier(state["target_id"])
+            if not isinstance(state.get("task"), str) or not state["task"].strip():
+                raise ValueError("bound owner requires a task")
+        elif state["targets"]:
+            raise ValueError("target progress requires an owner")
+        if state["focus_id"] is not None:
+            identifier(state["focus_id"])
+        if state.get("target_hint") is not None:
+            identifier(state["target_hint"])
+        if state.get("task") is not None and (
+                not isinstance(state["task"], str) or not state["task"].strip()):
+            raise ValueError("invalid task")
+        if not isinstance(state.get("constraints"), list) or any(
+                not isinstance(item, str) or not item.strip() for item in state["constraints"]):
+            raise ValueError("invalid constraints")
+    except ValueError as error:
+        raise SpecError(f"worktree owner state is invalid: {error}", "invalid_worktree_state") from error
     primary, current = workspace_identity(root)
     if current is not None and (state.get("branch") != current["branch"]
             or state.get("primary_worktree") != primary["path"]):
@@ -274,7 +299,8 @@ def ensure_change(root: Path, *, task: dict | None = None, change_id: str | None
         "primary_worktree": primary["path"] if primary else None,
         "base_commit": current["head"] if current else None,
         "base_branch": primary["branch"] if primary else None,
-        "target_id": None, "focus_id": None, "task": (task or {}).get("task"),
+        "target_id": None, "target_hint": (task or {}).get("target_id"),
+        "focus_id": (task or {}).get("focus_id"), "task": (task or {}).get("task"),
         "constraints": (task or {}).get("constraints", []),
         "phase": "created", "status": "active", "outcome": None, "gaps": [],
         "targets": {}, "guidance": {}, "validated_tree": None, "validation": None,
@@ -312,20 +338,44 @@ def create_worktree(root: Path, task: dict, *, package_root: Path | None = None)
             "change_id": state["change_id"], "primary_worktree": primary["path"]}
 
 
+def resume_owner(state: dict, task: dict) -> dict:
+    """Restore omitted owner fields; a request cannot replace persisted intent or routing."""
+    result = dict(task)
+    if state["task"] is None:
+        return result
+    fields = ["task", "constraints", "focus_id"]
+    if state["target_id"] is not None:
+        fields.append("target_id")
+    for field in fields:
+        if field in task and task[field] != state[field]:
+            raise SpecError(f"resume {field} conflicts with the recorded change owner",
+                            "incompatible_handoff", field)
+        if state[field] is not None:
+            result[field] = copy.deepcopy(state[field])
+    if state["target_id"] is None and state.get("target_hint") is not None:
+        result.setdefault("target_id", state["target_hint"])
+    return result
+
+
 def bind_owner(root: Path, task: dict, *, coordinated: bool = False) -> dict:
     state = read_change(root, required=True)
     if task.get("change_id") not in {None, state["change_id"]}:
         raise SpecError("change ID does not own this worktree", "incompatible_handoff")
+    for field in ("target_id", "task"):
+        if not isinstance(task.get(field), str) or not task[field].strip():
+            raise SpecError(f"owner binding requires {field}", "invalid_input", field)
+    identifier(task["target_id"])
     if state["target_id"] is None:
+        if state["task"] is not None:
+            for field, value in (("task", task["task"]), ("constraints", task.get("constraints", []))):
+                if state[field] != value:
+                    raise SpecError(f"owner binding conflicts with recorded {field}",
+                                    "incompatible_handoff", field)
         state.update(target_id=task["target_id"], focus_id=task.get("focus_id"),
                      task=task["task"], constraints=task.get("constraints", []))
         save_change(root, state)
-    elif not coordinated and (state["target_id"] != task["target_id"]
-            or state["focus_id"] != task.get("focus_id")
-            or state["task"] != task["task"]
-            or state["constraints"] != task.get("constraints", [])):
-        raise SpecError("this worktree is owned by a different top-level task; use a separate worktree",
-                        "incompatible_handoff")
+    elif not coordinated:
+        resume_owner(state, {"focus_id": None, "constraints": [], **task})
     return state
 
 

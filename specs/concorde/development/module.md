@@ -183,6 +183,24 @@ See [project root is the entry process's working directory](#req.development.pro
 - AND it does not copy uncommitted primary changes or continue the originating session in the new worktree
 - AND the error carries a complete Framework execution profile P10 prompt with real worktree identity, the submitted task and constraints, and the current preparation and check status
 
+### scenario.development.resume-unbound — Resume a handoff before target selection
+
+- GIVEN the host created a candidate and returned a session handoff before routing or binding an owner
+- WHEN a fresh host in that worktree resumes the development loop with the recorded change identity and original task
+- THEN it validates the worktree identity and preserved intent, restores omitted constraints and focus hints, and performs real coordinator discovery and single-target selection before binding the owner
+- AND a supplied target hint never substitutes for routing authority
+- AND both specify modes and both review modes use this same admission, with one successful route selection before the first development stage
+
+### scenario.development.resume-bound — Restore a bound candidate without rerouting
+
+- GIVEN a candidate has a persisted owner, task, constraints and focus
+- WHEN a fresh host resumes that change
+- THEN it restores omitted target, constraints and focus from the recorded owner and resolves the current complete Module contract without rerouting
+- AND explicit conflicting target, task, constraints or focus returns incompatible_handoff with the conflicting field before any Agent runs, preserving the candidate state
+- AND a missing change returns missing_change, an inconsistent owner returns invalid_worktree_state, and a mismatched change or worktree identity is refused before routing or execution
+- AND trusted internal routes may select separately admitted components without replacing the top-level owner, while a child target differing from its host route is rejected
+- AND existing stage admission, review requirements, file permissions and current-candidate freshness checks still apply
+
 Answering questions and routing:
 
 ### scenario.development.answer-question — Direct answer from selected Module contexts

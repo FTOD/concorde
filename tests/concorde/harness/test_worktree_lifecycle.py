@@ -198,6 +198,164 @@ class WorktreeLifecycleTests(unittest.TestCase):
             git(self.primary, "worktree", "remove", "--force", str(created))
             created.parent.rmdir()
 
+    @verifies("scenario.development.resume-unbound", "scenario.harness.change-owner")
+    def test_public_handoff_resumes_unbound_candidate_with_fresh_host(self):
+        for specify in (False, True):
+            for reviews in (False, True):
+                with self.subTest(specify=specify, reviews=reviews):
+                    task = {"task": self.task["task"], "constraints": ["Keep the API"],
+                            "specify": specify, "run_reviews": reviews}
+                    initial = self.call_capability(self.primary, "concorde-dev-loop", task)
+                    self.assertEqual("worktree_handoff_required", initial["errors"][0]["code"])
+                    self.assertEqual([], self.last_double.calls)
+                    created = Path(initial["workspace"]["path"])
+                    try:
+                        state = read_change(created, required=True)
+                        self.assertIsNone(state["target_id"])
+                        self.assertEqual({}, state["targets"])
+                        resumed = self.call_capability(created, "concorde-dev-loop",
+                            {**task, "change_id": state["change_id"]})
+                        self.assertEqual("succeeded", resumed["status"], resumed)
+                        self.assertEqual("ready", resumed["output"]["data"]["outcome"])
+                        stages = [call["stage"] for call in self.last_double.calls]
+                        # Fixture discovery expands once, then selects exactly one route.
+                        self.assertEqual(["route", "route"], stages[:2])
+                        self.assertEqual(2, stages.count("route"))
+                        self.assertEqual(specify, "specify" in stages)
+                        self.assertEqual(reviews, "spec-review" in stages)
+                        self.assertEqual(reviews, "code-review" in stages)
+                        owner = read_change(created, required=True)
+                        self.assertEqual("service.transfer", owner["target_id"])
+                        self.assertEqual(task["task"], owner["task"])
+                        self.assertEqual(task["constraints"], owner["constraints"])
+                    finally:
+                        git(self.primary, "worktree", "remove", "--force", str(created))
+                        created.parent.rmdir()
+
+    @verifies("scenario.development.resume-bound", "scenario.harness.change-owner")
+    def test_bound_resume_restores_focus_and_constraints_and_rejects_conflicts(self):
+        task = {**self.task, "constraints": ["Keep API"], "focus_id": "scenario.transfer.debit",
+                "specify": False, "run_reviews": False}
+        change_id = self.ready(task=task)
+        resumed_task = {"change_id": change_id, "task": task["task"],
+                        "specify": False, "run_reviews": False}
+        result = self.call_capability(self.change, "concorde-dev-loop", resumed_task)
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertNotIn("route", [call["stage"] for call in self.last_double.calls])
+        self.assertEqual(task["focus_id"], result["output"]["data"]["focus_id"])
+        for field, value in (("target_id", "module.ledger"), ("task", "Different task"),
+                             ("constraints", []), ("focus_id", "scenario.transfer.reject")):
+            with self.subTest(field=field):
+                before = (self.change / STATE_PATH).read_bytes()
+                result = self.call_capability(self.change, "concorde-dev-loop",
+                                              {**resumed_task, field: value})
+                self.assertEqual("blocked", result["status"], result)
+                self.assertEqual("incompatible_handoff", result["errors"][0]["code"])
+                self.assertEqual(field, result["errors"][0]["field"])
+                self.assertEqual([], self.last_double.calls)
+                self.assertEqual(before, (self.change / STATE_PATH).read_bytes())
+
+    @verifies("scenario.development.resume-unbound", "scenario.harness.change-owner")
+    def test_unbound_resume_retains_hints_and_refuses_changed_intent(self):
+        task = {**self.task, "constraints": ["Keep API"], "focus_id": "scenario.transfer.debit",
+                "specify": False, "run_reviews": False}
+        state = change_worktree.ensure_change(self.change, task=task)
+        for field, value in (("task", "Different task"), ("constraints", []),
+                             ("focus_id", "scenario.transfer.reject")):
+            with self.subTest(field=field):
+                before = (self.change / STATE_PATH).read_bytes()
+                result = self.call_capability(self.change, "concorde-dev-loop",
+                    {**task, "change_id": state["change_id"], field: value})
+                self.assertEqual("incompatible_handoff", result["errors"][0]["code"], result)
+                self.assertEqual([], self.last_double.calls)
+                self.assertEqual(before, (self.change / STATE_PATH).read_bytes())
+        result = self.call_capability(self.change, "concorde-dev-loop",
+            {"task": task["task"], "change_id": state["change_id"],
+             "specify": False, "run_reviews": False})
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual(["route"], [call["stage"] for call in self.last_double.calls
+                                      if call["stage"] == "route"])
+        self.assertEqual(task["focus_id"], result["output"]["data"]["focus_id"])
+
+    @verifies("scenario.development.resume-bound", "scenario.harness.change-owner")
+    def test_resume_rejects_missing_wrong_and_malformed_worktree_state(self):
+        task = {"task": self.task["task"], "change_id": "change.absent",
+                "specify": False, "run_reviews": False}
+        result = self.call_capability(self.change, "concorde-dev-loop", task)
+        self.assertEqual("missing_change", result["errors"][0]["code"], result)
+        self.assertFalse((self.change / STATE_PATH).exists())
+        state = change_worktree.ensure_change(self.change, task=self.task)
+        before = (self.change / STATE_PATH).read_bytes()
+        result = self.call_capability(self.change, "concorde-dev-loop", task)
+        self.assertEqual("incompatible_handoff", result["errors"][0]["code"], result)
+        self.assertEqual(before, (self.change / STATE_PATH).read_bytes())
+        result = self.call_capability(self.primary, "concorde-dev-loop",
+                                     {**task, "change_id": state["change_id"]})
+        self.assertEqual("missing_change", result["errors"][0]["code"], result)
+        self.assertIsNone(result["workspace"])
+        for field, value, code in (
+                ("path", str(self.primary), "invalid_worktree_state"),
+                ("branch", "wrong-branch", "workspace_mismatch"),
+                ("primary_worktree", str(self.change), "workspace_mismatch"),
+                ("target_id", [], "invalid_worktree_state"),
+                ("target_id", "module.absent", "invalid_worktree_state"),
+                ("base_commit", 42, "invalid_worktree_state"),
+                ("constraints", None, "invalid_worktree_state"),
+                ("task", 42, "invalid_worktree_state"),
+                ("targets", {"service.transfer": {}}, "invalid_worktree_state")):
+            with self.subTest(field=field, value=value):
+                corrupted = {**state, field: value}
+                (self.change / STATE_PATH).write_text(json.dumps(corrupted))
+                damaged = (self.change / STATE_PATH).read_bytes()
+                result = self.call_capability(self.change, "concorde-dev-loop",
+                                              {**task, "change_id": state["change_id"]})
+                self.assertEqual(code, result["errors"][0]["code"], result)
+                self.assertEqual([], self.last_double.calls)
+                self.assertEqual(damaged, (self.change / STATE_PATH).read_bytes())
+        (self.change / STATE_PATH).write_bytes(before)
+        for field in ("target_id", "task", "focus_id", "base_commit"):
+            with self.subTest(missing=field):
+                corrupted = {key: value for key, value in state.items() if key != field}
+                (self.change / STATE_PATH).write_text(json.dumps(corrupted))
+                result = self.call_capability(self.change, "concorde-dev-loop",
+                                              {**task, "change_id": state["change_id"]})
+                self.assertEqual("invalid_worktree_state", result["errors"][0]["code"], result)
+
+    @verifies("scenario.harness.change-owner")
+    def test_owner_binding_missing_fields_returns_structured_error(self):
+        from concorde.spec.repository import SpecError
+        change_worktree.ensure_change(self.change, task=self.task)
+        for field in ("target_id", "task"):
+            task = dict(self.task)
+            del task[field]
+            with self.subTest(field=field), self.assertRaises(SpecError) as caught:
+                change_worktree.bind_owner(self.change, task)
+            self.assertEqual("invalid_input", caught.exception.code)
+            self.assertEqual(field, caught.exception.field)
+        self.assertIsNone(read_change(self.change)["target_id"])
+
+    @verifies("scenario.development.resume-bound", "scenario.harness.change-owner")
+    def test_trusted_component_route_keeps_root_owner_and_rejects_mismatch(self):
+        change_id = self.ready(task={**self.task, "specify": False, "run_reviews": False})
+        owner = read_change(self.change)
+        double = ModelProcessDouble()
+        self.addCleanup(double.runtime_directory.cleanup)
+        host = CapabilityHost(self.change, PACKAGE, executor=double.executor,
+                              routed_target="module.ledger", coordinated=True)
+        task = {"target_id": "module.ledger", "task": "Review the admitted ledger component",
+                "change_id": change_id, "review_mode": "code"}
+        result = self.call_capability(self.change, "concorde-review", task, host=host)
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertNotIn("route", [call["stage"] for call in double.calls])
+        current = read_change(self.change)
+        for field in ("target_id", "task", "constraints", "focus_id"):
+            self.assertEqual(owner[field], current[field])
+        double.calls.clear()
+        result = self.call_capability(self.change, "concorde-review",
+                                     {**task, "target_id": "service.transfer"}, host=host)
+        self.assertEqual("incompatible_handoff", result["errors"][0]["code"], result)
+        self.assertEqual([], double.calls)
+
     @verifies("scenario.development.worktree-handoff")
     def test_handoff_remains_one_json_response_on_the_paired_cli(self):
         capability = "concorde-dev-loop"
