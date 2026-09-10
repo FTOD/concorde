@@ -1,13 +1,15 @@
 # Concorde Framework
 
 Concorde combines the **Spec Protocol**, installable Skills, agent execution, validation and developer
-views. Protocol **3.1.0** defines one specification category:
+views. Protocol **4.0.0** defines one specification category:
 
-- **Module Spec:** a self-contained contract in four mandatory parts. Purpose and Scenarios (with
-  their SHALL requirements) state what the Module promises; Entities and Architecture state how it
-  is built. An entity may be a submodule, a program, a file, a record, a concept, an interface at
-  the Module boundary or an external actor, and may bind the files that realize it, as exact paths or
-  as directory prefixes ending in `/`.
+- **Module Spec:** a self-contained contract in four mandatory parts. Purpose, Requirements (one
+  decidable SHALL statement each, about the Module) and Scenarios (testable GIVEN/WHEN/THEN
+  situations) state what the Module promises; the Ontology, its Entities and Relationships, states
+  how it is built. An entity may be a submodule, a program, a file, a record, a concept, an
+  interface at the Module boundary or an external actor, and may bind the files that realize it, as
+  exact paths or as directory prefixes ending in `/`. Tests declare the scenario they verify; no
+  Spec lists tests.
 
 Each Module has one structural parent at most. Shared capabilities are independent siblings;
 `uses` does not create another parent. Module composition and file reuse are separate
@@ -33,7 +35,7 @@ specs/concorde/     Module contracts, entities and architectures
 ```
 
 Start with the [Concorde Module](specs/concorde/module.md), its
-[architecture](specs/concorde/module.md#architecture), and the
+[Ontology](specs/concorde/module.md#ontology), and the
 [Spec Protocol](protocol/README.md). The
 [authored Protocol rules](protocol/principles.md) define the standard. Protocol documents are
 outside the project Spec registry and do not need to satisfy their own Module format.
@@ -66,7 +68,7 @@ The originating session does not follow the task into a different checkout.
 
 Send the JSON on stdin to `python .concorde/framework/scripts/run-capability.py concorde-init`.
 Review the returned proposal, then send action apply and that complete proposal. Initialization creates
-an honest Module stub; supply its Purpose, Scenarios, Entities and Architecture before implementation.
+an honest Module stub; supply its Purpose, Requirements, Scenarios and Ontology before implementation.
 `.concorde/config.json` pins the Protocol and references `.concorde/specs.json`; that registry explicitly
 records document members, parent/uses relationships, each Module's `files` and deterministic checks.
 Local dependency declarations state the promises needed for routing and planning; validation keeps
@@ -174,13 +176,13 @@ prove that the graph agrees with the Spec. A developer can inspect the views, cl
 the agent conversation and proceed directly with an authorized change request.
 
 
-Concorde 5 uses Package Manifest 3, Architecture Profile 10, Workspace Protocol 15 and Delivery
+Concorde 5 uses Package Manifest 3, Architecture Profile 11, Workspace Protocol 15 and Delivery
 Proposal 10. Earlier profiles are rejected for normal agent execution and require explicit
 migration. Legacy readers remain deterministic diagnostic utilities only.
 
 The docsite publishes explicit registry members with a Module composition tree and a typed
 relationship graph. Selecting a Module opens its registered `module.md`, independently of member
-order. Each Module's Architecture section renders its own inline Mermaid flowchart directly from
+order. Each Module's Relationships subsection renders its own inline Mermaid flowchart directly from
 the registered Markdown, with no separate diagram source or build step. It also publishes "Agent
 instructions" and "Wire contracts" pages under a Projections group, rendered directly from the
 current build's `generated/docs/*.json` outputs; both are explicitly labelled projections, never
@@ -191,8 +193,9 @@ checked before promotion. Human navigation does not grant agent context access.
 ## Concorde Spec Protocol entry and upgrades
 
 The Framework execution profile defines session handoffs in [P10](prompts/protocol/framework-profile.md#p10-explicit-session-handoffs).
-Concorde Spec Protocol 3.1.0 defines self-contained, four-part Module Specs whose entities list the
-files that realize them, as exact paths or directory prefixes. Root instructions and runtime drafts refer to that rule; public Skills do
+Concorde Spec Protocol 4.0.0 defines self-contained, four-part Module Specs whose entities list the
+files that realize them, as exact paths or directory prefixes, and whose scenarios are declared by
+the tests that verify them. Root instructions and runtime drafts refer to that rule; public Skills do
 not carry another copy.
 The installer adds a receipt-owned `concorde-protocol` block at the start of the selected root file:
 
@@ -229,7 +232,7 @@ Installing an updated package never rewrites `.concorde/config.json`. Existing p
 to their accepted version/digest; execution rejects a mismatch with `protocol_mismatch`. The outer
 entry points at the installed rules, but does not accept them for project execution. After reviewing and explicitly accepting new Protocol assets for the same profile, a consumer
 developer can update that binding from the project root. A Profile 9 or earlier project must first
-explicitly redesign its registry and Specs for Profile 10; changing the version or digest alone is
+explicitly redesign its registry and Specs for Profile 11; changing the version or digest alone is
 not a migration. For a structurally compatible project:
 
 ```python

@@ -14,6 +14,34 @@
 
 Spec owns the project Spec model: the pinned Protocol binding, the explicit registry, deterministic structural validation, stable-ID Spec-context queries and honest project initialization. Its sole structural parent is `module.concorde`, and it has no child Module and no direct Module dependency of its own; every other Module relies on it to resolve identities, documents, entity file bindings and dependency promises without reading a collaborator's implementation. The independent Spec Protocol is an external normative input that this Module admits and pins rather than authors.
 
+## Requirements
+
+### req.spec.no-body-read — No reads of a collaborator's Spec body
+
+Resolving a Module's identity, membership or file listing SHALL NOT read a collaborator Module's
+Spec body or a listed file's contents.
+
+### req.spec.one-owner-per-module — One owning entity per bound file
+
+Within one Module, a bound implementation file SHALL belong to exactly one entity, the owner of the
+most specific entry that covers it.
+
+### req.spec.directory-entry — Directory prefix binds every file below it
+
+A listing entry that ends with `/` SHALL bind every regular file below that directory.
+
+### req.spec.directory-no-spec-document — No Spec document inside a listed directory
+
+A listed directory SHALL NOT contain a registered Spec document.
+
+### req.spec.sibling-sharing — Shared providers stay siblings of their consumers
+
+A Module used by more than one consumer SHALL share the same structural parent as its consumers.
+
+### req.spec.no-structural-proof — Structural checks are not semantic proof
+
+Structural validation SHALL NOT be represented as proof of semantic completeness.
+
 ## Scenarios
 
 The registered companion documents [registry](registry.md), [values](values.md), [structure](structure.md) and [initialize](initialize.md) define most scenarios; this section introduces the Module's core admission behavior.
@@ -49,15 +77,13 @@ The registered companion documents [registry](registry.md), [values](values.md),
 - AND a file created below that directory later needs no new declaration
 - BUT a more specific entry of the same Module still owns the file it names
 
-## Requirements
+## Ontology
 
-- req.spec.no-body-read: Resolving a Module's identity, membership or file listing SHALL NOT read a collaborator Module's Spec body or a listed file's contents.
-- req.spec.one-owner-per-module: Within one Module, a bound implementation file SHALL belong to exactly one entity, the owner of the most specific entry that covers it.
-- req.spec.directory-entry: A listing entry that ends with `/` SHALL bind every regular file below that directory, and a listed directory SHALL NOT contain a registered Spec document.
-- req.spec.sibling-sharing: A Module used by more than one consumer SHALL share the same structural parent as its consumers.
-- req.spec.no-structural-proof: Structural validation SHALL NOT be represented as proof of semantic completeness.
+This Module's world is the Spec model itself: the explicit Registry and pinned Protocol binding it
+admits, the query, validation and initialization interfaces it exposes, and the programs and shared
+libraries that realize them, connected by the relationships below.
 
-## Entities
+### Entities
 
 The entities below realize the Spec model. The Spec model entity lists the Python package and
 test package directories it owns; the typed-values, file-transaction and Protocol-asset entities keep
@@ -141,7 +167,7 @@ the exact entries they realize, and the most specific entry decides which entity
     "id": "entity.spec.protocol-text",
     "title": "Protocol text",
     "kind": "authored standard",
-    "responsibility": "Authors the independent Spec Protocol 3.1.0 chapters and templates: principles, Module specifications, Spec management, Spec and Context, Required format, and the Module and Scenario templates.",
+    "responsibility": "Authors the independent Spec Protocol 4.0.0 chapters and templates: principles, Module specifications, Spec management, Spec and Context, Required format, and the Module and Scenario templates.",
     "files": [
       "protocol/"
     ]
@@ -159,7 +185,7 @@ the exact entries they realize, and the most specific entry decides which entity
 ]
 ```
 
-## Architecture
+### Relationships
 
 The registry separates semantic Module identities from implementation-file ownership: Modules register documents and entities, entities bind listing entries that are exact files or directory prefixes, and a file may be bound by several Modules while belonging to one entity within each, the owner of its most specific entry. Admission creates immutable selection records and reverse indexes from exact declarations; overlay bytes support candidate inspection without writes. Selection never walks a dependency to read another Module's body. The Spec model's own package entry points, the Validator and the Initialization capability are three ways of using the same admitted Registry and Protocol binding; the Protocol assets entity packages the authored Protocol text for runtime distribution without becoming a second authority over its meaning.
 

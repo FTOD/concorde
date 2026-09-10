@@ -7,7 +7,9 @@ contracts; report concrete behavior defects.
 
 Read the full admitted document collection, not only the changed lines, and compare the granted
 target implementation files against those contracts. Identify concrete behavior defects, the
-affected task, owning target, contract document and location.
+affected task, owning target, contract document and location. A test that declares a scenario
+with `verifies` but does not exercise that scenario's steps is a defect; a scenario named by a
+task's acceptance that no changed test declares is a finding against that task.
 
 ## Goals
 

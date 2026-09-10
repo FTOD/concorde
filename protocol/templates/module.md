@@ -4,10 +4,11 @@ Copy the Markdown block below into the Module's `module.md` reading entry, repla
 with project facts and explicitly register the complete collection. This is a starter layout for
 the [required format](../format.md), not another kind of Spec or a completed contract.
 
-The four headings Purpose, Scenarios, Entities and Architecture are mandatory in this order.
-Scenario definitions and further entity blocks may also live in other single-owner documents of
-the collection. The Mermaid flowchart must name exactly the declared entity titles and label every
-edge with the relationship verb.
+The four headings Purpose, Requirements, Scenarios and Ontology are mandatory in this order, and
+Ontology holds the Entities and Relationships subsections. Requirement and scenario definitions
+and further entity blocks may also live in other single-owner documents of the collection. The
+Mermaid flowchart must name exactly the declared entity titles and label every edge with the
+relationship verb.
 
 ````markdown
 ```concorde-document
@@ -25,6 +26,16 @@ edge with the relationship verb.
 [Two or three sentences of plain prose: what this Module is for, who uses it and the boundary of
 its promises. No lists, tables or code.]
 
+## Requirements
+
+[Introduce the Module-level requirements. Each is one decidable SHALL statement.]
+
+### req.[module].[name] — [Requirement title]
+
+[One sentence that SHALL or SHALL NOT hold for the Module as a whole.]
+
+[Optional explanatory prose: rationale, scope, or a pointer to the scenarios that exercise it.]
+
 ## Scenarios
 
 [Introduce the usage scenarios. Group them under ordinary headings when that helps reading.]
@@ -36,8 +47,7 @@ its promises. No lists, tables or code.]
 - WHEN [the trigger: what an actor or collaborator does]
 - THEN [the observable outcome this Module promises]
 - AND [a further outcome]
-
-- req.[module].[name]: [One sentence that SHALL or SHALL NOT hold for this scenario.]
+- BUT [an outcome that explicitly does not happen]
 
 ### scenario.[module].[failure-name] — [Failure or repeated-invocation scenario]
 
@@ -45,11 +55,11 @@ its promises. No lists, tables or code.]
 - WHEN [the same trigger]
 - THEN [the defined failure or idempotent outcome]
 
-## Requirements
+## Ontology
 
-- req.[module].[invariant]: [One Module-wide sentence that SHALL hold regardless of scenario.]
+[Introduce the Module's world: what exists in its domain and how those things relate.]
 
-## Entities
+### Entities
 
 [Introduce the entities. Every child Module and used Module needs an entity with its target_id.]
 
@@ -73,7 +83,7 @@ its promises. No lists, tables or code.]
 ]
 ```
 
-## Architecture
+### Relationships
 
 [Explain invariants, state transitions and completion or failure conditions the edges cannot show.]
 
@@ -111,3 +121,5 @@ Every relied-upon collaborator promise must be understandable locally; a link to
 cannot supply missing meaning. Optional section headings may change without changing identity.
 The inventory's `files` for this Module must equal the union of the entity `files` above, entry
 for entry: an entry ending in `/` stays that directory prefix and is never expanded into names.
+Tests are listed on the entity they realize like any other file; each test declares the scenario
+it verifies, and no Spec section lists tests.

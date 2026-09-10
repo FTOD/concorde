@@ -50,19 +50,60 @@ function prose(source: string): string {
     return !fence;
   }).join('\n');
 }
-/** Every ATX heading (level 1-3) outside fences, in document order, with its exact text. */
-function headings(content: string): string[] {
-  return [...prose(content).matchAll(/^#{1,3}[ \t]+(.+?)[ \t]*$/gm)].map(m => m[1]);
+/** Every ATX heading outside fences, in document order, with its level and exact text. */
+function headingList(content: string): {level: number; text: string}[] {
+  return [...prose(content).matchAll(/^(#{1,6})[ \t]+(.+?)[ \t]*$/gm)].map(m => ({level: m[1].length, text: m[2]}));
 }
-/** Each required heading MUST appear, by exact text, strictly after the previous one; other
- * headings may interleave, and further sections MAY follow the last one. */
+/** Each required heading (level 1-3) MUST appear, by exact text, strictly after the previous one;
+ * other headings may interleave, and further sections MAY follow the last one. */
 function requireOrderedHeadings(content: string, required: string[], subject: string): void {
-  const found = headings(content); let cursor = -1;
+  const found = headingList(content).filter(h => h.level <= 3).map(h => h.text); let cursor = -1;
   for (const heading of required) {
     const index = found.indexOf(heading, cursor + 1);
     requireThat(index > cursor, `Module Spec requires ${required.join(', ')} headings in order: ${subject}`);
     cursor = index;
   }
+}
+/** The Ontology section (level 1-3) MUST hold the Entities and Relationships subsections, each
+ * exactly once, in that order and deeper than the Ontology heading. */
+function requireOntologySubsections(content: string, subject: string): void {
+  const all = headingList(content);
+  const index = all.findIndex(h => h.text === 'Ontology' && h.level <= 3);
+  requireThat(index >= 0, `Module Spec requires an Ontology section: ${subject}`);
+  const inside: string[] = [];
+  for (const h of all.slice(index + 1)) {
+    if (h.level <= all[index].level) break;
+    if (h.text === 'Entities' || h.text === 'Relationships') inside.push(h.text);
+  }
+  requireThat(inside.join(',') === 'Entities,Relationships', `Ontology requires Entities, Relationships subsections in order: ${subject}`);
+}
+const DEFINITION_HEADING = /^(#{2,5})([ \t]+)((?:scenario|req)\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)([ \t]+[—–-][ \t]+.+?)[ \t]*$/;
+/** Scenario and requirement headings carry their ID as an explicit anchor, and every entity ID
+ * becomes an anchor right before the block that declares it, so `path#id` links resolve. */
+export function injectAnchors(content: string): string {
+  let fence: string | undefined; const out: string[] = []; const lines = content.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]; const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+    if (marker) {
+      if (!fence) {
+        fence = marker[1];
+        if (/^ {0,3}`{3,}concorde-entities\s*$/.test(line)) {
+          const body: string[] = []; let j = i + 1;
+          while (j < lines.length && !/^ {0,3}`{3,}\s*$/.test(lines[j])) body.push(lines[j++]);
+          try {
+            const entries = JSON.parse(body.join('\n')) as {id?: unknown}[];
+            const anchors = entries.filter(e => typeof e.id === 'string').map(e => `<a id="${e.id as string}"></a>`);
+            if (anchors.length) out.push(anchors.join(''), '');
+          } catch {/* an unreadable block is reported by the registry loader, not here */}
+        }
+      } else if (marker[1][0] === fence[0] && marker[1].length >= fence.length && !line.slice(marker[0].length).trim()) fence = undefined;
+      out.push(line); continue;
+    }
+    if (fence) {out.push(line); continue;}
+    const heading = DEFINITION_HEADING.exec(line);
+    out.push(heading ? `${heading[1]}${heading[2]}${heading[3]}${heading[4]} {#${heading[3]}}` : line);
+  }
+  return out.join('\n');
 }
 export function safeRead(root: string, path: string): string {
   safePath(path); let current = root;
@@ -73,7 +114,7 @@ export function safeRead(root: string, path: string): string {
   requireThat(lstatSync(current).isFile(), `Source is not a regular file: ${path}`);
   return readFileSync(current, 'utf8');
 }
-/** The adapter publishes Profile 10 projects only; anything else is an explicit error. */
+/** The adapter publishes Profile 11 projects only; anything else is an explicit error. */
 export function requireScoped(root: string): void {
   let profile: unknown;
   try {profile = JSON.parse(safeRead(root, '.concorde/config.json')).profile_version;}
@@ -83,7 +124,7 @@ export function requireScoped(root: string): void {
     }
     throw error;
   }
-  if (profile !== 10) throw new Error(`Profile 10 is required to publish this project; .concorde/config.json declares profile_version ${String(profile)}.`);
+  if (profile !== 11) throw new Error(`Profile 11 is required to publish this project; .concorde/config.json declares profile_version ${String(profile)}.`);
 }
 interface DocumentContext {id: string; targets: string[]; main_visible: boolean}
 function documentContext(source: string, path: string, expected: string[]): DocumentContext {
@@ -99,7 +140,7 @@ function documentContext(source: string, path: string, expected: string[]): Docu
 }
 export function loadScopedRegistry(root: string): ScopedRegistry {
   const configText = safeRead(root, '.concorde/config.json'); const config = JSON.parse(configText);
-  requireThat(config.profile_version === 10, 'Profile 10 configuration required');
+  requireThat(config.profile_version === 11, 'Profile 11 configuration required');
   const registryText = safeRead(root, config.registry); const registry = JSON.parse(registryText);
   requireThat(Object.keys(registry).sort().join(',') === 'checks,entry_target,project_id,schema_version,targets', 'Invalid registry fields');
   requireThat(registry.schema_version === 3 && Array.isArray(registry.targets) && registry.targets.length, 'Module registry schema 3 required');
@@ -159,7 +200,8 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
   }
   for (const t of targets) {
     requireThat(documentTargets.get(primaryDocument(t))!.length === 1, `Module reading entry must be local: ${t.id}`);
-    requireOrderedHeadings(cache.get(primaryDocument(t))!.content, ['Purpose', 'Scenarios', 'Entities', 'Architecture'], t.id);
+    requireOrderedHeadings(cache.get(primaryDocument(t))!.content, ['Purpose', 'Requirements', 'Scenarios', 'Ontology'], t.id);
+    requireOntologySubsections(cache.get(primaryDocument(t))!.content, t.id);
     const seen = new Set([t.id]); let cursor = t.parent;
     while (cursor !== null) {
       const parent = byId.get(cursor); requireThat(parent?.kind === 'module', `Unknown Module parent: ${cursor}`);

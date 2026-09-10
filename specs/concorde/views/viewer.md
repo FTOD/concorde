@@ -58,9 +58,10 @@ viewer input and is rejected.
 - WHEN the launch is interrupted from the keyboard
 - THEN the launcher returns exit code 130
 
-- req.views.no-graph-generation: The viewer launcher SHALL NOT generate, rewrite or verify the freshness of the graph it opens against source.
-- req.views.no-dependency-install: The viewer launcher SHALL NOT resolve dependencies or perform network acquisition.
-- req.views.cli-syntax-errors: Invalid launch syntax or a port outside 0-65535 SHALL exit through argument parsing with code 2, distinct from a failed launch's exit code 3.
+These launcher boundaries are Module-wide requirements, not outcomes of this one scenario; see
+[req.views.no-graph-generation](module.md#req.views.no-graph-generation),
+[req.views.no-dependency-install](module.md#req.views.no-dependency-install) and
+[req.views.cli-syntax-errors](module.md#req.views.cli-syntax-errors) in `module.md`.
 
 After admission, the launcher checks Node.js >=18 and runs Node with the installed entrypoint and
 project directory, forwarding the optional flags. The child runs from the project directory. The

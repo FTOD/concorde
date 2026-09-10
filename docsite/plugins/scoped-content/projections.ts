@@ -1,7 +1,7 @@
 /**
  * "Projections" pages: rendered views of the Concorde build's own `generated/docs/*.json`
  * outputs (proposal §12). These exist only for a project that itself builds and distributes
- * Concorde (today, only this repository's own dogfood docsite): an ordinary Profile 10 consumer
+ * Concorde (today, only this repository's own dogfood docsite): an ordinary Profile 11 consumer
  * project has no `prompts/`/`skills/`/`capabilities/` of its own and therefore never produces
  * `generated/docs/instructions.json` or `generated/docs/wire.json`, so these pages are omitted
  * there rather than linking to content that was never materialized.

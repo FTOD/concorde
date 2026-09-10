@@ -18,7 +18,7 @@ describe('Explicit Concorde self specification',()=>{
   expect(domain.content).toContain('Module Spec');
   for(const module of r.targets.filter(t=>t.kind==='module')) {
    expect(module.documents.some(path=>path.endsWith('/architecture.md')||path.endsWith('/developer-experience.md'))).toBe(false);
-   expect(r.pages.find(p=>p.primaryOf===module.id)!.content).toContain('## Architecture');
+   expect(r.pages.find(p=>p.primaryOf===module.id)!.content).toContain('## Ontology');
   }
  });
 });

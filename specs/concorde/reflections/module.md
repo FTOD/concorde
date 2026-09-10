@@ -23,20 +23,78 @@ that target rather than granting Reflections access to the target's Spec. A reco
 independently of whether any repair is ever attempted, and closing it always remains an explicit
 human decision rather than an automatic consequence of investigation.
 
+## Requirements
+
+### req.reflections.no-implicit-capture — No mutation from read-only requests
+
+A status or other read-only assessment request SHALL NOT create or modify a Reflection record.
+
+### req.reflections.mutation-attribution — Explicit id attribution required for mutations
+
+A report or gap mutation request SHALL require an explicit nonempty `reflection_ids` or `gap_ids`
+list, with every id attributed to the selected target or one of its local scenario ids.
+
+### req.reflections.stable-gap-ids — Gap record ids stay stable across retries
+
+A `gap_records` id SHALL remain stable across context-only retries.
+
+### req.reflections.host-assigned-gap-ids — Gap ids are host-assigned, not caller-supplied
+
+A `gap_records` id SHALL NOT be calculated by the caller.
+
+The id is allocated and returned by the host; a caller that computes its own id and expects it to
+match is relying on an implementation detail, not a promise.
+
+### req.reflections.no-borrowed-access — Resolution routing grants no target Spec access
+
+Routing an approved resolution to its named target SHALL NOT grant this Module access to that
+target's Spec.
+
+### req.reflections.explicit-gap-selection — Gap capture requires an explicit nonempty selection
+
+record-gaps SHALL require a nonempty explicit `gap_ids` list and `reflection_ids=[]`.
+
+See the [gap-capture scenario](interfaces.md#scenario.reflections.capture-gap).
+
+### req.reflections.no-implicit-gap-selection — No implicit select-all for gap capture
+
+record-gaps SHALL NOT treat an omitted or empty `gap_ids` list as selecting every gap.
+
+See the [rejection scenario](interfaces.md#scenario.reflections.reject-invalid-gap-selection).
+
+### req.reflections.bucket-triage-agreement — Bucket assignment must match triage state
+
+A record whose triage sections contradict its bucket, or that lies outside every bucket, SHALL be
+rejected.
+
+### req.reflections.non-reproduced-disposition — Non-reproduction requires human intervention
+
+A non-reproduced investigation outcome SHALL recommend dismissal and require human intervention.
+
+### req.reflections.fast-loop-effort — Fast-loop route requires small effort
+
+A fast-loop route SHALL only be recommended together with small effort.
+
+### req.reflections.no-heading-injection — No document heading injection in section values
+
+An investigation section value SHALL NOT inject a document-level Markdown heading.
+
+### req.reflections.investigation-file-boundary — Investigation reads only the target Module's files
+
+Investigation SHALL read only the files listed by the selected Module's own entities.
+
 ## Scenarios
 
 Scenario definitions for the public triage boundary — status, gap capture and their rejection
 paths — are registered in [interfaces](interfaces.md). Scenario definitions for investigation,
 implementation and disposition are registered in [lifecycle](lifecycle.md).
 
-## Requirements
+## Ontology
 
-- req.reflections.no-implicit-capture: A status or other read-only assessment request SHALL NOT create or modify a Reflection record.
-- req.reflections.mutation-attribution: A report or gap mutation request SHALL require an explicit nonempty `reflection_ids` or `gap_ids` list, with every id attributed to the selected target or one of its local scenario ids.
-- req.reflections.stable-gap-ids: A `gap_records` id SHALL remain stable across context-only retries and SHALL NOT be calculated by the caller.
-- req.reflections.no-borrowed-access: Routing an approved resolution to its named target SHALL NOT grant this Module access to that target's Spec.
+The Ontology sets out the triage engine, the records and evidence it manages, and the collaborators
+that turn a captured gap or report into an approved task or a human disposition.
 
-## Entities
+### Entities
 
 The triage engine and its collaborators below realize triage; the concept and record entities
 describe the domain vocabulary the registered scenarios rely on. The triage engine lists the
@@ -128,7 +186,7 @@ fixture directory; the shared file-transaction entry stays exact.
 ]
 ```
 
-## Architecture
+### Relationships
 
 The triage boundary is the only entry point; it is realized by the triage engine, which owns every
 deterministic parsing, allocation and bucket transition. A captured development gap and an

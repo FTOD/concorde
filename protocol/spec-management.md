@@ -27,6 +27,11 @@ Scenarios, requirements and entities each belong to one providing Module. Their 
 be located in documents that belong to that Module alone. Their project-wide unique IDs identify
 locally owned parts of a contract; they do not make those parts independent document collections.
 
+An identity is also the anchor of its definition. A link to the defining document whose fragment
+is the identity, such as `inventory/module.md#req.inventory.no-oversell`, reaches that definition
+wherever the document is published. The path locates the document and may change when the
+document moves; the fragment is the stable part. A link is navigation and grants nothing.
+
 For example, `module.inventory`, `scenario.inventory.reserve`, `req.inventory.no-oversell`,
 `entity.inventory.stock-ledger` and `document.inventory.contract` identify a Module, one of its
 scenarios, one of its requirements, one of its entities and a document describing it. The
@@ -215,15 +220,23 @@ exchanges the value and to the scenarios in which it is exchanged.
 The schema representation and supported vocabulary must be explicit to its consumers. A schema
 or example does not replace the scenarios that state inputs, effects, errors and compatibility.
 
-## Architecture diagrams
+## Relationship diagrams
 
 A Module's relationships are authored as Mermaid flowchart fences inside its registered Markdown
-documents. The fences in the reading entry's Architecture section are the authoritative
-relationship model: their nodes MUST be exactly the Module's entity titles and every edge MUST
-carry a label. Further diagrams in other registered documents MAY illustrate behavior or detail.
-An inline fence is part of its containing document and adds no file to the collection. Rendered
-diagrams, indexes and navigation views derive from the registered documents and MUST NOT create
-a second authority for the contract or change its membership.
+documents. The fences in the Relationships subsection of the reading entry's Ontology are the
+authoritative relationship model: their nodes MUST be exactly the Module's entity titles and
+every edge MUST carry a label. Further diagrams in other registered documents MAY illustrate
+behavior or detail. An inline fence is part of its containing document and adds no file to the
+collection. Rendered diagrams, indexes and navigation views derive from the registered documents
+and MUST NOT create a second authority for the contract or change its membership.
+
+## Scenario verification index
+
+A tool MAY derive a verification index from the Module's implementation files: for every
+scenario, the tests that declare its identity. The index is derived from the tests alone, in the
+declaration syntax the tool defines; no Spec document contributes to it and no Spec document lists
+a test. It is implementation metadata beside the reverse file index, reported as coverage
+evidence, and it does not change identities, membership or the contract.
 
 ## Versions and consistency
 

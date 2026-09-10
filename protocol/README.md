@@ -1,16 +1,17 @@
 # Spec Protocol
 
-Concorde Spec Protocol 3.1.0 defines a standard for describing software: what a component is for,
+Concorde Spec Protocol 4.0.0 defines a standard for describing software: what a component is for,
 how it behaves in its usage scenarios, which entities make it up and how those entities relate to
 each other and to the files that realize them. Its purpose is to make that meaning explicit enough
 for people and tools to reach a consistent understanding.
 
 The standard defines one kind of specification. A **Module Spec** has a functional half and an
-architecture half. The functional half states the Module's **purpose** and its **scenarios** with
-their **requirements**. The architecture half states the Module's **entities** and their
-**relationships**; entities may bind the implementation files that realize them, as exact files or
-as directory prefixes. **Spec management** gives Modules stable identities, explicit document
-collections and unambiguous relationships.
+architecture half. The functional half states the Module's **purpose**, its Module-level
+**requirements** and its testable **scenarios**. The architecture half is the Module's
+**Ontology**: its **entities** and their **relationships**; entities may bind the implementation
+files that realize them, as exact files or as directory prefixes, and tests among those files
+declare the scenarios they verify. **Spec management** gives Modules stable identities, explicit
+document collections, addressable definitions and unambiguous relationships.
 
 Spec management also defines [Spec and Context](spec-management/spec-and-context.md): which
 entities can be queried, how their Spec context files are determined from explicit declarations,
@@ -24,16 +25,17 @@ each form describes, references or organizes. They do not model the Protocol its
 ```mermaid
 flowchart TB
     accTitle: Information represented by project specifications
-    accDescr: Spec management declarations identify and organize Module Specs. A Module Spec describes a functional specification of purpose, scenarios and requirements, and an architecture specification of entities and relationships. Architecture entities bind the implementation files that realize them, as exact files or directory prefixes.
+    accDescr: Spec management declarations identify and organize Module Specs. A Module Spec describes a functional specification of purpose, requirements and scenarios, and an architecture specification, the Ontology, of entities and relationships. Entities bind the implementation files that realize them, as exact files or directory prefixes, and tests among those files declare the scenarios they verify.
     organization["IDs, metadata and relationships"]
     moduleSpec["Module Spec"]
-    functional["Functional spec<br/>purpose, scenarios, requirements"]
-    architecture["Architecture spec<br/>entities and relationships"]
+    functional["Functional spec<br/>purpose, requirements, scenarios"]
+    architecture["Ontology<br/>entities and relationships"]
     files["Implementation files"]
     organization -->|identify and organize| moduleSpec
     moduleSpec -->|describes| functional
     moduleSpec -->|describes| architecture
     architecture -->|entities bind| files
+    files -->|tests declare scenarios of| functional
 ```
 
 Document membership determines which authored texts supply a Module Spec. Entity file bindings
@@ -42,8 +44,8 @@ connect the Spec to its realization without making source files part of the Spec
 ## Reading the standard
 
 1. [Principles](principles.md): the specification model, completeness and conformance.
-2. [Module specifications](module.md): purpose, scenarios, entities, relationships, composition
-   and implementation files.
+2. [Module specifications](module.md): purpose, requirements, scenarios, Ontology, composition,
+   implementation files and scenario verification.
 3. [Spec management](spec-management.md): identities, metadata, membership and declarations,
    including [Spec and Context](spec-management/spec-and-context.md).
 4. [Required format](format.md): mandatory file, identifier, section and structured-block syntax.

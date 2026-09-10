@@ -38,18 +38,29 @@ exactly this text, outside code fences and in this order:
 
 ```text
 Purpose
+Requirements
 Scenarios
-Entities
-Architecture
+Ontology
 ```
 
 Each section extends to the next heading of the same or a higher level. The **Purpose** section
 MUST contain nonempty prose only: no headings, list items, tables or fenced blocks. The
-**Scenarios** section introduces the Module's scenarios; scenario definitions MAY appear there or
-in other single-owner documents of the collection. The **Entities** section MUST contain at least
-one `concorde-entities` block. The **Architecture** section MUST contain at least one Mermaid
-flowchart fence that satisfies the diagram rules below. Other prose and titles may use the
-project's language, and further sections MAY follow.
+**Requirements** section introduces the Module's requirements and the **Scenarios** section its
+scenarios; their definitions MAY appear there or in other single-owner documents of the
+collection.
+
+The **Ontology** section MUST contain two ATX subsections, each exactly once and in this order,
+at a level deeper than the Ontology heading:
+
+```text
+Entities
+Relationships
+```
+
+The **Entities** subsection MUST contain at least one `concorde-entities` block. The
+**Relationships** subsection MUST contain at least one Mermaid flowchart fence that satisfies the
+diagram rules below. Other prose and titles may use the project's language, and further sections
+MAY follow.
 
 ## Identifier spelling
 
@@ -89,6 +100,31 @@ All structured blocks in this chapter use valid JSON with unique object keys, no
 JavaScript expressions. Field names and named fences are case-sensitive; indentation inside JSON
 objects and arrays is not significant.
 
+## Requirement definitions
+
+A requirement is defined by an ATX heading at level 2 to 5 whose text is the requirement ID, a
+spaced dash and the title, followed by its statement:
+
+```markdown
+### req.checkout.single-order — One order per submission
+
+The system SHALL create at most one order for a successfully submitted checkout request.
+
+A retried submission is answered from the existing order; see the repeated-submission scenario.
+```
+
+The dash MAY be `—`, `–` or `-`, surrounded by spaces. The requirement section extends to the
+next heading of any level and MUST NOT contain a nested heading. Its **statement** is the first
+paragraph of prose after the heading: one sentence that contains the uppercase word `SHALL` or
+`SHALL NOT` exactly once. A statement with two occurrences expresses two behaviors and MUST be
+split into two requirements. Further paragraphs, list items and fenced blocks after the statement
+are explanatory and are not interpreted; a list item that begins with a requirement ID is an
+error, because a requirement is never a list item.
+
+Requirement definitions MUST be located in a document registered to exactly one Module; that
+Module is the requirement's owner. Ordinary headings MAY group requirements; a group has no
+identity. A requirement MUST NOT be defined inside a scenario section.
+
 ## Scenario definitions
 
 A scenario is defined by an ATX heading at level 2 to 5 whose text is the scenario ID, a spaced
@@ -102,9 +138,7 @@ dash and the title:
 - WHEN the customer submits checkout
 - THEN the system creates one order
 - AND returns the order identifier
-
-- req.checkout.single-order: The system SHALL create at most one order for a successfully
-  submitted checkout request.
+- BUT does not charge the payment method twice
 ```
 
 The dash MAY be `—`, `–` or `-`, surrounded by spaces. The scenario section extends to the next
@@ -112,30 +146,35 @@ heading of any level. Its steps are list items whose text begins with one of the
 keywords `GIVEN`, `WHEN`, `THEN`, `AND` or `BUT` followed by a space. Steps MUST appear in the
 order GIVEN, WHEN, THEN: the first step is GIVEN or WHEN, every scenario has at least one WHEN and
 at least one THEN, `AND` and `BUT` continue the preceding kind of step, and a keyword MUST NOT
-return to an earlier kind. Every other list item in a scenario section MUST be a requirement item.
-Prose paragraphs MAY appear anywhere in the section.
+return to an earlier kind. Every list item in a scenario section MUST be a step. Prose paragraphs
+MAY appear anywhere in the section and are not interpreted.
 
 Scenario definitions MUST be located in a document registered to exactly one Module; that Module
 is the scenario's provider. Ordinary headings MAY group scenarios; a group has no identity. A
 scenario section MUST NOT contain a nested heading.
 
-## Requirement definitions
+## Identity anchors and links
 
-A requirement is a list item whose text is the requirement ID, a colon and one sentence that
-contains the word `SHALL` or `SHALL NOT` in uppercase:
+The identity of a scenario or requirement is the anchor of its heading, and the identity of an
+entity is an anchor in the document that declares it. A local Markdown link whose fragment is
+such an identity addresses that definition:
 
 ```markdown
-- req.checkout.langgraph: Checkout control flow SHALL be a LangGraph graph.
+See [successful checkout](checkout/module.md#scenario.checkout.submit) and
+[one order per submission](#req.checkout.single-order).
 ```
 
-A requirement item inside a scenario section belongs to that scenario. A requirement item anywhere
-else in a single-owner document of the collection belongs to the Module. A requirement MUST NOT be
-defined in a shared document.
+The path part locates the defining document relative to the linking document; a link with only a
+fragment addresses the current document. A link whose fragment is a scenario, requirement or
+entity ID MUST point at the document that defines that ID, and a fragment that has the shape of
+such an ID but names no definition is an error. A publisher MUST expose these identities as
+anchors, whatever slug it derives for other headings. Fragments that are not IDs address ordinary
+headings as the renderer defines and are not interpreted.
 
 ## Entity declarations
 
 A Module declares its entities in `concorde-entities` fenced JSON blocks located in its
-single-owner documents; the reading entry's Entities section holds at least one. Each block is a
+single-owner documents; the reading entry's Entities subsection holds at least one. Each block is a
 nonempty JSON array whose entries have exactly the required fields `id`, `title`, `kind` and
 `responsibility`, and any of the optional fields `files`, `pending` and `target_id`:
 
@@ -157,9 +196,9 @@ by several entries belongs to the most specific one; the union of a Module's ent
 equal its inventory `files`. Every child and used Module MUST have exactly one entity with its
 `target_id`.
 
-## Architecture diagrams
+## Relationship diagrams
 
-The reading entry's Architecture section contains one or more Mermaid fences (` ```mermaid `)
+The reading entry's Relationships subsection contains one or more Mermaid fences (` ```mermaid `)
 whose first line begins with `flowchart` or `graph`. Together their node labels MUST be exactly
 the Module's entity titles, and every edge MUST carry a label. A node's label is the text inside
 its shape delimiters; when the label spans several lines with `<br/>`, the first line is the
@@ -196,6 +235,15 @@ The schema representation and its supported vocabulary must be explicit, as desc
 management. A storage adapter's schema support does not replace the scenarios that state an
 interface's behavior.
 
+## Verification declarations
+
+A test declares the scenario it verifies inside the test itself, by the scenario's ID. The
+Protocol fixes the direction and the identity: the declaration lives with the test, names one or
+more scenario IDs, and never appears in a Spec document. The syntax of the declaration is defined
+by the development tool for each language it supports; a tool that supports a language MUST
+publish that syntax and MUST read the declarations without executing the tests. A declared ID
+that names no scenario is an error.
+
 ## Templates and unresolved content
 
 The context file set is derived from the existing document memberships. A scenario or requirement
@@ -208,11 +256,11 @@ The canonical starters are the Module template and the Scenario fragment under t
 Templates section. Square-bracket placeholders stand for facts the author must supply. Template
 instructions, sample IDs and sample paths are not adopted project facts.
 
-Authors MAY rearrange optional sections or split scenarios and entities across registered
-single-owner documents while preserving the mandatory syntax, the four mandatory sections of the
-reading entry and the complete information contract. A Scenario fragment is inserted into its
-owning Module collection; it does not create another Spec kind. If saved as a separate document,
-it needs its own document declaration and explicit membership.
+Authors MAY rearrange optional sections or split requirements, scenarios and entities across
+registered single-owner documents while preserving the mandatory syntax, the four mandatory
+sections of the reading entry and the complete information contract. A Scenario fragment is
+inserted into its owning Module collection; it does not create another Spec kind. If saved as a
+separate document, it needs its own document declaration and explicit membership.
 
 Unresolved facts MUST be identified as unresolved. A template with placeholders is a draft, not
 an assertion of complete behavior or existing implementation. Copying the layout does not establish

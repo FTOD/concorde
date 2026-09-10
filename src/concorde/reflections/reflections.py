@@ -185,7 +185,7 @@ class ReflectionEntry:
     def feature(self) -> str:
         """The recorded attribution identity: a Module ID or one of its scenario IDs.
 
-        The record field keeps its historical ``feature`` name; Profile 10 has no registered
+        The record field keeps its historical ``feature`` name; Profile 11 has no registered
         Feature entity, so the value is validated against Module and scenario identities.
         """
         return self.fields.get("Feature", "")

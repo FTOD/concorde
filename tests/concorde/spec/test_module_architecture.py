@@ -11,6 +11,7 @@ from concorde.harness.context import resolve_context, recheck_context
 from concorde.spec.initialize import project_proposal, apply_project_proposal, empty_target
 from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.validation import validate_repository
+from concorde.spec.verification import verifies
 from tests.concorde.spec.support import (
     CONFIGURATION, PACKAGE, ModelProcessDouble, project, update_document_declaration,
 )
@@ -40,6 +41,7 @@ class ModuleArchitectureTests(unittest.TestCase):
             host_context=CapabilityHost(self.root, PACKAGE, executor=double.executor,
                                         allow_primary_worktree=True))
 
+    @verifies("scenario.spec.select-module")
     def test_main_document_does_not_depend_on_order_or_replace_full_context(self):
         topic = "specs/bank/routing.md"
         (self.root / topic).write_text('```concorde-document\n' + json.dumps({
@@ -74,18 +76,20 @@ class ModuleArchitectureTests(unittest.TestCase):
         with self.assertRaisesRegex(SpecError, "exactly one.*module.md"):
             SpecRepository(self.root)
 
+    @verifies("scenario.spec.query-files", "scenario.spec.validate-structural-errors")
     def test_complete_context_ignores_visibility_and_architecture_heading_is_outside_fences(self):
         update_document_declaration(self.root, self.main, main_visible=False)
         self.assertIn(self.main, resolve_context(SpecRepository(self.root), "scope.bank").value["document_order"])
         update_document_declaration(self.root, self.main, main_visible=True)
         path = self.root / self.main
-        body = path.read_text().replace("## Architecture", "## Vocabulary")
+        body = path.read_text().replace("### Relationships", "### Vocabulary")
         for fence in ("```", "~~~~"):
             with self.subTest(fence=fence):
-                path.write_text(body + f"\n{fence}markdown\n## Architecture\n{fence}\n")
+                path.write_text(body + f"\n{fence}markdown\n### Relationships\n{fence}\n")
                 report = validate_repository(self.root)
                 self.assertIn("CONCORDE-MODULE-001", {f.rule_id for f in report.findings})
 
+    @verifies("scenario.spec.validate-structural-errors")
     def test_the_reading_entry_requires_a_mermaid_flowchart_in_its_architecture_section(self):
         path = self.root / self.main
         original = path.read_text()
@@ -97,6 +101,7 @@ class ModuleArchitectureTests(unittest.TestCase):
         self.assertIn("CONCORDE-MODULE-001", {f.rule_id for f in report.findings})
         self.assertTrue(any("Mermaid flowchart fence" in f.message for f in report.findings))
 
+    @verifies("scenario.spec.validate-architecture-mismatch")
     def test_diagram_nodes_must_equal_entity_titles_and_every_edge_must_be_labeled(self):
         path = self.root / self.main
         original = path.read_text()
@@ -115,6 +120,7 @@ class ModuleArchitectureTests(unittest.TestCase):
         self.assertEqual("invalid", report.status)
         self.assertIn("CONCORDE-ARCHITECTURE-002", {f.rule_id for f in report.findings})
 
+    @verifies("scenario.spec.validate-structural-errors")
     def test_an_entity_can_only_stand_for_a_child_or_used_module(self):
         path = self.root / self.main
         path.write_text(replace_entities(path.read_text(), lambda values: [
@@ -238,6 +244,7 @@ class ModuleArchitectureTests(unittest.TestCase):
 
 
 class InitialModuleTests(unittest.TestCase):
+    @verifies("scenario.spec.propose-initialization", "scenario.spec.apply-initialization", "scenario.spec.rollback-on-failure")
     def test_initialization_is_honest_and_rolls_back_a_bad_reading_entry(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -245,7 +252,7 @@ class InitialModuleTests(unittest.TestCase):
             source = next(f for f in proposal["files"]
                           if f["path"] == "specs/project/module.md")
             before = source["content"]
-            source["content"] = before.replace("## Architecture", "## Drawing")
+            source["content"] = before.replace("### Relationships", "### Drawing")
             with self.assertRaises(SpecError):
                 apply_project_proposal(root, PACKAGE, proposal)
             self.assertFalse((root / ".concorde/config.json").exists())

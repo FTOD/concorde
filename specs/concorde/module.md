@@ -12,7 +12,45 @@
 
 ## Purpose
 
-Concorde Framework turns a developer's specified intent into inspectable, evidence-backed changes, and distributes the tools and views needed to work with those changes. It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 3.1.0; its complete contract is the Markdown collection explicitly registered for `module.concorde` in `.concorde/specs.json`, and this reading entry is that collection's only document. This root Module owns no implementation files of its own; its promises are realized entirely by its six child Modules.
+Concorde Framework turns a developer's specified intent into inspectable, evidence-backed changes, and distributes the tools and views needed to work with those changes. It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 4.0.0; its complete contract is the Markdown collection explicitly registered for `module.concorde` in `.concorde/specs.json`, and this reading entry is that collection's only document. This root Module owns no implementation files of its own; its promises are realized entirely by its six child Modules.
+
+## Requirements
+
+### req.concorde.routing-no-access — No access beyond frozen context
+
+A routing or target/focus hint SHALL NOT by itself grant file access beyond the selected Module's
+frozen context.
+
+### req.concorde.read-no-mutate — No mutation from read operations
+
+A read or preview operation SHALL NOT mutate project state.
+
+### req.concorde.versioned-result — Versioned result per invocation
+
+Every invocation SHALL return a versioned capability result that distinguishes admission failure,
+execution failure and the domain outcome.
+
+### req.concorde.preserve-user-content — Preservation of developer-owned content
+
+Installation and configuration changes SHALL preserve content the developer owns.
+
+### req.concorde.no-overwrite-initialized — No overwrite of initialized projects
+
+Initialization SHALL NOT overwrite an already-initialized project.
+
+### req.concorde.delivery-separate — Delivery as a separately authorized step
+
+Delivery to a destination SHALL require a separately authorized transition beyond a ready candidate.
+
+### req.concorde.unsupported-explicit — Explicit failure for unsupported versions
+
+An unsupported capability version or integration SHALL fail explicitly rather than degrading
+silently.
+
+### req.concorde.no-stale-replay — No replay of stale effects
+
+A repeated mutation SHALL re-admit current saved state or require a fresh proposal rather than
+replaying a stale effect.
 
 ## Scenarios
 
@@ -97,18 +135,13 @@ These scenarios state what a developer request accomplishes at the Framework's s
 - THEN status reporting is read-only
 - AND any mutation follows its declared evidence and disposition conditions
 
-## Requirements
+## Ontology
 
-- req.concorde.routing-no-access: A routing or target/focus hint SHALL NOT by itself grant file access beyond the selected Module's frozen context.
-- req.concorde.read-no-mutate: A read or preview operation SHALL NOT mutate project state.
-- req.concorde.versioned-result: Every invocation SHALL return a versioned capability result that distinguishes admission failure, execution failure and the domain outcome.
-- req.concorde.preserve-user-content: Installation and configuration changes SHALL preserve content the developer owns.
-- req.concorde.no-overwrite-initialized: Initialization SHALL NOT overwrite an already-initialized project.
-- req.concorde.delivery-separate: Delivery to a destination SHALL require a separately authorized transition beyond a ready candidate.
-- req.concorde.unsupported-explicit: An unsupported capability version or integration SHALL fail explicitly rather than degrading silently.
-- req.concorde.no-stale-replay: A repeated mutation SHALL re-admit current saved state or require a fresh proposal rather than replaying a stale effect.
+This root Module's Ontology holds the Developer who supplies intent, the external Spec Protocol
+that Spec pins, and the six child Modules that realize every Requirement and Scenario above; the
+Relationships subsection below traces how a request moves between them.
 
-## Entities
+### Entities
 
 ```concorde-entities
 [
@@ -122,7 +155,7 @@ These scenarios state what a developer request accomplishes at the Framework's s
     "id": "entity.concorde.protocol",
     "title": "Spec Protocol",
     "kind": "external standard",
-    "responsibility": "The independent Spec Protocol 3.1.0 that defines what a Module Spec must explain; Spec admits and pins it but does not own its meaning."
+    "responsibility": "The independent Spec Protocol 4.0.0 that defines what a Module Spec must explain; Spec admits and pins it but does not own its meaning."
   },
   {
     "id": "entity.concorde.spec",
@@ -169,7 +202,7 @@ These scenarios state what a developer request accomplishes at the Framework's s
 ]
 ```
 
-## Architecture
+### Relationships
 
 Six Modules have this Module as their sole structural parent, and the arrows below are their registered `uses` relationships. **Spec** owns the project's Spec model: the pinned Protocol binding, the registry, structural validation and initialization. **Harness** owns how an Agent is configured and run: the four context kinds it freezes, Agent and Harness definitions, permissions, native execution and the LangGraph control flow. **Development** owns the business workflows: questions, the development loop, topology evolution, candidate evidence and delivery. **Reflections** retains attributed feedback and gaps and hands approved work back to Development, so the two Modules use each other. **Distribution** builds authored projections, installs them and provisions the managed runtime. **Views** publishes registered Specs and opens an existing code graph.
 
@@ -204,9 +237,9 @@ flowchart TB
     views -->|uses| distribution
 ```
 
-### Project diagram convention
+#### Project diagram convention
 
-Every Concorde Module MUST describe its principal entities and directed relationships with an inline Mermaid diagram in its `module.md` Architecture section. Labels, titles, descriptions and explanatory prose use English. Include an accessible title and description, and explain the relationships, cardinalities or state rules needed to read the diagram. This is a Concorde project convention under the tool-neutral Spec Protocol, not a change to the independent standard. Rendered SVG/HTML and navigation remain derived views.
+Every Concorde Module MUST describe its principal entities and directed relationships with an inline Mermaid diagram in the Relationships subsection of its `module.md` Ontology. Labels, titles, descriptions and explanatory prose use English. Include an accessible title and description, and explain the relationships, cardinalities or state rules needed to read the diagram. This is a Concorde project convention under the tool-neutral Spec Protocol, not a change to the independent standard. Rendered SVG/HTML and navigation remain derived views.
 
 ## Local collaboration agreements
 

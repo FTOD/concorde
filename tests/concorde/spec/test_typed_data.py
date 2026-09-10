@@ -12,6 +12,7 @@ sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.development.configuration import apply_configuration, load_configuration, propose_configuration
 from concorde.spec.typed_data import TypedDataError, artifact, decode, verify_artifacts
+from concorde.spec.verification import verifies
 from tests.concorde.support.operation_json import CONFIGURATION
 
 
@@ -34,6 +35,7 @@ class TypedDataTests(unittest.TestCase):
             with self.assertRaisesRegex(TypedDataError, "symlink"):
                 verify_artifacts(root, reference)
 
+    @verifies("scenario.harness.typed-reject")
     def test_json_rejects_duplicate_fields_and_non_finite_numbers(self):
         for value in ('{"x":1,"x":2}', '{"x":NaN}', '{"x":Infinity}'):
             with self.subTest(value=value), self.assertRaises(TypedDataError):
@@ -44,7 +46,7 @@ class TypedDataTests(unittest.TestCase):
             root = Path(temporary)
             path = root / ".concorde/config.json"
             path.parent.mkdir()
-            original = {"profile_version": 10, "registry": ".concorde/specs.json", "project_setting": {"keep": True}}
+            original = {"profile_version": 11, "registry": ".concorde/specs.json", "project_setting": {"keep": True}}
             path.write_text(json.dumps(original))
             with self.assertRaises(TypedDataError):
                 load_configuration(root)

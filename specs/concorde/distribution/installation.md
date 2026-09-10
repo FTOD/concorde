@@ -16,11 +16,11 @@ authored under `protocol/` and distributed with the independent standard. The `t
 links to those sources. Plan, task and reflection starters remain Framework workflow assets; they
 are not additional Protocol Spec kinds.
 
-The Framework identifies its supported project configuration as Profile 10. Initialization writes
-`.concorde/config.json` with `profile_version: 10`, the `registry` path, an accepted Protocol
+The Framework identifies its supported project configuration as Profile 11. Initialization writes
+`.concorde/config.json` with `profile_version: 11`, the `registry` path, an accepted Protocol
 `version` and manifest `digest` under `protocol`, and the typed `capability_configuration` for
-integration and enforcement. Its registry uses JSON schema version 3. Profile 10 and registry
-schema 3 are Framework compatibility and storage versions; Spec Protocol 3.1.0 identifies the
+integration and enforcement. Its registry uses JSON schema version 3. Profile 11 and registry
+schema 3 are Framework compatibility and storage versions; Spec Protocol 4.0.0 identifies the
 independent specification standard. Installation and initialization preserve these separate roles.
 
 ## Installing and updating a target project
@@ -55,8 +55,9 @@ defaults are excluded from the installation receipt and never overwritten on upd
 - THEN the installer rejects the change before writing
 - AND any already-replaced owned state is restored
 
-- req.distribution.root-block-ownership: A root rule entry SHALL be owned only within its exact bounded block, including its separator, and SHALL NOT hash or replace surrounding user text.
-- req.distribution.rollback-on-failure: A runtime or setup failure during installation SHALL roll back root bytes, modes and the receipt together with the other installation outputs.
+Root rule ownership and installation's failure rollback are Module-wide requirements; see
+[req.distribution.root-block-ownership](module.md#req.distribution.root-block-ownership) and
+[req.distribution.rollback-on-failure](module.md#req.distribution.rollback-on-failure).
 
 Root entries are shared files with block ownership, not whole-file ownership. New entries precede
 user text; upgrades retain an existing block's position. Bytes outside the block and existing modes
@@ -99,7 +100,7 @@ separate and versioned. Check verifies receipt hashes and required runtime ident
 changing project behavior.
 
 The distributable manifest is `concorde.json` schema_version 3, Concorde 5.0.0, Architecture
-Profile 10, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 8 roles and 13
+Profile 11, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 8 roles and 13
 capabilities, of which 7 are Skills (global or lifecycle) and 6 are stages reachable only through a
 composing capability, explicit package roots including `prompts`/`capabilities`/`protocol`, and 5
 templates. Codex `.agents/skills` and Claude `.claude/skills` expose the same 7 Skills; canonical
@@ -118,8 +119,9 @@ capability owned by `module.spec`, not by this Module.
 - THEN it writes a `permissionDecision: deny` object with its reason to stdout and the reason to stderr, and exits 2
 - AND `git worktree list`, removing a worktree and starting a session in an existing host-created worktree are allowed unchanged
 
-- req.distribution.guard-inspects-text: The worktree guard SHALL decide from the submitted command text, including global git options such as `-C` and `--git-dir=`, and SHALL NOT depend on an agent remembering the policy.
-- req.distribution.guard-checkout-only: The worktree guard SHALL protect only developer sessions of this source checkout and SHALL NOT be installed into consumer projects.
+The guard's decision procedure and its checkout-only scope are Module-wide requirements; see
+[req.distribution.guard-inspects-text](module.md#req.distribution.guard-inspects-text) and
+[req.distribution.guard-checkout-only](module.md#req.distribution.guard-checkout-only).
 
 The source checkout refuses native worktree creation in developer agent sessions because its
 project-local Skills are worktree-owned build output: a session that loaded them in one worktree

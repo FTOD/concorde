@@ -25,6 +25,7 @@ sys.modules[SPEC.name] = installer
 SPEC.loader.exec_module(installer)
 
 from concorde.distribution import managed_runtime  # noqa: E402
+from concorde.spec.verification import verifies  # noqa: E402
 
 
 class NativeInstallerTests(unittest.TestCase):
@@ -52,7 +53,7 @@ class NativeInstallerTests(unittest.TestCase):
 
     def test_manifest_is_single_profile_and_inventory_authority(self):
         self.assertEqual(self.package.version, "5.0.0")
-        self.assertEqual(self.package.manifest["architecture_profile"], 10)
+        self.assertEqual(self.package.manifest["architecture_profile"], 11)
         self.assertEqual(self.package.manifest["workspace_protocol"], 15)
         self.assertEqual(len(self.package.manifest["templates"]), 5)
         self.assertEqual(
@@ -125,6 +126,12 @@ class NativeInstallerTests(unittest.TestCase):
         )
         self.assertTrue(all(not path.startswith(("presets/", "extensions/", "bundles/")) for path in outputs))
 
+    @verifies(
+        "scenario.distribution.install-preview",
+        "scenario.distribution.install-apply",
+        "scenario.distribution.runtime-plan",
+        "scenario.distribution.runtime-provision",
+    )
     def test_empty_target_preview_apply_and_repeat_are_idempotent(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
@@ -161,6 +168,7 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertEqual(len(receipt["outputs"]), len(desired) - project_defaults)
             self.assertNotIn("project-default", {item["role"] for item in receipt["outputs"]})
 
+    @verifies("scenario.distribution.install-apply")
     def test_existing_project_defaults_are_preserved_and_not_owned(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
@@ -177,6 +185,7 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertNotIn(".concorde/reflections/.gitignore", paths)
             self.assertNotIn(".concorde/topology-proposals/.gitignore", paths)
 
+    @verifies("scenario.distribution.runtime-plan", "scenario.distribution.runtime-provision")
     def test_target_root_venv_is_ignored_and_managed_runtime_rebuild_removes_obsolete_files(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
@@ -217,6 +226,7 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertFalse(obsolete.exists())
             self.assertTrue(marker.is_file())
 
+    @verifies("scenario.distribution.runtime-plan")
     def test_unowned_or_symlinked_managed_runtime_is_a_nonmutating_conflict(self):
         for symlink in (False, True):
             with self.subTest(symlink=symlink), tempfile.TemporaryDirectory() as temporary:
@@ -239,6 +249,7 @@ class NativeInstallerTests(unittest.TestCase):
                     installer.apply_plan(target, self.package, "codex", actions, desired)
                 self.assertTrue(runtime.exists() or runtime.is_symlink())
 
+    @verifies("scenario.distribution.runtime-provision-failure")
     def test_dependency_or_smoke_failure_removes_partial_runtime_and_rolls_back_files(self):
         failures = ("pip", "viewer-install", "smoke", "viewer-smoke")
         for failure in failures:
@@ -293,6 +304,7 @@ class NativeInstallerTests(unittest.TestCase):
                 self.assertFalse((target / ".concorde/install.json").exists())
                 self.assertEqual(list(target.rglob("*")), [])
 
+    @verifies("scenario.distribution.runtime-provision-failure")
     def test_incompatible_node_blocks_viewer_install_and_rolls_back(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
@@ -315,6 +327,7 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertFalse((target / ".concorde/.venv").exists())
             self.assertFalse((target / ".concorde/install.json").exists())
 
+    @verifies("scenario.distribution.runtime-plan")
     def test_viewer_lock_marker_drift_requires_managed_runtime_rebuild(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
@@ -355,6 +368,7 @@ class NativeInstallerTests(unittest.TestCase):
             item = next(entry for entry in actions if entry["path"] == collision.relative_to(target).as_posix())
             self.assertEqual(item["action"], "conflict")
 
+    @verifies("scenario.distribution.install-switch-integration")
     def test_integration_change_removes_only_prior_unchanged_outputs(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
@@ -367,6 +381,7 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertFalse((target / ".agents/skills/concorde-validate/SKILL.md").exists())
             self.assertTrue((target / ".claude/skills/concorde-validate/SKILL.md").is_file())
 
+    @verifies("scenario.distribution.install-apply")
     def test_update_removes_only_unchanged_owned_legacy_capability_paths(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)

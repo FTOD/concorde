@@ -23,6 +23,82 @@ page. Its viewer promises stop at admission and launch: it does not generate the
 does not judge whether that graph still agrees with the code, and does not grant an agent any
 access beyond its own host-bound Spec context.
 
+## Requirements
+
+### req.views.registry-derived-pages — Pages and navigation derive from the registry
+
+Publication SHALL derive pages and navigation only from the explicit registry.
+
+This is the positive half of the registry-only promise: everything publication shows a reader is
+traceable to a registered entry. The companion prohibition on directory scanning is
+[req.views.no-directory-scanning](#req.views.no-directory-scanning).
+
+### req.views.no-directory-scanning — No directory scanning or link-based discovery
+
+Publication SHALL NOT discover Spec documents by scanning directories or following links.
+
+### req.views.one-page-per-document — One canonical page per registered document
+
+A physical Spec document SHALL publish at exactly one canonical page regardless of how many Modules
+register it.
+
+### req.views.no-agent-context-grant — No extra agent context from a rendered view
+
+A rendered page or generated view SHALL NOT itself grant an agent invocation additional Spec context
+beyond its own host-bound target snapshot.
+
+### req.views.diagram-source-identity — Mermaid fence is the sole diagram source
+
+An inline Mermaid fence in a Module's Relationships subsection SHALL be its sole authored diagram
+source.
+
+### req.views.no-external-diagram-record — No external diagram record or output
+
+Publication SHALL create no external diagram record or `generated/diagrams` output.
+
+This is the companion prohibition to
+[req.views.diagram-source-identity](#req.views.diagram-source-identity): the authored fence is not
+just the sole source, publication also produces no external record derived from it.
+
+### req.views.production-preview-isolation — Production builds preserve preview output
+
+A production build SHALL NOT clear or overwrite the development preview's generated directory.
+
+### req.views.hash-format — Digests use the sha256 hex format
+
+Every content or source digest SHALL be `sha256:` followed by 64 lowercase hexadecimal digits.
+
+### req.views.safe-relative-paths — Member paths are safe relative POSIX paths
+
+Every member path SHALL use POSIX separators without absolute paths, backslashes, empty, dot or
+traversal components, or symlinks.
+
+### req.views.promote-atomic — Promotion restores the prior destination on failure
+
+`promoteCandidate` SHALL attempt to restore the prior destination on a failed move or removal.
+
+### req.views.promote-requires-checked-candidate — Promotion runs only on checked candidates
+
+`promoteCandidate` SHALL NOT be called on unchecked or stale output.
+
+### req.views.no-contract-context-expansion — Contract edges do not expand loaded context
+
+The registry loader SHALL NOT follow a `concorde-contract` edge to import additional Module context.
+
+### req.views.no-graph-generation — Launcher never generates or verifies graph freshness
+
+The viewer launcher SHALL NOT generate, rewrite or verify the freshness of the graph it opens
+against source.
+
+### req.views.no-dependency-install — Launcher resolves no dependencies or network access
+
+The viewer launcher SHALL NOT resolve dependencies or perform network acquisition.
+
+### req.views.cli-syntax-errors — Argument errors exit separately from launch failures
+
+Invalid launch syntax or a port outside 0-65535 SHALL exit through argument parsing with code 2,
+distinct from a failed launch's exit code 3.
+
 ## Scenarios
 
 Scenario definitions for the docsite scaffold and top-level publish behavior are registered in
@@ -30,15 +106,13 @@ Scenario definitions for the docsite scaffold and top-level publish behavior are
 build/promotion pipeline are registered in [pipeline](pipeline.md). Scenario definitions for the
 viewer launch command are registered in [viewer](viewer.md).
 
-## Requirements
+## Ontology
 
-- req.views.no-directory-scanning: Publication SHALL derive pages and navigation only from the explicit registry and SHALL NOT discover Spec documents by scanning directories or following links.
-- req.views.one-page-per-document: A physical Spec document SHALL publish at exactly one canonical page regardless of how many Modules register it.
-- req.views.no-agent-context-grant: A rendered page or generated view SHALL NOT itself grant an agent invocation additional Spec context beyond its own host-bound target snapshot.
-- req.views.diagram-source-identity: An inline Mermaid fence in a Module's Architecture section SHALL be its sole authored diagram source; publication SHALL create no external diagram record or `generated/diagrams` output.
-- req.views.production-preview-isolation: A production build SHALL NOT clear or overwrite the development preview's generated directory.
+The Ontology names what Views consists of and touches at its boundary — its publication and
+viewer programs, the interfaces that reach them, and the publication and viewer data they exchange
+— and the labeled relationships that connect those things.
 
-## Entities
+### Entities
 
 The three programs below realize scaffolding, publication and viewer launch; the interface
 entities are their means of use; the remaining entities name the publication and viewer data the
@@ -110,7 +184,7 @@ exact entries, one of them inside a listed test package.
     "id": "entity.views.docsite-build-interface",
     "title": "Docsite build interface",
     "kind": "interface",
-    "responsibility": "The TypeScript requireScoped/loadScopedRegistry/materializeScoped/buildSite/promoteCandidate functions and Docusaurus plugin hooks, plus the project-local npm run validate/npm run build commands, that admit only a Profile 10 project, load the registry, stage Markdown and navigation, build and validate a candidate and promote only a checked result."
+    "responsibility": "The TypeScript requireScoped/loadScopedRegistry/materializeScoped/buildSite/promoteCandidate functions and Docusaurus plugin hooks, plus the project-local npm run validate/npm run build commands, that admit only a Profile 11 project, load the registry, stage Markdown and navigation, build and validate a candidate and promote only a checked result."
   },
   {
     "id": "entity.views.viewer-launch-command",
@@ -175,7 +249,7 @@ exact entries, one of them inside a listed test package.
 ]
 ```
 
-## Architecture
+### Relationships
 
 Publication scaffold and Publication docsite touch disjoint files and never edit each other's
 output: the scaffold's own exact-file transaction creates or updates project structure, and
@@ -250,6 +324,6 @@ flowchart TB
 
 ## Unresolved information
 
-Publication accepts Profile 10 projects only. `requireScoped` refuses any other `profile_version`
+Publication accepts Profile 11 projects only. `requireScoped` refuses any other `profile_version`
 with an explicit error, and no compatibility rendering path exists for an older profile: migrating
 such a project is a separate, explicit topology change that this Module does not perform.

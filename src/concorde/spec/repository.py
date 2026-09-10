@@ -1,8 +1,9 @@
-"""Module contracts with four mandatory parts and entity-listed implementation files (Profile 10).
+"""Module contracts with four mandatory parts and entity-listed implementation files (Profile 11).
 
 Module composition, dependency and file listing are independent relations. Resolving a Module
-never reads a collaborator's body or a listed file's contents; scenarios, requirements and
-entities are parsed from the Module's own registered documents.
+never reads a collaborator's body or a listed file's contents; requirements, scenarios and
+entities are parsed from the Module's own registered documents. Scenario verification is read
+from the tests the Module lists, never from its Spec.
 """
 from __future__ import annotations
 
@@ -18,8 +19,8 @@ from .frontmatter import parse_document
 from .schema import ContractError, admit, validate
 
 
-PROFILE_VERSION = 10
-PROTOCOL_VERSION = "3.1.0"
+PROFILE_VERSION = 11
+PROTOCOL_VERSION = "4.0.0"
 REGISTRY_SCHEMA = 3
 KINDS = frozenset({"module"})
 SPEC_KINDS = frozenset({"module"})
@@ -32,9 +33,12 @@ HEADING = re.compile(r"^(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$")
 SCENARIO_HEADING = re.compile(r"^(scenario\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)[ \t]+[—–-][ \t]+(\S.*)$")
 LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+(.*)$")
 STEP = re.compile(r"^(GIVEN|WHEN|THEN|AND|BUT)[ \t]+(\S.*)$")
-REQUIREMENT = re.compile(r"^(req\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)[ \t]*:[ \t]+(\S.*)$")
+REQUIREMENT_HEADING = re.compile(r"^(req\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)[ \t]+[—–-][ \t]+(\S.*)$")
+REQUIREMENT_ITEM = re.compile(r"^req\.[a-z0-9.-]+[ \t]*:")
 SHALL = re.compile(r"\bSHALL(?: NOT)?\b")
-MANDATORY_SECTIONS = ("Purpose", "Scenarios", "Entities", "Architecture")
+MANDATORY_SECTIONS = ("Purpose", "Requirements", "Scenarios", "Ontology")
+ONTOLOGY_SECTIONS = ("Entities", "Relationships")
+ANCHOR_PREFIXES = ("scenario.", "req.", "entity.")
 CONTROL_PREFIXES = (".concorde/", ".git/", ".agents/", ".claude/", ".codex/", "generated/")
 SKIPPED_DIRECTORIES = frozenset({"node_modules", "__pycache__", ".venv", "build", "dist"})
 SKIPPED_SUFFIXES = (".pyc", ".log")
@@ -202,23 +206,24 @@ class SpecDocument:
 
 @dataclass(frozen=True)
 class Requirement:
+    """One Module-level promise: a heading section whose statement holds one SHALL sentence."""
     id: str
-    text: str
+    title: str
+    statement: str
     owner: str
     document: str
     line: int
-    scenario_id: str | None
 
 
 @dataclass(frozen=True)
 class Scenario:
+    """One concrete, testable situation: a heading section whose list items are all steps."""
     id: str
     title: str
     owner: str
     document: str
     line: int
     steps: tuple[tuple[str, str], ...]
-    requirements: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -242,6 +247,12 @@ class ModuleDefinitions:
     requirements: tuple[Requirement, ...]
     entities: tuple[SpecEntity, ...]
 
+    @property
+    def anchors(self) -> dict[str, str]:
+        """Every addressable identity of the Module mapped to the document that defines it."""
+        return {item.id: item.document for group in (self.scenarios, self.requirements, self.entities)
+                for item in group}
+
 
 class SpecRepository:
     def __init__(self, project_root: Path | str, package_root: Path | str | None = None, *,
@@ -254,7 +265,7 @@ class SpecRepository:
         self.package_root = Path(package_root).resolve() if package_root else Path(__file__).resolve().parents[3]
         self.config = decode(read_file(self.root, ".concorde/config.json").decode())
         if self.config.get("profile_version") != PROFILE_VERSION:
-            raise SpecError("Profile 10 (four-part Module) is required; older profiles need explicit migration", "unsupported_profile")
+            raise SpecError("Profile 11 (four-part Module) is required; older profiles need explicit migration", "unsupported_profile")
         if set(self.config) != {"profile_version", "registry", "protocol", "capability_configuration"}:
             raise SpecError("configuration fields must be profile_version, registry, protocol, capability_configuration")
         self.registry_path = safe_path(self.config["registry"])
@@ -500,7 +511,7 @@ class SpecRepository:
         seen: dict[str, str] = {}
         for document in self.documents(target):
             shared = len(document.targets) > 1
-            document_scenarios, document_requirements = _parse_scenarios(document, target.id)
+            document_scenarios, document_requirements = _parse_definitions(document, target.id)
             if shared and (document_scenarios or document_requirements):
                 raise SpecError(f"a shared document cannot define scenarios or requirements: {document.path}")
             for scenario in document_scenarios:
@@ -548,6 +559,26 @@ class SpecRepository:
 
     def scenarios(self, target: SpecTarget) -> tuple[Scenario, ...]:
         return self.definitions(target).scenarios
+
+    def requirements(self, target: SpecTarget) -> tuple[Requirement, ...]:
+        return self.definitions(target).requirements
+
+    def verifications(self, target: SpecTarget):
+        """Scenario declarations read from the Python files the Module's entities bind."""
+        from .verification import scan_declarations
+
+        return scan_declarations(self.root, self.implementation_files(target))
+
+    def scenario_verifications(self, target: SpecTarget) -> dict[str, tuple]:
+        """Every scenario of the Module mapped to the test declarations that name it, project-wide."""
+        from .verification import scan_declarations
+
+        paths = sorted({path for other in self.targets.values() for path in self.implementation_files(other)})
+        declared: dict[str, list] = {scenario.id: [] for scenario in self.scenarios(target)}
+        for declaration in scan_declarations(self.root, paths):
+            if declaration.scenario_id in declared:
+                declared[declaration.scenario_id].append(declaration)
+        return {scenario_id: tuple(items) for scenario_id, items in declared.items()}
 
     def entity_files(self, target: SpecTarget) -> dict[str, SpecEntity]:
         """Declared listing entries of the Module's entities, keyed by entry (exact file or directory)."""
@@ -622,60 +653,99 @@ def _logical_lines(body: str) -> list[tuple[int, str, str]]:
     return result
 
 
-def _parse_scenarios(document: SpecDocument, owner: str) -> tuple[list[Scenario], list[Requirement]]:
-    """Scenario sections and requirement items of one single-owner document."""
+def _paragraph_end(lines, index: int) -> int:
+    """Index just past the prose paragraph that starts at ``index`` in the walked lines."""
+    while index < len(lines) and lines[index][1] == "prose" and lines[index][2].strip():
+        index += 1
+    return index
+
+
+def _parse_definitions(document: SpecDocument, owner: str) -> tuple[list[Scenario], list[Requirement]]:
+    """Scenario and requirement sections of one single-owner document.
+
+    A scenario section holds steps only. A requirement section holds its statement, the first
+    prose paragraph after the heading, with exactly one SHALL or SHALL NOT; anything after the
+    statement is explanatory prose. Neither section may contain a nested heading.
+    """
     scenarios: list[Scenario] = []
     requirements: list[Requirement] = []
+    lines = _logical_lines(document.body)
     current: dict | None = None
 
     def close() -> None:
         nonlocal current
         if current is None:
             return
-        keywords = [keyword for keyword, _ in current["steps"]]
-        if "WHEN" not in keywords or "THEN" not in keywords:
-            raise SpecError(f"scenario {current['id']} needs at least one WHEN and one THEN step: {document.path}")
-        scenarios.append(Scenario(current["id"], current["title"], owner, document.path, current["line"],
-                                  tuple(current["steps"]), tuple(current["requirements"])))
+        if current["kind"] == "scenario":
+            keywords = [keyword for keyword, _ in current["steps"]]
+            if "WHEN" not in keywords or "THEN" not in keywords:
+                raise SpecError(f"scenario {current['id']} needs at least one WHEN and one THEN step: {document.path}")
+            scenarios.append(Scenario(current["id"], current["title"], owner, document.path, current["line"],
+                                      tuple(current["steps"])))
+        else:
+            statement = current["statement"]
+            if statement is None:
+                raise SpecError(f"requirement {current['id']} has no statement paragraph: {document.path}:{current['line']}")
+            requirements.append(Requirement(current["id"], current["title"], statement, owner, document.path,
+                                            current["line"]))
         current = None
 
-    for number, kind, line in _logical_lines(document.body):
+    index = 0
+    while index < len(lines):
+        number, kind, line = lines[index]
         if kind != "prose":
+            if current is not None and current["kind"] == "requirement" and current["statement"] is None:
+                raise SpecError(f"requirement {current['id']} must state its SHALL sentence before any fenced block: {document.path}:{number}")
+            index += 1
             continue
         heading = HEADING.match(line)
         if heading:
             close()
             text = heading.group(2)
             scenario = SCENARIO_HEADING.match(text)
-            if scenario:
+            requirement = REQUIREMENT_HEADING.match(text)
+            if scenario or requirement:
                 if not 2 <= len(heading.group(1)) <= 5:
-                    raise SpecError(f"scenario headings use levels 2 to 5: {document.path}:{number}")
-                current = {"id": identifier(scenario.group(1)), "title": scenario.group(2).strip(),
-                           "line": number, "steps": [], "requirements": [], "phase": None}
+                    raise SpecError(f"scenario and requirement headings use levels 2 to 5: {document.path}:{number}")
+            if scenario:
+                current = {"kind": "scenario", "id": identifier(scenario.group(1)),
+                           "title": scenario.group(2).strip(), "line": number, "steps": [], "phase": None}
+            elif requirement:
+                current = {"kind": "requirement", "id": identifier(requirement.group(1)),
+                           "title": requirement.group(2).strip(), "line": number, "statement": None}
             elif text.startswith("scenario."):
                 raise SpecError(f"malformed scenario heading: {document.path}:{number}")
+            elif text.startswith("req."):
+                raise SpecError(f"malformed requirement heading: {document.path}:{number}")
+            index += 1
             continue
         item = LIST_ITEM.match(line)
+        if item and REQUIREMENT_ITEM.match(item.group(1).strip()):
+            raise SpecError("a requirement is a heading section (### req.id — Title), not a list item: "
+                            f"{document.path}:{number}")
+        if current is None:
+            index += 1
+            continue
+        if current["kind"] == "requirement":
+            if current["statement"] is None and line.strip():
+                if item:
+                    raise SpecError(f"requirement {current['id']} must state its SHALL sentence before any list: {document.path}:{number}")
+                end = _paragraph_end(lines, index)
+                statement = " ".join(entry[2].strip() for entry in lines[index:end])
+                if len(SHALL.findall(statement)) != 1:
+                    raise SpecError(f"requirement {current['id']} statement must contain SHALL or SHALL NOT exactly once: {document.path}:{number}")
+                current["statement"] = statement
+                index = end
+                continue
+            index += 1
+            continue
         if not item:
+            index += 1
             continue
         text = item.group(1).strip()
-        requirement = REQUIREMENT.match(text)
-        if requirement:
-            if not SHALL.search(requirement.group(2)):
-                raise SpecError(f"requirement {requirement.group(1)} must contain SHALL or SHALL NOT: {document.path}:{number}")
-            record = Requirement(identifier(requirement.group(1)), requirement.group(2).strip(), owner,
-                                 document.path, number, current["id"] if current else None)
-            requirements.append(record)
-            if current is not None:
-                current["requirements"].append(record.id)
-            continue
-        if text.startswith("req."):
-            raise SpecError(f"malformed requirement item: {document.path}:{number}")
-        if current is None:
-            continue
         step = STEP.match(text)
         if not step:
-            raise SpecError(f"scenario {current['id']} contains a list item that is neither a step nor a requirement: {document.path}:{number}")
+            raise SpecError(f"scenario {current['id']} contains a list item that is not a GIVEN/WHEN/THEN/AND/BUT step: {document.path}:{number}")
         keyword = step.group(1)
         if keyword in {"AND", "BUT"}:
             if current["phase"] is None:
@@ -688,9 +758,9 @@ def _parse_scenarios(document: SpecDocument, owner: str) -> tuple[list[Scenario]
                 raise SpecError(f"scenario {current['id']} steps must follow GIVEN, WHEN, THEN order: {document.path}:{number}")
             current["phase"] = keyword
         current["steps"].append((keyword, step.group(2).strip()))
+        index += 1
     close()
     return scenarios, requirements
-
 
 def _parse_entities(document: SpecDocument, owner: str) -> list[SpecEntity]:
     entities: list[SpecEntity] = []

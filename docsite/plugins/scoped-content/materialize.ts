@@ -1,7 +1,7 @@
 import {mkdir,rm,writeFile} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
 import matter from 'gray-matter';
-import {primaryDocument,rewriteLinks,type Page,type ScopedRegistry,type Target} from './model';
+import {injectAnchors,primaryDocument,rewriteLinks,type Page,type ScopedRegistry,type Target} from './model';
 import {hasDocsProjections,loadInstructionsProjection,loadWireProjection,renderInstructionsPage,renderWirePage} from './projections';
 const PROJECTIONS_GROUP={type:'category',label:'Projections',collapsed:false,items:[
   {type:'doc',id:'projections/instructions',label:'Agent instructions'},
@@ -50,8 +50,9 @@ export async function materializeScoped(registry:ScopedRegistry) {
     const files=page.primaryOf?filesByTargetId.get(page.primaryOf):undefined;
     const filesSection=files?.length?`\n\n## Files\n\n${files.map(f=>`- \`${f}\``).join('\n')}\n`:'';
     // Identity is displayed by ContentProvenance; keep machine-readable metadata out of the
-    // reading flow while leaving the authored source and its digest intact.
-    const content=rewriteLinks(registry,page).replace(/^```concorde-document\s*\n[\s\S]*?^```\s*$/m,'').trimStart()+filesSection;
+    // reading flow while leaving the authored source and its digest intact. Scenario, requirement
+    // and entity IDs become anchors so that `path#id` links reach their definitions.
+    const content=injectAnchors(rewriteLinks(registry,page).replace(/^```concorde-document\s*\n[\s\S]*?^```\s*$/m,'').trimStart())+filesSection;
     await writeFile(path,matter.stringify(content,{format:'md',slug:page.route.slice('/specs'.length),title:page.title,sidebar_label:page.title,
       displayed_sidebar:'moduleSpecsSidebar'}));
   }

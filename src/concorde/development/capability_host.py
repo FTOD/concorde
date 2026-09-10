@@ -1,4 +1,4 @@
-"""Trusted execution of every public Concorde capability under Profile 10.
+"""Trusted execution of every public Concorde capability under Profile 11.
 
 Agents consume frozen Spec snapshots. Deterministic checks execute separately and their raw
 output never becomes a non-implementation agent input. Each stage starts a fresh process.
@@ -2198,7 +2198,7 @@ def validate_invocation(value: Any, capability: str | None = None) -> dict:
     if not isinstance(value, dict) or set(value) != {"type_id", "schema_version", "capability_id", "mode", "configuration", "input"}:
         raise SpecError("invocation fields do not match schema 3", "invalid_input")
     if value["type_id"] != "concorde-capability-invocation" or type(value["schema_version"]) is not int or value["schema_version"] != 3:
-        raise SpecError("Profile 10 requires concorde-capability-invocation schema 3", "unsupported_version")
+        raise SpecError("Profile 11 requires concorde-capability-invocation schema 3", "unsupported_version")
     if capability is not None and value["capability_id"] != capability:
         raise SpecError("invocation does not match this entry point", "incompatible_handoff")
     return value

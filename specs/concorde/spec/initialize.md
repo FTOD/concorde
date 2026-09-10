@@ -28,12 +28,13 @@ unknown properties.
 `action: "propose"` additionally requires `name` and `configuration` and optionally a `target_id`
 (default `module.project`); `action: "apply"` requires the returned typed project proposal. A
 proposal records `action: "initialize"`, a nullable `base_digest` and `files: {path, before_digest,
-content}`. It creates `specs/project/module.md` with the four mandatory Purpose, Scenarios,
-Entities and Architecture sections, including an inline Mermaid diagram in Architecture with
-accessible title and description text; no external diagram file is created. The stub models only
-known participants, the project Spec and the external Framework; unknown business entities,
-scenarios and architecture are explicit gaps recorded in the stub's own Unresolved information. The
-illustration does not turn a draft into a complete business contract.
+content}`. It creates `specs/project/module.md` with the four mandatory Purpose, Requirements,
+Scenarios and Ontology sections, the latter's Entities and Relationships subsections included, and
+an inline Mermaid diagram in Relationships with accessible title and description text; no external
+diagram file is created. The stub models only known participants, the project Spec and the external
+Framework; unknown business requirements, scenarios and architecture are explicit gaps recorded in
+the stub's own Unresolved information. The illustration does not turn a draft into a complete
+business contract.
 
 Success returns `concorde-init-response@1` with closed data
 `{status: "proposed"|"applied", proposal: TypedValue<concorde-project-proposal>|null,
@@ -80,14 +81,67 @@ changing project files; apply returns `status: "applied"`, `proposal: null` and 
 
 ## Requirements
 
-- req.spec.init-allowed-files: Application SHALL touch only .concorde/config.json, .concorde/specs.json, .concorde/topology-proposals/.gitignore, .concorde/reflections/index.json, .concorde/reflections/config.json and the explicit document paths named in the proposed registry.
-- req.spec.init-null-digests: Every proposed file SHALL have a null before_digest, and application SHALL require each destination to still be absent.
-- req.spec.init-no-overwrite: A new initialization SHALL NOT overwrite an existing file, and an existing configuration declaring an older profile SHALL NOT be treated as migratable.
-- req.spec.init-explicit-envelope: Apply SHALL admit the proposal by its exact concorde-project-proposal@1 envelope and SHALL NOT accept an issuance token or a store lookup in its place.
-- req.spec.init-configuration-roles: The invocation's outer configuration SHALL control host settings for the call itself, and the propose request's configuration SHALL control the project settings written into the proposal; apply SHALL use the accepted proposal's configuration bytes rather than a replacement from either invocation field.
-- req.spec.init-configuration-required: A null outer configuration SHALL load existing project settings; before initialization no such settings exist, so the caller SHALL supply a valid outer configuration or receive configuration_mismatch.
-- req.spec.init-worktree-handoff: A required worktree handoff SHALL be reported as a blocked result, never as an applied initialization.
-- req.spec.init-no-blind-retry: The host SHALL NOT silently retry a rejected proposal against different bytes.
+### req.spec.init-allowed-files — Initialization touches only its allowed files
+
+Application SHALL touch only .concorde/config.json, .concorde/specs.json,
+.concorde/topology-proposals/.gitignore, .concorde/reflections/index.json,
+.concorde/reflections/config.json and the explicit document paths named in the proposed registry.
+
+### req.spec.init-null-digests — Every proposed file has a null before_digest
+
+Every proposed file SHALL have a null before_digest.
+
+### req.spec.init-destination-absent — Application requires each destination to still be absent
+
+Application SHALL require each proposed destination to still be absent.
+
+### req.spec.init-no-overwrite — New initialization never overwrites an existing file
+
+A new initialization SHALL NOT overwrite an existing file.
+
+### req.spec.init-no-profile-migration — Older profile configurations are not migratable
+
+An existing configuration declaring an older profile SHALL NOT be treated as migratable.
+
+### req.spec.init-explicit-envelope — Apply admits only the exact proposal envelope
+
+Apply SHALL admit the proposal by its exact concorde-project-proposal@1 envelope.
+
+### req.spec.init-no-token-substitute — Apply rejects issuance tokens and store lookups
+
+Apply SHALL NOT accept an issuance token or a store lookup in place of that exact proposal
+envelope.
+
+### req.spec.init-configuration-roles — Outer configuration controls host settings only
+
+The invocation's outer configuration SHALL control host settings for the call itself.
+
+### req.spec.init-propose-configuration-role — Propose controls the proposal's settings
+
+The propose request's configuration SHALL control the project settings written into the proposal.
+
+### req.spec.init-apply-uses-proposal-configuration — Apply uses the proposal's configuration bytes
+
+Apply SHALL use the accepted proposal's configuration bytes rather than a replacement from either
+invocation field.
+
+### req.spec.init-configuration-required — Null outer configuration loads existing settings
+
+A null outer configuration SHALL load existing project settings.
+
+### req.spec.init-requires-outer-configuration — Uninitialized projects require outer configuration
+
+Before a project is initialized no such settings exist, so the caller SHALL supply a valid outer
+configuration or receive configuration_mismatch.
+
+### req.spec.init-worktree-handoff — Worktree handoffs are reported, not applied
+
+A required worktree handoff SHALL be reported as a blocked result, never as an applied
+initialization.
+
+### req.spec.init-no-blind-retry — No blind retries of a rejected proposal
+
+The host SHALL NOT silently retry a rejected proposal against different bytes.
 
 ## Executable boundary
 

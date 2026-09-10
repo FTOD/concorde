@@ -5,7 +5,7 @@ audience: shared
 ## Concorde Framework execution profile
 
 This profile applies the independent Spec Protocol to Concorde's runtime. Framework configuration
-uses `profile_version: 10` for the four-part Module model and registry schema 3 for its JSON
+uses `profile_version: 11` for the four-part Module model and registry schema 3 for its JSON
 storage. `.concorde/config.json` declares `profile_version`, `registry`, `protocol` and
 `capability_configuration`. Its `protocol` binding identifies the accepted version and exact
 manifest digest. These configuration and storage versions are Framework compatibility identifiers,
@@ -58,8 +58,10 @@ Spec review uses Module Specs. Code review uses the same Module contracts and au
 fresh read-only invocation. A review records its exact inputs, coverage, findings and completion.
 Changed relevant inputs invalidate it. Skipped, failed, incomplete and successful reviews remain
 distinct. A change to a file listed by several Modules requires checks for all listing Modules,
-with separate Module contexts and explicit per-consumer evidence. No passing structural check
-proves semantic completeness.
+with separate Module contexts and explicit per-consumer evidence. Deterministic validation also
+reads the scenario declarations of the listed Python tests and reports every scenario that no test
+declares; that coverage is evidence about the tests, never a change to the contract. No passing
+structural check proves semantic completeness.
 
 ### P7. Execution authority is explicit
 
@@ -122,15 +124,25 @@ workflow handoff solely because it updates the Framework's own instructions.
 
 ### Framework authoring and publication conventions
 
-Every Concorde Module's `module.md` carries the four mandatory parts in order: Purpose, Scenarios,
-Entities and Architecture. Its Architecture section holds an inline Mermaid flowchart with English
+Every Concorde Module's `module.md` carries the four mandatory parts in order: Purpose,
+Requirements, Scenarios and Ontology, and its Ontology holds the Entities and Relationships
+subsections. A requirement is a heading section `req.<module>.<name> — Title` whose first paragraph
+is one SHALL sentence about the Module; a scenario section holds steps only, and whatever one
+situation must additionally guarantee is written into its steps or prose rather than attached as
+a requirement. The Relationships subsection holds an inline Mermaid flowchart with English
 `accTitle` and `accDescr` lines whose nodes are exactly the declared entity titles and whose edge
 labels are the relationship verbs. Show real responsibilities and connections; do not invent
 nodes to satisfy a diagram shape. Files that realize an entity are listed on that entity: a
 Module's own package directories (`src/concorde/<module>/`, `tests/concorde/<module>/`) and the
 directories it alone owns are listed as directory prefixes on the entity that owns that directory's
 core responsibility, and a file shared by several Modules is listed exactly by each of them under
-its own entity. Publication renders each fence inside its own Markdown page; rendered views and
-navigation are derived and create no additional membership. These conventions implement the
-Protocol's architecture requirements for this project; they are not requirements on every Protocol
-implementation.
+its own entity.
+
+A Python test declares the scenarios it verifies with the `verifies` decorator from
+`concorde.spec.verification`, for example `@verifies("scenario.harness.context-freeze")` on the test
+function or method; a test may name several scenarios, and the declaration is read by parsing, not
+by running the test. No Spec document lists tests. Links inside Specs address definitions by ID
+(`context.md#scenario.harness.context-freeze`, `#req.harness.permission-no-widen`); publication
+turns every scenario, requirement and entity ID into an anchor. Rendered views and navigation are
+derived and create no additional membership. These conventions implement the Protocol's
+requirements for this project; they are not requirements on every Protocol implementation.

@@ -34,8 +34,7 @@ business requirements or agent context.
 - WHEN provision_runtime returns that failure
 - THEN it must not replace a previously valid runtime or mark partial state usable
 - AND a create destination that appears after planning is rejected rather than adopted
-
-- req.distribution.runtime-no-partial-metadata: A failed provisioning call SHALL return no successful runtime metadata, and a caller SHALL NOT infer recovery from the absence of success metadata.
+- AND the returned result carries no successful runtime metadata, so a caller cannot infer recovery from its absence
 
 ## Interface signatures
 

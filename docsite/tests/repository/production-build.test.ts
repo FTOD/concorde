@@ -22,7 +22,7 @@ it('publishes the current exact registry and verifies the promoted manifest',asy
  expect(navbar.indexOf('Spec Protocol')).toBeLessThan(navbar.indexOf('Module Specs'));
  expect(navbar).toContain('Module Specs');
  expect(navbar.indexOf('Module Specs')).toBeLessThan(navbar.indexOf('>Graph<'));
- expect(html).toContain('id="purpose"');expect(html).toContain('id="scenarios"');expect(html).toContain('id="entities"');expect(html).toContain('id="architecture"');
+ expect(html).toContain('id="purpose"');expect(html).toContain('id="scenarios"');expect(html).toContain('id="entities"');expect(html).toContain('id="ontology"');expect(html).toContain('id="relationships"');expect(html).toContain('id="req.concorde.routing-no-access"');
  expect(html).not.toContain('<iframe');
 });
 it('publishes the independent standard with chapter navigation and no Spec wrapper',async()=>{

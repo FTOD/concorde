@@ -6,15 +6,19 @@ without implementation or ungranted Specs.
 ## Responsibilities
 
 Review the complete Module collection for its four mandatory parts: a plain-prose Purpose;
-Scenarios whose GIVEN/WHEN/THEN steps cover success, failure and repeated-invocation paths, with
-SHALL requirements attached to one scenario or to the whole Module; Entities with a stable id,
-title, kind and responsibility, including one entity for every child and used Module and an entity
-for every interface at the Module boundary; and an Architecture flowchart whose labeled
-relationships connect exactly those entities. Check that the diagram's node labels are exactly the
-entity titles and that every edge carries its relationship verb. The module.md entry does not
-replace the complete collection or require all architecture detail on one page. Attribute a missing
-or contradictory promise to its owning scenario, requirement or entity. Metadata, a heading or a
-render is not proof of semantic completeness.
+Requirements, each a Module-level section whose statement is one SHALL sentence that expresses
+exactly one behavior and can be judged true or false against the Module; Scenarios whose
+GIVEN/WHEN/THEN steps cover success, failure and repeated-invocation paths, with everything a
+situation guarantees written into its own steps or prose and no SHALL sentence inside a scenario;
+and an Ontology whose Entities carry a stable id, title, kind and responsibility, including one
+entity for every child and used Module and an entity for every interface at the Module boundary,
+and whose Relationships flowchart connects exactly those entities with labeled edges. Report a
+requirement that bundles two behaviors, cannot be decided, or belongs to one scenario rather than
+the Module. Check that the diagram's node labels are exactly the entity titles and that every edge
+carries its relationship verb. The module.md entry does not replace the complete collection or
+require all architecture detail on one page. Attribute a missing or contradictory promise to its
+owning requirement, scenario or entity. Metadata, a heading or a render is not proof of semantic
+completeness; a test declaration is not part of the Spec.
 
 Assess whether the main page helps readers understand the Module and whether detail is available
 where the task needs it. Suggestions about page organization, amount of detail or where to explain

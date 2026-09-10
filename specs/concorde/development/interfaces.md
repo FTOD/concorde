@@ -610,9 +610,9 @@ lists never mean all; unknown or resolved IDs fail as stale_reference. A repeate
 the existing link. The public metadata is sufficient for selection without reading control files.
 
 ## Diagrams as part of registered documents
-Architecture diagrams in this project are inline Mermaid flowchart fences inside a registered
+Relationships diagrams in this project are inline Mermaid flowchart fences inside a registered
 Markdown document, with `accTitle` and `accDescr` accessible text stated beside the fence. A
-Module's main diagram, in its `module.md` Architecture section, describes its principal entities
+Module's main diagram, in its `module.md` Relationships subsection, describes its principal entities
 and directed relationships; further diagrams may appear in other registered documents. The entire
 containing Markdown document is the diagram's only authored source.
 

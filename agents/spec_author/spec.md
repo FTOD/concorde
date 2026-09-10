@@ -1,7 +1,7 @@
 # concorde-spec-author
 
 Reconcile the requested intent in the target's complete Markdown collection. Every Module Spec
-states its Purpose, Scenarios, Entities and Architecture. Its complete collection must be
+states its Purpose, Requirements, Scenarios and Ontology. Its complete collection must be
 sufficient for a planner without source files.
 
 ## Responsibilities
@@ -20,13 +20,19 @@ dependency IDs and relationships only when the supplied topology task states tho
 facts; it never guesses them. Never read implementation files. Preserve stable identities.
 
 Every Module has one local module.md reading entry with its four mandatory parts in order:
-Purpose, Scenarios, Entities and Architecture. Its complete collection states the scenarios that
-cover success, failure and repeated-invocation paths -- GIVEN/WHEN/THEN steps with SHALL
-requirements attached to one scenario or to the Module as a whole -- and declares the Module's
-entities: submodules, programs, files, records, concepts, interfaces and external actors, each
-with a stable id, title, kind and responsibility. Every child Module and every used Module needs
-exactly one entity carrying its `target_id`; an interface is an entity whose behavior is stated by
-its scenarios, not a separate declaration. Missing business facts remain explicit in an initialized
+Purpose, Requirements, Scenarios and Ontology, the last holding the Entities and Relationships
+subsections. Requirements are Module-level promises, each a heading section `req.<module>.<name>
+-- Title` whose first paragraph is one sentence with exactly one SHALL or SHALL NOT, expressing
+one decidable behavior; a requirement is never a list item and never belongs to one scenario.
+Scenarios cover success, failure and repeated-invocation paths as GIVEN/WHEN/THEN/AND/BUT steps;
+whatever one situation must additionally guarantee goes into its steps or prose, never into a
+SHALL sentence inside the scenario. The Ontology declares the Module's entities: submodules,
+programs, files, records, concepts, interfaces and external actors, each with a stable id, title,
+kind and responsibility. Every child Module and every used Module needs exactly one entity carrying
+its `target_id`; an interface is an entity whose behavior is stated by its scenarios, not a separate
+declaration. Links address definitions by ID (`scenarios.md#scenario.x`, `#req.x`, `#entity.x`)
+and must point at the document that defines the ID. Never list tests in a Spec: tests declare the
+scenario they verify in their own code. Missing business facts remain explicit in an initialized
 stub. The entry does not replace the collection.
 
 An ordinary author may edit an entity's title, kind, responsibility, and which of its already-listed
@@ -39,7 +45,7 @@ is a topology change: the candidate registry's `files` must equal the sorted uni
 names, and only a topology-author context may add, remove or move an entry. Recommend a topology
 update when the task needs a file that no entry of any entity covers; do not widen the ordinary
 author's file authority. When an
-entity or its title changes, keep the Architecture Mermaid flowchart consistent: its node labels
+entity or its title changes, keep the Relationships Mermaid flowchart consistent: its node labels
 must be exactly the entity titles and every edge must keep its relationship-verb label. Never read
 implementation files; file names come from the entity declarations, not from inspecting source.
 They cannot supply missing Module semantics.
@@ -50,7 +56,7 @@ presentation is required. Treat these as writing recommendations, not gates. Use
 and references where they help readers, while retaining required promises in the target's
 explicitly registered context.
 
-Return Markdown replacements in `documents` only; a Module's Architecture diagram is an inline
+Return Markdown replacements in `documents` only; a Module's Relationships diagram is an inline
 Mermaid flowchart inside its registered Markdown, so revising it is part of the same document
 replacement, not a separate artifact.
 

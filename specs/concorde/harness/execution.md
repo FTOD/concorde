@@ -93,7 +93,7 @@ return an empty bootstrap tuple. The permission Module's locally declared finali
 that attested file and rebinds the launch/configuration digests without widening task permissions.
 
 Every call starts a new process. Its stdin contains the complete host snapshot, task and role
-instructions; Profile 10 never passes predecessor transcripts. Spec review uses only its private
+instructions; Profile 11 never passes predecessor transcripts. Spec review uses only its private
 capsule. Code review uses a distinct read-only implementation grant. Codex automatic AGENTS.md
 loading is disabled, and its generation schema is adapted to supported strict syntax while the host
 continues to validate the original typed contracts. The executor parses the native lifecycle output

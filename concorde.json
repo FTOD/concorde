@@ -6,7 +6,7 @@
   "license": "MIT",
   "license_file": "LICENSE",
   "repository": "https://github.com/FTOD/concorde",
-  "architecture_profile": 10,
+  "architecture_profile": 11,
   "workspace_protocol": 15,
   "delivery_proposal": 10,
   "skill_namespace": "concorde",

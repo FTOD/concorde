@@ -14,19 +14,22 @@ from concorde.harness.context import resolve_context, recheck_context
 from concorde.spec.initialize import protocol_binding
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.validation import validate_repository
+from concorde.spec.verification import verifies
 
 
 PACKAGE = Path(__file__).resolve().parents[3]
 
 
-def reading_entry(target_id, title, purpose, scenario, entities, diagram, dependencies=None):
+def reading_entry(target_id, title, purpose, scenario, entities, diagram, dependencies=None,
+                  requirements="No Module-level requirement is stated."):
     """One valid four-part reading entry for the small composition fixture."""
     declaration = {"id": "document." + target_id, "targets": [target_id], "main_visible": True}
     text = ("```concorde-document\n" + json.dumps(declaration, indent=2) + "\n```\n\n"
-        f"# {title}\n\n## Purpose\n\n{purpose}\n\n## Scenarios\n\n{scenario}\n"
-        "\n## Entities\n\nEvery entity below is declared locally.\n\n"
+        f"# {title}\n\n## Purpose\n\n{purpose}\n\n## Requirements\n\n{requirements}\n\n"
+        f"## Scenarios\n\n{scenario}\n"
+        "\n## Ontology\n\nThe Module's world is small.\n\n### Entities\n\nEvery entity below is declared locally.\n\n"
         "```concorde-entities\n" + json.dumps(entities, indent=2) + "\n```\n"
-        f"\n## Architecture\n\nThe declared entities relate as the diagram states.\n\n"
+        f"\n### Relationships\n\nThe declared entities relate as the diagram states.\n\n"
         "```mermaid\n" + diagram + "\n```\n")
     if dependencies:
         text += ("\n## Collaborators\n\nEach collaborator is described locally.\n\n"
@@ -41,7 +44,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.configuration = {"type_id": "concorde-capability-configuration", "schema_version": 1,
                               "data": {"integration": "claude", "enforcement": "native"}}
-        self.write(".concorde/config.json", json.dumps({"profile_version": 10,
+        self.write(".concorde/config.json", json.dumps({"profile_version": 11,
             "registry": ".concorde/specs.json", "protocol": protocol_binding(PACKAGE),
             "capability_configuration": self.configuration}))
         self.write("source/shared.py", "def value():\n    return 42\n# PRIVATE_SOURCE_MARKER\n")
@@ -65,14 +68,16 @@ class ModuleImplementationTests(unittest.TestCase):
             "A_MODULE_CONTRACT: A adapts the shared integer for its own consumers.",
             "### scenario.a.value — A adapts the shared value\n\n"
             "- GIVEN the shared value function\n- WHEN A adapts it\n- THEN it returns the same integer\n"
-            "- req.a.pure: A SHALL NOT change the shared value.\n",
+            "- AND the shared value is unchanged\n",
             [{"id": "entity.a.adapter", "title": "Adapter", "kind": "function",
               "responsibility": "Adapts the shared integer.", "files": ["source/a.py"]},
              {"id": "entity.a.shared", "title": "Shared value", "kind": "function",
               "responsibility": "Answers with the shared integer.", "files": ["source/shared.py"]}],
             "flowchart TB\n    accTitle: A\n"
             "    accDescr: The adapter reads the shared value function.\n"
-            '    adapter["Adapter"]\n    shared["Shared value"]\n    adapter -->|reads| shared'))
+            '    adapter["Adapter"]\n    shared["Shared value"]\n    adapter -->|reads| shared',
+            requirements="### req.a.pure — A never changes the shared value\n\n"
+                         "A SHALL NOT change the shared value.\n"))
         self.write("specs/a/details.md", "```concorde-document\n" + json.dumps(
             {"id": "document.a.details", "targets": ["module.a"], "main_visible": True}, indent=2)
             + "\n```\n\n# Local details\n\nA_OWN_ADDITIONAL_CONTRACT: the adapted integer is never negative.\n")
@@ -117,6 +122,7 @@ class ModuleImplementationTests(unittest.TestCase):
         return json.loads(payload), (lambda value: self.write(
             path, prefix + "```concorde-entities\n" + json.dumps(value, indent=2) + "\n```" + suffix))
 
+    @verifies("scenario.spec.validate-success")
     def test_the_fixture_is_a_valid_four_part_project(self):
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("success", report.status, [f.message for f in report.findings])
@@ -147,6 +153,7 @@ class ModuleImplementationTests(unittest.TestCase):
                 # Artifacts identify bytes by digest; the snapshot never carries source text.
                 self.assertNotIn("PRIVATE_SOURCE_MARKER", snapshot.serialized)
 
+    @verifies("scenario.spec.shared-file")
     def test_a_shared_file_has_one_identity_and_every_listing_module(self):
         repository = self.repository()
         self.assertEqual(("module.a", "module.b"), repository.file_users["source/shared.py"])
@@ -175,6 +182,7 @@ class ModuleImplementationTests(unittest.TestCase):
             {entry for entity in entities for entry in entity.get("files", [])})
         self.save_registry()
 
+    @verifies("scenario.spec.directory-entry")
     def test_a_directory_entry_binds_existing_files_and_skips_excluded_ones(self):
         for path in ("source/nested/deep.py", "source/__pycache__/cached.py", "source/build/out.py",
                      "source/.hidden.py", "source/stale.pyc"):
@@ -198,6 +206,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual("entity.a.shared", repository.entity_for_path(target, "source/shared.py").id)
         self.assertIsNone(repository.entity_for_path(target, "elsewhere/other.py"))
 
+    @verifies("scenario.spec.directory-entry")
     def test_the_longest_directory_entry_owns_a_nested_file(self):
         self.write("source/nested/deep.py", "def deep():\n    return 1\n")
         self.relist("specs/a/module.md",
@@ -210,6 +219,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual("entity.a.shared", repository.entity_for_path(target, "source/nested/deep.py").id)
         self.assertEqual("entity.a.adapter", repository.entity_for_path(target, "source/a.py").id)
 
+    @verifies("scenario.spec.directory-entry")
     def test_a_file_created_under_a_listed_directory_needs_no_pending_declaration(self):
         self.relist("specs/a/module.md", {"entity.a.adapter": (["source/"], ()),
                                           "entity.a.shared": (["source/shared.py"], ())}, 1)
@@ -234,6 +244,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertIn("source/added.py",
                       [item["path"] for item in fresh.value["implementation_artifacts"]])
 
+    @verifies("scenario.spec.shared-file")
     def test_a_directory_and_an_exact_entry_share_one_file_across_modules(self):
         from concorde.development.capability_host import _implementation_users
         self.write("source/nested/deep.py", "def deep():\n    return 1\n")
@@ -255,6 +266,7 @@ class ModuleImplementationTests(unittest.TestCase):
                 self.assertEqual(("module.a", "module.b"),
                                  tuple(t.id for t in _implementation_users(repository, selected)))
 
+    @verifies("scenario.spec.validate-pending-warning")
     def test_a_pending_directory_validates_until_delivery_confirms_it(self):
         self.relist("specs/a/module.md",
                     {"entity.a.adapter": (["source/a.py", "source/generated/"], ["source/generated/"]),
@@ -288,6 +300,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual(("source/a.py", "source/generated/emitted.py", "source/shared.py"),
                          self.repository().implementation_files(self.repository().select("module.a")))
 
+    @verifies("scenario.spec.validate-pending-warning")
     def test_a_missing_directory_that_is_not_pending_is_an_error(self):
         self.relist("specs/a/module.md",
                     {"entity.a.adapter": (["source/a.py", "source/generated/"], ()),
@@ -298,6 +311,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertIn("a directory that does not exist",
                       " ".join(f.message for f in report.findings))
 
+    @verifies("scenario.spec.validate-structural-errors")
     def test_registry_files_must_repeat_every_entity_entry_exactly(self):
         entities, save = self.entity_block("specs/a/module.md")
         entities[0]["files"] = ["source/"]
@@ -343,6 +357,7 @@ class ModuleImplementationTests(unittest.TestCase):
         current = self.repository()
         self.assertEqual([], _unconfirmed_files(current, current.select("module.a")))
 
+    @verifies("scenario.spec.reject-inconsistent-inventory")
     def test_two_entities_of_one_module_cannot_list_the_same_file(self):
         entities, save = self.entity_block("specs/a/module.md")
         entities[1]["files"] = ["source/a.py"]
@@ -350,6 +365,7 @@ class ModuleImplementationTests(unittest.TestCase):
         with self.assertRaisesRegex(SpecError, "listed by two entities"):
             self.repository().entities(self.repository().select("module.a"))
 
+    @verifies("scenario.spec.reject-inconsistent-inventory")
     def test_a_directory_must_be_listed_with_a_trailing_slash(self):
         self.registry["targets"][1]["files"] = ["source"]
         self.save_registry()
@@ -360,18 +376,21 @@ class ModuleImplementationTests(unittest.TestCase):
         with self.assertRaisesRegex(SpecError, "listed directory entry is not a directory"):
             self.repository()
 
+    @verifies("scenario.spec.reject-inconsistent-inventory")
     def test_a_spec_document_cannot_be_listed_as_an_implementation_file(self):
         self.registry["targets"][2]["files"] = ["source/shared.py", "specs/a/details.md"]
         self.save_registry()
         with self.assertRaisesRegex(SpecError, "project Spec document"):
             self.repository()
 
+    @verifies("scenario.spec.reject-inconsistent-inventory")
     def test_a_listed_directory_cannot_contain_a_registered_spec_document(self):
         self.registry["targets"][1]["files"] = ["source/a.py", "source/shared.py", "specs/"]
         self.save_registry()
         with self.assertRaisesRegex(SpecError, "listed directory cannot contain a project Spec document"):
             self.repository()
 
+    @verifies("scenario.spec.validate-structural-errors")
     def test_registry_files_must_equal_the_union_of_entity_files(self):
         self.registry["targets"][1]["files"] = ["source/a.py"]
         self.save_registry()
@@ -379,6 +398,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual("invalid", report.status)
         self.assertIn("CONCORDE-ENTITY-003", {finding.rule_id for finding in report.findings})
 
+    @verifies("scenario.spec.reject-inconsistent-inventory")
     def test_module_composition_rejects_cycles_and_shared_private_children(self):
         self.registry["targets"][0]["parent"] = "module.a"
         self.save_registry()
@@ -411,6 +431,7 @@ class ModuleImplementationTests(unittest.TestCase):
             self.assertNotEqual(old[key], _implementation_digest(after, after.select(key)))
         self.assertEqual(module_revision, _target_revision(after, after.select("module.a")))
 
+    @verifies("scenario.spec.shared-file")
     def test_a_new_listing_module_joins_the_reverse_index_without_entering_the_context(self):
         from concorde.development.capability_host import _implementation_users
         snapshot = resolve_context(self.repository(), "module.a", phase="implementation")
@@ -436,6 +457,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual(("module.root", "module.a", "module.b"),
                          tuple(t.id for t in _implementation_users(repository, repository.select("module.a"))))
 
+    @verifies("scenario.spec.validate-pending-warning")
     def test_pending_files_stay_valid_until_delivery_confirms_them(self):
         entities, save = self.entity_block("specs/a/module.md")
         entities[0]["files"] = ["source/a.py", "source/new.py"]
@@ -468,6 +490,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual("success", report.status)
         self.assertEqual([], [f for f in report.findings if f.rule_id == "CONCORDE-ENTITY-005"])
 
+    @verifies("scenario.spec.validate-pending-warning")
     def test_a_missing_file_that_is_not_pending_is_an_error(self):
         entities, save = self.entity_block("specs/a/module.md")
         entities[0]["files"] = ["source/a.py", "source/new.py"]
@@ -518,6 +541,7 @@ class ModuleImplementationTests(unittest.TestCase):
         with self.assertRaisesRegex(SpecError, "using Module"):
             Invocation.validate(run)
 
+    @verifies("scenario.spec.shared-file")
     def test_shared_code_review_preserves_separate_module_contexts_and_peer_findings(self):
         from concorde.development.capability_host import CapabilityHost
         from concorde.development.review import review_scope
@@ -575,6 +599,7 @@ class ModuleImplementationTests(unittest.TestCase):
             # The refused proposal never reached the registered Spec document.
             self.assertIn("# Transfer money", (root / "specs/transfer/module.md").read_text())
 
+    @verifies("scenario.spec.directory-entry")
     def test_a_code_writer_may_create_a_file_below_a_listed_directory(self):
         from concorde.development.capability_host import CapabilityHost, run_capability
         from concorde.spec.typed_data import typed

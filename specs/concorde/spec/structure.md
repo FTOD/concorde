@@ -16,7 +16,7 @@ This document defines the registry shape this Module admits and the deterministi
 
 Registry schema 3 contains `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. A Module descriptor has `id`, `kind="module"`, `title`, `documents`, `parent`, `uses`, `files` and `checks`. Every array is explicit. `files` holds listing entries: an exact project file, or a directory prefix written with a trailing `/` that binds every regular file below it. It MUST equal the sorted union of the Module's own entity listing declarations, entry for entry, so a directory prefix appears as that prefix and never as its expanded file names; membership, composition and dependency are checked independently of that entry set. The entry names one Module, and its complete collection starts routing.
 
-Each Markdown document declares `id`, exact `targets` and `main_visible`. A Module's `concorde-dependencies` entries contain `target_id`, `responsibility`, `selection_condition` and nonempty `relied_upon_promises`, covering exactly its children and `uses` targets. A Module's `concorde-entities` blocks declare `id`, `title`, `kind`, `responsibility` and optionally `files`, `pending` and `target_id`; every child and used Module needs exactly one entity naming it by `target_id`. `files` entries are exact files or directory prefixes, `pending` may mark either kind as declared but not yet created, and within one Module the most specific entry owns a covered file: an exact file before a directory, and a longer directory before a shorter one. A listed directory MUST NOT contain a registered Spec document. Every Concorde Module has a principal entity diagram in its `module.md` Architecture section, whose node labels equal its entity titles; this is a project convention, not an extra Protocol requirement. Check records declare `id`, `target_id`, `argv`, `timeout_seconds` and optional `inputs`. Shared implementation changes affect every Module whose entries cover the changed file, whether exactly or through a directory prefix; validation and downstream tools evaluate each affected Module's own contract separately.
+Each Markdown document declares `id`, exact `targets` and `main_visible`. A Module's `concorde-dependencies` entries contain `target_id`, `responsibility`, `selection_condition` and nonempty `relied_upon_promises`, covering exactly its children and `uses` targets. A Module's `concorde-entities` blocks declare `id`, `title`, `kind`, `responsibility` and optionally `files`, `pending` and `target_id`; every child and used Module needs exactly one entity naming it by `target_id`. `files` entries are exact files or directory prefixes, `pending` may mark either kind as declared but not yet created, and within one Module the most specific entry owns a covered file: an exact file before a directory, and a longer directory before a shorter one. A listed directory MUST NOT contain a registered Spec document. Every Concorde Module has a principal entity diagram in its `module.md` Relationships subsection, whose node labels equal its entity titles; this is a project convention, not an extra Protocol requirement. Check records declare `id`, `target_id`, `argv`, `timeout_seconds` and optional `inputs`. Shared implementation changes affect every Module whose entries cover the changed file, whether exactly or through a directory prefix; validation and downstream tools evaluate each affected Module's own contract separately.
 
 Topology preparation stores the exact validated registry/document replacements below the ignored `.concorde/topology-proposals/` host area. Its public ArtifactRef binds path and digest. Applying the artifact rechecks its embedded design identity, discovery context, Protocol, registry base and every file before-digest before one atomic transaction.
 
@@ -46,16 +46,50 @@ Topology preparation stores the exact validated registry/document replacements b
 
 ### scenario.spec.validate-architecture-mismatch — Diagram nodes must equal entity titles
 
-- GIVEN a Module's Architecture section flowchart nodes differ from its declared entity titles, or an edge has no label
+- GIVEN a Module's Relationships subsection flowchart nodes differ from its declared entity titles, or an edge has no label
 - WHEN the validator runs
 - THEN it reports an architecture finding identifying the mismatched or unlabeled elements
 - AND it requires the diagram nodes to be exactly the entity titles before the Module can validate successfully
 
+### scenario.spec.link-anchors — ID-shaped link fragments must resolve to their definition
+
+- GIVEN a registered document with a local link whose fragment has the shape of a scenario, requirement or entity identity
+- WHEN the validator resolves that fragment
+- THEN it reports a link finding when no definition anywhere carries that identity
+- AND it reports a link finding when the link's own document differs from the document that defines the identity
+- BUT a link that correctly addresses its defining document, or whose fragment is not ID-shaped, passes without a finding
+
+### scenario.spec.verification-declarations — Verification declarations live with the tests
+
+- GIVEN the Python test files listed by every Module's entities
+- WHEN the validator scans them for scenario verification declarations
+- THEN a declared scenario ID that no registered Module defines is reported as an error
+- AND a declaring file that its scenario's owning Module does not list is reported as a warning
+- AND a listed Python file the validator cannot read for its declarations is reported as an error
+- BUT no Spec document lists tests; the declarations live only with the code
+
 ## Requirements
 
-- req.spec.structural-only: Validation SHALL check structure and explicit references and SHALL NOT claim to prove semantic completeness.
-- req.spec.host-checks-separate: Configured implementation checks SHALL execute separately on the host using their registered argv and timeout_seconds, and their result SHALL NOT substitute for an agent reading source.
-- req.spec.digest-per-assessment: Every validation result SHALL carry a source digest of the exact state it assessed.
+### req.spec.structural-only — Validation checks structure and explicit references
+
+Validation SHALL check structure and explicit references.
+
+### req.spec.no-semantic-completeness-claim — Validation never claims semantic completeness
+
+Validation SHALL NOT claim to prove semantic completeness.
+
+### req.spec.host-checks-separate — Host checks execute separately with registered argv
+
+Configured implementation checks SHALL execute separately on the host using their registered argv
+and timeout_seconds.
+
+### req.spec.host-check-not-a-read-substitute — Check results never substitute for reading source
+
+A configured check's result SHALL NOT substitute for an agent reading source.
+
+### req.spec.digest-per-assessment — Every validation result carries a source digest
+
+Every validation result SHALL carry a source digest of the exact state it assessed.
 
 ## Validator interface
 

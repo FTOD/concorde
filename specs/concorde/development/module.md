@@ -14,6 +14,80 @@
 
 Development provides the installed Skill boundary and the deterministic host adapter that Concorde's own tooling runs on: capability admission and dispatch, the coordinator that answers questions and evolves project topology, the development graph that carries one intended change from an authored Spec to a ready candidate, deterministic validation, and delivery. It serves developers and their agents working through installed `concorde-*` Skills, and every other Concorde capability that composes through this same boundary. Its promises end at a ready, delivered or primary-merged candidate; it relies on Harness to run every Agent invocation, Spec to resolve and validate project Specs, Reflections to retain gap history, and Distribution to build and verify projections, without restating those Modules' own contracts here.
 
+## Requirements
+
+### req.development.global-discovery — Coordinator discovers complete Module contexts
+
+A global capability's own coordinator SHALL discover complete Module Spec contexts.
+
+### req.development.stage-no-reselect — Stage capabilities never reselect their context
+
+A stage capability SHALL NOT reselect or expand the frozen context its composing capability gave it.
+
+### req.development.langgraph-control-flow — Control flow is a LangGraph graph
+
+Every capability's control flow SHALL be a LangGraph graph of deterministic steps and Agent
+invocations.
+
+### req.development.no-implementation-for-non-code — No implementation contents for non-code phases
+
+A planner, task author or Spec-only reviewer SHALL NOT receive the contents of this Module's or any
+other Module's listed implementation files.
+
+### req.development.explicit-skip-sticky — Review skips cannot cancel required reviews
+
+A `run_reviews=false` retry SHALL NOT cancel a Spec or code review already required for this change
+by an earlier enabled invocation.
+
+### req.development.single-boundary — Every invocation passes through the host adapter
+
+Every capability invocation SHALL pass through this Module's host adapter, with no direct
+agent-to-agent channel bypassing it.
+
+### req.development.distinct-outcomes — Results distinguish admission, domain and execution outcomes
+
+A capability result SHALL distinguish admission, domain and execution outcomes instead of collapsing
+them into one generic failure.
+
+### req.development.stage-no-skill — Stage capabilities have no installed Skill
+
+A stage capability SHALL have no installed Skill.
+
+### req.development.stage-in-process-only — Stage capabilities are reachable only in-process
+
+A stage capability SHALL be reachable only in-process from a capability that declares it in its
+composition.
+
+### req.development.routing-hint-not-context — Routing hints only steer selection
+
+A target or focus hint SHALL only steer selection.
+
+### req.development.routing-hint-no-grant — Routing hints never grant context
+
+A target or focus hint SHALL NOT itself grant context or replace explicit resolution.
+
+### req.development.repair-edge-only — Code-review repair is the only automatic edge
+
+`review_code -> tasks` SHALL be the development graph's only automatic revision edge.
+
+### req.development.non-repair-stops-graph — Other outcomes stop the graph for a decision
+
+Every other non-successful outcome SHALL stop the graph for a human decision or an explicit Spec or
+code change.
+
+### req.development.shared-document-agreement — Shared documents require identical bytes to apply
+
+A document referenced by several candidate targets SHALL be applied only when every referencing
+target's author returns identical bytes for it.
+
+### req.development.single-primary-writer — Only one agent writes to primary
+
+At most one agent SHALL own writes in the primary worktree at a time.
+
+### req.development.primary-writes-serialized — Repository lock serializes primary writes
+
+The host SHALL serialize shared lifecycle writes and final primary merges with the repository lock.
+
 ## Scenarios
 
 Scenarios below are grouped by capability. The registered companion documents work out the exact wire shapes and mechanics they reference: [interfaces](interfaces.md) (the wire contracts, error codes and capability boundary), [capabilities](capabilities.md) (the capability registry), [query-and-routing](query-and-routing.md) (the query and routing graph), [development](development.md) (the development graph and its repair edge), [topology](topology.md) (the topology evolution graph), [review-and-gaps](review-and-gaps.md) (the review contract and gap handling) and [delivery](delivery.md) (branch publication and primary merging).
@@ -28,8 +102,7 @@ Capability execution and the worktree boundary:
 - THEN it selects the capability's declared execution graph and obtains every Agent invocation it needs, bound to current instructions, context and compiled authority, from Harness
 - AND it returns a `concorde-capability-result@3` with status `succeeded` and the capability's own typed output
 
-- req.development.single-boundary: Every capability invocation SHALL pass through this Module's host adapter, with no direct agent-to-agent channel bypassing it.
-- req.development.distinct-outcomes: A capability result SHALL distinguish admission, domain and execution outcomes instead of collapsing them into one generic failure.
+See [single boundary](#req.development.single-boundary) and [distinct outcomes](#req.development.distinct-outcomes).
 
 ### scenario.development.execute-unregistered — Unregistered or private capability refused
 
@@ -38,7 +111,8 @@ Capability execution and the worktree boundary:
 - THEN it refuses the request with `unknown_capability`
 - AND no Agent is launched and no project file changes
 
-- req.development.stage-no-skill: A stage capability SHALL have no installed Skill and SHALL be reachable only in-process from a capability that declares it in its composition.
+See [stage capabilities have no installed Skill](#req.development.stage-no-skill) and
+[stage capabilities are reachable only in-process](#req.development.stage-in-process-only).
 
 ### scenario.development.execute-blocked-launch — Stale build or unenforceable permission blocks launch
 
@@ -60,8 +134,7 @@ Capability execution and the worktree boundary:
 - WHEN the host would otherwise start development work there
 - THEN it creates an isolated worktree from the committed HEAD and returns `worktree_handoff_required` with its path, branch, base commit and change_id
 - AND it does not copy uncommitted primary changes or continue the originating session in the new worktree
-
-- req.development.handoff-prompt: A `worktree_handoff_required` error SHALL carry a complete Framework execution profile P10 prompt with real worktree identity, the submitted task and constraints, and the current preparation and check status.
+- AND the error carries a complete Framework execution profile P10 prompt with real worktree identity, the submitted task and constraints, and the current preparation and check status
 
 Answering questions and routing:
 
@@ -72,7 +145,8 @@ Answering questions and routing:
 - THEN the host deterministically resolves the explicitly selected Modules' complete Spec contexts, injects each selected Module's original document bodies once into the coordinator, and the coordinator returns a direct answer
 - AND the response contains no authored project file changes
 
-- req.development.routing-hint-not-context: A target or focus hint SHALL only steer selection; it SHALL NOT itself grant context or replace explicit resolution.
+See [routing hints only steer selection](#req.development.routing-hint-not-context) and
+[routing hints never grant context](#req.development.routing-hint-no-grant).
 
 ### scenario.development.answer-gap — Missing promise reported as a Spec gap
 
@@ -110,7 +184,8 @@ Developing one change:
 - THEN task authoring receives the current completed tasks and the blocking `concorde-review-result@1` as `stage_inputs`, and the resulting repair tasks and their implementation are checked and code-reviewed again like any other change
 - AND this repair is bounded by the target's declared `max_repair_iterations` policy
 
-- req.development.repair-edge-only: `review_code -> tasks` SHALL be the development graph's only automatic revision edge; every other non-successful outcome SHALL stop the graph for a human decision or an explicit Spec or code change.
+See [code-review repair is the only automatic edge](#req.development.repair-edge-only) and
+[other outcomes stop the graph for a decision](#req.development.non-repair-stops-graph).
 
 ### scenario.development.dev-loop-repair-exhausted — Repeated feedback or an exhausted limit stops the loop
 
@@ -156,7 +231,7 @@ Evolving topology:
 - THEN the host rejects the mutation and leaves the pre-existing project files unchanged
 - AND no target author ever writes a project file directly
 
-- req.development.shared-document-agreement: A document referenced by several candidate targets SHALL be applied only when every referencing target's author returns identical bytes for it.
+See [shared documents require identical bytes to apply](#req.development.shared-document-agreement).
 
 Validating a candidate:
 
@@ -189,7 +264,8 @@ Delivering a ready change:
 - THEN it verifies current integration against the latest primary commit and merges the delivered branch, recording its own commit, tree and checks separately from staging evidence
 - BUT a generic delivery request without `merge_primary:true` never merges into the primary branch
 
-- req.development.single-primary-writer: At most one agent SHALL own writes in the primary worktree at a time, and the host SHALL serialize shared lifecycle writes and final primary merges with the repository lock.
+See [only one agent writes to primary](#req.development.single-primary-writer) and
+[repository lock serializes primary writes](#req.development.primary-writes-serialized).
 
 ### scenario.development.deliver-session-rejected — Delivery refused from an unrelated worktree
 
@@ -204,14 +280,12 @@ Delivering a ready change:
 - WHEN final merging runs
 - THEN the host blocks the merge with `merge_conflict` or `failed_merge_checks`, preserves the delivered branch, and leaves the primary branch, index and project files unchanged
 
-## Requirements
+## Ontology
 
-- req.development.global-discovery: A global capability's own coordinator SHALL discover complete Module Spec contexts; a stage capability SHALL NOT reselect or expand the frozen context its composing capability gave it.
-- req.development.langgraph-control-flow: Every capability's control flow SHALL be a LangGraph graph of deterministic steps and Agent invocations.
-- req.development.no-implementation-for-non-code: A planner, task author or Spec-only reviewer SHALL NOT receive the contents of this Module's or any other Module's listed implementation files.
-- req.development.explicit-skip-sticky: A `run_reviews=false` retry SHALL NOT cancel a Spec or code review already required for this change by an earlier enabled invocation.
+This Module's Ontology sets out the programs behind the host adapter, the mechanics it shares with
+other Modules, and the four Modules it depends on directly, together with how they connect.
 
-## Entities
+### Entities
 
 Two programs realize this Module's own code: the host adapter and the capability/Skill declarations that expose it. Two shared programs realize mechanics also listed by other Modules. Four used-Module entities name the direct dependencies this Module relies on. The host adapter lists the `src/concorde/development/` and `tests/concorde/development/` package directories and the capability declarations list `prompts/workflow-host/`; files shared with another Module stay exact entries here and there.
 
@@ -262,6 +336,7 @@ Two programs realize this Module's own code: the host adapter and the capability
       "src/concorde/harness/worktree.py",
       "src/concorde/harness/worktree_delivery.py",
       "tests/concorde/harness/test_change_worktree.py",
+      "tests/concorde/harness/test_scoped_protocol.py",
       "tests/concorde/harness/test_session_handoff.py",
       "tests/concorde/harness/test_worktree_boundary.py",
       "tests/concorde/harness/test_worktree_lifecycle.py"
@@ -307,7 +382,7 @@ Two programs realize this Module's own code: the host adapter and the capability
 ]
 ```
 
-## Architecture
+### Relationships
 
 A capability is global, lifecycle or stage. A global capability's own coordinator discovers complete Module Spec contexts and may span several targets and stages; a lifecycle capability is deterministic host behavior with no agent cognition; a stage capability receives an already bound target and one frozen context from its composing capability and never reselects or expands it. Development capabilities is the code inventory of installed Skills, capability modules and their prompt snippets; Development host is the shared adapter that admits, dispatches, coordinates and completes every one of them, and that prepares, evolves and finalizes the candidate worktree that carries one change's progress, gaps and evidence.
 

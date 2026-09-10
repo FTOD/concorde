@@ -10,7 +10,7 @@
 
 # Harness
 
-`module.harness` follows Spec Protocol 3.1.0. Its sole structural parent is `module.concorde`. The
+`module.harness` follows Spec Protocol 4.0.0. Its sole structural parent is `module.concorde`. The
 complete contract is the Markdown collection explicitly registered in `.concorde/specs.json`; links
 and entity file listings do not expand it. This reading entry introduces the collection; the
 registered companion documents explain [Agents and Harnesses](agents-and-harnesses.md), [Agent
@@ -29,6 +29,97 @@ Agent author who defines a new named Agent. Its boundary stops at the Spec Modul
 project truth and the Distribution Module it consults for rendered instructions and Protocol
 assets; it does not itself decide project topology, author Specs or implement business
 capabilities.
+
+## Requirements
+
+These are the Module-wide promises the Harness makes regardless of which scenario triggers them,
+grouped by the same subsystem as the Scenarios below.
+
+### Context freezing
+
+#### req.harness.context-closure-nonempty — Non-empty frozen context closure
+
+The frozen context closure SHALL never be empty even when one kind is empty for the phase.
+
+#### req.harness.context-focus-no-trim — Scenario focus never trims context
+
+A scenario focus SHALL change only the question resolve_context answers, never the selected
+Module's Spec context membership.
+
+#### req.harness.context-file-names-every-phase — File names visible to every phase
+
+Every phase SHALL see the names, owning entity and pending status of the selected Module's
+entity-bound files.
+
+#### req.harness.context-contents-code-phases-only — File contents limited to code phases
+
+Only the implementation and code-review phases SHALL also receive the contents of the selected
+Module's entity-bound files.
+
+#### req.harness.context-recheck — Recheck rejects reuse after changes
+
+recheck_context and recheck_discovery_context SHALL reject reuse whenever any admitted input has
+changed since resolution.
+
+#### req.harness.context-discovery-no-recurse — Discovery never expands via relationships
+
+resolve_discovery_context SHALL NOT follow a dependency or hyperlink to add another Module's
+documents to the discovery context.
+
+### Agent and Harness binding
+
+#### req.harness.agent-bind-subset — Constraints never widen the Harness
+
+An Agent's own Constraints SHALL never widen the effects, contexts or results of its registered
+Harness.
+
+### Permission compilation
+
+#### req.harness.permission-no-widen — Effective permissions stay within both grants
+
+Effective permissions SHALL be a subset of both the Agent's declared constraints and the host's
+invocation grant.
+
+#### req.harness.permission-write-scope — Write authority limited to code-writing invocations
+
+Only a code-writing invocation SHALL receive write authority, and only for the files the selected
+Module's own entities list.
+
+#### req.harness.permission-no-spec-write — No write authority over Spec or registry
+
+A code-writing invocation SHALL NOT gain authority to write Spec documents, entity declarations or
+the registry.
+
+#### req.harness.permission-no-retry — No retry with a wider grant
+
+No permission failure SHALL be retried with a wider grant.
+
+### Native and recursive execution
+
+#### req.harness.execute-no-retry — No automatic retry after execution failure
+
+No execution failure SHALL trigger an automatic retry with the same or wider permissions.
+
+#### req.harness.execute-exit-insufficient — Exit code alone is not completion
+
+A successful process exit code alone SHALL NOT establish completion.
+
+#### req.harness.recursive-no-implicit-authority — Catalog membership grants no delegation
+
+Installing an Agent definition or belonging to the installed catalog alone SHALL NOT grant
+delegation authority.
+
+#### req.harness.recursive-typed-feedback — Children return only typed results
+
+A child SHALL return only its declared typed result, invocation identity and outcome to its
+parent, never raw context, transcripts or native logs.
+
+### Typed value validation
+
+#### req.harness.typed-canonical — Canonical encoding digests identically
+
+canonical(value) SHALL produce sorted-key, compact, ASCII-escaped JSON with no trailing newline,
+so identical values always digest identically.
 
 ## Scenarios
 
@@ -49,9 +140,10 @@ Realized by `resolve_context`, `resolve_discovery_context` and their rechecks; s
 - AND the snapshot always includes the Module's complete Spec context and its task context
 - AND the snapshot includes implementation file contents only when the phase is implementation or code-review
 
-- req.harness.context-closure-nonempty: The frozen context closure SHALL never be empty even when one kind is empty for the phase.
-- req.harness.context-focus-no-trim: A scenario focus SHALL change only the question resolve_context answers, never the selected Module's Spec context membership.
-- req.harness.context-file-names-every-phase: Every phase SHALL see the names, owning entity and pending status of the selected Module's entity-bound files; only the implementation and code-review phases SHALL also receive their contents.
+See [the non-empty closure bound](#req.harness.context-closure-nonempty) and
+[the focus bound](#req.harness.context-focus-no-trim). File visibility follows a fixed per-phase
+rule: see [names for every phase](#req.harness.context-file-names-every-phase) and
+[contents for code phases only](#req.harness.context-contents-code-phases-only).
 
 #### scenario.harness.context-invalid-input — Reject an unsupported phase or a blank task
 
@@ -59,8 +151,6 @@ Realized by `resolve_context`, `resolve_discovery_context` and their rechecks; s
 - WHEN resolve_context is called
 - THEN the call raises SpecError with code invalid_phase or invalid_input
 - AND no partial or reusable snapshot is returned
-
-- req.harness.context-no-partial-snapshot: A rejected context resolution SHALL return no reusable partial snapshot.
 
 #### scenario.harness.context-stale-recheck — Reject reuse after an admitted input changed
 
@@ -70,7 +160,7 @@ Realized by `resolve_context`, `resolve_discovery_context` and their rechecks; s
 - THEN the call raises SpecError with code stale_context
 - AND the caller must resolve a fresh snapshot before continuing
 
-- req.harness.context-recheck: recheck_context and recheck_discovery_context SHALL reject reuse whenever any admitted input has changed since resolution.
+See [the changed-input recheck bound](#req.harness.context-recheck).
 
 #### scenario.harness.context-discovery — Assemble several explicit Module contexts for the coordinator
 
@@ -78,9 +168,9 @@ Realized by `resolve_context`, `resolve_discovery_context` and their rechecks; s
 - WHEN resolve_discovery_context is called
 - THEN the host returns a DiscoveryContext whose documents pool contains each selected Module's complete registered documents exactly once
 - AND a focus hint is admitted only when it names a scenario of the target hint's own Module
+- AND the returned topology equals the exact registry only for the design-topology action, and is null for every other action
 
-- req.harness.context-discovery-no-recurse: resolve_discovery_context SHALL NOT follow a dependency or hyperlink to add another Module's documents to the discovery context.
-- req.harness.context-discovery-topology: The returned topology SHALL be the exact registry only for the design-topology action, and null for every other action.
+See [the no-recursive-expansion bound](#req.harness.context-discovery-no-recurse).
 
 #### scenario.harness.context-gap — Report a missing local dependency promise as a Spec gap
 
@@ -88,8 +178,7 @@ Realized by `resolve_context`, `resolve_discovery_context` and their rechecks; s
 - WHEN the host compares them before launching a context-assessor for that Module
 - THEN a missing direct entry yields a Module-owned structured Spec gap, and a malformed, duplicate, unknown or unrelated entry yields a conflicting outcome
 - AND planning stops only for the dependent step while independent reasoning continues
-
-- req.harness.context-gap-no-injection: No relationship inventory SHALL be injected into the worker snapshot when this comparison stops planning.
+- BUT no relationship inventory is injected into the worker snapshot when this comparison stops planning
 
 ### Agent and Harness binding
 
@@ -102,9 +191,9 @@ and [runtime values](runtime-values.md).
 - WHEN resolve_agent is called for that name
 - THEN the host returns a reproducible AgentBinding covering spec_digest, harness, harness_digest, constraints_digest, build_manifest_digest and effective_loop
 - AND agent_definition resolves that same name, its hyphenated spelling or its concorde- external name to one canonical Agent record
+- AND resolve_agent verifies the binding against the current build before returning it
 
-- req.harness.agent-bind-subset: An Agent's own Constraints SHALL never widen the effects, contexts or results of its registered Harness.
-- req.harness.agent-bind-fresh: resolve_agent SHALL verify the binding against the current build before returning it.
+See [the Constraints-never-widen bound](#req.harness.agent-bind-subset).
 
 #### scenario.harness.agent-bind-reject — Reject an unknown Agent or a stale or inconsistent build
 
@@ -125,8 +214,9 @@ Realized by `compile_policy`, the native renderers and the worktree boundary che
 - THEN the host returns a digest-bound NormalizedPolicy whose reads, writes, network and credentials are each a subset of both the declaration and the binding
 - AND render_codex_configuration or render_claude_configuration renders it into native read, write, command and network restrictions, or raises PermissionPolicyError when enforcement is unavailable
 
-- req.harness.permission-no-widen: Effective permissions SHALL be a subset of both the Agent's declared constraints and the host's invocation grant.
-- req.harness.permission-write-scope: Only a code-writing invocation SHALL receive write authority, and only for the files the selected Module's own entities list; it SHALL NOT gain authority to write Spec documents, entity declarations or the registry.
+See [the declared-and-granted subset bound](#req.harness.permission-no-widen), [write authority
+scoped to code-writing invocations](#req.harness.permission-write-scope) and [no write authority
+over Spec or the registry](#req.harness.permission-no-spec-write).
 
 #### scenario.harness.permission-reject — Reject unknown roles, unsafe paths or unenforceable grants
 
@@ -135,7 +225,7 @@ Realized by `compile_policy`, the native renderers and the worktree boundary che
 - THEN the call raises PermissionPolicyError before any task process starts
 - AND no failure retries with a more permissive configuration
 
-- req.harness.permission-no-retry: No permission failure SHALL be retried with a wider grant.
+See [the no-wider-retry bound](#req.harness.permission-no-retry).
 
 #### scenario.harness.worktree-boundary — Require an isolated worktree before unsafe mutation
 
@@ -143,8 +233,7 @@ Realized by `compile_policy`, the native renderers and the worktree boundary che
 - WHEN require_isolated_worktree is called
 - THEN it returns the inspected WorktreeBoundary for a committed linked worktree, or for a committed primary worktree only when the trusted host passes allow_primary_worktree=True
 - AND a symlink root, missing directory or unavailable Git identity raises WorktreeBoundaryError instead
-
-- req.harness.worktree-not-task-input: The allow_primary_worktree exception SHALL be a trusted host decision, never a task-input permission.
+- BUT allow_primary_worktree is set only by a trusted host decision, never by task input
 
 ### Native and recursive execution
 
@@ -158,8 +247,8 @@ Realized by `AgentProcessExecutor`, `AgentRuntime` and `CapabilityHost.invoke_ag
 - THEN the executor's preflight reconstructs and verifies the carried binding, prompt, admitted context and result types and policy before starting any process
 - AND it starts the selected native integration in a fresh process and returns a CapabilityExecutionResult only for a validated successful completion
 
-- req.harness.execute-no-retry: No execution failure SHALL trigger an automatic retry with the same or wider permissions.
-- req.harness.execute-exit-insufficient: A successful process exit code alone SHALL NOT establish completion.
+See [the no-automatic-retry bound](#req.harness.execute-no-retry) and [the
+exit-code-is-not-completion bound](#req.harness.execute-exit-insufficient).
 
 #### scenario.harness.execute-failure — Distinguish failed, cancelled, limit-exhausted and invalid outcomes
 
@@ -175,8 +264,8 @@ Realized by `AgentProcessExecutor`, `AgentRuntime` and `CapabilityHost.invoke_ag
 - THEN each child request is checked against its parent's explicit delegation edge and the inherited Agent allowlist before its own complete context and permissions are independently resolved
 - AND the whole tree shares finite call, depth, decision and timeout budgets that no child can reset
 
-- req.harness.recursive-no-implicit-authority: Installing an Agent definition or belonging to the installed catalog alone SHALL NOT grant delegation authority.
-- req.harness.recursive-typed-feedback: A child SHALL return only its declared typed result, invocation identity and outcome to its parent, never raw context, transcripts or native logs.
+See [the no-implicit-delegation bound](#req.harness.recursive-no-implicit-authority) and [the
+typed-feedback-only bound](#req.harness.recursive-typed-feedback).
 
 #### scenario.harness.recursive-reject — Stop or reject a malformed or exhausted recursive invocation
 
@@ -196,9 +285,9 @@ evaluator; see [typed values](typed-values.md).
 - WHEN validate_typed or typed is called
 - THEN it returns a deep-copied, schema-checked value for a conforming input
 - AND json_schema and schema.admit export or admit only the supported offline JSON Schema subset with local $defs references
+- AND schema admission and validation resolve no remote reference and grant no fallback authority
 
-- req.harness.typed-no-network: Schema admission and validation SHALL resolve no remote reference and grant no fallback authority.
-- req.harness.typed-canonical: canonical(value) SHALL produce sorted-key, compact, ASCII-escaped JSON with no trailing newline, so identical values always digest identically.
+See [the canonical-encoding bound](#req.harness.typed-canonical).
 
 #### scenario.harness.typed-reject — Reject unknown types, duplicate keys or unsafe paths
 
@@ -207,10 +296,16 @@ evaluator; see [typed values](typed-values.md).
 - THEN it raises TypedDataError with a stable code and a JSON-pointer field identifying the problem
 - AND the caller stops the affected transition rather than substituting a default
 
-## Entities
+## Ontology
+
+The Harness realizes its promises through the programs and used Modules below, wired together by
+the relationships that turn a bounded invocation's four context kinds into a launched, verified
+process.
+
+### Entities
 
 The Module's implementation is realized by the programs below. The two Modules it uses each appear
-as one used-Module entity so the diagram in Architecture shows composition and dependency together.
+as one used-Module entity so the diagram in Relationships shows composition and dependency together.
 The Agent and Harness model entity lists the `src/concorde/harness/` and `tests/concorde/harness/`
 package directories; every other entity keeps the exact entries it realizes, and within this Module
 the most specific entry owns a file.
@@ -334,7 +429,7 @@ the most specific entry owns a file.
 ]
 ```
 
-## Architecture
+### Relationships
 
 Each invocation is the unit of work this Module executes. Its Spec context is the selected
 Module's complete registered collection; its implementation context is the Protocol-defined set of

@@ -16,14 +16,15 @@ Module's collection. The [required format](../format.md) still applies.
 - AND [a further outcome]
 - BUT [an outcome that explicitly does not happen]
 
-[Optional prose that explains the scenario, names the interface entity that triggers it, or
-identifies unresolved facts.]
-
-- req.[module].[name]: [One sentence that SHALL or SHALL NOT hold in this scenario.]
+[Optional prose that explains the scenario, names the interface entity that triggers it, states a
+limit or invariant that must hold in this situation, or identifies unresolved facts.]
 ````
 
 Write one scenario per situation: the successful path, each defined failure and each repeated or
-concurrent invocation whose outcome the Module promises. Keep the scenario ID stable when moving
-the fragment or changing its title. Naming the scenario does not trim the Module's complete
-contract context: a query for the scenario selects every registered document of its Module,
-including explicitly shared and less-visible members.
+concurrent invocation whose outcome the Module promises. Everything the situation guarantees goes
+into its steps or its prose; a promise that holds across situations is a Module requirement and
+is defined in the Requirements part instead. Keep the scenario ID stable when moving the fragment
+or changing its title; the ID is also the anchor by which links and tests refer to the scenario.
+Naming the scenario does not trim the Module's complete contract context: a query for the scenario
+selects every registered document of its Module, including explicitly shared and less-visible
+members.

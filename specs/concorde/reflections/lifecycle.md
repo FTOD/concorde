@@ -29,11 +29,13 @@ cannot be applied through this Module-bound investigation.
 - AND it writes findings, a reproduction verdict, a route, an effort estimate and an evidence-bound resolution as a plan under the configured `plans_dir`
 - AND the record moves into the bucket matching its completed triage sections in one deterministic action
 
-- req.reflections.bucket-triage-agreement: A record whose triage sections contradict its bucket, or that lies outside every bucket, SHALL be rejected.
-- req.reflections.non-reproduced-disposition: A non-reproduced investigation outcome SHALL recommend dismissal and require human intervention.
-- req.reflections.fast-loop-effort: A fast-loop route SHALL only be recommended together with small effort.
-- req.reflections.no-heading-injection: An investigation section value SHALL NOT inject a document-level Markdown heading.
-- req.reflections.investigation-file-boundary: Investigation SHALL read only the files listed by the selected Module's own entities.
+Bucket-triage agreement, the non-reproduction disposition, the fast-loop effort limit, the
+no-heading-injection rule and the investigation file boundary are Module requirements; see
+[bucket-triage agreement](module.md#req.reflections.bucket-triage-agreement),
+[non-reproduction disposition](module.md#req.reflections.non-reproduced-disposition),
+[fast-loop effort limit](module.md#req.reflections.fast-loop-effort),
+[no-heading-injection rule](module.md#req.reflections.no-heading-injection) and
+[investigation file boundary](module.md#req.reflections.investigation-file-boundary).
 
 ### scenario.reflections.investigate-stale-evidence — Stale evidence blocks investigation
 

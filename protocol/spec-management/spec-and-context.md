@@ -146,7 +146,8 @@ ImplementationContext(scenario S) = ImplementationContext(owner(S))
 
 Implementation context is determined from the entity declarations alone, without model judgment
 or interpretation of prose links; expanding a directory prefix is a deterministic listing of the
-files below it, not a judgment about them. It is disjoint from `Context(M)`: the Module's own Spec
+files below it, not a judgment about them. The scenario verification index is likewise derived
+from the tests in that context and adds no file to it. It is disjoint from `Context(M)`: the Module's own Spec
 collection is never part of it, and a file shared with another Module never adds
 that Module's contract. Those other users remain metadata identified by the reverse index.
 Declared files pending creation are identified as pending rather than represented as available

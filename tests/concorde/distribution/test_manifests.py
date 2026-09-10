@@ -10,6 +10,8 @@ from pathlib import Path
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.managed_runtime import create_langgraph_index, runtime_install_environment
 
+from concorde.spec.verification import verifies
+
 
 class ManifestContractTests(unittest.TestCase):
     @classmethod
@@ -20,7 +22,7 @@ class ManifestContractTests(unittest.TestCase):
         manifest = self.manifest
         self.assertEqual(manifest["schema_version"], 3)
         self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "5.0.0"))
-        self.assertEqual((manifest["architecture_profile"], manifest["workspace_protocol"]), (10, 15))
+        self.assertEqual((manifest["architecture_profile"], manifest["workspace_protocol"]), (11, 15))
         self.assertEqual(manifest["integrations"], ["claude", "codex"])
         self.assertEqual(manifest["install"], {
             "framework_root": ".concorde/framework",
@@ -98,6 +100,7 @@ class ManifestContractTests(unittest.TestCase):
         for key in ("speckit_version", "bundle_id", "install_policy"):
             self.assertNotIn(key, serialized)
 
+    @verifies("scenario.distribution.install-apply")
     def test_native_source_install_materializes_framework_and_capabilities(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)

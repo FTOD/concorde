@@ -54,8 +54,7 @@ containing `target_id`, `action status|record-gaps|investigate|implement|merge|c
 - THEN a pending Reflection is created for each gap using the existing allocator, record parser and buckets
 - AND the record stores the validated gap target as its attribution, the gap's question, blocked step and needed contract, and its originating context, change and phase as evidence
 - AND the source gap remains open and keeps its history
-
-- req.reflections.gap-target-provenance: A captured gap record SHALL store the Module's unique `module.md` as its collection entry in `concerns`, independently of registry document order.
+- AND the record stores the Module's unique `module.md` as its collection entry in `concerns`, independently of registry document order
 
 ### scenario.reflections.repeat-capture-reuses-link — Repeating an already-captured gap returns the existing link
 
@@ -71,7 +70,9 @@ containing `target_id`, `action status|record-gaps|investigate|implement|merge|c
 - THEN the request fails as an invalid or stale reference
 - AND no record is created or reused
 
-- req.reflections.explicit-gap-selection: record-gaps SHALL require a nonempty explicit `gap_ids` list and `reflection_ids=[]`, and SHALL NOT treat an omitted or empty list as selecting every gap.
+record-gaps's explicit, non-implicit selection contract is a Module requirement; see
+[req.reflections.explicit-gap-selection](module.md#req.reflections.explicit-gap-selection) and
+[req.reflections.no-implicit-gap-selection](module.md#req.reflections.no-implicit-gap-selection).
 
 `concerns` is provenance, not inferred ownership. The owning target or a coordinating Module
 containing that component may capture a gap; foreign or resolved gaps are rejected. Pure

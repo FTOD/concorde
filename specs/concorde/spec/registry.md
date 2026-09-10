@@ -43,10 +43,30 @@ This document defines `SpecRepository`'s selection and query behavior: what a ca
 
 ## Requirements
 
-- req.spec.no-writes: SpecRepository construction and every query method SHALL NOT write project files.
-- req.spec.snapshot-reconstruct: A repository instance SHALL be treated as a snapshot; a caller SHALL reconstruct it to observe source changes.
-- req.spec.deterministic-order: Repeated queries against the same admitted repository SHALL return results in the same order.
-- req.spec.local-contracts-only: contracts(target) SHALL include only the blocks declared in the target's own registered documents, and SHALL leave duplicate-provider and cross-Module agreement checks to the repository validator.
+### req.spec.no-writes — No writes during construction or queries
+
+SpecRepository construction and every query method SHALL NOT write project files.
+
+### req.spec.snapshot-reconstruct — A repository instance is an immutable snapshot
+
+A repository instance SHALL be treated as a snapshot.
+
+### req.spec.reconstruct-for-changes — Reconstruct the repository to see changes
+
+A caller SHALL reconstruct the repository to observe source changes.
+
+### req.spec.deterministic-order — Deterministic order for repeated queries
+
+Repeated queries against the same admitted repository SHALL return results in the same order.
+
+### req.spec.local-contracts-only — Contracts include only locally declared blocks
+
+contracts(target) SHALL include only the blocks declared in the target's own registered documents.
+
+### req.spec.contracts-defer-agreement-checks — Cross-Module checks stay with the validator
+
+contracts(target) SHALL leave duplicate-provider and cross-Module agreement checks to the
+repository validator.
 
 ## Interface signatures
 
@@ -153,4 +173,4 @@ implementation context, as file contents for code-writing and code-review phases
 This query returns locators only, preserves explicit membership and performs no writes or network
 I/O. Repeat queries against the same admitted repository yield the same order. Reconstruct the
 repository after source changes. This query interface is a specified addition; its implementation
-must be supplied before claiming complete Framework query support for Spec Protocol 3.1.0.
+must be supplied before claiming complete Framework query support for Spec Protocol 4.0.0.

@@ -115,3 +115,66 @@ Agent 指令、Skills、workflow prompts、docsite scoped-content 插件、
   `@docusaurus/theme-mermaid` 在客户端渲染。
 - 校验器输出的 `CONCORDE-ENTITY-005`（stale pending 标记）和 `CONCORDE-ENTITY-006`（未被任何
   Module 列出的源码文件）是 warning，不影响 `validate` 的成功状态。
+
+## Protocol 4.0.0（2026-09-10）：Ontology、Module 级 Requirement、锚点、测试声明
+
+同样是开发者直接授权的维护记录。触发原因是开发者对 3.1.0 的四点修订意见；快速迭代期不保留对
+Protocol 3.x、Profile 10 的兼容。Framework 配置升级到 `profile_version: 11`，registry schema 3、
+workspace protocol 15 不变，constitution 升到 16.0.0。
+
+### D10：Ontology 大节包住 Entities 和 Relationships
+
+`module.md` 的四个必需部分改为 Purpose、Requirements、Scenarios、Ontology（顺序固定，标题级别
+1–3）。Ontology 之下必须各有一次、按序出现 Entities（含 `concorde-entities` 块）和 Relationships
+（含 Mermaid flowchart）两个子节，级别比 Ontology 深。名字坚持用 Ontology（本体论 / 世界观）：
+Module 领域里存在什么、它们之间如何关联；Protocol 正文用一段话解释这个词，不要求任何形式化的
+本体语言，程序和文件与业务概念一样属于它。Purpose、Requirements、Scenarios 是功能规格，
+Ontology 是架构规格。原 "Architecture" 一名在 Protocol 与校验器里不再作为节名出现。
+
+### D11：Requirement 只属于 Module，是标题节
+
+Requirement 是 `### req.<module>.<name> — Title` 形式的标题节（级别 2–5），标题后第一个段落是
+statement：一句话，恰好含一个 `SHALL` 或 `SHALL NOT`；后面的段落是解释，不被解析。三条质量规则：
+一条只表达一个行为（校验器按 SHALL 出现次数判）、可判真伪（spec_reviewer 审）、名称稳定唯一
+（ID 即身份）。开发者撤回了"描述结果不描述实现"的规则，因此 Requirement 可以规定技术选型（例如
+控制流必须是 LangGraph 图），不设单独的 Constraints 类别。`- req.x:` 列表项在任何位置都是错误。
+
+Scenario 节只允许 GIVEN/WHEN/THEN/AND/BUT 步骤和普通段落，不再有 scenario 级 requirement：原先
+挂在 scenario 下的 SHALL 句并入该 scenario 的步骤或说明；跨情景成立的承诺提升为 Module 级
+requirement。Scenario 与 requirement 之间不设引用关键字。Requirement 与 scenario 的粒度不同：
+requirement 是粗粒度的需求，scenario 是具体可测试的情景。
+
+### D12：锚点等于 ID
+
+每个 scenario、requirement、entity 的 ID 就是它定义处的锚点：`harness/module.md#req.harness.x`
+这样的普通 Markdown 链接可以直达定义。路径是定位符，改名或搬文档不改变身份；片段是稳定部分。
+校验器规则 `CONCORDE-LINK-001`：片段形如 `scenario.`/`req.`/`entity.` ID 的本地链接必须指向定义
+该 ID 的文档，未定义的 ID 是错误；其他片段不解释。docsite 物化页面时给 scenario 与 requirement
+标题追加 `{#id}` 显式锚点，并在每个 `concorde-entities` 块前插入 `<a id="entity.x"></a>`。
+Purpose 等固定节不另设 ID，由 Module ID 加节名定位。
+
+### D13：测试声明 scenario，Spec 不列测试
+
+Protocol 只规定方向和身份：声明写在测试里、以 scenario ID 命名、绝不出现在 Spec 文档中；具体语法
+由工具按语言定义并须不执行测试即可读取。Framework 的 Python 约定是
+`concorde.spec.verification.verifies` 装饰器：`@verifies("scenario.harness.context-freeze")`，
+可列多个 ID。校验器用 `ast` 解析各 Module 列出的 `.py` 文件建立 scenario → tests 反向索引：
+未知 scenario（`CONCORDE-VERIFICATION-001`）和无法解析的 Python 文件（`-004`）是错误；无测试声明
+的 scenario（`-002`）和声明所在文件未被该 scenario 所属 Module 列出（`-003`）是 warning。覆盖率
+是关于测试的证据，不是契约的一部分；没有测试的 scenario 仍是 Module 的承诺。
+
+### D14：迁移方式
+
+脚本完成机械部分：`module.md` 标题重排、Module 级 `- req.` 项转为标题节、scenario 内 `- req.` 项
+转为该 scenario 的段落、版本与节名短语替换；然后每个 Module 由一个独立代理润色：拆分双 SHALL、
+补标题、把 scenario 段落并入步骤或提升为 Module requirement、修正描述旧布局的散文。测试侧由每个
+Module 的代理给现有测试补 `@verifies` 声明，只标注明确覆盖某个 scenario 的测试。
+
+### 涉及的实现改动（4.0.0）
+
+`protocol/`（principles、module、format、spec-management、spec-and-context、README、两个模板）、
+`protocol/manifest.json`、`.concorde/config.json`、`.concorde/constitution.md`、`concorde.json`、
+`scripts/install-concorde.py`、`src/concorde/spec/{repository,validation,initialize,verification}.py`、
+`prompts/protocol/framework-profile.md`、Agent 指令（spec_author、spec_reviewer、task_author、
+implementation_worker、code_reviewer）、`skills/concorde-validate/SKILL.md`、docsite 插件
+（`model.ts`、`materialize.ts`）及其测试、全部项目 Specs、Python 测试与 golden fixtures。

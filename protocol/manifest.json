@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
-  "version": "3.1.0",
-  "source_profile": 10,
+  "version": "4.0.0",
+  "source_profile": 11,
   "workspace_protocol": 15,
   "assets": [
     {
       "path": "generated/protocol/kinds/module.md",
-      "digest": "sha256:993223eb93064d22d33ee20c35bbc782f961b67042ce941057df0c3d86d7d048"
+      "digest": "sha256:4fb70aa7f2e9707dd1d49e13f1346ba6f5f36d83c39b1432fb70d3afd553ddc7"
     },
     {
       "path": "generated/protocol/principles.md",
-      "digest": "sha256:10f2887daf739950e3ec66444e614419663d0d12e1ffe0a84d5a2282b230384c"
+      "digest": "sha256:94ebd1b610b976ea7e477daffb8691caf8361a05f73bfa26a276c698d50df55a"
     },
     {
       "path": "generated/protocol/schemas.json",

@@ -179,7 +179,7 @@ build_launch_specification(*, capability: str, stage: str, occurrence: int, role
 
 The returned frozen `LaunchSpecification` has exactly the parameters above as attributes plus
 `digest: str`. JSON arguments are serialized objects, not paths. The workspace receipt must bind
-`source_digest` to `workspace_digest` and contain the host role-path mapping. Typed Profile 10
+`source_digest` to `workspace_digest` and contain the host role-path mapping. Typed Profile 11
 launches supply runtime input, configuration and a fresh invocation ID together, use an empty
 `prior_results` tuple and a context identity as the workspace digest. Input/configuration type and
 version admission remains the host's obligation. A configuration/policy/integration mismatch or
@@ -207,7 +207,7 @@ returns another launch: the original requested digest and finalized digest are i
 name and nonempty evidence. A `CapabilityCompletion` is a frozen record with:
 
 ```python
-schema_version: int                       # 3 for typed Profile 10; legacy untyped launches use 1
+schema_version: int                       # 3 for typed Profile 11; legacy untyped launches use 1
 capability: str
 stage: str
 occurrence: int
@@ -267,10 +267,10 @@ host stops the affected transition and preserves the candidate for repair. Raw s
 stdout/stderr remain host execution evidence, not downstream Spec-agent inputs or public review
 findings.
 
-## Architecture diagrams
+## Relationships diagrams
 
 A Module's architecture diagram is an inline `mermaid` flowchart fence inside its `module.md`
-Architecture section, or another registered document, with `accTitle` and `accDescr` accessible
+Relationships subsection, or another registered document, with `accTitle` and `accDescr` accessible
 text beside it. Its node labels are exactly the Module's declared entity titles and every edge
 carries a relationship label. Each Module's main diagram describes its principal entities and
 directed relationships. The entire containing Markdown document is the diagram's only authored

@@ -9,7 +9,7 @@
 ```
 # Publication pipeline
 
-The public API is TypeScript and Docusaurus plugin hooks. Profile 10 publication reads an explicit
+The public API is TypeScript and Docusaurus plugin hooks. Profile 11 publication reads an explicit
 project registry, creates derived documentation, validates a built candidate, and promotes only a
 successfully checked candidate. It exposes no agent tool or read proxy. Consumers do not need a
 Python API or a provider Spec to invoke the functions and interpret the values defined here.
@@ -18,7 +18,7 @@ Python API or a provider Spec to invoke the functions and interpret the values d
 
 ### scenario.views.load-registry — Loading the registry validates identities and memberships
 
-- GIVEN `.concorde/config.json` with `profile_version: 10` and a safe relative registry path
+- GIVEN `.concorde/config.json` with `profile_version: 11` and a safe relative registry path
 - WHEN `loadScopedRegistry` runs
 - THEN it returns a model whose Module IDs are unique, whose Module parents are acyclic and whose entry target exists and is a Module
 - AND malformed identities, memberships or contract agreement throw before any file is written
@@ -37,6 +37,17 @@ block is stripped from rendered content; a Spec metadata disclosure component pr
 identity, its references and its visibility instead, without changing the authored source or its
 digest.
 
+### scenario.views.id-anchors — Materializing injects scenario, requirement and entity anchors
+
+- GIVEN a loaded registry model whose documents define scenario and requirement headings and
+  `concorde-entities` blocks
+- WHEN `materializeScoped` runs
+- THEN it emits every scenario and requirement heading with its own ID as an explicit heading
+  anchor, for example `### req.x — Title {#req.x}`
+- AND it inserts an HTML anchor `<a id="entity.x"></a>` immediately before every entity's
+  `concorde-entities` block
+- AND a `path#id` link to that scenario, requirement or entity resolves on the published site
+
 ### scenario.views.build-site — buildSite runs the full prepare/build/validate/promote path
 
 - GIVEN installed Node/Docusaurus dependencies and a loaded registry model
@@ -50,10 +61,13 @@ digest.
 - WHEN `validateScopedBuild` runs
 - THEN it rejects without repairing the artifacts or promoting output
 
-- req.views.hash-format: Every content or source digest SHALL be `sha256:` followed by 64 lowercase hexadecimal digits.
-- req.views.safe-relative-paths: Every member path SHALL use POSIX separators without absolute paths, backslashes, empty, dot or traversal components, or symlinks.
-- req.views.promote-atomic: promoteCandidate SHALL attempt to restore the prior destination on a failed move or removal and SHALL NOT be called on unchecked or stale output.
-- req.views.no-contract-context-expansion: The registry loader SHALL NOT follow a `concorde-contract` edge to import additional Module context.
+Digest format and path safety are Module-wide requirements, not outcomes of this one scenario;
+see [req.views.hash-format](module.md#req.views.hash-format) and
+[req.views.safe-relative-paths](module.md#req.views.safe-relative-paths) in `module.md`. Promotion
+atomicity and loader context isolation are likewise Module-wide; see
+[req.views.promote-atomic](module.md#req.views.promote-atomic),
+[req.views.promote-requires-checked-candidate](module.md#req.views.promote-requires-checked-candidate)
+and [req.views.no-contract-context-expansion](module.md#req.views.no-contract-context-expansion).
 
 ## Interface signatures
 
@@ -81,12 +95,12 @@ promoteCandidate(candidate: string, destination: string, backup: string): Promis
 `root` is a project-root filesystem path. `safeRead` requires a regular file and returns UTF-8
 text; invalid paths throw `Error`, and OS read errors retain their Node error code. `hash` returns
 `sha256:` followed by 64 lowercase hexadecimal digits. `requireScoped` returns normally only for
-`profile_version === 10`; a missing configuration, a different profile, and a malformed JSON,
+`profile_version === 11`; a missing configuration, a different profile, and a malformed JSON,
 unsafe path or read error each throw an `Error` naming the reason. Every entry point of this public
-build contract calls it first: publication accepts Profile 10 projects only, and no other profile
+build contract calls it first: publication accepts Profile 11 projects only, and no other profile
 has a compatibility rendering path.
 
-`loadScopedRegistry` reads `.concorde/config.json`, which must contain `profile_version: 10` and a
+`loadScopedRegistry` reads `.concorde/config.json`, which must contain `profile_version: 11` and a
 safe relative `registry` path. The registry is
 `{schema_version: 3, project_id: string, entry_target: string, targets: Module[], checks: unknown[]}`
 with project metadata retained in its source bytes. Each Target has all the fields below. Its IDs
@@ -145,7 +159,7 @@ lists, for every membership, the legacy route it previously published at:
 to the primary membership's target title, or the first membership's target title when none is
 primary. `content` excludes front matter; `contentDigest` hashes the complete source bytes. Edges
 distinguish Module composition, uses and required-interface relationships; there is no
-implementation-reuse edge because Profile 10 has no separate Implementation kind.
+implementation-reuse edge because Profile 11 has no separate Implementation kind.
 
 `sourceDigest` hashes JSON serialization of ordered `[path, contentDigest]` pairs: configuration,
 registry and each distinct registered document in first-reference order. A shared physical document
@@ -175,7 +189,7 @@ renderer choice does not change the Protocol's tool-neutral requirements.
 The primary Spec navigation mirrors the directory hierarchy of explicitly registered source paths;
 it never discovers new membership by scanning directories. `scopedSidebar` returns one tree
 following registered Module parentage; there is no separate Implementation Spec sidebar, because
-Profile 10 registers only Modules. The navbar exposes Module Specs and Graph, and, when present,
+Profile 11 registers only Modules. The navbar exposes Module Specs and Graph, and, when present,
 the optional independent Protocol tab and a self-hosting-only Projections group of rendered
 `generated/docs/instructions.json` and `generated/docs/wire.json` pages; an ordinary consumer
 project produces neither file, so those pages are omitted rather than linking to unmaterialized
@@ -185,7 +199,7 @@ this one's.
 A Module category links directly to its `module.md` through a Docusaurus category `link` of type
 `doc`. Its child items contain only additional registered documents and child Modules, never a
 second entry for `module.md`. A Module with no child items is a direct document link. The Module
-page displays its complete authored content, including Architecture and other overview sections,
+page displays its complete authored content, including Ontology and other overview sections,
 with section navigation. Mermaid diagrams render exactly where their fences occur in the authored
 Markdown; the renderer does not inject or duplicate an overview before or after the article.
 Document titles and labels use the filename without `.md`, except Module entry pages, which use
@@ -197,9 +211,9 @@ This preserves access through each owning Module without duplicate doc IDs. `pri
 requires exactly one registered `module.md` for a Module; a Page's matching `memberships` entry
 marks that choice with `primary: true`, and diagrams and the site entry use it rather than
 arbitrary array order. `rewriteLinks` rewrites supported local Markdown links to the registered
-page routes. Diagram references use the owning document's Architecture anchor; there are no
-external diagram-source or delivered-HTML links. Invalid or unregistered local destinations are
-rejected. Outside fenced code blocks it handles inline links and images with these forms, whose URL
+page routes. Diagram references use the owning document's Relationships subsection anchor; there
+are no external diagram-source or delivered-HTML links. Invalid or unregistered local destinations
+are rejected. Outside fenced code blocks it handles inline links and images with these forms, whose URL
 has no whitespace or closing parenthesis:
 
 ```markdown
@@ -225,7 +239,7 @@ After the build manifest and architecture graph, it writes one legacy redirect s
 `<outDir>/<alias without its leading slash>.html`: a minimal HTML document with a
 base-URL-prefixed `<meta http-equiv="refresh">` and `<link rel="canonical">` to the document's
 canonical page, plus a visible link, mirroring the root redirect page. These are the complete
-collaborator promises this Profile 10 path relies on.
+collaborator promises this Profile 11 path relies on.
 
 ## Build artifacts, validation and promotion
 
@@ -267,7 +281,7 @@ rollback can still require operator recovery. The helper itself does not validat
 must not be called on unchecked or stale output.
 
 ```typescript
-requireScoped(projectRoot);       // throws unless the project declares profile_version 10
+requireScoped(projectRoot);       // throws unless the project declares profile_version 11
 const registry = loadScopedRegistry(projectRoot);
 await materializeScoped(registry); // stage derived assets; not yet a published build
 await buildSite();                // integrated prepare/build/validate/promotion path
@@ -279,10 +293,11 @@ supports every possible future task; independent Spec review and actual task gap
 
 ## Module main-document validation
 
-Profile 10 publication requires one local `module.md` for every Module, and requires its Purpose,
-Scenarios, Entities and Architecture headings to appear, by exact text and outside code fences, in
-that order; other headings may interleave. `main_visible` is presentation metadata and does not
-trim a Module's context. Module composition, dependency declarations and required-interface
+Profile 11 publication requires one local `module.md` for every Module, and requires its Purpose,
+Requirements, Scenarios and Ontology headings to appear, by exact text and outside code fences, in
+that order, with Ontology's Entities and Relationships subsections each present in that order;
+other headings may interleave. `main_visible` is presentation metadata and does not trim a
+Module's context. Module composition, dependency declarations and required-interface
 contracts are checked independently as registry-derived edges. These checks establish structure,
 not universal semantic completeness.
 

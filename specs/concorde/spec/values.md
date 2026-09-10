@@ -11,7 +11,7 @@
 
 ## Framework configuration and storage versions
 
-`Profile 10` is the Framework's project-configuration compatibility version for the four-part Module model (Purpose, Scenarios, Entities, Architecture). It is distinct from Spec Protocol 3.1.0 and from registry schema 3, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
+`Profile 11` is the Framework's project-configuration compatibility version for the four-part Module model (Purpose, Requirements, Scenarios, Ontology). It is distinct from Spec Protocol 4.0.0 and from registry schema 3, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
 
 The Framework reads `.concorde/config.json` with exactly `profile_version: 10`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest) and `capability_configuration` (the typed integration/enforcement configuration). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
 
@@ -24,12 +24,12 @@ Registry schema 3 stores exactly `schema_version`, `project_id`, `entry_target`,
 - GIVEN a project configuration whose profile_version is not 10, or whose Protocol binding does not match the installed Protocol assets
 - WHEN the repository is constructed
 - THEN construction fails with unsupported_profile or protocol_mismatch
-- BUT a matching Profile 10 configuration with a current Protocol binding admits normally
+- BUT a matching Profile 11 configuration with a current Protocol binding admits normally
 
 ## Selection and returned values
 
 SpecRepository(project_root, package_root=None, *, registry_bytes=None, document_overrides=None)
-admits Profile 10 and registry schema 3. The optional bytes and document overrides form an in-memory
+admits Profile 11 and registry schema 3. The optional bytes and document overrides form an in-memory
 candidate; they never authorize ambient agent reads. Construction rejects malformed identities,
 unknown parents/uses, cycles, duplicate file owners within one Module and non-sibling shared
 providers.

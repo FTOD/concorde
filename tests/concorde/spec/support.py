@@ -1,4 +1,4 @@
-"""Consumer fixture and explicit model-process double for the Profile 10 boundary."""
+"""Consumer fixture and explicit model-process double for the Profile 11 boundary."""
 import json
 import re
 import tempfile
@@ -24,12 +24,14 @@ def block(name, value):
     return '```'+name+'\n'+json.dumps(value,indent=2)+'\n```\n'
 
 def module_document(document_id, target_id, title, purpose, scenarios, entities, architecture,
-                    diagram, dependencies=(), trailer=''):
-    """One four-part reading entry: Purpose, Scenarios, Entities and a labeled Architecture."""
+                    diagram, dependencies=(), trailer='', requirements='No Module-level requirement is stated here.'):
+    """One four-part reading entry: Purpose, Requirements, Scenarios and an Ontology whose
+    Entities subsection declares the entities and whose Relationships subsection draws them."""
     text = (block('concorde-document', {'id':document_id,'targets':[target_id],'main_visible':True})
-        + f'\n# {title}\n\n## Purpose\n\n{purpose}\n\n## Scenarios\n\n{scenarios}\n\n'
-          f'## Entities\n\n{entities[0]}\n\n' + block('concorde-entities', entities[1])
-        + f'\n## Architecture\n\n{architecture}\n\n```mermaid\n{diagram}\n```\n')
+        + f'\n# {title}\n\n## Purpose\n\n{purpose}\n\n## Requirements\n\n{requirements}\n\n'
+          f'## Scenarios\n\n{scenarios}\n\n## Ontology\n\n### Entities\n\n{entities[0]}\n\n'
+        + block('concorde-entities', entities[1])
+        + f'\n### Relationships\n\n{architecture}\n\n```mermaid\n{diagram}\n```\n')
     if dependencies:
         text += '\n## Collaborators\n\nEach collaborator below is described from this Module\'s own perspective.\n\n'
         text += block('concorde-dependencies', list(dependencies))
@@ -50,7 +52,7 @@ BANK = module_document('document.bank','scope.bank','Banking',
     '- WHEN Banking accepts one transfer request\n'
     '- THEN the sender is debited and the receiver is credited\n'
     '- AND the audit Module receives the accepted balance change\n'
-    '- req.bank.retry: Banking SHALL treat a repeated request as a new decision.\n',
+    '- AND a repeated request is treated as a new decision\n',
     ('Banking owns the request concept; every other entity stands for a Module it composes with.',
      [{'id':'entity.bank.request','title':'Transfer request','kind':'concept',
        'responsibility':'Carries the sender, the receiver and the requested amount.'},
@@ -70,7 +72,9 @@ BANK = module_document('document.bank','scope.bank','Banking',
     '    request -->|admitted by| transfer\n'
     '    transfer -->|reads balances from| ledger\n'
     '    transfer -->|reports accepted changes to| audit',
-    [promise(peer) for peer in ('service.transfer','module.ledger','scope.audit')])
+    [promise(peer) for peer in ('service.transfer','module.ledger','scope.audit')],
+    requirements='### req.bank.retry — Repeated requests are new decisions\n\n'
+    'Banking SHALL treat a repeated request as a new decision.\n')
 
 AUDIT = module_document('document.audit','scope.audit','Audit',
     'Audit describes the outcome an accepted balance change must produce. It owns no transfer\n'
@@ -99,7 +103,7 @@ TRANSFER = module_document('document.transfer.feature','service.transfer','Trans
     '- GIVEN a sender balance of 100\n'
     '- WHEN transfer(100, 20) is called\n'
     '- THEN it returns 80\n'
-    '- req.transfer.pure: transfer SHALL NOT alter any stored balance.\n\n'
+    '- AND no stored balance changes\n\n'
     '### scenario.transfer.reject — An unaffordable or non-positive amount is rejected\n\n'
     '- GIVEN a sender balance of 10\n'
     '- WHEN transfer(10, 20) is called\n'
@@ -123,7 +127,9 @@ TRANSFER = module_document('document.transfer.feature','service.transfer','Trans
     '    check["Transfer check"]\n    calculation["Transfer calculation"]\n    ledger["Ledger"]\n'
     '    check -->|exercises| calculation\n'
     '    calculation -->|reads balances from| ledger',
-    [promise('module.ledger')])
+    [promise('module.ledger')],
+    requirements='### req.transfer.pure — Transfers store nothing\n\n'
+    'transfer SHALL NOT alter any stored balance.\n')
 
 LEDGER = module_document('document.ledger.api','module.ledger','Ledger API',
     'The ledger Module stores account balances and answers one read per account identity.',

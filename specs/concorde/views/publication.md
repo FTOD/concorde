@@ -64,8 +64,8 @@ required-interface edges.
 - WHEN the current build is promoted
 - THEN a redirect stub for that legacy route still resolves to the document's one canonical page
 
-Every Concorde Module contains an inline Mermaid entity diagram in its `module.md` Architecture
-section, with accessible title and description. Publication renders that fence in its authored
+Every Concorde Module contains an inline Mermaid entity diagram in its `module.md` Relationships
+subsection, with accessible title and description. Publication renders that fence in its authored
 position; the containing Markdown is the sole authored diagram source and already participates in
 source identity. No external diagram JSON, standalone diagram HTML, renderer Skill or separate
 diagram installation is used. Local links resolve only registered document membership; unknown or

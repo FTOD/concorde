@@ -570,7 +570,7 @@ def _role_prompt(specification: LaunchSpecification) -> str:
         )
     if _domain_type(specification) == "concorde-main-stage-result":
         return (
-            "Execute one Concorde Profile 10 main-coordinator stage in a fresh context.\n"
+            "Execute one Concorde Profile 11 main-coordinator stage in a fresh context.\n"
             f"Capability: {specification.capability}\nStage: {specification.stage}\n"
             f"Host discovery grant:\n{specification.workspace_receipt_json}\n"
             f"Configuration snapshot:\n{specification.capability_configuration_json}\n"
@@ -594,7 +594,7 @@ def _role_prompt(specification: LaunchSpecification) -> str:
         )
     if _domain_type(specification) == "concorde-agent-stage-result":
         return (
-            "Execute one Concorde Profile 10 agent stage in a fresh context.\n"
+            "Execute one Concorde Profile 11 agent stage in a fresh context.\n"
             f"Capability: {specification.capability}\nStage: {specification.stage}\n"
             f"Host workspace grant:\n{specification.workspace_receipt_json}\n"
             f"Configuration snapshot:\n{specification.capability_configuration_json}\n"

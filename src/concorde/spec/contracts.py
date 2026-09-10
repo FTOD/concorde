@@ -1,4 +1,4 @@
-"""Profile 10 capability registry and versioned JSON contracts.
+"""Profile 11 capability registry and versioned JSON contracts.
 
 Public global and lifecycle capabilities are each paired with exactly one skill. Internal Skills
 describe only one host-bound agent role. Per-capability request/response contracts are owned by

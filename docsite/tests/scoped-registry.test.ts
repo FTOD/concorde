@@ -11,15 +11,16 @@ let root:string,targets:Target[];
 function put(path:string,text:string){mkdirSync(dirname(resolve(root,path)),{recursive:true});writeFileSync(resolve(root,path),text);}
 function target(id:string,documents:string[]):Target{return{id,kind:'module',title:id,documents,parent:null,uses:[],files:[],checks:[]};}
 function save(){put('.concorde/specs.json',JSON.stringify({schema_version:3,project_id:'project.bank',entry_target:'scope.bank',targets,checks:[]}));}
-/** A minimal, Protocol-compliant module.md body: Purpose, Scenarios, Entities (with a
- * concorde-entities block) and Architecture (with a Mermaid flowchart) — appended only when
- * writing a target's own primary document, never a shared or secondary document. */
+/** A minimal, Protocol-compliant module.md body: Purpose, Requirements, Scenarios and Ontology
+ * (Entities with a concorde-entities block, Relationships with a Mermaid flowchart) — appended
+ * only when writing a target's own primary document, never a shared or secondary document. */
 function requiredSections(owner:Target):string {
  const entityId='entity.'+owner.id.replace(/^[a-z]+\./,'').replace(/\./g,'-');
  return '\n\n## Purpose\n\nLocal purpose prose for '+owner.title+'.\n\n'+
+  '## Requirements\n\nIntroductory requirement prose.\n\n'+
   '## Scenarios\n\nIntroductory scenario prose.\n\n'+
-  '## Entities\n\n```concorde-entities\n'+JSON.stringify([{id:entityId,title:owner.title,kind:'concept',responsibility:'Represents the module core responsibility.'}])+'\n```\n\n'+
-  '## Architecture\n\n```mermaid\nflowchart TB\n    core["'+owner.title+'"]\n```\n';
+  '## Ontology\n\n### Entities\n\n```concorde-entities\n'+JSON.stringify([{id:entityId,title:owner.title,kind:'concept',responsibility:'Represents the module core responsibility.'}])+'\n```\n\n'+
+  '### Relationships\n\n```mermaid\nflowchart TB\n    core["'+owner.title+'"]\n```\n';
 }
 function putSpec(path:string,references:string[],body:string,mainVisible=true){
  const id='document.'+path.replace(/\.md$/,'').replaceAll('/','.').replace(/[^a-z0-9.-]/g,'-');
@@ -36,7 +37,7 @@ function updateDocument(path:string,updates:Record<string,unknown>){
  const value={...JSON.parse(match[1]),...updates};put(path,'```concorde-document\n'+JSON.stringify(value,null,2)+'\n```'+text.slice(match[0].length));
 }
 beforeEach(()=>{
- root=mkdtempSync(resolve(tmpdir(),'concorde-scoped-'));put('.concorde/config.json',JSON.stringify({profile_version:10,registry:'.concorde/specs.json'}));
+ root=mkdtempSync(resolve(tmpdir(),'concorde-scoped-'));put('.concorde/config.json',JSON.stringify({profile_version:11,registry:'.concorde/specs.json'}));
  targets=[target('scope.bank',['specs/bank/module.md']),target('scope.audit',['specs/audit/module.md']),target('service.transfer',['specs/transfer/module.md','specs/transfer/promises.md']),target('module.ledger',['specs/ledger/module.md'])];
  targets[0].uses=['service.transfer'];targets[1].uses=['service.transfer'];targets[3].parent='service.transfer';
  targets[3].files=['src/ledger.ts'];put('src/ledger.ts','export const ledger = true;\n');
@@ -125,19 +126,40 @@ it('requires one local Module entry and treats visibility as metadata',()=>{
  targets[0].documents=[main];targets[2].documents.push(main);save();updateDocument(main,{targets:['scope.bank','service.transfer']});expect(()=>loadScopedRegistry(root)).toThrow(/must be local|exactly one/);
  targets[2].documents.pop();save();updateDocument(main,{targets:['scope.bank'],main_visible:false});expect(loadScopedRegistry(root).pages.find(p=>p.sourcePath===main)?.mainVisible).toBe(false);
 });
-it('requires the Purpose, Scenarios, Entities and Architecture headings on module.md, in order',()=>{
+it('requires the Purpose, Requirements, Scenarios and Ontology headings on module.md, in order, with Entities and Relationships inside Ontology',()=>{
  const main=targets[0].documents[0];
  const section=(heading:string)=>`## ${heading}\n\nProse for ${heading}.\n`;
- const entities='## Entities\n\n```concorde-entities\n'+JSON.stringify([{id:'entity.bank.core',title:'Bank',kind:'concept',responsibility:'Represents the module.'}])+'\n```\n';
- const architecture='## Architecture\n\n```mermaid\nflowchart TB\n    core["Bank"]\n```\n';
- putSpec(main,['scope.bank'],[section('Purpose'),section('Scenarios'),entities,architecture].join('\n'));save();
+ const entities='### Entities\n\n```concorde-entities\n'+JSON.stringify([{id:'entity.bank.core',title:'Bank',kind:'concept',responsibility:'Represents the module.'}])+'\n```\n';
+ const relationships='### Relationships\n\n```mermaid\nflowchart TB\n    core["Bank"]\n```\n';
+ const ontology=['## Ontology\n',entities,relationships].join('\n');
+ putSpec(main,['scope.bank'],[section('Purpose'),section('Requirements'),section('Scenarios'),ontology].join('\n'));save();
  expect(()=>loadScopedRegistry(root)).not.toThrow();
- putSpec(main,['scope.bank'],[section('Scenarios'),section('Purpose'),entities,architecture].join('\n'));save();
- expect(()=>loadScopedRegistry(root)).toThrow(/Purpose, Scenarios, Entities, Architecture/);
- putSpec(main,['scope.bank'],[section('Purpose'),section('Scenarios'),architecture].join('\n'));save();
- expect(()=>loadScopedRegistry(root)).toThrow(/Purpose, Scenarios, Entities, Architecture/);
- putSpec(main,['scope.bank'],[section('Purpose'),section('Scenarios'),entities,'~~~~markdown\n## Architecture\n~~~~\n'].join('\n'));save();
- expect(()=>loadScopedRegistry(root)).toThrow(/Purpose, Scenarios, Entities, Architecture/);
+ putSpec(main,['scope.bank'],[section('Purpose'),section('Scenarios'),section('Requirements'),ontology].join('\n'));save();
+ expect(()=>loadScopedRegistry(root)).toThrow(/Purpose, Requirements, Scenarios, Ontology/);
+ putSpec(main,['scope.bank'],[section('Purpose'),section('Requirements'),section('Scenarios'),'## Ontology\n',relationships].join('\n'));save();
+ expect(()=>loadScopedRegistry(root)).toThrow(/Entities, Relationships/);
+ putSpec(main,['scope.bank'],[section('Purpose'),section('Requirements'),section('Scenarios'),'## Ontology\n',relationships,entities].join('\n'));save();
+ expect(()=>loadScopedRegistry(root)).toThrow(/Entities, Relationships/);
+ putSpec(main,['scope.bank'],[section('Purpose'),section('Requirements'),section('Scenarios'),'## Ontology\n',entities,'## Relationships\n\n```mermaid\nflowchart TB\n    core["Bank"]\n```\n'].join('\n'));save();
+ expect(()=>loadScopedRegistry(root)).toThrow(/Entities, Relationships/);
+ putSpec(main,['scope.bank'],[section('Purpose'),section('Requirements'),section('Scenarios'),'~~~~markdown\n## Ontology\n~~~~\n'].join('\n'));save();
+ expect(()=>loadScopedRegistry(root)).toThrow(/Purpose, Requirements, Scenarios, Ontology/);
+});
+it('injects the ID of every scenario, requirement and entity as an anchor when materializing',async()=>{
+ const main=targets[0].documents[0];
+ const body=['## Purpose\n\nBank purpose.\n','## Requirements\n\n### req.bank.retry — Repeated requests\n\nBanking SHALL treat a repeated request as a new decision.\n',
+  '## Scenarios\n\n#### scenario.bank.settle - Settlement\n\n- GIVEN a sender\n- WHEN a transfer is accepted\n- THEN both accounts settle\n\nSee [retry](#req.bank.retry) and [ledger](../ledger/module.md#entity.ledger.core).\n',
+  '## Ontology\n\n### Entities\n\n```concorde-entities\n'+JSON.stringify([{id:'entity.bank.core',title:'Bank',kind:'concept',responsibility:'Represents the module.'},{id:'entity.bank.request',title:'Request',kind:'record',responsibility:'One transfer request.'}])+'\n```\n',
+  '### Relationships\n\n```mermaid\nflowchart TB\n    core["Bank"]\n    request["Request"]\n    request -->|reaches| core\n```\n',
+  '```markdown\n### req.bank.example — Not a definition\n```\n'].join('\n');
+ putSpec(main,['scope.bank'],body);save();
+ await materializeScoped(loadScopedRegistry(root));
+ const page=readFileSync(resolve(root,'docsite/.generated/content/specs/bank/module.md'),'utf8');
+ expect(page).toContain('### req.bank.retry — Repeated requests {#req.bank.retry}');
+ expect(page).toContain('#### scenario.bank.settle - Settlement {#scenario.bank.settle}');
+ expect(page).toContain('<a id="entity.bank.core"></a><a id="entity.bank.request"></a>\n\n```concorde-entities');
+ expect(page).toContain('[retry](#req.bank.retry)');expect(page).toContain('[ledger](/specs/ledger/module#entity.ledger.core)');
+ expect(page).toContain('### req.bank.example — Not a definition\n');expect(page).not.toContain('{#req.bank.example}');
 });
 it('rejects sources changed between materialization and plugin loading even when routes are unchanged',async()=>{
  const original=loadScopedRegistry(root);await materializeScoped(original);

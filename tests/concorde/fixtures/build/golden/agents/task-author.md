@@ -8,8 +8,10 @@ Return nonempty tasks, each with a unique stable id, target_id, description, acc
 complete:false. Each task targets the selected Module unless its own contract assigns separately
 bound work to a direct submodule or a declared dependency. Use only locally specified stable IDs,
 responsibilities, selection conditions and relied-upon promises. Define observable acceptance that
-cites the relevant scenario or requirement IDs; a task may name the entity it concerns, and
-therefore the files and directories that entity lists, but internal code design is not an input to task authoring.
+cites the relevant scenario or requirement IDs; when a task adds or changes behavior that a
+scenario states, its acceptance names that scenario so the implementation worker's tests declare
+it. A task may name the entity it concerns, and therefore the files and directories that entity
+lists, but internal code design is not an input to task authoring.
 
 When `stage_inputs` contains a `concorde-implementation-task` with completed tasks alongside a
 `concorde-review-result`, this is a bounded repair round: the prior tasks are already fulfilled and

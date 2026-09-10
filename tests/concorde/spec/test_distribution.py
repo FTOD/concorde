@@ -13,6 +13,7 @@ from concorde.distribution.build import load_role_prompt
 from concorde.spec.typed_data import typed
 from concorde.spec.repository import SpecRepository
 from concorde.spec.validation import validate_repository
+from concorde.spec.verification import verifies
 from .support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
 
 class DistributionTests(unittest.TestCase):
@@ -24,6 +25,7 @@ class DistributionTests(unittest.TestCase):
         for role in INTERNAL_SKILLS:
             prompt=load_role_prompt(PACKAGE,role)
             self.assertEqual(role,prompt.name);self.assertTrue(prompt.body.strip());self.assertIsNotNone(prompt.effects)
+    @verifies("scenario.spec.admit-inventory", "scenario.spec.shared-file", "scenario.spec.validate-success")
     def test_self_architecture_lists_every_implementation_file_under_an_entity(self):
         repo=SpecRepository(PACKAGE);report=validate_repository(PACKAGE)
         self.assertEqual('success',report.status,[f.message for f in report.findings])

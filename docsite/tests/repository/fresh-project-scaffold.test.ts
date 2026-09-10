@@ -8,7 +8,7 @@ import {afterAll, beforeAll, describe, expect, it} from 'vitest';
 
 /**
  * Concorde-repository evidence for feature.concorde.publish-project-docsite FR-009: a project holding
- * only Profile 10 initialization outputs receives the packaged docsite through the native `docsite`
+ * only Profile 11 initialization outputs receives the packaged docsite through the native `docsite`
  * Tool and passes the adapter's validate and build steps. It reuses this checkout's installed
  * dependencies and pinned Archify skill, so it stays outside the packaged template.
  */
@@ -61,7 +61,7 @@ afterAll(async () => {
   if (root) await rm(root, {recursive: true, force: true});
 });
 
-describe('a project holding only Profile 10 initialization outputs', () => {
+describe('a project holding only Profile 11 initialization outputs', () => {
   it('receives the packaged adapter and identity without synthetic prose or repository evidence', async () => {
     const files = (docsiteProposal.result.proposal as {files: Array<{path: string}>}).files.map((file) => file.path);
     expect(files).toContain('docsite/docusaurus.config.ts');
@@ -106,8 +106,8 @@ describe('a project holding only Profile 10 initialization outputs', () => {
     const mainPage=await readFile(resolve(root,'docsite/build',manifest.pages[0].route.slice(1)+'.html'),'utf8');
     expect(mainPage.match(/<nav\b[\s\S]*?<\/nav>/)![0]).not.toContain('Spec Protocol');
     expect(mainPage).not.toContain('<iframe');
-    expect(mainPage).toContain('id="purpose"');expect(mainPage).toContain('id="scenarios"');
-    expect(mainPage).toContain('id="entities"');expect(mainPage).toContain('id="architecture"');
+    expect(mainPage).toContain('id="purpose"');expect(mainPage).toContain('id="requirements"');expect(mainPage).toContain('id="scenarios"');expect(mainPage).toContain('id="ontology"');
+    expect(mainPage).toContain('id="entities"');expect(mainPage).toContain('id="relationships"');
     expect(mainPage).not.toContain('/diagrams/');
     expect(mainPage).toContain('Spec metadata');
     expect(await readFile(resolve(root,'docsite/.docusaurus/preview-sentinel.json'),'utf8')).toBe('Preview cache stays independent.');

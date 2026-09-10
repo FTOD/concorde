@@ -7,10 +7,15 @@ from collections import Counter
 from pathlib import Path
 
 from .model import Finding, ToolResult
-from .repository import (HEADING, LIST_ITEM, MANDATORY_SECTIONS, ENTITIES_BLOCK, SKIPPED_DIRECTORIES,
-                         SKIPPED_SUFFIXES, SpecError, SpecRepository, SpecTarget, digest, entry_exists,
-                         is_directory_entry, read_file, walk_lines)
+from .repository import (ANCHOR_PREFIXES, HEADING, IDENTITY, LIST_ITEM, MANDATORY_SECTIONS,
+                         ONTOLOGY_SECTIONS, ENTITIES_BLOCK, SKIPPED_DIRECTORIES, SKIPPED_SUFFIXES, SpecError,
+                         SpecRepository, SpecTarget, digest, entry_exists, is_directory_entry, read_file,
+                         walk_lines)
 from .typed_data import checked_path
+from .verification import DeclarationError, scan_declarations
+
+
+LINK = re.compile(r"!?\[[^\]]*\]\(([^\s)]+)\)")
 
 
 DIAGRAM_KEYWORDS = ("flowchart", "graph", "subgraph", "end", "classDef", "class", "style",
@@ -148,25 +153,42 @@ def _section_ranges(body: str) -> tuple[list[tuple[str, int, int, int]], list[tu
     return sections, lines
 
 
-def _architecture_fences(body: str) -> list[str]:
-    sections, lines = _section_ranges(body)
+def _ontology_subsections(sections) -> dict[str, tuple[str, int, int, int]]:
+    """The Entities and Relationships subsections found inside the level-1..3 Ontology section."""
+    ontology = next((section for section in sections if section[0] == "Ontology" and section[1] <= 3), None)
+    if ontology is None:
+        return {}
+    found: dict[str, tuple[str, int, int, int]] = {}
+    for section in sections:
+        text, level, start, end = section
+        if text in ONTOLOGY_SECTIONS and ontology[2] < start <= ontology[3] and level > ontology[1]:
+            found.setdefault(text, section)
+    return found
+
+
+def _fences_in_range(lines, start: int, end: int, language: str) -> list[str]:
     fences: list[str] = []
-    for text, level, start, end in sections:
-        if text != "Architecture" or level > 3:
+    current: list[str] | None = None
+    for number, kind, line in lines:
+        if number < start or number > end:
             continue
-        current: list[str] | None = None
-        for number, kind, line in lines:
-            if number < start or number > end:
-                continue
-            if kind == "fence-open":
-                current = [] if re.match(r"^ {0,3}(?:`{3,}|~{3,})\s*mermaid\s*$", line) else None
-            elif kind == "fenced" and current is not None:
-                current.append(line)
-            elif kind == "fence-close" and current is not None:
-                fences.append("\n".join(current))
-                current = None
+        if kind == "fence-open":
+            current = [] if re.match(r"^ {0,3}(?:`{3,}|~{3,})\s*" + re.escape(language) + r"\s*$", line) else None
+        elif kind == "fenced" and current is not None:
+            current.append(line)
+        elif kind == "fence-close" and current is not None:
+            fences.append("\n".join(current))
+            current = None
     return fences
 
+
+def _relationship_fences(body: str) -> list[str]:
+    """Mermaid fences inside the Relationships subsection of the reading entry's Ontology."""
+    sections, lines = _section_ranges(body)
+    relationships = _ontology_subsections(sections).get("Relationships")
+    if relationships is None:
+        return []
+    return _fences_in_range(lines, relationships[2], relationships[3], "mermaid")
 
 def module_findings(repository: SpecRepository, target_id: str | None = None) -> tuple[Finding, ...]:
     """Check the four mandatory sections of every reading entry, not semantic sufficiency."""
@@ -187,7 +209,7 @@ def module_findings(repository: SpecRepository, target_id: str | None = None) ->
                      if text in MANDATORY_SECTIONS and level <= 3]
         names = [text for text, *_ in mandatory]
         if names != list(MANDATORY_SECTIONS):
-            problems.append("module.md must contain the headings Purpose, Scenarios, Entities and Architecture "
+            problems.append("module.md must contain the headings Purpose, Requirements, Scenarios and Ontology "
                             f"(level 1-3) exactly once each and in that order; found {names}")
         else:
             purpose = mandatory[0]
@@ -200,16 +222,22 @@ def module_findings(repository: SpecRepository, target_id: str | None = None) ->
             if any(kind == "prose" and (LIST_ITEM.match(line) or line.lstrip().startswith("|"))
                    for _, kind, line in purpose_lines):
                 problems.append("the Purpose section must not contain lists or tables")
-            if not ENTITIES_BLOCK.search(document.body):
-                problems.append("module.md must declare at least one concorde-entities block")
-            if not _architecture_fences(document.body):
-                problems.append("the Architecture section must contain a Mermaid flowchart fence")
+            subsections = _ontology_subsections(sections)
+            ordered = sorted(subsections.values(), key=lambda section: section[2])
+            if [text for text, *_ in ordered] != list(ONTOLOGY_SECTIONS):
+                problems.append("the Ontology section must contain the subsections Entities and Relationships, "
+                                f"once each, in that order and below the Ontology heading; found {[text for text, *_ in ordered]}")
+            else:
+                entities = subsections["Entities"]
+                if not _fences_in_range(lines, entities[2], entities[3], "concorde-entities"):
+                    problems.append("the Entities subsection must declare at least one concorde-entities block")
+                if not _relationship_fences(document.body):
+                    problems.append("the Relationships subsection must contain a Mermaid flowchart fence")
         for problem in problems:
             findings.append(Finding("CONCORDE-MODULE-001", "error", path, problem,
-                "Give the reading entry its Purpose, Scenarios, Entities and Architecture sections.",
-                subject_id=target.id))
+                "Give the reading entry its Purpose, Requirements, Scenarios and Ontology sections, "
+                "with Entities and Relationships inside Ontology.", subject_id=target.id))
     return tuple(findings)
-
 
 def definition_findings(repository: SpecRepository, target_id: str | None = None) -> tuple[Finding, ...]:
     """Parse scenarios, requirements and entities; check listings, identities and diagrams."""
@@ -272,7 +300,7 @@ def architecture_findings(repository: SpecRepository, target: SpecTarget, entiti
     findings = []
     path = target.primary_document
     try:
-        fences = _architecture_fences(repository.document(path).body)
+        fences = _relationship_fences(repository.document(path).body)
     except (ValueError, OSError):
         return ()
     flowcharts = [fence for fence in fences if re.match(r"^\s*(flowchart|graph)\b", fence)]
@@ -296,7 +324,7 @@ def architecture_findings(repository: SpecRepository, target: SpecTarget, entiti
     if labels != titles:
         findings.append(Finding("CONCORDE-ARCHITECTURE-001", "error", path,
             f"diagram nodes differ from entity titles: diagram-only {sorted(labels - titles)}, entities-only {sorted(titles - labels)}",
-            "Make the Architecture flowchart nodes exactly the declared entity titles.", subject_id=target.id))
+            "Make the Relationships flowchart nodes exactly the declared entity titles.", subject_id=target.id))
     return tuple(findings)
 
 
@@ -386,6 +414,87 @@ def module_dependency_findings(repository: SpecRepository,
     return tuple(findings)
 
 
+def link_findings(repository: SpecRepository) -> tuple[Finding, ...]:
+    """A local link whose fragment is a scenario, requirement or entity ID must reach its definition."""
+    findings = []
+    anchors: dict[str, str] = {}
+    for target in repository.targets.values():
+        try:
+            anchors.update(repository.definitions(target).anchors)
+        except (ValueError, OSError, KeyError, TypeError):
+            continue
+    for path in repository.document_targets:
+        try:
+            document = repository.document(path)
+        except (ValueError, OSError, KeyError, TypeError):
+            continue
+        for number, kind, line in walk_lines(document.body):
+            if kind != "prose":
+                continue
+            for match in LINK.finditer(line):
+                url = match.group(1)
+                if re.match(r"^(?:[a-z][a-z0-9+.-]*:|/)", url, re.I) or "#" not in url:
+                    continue
+                location, fragment = url.split("#", 1)
+                if not (fragment.startswith(ANCHOR_PREFIXES) and IDENTITY.fullmatch(fragment)):
+                    continue
+                defining = anchors.get(fragment)
+                if defining is None:
+                    findings.append(Finding("CONCORDE-LINK-001", "error", path,
+                        f"link fragment #{fragment} names no scenario, requirement or entity",
+                        "Link to a defined ID, or use a plain heading fragment.", line=number, subject_id=fragment))
+                    continue
+                linked = path if not location else os.path.normpath(os.path.join(os.path.dirname(path), location)).replace(os.sep, "/")
+                if linked != defining:
+                    findings.append(Finding("CONCORDE-LINK-001", "error", path,
+                        f"link {url} addresses #{fragment}, which is defined in {defining}",
+                        "Point the link at the document that defines the ID.", line=number, subject_id=fragment))
+    return tuple(findings)
+
+
+def verification_findings(repository: SpecRepository) -> tuple[Finding, ...]:
+    """Tests declare the scenarios they verify; report unknown declarations and undeclared scenarios."""
+    findings = []
+    scenarios: dict[str, tuple[str, str]] = {}
+    for target in repository.targets.values():
+        try:
+            for scenario in repository.scenarios(target):
+                scenarios[scenario.id] = (target.id, scenario.document)
+        except (ValueError, OSError, KeyError, TypeError):
+            return ()
+    listed: dict[str, set[str]] = {}
+    for target in repository.targets.values():
+        for path in repository.implementation_files(target):
+            listed.setdefault(path, set()).add(target.id)
+    try:
+        declarations = scan_declarations(repository.root, listed)
+    except DeclarationError as problem:
+        return (Finding("CONCORDE-VERIFICATION-004", "error", problem.path, str(problem),
+                        "Repair the listed Python file so its scenario declarations can be read.", line=problem.line),)
+    declared: dict[str, list] = {scenario_id: [] for scenario_id in scenarios}
+    for declaration in declarations:
+        owner = scenarios.get(declaration.scenario_id)
+        if owner is None:
+            findings.append(Finding("CONCORDE-VERIFICATION-001", "error", declaration.path,
+                f"test {declaration.name} declares unknown scenario {declaration.scenario_id}",
+                "Declare a scenario that a registered Module defines.", line=declaration.line,
+                subject_id=declaration.scenario_id))
+            continue
+        declared[declaration.scenario_id].append(declaration)
+        if owner[0] not in listed.get(declaration.path, set()):
+            findings.append(Finding("CONCORDE-VERIFICATION-003", "warning", declaration.path,
+                f"test {declaration.name} verifies {declaration.scenario_id}, but {owner[0]} does not list this file",
+                "List the test under an entity of the scenario's Module so its code phases see it.",
+                line=declaration.line, subject_id=declaration.scenario_id))
+    for scenario_id, (owner, document) in sorted(scenarios.items()):
+        if not declared[scenario_id]:
+            findings.append(Finding("CONCORDE-VERIFICATION-002", "warning", document,
+                f"no test declares that it verifies {scenario_id}",
+                "Add @verifies(\"" + scenario_id + "\") to the tests that exercise this scenario.",
+                subject_id=scenario_id))
+    return tuple(findings)
+
+
 def definition_ids(repository: SpecRepository) -> set[str]:
     """Every Module and scenario identity a reflection may be attributed to."""
     ids = set(repository.targets)
@@ -440,7 +549,9 @@ def validate_repository(root: str | Path, target_id: str | None = None,
         findings.extend(module_findings(repository))
         findings.extend(definition_findings(repository))
         findings.extend(module_dependency_findings(repository))
+        findings.extend(link_findings(repository))
         findings.extend(unlisted_file_findings(repository))
+        findings.extend(verification_findings(repository))
         if (repository.root/".concorde/reflections").exists():
             from ..reflections.scoped_triage import queue_module
             queue=queue_module(repository.package_root)
@@ -468,7 +579,9 @@ def validate_repository(root: str | Path, target_id: str | None = None,
             "errors": counts["error"], "warnings": counts["warning"], "infos": counts["info"]},
             "source_digest": digest(sorted(inputs)),
             "claims": ["registry structure", "Spec document identity/membership/main visibility",
-                       "four mandatory Module sections", "scenario, requirement and entity syntax",
-                       "entity file listings and registry files", "architecture diagram entities and labeled edges",
-                       "contract examples", "shared wire schema equality", "Module dependency promises"],
+                       "four mandatory Module sections", "requirement, scenario and entity syntax",
+                       "ID anchors in local links", "entity file listings and registry files",
+                       "relationship diagram entities and labeled edges", "contract examples",
+                       "shared wire schema equality", "Module dependency promises",
+                       "scenario verification declarations"],
             "semantic_completeness": "not_proven"})
