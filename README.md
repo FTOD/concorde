@@ -260,8 +260,12 @@ checkout's existing binding unchanged.
 stage events, CLI/Skill forwarding, live execution events, debugging and worktree isolation. Studio
 is optional; existing JSON stdin/stdout calls continue to work without a server.
 
-Run Python tests with `PYTHONPATH=src python -m unittest discover -s tests/concorde -v` and docsite checks
-with `npm run typecheck`, `npm test`, `npm run validate`, `npm run build`.
+Run Python tests with `python3 scripts/development/run-tests.py`, which runs every module under
+`tests/concorde` in its own subprocess in parallel and reports per-module durations
+(`--filter <substring>` selects modules, `--sequential` runs them one at a time, `--json <path>`
+writes a summary). The plain serial command
+`python -m unittest discover -s tests/concorde -t . -p 'test_*.py'` remains valid. Run docsite
+checks with `npm run typecheck`, `npm test`, `npm run validate`, `npm run build`.
 
 `prompts/`, `skills/`, and the top-level `capabilities/` package produce this checkout's agent
 surfaces. Never edit `generated/`, `.agents/skills/concorde-*`, `.claude/skills/concorde-*`, or

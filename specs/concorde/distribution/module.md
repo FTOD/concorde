@@ -79,6 +79,7 @@ directory stay with them.
       "scripts/concorde.py",
       "scripts/concorde.sh",
       "scripts/development/check-docsite-types.py",
+      "scripts/development/run-tests.py",
       "scripts/install-concorde.py",
       "scripts/requirements.lock",
       "scripts/run-capability.py",
