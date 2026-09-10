@@ -19,6 +19,7 @@ from concorde.distribution.cli import main  # noqa: E402
 from concorde.views.docsite_scaffold import apply_docsite, propose_docsite  # noqa: E402
 from concorde.views.docsite_template import TEMPLATE_ROOT, adapter_files, workflow_template  # noqa: E402
 from concorde.spec.initialize import apply_project_proposal, project_proposal  # noqa: E402
+from concorde.spec.verification import verifies  # noqa: E402
 
 
 from tests.concorde.support.operation_json import CONFIGURATION
@@ -64,6 +65,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
             self.assertEqual(result.status, "invalid")
             self.assertEqual({finding.rule_id for finding in result.findings}, {"CONCORDE-DOCSITE-002"})
 
+    @verifies("scenario.views.scaffold-propose")
     def test_proposal_is_deterministic(self) -> None:
         _init_project(self.root)
         first = propose_docsite(self.root)
@@ -71,6 +73,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         self.assertEqual(first.status, "proposal")
         self.assertEqual(first.result["proposal"], second.result["proposal"])
 
+    @verifies("scenario.views.scaffold-propose")
     def test_proposal_file_set(self) -> None:
         _init_project(self.root)
         result = propose_docsite(self.root)
@@ -85,6 +88,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         real_site_json = (REPOSITORY_ROOT / "docsite/site.json").read_text(encoding="utf-8")
         self.assertNotEqual(site_json_entry["content"], real_site_json)
 
+    @verifies("scenario.views.scaffold-propose")
     def test_defaults_without_git_use_localhost_and_info_finding(self) -> None:
         _init_project(self.root)
         result = propose_docsite(self.root)
@@ -94,6 +98,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         self.assertNotIn("repository", identity)
         self.assertIn("CONCORDE-DOCSITE-009", {finding.rule_id for finding in result.findings})
 
+    @verifies("scenario.views.scaffold-propose")
     def test_github_origin_derives_identity_defaults(self) -> None:
         _init_project(self.root)
         git_dir = self.root / ".git"
@@ -108,6 +113,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         self.assertEqual(identity["projectName"], "atlas")
         self.assertNotIn("CONCORDE-DOCSITE-009", {finding.rule_id for finding in result.findings})
 
+    @verifies("scenario.views.scaffold-propose")
     def test_github_pages_username_repository_uses_root_base_url(self) -> None:
         _init_project(self.root)
         git_dir = self.root / ".git"
@@ -117,6 +123,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         identity = result.result["proposal"]["identity"]
         self.assertEqual(identity["baseUrl"], "/")
 
+    @verifies("scenario.views.scaffold-propose")
     def test_explicit_overrides_win(self) -> None:
         _init_project(self.root)
         result = propose_docsite(
@@ -146,6 +153,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
                 self.assertEqual(result.status, "invalid")
                 self.assertEqual({finding.rule_id for finding in result.findings}, {"CONCORDE-DOCSITE-003"})
 
+    @verifies("scenario.views.scaffold-propose")
     def test_github_pages_adds_workflow_template_copy(self) -> None:
         _init_project(self.root)
         result = propose_docsite(self.root, github_pages=True)
@@ -155,6 +163,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         expected_sha = "sha256:" + hashlib.sha256(workflow_template(REPOSITORY_ROOT)).hexdigest()
         self.assertEqual(entry["sha256"], expected_sha)
 
+    @verifies("scenario.views.scaffold-propose")
     def test_existing_readme_is_not_overwritten_or_proposed(self) -> None:
         _init_project(self.root)
         (self.root / "README.md").write_text("# Existing\n", encoding="utf-8")
@@ -162,6 +171,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         paths = {item["path"] for item in result.result["proposal"]["files"]}
         self.assertNotIn("README.md", paths)
 
+    @verifies("scenario.views.scaffold-propose")
     def test_pre_existing_docsite_directory_reports_conflicts(self) -> None:
         _init_project(self.root)
         (self.root / "docsite").mkdir()
@@ -171,6 +181,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         self.assertIn("docsite/docusaurus.config.ts", conflicts)
         self.assertEqual(result.status, "proposal")
 
+    @verifies("scenario.views.scaffold-apply")
     def test_apply_from_saved_proposal_succeeds_and_is_idempotent(self) -> None:
         _init_project(self.root)
         proposed = propose_docsite(self.root, github_pages=True)
@@ -206,6 +217,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         self.assertNotIn("stale", applied.findings[0].message)
         self.assertFalse((self.root / "docsite").exists())
 
+    @verifies("scenario.views.scaffold-stale-rejected")
     def test_changed_package_bytes_are_rejected_as_stale_004(self) -> None:
         _init_project(self.root)
         with tempfile.TemporaryDirectory() as package_tmp:
@@ -232,6 +244,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         self.assertFalse((self.root / "README.md").exists())
         self.assertEqual((self.root / "docsite/docusaurus.config.ts").read_text(encoding="utf-8"), "tampered\n")
 
+    @verifies("scenario.views.scaffold-propose")
     def test_missing_prerequisites_produce_warnings_without_changing_the_proposal_007(self) -> None:
         _init_project(self.root)
         baseline = propose_docsite(self.root)
@@ -246,6 +259,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         self.assertEqual(len(rule_ids), 2)
         self.assertEqual({finding.severity for finding in patched.findings if finding.rule_id == "CONCORDE-DOCSITE-007"}, {"warning"})
 
+    @verifies("scenario.views.scaffold-propose")
     def test_cli_propose_round_trip(self) -> None:
         _init_project(self.root)
         buffer = io.StringIO()

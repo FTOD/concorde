@@ -24,6 +24,7 @@ from concorde.distribution.build import (  # noqa: E402
     verify_fresh,
     write_build,
 )
+from concorde.spec.verification import verifies  # noqa: E402
 
 
 GOLDEN = REPOSITORY_ROOT / "tests/concorde/fixtures/build/golden"
@@ -40,6 +41,7 @@ class BuildGoldenTests(unittest.TestCase):
         cls.result = build(REPOSITORY_ROOT, "all")
         cls.by_path = {output.path: output for output in cls.result.outputs}
 
+    @verifies("scenario.distribution.build-render")
     def test_agent_bodies_match_golden_bytes_exactly(self):
         for agent in AGENT_ROOTS:
             with self.subTest(agent=agent):
@@ -47,6 +49,7 @@ class BuildGoldenTests(unittest.TestCase):
                 mine = self.by_path[f"generated/agents/{agent}.md"].content
                 self.assertEqual(mine, golden)
 
+    @verifies("scenario.distribution.build-render")
     def test_skill_projections_match_golden_modulo_source_line(self):
         for integration, directory in (("claude", "claude"), ("codex", "codex")):
             for name in SKILL_NAMES:
@@ -60,6 +63,7 @@ class BuildGoldenTests(unittest.TestCase):
             mine = self.by_path[f"{INTEGRATION_ROOTS[integration]}/concorde-main/SKILL.md"].content.decode("utf-8")
             self.assertIn('source: "skills/concorde-main/SKILL.md"', mine)
 
+    @verifies("scenario.distribution.build-render")
     def test_exactly_fourteen_skill_outputs_eight_agent_outputs_and_one_langgraph_config(self):
         skill_outputs = [
             path for path in self.by_path
@@ -70,6 +74,7 @@ class BuildGoldenTests(unittest.TestCase):
         self.assertEqual(len(agent_outputs), 8)
         self.assertIn("generated/langgraph.json", self.by_path)
 
+    @verifies("scenario.distribution.build-render")
     def test_langgraph_config_names_one_graph_per_skill(self):
         import json
 
@@ -95,6 +100,7 @@ class BuildGoldenTests(unittest.TestCase):
             self.assertIn(output.path, payload["outputs"])
             self.assertEqual(payload["outputs"][output.path]["sources"], sorted(output.sources))
 
+    @verifies("scenario.distribution.build-render")
     def test_docs_instructions_projection_has_agent_entries_with_spec_and_harness(self):
         import json
 
@@ -112,6 +118,7 @@ class BuildGoldenTests(unittest.TestCase):
 
 
 class BuildDeterminismTests(unittest.TestCase):
+    @verifies("scenario.distribution.build-render")
     def test_building_twice_yields_identical_bytes(self):
         first = build(REPOSITORY_ROOT, "all")
         second = build(REPOSITORY_ROOT, "all")
@@ -120,6 +127,7 @@ class BuildDeterminismTests(unittest.TestCase):
         second_by_path = {o.path: o.content for o in second.outputs}
         self.assertEqual(first_by_path, second_by_path)
 
+    @verifies("scenario.distribution.build-render")
     def test_integration_all_equals_the_union_of_claude_and_codex(self):
         all_result = build(REPOSITORY_ROOT, "all")
         claude_result = build(REPOSITORY_ROOT, "claude")
@@ -142,6 +150,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
         shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
 
+    @verifies("scenario.distribution.build-check", "scenario.distribution.build-write")
     def test_check_fails_before_build_and_passes_after(self):
         current, differences = check_build(self.root, "all")
         self.assertFalse(current)
@@ -152,6 +161,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.assertTrue(current)
         self.assertEqual(differences, ())
 
+    @verifies("scenario.distribution.build-check")
     def test_check_fails_again_after_editing_a_prompt(self):
         write_build(self.root, "all")
         current, _ = check_build(self.root, "all")
@@ -164,6 +174,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.assertFalse(current)
         self.assertTrue(differences)
 
+    @verifies("scenario.distribution.build-check", "scenario.distribution.build-stale-blocks-execution")
     def test_independent_protocol_edit_invalidates_runtime_rule_projection(self):
         write_build(self.root, "all")
         chapter = self.root / "protocol/principles.md"
@@ -175,6 +186,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.assertFalse(current)
         self.assertIn("generated/protocol/principles.md", differences)
 
+    @verifies("scenario.distribution.build-check")
     def test_check_never_writes_under_generated_or_the_skill_roots(self):
         self.assertFalse((self.root / "generated").exists())
         self.assertFalse((self.root / ".claude").exists())
@@ -184,6 +196,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.assertFalse((self.root / ".claude").exists())
         self.assertFalse((self.root / ".agents").exists())
 
+    @verifies("scenario.distribution.build-check")
     def test_check_ignores_a_third_party_skill_directory(self):
         write_build(self.root, "all")
         other = self.root / ".claude/skills/archify"
@@ -193,6 +206,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.assertTrue(current)
         self.assertEqual(differences, ())
 
+    @verifies("scenario.distribution.build-check")
     def test_check_ignores_an_unrelated_file_under_generated(self):
         """`generated/` is a shared, ignored root; a file another tool writes there (for example
         the legacy initializer's diagram renders under `generated/architecture/`) is not a
@@ -205,6 +219,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.assertTrue(current)
         self.assertEqual(differences, ())
 
+    @verifies("scenario.distribution.build-check")
     def test_check_reports_an_unexpected_file_in_an_owned_directory(self):
         write_build(self.root, "all")
         (self.root / "generated/agents/extra.md").write_text("not a build output\n", encoding="utf-8")
@@ -212,6 +227,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         self.assertFalse(current)
         self.assertIn("generated/agents/extra.md", differences)
 
+    @verifies("scenario.distribution.build-check")
     def test_check_reports_a_modified_owned_file(self):
         write_build(self.root, "all")
         target = self.root / "generated/agents/coordinator.md"
@@ -231,6 +247,7 @@ class BuildFreshnessTests(unittest.TestCase):
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
         shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
 
+    @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_verify_fresh_fails_closed_with_no_manifest(self):
         with self.assertRaises(BuildError) as failure:
             verify_fresh(self.root)
@@ -240,6 +257,7 @@ class BuildFreshnessTests(unittest.TestCase):
         write_build(self.root, "all")
         verify_fresh(self.root)  # must not raise
 
+    @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_verify_fresh_fails_after_editing_a_recorded_source(self):
         write_build(self.root, "all")
         edited = self.root / "prompts/workflow-host/gap-reporting.md"
@@ -248,6 +266,7 @@ class BuildFreshnessTests(unittest.TestCase):
             verify_fresh(self.root)
         self.assertEqual(failure.exception.code, "stale_build")
 
+    @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_verify_fresh_fails_when_a_recorded_source_is_gone(self):
         write_build(self.root, "all")
         (self.root / "prompts/workflow-host/gap-reporting.md").unlink()
@@ -255,6 +274,7 @@ class BuildFreshnessTests(unittest.TestCase):
             verify_fresh(self.root)
         self.assertEqual(failure.exception.code, "stale_build")
 
+    @verifies("scenario.distribution.load-agent")
     def test_load_agent_verifies_freshness_and_returns_effects_and_binding(self):
         write_build(self.root, "all")
         prompt = load_agent(self.root, "concorde-spec-author")
@@ -272,6 +292,7 @@ class BuildFreshnessTests(unittest.TestCase):
             load_agent(self.root, "concorde-spec-author")
         self.assertEqual(failure.exception.code, "stale_build")
 
+    @verifies("scenario.distribution.load-agent")
     def test_load_agent_accepts_underscore_and_hyphenated_names(self):
         write_build(self.root, "all")
         by_external = load_agent(self.root, "concorde-context-assessor")
@@ -279,6 +300,7 @@ class BuildFreshnessTests(unittest.TestCase):
         self.assertEqual(by_external.body, by_underscore.body)
         self.assertEqual(by_external.name, "concorde-context-assessor")
 
+    @verifies("scenario.distribution.load-agent")
     def test_load_role_prompt_is_a_compatibility_alias_for_load_agent(self):
         write_build(self.root, "all")
         self.assertIs(load_role_prompt, load_agent)

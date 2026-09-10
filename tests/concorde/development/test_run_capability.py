@@ -6,6 +6,7 @@ import subprocess
 import sys
 import unittest
 
+from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 LAUNCHER = REPOSITORY_ROOT / "scripts/run-capability.py"
@@ -52,6 +53,7 @@ class RunCapabilityLauncherTests(unittest.TestCase):
                     process.stdout,
                 )
 
+    @verifies("scenario.development.execute-unregistered")
     def test_refuses_a_stage_capability_name(self):
         process = _run(["concorde-plan"], "")
         self.assertEqual(3, process.returncode)
@@ -59,12 +61,14 @@ class RunCapabilityLauncherTests(unittest.TestCase):
         self.assertEqual("blocked", output["status"])
         self.assertEqual("unknown_capability", output["errors"][0]["code"])
 
+    @verifies("scenario.development.execute-unregistered")
     def test_refuses_a_bare_capability_word(self):
         process = _run(["plan"], "")
         self.assertEqual(3, process.returncode)
         output = json.loads(process.stdout)
         self.assertEqual("unknown_capability", output["errors"][0]["code"])
 
+    @verifies("scenario.development.execute-unregistered")
     def test_refuses_an_unknown_name(self):
         process = _run(["concorde-does-not-exist"], "")
         self.assertEqual(3, process.returncode)

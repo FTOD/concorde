@@ -15,6 +15,7 @@ from concorde.harness.change_worktree import (
     GUIDANCE_START, REGISTRY_PATH, STATE_PATH, git, git_value, read_change,
 )
 from concorde.spec.typed_data import typed
+from concorde.spec.verification import verifies
 from concorde.development.capability_service import CapabilityHost, run_capability
 from concorde.harness import worktree_delivery
 from concorde.harness import change_worktree
@@ -115,6 +116,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before["gaps"], after["gaps"])
         self.assertTrue(after["gaps"])
 
+    @verifies("scenario.development.answer-question")
     def test_main_answers_workspace_metadata_directly(self):
         def status(stage, snapshot, data, cwd):
             if stage == "route":
@@ -140,6 +142,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertFalse((self.change / "CLAUDE.md").exists())
         self.assertFalse((self.change / STATE_PATH).exists())
 
+    @verifies("scenario.development.worktree-handoff")
     def test_primary_mutation_creates_handoff_without_running_an_agent(self):
         result = self.run_op(self.primary, "concorde-dev-loop", self.task)
         self.assertEqual("blocked", result["status"], result)
@@ -162,6 +165,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             git(self.primary, "worktree", "remove", "--force", str(created))
             created.parent.rmdir()
 
+    @verifies("scenario.development.worktree-handoff")
     def test_handoff_remains_one_json_response_on_the_paired_cli(self):
         operation = "concorde-dev-loop"
         task = {**self.task, "constraints": ["保留用户原文；不合并、不 push"]}
@@ -194,6 +198,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("incompatible_handoff", result["errors"][0]["code"])
         self.assertEqual("ready", read_change(self.change)["status"])
 
+    @verifies("scenario.development.dev-loop-spec-gap", "scenario.development.dev-loop-coordinated")
     def test_partial_spec_reconciliation_is_explicit_and_resumes_completed_authors(self):
         before_primary = (self.primary / "specs/transfer/module.md").read_bytes()
         def contract(role, peer, value_type, example):
@@ -240,6 +245,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(state["change_id"], read_change(self.change)["change_id"])
         self.assertTrue(self.change.exists())
 
+    @verifies("scenario.development.deliver-branch")
     def test_source_delivery_removes_active_worktree_and_retry_does_not_republish(self):
         change_id = self.ready()
         before = git_value(self.primary, "rev-parse", "HEAD")
@@ -305,6 +311,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("invalid", report.status)
         self.assertIn("CONCORDE-ENTITY-002", {finding.rule_id for finding in report.findings})
 
+    @verifies("scenario.development.deliver-branch", "scenario.development.deliver-merge-primary")
     def test_primary_merge_requires_separate_delivery_and_primary_session(self):
         change_id = self.ready_delivery()
         request = {"change_id": change_id, "merge_primary": True}
@@ -327,6 +334,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("succeeded", again["status"], again)
         self.assertEqual(head, git_value(self.primary, "rev-parse", "HEAD"))
 
+    @verifies("scenario.development.deliver-branch")
     def test_explicit_retention_survives_interrupted_initial_cleanup(self):
         change_id = self.ready_delivery()
         before = git_value(self.primary, "rev-parse", "HEAD")
@@ -340,6 +348,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertIn("retained", again["output"]["data"]["answer"])
         self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
 
+    @verifies("scenario.development.deliver-branch")
     def test_cleanup_retry_persists_a_changed_retention_choice_before_cleanup(self):
         change_id = self.ready_delivery()
         with patch.object(worktree_delivery, "_cleanup", side_effect=OSError("interrupted cleanup")):
@@ -356,6 +365,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("succeeded", removed["status"], removed)
         self.assertFalse(self.change.exists())
 
+    @verifies("scenario.development.deliver-branch", "scenario.development.deliver-merge-primary")
     def test_independent_deliveries_do_not_update_each_other_or_primary(self):
         before = git_value(self.primary, "rev-parse", "HEAD")
         first_id = self.ready_delivery()
@@ -395,6 +405,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             branch = "concorde/delivered/" + change_id
             self.assertEqual(0, git(self.primary, "merge-base", "--is-ancestor", branch, "HEAD", check=False).returncode)
 
+    @verifies("scenario.development.deliver-merge-primary")
     def test_legacy_delivery_receipt_does_not_claim_primary_was_unchanged(self):
         change_id = self.ready_delivery()
         self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
@@ -413,6 +424,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertNotIn("primary branch is unchanged", again["output"]["data"]["answer"])
         self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
 
+    @verifies("scenario.development.deliver-branch", "scenario.development.deliver-conflict")
     def test_primary_merge_checks_latest_integration_and_preserves_delivery_on_failure(self):
         change_id = self.ready_delivery()
         staged = self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
@@ -425,6 +437,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertTrue(git_value(self.primary, "rev-parse", "concorde/delivered/" + change_id))
 
+    @verifies("scenario.development.deliver-branch", "scenario.development.deliver-conflict")
     def test_final_merge_conflict_preserves_primary_and_delivered_branch(self):
         (self.change / "shared.txt").write_text("candidate\n")
         change_id = self.ready_delivery()
@@ -448,6 +461,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before, git_value(self.primary, "rev-parse", branch))
         self.assertTrue(self.change.exists())
 
+    @verifies("scenario.development.describe-policy")
     def test_primary_merge_preview_after_source_removal_is_read_only(self):
         change_id = self.ready_delivery()
         result = self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
@@ -472,6 +486,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("stale_delivery", result["errors"][0]["code"], result)
         self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
 
+    @verifies("scenario.development.deliver-branch", "scenario.development.deliver-merge-primary")
     def test_primary_merge_recovers_receipt_after_update_without_merging_again(self):
         change_id = self.ready_delivery()
         staged = self.run_op(self.change, "concorde-deliver", {"change_id": change_id})
@@ -495,6 +510,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertTrue((self.primary / ".concorde/deliveries" / change_id / "staging").is_dir())
         self.assertTrue((self.primary / ".concorde/deliveries" / change_id / "primary").is_dir())
 
+    @verifies("scenario.development.deliver-session-rejected")
     def test_third_worktree_redirected_runtime_and_nested_delivery_are_rejected(self):
         change_id = self.ready()
         third = self.directory / "third"
@@ -513,6 +529,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(old_head, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertTrue(self.change.exists())
 
+    @verifies("scenario.development.deliver-branch")
     def test_primary_delivery_can_explicitly_retain_source(self):
         change_id = self.ready()
         result = self.run_op(self.primary, "concorde-deliver", {"change_id": change_id, "keep_worktree": True})
@@ -520,6 +537,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertTrue(self.change.exists())
         self.assertEqual("delivered", read_change(self.change)["status"])
 
+    @verifies("scenario.development.deliver-branch", "scenario.development.deliver-merge-primary", "scenario.development.execute-capability")
     def test_paired_cli_delivers_from_source_and_primary_can_clean_up(self):
         change_id = self.ready()
         invocation = {"type_id": "concorde-capability-invocation", "schema_version": 3,
@@ -538,6 +556,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("delivered", json.loads(primary.stdout)["output"]["data"]["outcome"])
         self.assertFalse(self.change.exists())
 
+    @verifies("scenario.development.deliver-branch")
     def test_primary_delivery_stages_separate_branch_and_removes_only_transient_guidance(self):
         original = (self.primary / "AGENTS.md").read_text()
         self.run_op(self.change, "concorde-main", {"task": "Explain transfer"})
@@ -569,6 +588,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("delivered", receipt["status"])
         self.assertTrue(all(c["status"] == "passed" for c in receipt["checks"]))
 
+    @verifies("scenario.development.describe-policy")
     def test_delivery_preview_does_not_merge_or_change_state(self):
         change_id = self.ready()
         primary_head = git_value(self.primary, "rev-parse", "HEAD")
@@ -581,6 +601,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before, (self.change / STATE_PATH).read_bytes())
         self.assertEqual([], self.last_double.calls)
 
+    @verifies("scenario.development.validate-ready", "scenario.development.deliver-branch")
     def test_directly_authored_candidate_can_be_validated_and_delivered_without_a_plan(self):
         path = self.change / "app/transfer.py"
         path.write_text('def transfer(balance, amount):\n    if amount <= 0 or amount > balance:\n        raise ValueError("invalid transfer")\n    return balance - amount\n')
@@ -598,6 +619,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "concorde/delivered/" + state["change_id"] + ":specs/transfer/module.md"))
         self.assertFalse(self.change.exists())
 
+    @verifies("scenario.development.validate-blocked")
     def test_validation_does_not_bypass_an_unfinished_authored_plan(self):
         result = self.run_op(self.change, "concorde-plan", self.task)
         self.assertEqual("succeeded", result["status"], result)
@@ -629,6 +651,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertFalse(self.change.exists())
 
+    @verifies("scenario.development.deliver-branch")
     def test_primary_can_advance_before_a_clean_verified_merge(self):
         change_id = self.ready()
         (self.primary / "another.txt").write_text("Accepted independent change\n")
@@ -639,6 +662,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertEqual(advanced, git_value(self.primary, "rev-parse", "concorde/delivered/" + change_id + "^1"))
 
+    @verifies("scenario.development.deliver-conflict")
     def test_merge_conflict_does_not_change_primary_or_discard_candidate(self):
         (self.change / "shared.txt").write_text("candidate\n")
         change_id = self.ready()
@@ -682,6 +706,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertTrue(all(check['status']=='passed' for check in checks))
         self.assertFalse((self.primary/'generated').exists())
 
+    @verifies("scenario.development.deliver-conflict")
     def test_actual_integration_checks_run_after_primary_advances(self):
         change_id = self.ready()
         path = self.primary / "checks/transfer_check.py"
@@ -693,6 +718,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertTrue((self.change / STATE_PATH).exists())
 
+    @verifies("scenario.development.deliver-branch")
     def test_cleanup_failure_resumes_without_a_second_merge_or_check_run(self):
         change_id = self.ready()
         actual_git = worktree_delivery.git
@@ -713,6 +739,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(merged, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertFalse(self.change.exists())
 
+    @verifies("scenario.development.deliver-branch")
     def test_cleanup_can_finish_after_files_were_removed_but_git_registration_remains(self):
         change_id = self.ready()
         actual_git = worktree_delivery.git

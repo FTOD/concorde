@@ -5,10 +5,13 @@ import importlib.util
 import io
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+
+from concorde.spec.verification import verifies
 
 
 PACKAGE = Path(__file__).resolve().parents[3]
@@ -47,6 +50,7 @@ class ViewerLauncherTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             return viewer.main(["--project-root", str(self.root), *flags])
 
+    @verifies("scenario.views.viewer-launch")
     def test_launch_forwards_project_port_and_browser_choice_and_returns_child_status(self):
         with patch.object(viewer.shutil, "which", return_value="/test/node"), patch.object(viewer.subprocess, "run") as run:
             run.side_effect = [subprocess.CompletedProcess([], 0, "v22.1.0\n", ""),
@@ -57,6 +61,7 @@ class ViewerLauncherTests(unittest.TestCase):
                              run.call_args.args[0])
             self.assertEqual(self.root, run.call_args.kwargs["cwd"])
 
+    @verifies("scenario.views.viewer-launch", "scenario.views.viewer-invalid-first-graph")
     def test_first_existing_graph_is_selected_and_invalid_input_does_not_fall_back(self):
         first = self.config["graph_paths"][0]
         self.put(first, self.graph)
@@ -65,6 +70,7 @@ class ViewerLauncherTests(unittest.TestCase):
         with self.assertRaisesRegex(viewer.ViewerLaunchError, "not Viewer input"):
             viewer._raw_graph(self.root, self.config)
 
+    @verifies("scenario.views.viewer-missing-runtime")
     def test_stale_runtime_fails_before_any_process_starts(self):
         marker = json.loads((self.root / self.marker).read_text())
         marker["viewer_version"] = "0.0.0"
@@ -73,6 +79,7 @@ class ViewerLauncherTests(unittest.TestCase):
             self.assertEqual(3, self.launch())
             run.assert_not_called()
 
+    @verifies("scenario.views.viewer-invalid-first-graph")
     def test_missing_graph_or_symlink_is_rejected(self):
         graph = self.root / ".ua/knowledge-graph.json"
         graph.unlink()

@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from concorde.development.capability_service import CapabilityHost,run_capability
 from concorde.spec.typed_data import typed
+from concorde.spec.verification import verifies
 from concorde.reflections.scoped_triage import queue_module
 from concorde.spec.validation import validate_repository
 from tests.concorde.spec.support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
@@ -106,6 +107,7 @@ Keep this user comment intact.
           'steps':'Subtract accepted amounts and reject invalid values.','validation':'Run the configured transfer check.',
           'risks':'No persistent side effects.','protocol_change':False}]
     def task(self,action):return {'target_id':'service.transfer','task':'Investigate the transfer promise','action':action,'reflection_ids':['R-001']}
+    @verifies("scenario.reflections.status-query")
     def test_status_exposes_metadata_without_record_body_or_code(self):
         self.record();result=self.run_op('concorde-reflections-triage',self.task('status'))
         self.assertEqual('succeeded',result['status'],result);self.assertEqual([],self.double.calls)
@@ -120,6 +122,7 @@ Keep this user comment intact.
         self.assertEqual('invalid',report.status)
         self.assertIn('CONCORDE-REFLECT-004',{finding.rule_id for finding in report.findings})
         self.assertEqual('success',validate_repository(self.root,package_root=PACKAGE).status)
+    @verifies("scenario.reflections.investigate-reproduces")
     def test_investigation_is_readonly_and_preserves_user_report(self):
         self.record();before=(self.root/'app/transfer.py').read_bytes()
         result=self.run_op('concorde-reflections-triage',self.task('investigate'),self.finding)
@@ -132,11 +135,13 @@ Keep this user comment intact.
                              for path in description['read_paths']))
         self.assertEqual([[]],[d['write_paths'] for d in self.host.descriptions]);text=(self.root/'.concorde/reflections/planned/R-001.md').read_text()
         self.assertIn('Keep this user comment intact.',text);self.assertIn('PRIVATE_REFLECTION_DETAIL_FOR_IMPLEMENTATION',text)
+    @verifies("scenario.reflections.investigate-stale-evidence")
     def test_investigation_rejects_wrong_head(self):
         self.record()
         def cb(*args):self.finding(*args);args[2]['reflection_findings'][0]['verified_commit']='0'*40
         result=self.run_op('concorde-reflections-triage',self.task('investigate'),cb)
         self.assertNotEqual('succeeded',result['status']);self.assertTrue((self.root/'.concorde/reflections/pending/R-001.md').exists())
+    @verifies("scenario.reflections.investigate-stale-evidence")
     def test_rejected_investigation_preserves_its_gap_until_host_acceptance(self):
         self.record()
         def missing(stage,snap,data,cwd):
@@ -153,6 +158,7 @@ Keep this user comment intact.
         self.assertEqual('open',state['gap_history'][0]['status']);self.assertTrue(state['gaps'])
         self.assertEqual('succeeded',self.run_op('concorde-reflections-triage',task,self.finding)['status'])
         self.assertEqual('resolved',json.loads((self.root/'.concorde/worktree.json').read_text())['gap_history'][0]['status'])
+    @verifies("scenario.reflections.implement-approved-plan")
     def test_reflection_implementation_restarts_spec_cognition_and_marks_plan(self):
         self.record();result=self.run_op('concorde-reflections-triage',self.task('implement'),self.finding)
         self.assertEqual('succeeded',result['status'],result)

@@ -20,6 +20,7 @@ from concorde.development.capability_host import Invocation
 from concorde.harness.change_worktree import read_change
 from concorde.harness.harness import HARNESSES, SPEC_CAPSULE
 from concorde.spec.typed_data import typed
+from concorde.spec.verification import verifies
 from tests.concorde.spec.support import CONFIGURATION, PACKAGE, ModelProcessDouble, project
 
 
@@ -44,6 +45,7 @@ class AgentBindingTests(unittest.TestCase):
 
     # --- R-066: a declared-writes-narrowed implementation Agent must never receive write authority ---
 
+    @verifies("scenario.harness.permission-compile")
     def test_narrowed_implementation_agent_write_authority_is_never_widened(self):
         from concorde.distribution.build import load_role_prompt as real_load
 
@@ -56,6 +58,7 @@ class AgentBindingTests(unittest.TestCase):
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("permission_denied", result["errors"][0]["code"], result)
 
+    @verifies("scenario.harness.permission-compile")
     def test_readonly_investigation_path_has_empty_write_paths(self):
         host = CapabilityHost(self.root, PACKAGE, mode="describe-policy", allow_primary_worktree=True)
         Invocation("concorde-implement", CONFIGURATION, self.task, host).stage(
@@ -76,6 +79,7 @@ class AgentBindingTests(unittest.TestCase):
             self.assertRegex(policy["instructions_digest"], r"^sha256:[0-9a-f]{64}$")
             self.assertGreater(policy["loop_timeout_seconds"], 0)
 
+    @verifies("scenario.harness.agent-bind")
     def test_description_agent_binding_digest_matches_resolve_agent(self):
         host = CapabilityHost(self.root, PACKAGE, mode="describe-policy", allow_primary_worktree=True)
         Invocation("concorde-context-solve", CONFIGURATION, self.task, host).stage("concorde-context-solve")
@@ -89,6 +93,7 @@ class AgentBindingTests(unittest.TestCase):
 
     # --- the executor receives the bound Agent's effective loop timeout ---
 
+    @verifies("scenario.harness.agent-bind")
     def test_executor_receives_the_agents_effective_loop_timeout(self):
         double = ModelProcessDouble()
         self.addCleanup(double.runtime_directory.cleanup)
@@ -109,6 +114,7 @@ class AgentBindingTests(unittest.TestCase):
 
         double.executor = failing
 
+    @verifies("scenario.harness.execute-failure")
     def test_execution_limit_outcome_maps_to_execution_limit_and_records_change_status(self):
         double = ModelProcessDouble()
         self.addCleanup(double.runtime_directory.cleanup)
@@ -122,6 +128,7 @@ class AgentBindingTests(unittest.TestCase):
         self.assertEqual("execution_limit", result["errors"][0]["code"], result)
         self.assertEqual("limit_exhausted", read_change(self.root)["status"])
 
+    @verifies("scenario.harness.execute-failure")
     def test_execution_cancelled_outcome_maps_to_execution_cancelled_and_records_change_status(self):
         double = ModelProcessDouble()
         self.addCleanup(double.runtime_directory.cleanup)
@@ -134,6 +141,7 @@ class AgentBindingTests(unittest.TestCase):
         self.assertEqual("execution_cancelled", result["errors"][0]["code"], result)
         self.assertEqual("cancelled", read_change(self.root)["status"])
 
+    @verifies("scenario.harness.execute-failure")
     def test_dev_loop_composition_records_child_limit_status_on_the_change(self):
         double = ModelProcessDouble()
         self.addCleanup(double.runtime_directory.cleanup)

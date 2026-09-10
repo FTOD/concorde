@@ -39,6 +39,7 @@ from concorde.harness.permissions import (  # noqa: E402
 )
 from concorde.harness.effects import EffectDeclaration  # noqa: E402
 from concorde.spec.repository import PROTOCOL_VERSION  # noqa: E402
+from concorde.spec.verification import verifies  # noqa: E402
 
 
 class AgentExecutorTests(unittest.TestCase):
@@ -196,6 +197,7 @@ class AgentExecutorTests(unittest.TestCase):
             native_configuration=native,
         )
 
+    @verifies("scenario.harness.execute-success")
     def test_codex_process_handoff_is_injectable_scrubbed_and_receipted(self):
         calls = []
 
@@ -243,6 +245,7 @@ class AgentExecutorTests(unittest.TestCase):
         with self.assertRaises(FrozenInstanceError):
             result.output = "changed"  # type: ignore[misc]
 
+    @verifies("scenario.harness.execute-success")
     def test_claude_process_handoff_uses_inline_strict_settings_and_no_retry(self):
         calls = []
 
@@ -307,6 +310,7 @@ class AgentExecutorTests(unittest.TestCase):
                 self.assertTrue(validator.is_valid("required tool unavailable"))
                 self.assertIn("exactly the lowercase string 'none'", field["description"])
 
+    @verifies("scenario.harness.execute-success", "scenario.harness.execute-failure")
     def test_success_completion_rejects_wrong_limitations_and_failed_gates(self):
         spec = self.specification("codex")
         for limitation, failed_gate, expected_error in (
@@ -343,6 +347,7 @@ class AgentExecutorTests(unittest.TestCase):
                 else:
                     self.assertEqual(executor(spec).completion.limitations, "none")
 
+    @verifies("scenario.harness.execute-failure")
     def test_zero_exit_semantic_failure_and_malformed_completion_fail_closed(self):
         spec = self.specification("codex")
 
@@ -378,6 +383,7 @@ class AgentExecutorTests(unittest.TestCase):
             malformed(spec)
         self.assertEqual(malformed_error.exception.receipt.status, "failed")
 
+    @verifies("scenario.harness.execute-success")
     def test_recoverable_failed_tool_event_can_end_in_valid_success(self):
         spec = self.specification("codex")
 
@@ -409,6 +415,7 @@ class AgentExecutorTests(unittest.TestCase):
         self.assertEqual(result.output, "recovered")
         self.assertEqual(result.receipt.status, "success")
 
+    @verifies("scenario.harness.execute-failure")
     def test_native_lifecycle_failure_and_stale_completion_identity_fail_closed(self):
         spec = self.specification("codex")
 
@@ -451,6 +458,7 @@ class AgentExecutorTests(unittest.TestCase):
                 environment={"PATH": "/bin"},
             )(spec)
 
+    @verifies("scenario.harness.execute-success")
     def test_stale_or_unenforced_configuration_prevents_process_start(self):
         calls = []
         executor = AgentProcessExecutor(
@@ -469,6 +477,7 @@ class AgentExecutorTests(unittest.TestCase):
             executor(replace(spec, native_configuration=unenforced))
         self.assertEqual(calls, [])
 
+    @verifies("scenario.harness.execute-success", "scenario.harness.execute-failure")
     def test_version_and_process_failures_are_structured_and_do_not_retry(self):
         calls = []
         spec = self.specification("claude")
@@ -601,6 +610,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
         }
         return json.dumps(runtime_value, sort_keys=True, separators=(",", ":"))
 
+    @verifies("scenario.harness.execute-success")
     def test_tampered_prompt_fails_instructions_digest_check(self):
         spec = self.structured_specification(prompt_override="tampered instructions text")
         executor = AgentProcessExecutor(runner=self._unreachable_runner(self),
@@ -608,6 +618,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(CapabilityExecutionError, "rendered instructions"):
             executor(spec)
 
+    @verifies("scenario.harness.execute-success")
     def test_wrong_context_and_result_type_is_refused(self):
         spec = self.structured_specification(agent_name="planner", role="concorde-planner",
             context_type="concorde-topology-author-context")
@@ -616,6 +627,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(CapabilityExecutionError, "not declared by the bound Agent"):
             executor(spec)
 
+    @verifies("scenario.harness.execute-success")
     def test_policy_writes_beyond_a_no_write_agent_are_refused(self):
         spec = self.structured_specification(agent_name="planner", role="concorde-planner",
             write_roles=("spec-context",),
@@ -626,6 +638,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(CapabilityExecutionError, "writes the bound Agent does not declare"):
             executor(spec)
 
+    @verifies("scenario.harness.execute-success")
     def test_unknown_agent_is_refused(self):
         binding, _ = self.binding_and_prompt("planner")
         tampered = dataclass_replace(binding, agent="not-a-real-agent")
@@ -636,6 +649,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(CapabilityExecutionError, "unknown Agent"):
             executor(spec)
 
+    @verifies("scenario.harness.execute-success")
     def test_wrong_harness_digest_is_refused(self):
         binding, _ = self.binding_and_prompt("planner")
         tampered = dataclass_replace(binding, harness_digest="sha256:" + "0" * 64)
@@ -646,6 +660,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(CapabilityExecutionError, "Harness identity"):
             executor(spec)
 
+    @verifies("scenario.harness.execute-success")
     def test_tampered_binding_digest_is_refused(self):
         binding, _ = self.binding_and_prompt("planner")
         payload = json.loads(binding_json(binding))
@@ -657,6 +672,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(CapabilityExecutionError, "digest does not match"):
             executor(spec)
 
+    @verifies("scenario.harness.execute-failure")
     def test_runner_timeout_yields_limit_exhausted_outcome_with_binding_digest_and_no_retry(self):
         binding, _ = self.binding_and_prompt("planner")
         spec = self.structured_specification()
@@ -676,6 +692,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
         self.assertEqual(binding.digest, raised.exception.receipt.agent_binding_digest)
         self.assertEqual([binding.effective_loop.timeout_seconds], calls)
 
+    @verifies("scenario.harness.execute-failure")
     def test_runner_keyboard_interrupt_yields_cancelled_outcome(self):
         spec = self.structured_specification()
 
@@ -689,6 +706,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
         self.assertEqual("cancelled", raised.exception.outcome)
         self.assertIsNone(raised.exception.receipt)
 
+    @verifies("scenario.harness.execute-success")
     def test_successful_structured_run_carries_agent_binding_digest(self):
         binding, _ = self.binding_and_prompt("planner")
         spec = self.structured_specification()

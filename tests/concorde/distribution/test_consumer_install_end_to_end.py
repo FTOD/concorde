@@ -16,6 +16,7 @@ import unittest
 from pathlib import Path
 
 from concorde.spec.contracts import SKILL_NAMES
+from concorde.spec.verification import verifies
 
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.managed_runtime import create_langgraph_index, runtime_install_environment
@@ -51,14 +52,17 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
         cls.project_temporary.cleanup()
         cls.runtime_temporary.cleanup()
 
+    @verifies("scenario.distribution.install-apply")
     def test_apply_installs_cleanly(self):
         self.assertEqual(0, self.install_result.returncode, self.install_result.stderr)
         self.assertEqual("installed", self.install_payload["status"], self.install_payload)
 
+    @verifies("scenario.distribution.install-apply")
     def test_framework_generated_projections_exist(self):
         self.assertTrue((self.target / ".concorde/framework/generated/build-manifest.json").is_file())
         self.assertTrue((self.target / ".concorde/framework/generated/protocol/principles.md").is_file())
 
+    @verifies("scenario.distribution.install-apply")
     def test_seven_skills_are_installed_and_receipt_owned(self):
         skill_paths = {f".claude/skills/{name}/SKILL.md" for name in SKILL_NAMES}
         self.assertEqual(7, len(skill_paths))
@@ -68,12 +72,14 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
         owned = {item["path"] for item in receipt["outputs"] if item["role"] == "skill"}
         self.assertEqual(skill_paths, owned)
 
+    @verifies("scenario.distribution.install-apply")
     def test_no_legacy_operation_tier_roots_are_installed(self):
         framework = self.target / ".concorde/framework"
         self.assertTrue(framework.is_dir())
         for legacy in ("operations", "roles", "agent-assets"):
             self.assertFalse((framework / legacy).exists(), legacy)
 
+    @verifies("scenario.distribution.install-apply")
     def test_consumer_claude_md_protocol_block_references_the_framework_build(self):
         claude_md = (self.target / "CLAUDE.md").read_text(encoding="utf-8")
         self.assertIn("concorde-protocol:start", claude_md)

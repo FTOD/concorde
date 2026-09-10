@@ -22,6 +22,8 @@ SPEC = importlib.util.spec_from_file_location("concorde_worktree_guard", SCRIPT)
 guard = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(guard)
 
+from concorde.spec.verification import verifies
+
 CREATING_COMMANDS = (
     "git worktree add ../feature -b feature",
     "git worktree add -b feature /tmp/wt HEAD",
@@ -75,6 +77,7 @@ def payload(tool_name: str, tool_input: object, event: str = "PreToolUse") -> di
 
 
 class GuardDecisionTests(unittest.TestCase):
+    @verifies("scenario.distribution.worktree-guard-refuses")
     def test_shell_commands_that_create_or_move_worktrees_are_refused(self):
         for command in CREATING_COMMANDS:
             with self.subTest(command=command):
@@ -83,11 +86,13 @@ class GuardDecisionTests(unittest.TestCase):
                 self.assertIn(verdict.kind, {"git-worktree", "claude-worktree"})
                 self.assertIn("concorde-dev-loop", verdict.reason)
 
+    @verifies("scenario.distribution.worktree-guard-refuses")
     def test_ordinary_commands_including_worktree_inspection_are_allowed(self):
         for command in ORDINARY_COMMANDS:
             with self.subTest(command=command):
                 self.assertFalse(guard.evaluate(payload("Bash", {"command": command})).blocked)
 
+    @verifies("scenario.distribution.worktree-guard-refuses")
     def test_codex_and_powershell_shell_tools_share_the_command_check(self):
         for tool in ("Bash", "PowerShell", "shell", "exec_command"):
             with self.subTest(tool=tool):
@@ -96,10 +101,12 @@ class GuardDecisionTests(unittest.TestCase):
         self.assertTrue(guard.evaluate(payload("Bash", "git worktree add /tmp/wt")).blocked)
         self.assertFalse(guard.evaluate(payload("Bash", {})).blocked)
 
+    @verifies("scenario.distribution.worktree-guard-refuses")
     def test_enter_worktree_tool_is_refused(self):
         self.assertEqual("enter-worktree", guard.evaluate(payload("EnterWorktree", {})).kind)
         self.assertEqual("enter-worktree", guard.evaluate(payload("EnterWorktree", {"path": "/tmp/wt"})).kind)
 
+    @verifies("scenario.distribution.worktree-guard-refuses")
     def test_subagent_worktree_isolation_is_refused_but_other_subagents_are_allowed(self):
         for tool in ("Agent", "Task"):
             with self.subTest(tool=tool):
@@ -108,6 +115,7 @@ class GuardDecisionTests(unittest.TestCase):
                 self.assertFalse(guard.evaluate(payload(tool, {"prompt": "x", "isolation": "remote"})).blocked)
                 self.assertFalse(guard.evaluate(payload(tool, {"prompt": "x"})).blocked)
 
+    @verifies("scenario.distribution.worktree-guard-refuses")
     def test_worktree_create_event_is_always_refused(self):
         verdict = guard.evaluate({"session_id": "s", "hook_event_name": "WorktreeCreate",
                                   "cwd": str(PACKAGE), "name": "probe", "base_ref": "main"})
@@ -126,6 +134,7 @@ class GuardProcessTests(unittest.TestCase):
         return subprocess.run([sys.executable, str(SCRIPT), *arguments], input=stdin,
                               capture_output=True, text=True, cwd=str(PACKAGE))
 
+    @verifies("scenario.distribution.worktree-guard-refuses")
     def test_refusal_reports_a_permission_decision_on_stdout_and_the_reason_on_stderr(self):
         completed = self.run_guard(stdin=json.dumps(payload("Bash", {"command": "git worktree add /tmp/wt"})))
         self.assertEqual(2, completed.returncode)
@@ -135,6 +144,7 @@ class GuardProcessTests(unittest.TestCase):
         self.assertEqual(guard.REASON, decision["permissionDecisionReason"])
         self.assertEqual(guard.REASON, completed.stderr.strip())
 
+    @verifies("scenario.distribution.worktree-guard-refuses")
     def test_worktree_create_refusal_uses_the_exit_code_and_stderr_only(self):
         completed = self.run_guard(stdin=json.dumps({"hook_event_name": "WorktreeCreate", "name": "probe"}))
         self.assertEqual(2, completed.returncode)
@@ -152,6 +162,7 @@ class GuardProcessTests(unittest.TestCase):
                 self.assertEqual(1, completed.returncode)
                 self.assertIn("worktree-guard", completed.stderr)
 
+    @verifies("scenario.distribution.worktree-guard-refuses")
     def test_check_mode_decides_a_command_text_for_people_and_scripts(self):
         refused = self.run_guard("--check", "git -C /tmp/repo worktree add /tmp/wt")
         self.assertEqual(2, refused.returncode)
@@ -209,6 +220,7 @@ class IntegrationFilesTests(unittest.TestCase):
         self.assertNotIn('decision = "allow"', rules)
 
     @unittest.skipUnless(shutil.which("codex"), "the Codex CLI is not installed here")
+    @verifies("scenario.distribution.worktree-guard-refuses")
     def test_codex_execpolicy_accepts_the_rules(self):
         def check(*command: str) -> dict:
             completed = subprocess.run(

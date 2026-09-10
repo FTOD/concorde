@@ -18,6 +18,7 @@ from concorde.development.capability_host import CapabilityHost
 from concorde.harness.native_agent import NativeAgentAdapter
 from concorde.spec.typed_data import canonical, decode, typed
 from concorde.harness.context import resolve_context
+from concorde.spec.verification import verifies
 from concorde.spec.repository import SpecRepository, digest
 from tests.concorde.spec.support import PACKAGE, ModelProcessDouble, project
 
@@ -73,6 +74,7 @@ class AgentRuntimeTests(unittest.TestCase):
         grant = AgentGrant(frozenset(targets), frozenset(agents or [d.id for d in definitions]))
         return runtime.invoke(agent, input or self.task(), grant)
 
+    @verifies("scenario.harness.recursive-delegate")
     def test_nested_code_model_code_chain_and_private_fresh_frames(self):
         frames = []
         def callback(child=None, source='code-driven'):
@@ -100,6 +102,7 @@ class AgentRuntimeTests(unittest.TestCase):
         self.assertEqual([e['source'] for e in run.events if e['event']=='decision'],
                          ['code-driven', 'model-driven', 'code-driven', 'model-driven', 'code-driven'])
 
+    @verifies("scenario.harness.recursive-delegate")
     def test_same_agent_can_be_leaf_or_recursive_parent(self):
         def decide(frame):
             if decode(frame.input_json)['data']['task']=='root' and not frame.feedback:
@@ -123,12 +126,14 @@ class AgentRuntimeTests(unittest.TestCase):
         decision = self.invoke([replace(definition, decision_reference='test-decision/v2')]).events[0]
         self.assertNotEqual(first['binding_digest'], decision['binding_digest'])
 
+    @verifies("scenario.harness.recursive-reject")
     def test_unregistered_harness_is_rejected(self):
         definition = self.definition('A', lambda frame: self.fail('must not execute'))
         with self.assertRaises(ValueError):
             self.invoke([replace(definition, agent=replace(definition.agent,
                 harness=replace(SPEC_CAPSULE, state='forged configuration')))])
 
+    @verifies("scenario.harness.recursive-delegate", "scenario.harness.recursive-reject")
     def test_undeclared_self_call_is_denied_before_context_admission(self):
         def decide(frame):
             if frame.feedback:
@@ -150,6 +155,7 @@ class AgentRuntimeTests(unittest.TestCase):
                 result = self.invoke([self.definition('A', decision)]).result
                 self.assertEqual((result.outcome, result.error), expected)
 
+    @verifies("scenario.harness.recursive-delegate", "scenario.harness.recursive-reject")
     def test_host_allowlist_and_target_attenuation_prevent_child_effects(self):
         calls=[]
         def parent(frame):
@@ -164,6 +170,7 @@ class AgentRuntimeTests(unittest.TestCase):
                 self.assertEqual(decode(run.result.value_json)['data']['answer'],'rejected')
         self.assertEqual(calls,[])
 
+    @verifies("scenario.harness.recursive-delegate")
     def test_invalid_child_input_is_typed_failure_feedback(self):
         def parent(frame):
             return (self.done(frame.feedback[0].error) if frame.feedback else
@@ -172,6 +179,7 @@ class AgentRuntimeTests(unittest.TestCase):
         self.assertEqual(decode(run.result.value_json)['data']['answer'],'admission_failed')
         self.assertNotIn('B',[a[0] for a in self.admissions])
 
+    @verifies("scenario.harness.recursive-delegate", "scenario.harness.recursive-reject")
     def test_shared_limits_propagate_and_do_not_reset_in_children(self):
         recursive=self.definition('A',lambda f: AgentStep('model-driven','delegate','A',self.task()),['A'],max_steps=99)
         for limits in [AgentLimits(max_depth=0), AgentLimits(max_calls=2),
@@ -184,6 +192,7 @@ class AgentRuntimeTests(unittest.TestCase):
         for kwargs in ({'max_calls':0},{'max_depth':-1},{'max_decisions':True},{'timeout_seconds':float('inf')}):
             with self.assertRaises(ValueError): AgentLimits(**kwargs)
 
+    @verifies("scenario.harness.recursive-reject", "scenario.harness.recursive-delegate")
     def test_cancellation_during_child_stops_ancestor_before_continuation(self):
         cancelled=[False]; calls=[]
         def child(frame):
@@ -196,6 +205,7 @@ class AgentRuntimeTests(unittest.TestCase):
         self.assertEqual(run.result.outcome,'cancelled')
         self.assertEqual(len(calls),1)
 
+    @verifies("scenario.harness.recursive-reject")
     def test_deadline_overrides_late_success(self):
         now=[0.0]
         def decide(frame):
@@ -232,6 +242,7 @@ class AgentRuntimeTests(unittest.TestCase):
         result=self.invoke([self.definition('A',lambda f:AgentStep('code-driven','complete',outcome='spec_incomplete'))]).result
         self.assertEqual(result.error,'invalid_step')
 
+    @verifies("scenario.harness.recursive-reject")
     def test_invalid_completion_and_changed_context_fail_closed(self):
         wrong=self.definition('A',lambda f:AgentStep('code-driven','complete',value=self.task()))
         self.assertEqual(self.invoke([wrong]).result.error,'invalid_step')
@@ -244,6 +255,7 @@ class AgentRuntimeTests(unittest.TestCase):
         run=self.invoke([self.definition('A',parent,['B']),self.definition('B',lambda f: changed(f))])
         self.assertEqual(run.result.error,'stale_context')
 
+    @verifies("scenario.harness.recursive-reject")
     def test_code_driven_capabilities_require_known_harness_admission(self):
         from concorde.harness.harness import HARNESSES
         for capability, admitted, accepted in (
@@ -265,6 +277,7 @@ class AgentRuntimeTests(unittest.TestCase):
                             AgentRuntime([replace(node,agent=agent)],self.context)
                         self.assertEqual(decisions,[])
 
+    @verifies("scenario.harness.recursive-reject")
     def test_delegation_requires_both_loop_interfaces_for_code_driven_agents(self):
         for contexts, results in (
                 (('concorde-agent-task',),('concorde-agent-answer','concorde-agent-loop-step')),
@@ -276,6 +289,7 @@ class AgentRuntimeTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     AgentRuntime([replace(node,agent=agent)],self.context)
 
+    @verifies("scenario.harness.recursive-delegate", "scenario.harness.recursive-reject")
     def test_rejected_child_requests_consume_the_shared_call_budget(self):
         for failure in ('input','context','edge'):
             with self.subTest(failure=failure):
@@ -298,6 +312,7 @@ class AgentRuntimeTests(unittest.TestCase):
                 self.assertEqual(len(decisions),2)
                 self.assertEqual(resolutions,['B'] if failure=='context' else [])
 
+    @verifies("scenario.harness.recursive-reject")
     def test_missing_bindings_and_stale_spec_do_not_start(self):
         with self.assertRaises(ValueError):
             AgentRuntime([self.definition('A',lambda f:self.done(),['missing'])],self.context)
@@ -310,6 +325,7 @@ class AgentRuntimeTests(unittest.TestCase):
         self.assertEqual(decisions,[])
         self.assertEqual(self.admissions,[])
 
+    @verifies("scenario.harness.recursive-reject", "scenario.harness.recursive-delegate")
     def test_unavailable_spec_rejects_initial_and_resumed_decisions(self):
         for when in ('initial','continuation'):
             with self.subTest(when=when):
@@ -329,6 +345,7 @@ class AgentRuntimeTests(unittest.TestCase):
                 self.assertEqual((result.outcome,result.error),('rejected','stale_definition'))
                 self.assertEqual(decisions,[] if when=='initial' else ['A'])
 
+    @verifies("scenario.harness.recursive-reject")
     def test_spec_freshness_compares_exact_bytes(self):
         self.spec.write_bytes(b'# Test Agent\n')
         runtime=AgentRuntime([self.definition('A',lambda frame:self.done())],self.context)
@@ -337,6 +354,7 @@ class AgentRuntimeTests(unittest.TestCase):
             frozenset({'service.transfer'}),frozenset({'A'}))).result
         self.assertEqual((result.outcome,result.error),('rejected','stale_definition'))
 
+    @verifies("scenario.harness.recursive-reject")
     def test_stop_during_context_resolution_never_starts_a_decision(self):
         for mode in ('cancelled', 'deadline', 'resolver_error'):
             with self.subTest(mode=mode):
@@ -356,6 +374,7 @@ class AgentRuntimeTests(unittest.TestCase):
                 self.assertEqual(result.outcome,'limit_exhausted' if mode=='deadline' else 'cancelled')
                 self.assertEqual(calls,[])
 
+    @verifies("scenario.harness.recursive-delegate", "scenario.harness.context-freeze", "scenario.harness.recursive-reject")
     def test_runtime_uses_real_context_service_and_requires_host_grant(self):
         frames = []
         runtime = AgentRuntime([self.definition('A',
@@ -374,6 +393,7 @@ class AgentRuntimeTests(unittest.TestCase):
             ['specs/transfer/module.md', 'specs/transfer/promises.md'])
         self.assertEqual(snapshot['implementation_artifacts'], [])
 
+    @verifies("scenario.harness.recursive-delegate", "scenario.harness.execute-success")
     def test_native_codex_and_claude_yield_to_code_agent_and_continue_fresh(self):
         for integration in ('codex','claude'):
             with self.subTest(integration=integration):

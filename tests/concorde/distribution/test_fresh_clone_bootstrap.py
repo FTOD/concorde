@@ -16,6 +16,7 @@ import unittest
 from pathlib import Path
 
 from concorde.spec.contracts import SKILL_NAMES
+from concorde.spec.verification import verifies
 
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
@@ -74,6 +75,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
             projected = sorted(p.name for p in (self.clone / integration_root).glob("concorde-*"))
             self.assertEqual([], projected)
 
+    @verifies("scenario.distribution.build-write", "scenario.distribution.worktree-guard-refuses")
     def test_one_build_command_bootstraps_a_fully_working_clone(self):
         build = _run([sys.executable, "scripts/concorde.py", "build"], self.clone)
         self.assertEqual(0, build.returncode, build.stderr)
@@ -101,6 +103,7 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
         described = self._validate_invocation()
         self.assertEqual("described", described["status"], described)
 
+    @verifies("scenario.distribution.build-stale-blocks-execution", "scenario.distribution.build-check")
     def test_editing_a_prompt_without_rebuilding_fails_every_invocation_closed(self):
         build = _run([sys.executable, "scripts/concorde.py", "build"], self.clone)
         self.assertEqual(0, build.returncode, build.stderr)

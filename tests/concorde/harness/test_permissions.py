@@ -32,6 +32,7 @@ from concorde.harness.permissions import (  # noqa: E402
 from concorde.harness.agent_model import binding_json, resolve_agent  # noqa: E402
 from concorde.harness.effects import EffectDeclaration  # noqa: E402
 from concorde.spec.typed_data import canonical, typed  # noqa: E402
+from concorde.spec.verification import verifies  # noqa: E402
 
 
 class PermissionTests(unittest.TestCase):
@@ -56,6 +57,7 @@ class PermissionTests(unittest.TestCase):
             agent="plan-author",
         )
 
+    @verifies("scenario.harness.permission-compile")
     def test_normalized_policy_is_frozen_canonical_and_deny_by_default(self):
         policy = compile_policy(self.effect, self.binding, self.roles)
         self.assertEqual(
@@ -77,6 +79,7 @@ class PermissionTests(unittest.TestCase):
         with self.assertRaises(FrozenInstanceError):
             policy.network_enabled = True  # type: ignore[misc]
 
+    @verifies("scenario.harness.permission-compile", "scenario.harness.permission-reject")
     def test_binding_can_narrow_but_never_widen_leaf_effects(self):
         narrowed = replace(
             self.binding,
@@ -107,6 +110,7 @@ class PermissionTests(unittest.TestCase):
         with self.assertRaisesRegex(PermissionPolicyError, "network"):
             compile_policy(self.effect, replace(self.binding, network=True), self.roles)
 
+    @verifies("scenario.harness.permission-compile")
     def test_codex_and_claude_render_equivalent_effective_boundaries(self):
         policy = compile_policy(self.effect, self.binding, self.roles)
         codex = render_codex_configuration(policy, native_enforcement=True)
@@ -201,6 +205,7 @@ class PermissionTests(unittest.TestCase):
         self.assertEqual(settings["sandbox"]["network"]["allowedDomains"], [])
         self.assertTrue(compare_effective_boundaries(codex, claude))
 
+    @verifies("scenario.harness.permission-compile")
     def test_a_directory_root_grants_its_whole_subtree_in_both_integrations(self):
         """A Module's package directory reaches the policy as one base path, from
         ``implementation_paths``; both renderers must grant everything below it."""
@@ -233,6 +238,7 @@ class PermissionTests(unittest.TestCase):
         self.assertTrue(compare_effective_boundaries(codex, claude))
 
     @unittest.skipUnless(shutil.which("codex"), "Codex CLI is not installed")
+    @verifies("scenario.harness.permission-compile")
     def test_codex_launch_argv_loads_configuration_in_installed_cli_without_a_model(self):
         policy = compile_policy(self.effect, self.binding, self.roles)
         codex = render_codex_configuration(policy, native_enforcement=True)
@@ -254,6 +260,7 @@ class PermissionTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform == "linux" and shutil.which("codex") and Path("/usr/bin/python3").exists(),
                          "Native Linux Codex sandbox is not installed")
+    @verifies("scenario.harness.permission-compile")
     def test_native_review_grants_allow_owned_reads_and_protect_host_files(self):
         from concorde.harness.agent_executor import resolve_runtime_bootstrap
         probe = '''import json, os, socket, sys
@@ -318,6 +325,7 @@ print(json.dumps(result))
                     self.assertFalse((root / "app/new.py").exists())
                     self.assertEqual("foreign fixture", (root.parent / "foreign.py").read_text())
 
+    @verifies("scenario.harness.permission-compile", "scenario.harness.permission-reject")
     def test_unavailable_native_enforcement_requires_verified_outer_boundary(self):
         policy = compile_policy(self.effect, self.binding, self.roles)
         with self.assertRaisesRegex(PermissionPolicyError, "Codex.*enforcement"):

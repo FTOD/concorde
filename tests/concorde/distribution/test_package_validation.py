@@ -18,6 +18,7 @@ sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.distribution import package_validation  # noqa: E402
 from concorde.distribution.build import write_build  # noqa: E402
+from concorde.spec.verification import verifies  # noqa: E402
 
 
 VALID_CAPABILITY_INIT = '''CAPABILITIES = ("alpha",)
@@ -415,10 +416,12 @@ class BuildOutputRuleTests(unittest.TestCase):
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
         shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
 
+    @verifies("scenario.distribution.build-check")
     def test_missing_manifest_is_reported(self) -> None:
         findings = package_validation._validate_build_outputs(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-BUILD-FRESH-001" for f in findings), findings)
 
+    @verifies("scenario.distribution.build-check")
     def test_stale_source_is_reported(self) -> None:
         write_build(self.root, "all")
         edited = self.root / "prompts/workflow-host/gap-reporting.md"
@@ -426,6 +429,7 @@ class BuildOutputRuleTests(unittest.TestCase):
         findings = package_validation._validate_build_outputs(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-BUILD-FRESH-001" for f in findings), findings)
 
+    @verifies("scenario.distribution.build-check")
     def test_drifted_output_is_reported(self) -> None:
         write_build(self.root, "all")
         target = self.root / "generated/agents/coordinator.md"
@@ -433,10 +437,12 @@ class BuildOutputRuleTests(unittest.TestCase):
         findings = package_validation._validate_build_outputs(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-BUILD-DRIFT-001" for f in findings), findings)
 
+    @verifies("scenario.distribution.build-check")
     def test_fresh_build_has_no_findings(self) -> None:
         write_build(self.root, "all")
         self.assertEqual([], package_validation._validate_build_outputs(self.root))
 
+    @verifies("scenario.distribution.build-check")
     def test_unrelated_file_under_generated_has_no_findings(self) -> None:
         """`generated/` is a shared, ignored root; a file another tool writes there (for example
         the legacy initializer's diagram renders under `generated/architecture/`) must never be
@@ -447,6 +453,7 @@ class BuildOutputRuleTests(unittest.TestCase):
         (other / "example.html").write_text("unrelated diagram render\n", encoding="utf-8")
         self.assertEqual([], package_validation._validate_build_outputs(self.root))
 
+    @verifies("scenario.distribution.build-check")
     def test_unexpected_file_in_an_owned_directory_is_reported(self) -> None:
         write_build(self.root, "all")
         (self.root / "generated/agents/extra.md").write_text("not a build output\n", encoding="utf-8")

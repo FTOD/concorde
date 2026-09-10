@@ -16,6 +16,7 @@ from urllib.request import Request, urlopen
 
 from tests.concorde.spec.support import PACKAGE, project
 from tests.concorde.harness.test_studio import invocation, stable
+from concorde.spec.verification import verifies
 
 
 @unittest.skipUnless(os.environ.get("CONCORDE_TEST_STUDIO") == "1", "requires optional Studio server")
@@ -178,6 +179,7 @@ class StudioServerTests(unittest.TestCase):
         self.assertEqual(3, result.returncode)
         self.assertEqual("workspace_mismatch", json.loads(result.stdout)["errors"][0]["code"])
 
+    @verifies("scenario.harness.recursive-delegate")
     def test_loop_executes_mutations_and_checkpoints_only_inside_fixture_worktree(self):
         thread, state = self.run_graph(invocation("concorde-dev-loop",
             data={**self.change_fixture.task, "specify": False, "run_reviews": False}))

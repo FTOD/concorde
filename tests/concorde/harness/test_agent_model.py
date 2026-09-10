@@ -34,6 +34,7 @@ from concorde.harness.harness import (  # noqa: E402
     LoopPolicy,
 )
 from concorde.harness.harness import harness as make_harness  # noqa: E402
+from concorde.spec.verification import verifies  # noqa: E402
 
 
 class HarnessDigestTests(unittest.TestCase):
@@ -95,6 +96,7 @@ class ResolveAgentBuildTests(unittest.TestCase):
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
         shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
 
+    @verifies("scenario.harness.agent-bind")
     def test_resolve_agent_succeeds_for_every_inventory_agent_after_write_build(self):
         write_build(self.root, "all")
         manifest = json.loads((self.root / "generated/build-manifest.json").read_text(encoding="utf-8"))
@@ -116,6 +118,7 @@ class ResolveAgentBuildTests(unittest.TestCase):
                 self.assertEqual(binding.harness_digest, HARNESSES[binding.harness].digest)
                 self.assertEqual(binding.digest, binding_digest(binding))
 
+    @verifies("scenario.harness.agent-bind")
     def test_resolve_agent_accepts_external_hyphenated_and_underscored_names(self):
         write_build(self.root, "all")
         by_external = resolve_agent(self.root, "concorde-context-assessor")
@@ -125,12 +128,14 @@ class ResolveAgentBuildTests(unittest.TestCase):
         self.assertEqual(by_external, by_underscore)
         self.assertEqual(by_external.agent, "context_assessor")
 
+    @verifies("scenario.harness.agent-bind-reject")
     def test_unknown_agent_name_fails_closed(self):
         write_build(self.root, "all")
         with self.assertRaises(BuildError) as failure:
             resolve_agent(self.root, "concorde-not-a-real-agent")
         self.assertEqual(failure.exception.code, "unknown_agent")
 
+    @verifies("scenario.harness.agent-bind-reject")
     def test_missing_rendered_instructions_is_stale_build(self):
         write_build(self.root, "all")
         (self.root / "generated/agents/coordinator.md").unlink()
@@ -138,12 +143,14 @@ class ResolveAgentBuildTests(unittest.TestCase):
             resolve_agent(self.root, "concorde-coordinator")
         self.assertEqual(failure.exception.code, "stale_build")
 
+    @verifies("scenario.harness.agent-bind")
     def test_effective_loop_is_the_harness_loop_when_limits_is_none(self):
         write_build(self.root, "all")
         self.assertIsNone(agent_definition("coordinator").constraints.limits)
         binding = resolve_agent(self.root, "coordinator")
         self.assertEqual(binding.effective_loop, DISCOVERY_CAPSULE.loop)
 
+    @verifies("scenario.harness.agent-bind")
     def test_load_agent_binding_and_effects_match_resolve_agent(self):
         write_build(self.root, "all")
         prompt = load_agent(self.root, "concorde-spec-author")
@@ -182,6 +189,7 @@ class ResolveAgentInvalidBindingTests(unittest.TestCase):
                 resolve_agent(self.root, name)
         self.assertEqual(failure.exception.code, "invalid_agent_binding")
 
+    @verifies("scenario.harness.agent-bind-reject")
     def test_constraints_that_widen_effects_beyond_the_harness_are_invalid(self):
         base = agent_model.load_agents()["planner"]
         self.assertEqual(base.harness.name, SPEC_CAPSULE.name)
@@ -189,6 +197,7 @@ class ResolveAgentInvalidBindingTests(unittest.TestCase):
         widened = dataclasses.replace(base, constraints=dataclasses.replace(base.constraints, effects=widened_effects))
         self._resolve_with("planner", widened)
 
+    @verifies("scenario.harness.agent-bind-reject")
     def test_unregistered_harness_is_invalid(self):
         base = agent_model.load_agents()["planner"]
         bogus = make_harness(
@@ -203,6 +212,7 @@ class ResolveAgentInvalidBindingTests(unittest.TestCase):
         broken = dataclasses.replace(base, harness=bogus)
         self._resolve_with("planner", broken)
 
+    @verifies("scenario.harness.agent-bind-reject")
     def test_unknown_capability_reference_is_invalid(self):
         base = agent_model.load_agents()["planner"]
         broken = dataclasses.replace(
@@ -210,6 +220,7 @@ class ResolveAgentInvalidBindingTests(unittest.TestCase):
         )
         self._resolve_with("planner", broken)
 
+    @verifies("scenario.harness.agent-bind-reject")
     def test_context_not_admitted_by_the_harness_is_invalid(self):
         base = agent_model.load_agents()["planner"]
         self.assertNotIn("concorde-main-stage-context", base.harness.contexts)
@@ -218,11 +229,13 @@ class ResolveAgentInvalidBindingTests(unittest.TestCase):
         )
         self._resolve_with("planner", broken)
 
+    @verifies("scenario.harness.agent-bind-reject")
     def test_wrong_spec_path_is_invalid(self):
         base = agent_model.load_agents()["planner"]
         broken = dataclasses.replace(base, spec="agents/planner/wrong.md")
         self._resolve_with("planner", broken)
 
+    @verifies("scenario.harness.agent-bind-reject")
     def test_limits_that_widen_the_harness_timeout_are_invalid(self):
         base = agent_model.load_agents()["planner"]
         widened = dataclasses.replace(
@@ -231,6 +244,7 @@ class ResolveAgentInvalidBindingTests(unittest.TestCase):
         self.assertGreater(widened.constraints.limits.timeout_seconds, widened.harness.loop.timeout_seconds)
         self._resolve_with("planner", widened)
 
+    @verifies("scenario.harness.agent-bind")
     def test_effective_loop_is_the_tighter_timeout_when_limits_is_given(self):
         base = agent_model.load_agents()["planner"]
         self.assertLess(300, base.harness.loop.timeout_seconds)

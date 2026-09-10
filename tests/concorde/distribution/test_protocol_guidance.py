@@ -9,6 +9,7 @@ from tests.concorde.distribution.test_install_concorde import installer
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from concorde.distribution import protocol_guidance as guidance
 from concorde.spec.repository import PROTOCOL_VERSION
+from concorde.spec.verification import verifies
 
 
 class ProtocolGuidanceTests(unittest.TestCase):
@@ -35,6 +36,7 @@ class ProtocolGuidanceTests(unittest.TestCase):
         return installer.apply_plan(self.root, self.package, integration, actions, desired,
                                     remove_protocol_guidance=cleanup)
 
+    @verifies("scenario.distribution.install-apply")
     def test_both_integrations_load_single_protocol_asset_without_checkout_policy(self):
         for integration, name in guidance.FILES.items():
             with self.subTest(integration=integration):
@@ -55,6 +57,11 @@ class ProtocolGuidanceTests(unittest.TestCase):
                         self.assertNotIn("Explicit session handoffs", skill.read_text())
                 self.assertEqual("unchanged", self.install(integration))
 
+    @verifies(
+        "scenario.distribution.install-apply",
+        "scenario.distribution.install-switch-integration",
+        "scenario.distribution.install-remove-guidance",
+    )
     def test_user_bytes_modes_and_post_install_edits_survive_upgrade_switch_and_cleanup(self):
         original = b"# User rules\r\nKeep my text exactly.\r\nNo final newline"
         root = self.root / "AGENTS.md"
@@ -80,6 +87,7 @@ class ProtocolGuidanceTests(unittest.TestCase):
         self.install()
         self.assertEqual(preserved, b"".join(guidance.split(root.read_bytes())[::2]))
 
+    @verifies("scenario.distribution.install-conflict-rejected")
     def test_markers_symlinks_and_modified_owned_blocks_conflict_without_writes(self):
         name = self.root / "AGENTS.md"
         cases = [guidance.entry("codex"), guidance.START, guidance.END,
@@ -109,6 +117,7 @@ class ProtocolGuidanceTests(unittest.TestCase):
                 self.install(integration, cleanup)
             self.assertEqual(before, name.read_bytes())
 
+    @verifies("scenario.distribution.install-apply", "scenario.distribution.install-remove-guidance")
     def test_entry_precedes_user_fences_and_survives_lifecycle_block_cleanup(self):
         from concorde.harness.change_worktree import GUIDANCE_START, GUIDANCE_END, strip_guidance
         root = self.root / "CLAUDE.md"
@@ -124,6 +133,7 @@ class ProtocolGuidanceTests(unittest.TestCase):
         self.assertEqual(original.decode() + GUIDANCE_START + "Local candidate state\n" + GUIDANCE_END,
                          root.read_text())
 
+    @verifies("scenario.distribution.install-conflict-rejected")
     def test_stale_preview_rejects_new_user_edits_or_symlink_before_writing(self):
         actions, desired, _ = installer.installation_plan(self.root, self.package, "codex")
         path = self.root / "AGENTS.md"
@@ -148,6 +158,7 @@ class ProtocolGuidanceTests(unittest.TestCase):
         self.assertEqual(0o600, path.stat().st_mode & 0o777)
         self.assertFalse((self.root / installer.RECEIPT_PATH).exists())
 
+    @verifies("scenario.distribution.install-apply")
     def test_install_upgrade_does_not_accept_old_project_protocol_binding(self):
         config = self.root / ".concorde/config.json"
         config.parent.mkdir()

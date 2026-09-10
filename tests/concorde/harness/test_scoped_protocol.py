@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from concorde.spec.typed_data import typed, TypedDataError
+from concorde.spec.verification import verifies
 from concorde.development.capability_service import CapabilityHost, run_capability
 from concorde.spec.repository import SpecRepository, SpecError
 from concorde.harness.context import (resolve_context, recheck_context,
@@ -21,6 +22,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.host=CapabilityHost(self.root,PACKAGE,executor=double.executor if double else None,
             allow_primary_worktree=True,mode=mode)
         return run_capability(name,CONFIGURATION,typed(name+'-request',data),host_context=self.host)
+    @verifies("scenario.harness.context-freeze")
     def test_module_dependencies_and_complete_arbitrary_collections(self):
         repo=SpecRepository(self.root)
         target=repo.select('service.transfer','scenario.transfer.debit')
@@ -68,6 +70,7 @@ class ScopedProtocolTests(unittest.TestCase):
         report=validate_repository(self.root)
         self.assertIn('CONCORDE-DOCUMENT-002',{finding.rule_id for finding in report.findings})
         for path,text in original.items():(self.root/path).write_text(text)
+    @verifies("scenario.harness.context-gap")
     def test_missing_module_dependency_is_validated_and_stops_context_solving(self):
         path=self.root/'specs/bank/module.md';path.write_text(path.read_text().split('```concorde-dependencies',1)[0])
         report=validate_repository(self.root)
@@ -83,6 +86,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertTrue(all(gap['target_id']=='scope.bank' and gap['context_id']==result['output']['data']['context_id']
                             for gap in result['output']['data']['gaps']))
         self.assertFalse((self.root/'.concorde/attempts').exists())
+    @verifies("scenario.harness.context-gap")
     def test_duplicate_and_unrelated_dependency_declarations_are_rejected(self):
         path=self.root/'specs/bank/module.md';original=path.read_text()
         prefix,rest=original.split('```concorde-dependencies\n',1);payload,suffix=rest.split('\n```',1)
@@ -108,6 +112,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.registry['entry_target']='module.ledger'
         (self.root/'.concorde/specs.json').write_text(json.dumps(self.registry))
         self.assertEqual('module.ledger',SpecRepository(self.root).entry_target)
+    @verifies("scenario.development.answer-question")
     def test_main_answers_directly_from_complete_injected_contexts(self):
         double=ModelProcessDouble()
         result=self.run_op('concorde-main',{'task':'Explain transfer'},double)
@@ -134,6 +139,7 @@ class ScopedProtocolTests(unittest.TestCase):
             self.assertNotIn('# Ledger API',text)
             self.assertNotIn('PRIVATE_CODE',text)
 
+    @verifies("scenario.development.topology-design", "scenario.development.topology-accept", "scenario.development.topology-apply", "scenario.development.topology-stale")
     def test_main_design_accept_and_exact_apply_create_topology_atomically(self):
         def callback(stage,snapshot,data,cwd):
             if stage=='route' and snapshot['action']=='design-topology':
@@ -210,6 +216,7 @@ class ScopedProtocolTests(unittest.TestCase):
         main=[call for call in double.calls if call['capability']=='concorde-coordinator']
         self.assertTrue(any('# Ledger API' in json.dumps(call['snapshot']) for call in main))
         self.assertTrue(all('LEDGER_IMPLEMENTATION_CODE' not in json.dumps(call['snapshot']) for call in main))
+    @verifies("scenario.development.topology-design", "scenario.development.topology-accept", "scenario.development.topology-apply", "scenario.development.topology-stale")
     def test_shared_truth_change_requires_all_references_and_identical_bytes(self):
         def design_callback(stage,snapshot,data,cwd):
             if stage!='route' or snapshot['action']!='design-topology':return
@@ -259,6 +266,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual(['specs/transfer/promises.md'],[item['path'] for item in service['shared_specs']])
         self.assertEqual(['specs/transfer/promises.md'],[item['path'] for item in module['shared_specs']])
         self.assertNotIn('# Ledger API',json.dumps(service));self.assertNotIn('# Transfer money',json.dumps(module))
+    @verifies("scenario.development.topology-accept", "scenario.development.topology-stale")
     def test_topology_acceptance_stops_before_writes_on_gap_or_stale_design(self):
         def design_callback(stage,snapshot,data,cwd):
             if stage=='route' and snapshot['action']=='design-topology':
@@ -283,6 +291,7 @@ class ScopedProtocolTests(unittest.TestCase):
         (self.root/'.concorde/specs.json').write_text((self.root/'.concorde/specs.json').read_text()+'\n')
         stale=self.run_op('concorde-main',{'action':'accept-topology','topology_proposal':proposal},ModelProcessDouble())
         self.assertEqual('blocked',stale['status']);self.assertEqual('stale_proposal',stale['errors'][0]['code'])
+    @verifies("scenario.development.describe-policy")
     def test_topology_policy_description_is_read_only_at_both_acceptance_gates(self):
         def callback(stage,snapshot,data,cwd):
             if stage=='route' and snapshot['action']=='design-topology':
@@ -342,6 +351,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('blocked',result['status'],result)
         self.assertEqual('invalid_proposal',result['errors'][0]['code'])
         self.assertIn('Module tasks',result['errors'][0]['message'])
+    @verifies("scenario.development.answer-question")
     def test_main_can_admit_modules_and_answer_but_not_read_implementation_code(self):
         double=ModelProcessDouble()
         result=self.run_op('concorde-main',{'task':'Explain ledger reads',
@@ -358,6 +368,7 @@ class ScopedProtocolTests(unittest.TestCase):
             resolve_discovery_context(SpecRepository(self.root),('entity.ledger.store',),
                 capability='concorde-main',phase='route',task='Read one entity')
 
+    @verifies("scenario.development.answer-question")
     def test_main_combines_original_sources_from_multiple_target_contexts(self):
         def answer(stage,snapshot,data,cwd):
             discovered={item['target_id'] for item in snapshot['targets']}
@@ -382,6 +393,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('Transfer and ledger explained from their original Specs.',
                          result['output']['data']['answer'])
 
+    @verifies("scenario.development.answer-gap")
     def test_main_reports_gaps_with_owning_module_and_complete_context_identity(self):
         def routing_gap(stage,snapshot,data,cwd):
             data.update(outcome='spec_incomplete',answer='Routing facts are missing.',
@@ -407,6 +419,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('module.ledger',gap['target_id'])
         self.assertEqual(result['output']['data']['context_id'],gap['context_id'])
 
+    @verifies("scenario.development.answer-question")
     def test_main_questions_reject_worker_routes(self):
         def route(stage,snapshot,data,cwd):
             data.update(outcome='routed',expand_targets=[],routes=[{
@@ -424,6 +437,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual(['route','route','context-solve'],[call['stage'] for call in double.calls][:3])
         self.assertEqual(['concorde-coordinator','concorde-coordinator','concorde-context-assessor'],
                          [call['capability'] for call in double.calls][:3])
+    @verifies("scenario.harness.typed-reject")
     def test_internal_stage_capability_requires_target_id_at_the_top_level(self):
         with self.assertRaises(TypedDataError) as caught:
             typed('concorde-plan-request',{'task':'Plan the transfer promise'})
@@ -452,6 +466,7 @@ class ScopedProtocolTests(unittest.TestCase):
             if stage=='route':data.update(outcome='expand',expand_targets=['module.ledger'],gaps=[],routes=[])
         result=self.run_op('concorde-main',{'task':'Explain ledger'},ModelProcessDouble(route))
         self.assertEqual('blocked',result['status']);self.assertEqual('incompatible_handoff',result['errors'][0]['code'])
+    @verifies("scenario.harness.context-discovery", "scenario.harness.context-stale-recheck")
     def test_discovery_context_is_digest_bound_and_module_only(self):
         repo=SpecRepository(self.root)
         first=resolve_discovery_context(repo,('scope.bank',),capability='concorde-main',phase='route',task='Route transfer')
@@ -466,6 +481,7 @@ class ScopedProtocolTests(unittest.TestCase):
         path=self.root/'specs/transfer/module.md';declaration=path.read_text().split('# Transfer money',1)[0]
         path.write_text(declaration+'# Changed service routing facts\n')
         with self.assertRaisesRegex(SpecError,'changed'):recheck_discovery_context(repo,second)
+    @verifies("scenario.harness.context-discovery", "scenario.harness.context-freeze")
     def test_main_reads_complete_admitted_modules_without_implicit_peer_expansion(self):
         path='specs/transfer/promises.md'
         self.registry['targets'][3]['documents'].append(path)
@@ -480,6 +496,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertNotIn('TRANSFER_IMPLEMENTATION_CODE',json.dumps(visible))
         worker=resolve_context(SpecRepository(self.root),'service.transfer').value
         self.assertEqual(worker['document_order'],transfer['document_order'])
+    @verifies("scenario.harness.context-discovery")
     def test_global_context_deduplicates_complete_sources_and_preserves_each_membership(self):
         shared='specs/transfer/promises.md'
         self.registry['targets'][3]['documents'].append(shared)
@@ -505,6 +522,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertNotIn('specs/audit/module.md',paths)
         self.assertNotIn('PRIVATE_CODE',snapshot.serialized)
 
+    @verifies("scenario.harness.context-stale-recheck")
     def test_global_context_rechecks_registered_document_bytes_and_membership(self):
         repository=SpecRepository(self.root)
         snapshot=resolve_discovery_context(repository,('scope.bank',),
@@ -528,6 +546,7 @@ class ScopedProtocolTests(unittest.TestCase):
             resolve_discovery_context(SpecRepository(self.root),('scope.bank',),
                 capability='concorde-main',phase='route',task='Explain architecture')
 
+    @verifies("scenario.development.answer-question")
     def test_main_can_answer_from_initial_spec_context_in_one_invocation(self):
         def answer(stage,snapshot,data,cwd):
             self.assertIn('# Banking',snapshot['documents'][0]['content'])
@@ -539,11 +558,13 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual(1,len(double.calls))
         self.assertEqual(['scope.bank'],result['output']['data']['discovered_targets'])
 
+    @verifies("scenario.harness.context-stale-recheck")
     def test_membership_changes_invalidate_snapshot(self):
         repo=SpecRepository(self.root); snapshot=resolve_context(repo,'service.transfer')
         self.registry['targets'][2]['documents'].reverse()
         (self.root/'.concorde/specs.json').write_text(json.dumps(self.registry))
         with self.assertRaisesRegex(SpecError,'membership'): recheck_context(repo,snapshot)
+    @verifies("scenario.harness.context-stale-recheck")
     def test_another_targets_new_reference_reclassifies_and_invalidates_context(self):
         repo=SpecRepository(self.root);snapshot=resolve_context(repo,'service.transfer')
         self.registry['targets'][3]['documents'].append('specs/transfer/promises.md')
@@ -573,6 +594,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertFalse((self.root/'.concorde/attempts').exists())
         state=json.loads((self.root/'.concorde/worktree.json').read_text())
         self.assertEqual('blocked',state['status']);self.assertEqual({},state['targets'])
+    @verifies("scenario.development.dev-loop-ready", "scenario.harness.context-freeze")
     def test_standard_loop_real_checks_leave_a_ready_change(self):
         double=ModelProcessDouble()
         result=self.run_op('concorde-dev-loop',{'task':'Implement the transfer contract'},double)
@@ -593,6 +615,7 @@ class ScopedProtocolTests(unittest.TestCase):
                                  [item['path'] for item in call['snapshot']['implementation_files']])
                 self.assertEqual([],call['snapshot']['implementation_artifacts'])
         self.assertTrue(all(d['write_paths']==[] for d in self.host.descriptions if d['phase']!='implementation'))
+    @verifies("scenario.development.validate-blocked")
     def test_failed_behavioral_check_prevents_delivery(self):
         def broken(stage,snapshot,data,cwd):
             if stage=='implementation': (cwd/'app/transfer.py').write_text('def transfer(balance,amount):\n    return 0\n')

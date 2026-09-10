@@ -11,6 +11,7 @@ from concorde.spec.typed_data import typed
 from concorde.spec.contracts import SKILL_NAMES, STAGE_CAPABILITIES
 from concorde.development.capability_service import CapabilityHost, run_capability
 from concorde.harness.studio import build_studio_graph
+from concorde.spec.verification import verifies
 from tests.concorde.spec.support import CONFIGURATION, PACKAGE, ModelProcessDouble, project
 
 
@@ -158,6 +159,7 @@ class StudioTests(unittest.TestCase):
             self.root, PACKAGE, observer=Mock(side_effect=RuntimeError("disconnected"))))
         self.assertEqual("succeeded", result["status"])
 
+    @verifies("scenario.harness.recursive-delegate")
     def test_loop_emits_child_operations_and_deterministic_phases(self):
         from tests.concorde.harness.test_worktree_lifecycle import WorktreeLifecycleTests
         fixture = WorktreeLifecycleTests()

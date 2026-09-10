@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from concorde.spec.typed_data import typed,validate_typed,TypedDataError
+from concorde.spec.verification import verifies
 from concorde.development.capability_service import CapabilityHost,run_capability
 from concorde.development.capability_host import Invocation
 from concorde.spec.repository import SpecRepository,SpecError
@@ -33,6 +34,7 @@ class BoundaryTests(unittest.TestCase):
         return {**self.task,'change_id':result['output']['data']['change_id']}
     def completion(self, task):
         return Invocation('concorde-validate', CONFIGURATION, task, self.host).verify_completion()
+    @verifies("scenario.harness.context-freeze")
     def test_shared_physical_markdown_is_one_hop_context_not_entity_expansion(self):
         self.registry['targets'][3]['documents'].append('specs/transfer/promises.md');self.save()
         update_document_declaration(self.root,'specs/transfer/promises.md',
@@ -102,6 +104,7 @@ class BoundaryTests(unittest.TestCase):
         report=validate_repository(self.root,package_root=PACKAGE)
         self.assertEqual('invalid',report.status)
         self.assertIn('CONCORDE-IDENTITY-001',{finding.rule_id for finding in report.findings})
+    @verifies("scenario.harness.context-freeze")
     def test_code_is_digest_only_and_only_in_implementation_snapshot(self):
         repo=SpecRepository(self.root)
         plain=resolve_context(repo,'service.transfer').value;impl=resolve_context(repo,'service.transfer',phase='implementation').value
@@ -123,6 +126,7 @@ class BoundaryTests(unittest.TestCase):
         other=typed('concorde-capability-configuration',{'integration':'codex','enforcement':'native'})
         result=run_capability('concorde-main',other,typed('concorde-main-request',self.task),host_context=CapabilityHost(self.root,PACKAGE))
         self.assertEqual('configuration_mismatch',result['errors'][0]['code'])
+    @verifies("scenario.harness.typed-reject")
     def test_wrong_version_and_extra_fields_are_rejected(self):
         for value in [dict(typed('concorde-main-request',self.task),schema_version=True),dict(typed('concorde-main-request',self.task),schema_version=7),{'type_id':'concorde-main-request','schema_version':1,'data':{**self.task,'read_paths':['secret.py']}}]:
             with self.subTest(value=value),self.assertRaises(TypedDataError):validate_typed(value,'concorde-main-request')
@@ -189,6 +193,7 @@ class BoundaryTests(unittest.TestCase):
         change=file_change(self.root,'specs/transfer/module.md','proposed');(self.root/'specs/transfer/module.md').write_text('user change')
         with self.assertRaises(ValueError):apply_files(self.root,[change],{'specs/transfer/module.md'})
         self.assertEqual('user change',(self.root/'specs/transfer/module.md').read_text())
+    @verifies("scenario.harness.typed-validate")
     def test_unsupported_and_malformed_contract_schemas_fail_admission(self):
         for schema in [{'type':'object','unevaluatedProperties':False},{'$ref':'https://example.invalid/schema'},{'minLength':True},{'enum':[]},{'minimum':3,'maximum':1}]:
             with self.subTest(schema=schema),self.assertRaises(ContractError):admit(schema)
