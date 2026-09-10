@@ -12,6 +12,7 @@
 <p align="center">
   <a href="#why-concorde"><strong>Why Concorde</strong></a> ·
   <a href="#get-started"><strong>Get started</strong></a> ·
+  <a href="#explore-concorde"><strong>Docs, graphs & Studio</strong></a> ·
   <a href="https://ftod.github.io/concorde/"><strong>Explore the Specs</strong></a> ·
   <a href="docs/workflow-guide.md"><strong>Workflow guide</strong></a>
 </p>
@@ -152,6 +153,134 @@ The host prepares a candidate worktree from committed HEAD. Continue in the fres
 hands off, with that worktree's own instructions. See the
 [workflow guide](docs/workflow-guide.md#install-and-initialize) for typed JSON invocations,
 initialization details and session handoffs.
+
+## Explore Concorde
+
+Try **[Concorde's published docsite](https://ftod.github.io/concorde/)**. The screenshots below
+show Concorde's own Specs, graph data and local Studio integration
+([screenshot sources](docs/assets/README.md)). Commands in this section run
+from the Concorde repository root unless an installed-project example is explicitly labeled.
+
+### Run the docsite
+
+With Node.js **20+**, preview the registered Specs locally:
+
+```bash
+python3 scripts/concorde.py build
+npm --prefix docsite ci
+npm --prefix docsite run start -- --host 127.0.0.1 --no-open
+```
+
+Open [localhost:3000/concorde/](http://localhost:3000/concorde/). Use **Module Specs** to navigate
+the Module tree and read each Module's purpose, requirements, scenarios and architecture diagrams.
+The **Spec Protocol** tab explains the specification language. To create a verified static site,
+run `npm --prefix docsite run build`; the output is `docsite/build/`.
+
+![Concorde's published docsite showing a Module Spec and its navigation](docs/assets/concorde-docsite.png)
+
+For another initialized project, follow [Scaffold a docsite](docsite/README.md#scaffold-a-docsite),
+then run the same npm commands from that project's root. Its URL follows `docsite/site.json`.
+
+### Use the graph views
+
+**Module architecture:** open the docsite's **[Graph tab](https://ftod.github.io/concorde/graph)**.
+Search by Module name or ID, filter relationships with **composes**, **uses** or **requires**, and
+select a node to inspect its declared files and follow the link to its Spec. Drag nodes and zoom
+to explore.
+
+![Concorde's Module composition graph, with the composes filter selected](docs/assets/concorde-module-graph.png)
+
+**Code relationships:** open the Understand Anything viewer. In this source checkout, install
+the pinned viewer and export a graph from Concorde's Spec registry:
+
+```bash
+npm --prefix viewer ci --ignore-scripts
+python3 scripts/concorde.py ua-graph --allow-primary-worktree
+node viewer/node_modules/understand-anything-viewer/bin/viewer.mjs . --no-open
+```
+
+Open the complete **Dashboard URL** printed by the viewer, including its access token. Select a
+layer to explore its files, search for a node, and select it to inspect details and connections.
+Use **Fit View** to recenter, or **Learn** and **Start Tour** when the loaded graph includes a tour.
+
+The exporter creates a Spec-derived graph when none exists, or overlays Module structure onto an
+existing Understand Anything graph. It does not analyze source code. The screenshot uses
+Concorde's existing Understand Anything analysis, which includes code relationships and a tour.
+The `--allow-primary-worktree` flag explicitly allows this graph export in the primary checkout.
+
+![Understand Anything exploring Concorde's code graph](docs/assets/concorde-code-graph.png)
+
+In a project where Concorde is **installed**, use its managed viewer instead. Run from that
+project's root:
+
+```bash
+python3 .concorde/framework/scripts/concorde.py ua-graph --allow-primary-worktree
+python3 .concorde/framework/scripts/run-viewer.py --project-root . --no-open
+```
+
+See the [graph exporter](specs/concorde/views/ua-graph.md) and
+[viewer guide](viewer/README.md) for graph locations and runtime details.
+
+### Observe runs in LangGraph Studio
+
+Start Concorde's local Agent Server using the locked Studio dependencies:
+
+```bash
+uv sync --locked --group studio
+python3 scripts/concorde.py build
+uv run --locked --group studio langgraph dev \
+  --config generated/langgraph.json --host 127.0.0.1 --port 2024 \
+  --n-jobs-per-worker 1 --no-browser
+```
+
+Open **[LangGraph Studio](https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024)**
+and sign in to LangSmith for run interactions. Allow access to the local network if your browser
+asks. Select **concorde-main**, create a new thread, choose **View Raw** in the input editor, and
+submit this policy preview:
+
+```json
+{
+  "invocation": {
+    "type_id": "concorde-capability-invocation",
+    "schema_version": 3,
+    "capability_id": "concorde-main",
+    "mode": "describe-policy",
+    "configuration": null,
+    "input": {
+      "type_id": "concorde-main-request",
+      "schema_version": 1,
+      "data": {
+        "task": "Explain Concorde's workflow host",
+        "target_id": "module.development"
+      }
+    }
+  }
+}
+```
+
+This inspects admitted permissions without starting an agent. Change `mode` to `execute` to run
+the question through the project's configured Codex or Claude runtime. Inspect **result**,
+**policies** and **events** in the state; execution emits capability, stage and agent-process
+events, including starts, completions and failures. These are process events, not token-level
+traces of the agent's internal reasoning or tool calls.
+
+![LangGraph Studio connected to Concorde's local server, showing the concorde-main graph and policy-preview input](docs/assets/concorde-studio.png)
+
+The screenshot shows the connected graph and input setup, before submitting a run.
+
+To observe new CLI or Skill invocations in Studio, set this in the shell that launches them:
+
+```bash
+export CONCORDE_STUDIO_URL=http://127.0.0.1:2024
+```
+
+Keep using the usual Skills and JSON requests. The launcher prints the Studio thread and run IDs
+to stderr; open that thread in Studio. The caller and server must belong to the same project and
+worktree. `unset CONCORDE_STUDIO_URL` restores local execution without the server.
+
+See the [Studio guide](scripts/development/STUDIO.md) for debugging, results and setup in
+[installed consumer projects](scripts/development/STUDIO.md#consumer-project-setup), and the
+[official Studio setup](https://docs.langchain.com/oss/python/langgraph/studio) for account setup.
 
 ## The contract at the center
 
