@@ -38,11 +38,15 @@ independent specification standard. Installation and initialization preserve the
 - WHEN the installer runs with `--apply`
 - THEN it writes the accepted receipt-owned Framework, Skill and root-guidance changes
 - AND it preserves project Specs, configuration, reflection history and unrelated user files
+- AND a `node_modules` directory below the package's `viewer/` directory is neither deployed nor inspected
 
 Installation places rendered Skill entries in the selected project's `.agents/skills/` or
 `.claude/skills/` directory. Framework code, role instructions, rule assets, templates and
 supporting tools are deployed under `.concorde/framework/`; the managed runtime is provisioned
-separately. It also installs the selected root rule entry: `AGENTS.md` explicitly directs Codex to
+separately. A `node_modules` directory below the package's `viewer/` directory, left by a local
+viewer install in a source checkout, is neither deployed nor inspected, because the managed runtime
+provisions the viewer from the package's `viewer/package.json` and its lock; every other entry
+below `viewer/` is deployed like the rest of the package. It also installs the selected root rule entry: `AGENTS.md` explicitly directs Codex to
 read `.concorde/framework/generated/protocol/principles.md`; `CLAUDE.md` uses Claude's native
 relative `@` import. Only the selected integration's entry is installed. It seeds project-owned
 Reflection defaults and `.concorde/topology-proposals/.gitignore` only when absent; project

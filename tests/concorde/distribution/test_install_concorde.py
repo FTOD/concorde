@@ -169,6 +169,34 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertNotIn("project-default", {item["role"] for item in receipt["outputs"]})
 
     @verifies("scenario.distribution.install-apply")
+    def test_local_viewer_node_modules_are_neither_deployed_nor_inspected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for name in ("concorde.json", "LICENSE", "README.md"):
+                (root / name).write_text(name + "\n")
+            for directory in ("agents", "capabilities", "prompts", "protocol", "skills", "src",
+                              "templates", "viewer", "scripts"):
+                (root / directory).mkdir()
+            for name in ("concorde.py", "concorde.ps1", "concorde.sh", "reflections_queue.py",
+                         "requirements.lock", "run-capability.py", "run-viewer.py"):
+                (root / "scripts" / name).write_text("# script\n")
+            (root / "viewer/package.json").write_text("{}\n")
+            executable = root / "viewer/node_modules/understand-anything-viewer/bin/viewer.mjs"
+            executable.parent.mkdir(parents=True)
+            executable.write_text("// viewer\n")
+            (root / "viewer/node_modules/.bin").mkdir()
+            (root / "viewer/node_modules/.bin/understand-anything-viewer").symlink_to(
+                "../understand-anything-viewer/bin/viewer.mjs")
+            package = installer.Package(root, self.package.manifest)
+            with mock.patch.object(installer, "template_files", return_value={}):
+                desired = installer._package_files(package)
+                self.assertIn(f"{installer.FRAMEWORK_ROOT}/viewer/package.json", desired)
+                self.assertEqual([], [path for path in desired if "node_modules" in path])
+                (root / "viewer/link.mjs").symlink_to("package.json")
+                with self.assertRaisesRegex(installer.InstallError, "may not contain symlinks"):
+                    installer._package_files(package)
+
+    @verifies("scenario.distribution.install-apply")
     def test_existing_project_defaults_are_preserved_and_not_owned(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)

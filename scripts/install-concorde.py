@@ -199,11 +199,17 @@ def _package_files(package: Package) -> dict[str, bytes]:
     for directory in ("agents", "capabilities", "prompts", "protocol", "skills", "src", "templates", "viewer"):
         source_root = package.root / directory
         for path in sorted(source_root.rglob("*")):
+            relative = path.relative_to(package.root).as_posix()
+            parts = PurePosixPath(relative).parts
+            if directory == "viewer" and "node_modules" in parts:
+                # A local viewer install (`npm --prefix viewer ci`) leaves node_modules below
+                # viewer/. The managed runtime provisions the viewer from viewer/package.json
+                # and its lock separately, so a local install is neither deployed nor inspected.
+                continue
             if path.is_symlink():
                 raise InstallError(f"Concorde packages may not contain symlinks: {path}")
             if path.is_file():
-                relative = path.relative_to(package.root).as_posix()
-                if "__pycache__" in PurePosixPath(relative).parts or path.suffix in {".pyc", ".pyo"}:
+                if "__pycache__" in parts or path.suffix in {".pyc", ".pyo"}:
                     continue
                 desired[f"{FRAMEWORK_ROOT}/{relative}"] = path.read_bytes()
     try:
