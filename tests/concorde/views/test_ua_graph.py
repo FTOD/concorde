@@ -193,6 +193,9 @@ class UaGraphSkeletonTests(unittest.TestCase):
         self.assertEqual("document.alpha", doc_node["summary"])
         self.assertEqual(1, len(edges(graph, "document:specs/alpha/module.md", "module:module.alpha", "documents")))
 
+        # Alpha's own registered document joins Alpha's layer, not layer:unlisted.
+        self.assertIn("document:specs/alpha/module.md", layer(graph, "layer:module.alpha")["nodeIds"])
+
 
 class UaGraphOverlayTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -217,9 +220,16 @@ class UaGraphOverlayTests(unittest.TestCase):
                 {"id": "file:77", "type": "file", "name": "settings.py", "filePath": "unrelated/settings.py",
                  "summary": "A real scan's own file, whose organic tags happen to include the project's name.",
                  "tags": ["source", "concorde"]},
+                {"id": "doc:55", "type": "document", "name": "module.md", "filePath": "specs/alpha/module.md",
+                 "summary": "Original UA summary of the registered Alpha document.", "tags": ["source"]},
+                {"id": "module:src/foo", "type": "module", "name": "foo", "filePath": "src/foo",
+                 "summary": "A real scan's own module-kind node, unrelated to any registered Concorde Module.",
+                 "tags": ["source"]},
             ],
             "edges": [
                 {"source": "file:99", "target": "class:99:Core", "type": "contains",
+                 "direction": "forward", "weight": 1.0},
+                {"source": "module:src/foo", "target": "file:99", "type": "contains",
                  "direction": "forward", "weight": 1.0},
             ],
             "layers": [
@@ -251,18 +261,32 @@ class UaGraphOverlayTests(unittest.TestCase):
         self.assertEqual(1, len(edges(graph, "file:99", "class:99:Core", "contains")))
         self.assertIsNotNone(layer(graph, "layer:hand-authored"))
 
+        # A foreign node whose own id happens to start with "module:" (a real scan's own node
+        # kind, not a Concorde module id) and its edge are left untouched: the strip rule targets
+        # only nodes tagged concorde-ua-graph and module:<registered Module id> endpoints, not
+        # every edge with a module:-prefixed endpoint.
+        self.assertEqual(self.base_graph["nodes"][5], node(graph, "module:src/foo"))
+        self.assertEqual(1, len(edges(graph, "module:src/foo", "file:99", "contains")))
+
         # The pre-existing file:99 node (not file:src/alpha/core.py) is reused by filePath.
         alpha_contains = edges(graph, "module:module.alpha", kind="contains")
         core_edge = next(e for e in alpha_contains if e["target"] == "file:99")
         self.assertEqual("entity.alpha.core: Core", core_edge["description"])
         self.assertFalse(any(n["id"] == "file:src/alpha/core.py" for n in graph["nodes"]))
 
+        # The pre-existing doc:55 node (not document:specs/alpha/module.md) is reused by filePath
+        # for Alpha's own registered document, and it joins Alpha's layer.
+        self.assertEqual(self.base_graph["nodes"][4], node(graph, "doc:55"))
+        self.assertFalse(any(n["id"] == "document:specs/alpha/module.md" for n in graph["nodes"]))
+        self.assertIn("doc:55", layer(graph, "layer:module.alpha")["nodeIds"])
+
         # Module nodes are freshly added; the unlisted layer holds only file-like nodes (not the
-        # "class" node) that no Module's entities bind.
+        # "class" node, and not the reused registered document) that no Module's entities bind.
         self.assertIsNotNone(node(graph, "module:module.alpha"))
         unlisted = layer(graph, "layer:unlisted")
         self.assertIsNotNone(unlisted)
         self.assertEqual(["config:42", "file:77"], unlisted["nodeIds"])
+        self.assertNotIn("doc:55", unlisted["nodeIds"])
         self.assertIn("file:99", layer(graph, "layer:module.alpha")["nodeIds"])
 
     def test_overlay_export_is_idempotent(self):

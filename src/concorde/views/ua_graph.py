@@ -6,8 +6,10 @@ documents and their entities' declared file listings. When an existing raw Under
 graph is present it is treated as an overlay target: the exporter strips only the elements a prior
 export of its own added (identified by the distinctive ``concorde-ua-graph`` tag on nodes -- chosen
 to not collide with a real scan's own organic tags, such as one literally named "concorde" -- the
-``layer:module.`` and ``layer:unlisted`` layer identities, and edges with a ``module:`` endpoint)
-and replaces them with a freshly derived set, leaving every other element of the graph untouched.
+``layer:module.`` and ``layer:unlisted`` layer identities, and edges whose endpoint is one of those
+tagged node ids or a ``module:<id>`` id for a currently registered Module -- never every edge with a
+foreign ``module:``-prefixed endpoint, since a real scan's own node kinds may include "module") and
+replaces them with a freshly derived set, leaving every other element of the graph untouched.
 """
 from __future__ import annotations
 
@@ -162,16 +164,18 @@ def _build_elements(repository: SpecRepository, *,
             edges.append(_edge(f"module:{target.id}", f"module:{peer}", "depends_on", 0.8,
                                 responsibilities.get(peer, "uses")))
 
+    layer_members: dict[str, set[str]] = {}
     doc_node_ids: dict[str, str] = {}
     for target in targets:
         for path in target.documents:
             if path not in doc_node_ids:
                 document_id = repository.document(path).document_id
-                doc_node_ids[path] = _resolve_document_node(path, document_id, overlay=overlay, index=index, created=nodes)
+                node_id = _resolve_document_node(path, document_id, overlay=overlay, index=index, created=nodes)
+                doc_node_ids[path] = node_id
+                layer_members.setdefault(target.id, set()).add(node_id)
             edges.append(_edge(doc_node_ids[path], f"module:{target.id}", "documents", 0.7))
 
     file_node_ids: dict[str, str] = {}
-    layer_members: dict[str, set[str]] = {}
     for target in targets:
         for path in repository.implementation_files(target):
             entity = repository.entity_for_path(target, path)
@@ -202,7 +206,7 @@ def _build_elements(repository: SpecRepository, *,
         }
 
     if overlay:
-        claimed = set(file_node_ids)
+        claimed = set(file_node_ids) | set(doc_node_ids)
         unlisted: set[str] = set()
         for path in index:
             if path in claimed:
@@ -242,11 +246,13 @@ def _serialize(version: str, project: dict, nodes, edges, layers, tour) -> dict:
     }
 
 
-def _strip_concorde(graph: dict) -> dict:
-    nodes = [node for node in graph["nodes"] if CONCORDE_TAG not in (node.get("tags") or [])]
+def _strip_concorde(graph: dict, module_ids: frozenset[str]) -> dict:
+    concorde_node_ids = {node["id"] for node in graph["nodes"] if CONCORDE_TAG in (node.get("tags") or [])}
+    stripped_endpoints = concorde_node_ids | {f"{MODULE_PREFIX}{target_id}" for target_id in module_ids}
+    nodes = [node for node in graph["nodes"] if node["id"] not in concorde_node_ids]
     edges = [edge for edge in graph["edges"]
-             if not (str(edge.get("source", "")).startswith(MODULE_PREFIX)
-                     or str(edge.get("target", "")).startswith(MODULE_PREFIX))]
+             if str(edge.get("source", "")) not in stripped_endpoints
+             and str(edge.get("target", "")) not in stripped_endpoints]
     layers = [layer for layer in graph["layers"]
               if not (str(layer.get("id", "")).startswith("layer:module.") or layer.get("id") == "layer:unlisted")]
     return {"version": graph["version"], "project": graph["project"], "nodes": nodes, "edges": edges,
@@ -287,7 +293,7 @@ def _derive_graph(repository: SpecRepository, root: Path, base: dict | None) -> 
             "gitCommitHash": _git_commit(root),
         }
         return _serialize(GRAPH_VERSION, project, list(nodes.values()), edges, list(layers.values()), [])
-    stripped = _strip_concorde(base)
+    stripped = _strip_concorde(base, frozenset(repository.targets))
     index = _index_by_path(stripped["nodes"])
     nodes, edges, layers = _build_elements(repository, index=index)
     merged_nodes = list(stripped["nodes"]) + list(nodes.values())

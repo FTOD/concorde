@@ -40,7 +40,9 @@ neither exists yet.
 - THEN it writes `.ua/knowledge-graph.json` with one node per registered Module, `contains` edges
   for composition, `depends_on` edges for `uses`, `documents` edges for registered documents, and
   `contains` edges from each Module to the files its entities bind
-- AND it writes one layer per Module whose registry `files` are nonempty, and no `layer:unlisted`
+- AND it writes one layer per Module whose registry `files` are nonempty, whose members are the
+  files that Module's entities bind together with the documents that Module is the first registered
+  target for, and no `layer:unlisted`
 
 ## Overlaying an existing graph
 
@@ -49,12 +51,19 @@ neither exists yet.
 - GIVEN an existing raw UA graph, produced by the real Understand Anything tool or by a prior export
 - WHEN `ua-graph` runs
 - THEN it removes only the nodes tagged `concorde-ua-graph`, the layers named `layer:module.*` or
-  `layer:unlisted`, and the edges with a `module:`-prefixed endpoint, then adds a freshly derived
-  set of those same kinds of elements
+  `layer:unlisted`, and the edges whose source or target is one of those removed node IDs or a
+  `module:<id>` ID for a currently registered Module, then adds a freshly derived set of those same
+  kinds of elements
 - AND every other node, edge, layer, and the graph's `project`, `version` and `tour` are left
   byte-for-byte unchanged
+- AND a foreign node whose own ID happens to start with `module:` (for example a real scan's own
+  "module" node kind), and every edge naming it, are left untouched when that ID is neither a
+  removed node ID nor a currently registered Module ID
 - AND a Module's bound file reuses an existing node's ID when the UA graph already has a
   file-like node at that `filePath`, instead of creating a duplicate
+- AND a Module's registered document likewise reuses an existing document-like node's ID at that
+  `filePath` instead of creating a duplicate, and joins the layer of the first Module registered
+  for it rather than `layer:unlisted`
 - AND running the export again against its own prior output produces byte-identical output
 
 ## Files shared by several Modules
