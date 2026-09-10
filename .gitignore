@@ -52,3 +52,7 @@ Thumbs.db
 .concorde/runs/
 
 node_modules
+
+# Understand Anything: raw knowledge graph the ua-graph exporter writes or overlays
+.ua/
+.understand-anything/

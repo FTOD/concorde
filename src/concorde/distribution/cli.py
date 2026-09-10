@@ -33,6 +33,11 @@ def create_parser() -> argparse.ArgumentParser:
     docsite.add_argument("--allow-primary-worktree", action="store_true")
     docsite.add_argument("--format", choices=["json"], default="json")
 
+    ua_graph = subparsers.add_parser("ua-graph")
+    ua_graph.add_argument("--check", action="store_true")
+    ua_graph.add_argument("--allow-primary-worktree", action="store_true")
+    ua_graph.add_argument("--format", choices=["json"], default="json")
+
     build = subparsers.add_parser("build")
     build.add_argument("--integration", choices=["claude", "codex", "all"], default="all")
     build.add_argument("--check", action="store_true")
@@ -67,6 +72,10 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
             base_url=arguments.base_url,
             github_pages=arguments.github_pages,
         )
+    if arguments.tool == "ua-graph":
+        from ..views.ua_graph import export_ua_graph
+
+        return export_ua_graph(root, check=arguments.check)
     if arguments.tool == "build":
         from .build import BuildError, check_build, write_build
 
@@ -169,8 +178,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             payload = tool_envelope(_protocol_manifest(arguments))
             sys.stdout.write(canonical_json(payload))
             return exit_code(payload["status"])
-        mutation = arguments.tool in {"init", "deliver", "docsite"} or (
-            arguments.tool == "configure" and arguments.apply
+        mutation = arguments.tool == "docsite" or (
+            arguments.tool == "ua-graph" and not arguments.check
         )
         if mutation:
             from ..harness.worktree import require_isolated_worktree
@@ -187,7 +196,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         tool = arguments.tool if arguments is not None else (argv[0] if argv else "validate")
         payload = envelope(
             tool
-            if tool in {"init", "configure", "context", "validate", "deliver", "docsite", "build", "protocol-manifest"}
+            if tool in {"validate", "docsite", "build", "protocol-manifest", "ua-graph"}
             else "validate",
             ".",
             "failed",
