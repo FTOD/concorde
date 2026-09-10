@@ -51,7 +51,8 @@ neither exists yet.
 - GIVEN an existing raw UA graph, produced by the real Understand Anything tool or by a prior export
 - WHEN `ua-graph` runs
 - THEN it removes only the nodes tagged `concorde-ua-graph`, the layers named `layer:module.*` or
-  `layer:unlisted`, and the edges whose source or target is one of those removed node IDs or a
+  `layer:unlisted`, the `layer:<id>` belonging to each removed Module node (including Module IDs
+  without a `module.` prefix), and the edges whose source or target is one of those removed node IDs or a
   `module:<id>` ID for a currently registered Module, then adds a freshly derived set of those same
   kinds of elements
 - AND every other node, edge, layer, and the graph's `project`, `version`, `tour` and extension

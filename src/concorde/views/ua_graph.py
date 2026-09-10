@@ -248,13 +248,17 @@ def _serialize(version: str, project: dict, nodes, edges, layers, tour) -> dict:
 
 def _strip_concorde(graph: dict, module_ids: frozenset[str]) -> dict:
     concorde_node_ids = {node["id"] for node in graph["nodes"] if CONCORDE_TAG in (node.get("tags") or [])}
+    owned_layer_ids = {f"layer:{node['id'][len(MODULE_PREFIX):]}" for node in graph["nodes"]
+                       if node["id"] in concorde_node_ids and node.get("type") == "module"
+                       and node["id"].startswith(MODULE_PREFIX)}
     stripped_endpoints = concorde_node_ids | {f"{MODULE_PREFIX}{target_id}" for target_id in module_ids}
     nodes = [node for node in graph["nodes"] if node["id"] not in concorde_node_ids]
     edges = [edge for edge in graph["edges"]
              if str(edge.get("source", "")) not in stripped_endpoints
              and str(edge.get("target", "")) not in stripped_endpoints]
     layers = [layer for layer in graph["layers"]
-              if not (str(layer.get("id", "")).startswith("layer:module.") or layer.get("id") == "layer:unlisted")]
+              if not (str(layer.get("id", "")).startswith("layer:module.")
+                      or layer.get("id") == "layer:unlisted" or layer.get("id") in owned_layer_ids)]
     return {"version": graph["version"], "project": graph["project"], "nodes": nodes, "edges": edges,
             "layers": layers, "tour": graph["tour"]}
 

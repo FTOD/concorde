@@ -152,6 +152,19 @@ class UaGraphSkeletonTests(unittest.TestCase):
     def load(self):
         return json.loads((self.root / ".ua/knowledge-graph.json").read_text(encoding="utf-8"))
 
+    @verifies("scenario.views.ua-graph-overlay")
+    def test_layer_replacement_does_not_require_a_module_id_prefix(self):
+        for relative in (".concorde/specs.json", "specs/root/module.md",
+                         "specs/alpha/module.md", "specs/beta/module.md"):
+            path = self.root / relative
+            path.write_text(path.read_text().replace("module.alpha", "alpha"))
+        self.assertEqual("success", export_ua_graph(self.root).status)
+        first = (self.root / ".ua/knowledge-graph.json").read_bytes()
+        self.assertEqual("success", export_ua_graph(self.root, check=True).status)
+        self.assertEqual("success", export_ua_graph(self.root).status)
+        self.assertEqual(first, (self.root / ".ua/knowledge-graph.json").read_bytes())
+        self.assertEqual(1, len([item for item in self.load()["layers"] if item["id"] == "layer:alpha"]))
+
     @verifies("scenario.views.ua-graph-skeleton")
     def test_skeleton_export_derives_only_from_the_registry(self):
         result = export_ua_graph(self.root)
@@ -441,6 +454,7 @@ class UaGraphInvalidInputTests(unittest.TestCase):
             self.assertEqual("CONCORDE-UA-GRAPH-002", result.findings[0].rule_id)
             self.assertTrue(preferred.is_dir())
             self.assertFalse(self.ua_path.exists())
+
 
 class UaGraphCliTests(unittest.TestCase):
     def setUp(self) -> None:
