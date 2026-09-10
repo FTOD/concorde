@@ -78,7 +78,8 @@ requirement、entity、dependencies、contract。普通 Spec 作者可以改 ent
 - Feature/Interface 注册项、`interface.*`/`feature.*` 身份。
 - 外部图源、Archify JSON overview、`generated/diagrams` 输出、`diagrams` 注册字段。
 - Profile 7 legacy `understanding` 包保留在仓库里（pending removal），只作为 `module.views`
-  的一个 entity 列出；它不参与任何 Profile 10 路径。
+  的一个 entity 列出；它不参与任何 Profile 10 路径。（后记：该包连同 alignment explorer 已在
+  提交 2426f5a3 删除，不再是任何 Module 的 entity。）
 
 ### D09：目录前缀绑定（Protocol 3.1.0）
 

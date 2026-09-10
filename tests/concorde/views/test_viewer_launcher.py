@@ -66,8 +66,8 @@ class ViewerLauncherTests(unittest.TestCase):
         first = self.config["graph_paths"][0]
         self.put(first, self.graph)
         self.assertEqual(self.root / first, viewer._raw_graph(self.root, self.config))
-        self.put(first, {"tool": "explore", "result": {}})
-        with self.assertRaisesRegex(viewer.ViewerLaunchError, "not Viewer input"):
+        self.put(first, {"version": "1", "project": {}, "nodes": "unsupported", "edges": []})
+        with self.assertRaisesRegex(viewer.ViewerLaunchError, "unsupported root shape"):
             viewer._raw_graph(self.root, self.config)
 
     @verifies("scenario.views.viewer-missing-runtime")

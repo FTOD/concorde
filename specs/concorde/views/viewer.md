@@ -35,8 +35,7 @@ python3 .concorde/framework/scripts/run-viewer.py --project-root . --no-open
 The launcher selects the first existing raw graph in the manifest's ordered `graph_paths` list:
 `.understand-anything/knowledge-graph.json`, then `.ua/knowledge-graph.json` in the current package.
 The graph must be a regular JSON object with a string version, object project, and arrays nodes and
-edges. Symlinks in the graph path are rejected. A Concorde explore/result envelope is not raw
-viewer input and is rejected.
+edges. Symlinks in the graph path are rejected.
 
 ### scenario.views.viewer-invalid-first-graph — An invalid first-choice graph fails without falling back
 

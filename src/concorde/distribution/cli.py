@@ -187,7 +187,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         tool = arguments.tool if arguments is not None else (argv[0] if argv else "validate")
         payload = envelope(
             tool
-            if tool in {"init", "configure", "context", "explore", "validate", "deliver", "docsite", "build", "protocol-manifest"}
+            if tool in {"init", "configure", "context", "validate", "deliver", "docsite", "build", "protocol-manifest"}
             else "validate",
             ".",
             "failed",

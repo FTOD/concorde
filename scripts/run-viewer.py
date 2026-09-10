@@ -117,15 +117,6 @@ def _raw_graph(project: Path, viewer: Mapping[str, Any]) -> Path:
             raise ViewerLaunchError(f"UA graph path must not contain a symlink: {relative}")
         if candidate.is_file():
             graph = _json_object(candidate, "raw Understand Anything graph")
-            if graph.get("tool") == "explore" or (
-                graph.get("schema_version") == 2
-                and isinstance(graph.get("result"), Mapping)
-                and "alignment" in graph["result"]
-            ):
-                raise ViewerLaunchError(
-                    "Concorde explore JSON is not Viewer input; pass the project containing the raw "
-                    ".ua/knowledge-graph.json instead"
-                )
             if not (
                 isinstance(graph.get("version"), str)
                 and isinstance(graph.get("project"), Mapping)
