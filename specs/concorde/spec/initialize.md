@@ -19,7 +19,10 @@ The public input is `concorde-init-request@1`, an ordinary
 `action: "propose"|"apply"` and optional `name`, `target_id`, `configuration` and `proposal`.
 `name` and `target_id`, when supplied, are nonblank strings. `configuration` is
 `concorde-capability-configuration@1` with exactly
-`{integration: "codex"|"claude", enforcement: "native"|"outer"}` in its data.
+`{integration: "codex"|"claude", enforcement: "native"}` in its data. Only native enforcement is
+admitted: the distributed launchers supply no outer-sandbox attestation, so a configuration naming
+any other enforcement is rejected here instead of being accepted and failing at the first Agent
+launch.
 `proposal` is `concorde-project-proposal@1` with exactly `{action: "initialize", base_digest: sha256|null,
 files: list[{path, before_digest: sha256|null, content: str}]}` in its data. File paths must be
 canonical project-relative paths and distinct; content may be empty. These nested records reject

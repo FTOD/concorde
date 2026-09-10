@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.harness.change_worktree import ensure_change, read_change, save_change
+from concorde.harness.permissions import PermissionPolicyError
 from concorde.spec.typed_data import DATA_SCHEMAS, typed
 from concorde.spec.verification import verifies
 from concorde.development.capability_service import CapabilityHost, run_capability
@@ -181,19 +182,18 @@ class ReviewTests(unittest.TestCase):
 
     @verifies("scenario.development.execute-blocked-launch")
     def test_failed_policy_preview_does_not_persist_artifacts_or_change_state(self):
-        self.configuration = typed("concorde-capability-configuration", {"integration": "claude", "enforcement": "outer"})
-        path = self.root / ".concorde/config.json"
-        config = json.loads(path.read_text())
-        config["capability_configuration"] = self.configuration
-        path.write_text(json.dumps(config))
+        # Configuration admits native enforcement only, so an unenforceable compiled policy is
+        # simulated at the renderer: the integration reports that it cannot enforce the grant.
         ensure_change(self.root, task=self.task, allow_primary=True)
         before = read_change(self.root)
-        for mode in ("spec", "code"):
-            result = self.review(mode, mode="describe-policy")
-            self.assertNotEqual("described", result["status"], result)
-            self.assertEqual([], self.model.calls)
-            self.assertEqual(before, read_change(self.root))
-            self.assertFalse((self.root / ".concorde/runs").exists())
+        unenforceable = PermissionPolicyError("simulated: the integration cannot enforce the compiled policy")
+        with patch("concorde.development.review.render_claude_configuration", side_effect=unenforceable):
+            for mode in ("spec", "code"):
+                result = self.review(mode, mode="describe-policy")
+                self.assertNotEqual("described", result["status"], result)
+                self.assertEqual([], self.model.calls)
+                self.assertEqual(before, read_change(self.root))
+                self.assertFalse((self.root / ".concorde/runs").exists())
 
     def test_result_validation_rejects_false_clean_cross_scope_and_replayed_identity(self):
         mutations = [

@@ -56,7 +56,7 @@ CAPABILITY_CONTRACTS: dict[str, tuple[str, str]] = {}
 
 DATA_SCHEMAS = {
     "concorde-capability-configuration": obj({"integration": {"enum": ["codex", "claude"]},
-                                            "enforcement": {"enum": ["native", "outer"]}}),
+                                            "enforcement": {"enum": ["native"]}}),
     "concorde-reflection-investigation-result": obj({
         "findings": array(obj({
             "reflection_id": REFLECTION_ID, "verified_commit": COMMIT,

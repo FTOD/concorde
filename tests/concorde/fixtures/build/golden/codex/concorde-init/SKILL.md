@@ -199,8 +199,7 @@ This complete schema is the invocation's input field. It does not grant project 
         },
         "enforcement": {
           "enum": [
-            "native",
-            "outer"
+            "native"
           ]
         }
       },

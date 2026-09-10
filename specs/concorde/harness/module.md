@@ -590,6 +590,6 @@ relied-upon behavior from this Module's perspective without importing another Mo
 - Behavior when the host itself already runs inside a sandbox is not documented by either
   integration: nested bubblewrap for configured checks and `enableWeakerNestedSandbox` for Claude
   are set to fail closed, but neither is verified.
-- The distributed local and Studio launchers supply no outer-sandbox attestation, so a project
-  configured with `enforcement: outer` cannot launch an Agent through them; this is recorded as
-  reflection R-063.
+- Project configuration admits `enforcement: native` only. The attested outer-sandbox rendering
+  path remains in Permissions for a future trusted launcher, but the distributed local and Studio
+  launchers supply no attestation, so no admitted configuration can select it.

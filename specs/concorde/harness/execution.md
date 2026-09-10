@@ -294,9 +294,10 @@ developer's user, reads its own login credentials from `HOME` and talks to its p
 boundary bounds what the model's tools can reach, not the client. The credential paths the
 compiler always denies (`.env`, `.aws`, `.ssh` and the other listed entries) are project-relative
 entries under the workspace root; home-directory secrets are outside the grant because the grant
-is default-deny, not because they are listed. Outer enforcement (`enforcement: outer`) replaces the
-native mechanism with a host-attested external sandbox as specified in
-[runtime values](runtime-values.md); the distributed launchers do not yet supply that attestation.
+is default-deny, not because they are listed. The renderers can alternatively bind a launch to a
+host-attested external sandbox as specified in [runtime values](runtime-values.md), but project
+configuration admits `enforcement: native` only: the distributed launchers supply no such
+attestation, so no configuration value selects that path.
 
 ### scenario.harness.native-boundary-codex — Codex sandbox confines a rendered grant
 

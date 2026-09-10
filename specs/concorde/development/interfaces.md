@@ -36,8 +36,9 @@ invocations are rejected with `unsupported_version`. configuration is a
 `concorde-capability-configuration@1` TypedValue or null for the initialized host settings; input is
 the capability's named request TypedValue. A TypedValue is {type_id,schema_version:1,data}; unknown
 fields and versions fail admission. Configuration is integration codex|claude and enforcement
-native|outer, stored at initialization under `capability_configuration` and required to match host
-settings for ordinary invocations. Caller input never substitutes for permission authority.
+native, the only admitted value while no distributed launcher attests an outer sandbox. It is stored
+at initialization under `capability_configuration` and required to match host settings for ordinary
+invocations. Caller input never substitutes for permission authority.
 
 stdout is `concorde-capability-result@3` with capability_id, invocation_id, mode, status
 succeeded|blocked|failed|described, workspace (null or host-supplied worktree metadata), output
@@ -67,7 +68,8 @@ Spec-only agents, including Spec reviewers, start in a private capsule containin
 Implementation workers receive the complete Module context plus the contents of its own listed implementation files. Planners and task authors already see those file names through the Module's entity declarations, but receive no file contents. Code reviewers
 use a distinct read-only implementation role with only the current listed implementation files. Sessions are fresh, network and credential
 access disabled, writes restricted by phase. A native integration unable to enforce the grant blocks;
-outer enforcement requires a host-issued sandbox. Executor completions must match invocation, policy,
+the attested outer-sandbox rendering path stays in Permissions for a trusted embedding host, but no
+admitted configuration selects it. Executor completions must match invocation, policy,
 launch and context identities. No ambient conversation or predecessor transcript is admitted.
 
 Every new agent-backed task in a global capability first launches `concorde-coordinator` with the
@@ -201,7 +203,7 @@ proposal and the stage-input artifacts that pass between stages inside one capab
 | --- | --- | --- |
 | `concorde-capability-invocation@3` | Every request, on stdin | `{type_id, schema_version: 3, capability_id, mode: execute\|describe-policy, configuration, input}`. `capability_id` must name a Skill; a stage or unknown name is refused with `unknown_capability`. `configuration` is a `concorde-capability-configuration@1` TypedValue or null (falls back to the initialized project settings); `input` is the named capability's own request TypedValue. Any other `schema_version` is refused with `unsupported_version`. |
 | `concorde-capability-result@3` | Every response, on stdout | `{type_id, schema_version: 3, capability_id, invocation_id, mode, status: succeeded\|blocked\|failed\|described, workspace, output, errors: [{code,field,message}]}`. `output` is the named capability's own response TypedValue or null; `workspace` is null or host-supplied worktree metadata. Exit code 0 means `succeeded`/`described`; 3 means `blocked`/`failed`. |
-| `concorde-capability-configuration@1` | The invocation's `configuration` field, and `concorde-configure-request@1`/`-response@1` | `{integration: codex\|claude, enforcement: native\|outer}`. Stored at initialization under `.concorde/config.json`'s `capability_configuration` key; an invocation or child stage whose configuration differs from that stored snapshot stops with `configuration_mismatch`. |
+| `concorde-capability-configuration@1` | The invocation's `configuration` field, and `concorde-configure-request@1`/`-response@1` | `{integration: codex\|claude, enforcement: native}`; `outer` is not admitted while the distributed launchers supply no sandbox attestation. Stored at initialization under `.concorde/config.json`'s `capability_configuration` key; an invocation or child stage whose configuration differs from that stored snapshot stops with `configuration_mismatch`. |
 
 ### Capability requests and responses
 
