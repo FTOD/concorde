@@ -11,14 +11,15 @@
   "homepage": {
     "eyebrow": "Architecture-aware Specs · Codex + Claude",
     "title": "Specify the architecture.",
-    "description": "Write and maintain Specs that explain your software’s behavior and architecture. Understand the project through its docsite and Understand Anything graph view, guide agents with explicit context and permissions, and use built-in agents for specification and development.",
+    "description": "Write and maintain Specs that explain your software’s behavior and architecture. Understand the project through its docsite and Understand Anything graph view. Observe agent execution with LangGraph Studio, guide agents with explicit context and permissions, use built-in agents for development, and track feedback and improvements through the reflection system.",
     "features": {
-      "title": "Specify. Understand. Guide. Build.",
+      "title": "Specify, understand and improve your software.",
       "items": [
         {"title": "Write and maintain architecture-aware Specs.", "description": "Describe each Module’s purpose, requirements, scenarios and architecture together. Author and review entities, relationships, dependencies and implementation file bindings, and keep the Specs consistent as the software evolves."},
-        {"title": "Understand the project. Observe the work.", "description": "Browse Specs and architecture diagrams in the docsite, and explore code relationships in the Understand Anything graph view. Concorde can export or overlay Module structure from the Spec registry; viewer startup uses an existing graph. Recorded context and evidence, plus optional Studio graphs and live events, make agent work inspectable."},
+        {"title": "Understand the project. Observe agent execution.", "description": "Browse Specs and architecture diagrams in the docsite, and explore code relationships in the Understand Anything graph view. Follow the agents’ working process with LangGraph Studio: inspect execution graphs and live stage and agent-process events, including starts, completions and failures. Recorded context, permission policies, checks and reviews make the work and its results inspectable."},
         {"title": "Guide agents with Specs and permissions.", "description": "Give each subagent its complete Module Spec and only the file access its phase needs. The host enforces these boundaries. Good results within them increase confidence in the solution, the Spec’s sufficiency and the Modules’ decoupling; tests and review provide further evidence."},
-        {"title": "Start with built-in agents.", "description": "A coordinator handles questions, routing and topology design. A Spec engineer authors and reviews Specs, plans work and defines tasks. A programmer implements, reviews and investigates code. Public Skills compose these basic agents into development workflows."}
+        {"title": "Start with built-in agents.", "description": "A coordinator handles questions, routing and topology design. A Spec engineer authors and reviews Specs, plans work and defines tasks. A programmer implements, reviews and investigates code. Public Skills compose these basic agents into development workflows."},
+        {"title": "Turn reflections into tracked improvements.", "description": "Retain project feedback and persistent Spec gaps as records attributed to a Module or scenario. Investigate with scoped access and evidence, preserve developer comments, and turn approved resolutions into fresh development tasks. Records remain available across sessions; developers explicitly decide when to resolve or dismiss them."}
       ]
     },
     "workflow": {

@@ -2,7 +2,7 @@
   "schema_version": 3,
   "name": "concorde",
   "version": "5.0.0",
-  "description": "Concorde Framework: architecture-aware Spec authoring and maintenance, project understanding, explicit agent context and permissions, and built-in agents",
+  "description": "Concorde Framework: architecture-aware Specs, project understanding, agent observability with LangGraph Studio, explicit context and permissions, built-in agents, and a reflection system for tracked improvements",
   "license": "MIT",
   "license_file": "LICENSE",
   "repository": "https://github.com/FTOD/concorde",

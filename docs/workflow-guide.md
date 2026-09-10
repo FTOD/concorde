@@ -6,10 +6,13 @@ Detailed installation, execution, delivery and maintenance reference. Shell comm
 the Concorde checkout root unless an installed consumer path is shown.
 
 Concorde centers on writing and maintaining **architecture-aware Specs**. Its docsite and Understand
-Anything graph view help developers understand the project; recorded execution and optional Studio
-views make agent work observable. Specs guide each agent's task, while the host limits its context
+Anything graph view help developers understand the project. **Agent observability** covers the
+working process: [LangGraph Studio](../scripts/development/STUDIO.md) exposes execution graphs and
+live stage and agent-process events, while recorded context, permission policies, checks and reviews
+make the work and its results inspectable. Specs guide each agent's task, while the host limits its context
 and permissions to the declared scope. Built-in coordinator, Spec engineer and programmer agents
-support this work through installable Skills.
+support this work through installable Skills. The reflection system retains feedback and persistent
+Spec gaps, coordinates investigation and routes approved resolutions into new development tasks.
 
 The development and delivery workflows below build on these foundations. The **Spec Protocol
 4.0.0** defines one specification category:
@@ -207,6 +210,13 @@ Anything graph using the installer-owned runtime. Starting it does not generate 
 prove that the graph agrees with the Spec. A developer can inspect the views, clarify feedback in
 the agent conversation and proceed directly with an authorized change request.
 
+For feedback that needs to be tracked across sessions, use `concorde-reflections-triage`. The
+[reflection system](../specs/concorde/reflections/module.md) attributes each record to a Module or
+scenario and retains observations, evidence and developer comments. It supports queue inspection,
+explicit capture of selected gaps, and investigation within the responsible Module's context and
+file permissions. An approved resolution becomes a fresh development task; resolving or dismissing
+the report remains an explicit developer decision independent of repair completion. See the
+[reflection lifecycle](../specs/concorde/reflections/lifecycle.md) for investigation and disposition.
 
 Concorde 5 uses Package Manifest 3, Architecture Profile 11, Workspace Protocol 15 and Delivery
 Proposal 10. Earlier profiles are rejected for normal agent execution and require explicit

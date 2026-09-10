@@ -16,7 +16,12 @@ Concorde Framework helps developers author and maintain architecture-aware Modul
 their projects through a Spec docsite and Understand Anything graph views, and guide agents with
 explicit context and permissions. Specs describe software responsibilities, behavior, entities and
 relationships together. Built-in coordinator, Spec engineer and programmer agents support
-specification and development, with recorded execution and evidence that developers can inspect.
+specification and development. Agent observability covers their working process and results:
+LangGraph Studio exposes execution graphs and live stage and agent-process events, while recorded
+context, permission policies, checks and reviews provide inspectable evidence.
+The reflection system retains feedback and persistent gaps attributed to Modules or scenarios,
+supports investigation within their declared boundaries, and routes approved resolutions into
+fresh development tasks while preserving explicit developer control of report disposition.
 
 It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 4.0.0; its complete contract is the Markdown collection explicitly registered for `module.concorde` in `.concorde/specs.json`, and this reading entry is that collection's only document. This root Module owns no implementation files of its own; its promises are realized entirely by its six child Modules.
 

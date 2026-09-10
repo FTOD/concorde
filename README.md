@@ -25,8 +25,10 @@ what each Module is responsible for, how its entities relate, what it depends on
 realize it. These Specs give people a way to understand the project and agents a clear contract
 to work within as the software evolves.
 
-The framework brings together a Spec docsite, an Understand Anything graph view, explicit agent
-context and permissions, and a small set of built-in agents for specification and development.
+The framework brings together a Spec docsite, an Understand Anything graph view, LangGraph Studio
+support for observing agent execution, explicit agent context and permissions, and a small set of
+built-in agents for specification and development. A reflection system retains feedback and Spec
+gaps so they can be investigated and carried into future improvements.
 
 ## Why Concorde
 
@@ -37,7 +39,7 @@ relationships, dependencies and implementation file bindings make software struc
 Concorde supports authoring, reviewing and updating these Specs, checking their consistency, and
 tracking which Module contracts are affected as shared code changes.
 
-### 2. Understand the project and observe the work
+### 2. Understand the project and observe agent execution
 
 The **[docsite](docsite/README.md)** publishes Specs with Module navigation, composition and
 dependency graphs, and inline architecture diagrams. The **[Understand Anything graph
@@ -45,9 +47,11 @@ view](viewer/README.md)** lets you explore an existing code graph; Concorde can 
 from its Spec registry or overlay Module structure onto an existing graph. Opening the viewer
 does not itself analyze code or generate a graph.
 
-Recorded context, checks and reviews show what each agent could see and change and what evidence
-supports its work. Optional [LangGraph Studio](scripts/development/STUDIO.md) exposes execution
-graphs and live events.
+**Agent observability** covers the working process as well as its results. Concorde supports
+**[LangGraph Studio](scripts/development/STUDIO.md)** to inspect execution graphs and follow live
+stage and agent-process events: when work starts, finishes or fails. Recorded context, permission
+policies, checks and reviews show what each agent could see and change and what evidence supports
+its work. Studio is an optional interface for running and debugging these same workflows.
 
 ### 3. Guide agents with Specs and explicit permissions
 
@@ -68,6 +72,18 @@ Concorde includes three basic agents: a **coordinator** for questions, routing a
 a **Spec engineer** for authoring, reviewing, planning and task definition; and a **programmer** for
 implementation, code review and investigation. Public Skills compose them into workflows with
 explicit context and permissions for each invocation.
+
+### 5. Turn feedback into tracked improvements
+
+The **[reflection system](specs/concorde/reflections/module.md)** keeps project feedback and
+persistent Spec gaps as records attributed to a Module or scenario. Use
+`concorde-reflections-triage` to inspect the queue, capture selected gaps, investigate problems and
+turn an approved resolution into a fresh development task.
+
+Each record retains the observation, evidence, investigation and developer comments, so the
+problem remains available across sessions. Investigation uses the responsible Module's context
+and authorized files. Developers explicitly decide whether to resolve or dismiss a report;
+finishing a repair does not automatically close it.
 
 ## A development workflow using these foundations
 
@@ -164,7 +180,7 @@ Read the [Protocol](protocol/README.md), start from the
 | Ask about the system or design its topology | `concorde-main` |
 | Take a change through specification, implementation and checks | `concorde-dev-loop` |
 | Review a Spec or diagnose code in a fresh read-only invocation | `concorde-review` |
-| Inspect and act on recorded feedback | `concorde-reflections-triage` |
+| Track feedback and Spec gaps, investigate problems and act on approved resolutions | `concorde-reflections-triage` |
 | Initialize or configure a project | `concorde-init` · `concorde-configure` |
 | Validate a candidate or deliver a verified change | `concorde-validate` · `concorde-deliver` |
 
