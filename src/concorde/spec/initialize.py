@@ -78,7 +78,7 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
         raise SpecError("project name is required", "invalid_input")
     if checked_path(root, ".concorde/config.json").exists():
         raise SpecError("project already configured; use configure to change settings", "already_initialized")
-    path = "specs/modules/project/module.md"
+    path = "specs/project/module.md"
     target = empty_target(target_id, "module", name, [path])
     registry = {"schema_version": REGISTRY_SCHEMA, "project_id": "project.initialized", "entry_target": target_id,
         "targets": [target], "checks": []}

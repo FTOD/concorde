@@ -94,7 +94,7 @@ describe('a project holding only Profile 10 initialization outputs', () => {
     expect(build.status, `${build.stdout}\n${build.stderr}`).toBe(0);
     const manifest = JSON.parse(await readFile(resolve(root,'docsite/build/build-manifest.json'),'utf8'));
     expect(manifest.schema_version).toBe(17);expect(manifest.pages).toHaveLength(1);
-    expect(manifest.pages[0].route).toBe('/specs/modules/project/module');
+    expect(manifest.pages[0].route).toBe('/specs/project/module');
     expect(manifest.pages[0].targets).toEqual(['module.atlas']);
     expect(manifest.pages[0].aliases).toEqual([expect.stringMatching(/^\/specs\/module\.atlas\/[0-9a-f]{16}$/)]);
     const homepage=await readFile(resolve(root,'docsite/build/index.html'),'utf8');expect(homepage).toContain(manifest.pages[0].route);

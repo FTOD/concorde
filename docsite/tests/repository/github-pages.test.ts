@@ -18,7 +18,7 @@ describe('Concorde repository GitHub Pages deployment', () => {
     expect(identity.organizationName).toBe('FTOD');
     expect(identity.projectName).toBe('concorde');
     expect(identity.repository).toBe('https://github.com/FTOD/concorde');
-    expect(canonicalRoute('/concorde/specs/modules/concorde/module', identity.baseUrl)).toBe('/specs/modules/concorde/module');
+    expect(canonicalRoute('/concorde/specs/concorde/module', identity.baseUrl)).toBe('/specs/concorde/module');
     expect(canonicalRoute('/concorde/', identity.baseUrl)).toBe('/');
   });
 

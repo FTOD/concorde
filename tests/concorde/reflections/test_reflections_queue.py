@@ -76,7 +76,7 @@ class ReflectionsQueueTests(unittest.TestCase):
             self.assertEqual([item["id"] for item in pending], ["R-003", "R-002"])
             self.assertEqual(entry["path"], ".concorde/reflections/pending/R-001.md")
             self.assertEqual(entry["bucket"], "pending")
-            self.assertEqual(entry["feature_path"], "specs/modules/project/module.md")
+            self.assertEqual(entry["feature_path"], "specs/project/module.md")
             self.assertEqual(entry["concerns_path"], "src/example.py")
             self.assertEqual(plans["R-003"]["route"], "fast-loop")
             self.assertEqual(tree_hashes(root), before)

@@ -15,7 +15,7 @@ sys.path.insert(0, str(RUNTIME_ROOT))
 # The initialized Module the fixture reflections and plans are attributed to. A reflection may name
 # only a registered Module or scenario; the initialization stub declares no scenario of its own.
 MODULE_ID = "module.example"
-MODULE_DOCUMENT = "specs/modules/project/module.md"
+MODULE_DOCUMENT = "specs/project/module.md"
 CONCERNED_FILE = "src/example.py"
 
 REFLECTION_BUCKETS = ("pending", "planned", "needs-comments")

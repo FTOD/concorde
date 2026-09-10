@@ -243,18 +243,18 @@ class InitialModuleTests(unittest.TestCase):
             root = Path(directory)
             proposal = project_proposal(root, PACKAGE, "New project", CONFIGURATION)
             source = next(f for f in proposal["files"]
-                          if f["path"] == "specs/modules/project/module.md")
+                          if f["path"] == "specs/project/module.md")
             before = source["content"]
             source["content"] = before.replace("## Architecture", "## Drawing")
             with self.assertRaises(SpecError):
                 apply_project_proposal(root, PACKAGE, proposal)
             self.assertFalse((root / ".concorde/config.json").exists())
-            self.assertFalse((root / "specs/modules/project/module.md").exists())
+            self.assertFalse((root / "specs/project/module.md").exists())
             source["content"] = before
             apply_project_proposal(root, PACKAGE, proposal)
             repository = SpecRepository(root, PACKAGE)
             target = repository.select("module.project")
-            self.assertEqual("specs/modules/project/module.md", target.primary_document)
+            self.assertEqual("specs/project/module.md", target.primary_document)
             body = repository.document(target.primary_document).body
             self.assertIn("not yet been supplied", body)
             self.assertEqual((), target.files)

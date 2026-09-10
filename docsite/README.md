@@ -16,8 +16,8 @@ under `.concorde/` is excluded from published prose.
 
 The adapter publishes Profile 10 projects only: it reads `plugins/scoped-content` and registry
 schema 3, and refuses any other `profile_version` with an explicit error. Every registered document
-publishes once at a readable source-derived route: `specs/modules/project/module.md` becomes
-`/specs/modules/project/module`. The navbar exposes a single `Module Specs` tab alongside `Graph`;
+publishes once at a readable source-derived route: `specs/project/module.md` becomes
+`/specs/project/module`. The navbar exposes a single `Module Specs` tab alongside `Graph`;
 there is no separate Implementation Specs tab, because Implementation Specs no longer exist. A
 Module name opens its `module.md` directly, while its additional documents and child Modules appear
 underneath; no duplicate main-Spec entry is generated. Document names omit `.md`. Source paths

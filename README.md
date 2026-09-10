@@ -28,12 +28,12 @@ The Protocol standard is independent of the software Specs that implement it:
 
 ```text
 protocol/                 Independent standard, organized as ordinary chapters
-specs/modules/concorde/     Module contracts, entities and architectures
+specs/concorde/     Module contracts, entities and architectures
 .concorde/specs.json       Registry schema 3: Modules and their relationships
 ```
 
-Start with the [Concorde Module](specs/modules/concorde/module.md), its
-[architecture](specs/modules/concorde/module.md#architecture), and the
+Start with the [Concorde Module](specs/concorde/module.md), its
+[architecture](specs/concorde/module.md#architecture), and the
 [Spec Protocol](protocol/README.md). The
 [authored Protocol rules](protocol/principles.md) define the standard. Protocol documents are
 outside the project Spec registry and do not need to satisfy their own Module format.
@@ -159,16 +159,16 @@ single-Module author. An implementation file may be listed by several Modules; a
 it tasks every listing Module, and proceeds only when all candidate referencing document authors
 return identical shared bytes.
 
-[Capability registry](specs/modules/concorde/development/capabilities.md) ·
-[Development host boundary](specs/modules/concorde/development/interfaces.md)
+[Capability registry](specs/concorde/development/capabilities.md) ·
+[Development host boundary](specs/concorde/development/interfaces.md)
 
 ## Developer view and feedback
 
-The [Developer experience](specs/modules/concorde/module.md#developer-entry-selection) covers the
+The [Developer experience](specs/concorde/module.md#developer-entry-selection) covers the
 Spec docsite, interactive diagrams, the Understand Anything code viewer and feedback into the
-Framework's existing workflows. [Spec publication](specs/modules/concorde/views/module.md#architecture) provides the authored-Spec view in this experience.
+Framework's existing workflows. [Spec publication](specs/concorde/views/module.md#architecture) provides the authored-Spec view in this experience.
 
-The [viewer service](specs/modules/concorde/views/viewer.md) opens an existing raw Understand
+The [viewer service](specs/concorde/views/viewer.md) opens an existing raw Understand
 Anything graph using the installer-owned runtime. Starting it does not generate a code graph or
 prove that the graph agrees with the Spec. A developer can inspect the views, clarify feedback in
 the agent conversation and proceed directly with an authorized change request.
@@ -303,4 +303,4 @@ python3 scripts/worktree-guard.py --check "git worktree add ../elsewhere"
 
 User-authorized delivery is the bounded exception: a session in either participating worktree can
 complete the integration while retaining its own Skills.
-See [source-checkout distribution](specs/modules/concorde/distribution/installation.md#featuredistributionbuild).
+See [source-checkout distribution](specs/concorde/distribution/installation.md#featuredistributionbuild).

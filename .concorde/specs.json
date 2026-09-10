@@ -8,7 +8,7 @@
       "kind": "module",
       "title": "Concorde Framework",
       "documents": [
-        "specs/modules/concorde/module.md"
+        "specs/concorde/module.md"
       ],
       "parent": null,
       "uses": [],
@@ -20,11 +20,11 @@
       "kind": "module",
       "title": "Spec",
       "documents": [
-        "specs/modules/concorde/spec/module.md",
-        "specs/modules/concorde/spec/registry.md",
-        "specs/modules/concorde/spec/values.md",
-        "specs/modules/concorde/spec/structure.md",
-        "specs/modules/concorde/spec/initialize.md"
+        "specs/concorde/spec/module.md",
+        "specs/concorde/spec/registry.md",
+        "specs/concorde/spec/values.md",
+        "specs/concorde/spec/structure.md",
+        "specs/concorde/spec/initialize.md"
       ],
       "parent": "module.concorde",
       "uses": [],
@@ -60,15 +60,15 @@
       "kind": "module",
       "title": "Harness",
       "documents": [
-        "specs/modules/concorde/harness/module.md",
-        "specs/modules/concorde/harness/agents-and-harnesses.md",
-        "specs/modules/concorde/harness/graphs-and-loops.md",
-        "specs/modules/concorde/harness/context.md",
-        "specs/modules/concorde/harness/permissions.md",
-        "specs/modules/concorde/harness/execution.md",
-        "specs/modules/concorde/harness/host.md",
-        "specs/modules/concorde/harness/runtime-values.md",
-        "specs/modules/concorde/harness/typed-values.md"
+        "specs/concorde/harness/module.md",
+        "specs/concorde/harness/agents-and-harnesses.md",
+        "specs/concorde/harness/graphs-and-loops.md",
+        "specs/concorde/harness/context.md",
+        "specs/concorde/harness/permissions.md",
+        "specs/concorde/harness/execution.md",
+        "specs/concorde/harness/host.md",
+        "specs/concorde/harness/runtime-values.md",
+        "specs/concorde/harness/typed-values.md"
       ],
       "parent": "module.concorde",
       "uses": [
@@ -122,14 +122,14 @@
       "kind": "module",
       "title": "Development",
       "documents": [
-        "specs/modules/concorde/development/module.md",
-        "specs/modules/concorde/development/interfaces.md",
-        "specs/modules/concorde/development/capabilities.md",
-        "specs/modules/concorde/development/query-and-routing.md",
-        "specs/modules/concorde/development/development.md",
-        "specs/modules/concorde/development/topology.md",
-        "specs/modules/concorde/development/review-and-gaps.md",
-        "specs/modules/concorde/development/delivery.md"
+        "specs/concorde/development/module.md",
+        "specs/concorde/development/interfaces.md",
+        "specs/concorde/development/capabilities.md",
+        "specs/concorde/development/query-and-routing.md",
+        "specs/concorde/development/development.md",
+        "specs/concorde/development/topology.md",
+        "specs/concorde/development/review-and-gaps.md",
+        "specs/concorde/development/delivery.md"
       ],
       "parent": "module.concorde",
       "uses": [
@@ -176,9 +176,9 @@
       "kind": "module",
       "title": "Reflections",
       "documents": [
-        "specs/modules/concorde/reflections/module.md",
-        "specs/modules/concorde/reflections/interfaces.md",
-        "specs/modules/concorde/reflections/lifecycle.md"
+        "specs/concorde/reflections/module.md",
+        "specs/concorde/reflections/interfaces.md",
+        "specs/concorde/reflections/lifecycle.md"
       ],
       "parent": "module.concorde",
       "uses": [
@@ -202,10 +202,10 @@
       "kind": "module",
       "title": "Distribution",
       "documents": [
-        "specs/modules/concorde/distribution/module.md",
-        "specs/modules/concorde/distribution/installation.md",
-        "specs/modules/concorde/distribution/build.md",
-        "specs/modules/concorde/distribution/runtime.md"
+        "specs/concorde/distribution/module.md",
+        "specs/concorde/distribution/installation.md",
+        "specs/concorde/distribution/build.md",
+        "specs/concorde/distribution/runtime.md"
       ],
       "parent": "module.concorde",
       "uses": [
@@ -250,10 +250,10 @@
       "kind": "module",
       "title": "Views",
       "documents": [
-        "specs/modules/concorde/views/module.md",
-        "specs/modules/concorde/views/publication.md",
-        "specs/modules/concorde/views/pipeline.md",
-        "specs/modules/concorde/views/viewer.md"
+        "specs/concorde/views/module.md",
+        "specs/concorde/views/publication.md",
+        "specs/concorde/views/pipeline.md",
+        "specs/concorde/views/viewer.md"
       ],
       "parent": "module.concorde",
       "uses": [

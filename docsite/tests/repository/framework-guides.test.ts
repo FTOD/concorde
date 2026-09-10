@@ -8,7 +8,7 @@ describe('Explicit Concorde self specification',()=>{
   expect(r.pages.map(p=>p.sourcePath)).toEqual([...new Set(r.targets.flatMap(t=>t.documents))]);
   expect(r.pages.some(p=>p.sourcePath==='README.md'||p.sourcePath.startsWith('.concorde/'))).toBe(false);
   expect(r.targets.some(t=>t.id==='module.protocol')).toBe(false);
-  expect(r.pages.some(p=>p.sourcePath.startsWith('protocol/')||p.sourcePath.startsWith('specs/modules/concorde/protocol/'))).toBe(false);
+  expect(r.pages.some(p=>p.sourcePath.startsWith('protocol/')||p.sourcePath.startsWith('specs/concorde/protocol/'))).toBe(false);
  });
  it('contains independently complete public Skill and business scope descriptions',()=>{
   const r=loadScopedRegistry(root);
