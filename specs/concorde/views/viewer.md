@@ -91,4 +91,6 @@ This service participates in Developer view and feedback. Its user-facing contra
 `module.distribution` supplies viewer provisioning under the Installation entity's ownership.
 Changes to viewer launch or graph admission select this service. Changes to runtime acquisition,
 package verification or recovery select `module.distribution` through an admitted Module routing
-view. No graph or viewer action grants an agent access to another target's implementation.
+view. No graph or viewer action grants an agent access to another target's implementation. The
+deterministic export of a graph skeleton this launcher can open is a separate command, described in
+[ua-graph](ua-graph.md).
