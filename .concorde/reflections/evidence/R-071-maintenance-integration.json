@@ -1,0 +1,108 @@
+{
+  "recorded_at": "2026-09-10",
+  "operation": "explicitly_user_authorized_manual_git_merge",
+  "change_id": "change.499465ba-0619-431f-9220-063b7dd5d8da",
+  "source_branch": "concorde/499465ba-0619-431f-9220-063b7dd5d8da",
+  "source_worktree": "/tmp/concorde-worktree-fpcum8ri/project",
+  "source_commit": "22251f493066546223918acbb1fc473a07c87cb4",
+  "primary_before": "1af181b1973fda0385b80e9ae5cd777f6374444e",
+  "merge_commit": "304dd2f99e71ab1587f726834d47fd9b97d0c9fa",
+  "merge_conflicts": false,
+  "normal_delivery_completed": false,
+  "lifecycle_ready_claim": false,
+  "inventory_before_cleanup": {
+    "primary_branch": "main",
+    "primary_worktree": "/home/zhenyu/concorde",
+    "schema_version": 1,
+    "worktrees": [
+      {
+        "branch": "concorde/499465ba-0619-431f-9220-063b7dd5d8da",
+        "change_id": "change.499465ba-0619-431f-9220-063b7dd5d8da",
+        "head": "22251f493066546223918acbb1fc473a07c87cb4",
+        "locked": false,
+        "managed": true,
+        "outcome": "incomplete_change",
+        "path": "/tmp/concorde-worktree-fpcum8ri/project",
+        "phase": "deliver",
+        "status": "blocked",
+        "target_id": null,
+        "task": "检查并修复 GitHub workflow Validate source checkout 的 build 和 studio 两个失败任务，用户怀疑 unittest 有问题。最新失败 run 为 FTOD/concorde 34500103769（main push，2026-09-10）。读取实际失败日志，复现、修复并执行相关 CI 检查，完成后 commit 到独立 branch 并通知用户。"
+      }
+    ]
+  },
+  "source_change_before_cleanup": {
+    "base_branch": "main",
+    "base_commit": "2c398af9af2510768d945c7cde7da5a57ff8fcfd",
+    "branch": "concorde/499465ba-0619-431f-9220-063b7dd5d8da",
+    "change_id": "change.499465ba-0619-431f-9220-063b7dd5d8da",
+    "constraints": [
+      "用户明确要求在独立 worktree 完成；只能由 Concorde host 创建 worktree，然后 P10 自动启动以其为初始目录、全新上下文和本地 Skills 的会话。",
+      "不要在 primary worktree 开发，不要合并 primary；保留独立工作分支和修复提交。",
+      "若修复涉及 prompts/skills/capabilities 或生成 Skill 表面，在未加载受影响 Skill 的独立维护会话进行。"
+    ],
+    "focus_id": null,
+    "gaps": [],
+    "guidance": {
+      "AGENTS.md": {
+        "created": false
+      },
+      "CLAUDE.md": {
+        "created": false
+      }
+    },
+    "outcome": "incomplete_change",
+    "path": "/tmp/concorde-worktree-fpcum8ri/project",
+    "phase": "deliver",
+    "primary_worktree": "/home/zhenyu/concorde",
+    "schema_version": 1,
+    "status": "blocked",
+    "target_id": null,
+    "targets": {},
+    "task": "检查并修复 GitHub workflow Validate source checkout 的 build 和 studio 两个失败任务，用户怀疑 unittest 有问题。最新失败 run 为 FTOD/concorde 34500103769（main push，2026-09-10）。读取实际失败日志，复现、修复并执行相关 CI 检查，完成后 commit 到独立 branch 并通知用户。",
+    "validated_tree": null,
+    "validation": null
+  },
+  "cleanup": {
+    "worktree_removed": true,
+    "branch_deleted": true,
+    "inventory_refreshed": true
+  },
+  "verification": {
+    "build_check": "passed; no generated differences",
+    "studio": {
+      "command": "PYTHONPATH=src CONCORDE_TEST_STUDIO=1 /tmp/concorde-ci-studio-venv/bin/python -m unittest tests.concorde.harness.test_studio tests.concorde.harness.test_studio_client tests.concorde.harness.test_studio_server",
+      "exit_code": 0,
+      "summary": "Ran 27 tests in 32.355s; OK",
+      "tested_commit": "304dd2f99e71ab1587f726834d47fd9b97d0c9fa"
+    },
+    "spec_validate": {
+      "status": "success",
+      "result": {
+        "claims": [
+          "registry structure",
+          "Spec document identity/membership/main visibility",
+          "four mandatory Module sections",
+          "requirement, scenario and entity syntax",
+          "ID anchors in local links",
+          "entity file listings and registry files",
+          "relationship diagram entities and labeled edges",
+          "contract examples",
+          "shared wire schema equality",
+          "Module dependency promises",
+          "scenario verification declarations"
+        ],
+        "semantic_completeness": "not_proven",
+        "source_digest": "sha256:80ba9386677b1a52ace139f86030a933ec387f37a7c86f1c32b283fe97c2a793",
+        "summary": {
+          "errors": 0,
+          "infos": 0,
+          "warnings": 39
+        }
+      }
+    },
+    "reflection_parser": "passed; R-071 open/pending; Module attribution module.development",
+    "reflection_links": "all Markdown source and evidence links in R-071 and its detailed diagnosis resolve"
+  },
+  "removed_tracked_edits": "Only the host-added concorde-change-worktree guidance blocks in AGENTS.md and CLAUDE.md; original file bytes matched the source commit.",
+  "source_guidance_diff": "diff --git a/AGENTS.md b/AGENTS.md\nindex 7bc3f164..a2467471 100644\n--- a/AGENTS.md\n+++ b/AGENTS.md\n@@ -90,3 +90,22 @@ worktree under P10, automatically by default, without loading the affected Skill\n manual fallback above only when necessary. Skill discovery metadata alone is not a loaded Skill body.\n A maintenance agent that has not invoked a project-local Skill may update sources, run the build,\n run `build --check`, and test normally.\n+\n+<!-- concorde-change-worktree:start -->\n+## Concorde change worktree\n+\n+This agent session starts in a secondary worktree containing an unfinished candidate change.\n+The host records its lifecycle in `.concorde/worktree.json`. `concorde-main` receives this worktree's\n+identity, draft status and the primary worktree's live change inventory. Partial Spec and\n+implementation edits are draft state; resume the recorded phase before claiming completion.\n+\n+You may invoke `concorde-deliver` from this source worktree or the destination worktree.\n+The destination is the primary worktree: /home/zhenyu/concorde.\n+The session's initial working directory must be one of those two participants; a third\n+worktree cannot deliver this change by redirecting or forwarding its invocation.\n+Delivery creates concorde/delivered/<change_id> and leaves the primary branch unchanged.\n+The host removes this source unless keep_worktree:true was explicitly requested.\n+End this session after removal. Only an explicit user request to the sole primary writer\n+authorizes a separate merge_primary:true request from the primary session.\n+Development loops stop at a ready candidate and never deliver automatically.\n+<!-- concorde-change-worktree:end -->\ndiff --git a/CLAUDE.md b/CLAUDE.md\nindex 0300ff9c..ec8159f1 100644\n--- a/CLAUDE.md\n+++ b/CLAUDE.md\n@@ -7,3 +7,22 @@ only from Concorde capabilities, followed by a P10 handoff into the new worktree\n \n In a fresh clone, run `python3 scripts/concorde.py build` once before this import resolves.\n @generated/protocol/principles.md\n+\n+<!-- concorde-change-worktree:start -->\n+## Concorde change worktree\n+\n+This agent session starts in a secondary worktree containing an unfinished candidate change.\n+The host records its lifecycle in `.concorde/worktree.json`. `concorde-main` receives this worktree's\n+identity, draft status and the primary worktree's live change inventory. Partial Spec and\n+implementation edits are draft state; resume the recorded phase before claiming completion.\n+\n+You may invoke `concorde-deliver` from this source worktree or the destination worktree.\n+The destination is the primary worktree: /home/zhenyu/concorde.\n+The session's initial working directory must be one of those two participants; a third\n+worktree cannot deliver this change by redirecting or forwarding its invocation.\n+Delivery creates concorde/delivered/<change_id> and leaves the primary branch unchanged.\n+The host removes this source unless keep_worktree:true was explicitly requested.\n+End this session after removal. Only an explicit user request to the sole primary writer\n+authorizes a separate merge_primary:true request from the primary session.\n+Development loops stop at a ready candidate and never deliver automatically.\n+<!-- concorde-change-worktree:end -->"
+}

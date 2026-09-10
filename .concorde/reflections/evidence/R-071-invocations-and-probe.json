@@ -1,0 +1,151 @@
+{
+  "recorded_at": "2026-09-10",
+  "incident_base": "2c398af9af2510768d945c7cde7da5a57ff8fcfd",
+  "historical_capability_results": [
+    {
+      "capability_id": "concorde-dev-loop",
+      "errors": [
+        {
+          "code": "execution_failed",
+          "field": "",
+          "message": "'target_id'"
+        }
+      ],
+      "invocation_id": "fdda40cc-8870-4d8f-9b7e-04194249aad2",
+      "mode": "execute",
+      "output": null,
+      "schema_version": 3,
+      "status": "failed",
+      "type_id": "concorde-capability-result",
+      "workspace": {
+        "base_commit": "2c398af9af2510768d945c7cde7da5a57ff8fcfd",
+        "branch": "concorde/499465ba-0619-431f-9220-063b7dd5d8da",
+        "change_id": "change.499465ba-0619-431f-9220-063b7dd5d8da",
+        "path": "/tmp/concorde-worktree-fpcum8ri/project",
+        "primary_worktree": "/home/zhenyu/concorde"
+      }
+    },
+    {
+      "capability_id": "concorde-main",
+      "errors": [],
+      "invocation_id": "820dff66-b38e-4357-9939-0ef7a8943ed1",
+      "mode": "execute",
+      "output": {
+        "data": {
+          "action": "ask",
+          "answer": "无法从已准入 Spec 确认该 workflow 的唯一拥有 Module target_id，因此不建议猜填 target_id 恢复。\n\n职责上，module.distribution 负责 source checkout 的构建、安装和维护入口；module.harness 负责 Linux 只读沙箱及 Studio。对应依据是 specs/concorde/distribution/module.md、specs/concorde/harness/module.md 和 specs/concorde/harness/execution.md。但这些 Module 的实体文件声明均未绑定所述 GitHub workflow；职责关联不能替代文件归属。module.concorde 虽可协调子 Module，却明确没有自己的实现文件（specs/concorde/module.md）。\n\n当前冻结元数据确认 change.499465ba-0619-431f-9220-063b7dd5d8da 处于 created/failed、target_id=null，不能视作已有绑定目标的正常恢复。建议先通过明确的拓扑变更补齐 workflow 的实体文件声明及注册 files，并确定唯一拥有 Module；再在现有 candidate worktree 的新会话中，以确认的 target_id、原 change_id、任务和约束提交 concorde-dev-loop。target_id 提示不授予文件访问权，也不能保证修复缺失的生命周期绑定；若仍返回同一错误，应由 Development 修复恢复路径，勿手改状态绕过 admission（specs/concorde/development/interfaces.md）。本次未修改文件。",
+          "application": null,
+          "completed_capabilities": [
+            "concorde-coordinator-route"
+          ],
+          "context_id": "sha256:b2a53c0058b89c10650b3fc3750140ec8d4bd2be908e5f4d7fe3fd9189d9046b",
+          "discovered_targets": [
+            "module.concorde",
+            "module.distribution",
+            "module.harness",
+            "module.development"
+          ],
+          "entry_target": "module.concorde",
+          "files": [],
+          "gaps": [
+            {
+              "blocked_step": "确认 Validate source checkout workflow 两个 job 的唯一拥有 Module，并据此恢复当前 concorde-dev-loop change。",
+              "context_id": "sha256:b2a53c0058b89c10650b3fc3750140ec8d4bd2be908e5f4d7fe3fd9189d9046b",
+              "needed_contract": "在 Framework 的 Module 归属中明确该 workflow 的拥有 Module，并使该 Module 的实体文件绑定与注册 files 一致；职责说明本身不足以建立实现文件归属。",
+              "question": "Validate source checkout GitHub workflow 的确切项目相对路径是什么，由哪个 Module 的实体声明绑定？已准入集合没有该文件的归属声明。",
+              "target_id": "module.concorde"
+            }
+          ],
+          "outcome": "spec_incomplete",
+          "routes": [],
+          "topology_proposal": null,
+          "workspace": {
+            "active_worktrees": [
+              {
+                "branch": "concorde/499465ba-0619-431f-9220-063b7dd5d8da",
+                "change_id": "change.499465ba-0619-431f-9220-063b7dd5d8da",
+                "head": "2c398af9af2510768d945c7cde7da5a57ff8fcfd",
+                "locked": false,
+                "managed": true,
+                "outcome": "execution_failed",
+                "path": "/tmp/concorde-worktree-fpcum8ri/project",
+                "phase": "created",
+                "status": "failed",
+                "target_id": null,
+                "task": "检查并修复 GitHub workflow Validate source checkout 的 build 和 studio 两个失败任务，用户怀疑 unittest 有问题。最新失败 run 为 FTOD/concorde 34500103769（main push，2026-09-10）。读取实际失败日志，复现、修复并执行相关 CI 检查，完成后 commit 到独立 branch 并通知用户。"
+              }
+            ],
+            "change_id": "change.499465ba-0619-431f-9220-063b7dd5d8da",
+            "components": [],
+            "current_branch": "concorde/499465ba-0619-431f-9220-063b7dd5d8da",
+            "current_worktree": "/tmp/concorde-worktree-fpcum8ri/project",
+            "gaps": [],
+            "kind": "change",
+            "outcome": "execution_failed",
+            "phase": "created",
+            "primary_branch": "main",
+            "primary_worktree": "/home/zhenyu/concorde",
+            "status": "failed"
+          }
+        },
+        "schema_version": 1,
+        "type_id": "concorde-main-response"
+      },
+      "schema_version": 3,
+      "status": "blocked",
+      "type_id": "concorde-capability-result",
+      "workspace": {
+        "base_commit": "2c398af9af2510768d945c7cde7da5a57ff8fcfd",
+        "branch": "concorde/499465ba-0619-431f-9220-063b7dd5d8da",
+        "change_id": "change.499465ba-0619-431f-9220-063b7dd5d8da",
+        "path": "/tmp/concorde-worktree-fpcum8ri/project",
+        "primary_worktree": "/home/zhenyu/concorde"
+      }
+    }
+  ],
+  "independent_review_rejections": [
+    {
+      "capability_id": "concorde-review",
+      "errors": [
+        {
+          "code": "incompatible_handoff",
+          "field": "",
+          "message": "main route changed single-target task intent"
+        }
+      ],
+      "invocation_id": "d82d6520-6376-494e-bcf7-ef93a89c5bfa",
+      "mode": "execute",
+      "output": null,
+      "schema_version": 3,
+      "status": "blocked",
+      "type_id": "concorde-capability-result",
+      "workspace": null
+    },
+    {
+      "capability_id": "concorde-review",
+      "errors": [
+        {
+          "code": "incompatible_handoff",
+          "field": "",
+          "message": "main route changed single-target task intent"
+        }
+      ],
+      "invocation_id": "1c240ed1-5b6d-46ce-9451-99b3ebc87a19",
+      "mode": "execute",
+      "output": null,
+      "schema_version": 3,
+      "status": "blocked",
+      "type_id": "concorde-capability-result",
+      "workspace": null
+    }
+  ],
+  "read_only_extracted_function_probes": [
+    {
+      "command": "/usr/bin/zsh -lc \"python3 -B -c 'import ast,copy,pathlib,subprocess,types,os\nroot=pathlib.Path(\\\"/home/zhenyu/concorde\\\"); base=\\\"2c398af9af2510768d945c7cde7da5a57ff8fcfd\\\"\ndef source(p,rev): return (root/p).read_text() if rev==\\\"working\\\" else subprocess.check_output([\\\"git\\\",\\\"show\\\",rev+\\\":\\\"+p],text=True)\ndef load_function(text,name,ns):\n tree=ast.parse(text); fn=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name==name)\n exec(compile(ast.Module(body=[fn],type_ignores=[]),\\\"<read-only-extracted:\\\"+name+\\\">\\\",\\\"exec\\\"),ns)\nfor rev in (base,\\\"working\\\"):\n h=source(\\\"src/concorde/development/capability_host.py\\\",rev); w=source(\\\"src/concorde/harness/change_worktree.py\\\",rev)\n for specify in (False,True):\n  events=[]; state={\\\"change_id\\\":\\\"change.test\\\",\\\"target_id\\\":None}\n  ns={\\\"Path\\\":pathlib.Path,\\\"MAIN_CAPABILITY\\\":\\\"concorde-main\\\",\\\"MAIN_ROUTED_CAPABILITIES\\\":{\\\"concorde-dev-loop\\\",\\\"concorde-review\\\"},\\\"read_change\\\":lambda *a,**k:copy.deepcopy(state),\\\"save_change\\\":lambda *a:events.append(\\\"save\\\"),\\\"MainInvocation\\\":lambda *a:events.append(\\\"route\\\"),\\\"Invocation\\\":lambda *a:events.append(\\\"graph-construction\\\")}\n  load_function(w,\\\"bind_owner\\\",ns); load_function(h,\\\"_dispatch\\\",ns)\n  try: ns[\\\"_dispatch\\\"](\\\"concorde-dev-loop\\\",{}, {\\\"task\\\":\\\"test\\\",\\\"change_id\\\":\\\"change.test\\\",\\\"specify\\\":specify},types.SimpleNamespace(routed_target=None,mode=\\\"execute\\\",project_root=root,coordinated=False))\n  except Exception as e: print(rev,specify,type(e).__name__,repr(str(e)),\\\"events\\\",events)\n ns={\\\"Path\\\":pathlib.Path,\\\"os\\\":os,\\\"is_directory_entry\\\":lambda e:e.endswith(\\\"/\\\"),\\\"entry_base\\\":lambda e:e.rstrip(\\\"/\\\"),\\\"checked_path\\\":lambda r,p:r/p,\\\"SKIPPED_DIRECTORIES\\\":{\\\"node_modules\\\",\\\"__pycache__\\\",\\\".venv\\\",\\\"build\\\",\\\"dist\\\"},\\\"SKIPPED_SUFFIXES\\\":(\\\".pyc\\\",\\\".log\\\")}\n load_function(source(\\\"src/concorde/spec/repository.py\\\",rev),\\\"expand_entry\\\",ns)\n p=\\\".github/workflows/validate-source-checkout.yml\\\"\n print(rev,\\\"exact expansion\\\",ns[\\\"expand_entry\\\"](root,p),\\\"explicit hidden dir\\\",ns[\\\"expand_entry\\\"](root,\\\".github/workflows/\\\"))\n reg=json.loads(source(\\\".concorde/specs.json\\\",rev)) if False else None\n'\"",
+      "aggregated_output": "2c398af9af2510768d945c7cde7da5a57ff8fcfd False KeyError \"'target_id'\" events []\n2c398af9af2510768d945c7cde7da5a57ff8fcfd True KeyError \"'target_id'\" events []\n2c398af9af2510768d945c7cde7da5a57ff8fcfd exact expansion ['.github/workflows/validate-source-checkout.yml'] explicit hidden dir ['.github/workflows/deploy-docsite.yml', '.github/workflows/validate-source-checkout.yml']\nworking False KeyError \"'target_id'\" events []\nworking True KeyError \"'target_id'\" events []\nworking exact expansion ['.github/workflows/validate-source-checkout.yml'] explicit hidden dir ['.github/workflows/deploy-docsite.yml', '.github/workflows/validate-source-checkout.yml']\n",
+      "exit_code": 0,
+      "status": "completed"
+    }
+  ],
+  "probe_limits": "Uses original extracted functions with in-memory substitutes; it is not an end-to-end capability run. Absolute paths in the original command describe the observed environment."
+}
