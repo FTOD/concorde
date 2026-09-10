@@ -317,6 +317,83 @@ These eight public Skills expose the global and lifecycle capabilities. Internal
 composed by the host. See the [capability registry](specs/concorde/development/capabilities.md)
 for the full interface.
 
+## Agents, capabilities and executable entry points
+
+Concorde currently defines **3 Agents with 12 task modes, 13 capabilities, 8 public Skills and
+3 Harnesses**. Capabilities orchestrate execution; Agents perform the steps that need model
+judgment. Public Skills provide instructions for invoking those capabilities from the developer's
+agent client.
+
+### Agents and task modes
+
+| Agent | Modes | Responsibility and authority |
+| :--- | :--- | :--- |
+| `coordinator` | `ask`, `route`, `design-topology` | Answer questions, route tasks and design topology from selected complete Module Specs; read-only, with no implementation contents. |
+| `spec-engineer` | `specify`, `context-solve`, `plan`, `tasks`, `spec-review`, `topology-author` | Author and review Specs, assess information sufficiency, and define plans and tasks. Returns structured results; the host applies document changes. |
+| `programmer` | `implementation`, `code-review`, `investigation` | Implement tasks, review code and investigate problems. Only `implementation` may write the selected Module's implementation files. |
+
+Definitions live in [agents/](agents/__init__.py). Each mode has its own task contract, and each
+invocation receives fresh, explicitly bounded context and permissions.
+
+### Capability inventory
+
+| Class | Capability | Behavior | Public Skill |
+| :--- | :--- | :--- | :--- |
+| Global | `main` | Answer questions, route requests, and design and apply accepted topology changes. | `concorde-main` |
+| Global | `dev-loop` | Route a change through specification, planning, implementation, validation and review to a ready candidate. | `concorde-dev-loop` |
+| Global | `review` | Run a standalone Spec or code review, including source diagnosis. | `concorde-review` |
+| Global | `reflections-triage` | Inspect feedback, capture gaps, investigate, implement resolutions and manage owned records. | `concorde-reflections-triage` |
+| Lifecycle | `init` | Propose and apply project initialization with a pinned Protocol. | `concorde-init` |
+| Lifecycle | `configure` | Apply integration and enforcement configuration. | `concorde-configure` |
+| Lifecycle | `validate` | Run deterministic Spec and configured code checks and record readiness. | `concorde-validate` |
+| Lifecycle | `deliver` | Stage a verified candidate on its own branch and clean up; merge into the primary branch on a separate explicit request. | `concorde-deliver` |
+| Stage | `specify` | Author Spec replacements for the bound Module. | — |
+| Stage | `context-solve` | Validate Module participant routing and assess context sufficiency. | — |
+| Stage | `plan` | Assess sufficiency and produce a revision-bound plan. | — |
+| Stage | `tasks` | Derive acceptance tasks from the accepted plan. | — |
+| Stage | `implement` | Implement component tasks or coordinate participating components. | — |
+
+The four lifecycle capabilities make no model calls; the other nine may call a model. The eight
+public Skills each expose one global or lifecycle capability. The five stages have no standalone
+launcher and are reachable only through declared host composition. Current Agents have no admitted
+Capability references of their own; the host composes the workflows.
+
+The source inventory is [capabilities/](capabilities/__init__.py); the
+[capability registry](specs/concorde/development/capabilities.md) describes the contracts.
+
+### Harnesses and native tools
+
+| Harness | Agent | Execution environment |
+| :--- | :--- | :--- |
+| `discovery-capsule` | `coordinator` | Frozen discovery and routing context. |
+| `spec-capsule` | `spec-engineer` | Frozen Module Spec context. |
+| `implementation-workspace` | `programmer` | Project implementation workspace with access restricted by the selected mode and host grant. |
+
+All three declare `native.filesystem` and `native.shell` Tool interfaces and support Codex and
+Claude integrations. The Harness and mode define authority ceilings; the host grants concrete
+access for each invocation. See the [Harness definitions](src/concorde/harness/harness.py).
+
+### Launchers and supporting tools
+
+Commands below are relative to this source checkout. Installed projects use the corresponding
+scripts under `.concorde/framework/`; Studio and development setup are documented separately.
+
+| Entry point | Available operations |
+| :--- | :--- |
+| `python3 scripts/run-capability.py <skill> < invocation.json` | Invoke one of the eight public capabilities using a typed JSON request, in `execute` or `describe-policy` mode. |
+| `python3 scripts/concorde.py <command>` | `validate`, `build`, `docsite`, `ua-graph`, `protocol-manifest`. |
+| [LangGraph Studio](scripts/development/STUDIO.md) | Start, observe and debug the same eight public workflows through the shared CapabilityHost. |
+| `python3 scripts/install-concorde.py` | Preview or apply installation into a project. |
+| `python3 scripts/reflections_queue.py` | Query and maintain the reflection queue. |
+| `python3 scripts/run-viewer.py` | Launch the code graph viewer. |
+| `npm --prefix docsite run <script>` | `start`, `build`, `validate`, `typecheck`, `test`, `check`. |
+| `python3 scripts/development/run-tests.py` | Run the project's test suite. |
+| `python3 scripts/worktree-guard.py` | Explain or check the source-checkout worktree policy. |
+
+The CLI `validate` command performs direct validation. The `concorde-validate` capability also
+manages candidate readiness evidence as part of the lifecycle. Studio uses the same host and
+capabilities as the CLI and Skills.
+
 ## Explore and contribute
 
 - **[Spec explorer](https://ftod.github.io/concorde/)** — published Protocol, Module contracts and relationship graphs.
