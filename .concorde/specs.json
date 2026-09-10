@@ -33,7 +33,6 @@
         "prompts/protocol/",
         "protocol/",
         "protocol/manifest.json",
-        "skills/concorde-init/SKILL.md",
         "src/concorde/__init__.py",
         "src/concorde/__main__.py",
         "src/concorde/spec/",
@@ -149,11 +148,6 @@
         "capabilities/specify.py",
         "capabilities/tasks.py",
         "capabilities/validate.py",
-        "prompts/workflow-host/",
-        "skills/concorde-deliver/SKILL.md",
-        "skills/concorde-dev-loop/SKILL.md",
-        "skills/concorde-main/SKILL.md",
-        "skills/concorde-validate/SKILL.md",
         "src/concorde/development/",
         "src/concorde/harness/change_worktree.py",
         "src/concorde/harness/session_handoff.py",
@@ -166,7 +160,7 @@
         "tests/concorde/harness/test_session_handoff.py",
         "tests/concorde/harness/test_worktree_boundary.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
-        "tests/concorde/support/operation_json.py"
+        "tests/concorde/support/capability_json.py"
       ],
       "checks": [
         "check.development.runtime"
@@ -189,7 +183,6 @@
       "files": [
         "capabilities/reflections_triage.py",
         "scripts/reflections_queue.py",
-        "skills/concorde-reflections-triage/SKILL.md",
         "src/concorde/reflections/",
         "src/concorde/spec/changes.py",
         "tests/concorde/fixtures/interfaces/reflections/",
@@ -217,6 +210,7 @@
         "capabilities/__init__.py",
         "capabilities/configure.py",
         "concorde.json",
+        "prompts/workflow-host/",
         "pyproject.toml",
         "scripts/concorde.ps1",
         "scripts/concorde.py",
@@ -227,7 +221,7 @@
         "scripts/requirements.lock",
         "scripts/run-capability.py",
         "scripts/worktree-guard.py",
-        "skills/concorde-configure/SKILL.md",
+        "skills/",
         "src/concorde/distribution/",
         "src/concorde/distribution/build.py",
         "src/concorde/distribution/managed_runtime.py",

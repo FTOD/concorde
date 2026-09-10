@@ -123,7 +123,7 @@ interfaces. `resolve_agent` rejects a non-boolean flag or missing loop interface
 
 `harness.Harness` is the existing frozen configuration record: `name: str`,
 `model: "project-configured"`, `integrations: tuple[str, ...]`, `workspace: "capsule"|"project"`,
-`effects: EffectDeclaration`, string tuples `capabilities`, `tools`, `skills`, `contexts`, `results`
+`effects: EffectDeclaration`, string tuples `capabilities`, `tools`, `contexts`, `results`
 and `environment`, `loop: LoopPolicy`, `state: str` and `digest: str`. The `harness(...)` factory
 normalizes unique tuple fields and hashes the complete configuration except its own digest.
 `LoopPolicy(timeout_seconds: int, max_turns: int | None=None)` requires positive limits; a null

@@ -296,6 +296,14 @@ Harness + Constraints). The build renders each Agent's instruction view to
 manifest; `describe-policy` mode (see above) shows the bound agent, harness and effective loop
 timeout for every stage it previews, alongside its read/write grants.
 
+**Capability** is the canonical name for a callable or composed Framework function; the former
+Operation name is retired. Development owns the capability invocation boundary and workflow
+composition. Distribution owns `skills/` and `prompts/workflow-host/`, renders and installs the
+public Skill instructions, and keeps their projections current. The developer's external agent
+runtime reads those Skills and submits typed capability requests to Development. Skills are not
+part of a Concorde Agent's Harness. See [Agents and Harnesses](specs/concorde/harness/agents-and-harnesses.md)
+and the [Capability registry](specs/concorde/development/capabilities.md) for definitions and mappings.
+
 Root `AGENTS.md`/`CLAUDE.md` bind an agent to the worktree that supplied its project Skills. Agent
 sessions never create or enter worktrees themselves: the checkout's `.claude/settings.json`,
 `.codex/hooks.json` and `.codex/rules/worktree.rules` refuse `EnterWorktree`, worktree-isolated

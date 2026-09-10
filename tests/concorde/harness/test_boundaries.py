@@ -25,12 +25,12 @@ class BoundaryTests(unittest.TestCase):
         prefix,rest=text.split('```concorde-entities\n',1);payload,suffix=rest.split('\n```',1)
         return json.loads(payload),(lambda value: document.write_text(
             prefix+'```concorde-entities\n'+json.dumps(value,indent=2)+'\n```'+suffix))
-    def run_op(self,name,data=None,callback=None,mode='execute'):
+    def call_capability(self,name,data=None,callback=None,mode='execute'):
         double=ModelProcessDouble(callback);self.double=double
         self.host=CapabilityHost(self.root,PACKAGE,executor=double.executor,allow_primary_worktree=True,mode=mode)
         return run_capability(name,CONFIGURATION,typed(name+'-request',data or self.task),host_context=self.host)
     def change(self):
-        result=self.run_op('concorde-plan');self.assertEqual('succeeded',result['status'],result)
+        result=self.call_capability('concorde-plan');self.assertEqual('succeeded',result['status'],result)
         return {**self.task,'change_id':result['output']['data']['change_id']}
     def completion(self, task):
         return Invocation('concorde-validate', CONFIGURATION, task, self.host).verify_completion()
@@ -54,7 +54,7 @@ class BoundaryTests(unittest.TestCase):
         def cb(stage,snap,data,cwd):
             if stage=='specify':data['documents']=[{'path':'specs/transfer/promises.md',
                 'content':path.read_text()+'\nChanged by one target.\n'}]
-        result=self.run_op('concorde-specify',callback=cb)
+        result=self.call_capability('concorde-specify',callback=cb)
         self.assertEqual('blocked',result['status'],result);self.assertEqual(before,path.read_bytes())
         self.assertIn('shared Spec truth',result['errors'][0]['message'])
     def test_target_author_cannot_persist_duplicate_document_identity(self):
@@ -63,14 +63,14 @@ class BoundaryTests(unittest.TestCase):
                                              '"id": "document.ledger.api"')
         def cb(stage,snap,data,cwd):
             if stage=='specify':data['documents']=[{'path':'specs/transfer/module.md','content':replacement}]
-        result=self.run_op('concorde-specify',callback=cb)
+        result=self.call_capability('concorde-specify',callback=cb)
         self.assertEqual('blocked',result['status'],result);self.assertEqual(before,path.read_bytes())
         self.assertIn('require a topology change',result['errors'][0]['message'])
     def test_target_author_can_change_local_truth_without_changing_its_declaration(self):
         path=self.root/'specs/transfer/module.md';replacement=path.read_text()+'\nA clarified local promise.\n'
         def cb(stage,snap,data,cwd):
             if stage=='specify':data['documents']=[{'path':'specs/transfer/module.md','content':replacement}]
-        result=self.run_op('concorde-specify',callback=cb)
+        result=self.call_capability('concorde-specify',callback=cb)
         self.assertEqual('succeeded',result['status'],result);self.assertEqual(replacement,path.read_text())
     def test_a_directory_is_listed_only_with_an_explicit_trailing_slash(self):
         self.registry['targets'][3]['files']=['app'];self.save()
@@ -133,15 +133,15 @@ class BoundaryTests(unittest.TestCase):
     def test_unsupported_is_not_spec_incomplete(self):
         def cb(stage,snapshot,data,cwd):
             if stage=='context-solve':data.update(outcome='unsupported',answer='The Spec prohibits this use.')
-        result=self.run_op('concorde-plan',callback=cb)
+        result=self.call_capability('concorde-plan',callback=cb)
         self.assertEqual('unsupported',result['output']['data']['outcome']);self.assertEqual([],result['output']['data']['gaps']);self.assertFalse((self.root/'.concorde/attempts').exists())
     def test_describe_policy_launches_no_model_and_lists_exact_capsule(self):
-        result=self.run_op('concorde-dev-loop',mode='describe-policy')
+        result=self.call_capability('concorde-dev-loop',mode='describe-policy')
         self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
         for policy in self.host.descriptions:
             if policy['phase'] not in {'implementation','code-review'}:self.assertEqual(['context.json'],policy['read_paths']);self.assertEqual([],policy['write_paths'])
     def test_ask_policy_describes_only_coordinator_without_launching(self):
-        result=self.run_op('concorde-main',{'task':'Explain transfer','target_id':'service.transfer'},mode='describe-policy')
+        result=self.call_capability('concorde-main',{'task':'Explain transfer','target_id':'service.transfer'},mode='describe-policy')
         self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
         self.assertEqual(['route'],[item['phase'] for item in self.host.descriptions])
         self.assertEqual(['context.json'],self.host.descriptions[0]['read_paths'])
@@ -149,14 +149,14 @@ class BoundaryTests(unittest.TestCase):
         self.assertTrue(all(item['write_paths']==[] for item in self.host.descriptions))
     def test_changed_spec_requires_replanning_the_change(self):
         task=self.change();p=self.root/'specs/transfer/module.md';p.write_text(p.read_text()+'\nChanged obligations.\n')
-        self.assertEqual('blocked',self.run_op('concorde-tasks',task)['status']);self.assertEqual([],self.double.calls)
+        self.assertEqual('blocked',self.call_capability('concorde-tasks',task)['status']);self.assertEqual([],self.double.calls)
     def test_changed_intent_cannot_reuse_the_worktree_change(self):
         task=self.change();task['task']='Different behavior'
-        self.assertEqual('blocked',self.run_op('concorde-tasks',task)['status'])
+        self.assertEqual('blocked',self.call_capability('concorde-tasks',task)['status'])
     def test_spec_author_cannot_edit_provider_or_registry(self):
         def cb(stage,snap,data,cwd):
             if stage=='specify':data['documents']=[{'path':'specs/ledger/module.md','content':'Changed'}]
-        old=(self.root/'specs/ledger/module.md').read_bytes();result=self.run_op('concorde-specify',callback=cb)
+        old=(self.root/'specs/ledger/module.md').read_bytes();result=self.call_capability('concorde-specify',callback=cb)
         self.assertEqual('blocked',result['status']);self.assertEqual(old,(self.root/'specs/ledger/module.md').read_bytes())
     def test_domain_author_cannot_persist_missing_participant_routing(self):
         path=self.root/'specs/bank/module.md';old=path.read_bytes()
@@ -164,23 +164,23 @@ class BoundaryTests(unittest.TestCase):
         def cb(stage,snap,data,cwd):
             if stage=='specify':data['documents']=[{'path':'specs/bank/module.md',
                 'content':declaration+'# Banking\nThe participant declarations were accidentally omitted.\n'}]
-        result=self.run_op('concorde-specify',{'target_id':'scope.bank','task':'Edit banking rules'},cb)
+        result=self.call_capability('concorde-specify',{'target_id':'scope.bank','task':'Edit banking rules'},cb)
         self.assertEqual('blocked',result['status'],result);self.assertEqual(old,path.read_bytes())
         self.assertIn('dependency promises',result['errors'][0]['message'])
     def test_planner_cannot_emit_spec_replacements(self):
         def cb(stage,snap,data,cwd):
             if stage=='plan':data['documents']=[{'path':'specs/transfer/module.md','content':'Changed'}]
-        self.assertEqual('blocked',self.run_op('concorde-plan',callback=cb)['status'])
+        self.assertEqual('blocked',self.call_capability('concorde-plan',callback=cb)['status'])
     def test_delivery_requires_real_current_checks(self):
-        task=self.change();self.run_op('concorde-tasks',task);self.run_op('concorde-implement',task)
+        task=self.change();self.call_capability('concorde-tasks',task);self.call_capability('concorde-implement',task)
         with self.assertRaises(SpecError):self.completion(task)
-        self.assertEqual('succeeded',self.run_op('concorde-validate',task)['status'])
+        self.assertEqual('succeeded',self.call_capability('concorde-validate',task)['status'])
         self.completion(task)
         (self.root/'checks/transfer_check.py').write_text('raise AssertionError("new expectation")')
         with self.assertRaisesRegex(SpecError,'changed|stale'):self.completion(task)
     def test_separate_check_inputs_invalidate_evidence(self):
         check=self.registry['checks'][0];check['inputs']=['acceptance.json'];self.save();(self.root/'acceptance.json').write_text('{}')
-        task=self.change();self.run_op('concorde-tasks',task);self.run_op('concorde-implement',task);self.run_op('concorde-validate',task)
+        task=self.change();self.call_capability('concorde-tasks',task);self.call_capability('concorde-implement',task);self.call_capability('concorde-validate',task)
         (self.root/'acceptance.json').write_text('{"revision":2}')
         with self.assertRaisesRegex(SpecError,'stale'):self.completion(task)
     def test_atomic_replacements_rollback_after_failed_verification(self):
@@ -201,4 +201,4 @@ class BoundaryTests(unittest.TestCase):
         config=json.loads((self.root/'.concorde/config.json').read_text());config={'profile_version':7,'specification_root':'specs','root_module_id':'module.old','capability_configuration':config['capability_configuration']}
         (self.root/'.concorde/config.json').write_text(json.dumps(config))
     def test_profile7_cannot_be_silently_used_by_new_agent_runtime(self):
-        self.downgrade_to_profile7();result=self.run_op('concorde-main');self.assertEqual('blocked',result['status']);self.assertEqual([],self.double.calls)
+        self.downgrade_to_profile7();result=self.call_capability('concorde-main');self.assertEqual('blocked',result['status']);self.assertEqual([],self.double.calls)

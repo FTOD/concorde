@@ -18,7 +18,7 @@ class ScopedProtocolTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name); self.registry=project(self.root)
-    def run_op(self, name, data, double=None, mode='execute'):
+    def call_capability(self, name, data, double=None, mode='execute'):
         self.host=CapabilityHost(self.root,PACKAGE,executor=double.executor if double else None,
             allow_primary_worktree=True,mode=mode)
         return run_capability(name,CONFIGURATION,typed(name+'-request',data),host_context=self.host)
@@ -79,7 +79,7 @@ class ScopedProtocolTests(unittest.TestCase):
         for peer in ('service.transfer','module.ledger','scope.audit'):
             self.assertTrue(any(peer in finding.message for finding in report.findings))
         double=ModelProcessDouble()
-        result=self.run_op('concorde-plan',{'target_id':'scope.bank','task':'Plan a banking change'},double)
+        result=self.call_capability('concorde-plan',{'target_id':'scope.bank','task':'Plan a banking change'},double)
         self.assertEqual('blocked',result['status'],result)
         self.assertEqual('spec_incomplete',result['output']['data']['outcome'])
         self.assertEqual([],[call['stage'] for call in double.calls])
@@ -100,7 +100,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 self.assertEqual('invalid',report.status)
                 self.assertIn(rule,{finding.rule_id for finding in report.findings})
         double=ModelProcessDouble()
-        result=self.run_op('concorde-plan',{'target_id':'scope.bank','task':'Plan a banking change'},double)
+        result=self.call_capability('concorde-plan',{'target_id':'scope.bank','task':'Plan a banking change'},double)
         self.assertEqual('conflicting',result['output']['data']['outcome'])
         self.assertEqual([],result['output']['data']['gaps'])
         self.assertEqual([],[call['stage'] for call in double.calls])
@@ -115,7 +115,7 @@ class ScopedProtocolTests(unittest.TestCase):
     @verifies("scenario.development.answer-question")
     def test_main_answers_directly_from_complete_injected_contexts(self):
         double=ModelProcessDouble()
-        result=self.run_op('concorde-main',{'task':'Explain transfer'},double)
+        result=self.call_capability('concorde-main',{'task':'Explain transfer'},double)
         self.assertEqual('succeeded',result['status'],result)
         data=result['output']['data']
         self.assertEqual(['scope.bank','service.transfer'],data['discovered_targets'])
@@ -192,19 +192,19 @@ class ScopedProtocolTests(unittest.TestCase):
                     ('Audit owns its record concept and routes reporting to service.audit-report.',entities),
                     'Route audit reporting to service.audit-report.',diagram,participants)}]
         double=ModelProcessDouble(callback)
-        design=self.run_op('concorde-main',{'action':'design-topology','task':'Add audit reports'},double)
+        design=self.call_capability('concorde-main',{'action':'design-topology','task':'Add audit reports'},double)
         self.assertEqual('topology_proposed',design['output']['data']['outcome']);proposal=design['output']['data']['topology_proposal']
         self.assertFalse((self.root/'specs/audit-report/module.md').exists())
-        prepared=self.run_op('concorde-main',{'action':'accept-topology','topology_proposal':proposal},double)
+        prepared=self.call_capability('concorde-main',{'action':'accept-topology','topology_proposal':proposal},double)
         self.assertIsNotNone(prepared['output'],prepared)
         self.assertEqual('topology_prepared',prepared['output']['data']['outcome']);application=prepared['output']['data']['application']
         self.assertEqual({'id','path','digest'},set(application))
         self.assertNotIn('# Audit reports',json.dumps(prepared));self.assertNotIn('# Ledger API',json.dumps(prepared))
         self.assertTrue((self.root/application['path']).is_file());self.assertFalse((self.root/'specs/audit-report/module.md').exists())
         tampered={**application,'digest':'sha256:'+'0'*64}
-        rejected=self.run_op('concorde-main',{'action':'apply-topology','application':tampered},double)
+        rejected=self.call_capability('concorde-main',{'action':'apply-topology','application':tampered},double)
         self.assertEqual('blocked',rejected['status']);self.assertTrue((self.root/application['path']).is_file())
-        applied=self.run_op('concorde-main',{'action':'apply-topology','application':application},double)
+        applied=self.call_capability('concorde-main',{'action':'apply-topology','application':application},double)
         self.assertEqual('topology_applied',applied['output']['data']['outcome']);self.assertFalse((self.root/application['path']).exists())
         repository=SpecRepository(self.root);self.assertIn('service.audit-report',repository.targets)
         self.assertTrue((self.root/'specs/audit-report/module.md').is_file())
@@ -235,10 +235,10 @@ class ScopedProtocolTests(unittest.TestCase):
             design_callback(stage,snapshot,data,cwd)
             if data['outcome']=='topology_proposed':
                 data['topology_design']['data']['spec_tasks']=data['topology_design']['data']['spec_tasks'][1:]
-        invalid=self.run_op('concorde-main',{'action':'design-topology','task':'Share transfer promises'},ModelProcessDouble(missing_reference_task))
+        invalid=self.call_capability('concorde-main',{'action':'design-topology','task':'Share transfer promises'},ModelProcessDouble(missing_reference_task))
         self.assertEqual('blocked',invalid['status'],invalid)
         self.assertIn('every retained referencing target task',invalid['errors'][0]['message'])
-        designed=self.run_op('concorde-main',{'action':'design-topology','task':'Share transfer promises'},ModelProcessDouble(design_callback))
+        designed=self.call_capability('concorde-main',{'action':'design-topology','task':'Share transfer promises'},ModelProcessDouble(design_callback))
         proposal=designed['output']['data']['topology_proposal']
         def reconcile(stage,snapshot,data,cwd,conflict=False):
             if stage!='topology-author':return
@@ -250,15 +250,15 @@ class ScopedProtocolTests(unittest.TestCase):
                 json.dumps(declaration,indent=2)+'\n```'+item['content'][match.end():])
             if conflict and snapshot['target']['id']=='module.ledger':item['content']+='\nConflicting Module proposal.\n'
         conflict=ModelProcessDouble(lambda *args:reconcile(*args,conflict=True))
-        rejected=self.run_op('concorde-main',{'action':'accept-topology','topology_proposal':proposal},conflict)
+        rejected=self.call_capability('concorde-main',{'action':'accept-topology','topology_proposal':proposal},conflict)
         self.assertEqual('blocked',rejected['status'],rejected)
         self.assertEqual('conflicting',rejected['output']['data']['outcome'])
         self.assertIn('conflicting shared truth',rejected['output']['data']['answer'])
         self.assertEqual([],list((self.root/'.concorde/topology-proposals').glob('*.json')))
         consensus=ModelProcessDouble(reconcile)
-        prepared=self.run_op('concorde-main',{'action':'accept-topology','topology_proposal':proposal},consensus)
+        prepared=self.call_capability('concorde-main',{'action':'accept-topology','topology_proposal':proposal},consensus)
         application=prepared['output']['data']['application']
-        applied=self.run_op('concorde-main',{'action':'apply-topology','application':application},consensus)
+        applied=self.call_capability('concorde-main',{'action':'apply-topology','application':application},consensus)
         self.assertEqual('topology_applied',applied['output']['data']['outcome'])
         repository=SpecRepository(self.root)
         service=resolve_context(repository,'service.transfer').value
@@ -280,16 +280,16 @@ class ScopedProtocolTests(unittest.TestCase):
                     'migration_constraints':[],'acceptance':['The Service title and Spec agree.']})
                 data.update(outcome='topology_proposed',answer='Designed.',expand_targets=[],routes=[],gaps=[],topology_design=design)
         design_double=ModelProcessDouble(design_callback)
-        designed=self.run_op('concorde-main',{'action':'design-topology','task':'Rename transfers'},design_double)
+        designed=self.call_capability('concorde-main',{'action':'design-topology','task':'Rename transfers'},design_double)
         proposal=designed['output']['data']['topology_proposal'];before=(self.root/'.concorde/specs.json').read_bytes()
         def gap(stage,snapshot,data,cwd):
             design_callback(stage,snapshot,data,cwd)
             if stage=='topology-author':data.update(outcome='spec_incomplete',answer='Naming promise missing.',documents=[],gaps=[{
                 'question':'What consumer name is promised?','blocked_step':'Author the Service Spec','needed_contract':'Service naming rule'}])
-        blocked=self.run_op('concorde-main',{'action':'accept-topology','topology_proposal':proposal},ModelProcessDouble(gap))
+        blocked=self.call_capability('concorde-main',{'action':'accept-topology','topology_proposal':proposal},ModelProcessDouble(gap))
         self.assertEqual('blocked',blocked['status']);self.assertEqual(before,(self.root/'.concorde/specs.json').read_bytes())
         (self.root/'.concorde/specs.json').write_text((self.root/'.concorde/specs.json').read_text()+'\n')
-        stale=self.run_op('concorde-main',{'action':'accept-topology','topology_proposal':proposal},ModelProcessDouble())
+        stale=self.call_capability('concorde-main',{'action':'accept-topology','topology_proposal':proposal},ModelProcessDouble())
         self.assertEqual('blocked',stale['status']);self.assertEqual('stale_proposal',stale['errors'][0]['code'])
     @verifies("scenario.development.describe-policy")
     def test_topology_policy_description_is_read_only_at_both_acceptance_gates(self):
@@ -306,19 +306,19 @@ class ScopedProtocolTests(unittest.TestCase):
                     'migration_constraints':[],'acceptance':['The title changes without changing behavior.']})
                 data.update(outcome='topology_proposed',answer='Designed.',expand_targets=[],routes=[],gaps=[],topology_design=design)
         double=ModelProcessDouble(callback)
-        designed=self.run_op('concorde-main',{'action':'design-topology','task':'Clarify transfer title'},double)
+        designed=self.call_capability('concorde-main',{'action':'design-topology','task':'Clarify transfer title'},double)
         proposal=designed['output']['data']['topology_proposal']
         before_registry=(self.root/'.concorde/specs.json').read_bytes()
         before_specs={path.relative_to(self.root).as_posix():path.read_bytes() for path in (self.root/'specs').rglob('*.md')}
-        described=self.run_op('concorde-main',{'action':'accept-topology','topology_proposal':proposal},mode='describe-policy')
+        described=self.call_capability('concorde-main',{'action':'accept-topology','topology_proposal':proposal},mode='describe-policy')
         self.assertEqual('described',described['status'],described)
         self.assertEqual(before_registry,(self.root/'.concorde/specs.json').read_bytes())
         self.assertEqual(before_specs,{path.relative_to(self.root).as_posix():path.read_bytes() for path in (self.root/'specs').rglob('*.md')})
         self.assertEqual([],list((self.root/'.concorde/topology-proposals').glob('*.json')))
         self.assertTrue(self.host.descriptions);self.assertTrue(all(not item['write_paths'] for item in self.host.descriptions))
-        prepared=self.run_op('concorde-main',{'action':'accept-topology','topology_proposal':proposal},double)
+        prepared=self.call_capability('concorde-main',{'action':'accept-topology','topology_proposal':proposal},double)
         application=prepared['output']['data']['application'];artifact_before=(self.root/application['path']).read_bytes()
-        described=self.run_op('concorde-main',{'action':'apply-topology','application':application},mode='describe-policy')
+        described=self.call_capability('concorde-main',{'action':'apply-topology','application':application},mode='describe-policy')
         self.assertEqual('described',described['status'],described)
         self.assertEqual(before_registry,(self.root/'.concorde/specs.json').read_bytes())
         self.assertEqual(artifact_before,(self.root/application['path']).read_bytes())
@@ -331,7 +331,7 @@ class ScopedProtocolTests(unittest.TestCase):
                     'migration_constraints':[],'acceptance':['The invalid entry would be selected.']})
                 data.update(outcome='topology_proposed',answer='Designed.',expand_targets=[],routes=[],gaps=[],topology_design=design)
         double=ModelProcessDouble(callback)
-        result=self.run_op('concorde-main',{'action':'design-topology','task':'Select a Module entry'},double)
+        result=self.call_capability('concorde-main',{'action':'design-topology','task':'Select a Module entry'},double)
         self.assertEqual('blocked',result['status'],result);self.assertEqual('invalid_proposal',result['errors'][0]['code'])
         self.assertFalse(any(call['stage']=='topology-author' for call in double.calls))
         self.assertEqual([],list((self.root/'.concorde/topology-proposals').glob('*.json')))
@@ -347,14 +347,14 @@ class ScopedProtocolTests(unittest.TestCase):
                     'registry':registry,'spec_tasks':[{'target_id':'service.audit-report','task':'Define audit reports.'}],
                     'migration_constraints':[],'acceptance':['The Service is registered.']})
                 data.update(outcome='topology_proposed',answer='Designed.',expand_targets=[],routes=[],gaps=[],topology_design=design)
-        result=self.run_op('concorde-main',{'action':'design-topology','task':'Add audit reports'},ModelProcessDouble(callback))
+        result=self.call_capability('concorde-main',{'action':'design-topology','task':'Add audit reports'},ModelProcessDouble(callback))
         self.assertEqual('blocked',result['status'],result)
         self.assertEqual('invalid_proposal',result['errors'][0]['code'])
         self.assertIn('Module tasks',result['errors'][0]['message'])
     @verifies("scenario.development.answer-question")
     def test_main_can_admit_modules_and_answer_but_not_read_implementation_code(self):
         double=ModelProcessDouble()
-        result=self.run_op('concorde-main',{'task':'Explain ledger reads',
+        result=self.call_capability('concorde-main',{'task':'Explain ledger reads',
             'target_id':'module.ledger','focus_id':'scenario.ledger.read'},double)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual(['route','route'],[call['stage'] for call in double.calls])
@@ -384,7 +384,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 data.update(outcome='completed',answer='Transfer and ledger explained from their original Specs.',
                             expand_targets=[],routes=[])
         double=ModelProcessDouble(answer)
-        result=self.run_op('concorde-main',{'task':'Explain transfer and ledger'},double)
+        result=self.call_capability('concorde-main',{'task':'Explain transfer and ledger'},double)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual(2,len(double.calls))
         self.assertTrue(all(call['capability']=='concorde-coordinator' for call in double.calls))
@@ -400,7 +400,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 expand_targets=[],routes=[],gaps=[{'question':'Which target owns settlement?',
                 'blocked_step':'Select a context','needed_contract':'Settlement routing responsibility',
                 'target_id':'scope.bank'}])
-        blocked=self.run_op('concorde-main',{'task':'Explain settlement'},ModelProcessDouble(routing_gap))
+        blocked=self.call_capability('concorde-main',{'task':'Explain settlement'},ModelProcessDouble(routing_gap))
         self.assertEqual('blocked',blocked['status'])
         gap=blocked['output']['data']['gaps'][0]
         self.assertEqual('scope.bank',gap['target_id'])
@@ -413,7 +413,7 @@ class ScopedProtocolTests(unittest.TestCase):
                     expand_targets=[],routes=[],gaps=[{'question':'When is settlement final?',
                     'blocked_step':'Explain settlement ledger','needed_contract':'Settlement completion rule',
                     'target_id':'module.ledger'}])
-        result=self.run_op('concorde-main',{'task':'Explain settlement ledger'},ModelProcessDouble(contract_gap))
+        result=self.call_capability('concorde-main',{'task':'Explain settlement ledger'},ModelProcessDouble(contract_gap))
         self.assertEqual('blocked',result['status'],result)
         gap=result['output']['data']['gaps'][0]
         self.assertEqual('module.ledger',gap['target_id'])
@@ -424,13 +424,13 @@ class ScopedProtocolTests(unittest.TestCase):
         def route(stage,snapshot,data,cwd):
             data.update(outcome='routed',expand_targets=[],routes=[{
                 'target_id':'module.ledger','focus_id':None,'task':snapshot['task'],'constraints':[]}])
-        result=self.run_op('concorde-main',{'task':'Explain ledger'},ModelProcessDouble(route))
+        result=self.call_capability('concorde-main',{'task':'Explain ledger'},ModelProcessDouble(route))
         self.assertEqual('blocked',result['status'])
         self.assertEqual('invalid_completion',result['errors'][0]['code'])
 
     def test_global_loop_routes_once_before_its_first_internal_stage(self):
         double=ModelProcessDouble()
-        result=self.run_op('concorde-dev-loop',{'task':'Plan the transfer promise','specify':False,'run_reviews':False},double)
+        result=self.call_capability('concorde-dev-loop',{'task':'Plan the transfer promise','specify':False,'run_reviews':False},double)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual('service.transfer',result['output']['data']['target_id'])
         self.assertEqual('concorde-coordinator-route',result['output']['data']['completed_capabilities'][0])
@@ -448,23 +448,23 @@ class ScopedProtocolTests(unittest.TestCase):
             if stage=='route':data.update(outcome='routed',expand_targets=[],gaps=[],routes=[
                 {'target_id':'service.transfer','focus_id':None,'task':snapshot['task'],'constraints':snapshot['constraints']},
                 {'target_id':'module.ledger','focus_id':None,'task':snapshot['task'],'constraints':snapshot['constraints']}])
-        result=self.run_op('concorde-dev-loop',{'task':'Plan transfer','specify':False,'run_reviews':False},ModelProcessDouble(split))
+        result=self.call_capability('concorde-dev-loop',{'task':'Plan transfer','specify':False,'run_reviews':False},ModelProcessDouble(split))
         self.assertEqual('blocked',result['status']);self.assertEqual('ambiguous_route',result['errors'][0]['code'])
         def rewrite(stage,snapshot,data,cwd):
             if stage=='route':data.update(outcome='routed',expand_targets=[],gaps=[],routes=[
                 {'target_id':'service.transfer','focus_id':None,'task':'Different intent','constraints':[]}])
-        result=self.run_op('concorde-dev-loop',{'task':'Plan transfer','constraints':['Keep API stable'],'specify':False,'run_reviews':False},ModelProcessDouble(rewrite))
+        result=self.call_capability('concorde-dev-loop',{'task':'Plan transfer','constraints':['Keep API stable'],'specify':False,'run_reviews':False},ModelProcessDouble(rewrite))
         self.assertEqual('blocked',result['status']);self.assertEqual('incompatible_handoff',result['errors'][0]['code'])
     def test_main_cannot_guess_an_unmentioned_discovery_or_route_target(self):
         path=self.root/'specs/bank/module.md';declaration=path.read_text().split('# Banking',1)[0]
         path.write_text(declaration+'# Banking\nNo downstream target is identified.\n')
         def expand(stage,snapshot,data,cwd):
             if stage=='route':data.update(outcome='expand',expand_targets=['service.transfer'],routes=[],gaps=[])
-        result=self.run_op('concorde-main',{'task':'Explain transfer'},ModelProcessDouble(expand))
+        result=self.call_capability('concorde-main',{'task':'Explain transfer'},ModelProcessDouble(expand))
         self.assertEqual('blocked',result['status']);self.assertEqual('incompatible_handoff',result['errors'][0]['code'])
         def route(stage,snapshot,data,cwd):
             if stage=='route':data.update(outcome='expand',expand_targets=['module.ledger'],gaps=[],routes=[])
-        result=self.run_op('concorde-main',{'task':'Explain ledger'},ModelProcessDouble(route))
+        result=self.call_capability('concorde-main',{'task':'Explain ledger'},ModelProcessDouble(route))
         self.assertEqual('blocked',result['status']);self.assertEqual('incompatible_handoff',result['errors'][0]['code'])
     @verifies("scenario.harness.context-discovery", "scenario.harness.context-stale-recheck")
     def test_discovery_context_is_digest_bound_and_module_only(self):
@@ -553,7 +553,7 @@ class ScopedProtocolTests(unittest.TestCase):
             data.update(outcome='completed',answer='Banking coordinates transfer, ledger and audit.',
                         expand_targets=[],routes=[])
         double=ModelProcessDouble(answer)
-        result=self.run_op('concorde-main',{'task':'What does Banking coordinate?'},double)
+        result=self.call_capability('concorde-main',{'task':'What does Banking coordinate?'},double)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual(1,len(double.calls))
         self.assertEqual(['scope.bank'],result['output']['data']['discovered_targets'])
@@ -587,7 +587,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 data.update(outcome='spec_incomplete',gaps=[{'question':'Who owns the daily limit?',
                     'blocked_step':'Decide transfer admission','needed_contract':'Daily limit ownership'}])
         double=ModelProcessDouble(gap)
-        result=self.run_op('concorde-plan',{'target_id':'service.transfer','task':'Add a daily limit'},double)
+        result=self.call_capability('concorde-plan',{'target_id':'service.transfer','task':'Add a daily limit'},double)
         self.assertEqual('blocked',result['status'],result)
         self.assertEqual('spec_incomplete',result['output']['data']['outcome'])
         self.assertEqual(['context-solve'],[call['stage'] for call in double.calls])
@@ -597,7 +597,7 @@ class ScopedProtocolTests(unittest.TestCase):
     @verifies("scenario.development.dev-loop-ready", "scenario.harness.context-freeze")
     def test_standard_loop_real_checks_leave_a_ready_change(self):
         double=ModelProcessDouble()
-        result=self.run_op('concorde-dev-loop',{'task':'Implement the transfer contract'},double)
+        result=self.call_capability('concorde-dev-loop',{'task':'Implement the transfer contract'},double)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual('ready',result['output']['data']['outcome'])
         self.assertEqual('passed',result['output']['data']['checks'][0]['status'])
@@ -619,14 +619,14 @@ class ScopedProtocolTests(unittest.TestCase):
     def test_failed_behavioral_check_prevents_delivery(self):
         def broken(stage,snapshot,data,cwd):
             if stage=='implementation': (cwd/'app/transfer.py').write_text('def transfer(balance,amount):\n    return 0\n')
-        result=self.run_op('concorde-dev-loop',{'target_id':'service.transfer','task':'Implement transfer'},ModelProcessDouble(broken))
+        result=self.call_capability('concorde-dev-loop',{'target_id':'service.transfer','task':'Implement transfer'},ModelProcessDouble(broken))
         self.assertEqual('failed',result['status'],result)
         self.assertEqual('failed',result['output']['data']['checks'][0]['status'])
         state=json.loads((self.root/'.concorde/worktree.json').read_text())
         self.assertEqual('failed',state['status'])
     def test_wrong_context_result_rejected(self):
         def wrong(stage,snapshot,data,cwd): data['context_id']='sha256:'+'0'*64
-        result=self.run_op('concorde-main',{'target_id':'service.transfer','task':'Explain transfer'},ModelProcessDouble(wrong))
+        result=self.call_capability('concorde-main',{'target_id':'service.transfer','task':'Explain transfer'},ModelProcessDouble(wrong))
         self.assertEqual('blocked',result['status'],result)
         self.assertEqual('incompatible_handoff',result['errors'][0]['code'])
 

@@ -18,8 +18,11 @@ Distribution turns authored Framework sources into the deterministic outputs a p
 runs: rendered Agent instructions and Skills, an installed and configured integration, and a
 verified managed Python and viewer runtime. Its users are developers installing or updating
 Concorde into a consumer project, developers maintaining this source checkout, and every other
-Framework capability that depends on fresh generated projections before it executes. Its promises
-stop at owned, receipt-tracked output: it never edits project-owned Specs or configuration, and it
+Framework capability that depends on fresh generated projections before it executes. It owns Skill
+sources and shared invocation instructions; installed Skills are read by the developer's external
+runtime, which submits requests to the Development capability boundary. Capability behavior remains
+with its providing Module. Distribution's installation promises stop at owned, receipt-tracked
+output: it never edits project-owned Specs or configuration, and it
 never decides what those Specs should say.
 
 ## Requirements
@@ -99,7 +102,8 @@ entities are their means of use, and the remaining entities name the data and ac
 interfaces exchange. Installation lists the `src/concorde/distribution/`,
 `tests/concorde/distribution/` and `templates/` directories, build and runtime provisioning list the
 golden Skill fixture directories and `viewer/`, and the exact entries those two keep inside a listed
-directory stay with them.
+directory stay with them. The Skill sources entity owns `skills/` and `prompts/workflow-host/` as complete
+directory prefixes; the capability providers retain their own executable contracts.
 
 ```concorde-entities
 [
@@ -141,11 +145,32 @@ directory stay with them.
       "scripts/requirements.lock",
       "scripts/run-capability.py",
       "scripts/worktree-guard.py",
-      "skills/concorde-configure/SKILL.md",
       "src/concorde/distribution/",
       "templates/",
       "tests/concorde/distribution/"
     ]
+  },
+  {
+    "id": "entity.distribution.skill-sources",
+    "title": "Skill sources",
+    "kind": "authored instructions",
+    "responsibility": "Own the public Skill wrappers and shared invocation instructions that adapt global and lifecycle capability contracts for the developer's external agent runtime.",
+    "files": [
+      "prompts/workflow-host/",
+      "skills/"
+    ]
+  },
+  {
+    "id": "entity.distribution.installed-skills",
+    "title": "Installed Skills",
+    "kind": "instruction artifact",
+    "responsibility": "The rendered Skill files installed into the target project's Codex or Claude integration, each exposing one public capability through instructions consumed outside Concorde's worker runtime."
+  },
+  {
+    "id": "entity.distribution.developer-runtime",
+    "title": "Developer runtime",
+    "kind": "external actor",
+    "responsibility": "The developer's Codex or Claude runtime that reads installed Skill instructions and invokes the declared capability boundary; installing a Skill grants no worker permission."
   },
   {
     "id": "entity.distribution.managed-runtime",
@@ -257,10 +282,15 @@ neither substitutes for the other. In this source checkout specifically, the wor
 developer session it constrains are the only entities with no counterpart in an installed consumer
 project, because the guard is checkout policy and ships to no one else.
 
+Skill sources are authored and owned here, Build renders them, and Installation places the rendered
+Skills in the target integration. The external Developer runtime consumes those instructions and
+calls the declared capability boundary. This distribution path creates no worker Harness input and
+does not transfer ownership of executable capability behavior to Distribution.
+
 ```mermaid
 flowchart TB
     accTitle: Distribution entities and relationships
-    accDescr: Authored sources are rendered by Build, which is exposed through the Build command, records freshness in the Build manifest and validates the Package inventory. The Install script is realized by Installation, which computes an Installation proposal from the Package inventory and the Ownership receipt, applies accepted replacements to the Target project, requires a Verified managed runtime, records new ownership in the receipt, and applies Integration configuration to the Target project. Installation reads the project configuration and registry through Spec. The Runtime provisioning interface is realized by Managed runtime, which provisions and verifies the Verified managed runtime that Distribution supplies. In the source checkout, the Worktree guard refuses native worktree creation in the Developer agent session that loads Build's worktree-owned outputs.
+    accDescr: Build renders Authored sources and Skill sources, records freshness in the Build manifest and validates the Package inventory. Installation installs rendered Skills for the external Developer runtime, applies receipt-owned proposals to the Target project and reads configuration through Spec. Managed runtime provisions the Verified managed runtime. In this source checkout the Worktree guard constrains the Developer agent session.
     authored["Authored sources"]
     build["Build"]
     buildCmd["Build command"]
@@ -278,6 +308,13 @@ flowchart TB
     guard["Worktree guard"]
     session["Developer agent session"]
     spec["Spec"]
+    skillSources["Skill sources"]
+    installedSkills["Installed Skills"]
+    developerRuntime["Developer runtime"]
+    skillSources -->|are rendered by| build
+    build -->|renders| installedSkills
+    installation -->|installs| installedSkills
+    developerRuntime -->|reads| installedSkills
     authored -->|are rendered by| build
     build -->|is exposed through| buildCmd
     build -->|records freshness in| manifest

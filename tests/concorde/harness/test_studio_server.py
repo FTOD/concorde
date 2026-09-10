@@ -1,6 +1,6 @@
 """Opt-in real Agent Server checks: CONCORDE_TEST_STUDIO=1 with uv's studio group.
 
-Only temporary consumer fixtures run operations. No source/primary-worktree state is changed.
+Only temporary consumer fixtures run capabilities. No source/primary-worktree state is changed.
 Model responses are deterministic; AgentProcessExecutor and permission gates remain real.
 """
 import json

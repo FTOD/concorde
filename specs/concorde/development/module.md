@@ -12,7 +12,7 @@
 
 ## Purpose
 
-Development provides the installed Skill boundary and the deterministic host adapter that Concorde's own tooling runs on: capability admission and dispatch, the coordinator that answers questions and evolves project topology, the development graph that carries one intended change from an authored Spec to a ready candidate, deterministic validation, and delivery. It serves developers and their agents working through installed `concorde-*` Skills, and every other Concorde capability that composes through this same boundary. Its promises end at a ready, delivered or primary-merged candidate; it relies on Harness to run every Agent invocation, Spec to resolve and validate project Specs, Reflections to retain gap history, and Distribution to build and verify projections, without restating those Modules' own contracts here.
+Development provides the capability invocation boundary and the deterministic host adapter that Concorde's own tooling runs on: capability admission and dispatch, the coordinator that answers questions and evolves project topology, the development graph that carries one intended change from an authored Spec to a ready candidate, deterministic validation, and delivery. It serves developers and their external agent runtimes submitting requests through installed `concorde-*` Skills, and every other Concorde capability that composes through this same boundary. Its promises end at a ready, delivered or primary-merged candidate; it relies on Harness to run every Agent invocation, Spec to resolve and validate project Specs, Reflections to retain gap history, and Distribution to own, build, install and verify instruction projections, including Skills.
 
 ## Requirements
 
@@ -287,7 +287,7 @@ other Modules, and the four Modules it depends on directly, together with how th
 
 ### Entities
 
-Two programs realize this Module's own code: the host adapter and the capability/Skill declarations that expose it. Two shared programs realize mechanics also listed by other Modules. Four used-Module entities name the direct dependencies this Module relies on. The host adapter lists the `src/concorde/development/` and `tests/concorde/development/` package directories and the capability declarations list `prompts/workflow-host/`; files shared with another Module stay exact entries here and there.
+Two programs realize this Module's own code: the host adapter and the capability declarations that expose it. Two shared programs realize mechanics also listed by other Modules. Four used-Module entities name the direct dependencies this Module relies on. The host adapter lists the `src/concorde/development/` and `tests/concorde/development/` package directories; files shared with another Module stay exact entries here and there. Installed Skills are external instruction artifacts supplied by Distribution and read by the developer's runtime, which submits capability requests to this Module.
 
 ```concorde-entities
 [
@@ -299,14 +299,14 @@ Two programs realize this Module's own code: the host adapter and the capability
     "files": [
       "src/concorde/development/",
       "tests/concorde/development/",
-      "tests/concorde/support/operation_json.py"
+      "tests/concorde/support/capability_json.py"
     ]
   },
   {
     "id": "entity.development.development-capabilities",
     "title": "Development capabilities",
     "kind": "program",
-    "responsibility": "Declare the Development Module's global, lifecycle and stage capability contracts, the installed Skills that expose its public entries, and the shared Skill prompt snippets.",
+    "responsibility": "Declare the Development Module's global, lifecycle and stage capability contracts and their host composition; Distribution supplies the Skills that expose public entries.",
     "files": [
       "capabilities/context_solve.py",
       "capabilities/deliver.py",
@@ -317,12 +317,7 @@ Two programs realize this Module's own code: the host adapter and the capability
       "capabilities/review.py",
       "capabilities/specify.py",
       "capabilities/tasks.py",
-      "capabilities/validate.py",
-      "prompts/workflow-host/",
-      "skills/concorde-deliver/SKILL.md",
-      "skills/concorde-dev-loop/SKILL.md",
-      "skills/concorde-main/SKILL.md",
-      "skills/concorde-validate/SKILL.md"
+      "capabilities/validate.py"
     ]
   },
   {
@@ -377,21 +372,33 @@ Two programs realize this Module's own code: the host adapter and the capability
     "title": "Distribution",
     "kind": "used module",
     "target_id": "module.distribution",
-    "responsibility": "Build authored projections, install and configure owned integrations, provision the managed runtime and keep a source checkout's own projections bound to the worktree that built them."
+    "responsibility": "Own Skill sources and invocation instructions, build and install their external-runtime projections, verify build freshness and provision the managed runtime."
+  },
+  {
+    "id": "entity.development.installed-skills",
+    "title": "Installed Skills",
+    "kind": "external artifact",
+    "responsibility": "Instruction artifacts supplied by Distribution that tell the developer's runtime how to submit typed requests to public capabilities; they are not worker context or execution authority."
+  },
+  {
+    "id": "entity.development.developer-runtime",
+    "title": "Developer runtime",
+    "kind": "external actor",
+    "responsibility": "The developer's Codex or Claude session that reads installed Skills and submits capability requests to the Development host."
   }
 ]
 ```
 
 ### Relationships
 
-A capability is global, lifecycle or stage. A global capability's own coordinator discovers complete Module Spec contexts and may span several targets and stages; a lifecycle capability is deterministic host behavior with no agent cognition; a stage capability receives an already bound target and one frozen context from its composing capability and never reselects or expands it. Development capabilities is the code inventory of installed Skills, capability modules and their prompt snippets; Development host is the shared adapter that admits, dispatches, coordinates and completes every one of them, and that prepares, evolves and finalizes the candidate worktree that carries one change's progress, gaps and evidence.
+A capability is global, lifecycle or stage. A global capability's own coordinator discovers complete Module Spec contexts and may span several targets and stages; a lifecycle capability is deterministic host behavior with no agent cognition; a stage capability receives an already bound target and one frozen context from its composing capability and never reselects or expands it. Development capabilities is the code inventory of capability contracts and composition. Distribution supplies installed Skills to the external developer runtime, which reads their instructions and submits requests. Development host admits, dispatches, coordinates and completes those requests, and prepares, evolves and finalizes the candidate worktree that carries one change's progress, gaps and evidence.
 
 A candidate owns its own component progress, gaps and evidence, and reviews refer to the exact candidate inputs they assessed. A code defect can select the bounded task/implementation repair edge; a necessary contract gap waits for a Spec revision instead. Finalization includes every Module that lists an affected shared file. Readiness, authorized delivery and primary merging are separate completion states.
 
 ```mermaid
 flowchart TB
     accTitle: Development entities and relationships
-    accDescr: Development capabilities dispatches every Skill request into the Development host. The host reaches its four used Modules directly: Harness for context, permissions and Agent execution; Spec for target selection and structural validation; Reflections for attributed gap history; Distribution for build freshness and projections. The host also prepares candidates through Worktree lifecycle and applies accepted replacements through File transactions, both of which also realize shared mechanics for other Modules.
+    accDescr: Distribution supplies Installed Skills, which the external Developer runtime reads before submitting capability requests to the Development host. Development capabilities declares the contracts the host dispatches. The host uses Harness for Agent execution, Spec for selection and validation, Reflections for gap history and Distribution for fresh projections. Worktree lifecycle and File transactions realize shared mutation mechanics.
     developmentCapabilities["Development capabilities"]
     developmentHost["Development host"]
     worktreeLifecycle["Worktree lifecycle"]
@@ -400,7 +407,12 @@ flowchart TB
     spec["Spec"]
     reflections["Reflections"]
     distribution["Distribution"]
-    developmentCapabilities -->|dispatches requests into| developmentHost
+    installedSkills["Installed Skills"]
+    developerRuntime["Developer runtime"]
+    distribution -->|builds and installs| installedSkills
+    developerRuntime -->|reads| installedSkills
+    developerRuntime -->|submits capability requests to| developmentHost
+    developmentHost -->|dispatches contracts declared by| developmentCapabilities
     developmentHost -->|prepares and delivers candidates through| worktreeLifecycle
     developmentHost -->|applies accepted replacements through| fileTransactions
     developmentHost -->|resolves context, compiles permissions and runs Agents through| harness
@@ -444,9 +456,11 @@ Development's sole structural parent is `module.concorde`; it has no submodules 
   },
   {
     "target_id": "module.distribution",
-    "responsibility": "Render the projections of a Concorde package checkout and report build freshness.",
-    "selection_condition": "When delivery verifies the integration of a checkout that contains concorde.json.",
+    "responsibility": "Own and distribute the public Skill instruction surface, render package projections and report build freshness.",
+    "selection_condition": "When a developer runtime uses an installed Skill, an invocation requires fresh projections, or delivery verifies an integrated checkout.",
     "relied_upon_promises": [
+      "Every global or lifecycle capability has exactly one public Skill that instructs the external runtime to submit its declared typed request; stage capabilities have no public Skill.",
+      "Skill sources and shared invocation instructions belong to Distribution and never become a Concorde Agent's Harness inputs.",
       "Rendering a merged checkout's own sources before validation is deterministic and a build failure prevents the primary update."
     ]
   }

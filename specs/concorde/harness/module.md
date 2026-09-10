@@ -504,10 +504,6 @@ relied-upon behavior from this Module's perspective without importing another Mo
 
 ## Unresolved information
 
-- The Harness Module no longer admits Skills into a Harness, but `Harness.skills` remains in the
-  record shape as an always-empty tuple. Removing that field and its digest participation is
-  pending implementation work; because it changes every Harness digest and therefore every Agent
-  binding, it requires a rebuild and fresh admission of every binding.
 - Capability context is not yet a snapshot field: no registered Agent currently admits a Capability
   reference, so a resolved context's frozen closure carries only Spec, implementation and task
   context. Materializing admitted Capability and Tool contracts in the snapshot record, with their

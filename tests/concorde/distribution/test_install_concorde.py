@@ -113,11 +113,11 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertNotIn("concorde-validate-context", outputs)
         self.assertNotIn("concorde-validate-author", outputs)
         self.assertNotIn(".specify", plan)
-        operation = outputs[".agents/skills/concorde-dev-loop/SKILL.md"][0].decode()
-        self.assertIn('capability: "dev_loop"', operation)
+        skill_body = outputs[".agents/skills/concorde-dev-loop/SKILL.md"][0].decode()
+        self.assertIn('capability: "dev_loop"', skill_body)
         self.assertIn(
             "python3 .concorde/framework/scripts/run-capability.py concorde-dev-loop",
-            operation,
+            skill_body,
         )
         self.assertEqual(outputs[".agents/skills/concorde-validate/SKILL.md"][1], "skill")
         self.assertEqual(

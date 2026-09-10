@@ -119,7 +119,7 @@ the exact entries they realize, and the most specific entry decides which entity
     "id": "entity.spec.init-capability",
     "title": "Initialization capability",
     "kind": "interface",
-    "responsibility": "The concorde-init capability and installed Skill that proposes, then applies, an uninitialized project's configuration, registry and honest Module stub."
+    "responsibility": "The concorde-init capability that proposes, then applies, an uninitialized project's configuration, registry and honest Module stub; its public Skill is built and installed by Distribution."
   },
   {
     "id": "entity.spec.spec-model",
@@ -128,7 +128,6 @@ the exact entries they realize, and the most specific entry decides which entity
     "responsibility": "Realizes registry admission, selection and reverse indexes, deterministic structural validation, project initialization, the concorde-init capability and the package entry points.",
     "files": [
       "capabilities/init.py",
-      "skills/concorde-init/SKILL.md",
       "src/concorde/__init__.py",
       "src/concorde/__main__.py",
       "src/concorde/spec/",

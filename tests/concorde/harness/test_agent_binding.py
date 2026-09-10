@@ -32,14 +32,14 @@ class AgentBindingTests(unittest.TestCase):
         self.registry = project(self.root)
         self.task = {"target_id": "service.transfer", "task": "Implement the pure transfer contract"}
 
-    def run_op(self, name, data=None, *, double=None, mode="execute"):
+    def call_capability(self, name, data=None, *, double=None, mode="execute"):
         self.host = CapabilityHost(self.root, PACKAGE, executor=double.executor if double else None,
             allow_primary_worktree=True, mode=mode, routed_target=(data or self.task)["target_id"])
         return run_capability(name, CONFIGURATION, typed(name + "-request", data or self.task),
                              host_context=self.host)
 
     def change(self, double):
-        result = self.run_op("concorde-plan", double=double)
+        result = self.call_capability("concorde-plan", double=double)
         self.assertEqual("succeeded", result["status"], result)
         return {**self.task, "change_id": result["output"]["data"]["change_id"]}
 
@@ -54,7 +54,7 @@ class AgentBindingTests(unittest.TestCase):
             return replace(prompt, effects=replace(prompt.effects, writes=()))
 
         with patch.object(capability_host, "load_role_prompt", side_effect=narrowed_prompt):
-            result = self.run_op("concorde-implement", mode="describe-policy")
+            result = self.call_capability("concorde-implement", mode="describe-policy")
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("permission_denied", result["errors"][0]["code"], result)
 
@@ -69,7 +69,7 @@ class AgentBindingTests(unittest.TestCase):
     # --- describe-policy descriptions expose the bound Agent/Harness identity ---
 
     def test_describe_policy_descriptions_expose_agent_and_harness_identity(self):
-        result = self.run_op("concorde-dev-loop", mode="describe-policy")
+        result = self.call_capability("concorde-dev-loop", mode="describe-policy")
         self.assertEqual("described", result["status"], result)
         self.assertTrue(self.host.descriptions)
         for policy in self.host.descriptions:
@@ -97,7 +97,7 @@ class AgentBindingTests(unittest.TestCase):
     def test_executor_receives_the_agents_effective_loop_timeout(self):
         double = ModelProcessDouble()
         self.addCleanup(double.runtime_directory.cleanup)
-        self.run_op("concorde-plan", double=double)
+        self.call_capability("concorde-plan", double=double)
         planner_calls = [call for call in double.calls if call["stage"] == "plan"]
         self.assertTrue(planner_calls)
         self.assertEqual(SPEC_CAPSULE.loop.timeout_seconds, planner_calls[-1]["timeout"])
@@ -119,11 +119,11 @@ class AgentBindingTests(unittest.TestCase):
         double = ModelProcessDouble()
         self.addCleanup(double.runtime_directory.cleanup)
         task = self.change(double)
-        result = self.run_op("concorde-tasks", task, double=double)
+        result = self.call_capability("concorde-tasks", task, double=double)
         self.assertEqual("succeeded", result["status"], result)
         self._fail_implementation(double, "limit_exhausted",
             "codex process exceeded the Harness loop limit of 10s")
-        result = self.run_op("concorde-implement", task, double=double)
+        result = self.call_capability("concorde-implement", task, double=double)
         self.assertEqual("failed", result["status"], result)
         self.assertEqual("execution_limit", result["errors"][0]["code"], result)
         self.assertEqual("limit_exhausted", read_change(self.root)["status"])
@@ -133,10 +133,10 @@ class AgentBindingTests(unittest.TestCase):
         double = ModelProcessDouble()
         self.addCleanup(double.runtime_directory.cleanup)
         task = self.change(double)
-        result = self.run_op("concorde-tasks", task, double=double)
+        result = self.call_capability("concorde-tasks", task, double=double)
         self.assertEqual("succeeded", result["status"], result)
         self._fail_implementation(double, "cancelled", "agent process cancelled")
-        result = self.run_op("concorde-implement", task, double=double)
+        result = self.call_capability("concorde-implement", task, double=double)
         self.assertEqual("failed", result["status"], result)
         self.assertEqual("execution_cancelled", result["errors"][0]["code"], result)
         self.assertEqual("cancelled", read_change(self.root)["status"])
@@ -147,7 +147,7 @@ class AgentBindingTests(unittest.TestCase):
         self.addCleanup(double.runtime_directory.cleanup)
         self._fail_implementation(double, "limit_exhausted",
             "codex process exceeded the Harness loop limit of 10s")
-        result = self.run_op("concorde-dev-loop", double=double)
+        result = self.call_capability("concorde-dev-loop", double=double)
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("child_blocked", result["errors"][0]["code"], result)
         self.assertEqual("limit_exhausted", read_change(self.root)["status"])

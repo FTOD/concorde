@@ -13,7 +13,7 @@ sys.path.insert(0, str(RUNTIME_ROOT))
 from concorde.development.configuration import apply_configuration, load_configuration, propose_configuration
 from concorde.spec.typed_data import TypedDataError, artifact, decode, verify_artifacts
 from concorde.spec.verification import verifies
-from tests.concorde.support.operation_json import CONFIGURATION
+from tests.concorde.support.capability_json import CONFIGURATION
 
 
 class TypedDataTests(unittest.TestCase):

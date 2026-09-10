@@ -1,7 +1,7 @@
 """Harness identity and configuration for Concorde Agents (workflow/agents-and-harnesses.md A2).
 
 A Harness is the organized execution environment supporting an Agent: its model integration,
-available Capability references, Tool interfaces, admitted Skills, context assembly, control-loop
+available Capability references, Tool interfaces, context assembly, control-loop
 policy, state handling and required system environment (A2). This module owns the closed catalog
 of Harnesses Concorde defines today (three) and the record shapes themselves. It imports only
 ``effects.py`` and the standard library, so it stays a leaf usable from ``agent_model.py``,
@@ -68,7 +68,6 @@ class Harness:
     effects: EffectDeclaration
     capabilities: tuple[str, ...]
     tools: tuple[str, ...]
-    skills: tuple[str, ...]
     contexts: tuple[str, ...]
     results: tuple[str, ...]
     loop: LoopPolicy
@@ -108,7 +107,6 @@ def harness(
     loop: LoopPolicy,
     capabilities: tuple[str, ...] = (),
     tools: tuple[str, ...] = ("native.filesystem", "native.shell"),
-    skills: tuple[str, ...] = (),
     integrations: tuple[str, ...] = ("codex", "claude"),
     state: str = "fresh-process; typed completion persisted by host",
     environment: tuple[str, ...] = SAFE_ENVIRONMENT,
@@ -127,7 +125,6 @@ def harness(
     integrations = _sorted_unique(tuple(integrations), "integrations")
     capabilities = _sorted_unique(tuple(capabilities), "capabilities")
     tools = _sorted_unique(tuple(tools), "tools")
-    skills = _sorted_unique(tuple(skills), "skills")
     contexts = _sorted_unique(tuple(contexts), "contexts")
     results = _sorted_unique(tuple(results), "results")
     environment = _sorted_unique(tuple(environment), "environment")
@@ -141,7 +138,6 @@ def harness(
             "effects": effects,
             "capabilities": capabilities,
             "tools": tools,
-            "skills": skills,
             "contexts": contexts,
             "results": results,
             "loop": loop,
@@ -157,7 +153,6 @@ def harness(
         effects=effects,
         capabilities=capabilities,
         tools=tools,
-        skills=skills,
         contexts=contexts,
         results=results,
         loop=loop,

@@ -13,11 +13,11 @@ from tests.concorde.spec.support import PACKAGE,CONFIGURATION,project,ModelProce
 class ScopeReflectionTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.root=Path(self.tmp.name);project(self.root)
-    def run_op(self,op,data,callback=None):
+    def call_capability(self,capability,data,callback=None):
         self.double=ModelProcessDouble(callback);self.host=CapabilityHost(self.root,PACKAGE,executor=self.double.executor,allow_primary_worktree=True)
-        return run_capability(op,CONFIGURATION,typed(op+'-request',data),host_context=self.host)
+        return run_capability(capability,CONFIGURATION,typed(capability+'-request',data),host_context=self.host)
     def test_domain_coordinates_separate_component_contexts(self):
-        result=self.run_op('concorde-dev-loop',{'target_id':'scope.bank','task':'Implement the banking transfer promise'})
+        result=self.call_capability('concorde-dev-loop',{'target_id':'scope.bank','task':'Implement the banking transfer promise'})
         self.assertEqual('succeeded',result['status'],result)
         task_call=next(call for call in self.double.calls if call['stage']=='tasks')
         self.assertIn('"target_id": "service.transfer"',
@@ -32,14 +32,14 @@ class ScopeReflectionTests(unittest.TestCase):
         registry=json.loads((self.root/'.concorde/specs.json').read_text());registry['targets'][0]['uses']=['scope.audit'];(self.root/'.concorde/specs.json').write_text(json.dumps(registry))
         def cb(stage,snap,data,cwd):
             if stage=='tasks':data['tasks'][0]['target_id']='service.transfer'
-        result=self.run_op('concorde-dev-loop',{'target_id':'scope.bank','task':'Implement transfer'},cb)
+        result=self.call_capability('concorde-dev-loop',{'target_id':'scope.bank','task':'Implement transfer'},cb)
         self.assertNotEqual('succeeded',result['status']);self.assertFalse(any(c['stage']=='implementation' for c in self.double.calls))
     def test_domain_retains_component_gap_and_stops_before_code(self):
         def cb(stage,snapshot,data,cwd):
             if stage=='tasks' and snapshot['target_id']=='scope.bank':data['tasks'][0]['target_id']='service.transfer'
             if stage=='specify' and snapshot['target_id']=='service.transfer':
                 data.update(outcome='spec_incomplete',gaps=[{'question':'Which retry key identifies a transfer?','blocked_step':'Specify retries','needed_contract':'Idempotency ownership'}])
-        result=self.run_op('concorde-dev-loop',{'target_id':'scope.bank','task':'Implement transfer retries'},cb)
+        result=self.call_capability('concorde-dev-loop',{'target_id':'scope.bank','task':'Implement transfer retries'},cb)
         self.assertEqual('blocked',result['status'],result)
         gap=result['output']['data']['gaps'][0]
         self.assertEqual('service.transfer',gap['target_id']);self.assertTrue(gap['context_id'].startswith('sha256:'))
@@ -109,7 +109,7 @@ Keep this user comment intact.
     def task(self,action):return {'target_id':'service.transfer','task':'Investigate the transfer promise','action':action,'reflection_ids':['R-001']}
     @verifies("scenario.reflections.status-query")
     def test_status_exposes_metadata_without_record_body_or_code(self):
-        self.record();result=self.run_op('concorde-reflections-triage',self.task('status'))
+        self.record();result=self.call_capability('concorde-reflections-triage',self.task('status'))
         self.assertEqual('succeeded',result['status'],result);self.assertEqual([],self.double.calls)
         self.assertEqual('R-001',result['output']['data']['reflections'][0]['id']);self.assertNotIn('PRIVATE_REFLECTION',json.dumps(result))
     def test_candidate_overlay_validates_reflections_against_candidate_ids(self):
@@ -125,7 +125,7 @@ Keep this user comment intact.
     @verifies("scenario.reflections.investigate-reproduces")
     def test_investigation_is_readonly_and_preserves_user_report(self):
         self.record();before=(self.root/'app/transfer.py').read_bytes()
-        result=self.run_op('concorde-reflections-triage',self.task('investigate'),self.finding)
+        result=self.call_capability('concorde-reflections-triage',self.task('investigate'),self.finding)
         self.assertEqual('succeeded',result['status'],result);self.assertEqual(before,(self.root/'app/transfer.py').read_bytes())
         snapshot=next(call['snapshot'] for call in self.double.calls if call['stage']=='implementation')
         self.assertEqual(['app/transfer.py','checks/transfer_check.py'],
@@ -139,7 +139,7 @@ Keep this user comment intact.
     def test_investigation_rejects_wrong_head(self):
         self.record()
         def cb(*args):self.finding(*args);args[2]['reflection_findings'][0]['verified_commit']='0'*40
-        result=self.run_op('concorde-reflections-triage',self.task('investigate'),cb)
+        result=self.call_capability('concorde-reflections-triage',self.task('investigate'),cb)
         self.assertNotEqual('succeeded',result['status']);self.assertTrue((self.root/'.concorde/reflections/pending/R-001.md').exists())
     @verifies("scenario.reflections.investigate-stale-evidence")
     def test_rejected_investigation_preserves_its_gap_until_host_acceptance(self):
@@ -149,18 +149,18 @@ Keep this user comment intact.
                 data.update(outcome='spec_incomplete',gaps=[{'question':'Who owns admission?',
                     'blocked_step':'Investigate transfer admission','needed_contract':'Admission ownership'}])
         task=self.task('investigate')
-        self.assertEqual('blocked',self.run_op('concorde-reflections-triage',task,missing)['status'])
+        self.assertEqual('blocked',self.call_capability('concorde-reflections-triage',task,missing)['status'])
         path=self.root/'specs/transfer/module.md';path.write_text(path.read_text()+'\nTransfer owns admission.\n')
         def invalid(*args):self.finding(*args);args[2]['reflection_findings'][0]['verified_commit']='0'*40
-        result=self.run_op('concorde-reflections-triage',task,invalid)
+        result=self.call_capability('concorde-reflections-triage',task,invalid)
         self.assertNotEqual('succeeded',result['status'],result)
         state=json.loads((self.root/'.concorde/worktree.json').read_text())
         self.assertEqual('open',state['gap_history'][0]['status']);self.assertTrue(state['gaps'])
-        self.assertEqual('succeeded',self.run_op('concorde-reflections-triage',task,self.finding)['status'])
+        self.assertEqual('succeeded',self.call_capability('concorde-reflections-triage',task,self.finding)['status'])
         self.assertEqual('resolved',json.loads((self.root/'.concorde/worktree.json').read_text())['gap_history'][0]['status'])
     @verifies("scenario.reflections.implement-approved-plan")
     def test_reflection_implementation_restarts_spec_cognition_and_marks_plan(self):
-        self.record();result=self.run_op('concorde-reflections-triage',self.task('implement'),self.finding)
+        self.record();result=self.call_capability('concorde-reflections-triage',self.task('implement'),self.finding)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual('ready',json.loads((self.root/'.concorde/worktree.json').read_text())['status'])
         for call in self.double.calls:

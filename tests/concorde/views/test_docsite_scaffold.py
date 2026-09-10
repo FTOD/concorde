@@ -22,7 +22,7 @@ from concorde.spec.initialize import apply_project_proposal, project_proposal  #
 from concorde.spec.verification import verifies  # noqa: E402
 
 
-from tests.concorde.support.operation_json import CONFIGURATION
+from tests.concorde.support.capability_json import CONFIGURATION
 
 
 IGNORED_PACKAGE_DIRS = {"node_modules", "build", ".generated", ".docusaurus", "coverage"}

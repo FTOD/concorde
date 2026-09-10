@@ -15,6 +15,10 @@ reference. A Tool is a callable operation interface; a Skill supplies instructio
 [Agents and Harnesses](../harness/agents-and-harnesses.md) defines the required capability use,
 composition and authority contract.
 
+**Capability** is the canonical term for a callable or composed Framework function. The former
+**Operation** name is retired; it does not identify a separate layer, registry or contract kind.
+Lowercase *operation* still describes an ordinary action, such as a filesystem or Git operation.
+
 ## Current host adapter
 The following inventory describes the existing Python host adapter. Each entry is implemented by a
 module under `capabilities/`, declaring launched Agents, effects, composed entries and typed requests
@@ -23,6 +27,12 @@ Capability concept. Host-declared composition is distinct from capabilities avai
 
 Current public Skill files expose exactly one global or lifecycle entry through
 `scripts/run-capability.py <skill>`. Stage entries have no public Skill.
+
+Distribution owns the Skill sources, shared invocation instructions, rendering and installation.
+An installed Skill is an instruction artifact consumed by the developer's external agent runtime;
+that runtime submits a typed capability request to Development. Development owns admission,
+dispatch and workflow behavior, and records the public Skill-to-capability mapping below as an
+interface agreement. It neither loads Skills into its workers nor owns their distribution assets.
 
 | Capability | Class | Skill | Launches | Uses | Behavior |
 | --- | --- | --- | --- | --- | --- |

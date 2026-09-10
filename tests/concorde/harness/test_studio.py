@@ -15,12 +15,12 @@ from concorde.spec.verification import verifies
 from tests.concorde.spec.support import CONFIGURATION, PACKAGE, ModelProcessDouble, project
 
 
-def invocation(operation="concorde-reflections-triage", mode="execute", data=None):
+def invocation(capability="concorde-reflections-triage", mode="execute", data=None):
     return {"type_id": "concorde-capability-invocation", "schema_version": 3,
-            "capability_id": operation, "mode": mode, "configuration": None,
-            "input": {"type_id": operation + "-request", "schema_version": 1, "data":
+            "capability_id": capability, "mode": mode, "configuration": None,
+            "input": {"type_id": capability + "-request", "schema_version": 1, "data":
                       data if data is not None else {"target_id": "service.transfer", "task": "Explain transfer",
-                          **({"action": "status", "reflection_ids": []} if operation == "concorde-reflections-triage" else {})}}}
+                          **({"action": "status", "reflection_ids": []} if capability == "concorde-reflections-triage" else {})}}}
 
 
 def stable(value):
@@ -39,19 +39,19 @@ class StudioTests(unittest.TestCase):
         self.double = ModelProcessDouble()
         self.addCleanup(self.double.runtime_directory.cleanup)
 
-    def graph(self, operation="concorde-reflections-triage", executor=None):
-        return build_studio_graph(operation, self.root, PACKAGE,
+    def graph(self, capability="concorde-reflections-triage", executor=None):
+        return build_studio_graph(capability, self.root, PACKAGE,
                                   executor=executor or self.double.executor)
 
     def test_inventory_and_all_entries_execute_the_shared_boundary(self):
         manifest = json.loads((PACKAGE / "generated/langgraph.json").read_text())
         self.assertEqual(set(SKILL_NAMES), set(manifest["graphs"]))
         self.assertEqual(7, len(manifest["graphs"]))
-        for operation in SKILL_NAMES:
-            with self.subTest(operation=operation):
-                value = invocation(operation, data={"unrecognized": True})
-                actual = self.graph(operation).invoke({"invocation": value})
-                expected = run_capability(operation, None, value["input"],
+        for capability in SKILL_NAMES:
+            with self.subTest(capability=capability):
+                value = invocation(capability, data={"unrecognized": True})
+                actual = self.graph(capability).invoke({"invocation": value})
+                expected = run_capability(capability, None, value["input"],
                                          host_context=CapabilityHost(self.root, PACKAGE))
                 self.assertEqual(stable(expected), stable(actual["result"]))
                 self.assertEqual("blocked", actual["result"]["status"])
@@ -192,9 +192,9 @@ class StudioTests(unittest.TestCase):
         self.assertEqual([], self.double.calls)
 
     def test_internal_stages_cannot_be_published_as_direct_studio_entries(self):
-        for operation in STAGE_CAPABILITIES:
-            with self.subTest(operation=operation), self.assertRaisesRegex(ValueError, "public capability"):
-                build_studio_graph(operation, self.root, PACKAGE)
+        for capability in STAGE_CAPABILITIES:
+            with self.subTest(capability=capability), self.assertRaisesRegex(ValueError, "public capability"):
+                build_studio_graph(capability, self.root, PACKAGE)
 
     def test_symlink_root_is_rejected(self):
         alias = self.root / "alias"

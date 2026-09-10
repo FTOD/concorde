@@ -23,7 +23,7 @@ from concorde.views.docsite_template import (  # noqa: E402
 )
 
 
-PACKAGE_ROOTS = ["agent-assets", "docsite", "operations", "roles", "scripts", "src", "templates", "viewer"]
+PACKAGE_ROOTS = ["agents", "capabilities", "docsite", "prompts", "protocol", "scripts", "skills", "src", "templates", "viewer"]
 
 
 def _write(path: Path, content: str) -> None:

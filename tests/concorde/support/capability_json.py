@@ -1,4 +1,4 @@
-"""Explicit process doubles for JSON capability integration tests.
+"""Explicit process doubles for typed capability integration tests.
 
 Only the external model process is substituted. The real graph, launch policy,
 completion decoder, receipt checks, artifact IO, and delivery tools still run.

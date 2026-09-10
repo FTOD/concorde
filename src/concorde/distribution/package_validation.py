@@ -1,9 +1,7 @@
 """One package validator over prompts, capability modules, contracts, build outputs and Spec alignment.
 
-Replaces the former ``profile8_validation.py`` (deleted) and the capability-graph checks that used
-to live in ``validation.py`` (also deleted): those validated the retired ``roles/``/``operations/``
-package layout. This module implements proposal section 11 rules 1, 2, 3, 4 and 5. Every finding
-carries a stable ``CONCORDE-…`` rule id.
+Validates the current ``agents/``, ``capabilities/`` and ``skills/`` inventories and their
+registered Spec declarations. Every finding carries a stable ``CONCORDE-…`` rule id.
 """
 
 from __future__ import annotations

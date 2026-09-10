@@ -28,6 +28,7 @@ Concorde Spec Protocol target kinds. Their providing Modules retain the explicit
 | Harness | The organized execution environment supporting an Agent | Integrates context assembly, the control loop, Capability and Tool references, model access, state handling, permissions and system environment |
 | Capability | Functionality an Agent can use, or that can be composed to provide further functionality | Deterministic when it makes no model call; otherwise an Agent operated through a Harness |
 | Tool | A callable interface that performs an operation | Realizes or accesses a Capability under runtime enforcement |
+| Skill | An instruction artifact for the developer's external agent runtime | Distribution owns, renders and installs it; the external runtime uses it to invoke a public Capability through Development |
 | Constraints/Permissions | Limits on information, operations, effects and execution | Restrict the Agent's effective Harness and are enforced outside model discretion |
 
 A **deterministic capability** is Python that makes no model call: context resolution, permission

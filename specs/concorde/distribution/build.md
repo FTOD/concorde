@@ -22,6 +22,14 @@ conventions belong to the execution profile, not the independent standard.
 
 ## Rendering and freshness
 
+A **Skill** is an instruction artifact for the developer's external agent runtime. Distribution
+owns its authored source under `skills/`, shared invocation instructions under
+`prompts/workflow-host/`, and rendered integration-specific installation. Each public Skill maps to
+one global or lifecycle Capability; stage capabilities have no Skill. The external runtime reads
+the Skill and submits the declared typed request through `scripts/run-capability.py`; Development
+admits and executes that request. Building or installing a Skill does not execute its Capability
+or add it to a Concorde Agent's Harness. Capability behavior remains with its providing Module.
+
 ### scenario.distribution.build-render — Build renders deterministic projections from authored sources
 
 - GIVEN the current `prompts/`, `skills/`, `capabilities/`, `agents/` and Protocol chapter sources

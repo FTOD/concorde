@@ -55,7 +55,7 @@ class StudioClientTests(unittest.TestCase):
         with patch("concorde.harness.studio_client.build_opener", return_value=opener), \
              patch("concorde.development.capability_host.run_capability") as local, \
              patch.dict(os.environ, {"CONCORDE_STUDIO_URL": "http://127.0.0.1:2024"}), \
-             patch("sys.stdin", io.StringIO(json.dumps(self.value))), patch("sys.argv", ["operation.py"]), \
+             patch("sys.stdin", io.StringIO(json.dumps(self.value))), patch("sys.argv", ["run-capability.py"]), \
              contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             inventory = load_capability_inventory()
             module = importlib.import_module(f"{inventory.__name__}.reflections_triage")

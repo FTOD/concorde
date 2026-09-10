@@ -176,7 +176,7 @@ Relationships subsection below traces how a request moves between them.
     "title": "Development",
     "kind": "submodule",
     "target_id": "module.development",
-    "responsibility": "Provides the installed Skill boundary and the workflows that answer questions, develop one change to a ready candidate, evolve topology, record candidate evidence and deliver an authorized change."
+    "responsibility": "Provides the capability invocation boundary and the workflows that answer questions, develop one change to a ready candidate, evolve topology, record candidate evidence and deliver an authorized change."
   },
   {
     "id": "entity.concorde.reflections",
@@ -190,7 +190,7 @@ Relationships subsection below traces how a request moves between them.
     "title": "Distribution",
     "kind": "submodule",
     "target_id": "module.distribution",
-    "responsibility": "Builds authored projections, installs and configures owned integrations, provisions the managed runtime and keeps a source checkout's own projections bound to the worktree that built them."
+    "responsibility": "Owns Skill sources and shared invocation instructions, builds authored projections, installs and configures owned integrations, provisions the managed runtime and keeps a source checkout's own projections bound to the worktree that built them."
   },
   {
     "id": "entity.concorde.views",
@@ -267,7 +267,7 @@ These entries describe the six children registered for this Module from the Fram
   },
   {
     "target_id": "module.development",
-    "responsibility": "Provide the installed Skill boundary and the query, development, topology, validation and delivery workflows.",
+    "responsibility": "Provide the capability invocation boundary and the query, development, topology, validation and delivery workflows.",
     "selection_condition": "When a developer asks a question, develops a change, evolves topology, checks or delivers a candidate.",
     "relied_upon_promises": [
       "A request completes with a typed result that distinguishes a ready candidate, an attributed gap, a conflict or a completed answer, and development ends at ready without delivering.",
@@ -284,7 +284,7 @@ These entries describe the six children registered for this Module from the Fram
   },
   {
     "target_id": "module.distribution",
-    "responsibility": "Build authored projections, install and configure owned integrations and provision the managed runtime.",
+    "responsibility": "Own Skill sources and invocation instructions, build authored projections, install and configure owned integrations and provision the managed runtime.",
     "selection_condition": "When a project adopts, updates or configures the Framework, or when built assets must be current.",
     "relied_upon_promises": [
       "Installation and provisioning preserve user-owned content and restore previously valid owned state on failure.",

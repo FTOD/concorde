@@ -111,7 +111,6 @@ fixture directory; the shared file-transaction entry stays exact.
     "files": [
       "capabilities/reflections_triage.py",
       "scripts/reflections_queue.py",
-      "skills/concorde-reflections-triage/SKILL.md",
       "src/concorde/reflections/",
       "tests/concorde/fixtures/interfaces/reflections/",
       "tests/concorde/reflections/",
