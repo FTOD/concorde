@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from ..spec.model import Finding, ToolResult
-from ..spec.repository import HEADING, SpecError, SpecRepository, SpecTarget, walk_lines
+from ..spec.repository import HEADING, SpecError, SpecRepository, walk_lines
 from ..spec.typed_data import TypedDataError, checked_path
 
 GRAPH_PATHS = (".understand-anything/knowledge-graph.json", ".ua/knowledge-graph.json")
@@ -278,6 +278,22 @@ def _load_graph(path: Path) -> dict:
     tour = value.get("tour", [])
     if not isinstance(layers, list) or not isinstance(tour, list):
         raise UaGraphError("existing UA graph layers and tour must be arrays when present")
+    for name, items, fields in (
+        ("nodes", value["nodes"], ("id", "type")),
+        ("edges", value["edges"], ("source", "target", "type")),
+        ("layers", layers, ("id",)),
+    ):
+        for item in items:
+            if not isinstance(item, dict) or any(
+                not isinstance(item.get(field), str) or not item[field] for field in fields
+            ):
+                raise UaGraphError(f"existing UA graph {name} require objects with nonempty string {', '.join(fields)}")
+        if name != "edges" and len({item["id"] for item in items}) != len(items):
+            raise UaGraphError(f"existing UA graph {name} have duplicate IDs")
+    for node in value["nodes"]:
+        if "tags" in node and (not isinstance(node["tags"], list)
+                               or any(not isinstance(tag, str) for tag in node["tags"])):
+            raise UaGraphError("existing UA graph node tags must be an array of strings")
     return {**value, "layers": layers, "tour": tour}
 
 
@@ -296,15 +312,20 @@ def _derive_graph(repository: SpecRepository, root: Path, base: dict | None) -> 
     stripped = _strip_concorde(base, frozenset(repository.targets))
     index = _index_by_path(stripped["nodes"])
     nodes, edges, layers = _build_elements(repository, index=index)
+    if {node["id"] for node in stripped["nodes"]} & nodes.keys():
+        raise UaGraphError("exported node IDs collide with foreign graph nodes")
+    if {layer["id"] for layer in stripped["layers"]} & layers.keys():
+        raise UaGraphError("exported layer IDs collide with foreign graph layers")
     merged_nodes = list(stripped["nodes"]) + list(nodes.values())
     merged_edges = list(stripped["edges"]) + edges
     merged_layers = list(stripped["layers"]) + list(layers.values())
-    return _serialize(stripped["version"], stripped["project"], merged_nodes, merged_edges, merged_layers, stripped["tour"])
+    return {**base, **_serialize(stripped["version"], stripped["project"], merged_nodes,
+                                merged_edges, merged_layers, stripped["tour"])}
 
 
 def _target_relative(root: Path) -> str:
     for candidate in GRAPH_PATHS:
-        if checked_path(root, candidate).is_file():
+        if checked_path(root, candidate).exists():
             return candidate
     return GRAPH_PATHS[-1]
 
@@ -341,7 +362,7 @@ def export_ua_graph(project_root: str | Path, *, check: bool = False) -> ToolRes
         return ToolResult("ua-graph", ".", "invalid", findings=(finding,))
 
     base = None
-    if target_path.is_file():
+    if target_path.exists():
         try:
             base = _load_graph(target_path)
         except UaGraphError as error:
@@ -351,6 +372,10 @@ def export_ua_graph(project_root: str | Path, *, check: bool = False) -> ToolRes
 
     try:
         graph = _derive_graph(repository, root, base)
+    except UaGraphError as error:
+        finding = Finding("CONCORDE-UA-GRAPH-002", "error", relative, str(error),
+                           "Repair the conflicting graph IDs, then retry.")
+        return ToolResult("ua-graph", relative, "invalid", findings=(finding,))
     except SpecError as error:
         finding = Finding("CONCORDE-UA-GRAPH-001", "error", ".concorde/config.json",
                            f"The project registry cannot be loaded: {error}",

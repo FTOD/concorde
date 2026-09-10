@@ -14,7 +14,7 @@ project's explicit Spec registry. It is a developer tool, not an agent Capabilit
 and it launches no model cognition.
 
 ```bash
-python3 -m concorde ua-graph --project-root . [--check]
+python3 -m concorde --project-root . ua-graph [--check]
 ```
 
 | Argument | Contract |
@@ -54,8 +54,8 @@ neither exists yet.
   `layer:unlisted`, and the edges whose source or target is one of those removed node IDs or a
   `module:<id>` ID for a currently registered Module, then adds a freshly derived set of those same
   kinds of elements
-- AND every other node, edge, layer, and the graph's `project`, `version` and `tour` are left
-  byte-for-byte unchanged
+- AND every other node, edge, layer, and the graph's `project`, `version`, `tour` and extension
+  fields retain their JSON values; whitespace and array ordering may be normalized
 - AND a foreign node whose own ID happens to start with `module:` (for example a real scan's own
   "module" node kind), and every edge naming it, are left untouched when that ID is neither a
   removed node ID nor a currently registered Module ID
@@ -93,7 +93,9 @@ neither exists yet.
 ### scenario.views.ua-graph-invalid-input — A malformed existing graph is rejected without writing
 
 - GIVEN an existing file at the target path that is not a JSON object, is reached through a
-  symlink, or lacks a string `version`, an object `project`, or array `nodes` and `edges`
+  symlink, is a directory, lacks a string `version`, an object `project`, or array `nodes` and
+  `edges`, contains malformed node, edge or layer records or duplicate node or layer IDs, or
+  has a foreign node ID that collides with an exported node ID
 - WHEN `ua-graph` runs, with or without `--check`
 - THEN it fails with an error naming the existing file
 - AND it does not write any change to that file

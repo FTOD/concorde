@@ -25,7 +25,7 @@ export default function ScopedGraph(){
   return <Layout title="Architecture relationships" description="Module composition, dependencies and bound implementation files">
     <main className="container margin-vert--lg"><h1>Architecture relationships</h1>
       <p>Modules describe their purpose, scenarios, entities and internal architecture, and bind their own implementation files. Select a node to inspect its Spec and relationships.</p>
-      <p>This registry-derived graph is authoritative. For an interactive, file-level view, run <code>python -m concorde ua-graph</code> and open the resulting <code>.ua/knowledge-graph.json</code> in the Understand Anything viewer.</p>
+      <p>This graph derives from the registered Specs. For an interactive view of their bound files, run <code>python -m concorde ua-graph</code> and open the exported graph in the Understand Anything viewer. The command updates an existing graph at a supported UA location, or creates <code>.ua/knowledge-graph.json</code>.</p>
       <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
         <label>Find <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Entity name or ID"/></label>
         <label>Kind <select value={kind} onChange={e=>setKind(e.target.value)}>{['all','module'].map(k=><option key={k}>{k}</option>)}</select></label>

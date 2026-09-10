@@ -296,6 +296,27 @@ class UaGraphOverlayTests(unittest.TestCase):
         second = self.ua_path.read_bytes()
         self.assertEqual(first, second)
 
+    @verifies("scenario.views.ua-graph-overlay")
+    def test_overlay_preserves_extension_fields(self):
+        self.base_graph["extensions"] = {"scanner": {"revision": 7, "notes": ["keep me"]}}
+        self.ua_path.write_text(json.dumps(self.base_graph))
+        self.assertEqual("success", export_ua_graph(self.root).status)
+        self.assertEqual(self.base_graph["extensions"], self.load()["extensions"])
+        self.assertEqual("success", export_ua_graph(self.root, check=True).status)
+
+    @verifies("scenario.views.ua-graph-invalid-input")
+    def test_overlay_rejects_foreign_id_collision_without_writing(self):
+        self.base_graph["nodes"].append({
+            "id": "module:module.alpha", "type": "module", "name": "Foreign Alpha", "tags": [],
+        })
+        self.ua_path.write_text(json.dumps(self.base_graph))
+        before = self.ua_path.read_bytes()
+        for check in (False, True):
+            result = export_ua_graph(self.root, check=check)
+            self.assertEqual("invalid", result.status)
+            self.assertEqual("CONCORDE-UA-GRAPH-002", result.findings[0].rule_id)
+            self.assertEqual(before, self.ua_path.read_bytes())
+
 
 class UaGraphSharedFileTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -388,6 +409,38 @@ class UaGraphInvalidInputTests(unittest.TestCase):
         self.assertEqual({"CONCORDE-UA-GRAPH-002"}, {f.rule_id for f in checked.findings})
         self.assertEqual(before, self.ua_path.read_bytes())
 
+    @verifies("scenario.views.ua-graph-invalid-input")
+    def test_malformed_graph_records_are_rejected_without_writing(self):
+        malformed = [
+            {"nodes": [None]}, {"nodes": [{"type": "file"}]},
+            {"nodes": [{"id": 3, "type": "file"}]},
+            {"nodes": [{"id": "f", "type": "file", "tags": "concorde-ua-graph"}]},
+            {"nodes": [{"id": "f", "type": "file"}] * 2},
+            {"edges": [None]}, {"edges": [{"source": "f", "target": []}]},
+            {"layers": [None]}, {"layers": [{"id": "layer:custom"}] * 2},
+        ]
+        for fragment in malformed:
+            with self.subTest(fragment=fragment):
+                self.ua_path.write_text(json.dumps({
+                    "version": "1.0.0", "project": {}, "nodes": [], "edges": [], **fragment,
+                }))
+                before = self.ua_path.read_bytes()
+                for check in (False, True):
+                    result = export_ua_graph(self.root, check=check)
+                    self.assertEqual("invalid", result.status)
+                    self.assertEqual("CONCORDE-UA-GRAPH-002", result.findings[0].rule_id)
+                    self.assertEqual(before, self.ua_path.read_bytes())
+
+    @verifies("scenario.views.ua-graph-invalid-input")
+    def test_preferred_graph_directory_is_rejected_without_fallback(self):
+        preferred = self.root / ".understand-anything/knowledge-graph.json"
+        preferred.mkdir(parents=True)
+        for check in (False, True):
+            result = export_ua_graph(self.root, check=check)
+            self.assertEqual("invalid", result.status)
+            self.assertEqual("CONCORDE-UA-GRAPH-002", result.findings[0].rule_id)
+            self.assertTrue(preferred.is_dir())
+            self.assertFalse(self.ua_path.exists())
 
 class UaGraphCliTests(unittest.TestCase):
     def setUp(self) -> None:
