@@ -173,11 +173,12 @@ def schemas() -> dict:
     result["concorde-project-proposal"] = obj({"action": {"enum": ["initialize"]},
         "base_digest": {"anyOf": [DIGEST, {"type": "null"}]}, "files": array(PROPOSAL_FILE)})
     result["concorde-plan-artifact"] = obj({"plan": STRING})
+    result["concorde-task-identity-constraints"] = obj({"reserved_task_ids": array(STRING, unique=True)})
     result["concorde-implementation-task"] = obj({"plan": STRING, "tasks": array(TASK_ITEM)})
     result["concorde-task-scope-feedback"] = obj({"tasks_digest": DIGEST,
         "reason": {"const": "implementation_boundary"}})
     result["concorde-reflection-selection"] = obj({"head": STRING, "records": array(obj({"id":STRING,"path":PATH,"digest":DIGEST,"content":STRING}))})
-    stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-implementation-task","concorde-task-scope-feedback","concorde-reflection-selection","concorde-review-result")]}
+    stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-task-identity-constraints","concorde-implementation-task","concorde-task-scope-feedback","concorde-reflection-selection","concorde-review-result")]}
     result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 3},
         "target_id": STRING, "kind": {"const": "module"}, "focus_id": NULLABLE_ID,
         "phase": STRING, "task": STRING, "constraints": array(STRING),

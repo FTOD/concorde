@@ -124,7 +124,7 @@ context assessment first and stores a target plan only for a sufficient context 
 One `.concorde/worktree.json` owns the change, its root task, target records, phase/status, gaps and
 validation identity. Plans and auxiliary files live under `.concorde/work/<target-id>/`. There is no
 new `.concorde/attempts/<change-id>/` lifecycle. Each component keeps progress in the enclosing change.
-Task authoring receives a concorde-plan-artifact. Implementation receives concorde-implementation-task
+Task authoring receives a concorde-plan-artifact and concorde-task-identity-constraints. Implementation receives concorde-implementation-task
 and returns identical tasks marked complete only when acceptance is met. Registry, context and
 configuration are rechecked after each stage. Only implementation code may change in that phase.
 
@@ -302,6 +302,7 @@ updated; a mismatched package/context is rejected instead of reinterpreted.
 | Type | Carried by | Promise |
 | --- | --- | --- |
 | `concorde-plan-artifact@1` | A `stage_inputs` entry: produced by plan, consumed by tasks | `{plan}`. |
+| `concorde-task-identity-constraints@1` | Host to every fresh task author, including after replanning | `{reserved_task_ids: list[nonblank str]}`; required, sorted and unique, possibly empty. Includes every retained historical ID and the current list for scope or code-review repair. New tasks must not reuse these identities; collisions report the conflicting IDs without rewriting output or history. No software obligations or code contents. |
 | `concorde-implementation-task@1` | A `stage_inputs` entry: produced by tasks, consumed by implement | `{plan, tasks: [{id,target_id,description,acceptance,complete}]}`; implement must return every task with the same identity, marked complete only when its acceptance is met. |
 | `concorde-task-scope-feedback@1` | Host to fresh task author only | `{tasks_digest: sha256, reason: "implementation_boundary"}`; fixed semantic feedback preserves software acceptance while separating implementation from later Host validation, review and authorized outer-session commit. No code or raw logs. |
 | `concorde-reflection-selection@1` | A `stage_inputs` entry: produced by reflections-triage, consumed by dev-loop implementation | `{head, records: [{id,path,digest,content}]}`. |

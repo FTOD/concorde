@@ -116,6 +116,10 @@ Ordinary `stage_inputs` are version-1 TypedValues with these payloads:
 and a boolean `complete`; `concorde-reflection-selection` has `head: nonblank str` and
 `records: list[{id: str, path, digest: sha256, content: str}]`, with nonblank string fields.
 `concorde-task-scope-feedback` has `tasks_digest: sha256` and `reason: "implementation_boundary"`; only task authoring admits it with prior tasks and the plan. It carries no implementation contents or raw check logs.
+`concorde-task-identity-constraints` has `reserved_task_ids: list[nonblank str]`, unique and possibly
+empty. Only task authoring admits it and requires it alongside the plan. Development supplies all
+retained historical IDs and the current list for repair; the IDs reserve identity without adding
+software obligations or code contents. The snapshot digest covers this input like every stage artifact.
 These records are closed objects. A stage input conveys only its declared content, not authority.
 Only `tasks` and `implementation` additionally admit `concorde-review-result@1`, carrying a typed
 review's target/focus, context/input identities, spec/code mode, status, representative tasks,
