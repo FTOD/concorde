@@ -186,109 +186,46 @@ unknown or ambiguous links fail validation.
 
 ## Retained projection input agreement
 
-The Docsite build interface consumes optional UTF-8 JSON at the two exact project-relative paths
-`generated/docs/instructions.json` and `generated/docs/wire.json`. Each input independently enables
-its reading page and navigation entry when present; an absent input omits only that page and entry.
-Neither input belongs to registered Spec membership, the registered-page manifest or its
-`sourceDigest`. Publication treats them as presentation data, never as executable Agent
-instructions or an authority grant. The local version 1 input shapes below are independent of
-registry schema 3 and publication model schema 18. No older or newer projection version is
-implicitly accepted.
+For Concorde's self-hosted reading surfaces, the Docsite build interface consumes the existing
+Distribution (`module.distribution`) projections at the exact project-relative paths
+`generated/docs/instructions.json` and `generated/docs/wire.json`. Both files must exist to enable
+the pair of reading pages and their Projections navigation; if either is absent, both pages and
+that navigation are omitted. These presentation inputs do not join registered Spec membership,
+the registered-page manifest or its `sourceDigest`, and grant no Agent context.
 
-These schemas use JSON Schema `type`, `properties`, `required`, `items`, `enum`, `minLength`
-and `minimum`; an empty schema accepts any JSON value. Arrays retain input order. Instruction
-text may be empty. Additional object fields are permitted as producer metadata and do not replace
-any required field. This is an input agreement for the retained reading surfaces, not permission
-to read producer source to infer missing fields.
+The JSON records have the following retained shapes, using TypeScript notation as in the local
+publication model. Neither file has a `schema_version` envelope.
 
-```concorde-contract
-{
-  "id": "contract.views.instruction-projection",
-  "version": 1,
-  "role": "required",
-  "peer": "external:instruction-projection-producer",
-  "schema": {
-    "type": "object", "required": ["schema_version", "agents"],
-    "properties": {
-      "schema_version": {"enum": [1]},
-      "agents": {"type": "array", "items": {
-        "type": "object", "required": ["id", "title", "common", "modes"],
-        "properties": {
-          "id": {"type": "string", "minLength": 1},
-          "title": {"type": "string", "minLength": 1},
-          "common": {"type": "string"},
-          "modes": {"type": "array", "items": {
-            "type": "object", "required": ["id", "title", "context", "result", "authority", "instructions"],
-            "properties": {
-              "id": {"type": "string", "minLength": 1},
-              "title": {"type": "string", "minLength": 1},
-              "context": {"type": "string"}, "result": {"type": "string"},
-              "authority": {"type": "string"}, "instructions": {"type": "string"}
-            }
-          }}
-        }
-      }}
-    }
-  },
-  "semantics": "Optional human reading input. Display common responsibilities and each mode's contract and exact common-plus-mode text under the local composition, uniqueness and failure rules.",
-  "example": {"schema_version": 1, "agents": [{"id": "author", "title": "Author", "common": "Use the selected context.", "modes": [{"id": "spec", "title": "Spec", "context": "Complete Module Spec", "result": "Spec proposal", "authority": "Propose only", "instructions": "Write the contract."}]}]}
+```typescript
+interface InstructionProjection {
+  agents: {
+    name: string; spec: string; harness: string; instructions: string; sources: string[];
+    modes: {name: string; instructions: string; contract: object}[];
+  }[];
+  skills: {name: string; description: string; capability: string; body: string}[];
 }
+type WireProjection = Record<string, object>; // type ID -> JSON Schema object
 ```
 
-```concorde-contract
-{
-  "id": "contract.views.wire-projection",
-  "version": 1,
-  "role": "required",
-  "peer": "external:wire-projection-producer",
-  "schema": {
-    "type": "object", "required": ["schema_version", "contracts"],
-    "properties": {
-      "schema_version": {"enum": [1]},
-      "contracts": {"type": "array", "items": {
-        "type": "object", "required": ["id", "title", "version", "schema", "semantics", "example"],
-        "properties": {
-          "id": {"type": "string", "minLength": 1},
-          "title": {"type": "string", "minLength": 1},
-          "version": {"type": "integer", "minimum": 1},
-          "schema": {"type": "object"}, "semantics": {"type": "string"}, "example": {}
-        }
-      }}
-    }
-  },
-  "semantics": "Optional human reading input. Display ordered wire contracts and their complete schema and example JSON without executing references or producing a graph.",
-  "example": {"schema_version": 1, "contracts": [{"id": "example", "title": "Example", "version": 1, "schema": {"type": "object"}, "semantics": "An example record.", "example": {}}]}
-}
-```
+An Agent's `name` identifies its reading section, `spec` is a source path string, `harness` names
+its harness and `sources` lists its instruction source paths. Its `instructions` is the public
+common responsibility text. Each mode's `name` identifies the mode, its `contract` is displayed
+directly as JSON, and its `instructions` already contains the complete common-plus-selected-mode
+text: publication does not concatenate the common text again. Modes remain separate reading
+sections, never one combined runtime prompt. Skill records supply the skill name, description,
+capability identity and body for reading. Agent, mode and skill arrays retain input order.
 
-Agent IDs are unique within `agents`; mode IDs are unique within each Agent. Wire contract IDs
-are unique within `contracts`, and each contract's `version` is a positive integer. Empty arrays
-are valid and render an empty collection, without inventing an Agent, mode or contract. Schema
-and example values are displayed as JSON; publication does not execute or resolve schema
-references or claim that an example satisfies a wire contract. The contract's `semantics` is
-human-readable text.
+The wire projection maps each type ID directly to its JSON Schema object. Publication shows the
+type IDs in sorted order and displays their values as JSON. It has no `contracts` array and
+requires no synthetic title, version, semantics or example fields. These are the existing
+Distribution inputs, not a new producer format or a schema migration.
 
-The instructions page groups Agents in input order, displays each `title` and `id`, and displays
-`common` once as common responsibilities. Each mode has a separate section displaying its title,
-ID and labeled context, result and authority fields. Its complete instruction text is exactly
-`common + "\n\n" + instructions` when both are nonempty, otherwise the nonempty operand (or
-the empty string when both are empty). No trimming, deduplication or other mode text contributes
-to that complete text. The page makes both the common section and each complete selected-mode
-text readable and copyable. It never combines all modes into one runtime prompt. The wire page
-shows each contract's title, identity, version, semantics, schema and example, retaining complete
-JSON values rather than projecting nodes or edges. Reading order and section navigation follow
-input order; all textual fields are rendered as text without executing embedded HTML or script.
-
-A present input must be a safe regular file, parse as JSON and satisfy its full local shape and
-version before its page is materialized. Invalid JSON, missing required fields, wrong types,
-duplicate IDs, unsupported versions, symlinks and read failures reject publication with an error
-naming the input path and the invalid field or read/parse reason. A malformed present input is
-never treated as absent, rendered partially or replaced with inferred defaults. No candidate is
-promoted on that failure, and the previous published build remains unchanged. Repeated builds
-read the current input bytes; removing an optional input removes its page and navigation from the
-next successfully promoted replacement build. No projection input enables a graph page or an
-embedded UA replacement. These rules complete the retained-projection boundary of
-[publication without a graph](#scenario.views.publish-without-graph).
+When the pair is enabled, publication uses `safeRead` and JSON parsing for both files, preserving
+the path/read and parse failures defined by the build interface. This description adds no
+projection validator, duplicate-ID check or version admission rule. Failure follows the normal
+candidate failure and preservation rules. Repeated builds read current inputs and derive the
+pair's availability again. Neither projection enables a graph page or an embedded UA replacement;
+these reading semantics belong to [publication without a graph](#scenario.views.publish-without-graph).
 
 ## Project introduction
 
