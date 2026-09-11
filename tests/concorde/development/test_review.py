@@ -109,17 +109,30 @@ class ReviewTests(unittest.TestCase):
     @verifies("scenario.harness.node-runtime")
     def test_project_worker_pins_host_node_but_spec_capsule_does_not(self):
         import os
-        import shutil
         import tomllib
-        if not shutil.which("node"):
-            self.skipTest("Node is not installed")
+        from concorde.harness.agent_executor import resolve_runtime_bootstrap
+
+        model = self.double()
+        node = Path(model.runtime_directory.name) / "node"
+        node.write_bytes(b"\x7fELFfixture-node-runtime")
+        node.chmod(0o755)
+        # This process-double test covers projection of an admitted runtime, not
+        # machine installation trust. In a configured check's user namespace,
+        # host-root ancestors are unmapped, so the real Node resolver must reject
+        # them. Keep that policy in the resolver tests and supply fixture admission
+        # here, just as ModelProcessDouble does for Codex. File rechecks stay real.
+        bootstrap = resolve_runtime_bootstrap("codex", str(node), str(self.root), {})
         self.configuration = typed("concorde-capability-configuration", {"integration": "codex", "enforcement": "native"})
         config_path = self.root / ".concorde/config.json"
         config = json.loads(config_path.read_text())
         config["capability_configuration"] = self.configuration
         config_path.write_text(json.dumps(config))
-        result = self.call_capability("concorde-dev-loop")
+        with patch("concorde.harness.agent_executor.resolve_node_runtime", return_value=bootstrap) as resolver:
+            result = self.call_capability("concorde-dev-loop", double=model)
         self.assertEqual("succeeded", result["status"], result)
+        project_calls = [call for call in self.model.calls if call["stage"] in {"implementation", "code-review"}]
+        self.assertEqual({"implementation", "code-review"}, {call["stage"] for call in project_calls})
+        self.assertEqual(2 * len(project_calls), resolver.call_count)  # admission and pre-launch recheck
         for call in self.model.calls:
             settings = {}
             for i, arg in enumerate(call["argv"]):
@@ -127,12 +140,12 @@ class ReviewTests(unittest.TestCase):
                     settings.update(tomllib.loads(call["argv"][i + 1]))
             if call["stage"] in {"implementation", "code-review"}:
                 self.assertFalse(settings["allow_login_shell"])
-                node = str(Path(shutil.which("node")).resolve())
-                self.assertEqual(str(Path(node).parent), settings["shell_environment_policy"]["set"]["PATH"].split(os.pathsep)[0])
+                self.assertEqual(str(node.parent), settings["shell_environment_policy"]["set"]["PATH"].split(os.pathsep)[0])
                 profile = next(iter(settings["permissions"].values()))
-                self.assertEqual("read", profile["filesystem"][node])
+                self.assertEqual("read", profile["filesystem"][str(node)])
             else:
                 self.assertNotIn("shell_environment_policy", settings)
+                self.assertNotIn(str(node), json.dumps(settings))
 
     @verifies("scenario.development.task-scope-repair")
     def test_invalid_scope_repair_cannot_replace_or_complete_original_tasks(self):
