@@ -67,6 +67,9 @@ No source contents or raw check logs are supplied or permitted by this feedback.
 Revalidate the preserved plan against the supplied current complete Spec, including after a
 Framework Protocol binding update. If changed meaning requires a different plan or contract,
 report conflicting or a precise Spec gap; scope repair must not silently change the plan's intent.
+For an already coordinated task, preserve the component targets in the prior task list. Boundary
+repair may change their implementation acceptance, but it is not permission to reroute or remove
+component responsibilities. Unchanged participants remain subject to their existing obligations.
 
 When `stage_inputs` contains a `concorde-implementation-task` with completed tasks alongside a
 `concorde-review-result`, this is a bounded repair round: the prior tasks are already fulfilled and

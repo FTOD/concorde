@@ -44,11 +44,16 @@ implementation uses the same gap fields. Queries report gaps; development record
 them by target/task/phase/question/blocked step/needed contract in the existing change state, with
 Spec revision and observed contexts. Unrelated work cannot erase unresolved gaps. Retrying an unchanged
 blocked step waits for its contract repair. After a Spec change, a fresh successful assessment resolves
-that step's old gaps and retains history. Changed admitted review context, including reviewer
+that step's old gaps and retains history. Changed admitted review inputs, including reviewer
 instructions, also permits fresh review without first erasing its old gaps. Only an accepted,
 completed review without gaps or blocking findings resolves that phase's old gaps from a different
-context; failed or incomplete reassessment leaves them open, and a repeated gap records its new
-observation. Unchanged review context still waits, and other phases' prerequisite gaps remain gates.
+review input digest; failed or incomplete reassessment leaves them open, and a repeated gap records
+its new observation and review input digest on that gap's own history entry. Lifecycle status,
+snapshot context IDs and replacement of the latest review record do not change that identity.
+An unchanged-input standalone review may report its own findings but cannot resolve the required
+gap. Legacy gap entries without a recorded review input digest retain their Spec-revision gate;
+the Host does not infer their original identity from a mutable latest-review record. Unchanged
+review inputs still wait, and other phases' prerequisite gaps remain gates.
 Spec authoring can itself supply the repair. A durable gap
 can be discovered through reflections-triage `status` gap_records and explicitly captured by
 `record-gaps` using those returned IDs; capture does not resolve the gap,

@@ -53,6 +53,16 @@ Replaying a digest already consumed by that target resumes the replacement tasks
 reauthoring them. Invalid or failed author output never replaces the old list. This is an explicit
 recovery entry, not another automatic retry edge or authority to edit Specs or bypass a gate.
 
+For an already coordinated list, scope repair preserves its component target set. A changed
+component's derived task text is rebound only after the replacement list is accepted; its previous
+coordination record remains in task history. The Host clears that component's implementation
+completion and the enclosing finalization stamps, while retaining current Spec reconciliation and
+unchanged participants. The child's normal loop sees the new intent and obtains fresh review,
+planning, tasks, implementation and validation as needed; the Host does not rewrite its old tasks
+as complete. Existing component contract gaps must be resolved before rebinding, and a change of
+component routing is rejected without replacing the list. Ordinary intent changes outside this
+explicit recovery still fail their original stale-context checks.
+
 ## Stages and outcomes
 
 

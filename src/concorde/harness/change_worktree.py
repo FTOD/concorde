@@ -467,7 +467,7 @@ def record_transition(root: Path, target_id: str, **fields) -> None:
 
 
 def record_task_gaps(root: Path, target_id: str, task: str, phase: str, gaps, spec_digest: str,
-                     *, review_context_id: str | None = None) -> None:
+                     *, review_input_digest: str | None = None) -> None:
     """Persist task-local blocking contracts; unrelated progress cannot erase them."""
     from ..spec.repository import digest
     state = read_change(root)
@@ -485,13 +485,16 @@ def record_task_gaps(root: Path, target_id: str, task: str, phase: str, gaps, sp
             existing[key] = item
         item = existing[key]
         item.update(gap=dict(gap), status="open", spec_digest=spec_digest)
+        if review_input_digest is not None and phase in {"spec-review", "code-review"}:
+            item["review_input_digest"] = review_input_digest
         if gap["context_id"] not in item["contexts"]:
             item["contexts"].append(gap["context_id"])
     for item in history:
         if (item["target_id"] == target_id and item["task"] == task and item["phase"] == phase
                 and not gaps and (phase == "specify" or item.get("spec_digest") != spec_digest
-                    or (phase in {"spec-review", "code-review"} and review_context_id is not None
-                        and item["gap"]["context_id"] != review_context_id))):
+                    or (phase in {"spec-review", "code-review"} and review_input_digest is not None
+                        and item.get("review_input_digest") is not None
+                        and item["review_input_digest"] != review_input_digest))):
             item["status"] = "resolved"
     state["gaps"] = [item["gap"] for item in history if item["status"] == "open"]
     target = state["targets"].get(target_id)
@@ -504,11 +507,14 @@ def record_task_gaps(root: Path, target_id: str, task: str, phase: str, gaps, sp
     save_change(root, state)
 
 
-def unchanged_task_gaps(root: Path, target_id: str, task: str, phase: str, spec_digest: str) -> list[dict]:
+def unchanged_task_gaps(root: Path, target_id: str, task: str, phase: str, spec_digest: str,
+                        *, review_input_digest: str | None = None) -> list[dict]:
     state = read_change(root)
     return [dict(item["gap"]) for item in (state or {}).get("gap_history", [])
             if item["status"] == "open" and item["target_id"] == target_id and item["task"] == task
-            and item["phase"] == phase and item.get("spec_digest") == spec_digest]
+            and item["phase"] == phase and item.get("spec_digest") == spec_digest
+            and (review_input_digest is None or phase not in {"spec-review", "code-review"}
+                 or item.get("review_input_digest") in {None, review_input_digest})]
 
 
 def work_path(target_id: str, name: str) -> str:
