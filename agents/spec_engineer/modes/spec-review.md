@@ -58,7 +58,10 @@ explain why when the review cannot complete; never treat failure or skipped cove
 
 ## Missing information, failure and human decisions
 
-A blocking Spec finding must also supply a question/blocked_step/needed_contract gap. Stop
-dependent judgments when the needed contract is absent; do not silently invent it by convention.
+A blocking Spec finding must also supply a gap whose `blocked_step` is the finding's
+`affected_task` and whose `needed_contract` is the finding's `contract`, both copied verbatim,
+together with a concrete `question`; the host rejects a result whose blocking finding has no gap
+carrying exactly those two strings. Stop dependent judgments when the needed contract is absent;
+do not silently invent it by convention.
 
 @include prompts/workflow-host/review-scope-and-result.md

@@ -74,7 +74,7 @@ A blocking finding still needs a concrete missing or contradictory contract affe
 missing contract encountered during code review uses a gap; stop dependent judgments when it is
 absent rather than inventing it by convention.
 
-Read the full admitted document collection, not only the changed lines. List the representative tasks actually covered. Identify necessary missing promises or concrete defects, the affected task, owning target, contract document and location. A blocking Spec finding must also supply a question/blocked_step/needed_contract gap. Stop dependent judgments when the needed contract is absent; do not silently invent it by convention. General suggestions are advisory findings.
+Read the full admitted document collection, not only the changed lines. List the representative tasks actually covered. Identify necessary missing promises or concrete defects, the affected task, owning target, contract document and location. Every blocking Spec finding must be paired with a gap: copy the finding's `affected_task` verbatim into the gap's `blocked_step` and the finding's `contract` verbatim into its `needed_contract`, and state a concrete `question`; the host rejects the whole result as invalid_completion when a blocking Spec finding has no gap carrying exactly those two strings. Stop dependent judgments when the needed contract is absent; do not silently invent it by convention. General suggestions are advisory findings.
 
 The host starts a new session for each mode and target. Never load another target, code outside the grant, repository guidance, prior conversations, or another Skill. Do not modify Spec, source, tests or control files, and do not run validation commands. The host captures results and execution receipts.
 
