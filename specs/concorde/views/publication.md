@@ -167,6 +167,17 @@ redirect from the removed graph page. UA continues through its existing independ
 - WHEN the current build is promoted
 - THEN a redirect stub for that legacy route still resolves to the document's one canonical page
 
+The authoritative input for retaining aliases of removed document memberships, and the rule for
+carrying those aliases into a replacement build, remain unspecified in this contract. This is an
+existing unresolved part of legacy-route compatibility. The membership-derived alias rules in
+`pipeline.md` remain unchanged and do not establish how historical memberships are retained.
+
+Publication without a standalone graph preserves this scenario's compatibility obligation and the
+existing source-path, membership and alias rules. Removing the graph view does not select a new
+historical-alias policy, limit compatibility to current memberships, or resolve the unspecified
+historical input and retention rule. This clarification records that unresolved information; it
+does not claim that the compatibility scenario is fully specified or verified.
+
 This compatibility promise concerns registered-document aliases, not the removed standalone graph
 page. Every Concorde Module contains an inline Mermaid entity diagram in its `module.md`
 Relationships subsection, with accessible title and description. Publication renders that fence in
