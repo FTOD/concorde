@@ -18,6 +18,18 @@ Each reviewer resolves a separate Agent definition and Harness under read-only p
 The host records input versions, coverage, concrete findings, gaps and completion. No-findings,
 findings, incomplete, not-run and skipped are distinct, and all conclusions remain task-specific.
 
+The complete collection is the review's information boundary, not an instruction to repair every
+independent capability it describes. Representative tasks derive from the admitted request and its
+constraints, including necessary dependencies, compatibility and affected consumers. A blocking
+finding explains how its contract or behavior defect prevents that task or violates an obligation
+the change must preserve. Unchanged contracts can block dependent work, and changed contracts can
+introduce regressions beyond the named feature. A request to retain existing independent behavior
+does not alone require completing every pre-existing edge-case contract. Concrete independent
+defects remain advisory findings with their scope reasoning and uncertainty; they are not erased
+or represented as complete contracts. A broad audit can make those same contracts task-relevant.
+The reviewer makes this semantic assessment from admitted inputs; the Host neither filters findings
+by changed paths nor rewrites their severity. Required coverage, gap and freshness gates still apply.
+
 Development defaults `run_reviews` to true: Spec review follows authoring and precedes planning;
 code review follows implementation/checks and precedes ready. An explicit `run_reviews=false`
 records each skip. Once required, a review cannot be disabled by a resumed fast loop. Blocking contract gaps or
@@ -32,7 +44,12 @@ implementation uses the same gap fields. Queries report gaps; development record
 them by target/task/phase/question/blocked step/needed contract in the existing change state, with
 Spec revision and observed contexts. Unrelated work cannot erase unresolved gaps. Retrying an unchanged
 blocked step waits for its contract repair. After a Spec change, a fresh successful assessment resolves
-that step's old gaps and retains history. Spec authoring can itself supply the repair. A durable gap
+that step's old gaps and retains history. Changed admitted review context, including reviewer
+instructions, also permits fresh review without first erasing its old gaps. Only an accepted,
+completed review without gaps or blocking findings resolves that phase's old gaps from a different
+context; failed or incomplete reassessment leaves them open, and a repeated gap records its new
+observation. Unchanged review context still waits, and other phases' prerequisite gaps remain gates.
+Spec authoring can itself supply the repair. A durable gap
 can be discovered through reflections-triage `status` gap_records and explicitly captured by
 `record-gaps` using those returned IDs; capture does not resolve the gap,
 change its owner, approve a fix or start implementation.
