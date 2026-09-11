@@ -196,6 +196,32 @@ renderer choice does not change the Protocol's tool-neutral requirements.
 
 ## Materialization and required build collaborators
 
+The materialization identity is the UTF-8 JSON file
+`docsite/.generated/materialization.json`, relative to the project root. Its complete version 18
+shape is `{schema_version: 18, sourceDigest: string}`; no other fields are required or interpreted.
+`sourceDigest` is the loaded `ScopedRegistry.sourceDigest` defined above, including its digest
+format. The writer serializes these two fields in that order with two-space indentation and a
+final newline. Readers compare parsed values, so insignificant JSON whitespace and object-key
+order do not affect identity. This is a completion marker for disposable materialization, not a
+second page inventory or a record of instruction, wire or Protocol content.
+
+At the start of each materialization, any previous identity record is removed before replacing
+derived assets. The new record is written only after all content, static assets and the sidebar
+have succeeded. Failure before completion leaves no valid new identity; retry replaces the
+disposable output and writes a fresh record. The existing exclusive-output-ownership rule applies
+through post-build, so a successful marker cannot be reused after an intervening failed attempt.
+
+Before writing `build-manifest.json` or redirect stubs, `postBuild` reloads the current registry
+and requires its `sourceDigest` to equal the originally loaded model's `sourceDigest`. It reads
+the identity record and requires an object with numeric `schema_version` exactly 18 and a
+valid digest string exactly equal to that same loaded model's `sourceDigest`. These are the
+complete identity comparisons; page coverage is separately checked against the loaded model and
+rendered route inventory below. A missing, unreadable, malformed, wrong-version or mismatching
+record throws an error naming the identity path and reason. It never substitutes the current
+digest, rematerializes implicitly or emits verification artifacts on such a failure. Build
+failure preserves the previously promoted site. These rules supply the prepare/post-build
+agreement for [materialization](#scenario.views.materialize).
+
 The primary Spec navigation mirrors the directory hierarchy of explicitly registered source paths;
 it never discovers new membership by scanning directories. `scopedSidebar` returns one tree
 following registered Module parentage; there is no separate Implementation Spec sidebar, because
