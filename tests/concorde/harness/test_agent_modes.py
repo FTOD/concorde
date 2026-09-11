@@ -1,5 +1,7 @@
 """Mode contracts are enforced independently of model obedience and Agent ceilings."""
 import json
+import re
+import subprocess
 import tempfile
 import unittest
 from dataclasses import replace
@@ -276,6 +278,50 @@ class AgentModeTests(unittest.TestCase):
         self.assertNotIn("checks", reads)
         self.assertNotIn("app/.hidden.py", reads)
         self.assertEqual([], host.descriptions[0]["write_paths"])
+
+    @verifies("scenario.harness.context-freeze", "scenario.harness.mode-boundary")
+    def test_implementation_search_recipe_uses_frozen_files_without_directory_walks(self):
+        target = next(item for item in self.registry["targets"] if item["id"] == self.target)
+        target["files"] = ["app/", "checks/transfer_check.py"]
+        (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
+        document = self.root / "specs/transfer/module.md"
+        document.write_text(document.read_text().replace('"app/transfer.py"', '"app/"'))
+        # Spaces and shell syntax must remain path data, even across multiple batches.
+        admitted = [f"app/match {index}.txt" for index in range(101)]
+        admitted.append("app/$(touch leaked); 'quoted'.txt")
+        excluded = [f"app/{directory}/decoy.txt" for directory in
+                    ("node_modules", "__pycache__", ".venv", "build", "dist", ".hidden")]
+        excluded += ["app/.secret", "app/cache.pyc", "app/output.log", "outside.txt"]
+        for name in admitted + excluded:
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("BOUNDARY_NEEDLE\n")
+        self.repository = SpecRepository(self.root, PACKAGE)
+        value = self.input("programmer", "implementation")
+        snapshot = value["data"]["snapshot"]["data"]
+        capsule = self.root / "context.json"
+        capsule.write_text(json.dumps(snapshot))
+        prompt = load_agent(PACKAGE, "programmer", "implementation").body
+        recipe, = re.findall(r"```sh\n(.*?)\n```", prompt, re.S)
+
+        def search(pattern):
+            return subprocess.run(["sh", "-c", recipe, "bounded-search", str(capsule), pattern],
+                                  cwd=self.root, capture_output=True, text=True, timeout=20)
+
+        result = search("BOUNDARY_NEEDLE")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual({f"{path}:1:BOUNDARY_NEEDLE" for path in admitted},
+                         set(result.stdout.splitlines()))
+        self.assertFalse((self.root / "leaked").exists())
+        self.assertEqual(1, search("NO_SUCH_MATCH").returncode)
+        # An empty admitted set must not fall back to rg's current-directory search.
+        snapshot["implementation_artifacts"] = []
+        capsule.write_text(json.dumps(snapshot))
+        result = search("BOUNDARY_NEEDLE")
+        self.assertEqual((1, "", ""), (result.returncode, result.stdout, result.stderr))
+        snapshot["implementation_artifacts"] = [{"path": "app/missing.txt"}]
+        capsule.write_text(json.dumps(snapshot))
+        self.assertEqual(2, search("BOUNDARY_NEEDLE").returncode)
 
     @verifies("scenario.harness.mode-boundary")
     def test_snapshot_cannot_inject_another_modes_instructions(self):
