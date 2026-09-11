@@ -18,6 +18,116 @@ from tests.concorde.spec.support import CONFIGURATION, PACKAGE, ModelProcessDoub
 
 
 class ReviewTests(unittest.TestCase):
+    @verifies("scenario.development.task-scope-repair", "scenario.development.dev-loop-coordinated")
+    def test_coordinated_scope_repair_preserves_state_on_rerouting_or_component_gap(self):
+        from concorde.spec.repository import digest
+        from concorde.harness.change_worktree import record_task_gaps
+        task = {"target_id": "scope.bank", "task": "Implement the transfer contract"}
+        def incomplete(stage, snapshot, data, cwd):
+            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
+                data["tasks"][0]["acceptance"] += " Host validation must finish first."
+            if stage == "implementation":
+                for item in data["tasks"]:
+                    item["complete"] = False
+        self.call_capability("concorde-dev-loop", task, callback=incomplete)
+        before = read_change(self.root)["targets"]["scope.bank"]
+        request = {**task, "repair_task_scope": {"tasks_digest": digest(before["tasks"])}}
+        def reroute(stage, snapshot, data, cwd):
+            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
+                data["tasks"][0].update(id="task.repaired", target_id="module.ledger")
+        failed = self.call_capability("concorde-dev-loop", request, callback=reroute)
+        self.assertNotEqual("succeeded", failed["status"], failed)
+        after = read_change(self.root)["targets"]["scope.bank"]
+        self.assertEqual(before["tasks"], after["tasks"])
+        self.assertEqual(before["coordination"], after["coordination"])
+        self.assertFalse(after.get("task_history"))
+        # Host-owned fixture evidence for a real prerequisite in the old child intent.
+        record_task_gaps(self.root, "service.transfer", before["coordination"]["service.transfer"]["task"],
+            "spec-review", [{**self.gap(), "target_id": "service.transfer", "context_id": "sha256:" + "b" * 64}],
+            "sha256:" + "a" * 64, review_input_digest="sha256:" + "c" * 64)
+        def repair(stage, snapshot, data, cwd):
+            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
+                data["tasks"][0]["id"] = "task.repaired"
+        failed = self.call_capability("concorde-dev-loop", request, callback=repair)
+        self.assertNotEqual("succeeded", failed["status"], failed)
+        after = read_change(self.root)["targets"]["scope.bank"]
+        self.assertEqual(before["tasks"], after["tasks"])
+        self.assertEqual(before["coordination"], after["coordination"])
+        self.assertFalse(after.get("task_history"))
+        self.assertEqual("open", read_change(self.root)["gap_history"][-1]["status"])
+
+    @verifies("scenario.development.dev-loop-spec-gap", "scenario.development.standalone-review")
+    def test_lifecycle_only_standalone_review_cannot_resolve_a_required_gap(self):
+        first = self.call_capability("concorde-dev-loop", callback=self.missing("spec-review"))
+        self.assertEqual("blocked", first["status"], first)
+        original = read_change(self.root)["gap_history"][0]
+        self.assertIn("review_input_digest", original)
+        reviewed = self.review()
+        self.assertEqual("succeeded", reviewed["status"], reviewed)
+        actual = reviewed["output"]["data"]["reviews"][0]["data"]
+        self.assertEqual(original["review_input_digest"], actual["input_digest"])
+        self.assertNotEqual(original["gap"]["context_id"], actual["context_id"])
+        self.assertEqual(original, read_change(self.root)["gap_history"][0])
+        resumed = self.call_capability("concorde-dev-loop")
+        self.assertNotEqual("succeeded", resumed["status"], resumed)
+        self.assertFalse(any(call["stage"] == "spec-review" for call in self.model.calls))
+
+    @verifies("scenario.development.dev-loop-spec-gap")
+    def test_legacy_gap_identity_is_not_inferred_from_a_later_review(self):
+        self.call_capability("concorde-dev-loop", callback=self.missing("spec-review"))
+        state = read_change(self.root)
+        state["gap_history"][0].pop("review_input_digest")
+        save_change(self.root, state)  # legacy fixture, not a production migration
+        original = read_change(self.root)["gap_history"][0]
+        self.review()
+        self.assertEqual(original, read_change(self.root)["gap_history"][0])
+        document = self.root / "specs/transfer/module.md"
+        document.write_text(document.read_text() + "\nTransfer owns the requested admission rule.\n")
+        result = self.call_capability("concorde-dev-loop")
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("resolved", read_change(self.root)["gap_history"][0]["status"])
+
+    @verifies("scenario.development.task-scope-repair", "scenario.development.dev-loop-coordinated")
+    def test_coordinated_scope_repair_rebinds_changed_intent_without_redoing_unchanged_component(self):
+        from concorde.spec.repository import digest
+        task = {"target_id": "scope.bank", "task": "Implement transfer and ledger contracts"}
+        ledger = {"id": "task.ledger", "target_id": "module.ledger", "description": "Implement ledger reads.",
+                  "acceptance": "Return known balances and reject unknown accounts.", "complete": False}
+        def initial(stage, snapshot, data, cwd):
+            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
+                data["tasks"][0]["acceptance"] += " Host validation and commit must finish before task completion."
+                data["tasks"].insert(0, dict(ledger))
+            if stage == "implementation" and snapshot["target_id"] == "service.transfer":
+                for item in data["tasks"]:
+                    item["complete"] = False
+        first = self.call_capability("concorde-dev-loop", task, callback=initial)
+        self.assertNotEqual("succeeded", first["status"], first)
+        before = read_change(self.root)["targets"]["scope.bank"]
+        self.assertEqual("completed", before["coordination"]["module.ledger"]["implementation_status"])
+        child_intent = before["coordination"]["service.transfer"]["task"]
+        source_bytes = {p: (self.root / p).read_bytes() for p in (
+            "specs/bank/module.md", "specs/transfer/module.md", "specs/transfer/promises.md", "specs/ledger/module.md")}
+        def repair(stage, snapshot, data, cwd):
+            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
+                data["tasks"][0]["id"] = "task.transfer.scope-repair"
+                data["tasks"].insert(0, {**ledger, "id": "task.ledger.scope-repair"})
+        result = self.call_capability("concorde-dev-loop", {**task,
+            "repair_task_scope": {"tasks_digest": digest(before["tasks"])}}, callback=repair)
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("ready", result["output"]["data"]["outcome"])
+        state = read_change(self.root)
+        parent = state["targets"]["scope.bank"]
+        self.assertEqual(before["coordination"], parent["task_history"][-1]["coordination"])
+        self.assertNotEqual(child_intent, parent["coordination"]["service.transfer"]["task"])
+        self.assertEqual(parent["coordination"]["service.transfer"]["task"], state["targets"]["service.transfer"]["task"])
+        calls = [(call["snapshot"]["target_id"], call["stage"]) for call in self.model.calls]
+        self.assertIn(("service.transfer", "plan"), calls)
+        self.assertIn(("service.transfer", "implementation"), calls)
+        self.assertNotIn(("module.ledger", "implementation"), calls)
+        self.assertFalse(any(stage == "specify" for _, stage in calls))
+        for path, content in source_bytes.items():
+            self.assertEqual(content, (self.root / path).read_bytes())
+
     @verifies("scenario.development.task-history-identities", "scenario.development.task-scope-repair")
     def test_replan_author_sees_all_retained_ids_and_collision_is_rejected_without_rewriting(self):
         from concorde.spec.repository import digest

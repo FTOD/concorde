@@ -191,6 +191,10 @@ def _unconfirmed_files(repository: SpecRepository, target) -> list[str]:
                   if entry not in entities or entry not in entities[entry].pending)
 
 
+def _component_intent(tasks: list[dict]) -> str:
+    return "\n\n".join(task["description"] + "\nAcceptance: " + task["acceptance"] for task in tasks)
+
+
 def _impact_revisions(repository: SpecRepository, targets) -> list[dict]:
     return [{"target_id": target.id, "spec_digest": _target_revision(repository, target),
              "implementation_digest": _implementation_digest(repository, target)} for target in targets]
@@ -1013,7 +1017,7 @@ class Invocation:
             data["reviews"] = list(reviews)
         return typed(CAPABILITY_CONTRACTS[self.capability][1], data)
 
-    def record_gaps(self, phase, gaps):
+    def record_gaps(self, phase, gaps, *, review_input_digest=None):
         if self.host.mode != "execute":
             return
         change = read_change(self.repository.root)
@@ -1026,21 +1030,15 @@ class Invocation:
             from ..harness.change_worktree import record_task_gaps
             record_task_gaps(self.repository.root, self.target.id, self.task["task"], phase, gaps,
                              _target_revision(self.repository, self.target),
-                             review_context_id=self.last_context if phase in {"spec-review", "code-review"} else None)
+                             review_input_digest=review_input_digest)
 
     def pending_gaps(self, phase, snapshot=None, *, include_prerequisites=True, review_input_digest=None):
         from ..harness.change_worktree import unchanged_task_gaps
         if phase == "specify" or self.host.mode != "execute":
             return []
         gaps = unchanged_task_gaps(self.repository.root, self.target.id, self.task["task"], phase,
-                                  _target_revision(self.repository, self.target))
-        if review_input_digest is not None and phase in {"spec-review", "code-review"}:
-            # Use the review identity, not snapshot.id: snapshots also contain
-            # changing lifecycle status, which is not grounds to retry a gap.
-            change = read_change(self.repository.root)
-            prior = (change or {}).get("reviews", {}).get(self.target.id, {}).get(phase.split("-")[0])
-            if prior is not None and prior["input_digest"] != review_input_digest:
-                gaps = []
+                                  _target_revision(self.repository, self.target),
+                                  review_input_digest=review_input_digest)
         if include_prerequisites:
             order = ("specify", "spec-review", "context-solve", "plan", "tasks", "implementation", "code-review")
             prerequisites = set(order[:order.index(phase)]) if phase in order else set()
@@ -1371,6 +1369,31 @@ class Invocation:
             if task["target_id"] not in {self.target.id, *self.target.uses,
                     *(child.id for child in self.repository.children(self.target))}:
                 raise SpecError("Module tasks may target only this Module, its declared dependencies or direct submodules", "permission_denied")
+        prior_coordination = None
+        if scope_repair and state.get("coordination"):
+            old_targets = {task["target_id"] for task in state["tasks"] if task["target_id"] != self.target.id}
+            grouped = {}
+            for task in tasks:
+                if task["target_id"] != self.target.id:
+                    grouped.setdefault(task["target_id"], []).append(task)
+            if set(grouped) != old_targets:
+                raise SpecError("task scope repair must preserve component routing", "incompatible_handoff")
+            replacements = {key: _component_intent(items) for key, items in grouped.items()
+                if key in state["coordination"] and _component_intent(items) != state["coordination"][key]["task"]}
+            for key in replacements:
+                record = state["coordination"][key]
+                if record.get("gaps") or any(item["status"] == "open" and item["target_id"] == key
+                        and item["task"] == record["task"] for item in change.get("gap_history", [])):
+                    raise SpecError("resolve the component's contract gaps before repairing its task boundary",
+                                    "spec_incomplete")
+            prior_coordination = copy.deepcopy(state["coordination"])
+            for key, intent in replacements.items():
+                # Keep current Spec bytes and unaffected participants. The changed
+                # child intent makes its ordinary loop re-review and replan; no
+                # child task or completion evidence is rewritten here.
+                state["coordination"][key].update(task=intent, implementation_status="pending",
+                    implementation_digest=None, outcome=None)
+            state.pop("component_revisions", None)
         if repair is not None:
             state.setdefault("task_history", []).append({"iteration": repair["iteration"],
                 "tasks": state["tasks"], "implementation_digest": state.get("implementation_digest")})
@@ -1380,6 +1403,8 @@ class Invocation:
                 "tasks_digest": scope_repair["tasks_digest"], "tasks": state["tasks"],
                 "implementation_digest": state.get("implementation_digest"),
                 "spec_digest": state["spec_digest"]})
+            if prior_coordination is not None:
+                state["task_history"][-1]["coordination"] = prior_coordination
             state["spec_digest"] = _target_revision(self.repository, self.target)
         state.update(tasks=tasks, checks=[], implementation_digest=None, phase="tasks", status="active")
         save_target_state(self.repository.root, state)
@@ -1459,9 +1484,7 @@ class Invocation:
                 raise SpecError("coordinated task must name a declared dependency or direct submodule", "permission_denied")
             grouped.setdefault(component.id, []).append(task)
         local_tasks = grouped.pop(self.target.id, [])
-        component_tasks = {target_id: "\n\n".join(
-            task["description"] + "\nAcceptance: " + task["acceptance"] for task in tasks)
-            for target_id, tasks in grouped.items()}
+        component_tasks = {target_id: _component_intent(tasks) for target_id, tasks in grouped.items()}
         coordination = state.setdefault("coordination", {})
         # Local repair tasks do not erase already completed participating work. Its final
         # contract evidence must still be refreshed if the repair changes a shared implementation.

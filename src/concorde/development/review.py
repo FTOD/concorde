@@ -268,7 +268,7 @@ def review(run, mode: str) -> dict:
             reference = _persist(run, reviewed, execution=result)
             if (data["status"] != "incomplete" and (data["gaps"]
                     or not any(f["severity"] == "blocking" for f in data["findings"]))):
-                run.record_gaps(phase, data["gaps"])
+                run.record_gaps(phase, data["gaps"], review_input_digest=info["input_digest"])
             run.host.evidence.append(result)
             run.completed.append("concorde-review")
             outcome = ("failed" if data["status"] == "incomplete" else
