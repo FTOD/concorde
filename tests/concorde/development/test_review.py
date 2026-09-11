@@ -277,6 +277,27 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("task.round.2.replanned", state["tasks"][0]["id"])
         self.assertEqual(history, state["task_history"])
 
+    @verifies("scenario.development.task-scope-repair", "scenario.development.dev-loop-ready")
+    def test_deferred_repository_verification_still_requires_passing_host_checks(self):
+        # The programmer cannot read this repository-level dependency, but the Host must
+        # still execute it after accepting the implementation's fulfilled tasks.
+        (self.root / "host_regression.py").write_text("raise AssertionError('repository regression')\n")
+        (self.root / "checks/transfer_check.py").write_text("import runpy\nrunpy.run_path('host_regression.py')\n")
+        def deferred(stage, snapshot, data, cwd):
+            if stage == "implementation":
+                data["answer"] = "Implementation fulfilled; repository imports require deferred Host verification."
+                self.assertNotIn("host_regression.py", [item["path"] for item in snapshot["implementation_files"]])
+        result = self.call_capability("concorde-dev-loop", callback=deferred)
+        self.assertNotEqual("succeeded", result["status"], result)
+        state = read_change(self.root)
+        target = state["targets"]["service.transfer"]
+        self.assertTrue(all(task["complete"] for task in target["tasks"]))
+        self.assertIsNotNone(target["implementation_digest"])
+        self.assertNotEqual("ready", state["status"])
+        self.assertIsNone(state.get("validated_tree"))
+        self.assertTrue(any(check["status"] == "failed" for check in target["checks"]))
+        self.assertNotIn("code-review", [call["stage"] for call in self.model.calls])
+
     @verifies("scenario.harness.node-runtime")
     def test_project_worker_pins_host_node_but_spec_capsule_does_not(self):
         import os

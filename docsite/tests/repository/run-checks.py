@@ -17,7 +17,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[3]
 DIRECTORIES = ("agents", "capabilities", "prompts", "skills", "src", "protocol", "specs",
                "docs", "scripts", "tests", "docsite")
-FILES = ("concorde.json", "pyproject.toml", "README.md", ".concorde/config.json", ".concorde/specs.json",
+FILES = ("concorde.json", "pyproject.toml", "README.md", "skills-lock.json", ".concorde/config.json", ".concorde/specs.json",
          ".github/workflows/deploy-docsite.yml")
 
 
