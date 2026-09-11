@@ -35,6 +35,41 @@ export function scopedSidebar(registry: ScopedRegistry): SidebarItem[] {
     ...(hasDocsProjections(registry.projectRoot)?[PROJECTIONS_GROUP]:[]),
   ];
 }
+/** Registered source paths supply the reading tree; composition is a linked secondary view. */
+export function publicationSidebar(registry:ScopedRegistry):SidebarItem[] {
+  interface Directory {items:Map<string,Directory|Page>}
+  const tree:Directory={items:new Map()};
+  for(const page of registry.pages){
+    const parts=page.stagedPath.split('/');let directory=tree;
+    for(const part of parts.slice(0,-1)){
+      if(!directory.items.has(part))directory.items.set(part,{items:new Map()});
+      directory=directory.items.get(part) as Directory;
+    }
+    directory.items.set(parts.at(-1)!,page);
+  }
+  const doc=(page:Page):SidebarItem=>({type:'doc',id:page.stagedPath.replace(/\.md$/,''),label:page.title});
+  const render=(directory:Directory):SidebarItem[]=>[...directory.items].map(([name,value])=>{
+    if('sourcePath' in value)return doc(value);
+    const main=value.items.get('module.md');
+    const children:Directory={items:new Map(value.items)};
+    if(main&&'sourcePath' in main)children.items.delete('module.md');
+    const items=render(children);
+    if(main&&'sourcePath' in main&&items.length===0)return doc(main);
+    return {type:'category',label:name,collapsed:false,items,
+      ...(main&&'sourcePath' in main?{link:{type:'doc' as const,id:main.stagedPath.replace(/\.md$/,'')}}:{})};
+  });
+  const routes=new Map(registry.pages.map(page=>[page.stagedPath.replace(/\.md$/,''),page.route]));
+  const linked=(item:SidebarItem):SidebarItem=>item.type==='doc'
+    ? {type:'link',label:item.label,href:routes.get(item.id!)}
+    : item.type==='category'
+      ? {type:'category',label:item.label,collapsed:true,items:[
+          ...(item.link?[{type:'link',label:item.label,href:routes.get(item.link.id)}]:[]),
+          ...(item.items??[]).map(linked)]}
+      : item;
+  return [...render(tree),{type:'category',label:'Module composition',collapsed:true,
+    items:scopedSidebar(registry).filter(item=>item!==PROJECTIONS_GROUP).map(linked)},
+    ...(hasDocsProjections(registry.projectRoot)?[PROJECTIONS_GROUP]:[])];
+}
 export async function materializeScoped(registry:ScopedRegistry) {
   const generated=resolve(registry.projectRoot,'docsite/.generated');
   const identity=resolve(generated,'scoped-materialization.json');
@@ -66,6 +101,6 @@ export async function materializeScoped(registry:ScopedRegistry) {
     await writeFile(resolve(projectionsDirectory,'wire.md'),matter.stringify(renderWirePage(wire),
       {format:'md',slug:'/projections/wire',title:'Wire contracts',sidebar_label:'Wire contracts',displayed_sidebar:'moduleSpecsSidebar'}));
   }
-  await writeFile(resolve(generated,'specs-sidebar.json'),JSON.stringify({moduleSpecsSidebar:scopedSidebar(registry)},null,2)+'\n');
+  await writeFile(resolve(generated,'specs-sidebar.json'),JSON.stringify({moduleSpecsSidebar:publicationSidebar(registry)},null,2)+'\n');
   await writeFile(identity,JSON.stringify({schema_version:1,sourceDigest:registry.sourceDigest})+'\n');
 }

@@ -115,7 +115,7 @@ def _raw_graph(project: Path, viewer: Mapping[str, Any]) -> Path:
                 break
         if unsafe:
             raise ViewerLaunchError(f"UA graph path must not contain a symlink: {relative}")
-        if candidate.is_file():
+        if candidate.exists():
             graph = _json_object(candidate, "raw Understand Anything graph")
             if not (
                 isinstance(graph.get("version"), str)

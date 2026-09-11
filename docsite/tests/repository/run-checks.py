@@ -43,7 +43,7 @@ def main() -> int:
             ([sys.executable, "scripts/concorde.py", "build"], project),
             ([sys.executable, "-m", "unittest", "tests.concorde.views.test_ua_graph",
               "tests.concorde.views.test_viewer_launcher", "tests.concorde.views.test_docsite_scaffold",
-              "tests.concorde.views.test_docsite_template"], project),
+              "tests.concorde.views.test_docsite_template", "tests.concorde.views.test_scaffold_creation"], project),
             (["node", "node_modules/vitest/vitest.mjs", "run", "--maxWorkers", "2",
               "--no-file-parallelism"], project / "docsite"),
         ]

@@ -65,6 +65,12 @@ describe('renderInstructionsPage', () => {
 });
 
 describe('renderWirePage', () => {
+  it('scenario.views.publish-without-graph: sorts type IDs and displays schemas directly', () => {
+    const schemas = {'z.type': {const: 'last'}, 'a.type': {type: 'object', properties: {value: {type: 'string'}}}};
+    const page = renderWirePage(schemas);
+    expect(page.indexOf('## a.type')).toBeLessThan(page.indexOf('## z.type'));
+    for (const schema of Object.values(schemas)) expect(page).toContain(JSON.stringify(schema, null, 2));
+  });
   it('opens with the projection note and renders every exported schema under its own heading', () => {
     const page = renderWirePage({'concorde-main-request': {type: 'object', properties: {}}});
     expect(page.startsWith('# Wire contracts')).toBe(true);
@@ -72,4 +78,25 @@ describe('renderWirePage', () => {
     expect(page).toContain('## concorde-main-request');
     expect(page).toContain('"type": "object"');
   });
+});
+
+it('scenario.views.publish-without-graph: preserves Agent, mode and Skill order and complete mode text', () => {
+  const common = 'Common responsibility.';
+  const modes = ['z-mode', 'a-mode'].map(name => ({name, instructions: common+'\nSelected '+name,
+    contract: {mode: name, authority: {write: false}}}));
+  const agents = ['z-agent', 'a-agent'].map(name => ({name, spec: name+'.md', harness: 'bounded',
+    sources: ['common.md'], instructions: common, modes}));
+  const skills = ['z-skill', 'a-skill'].map(name => ({name, description: name, capability: name, body: 'Body '+name}));
+  const page = renderInstructionsPage({agents, skills});
+  expect(page.indexOf('### z-skill')).toBeLessThan(page.indexOf('### a-skill'));
+  expect(page.indexOf('### z-agent')).toBeLessThan(page.indexOf('### a-agent'));
+  for (const agent of agents) {
+    expect(page.indexOf('#### '+agent.name+' / z-mode')).toBeLessThan(page.indexOf('#### '+agent.name+' / a-mode'));
+    for (const mode of modes) {
+      const section = page.split('#### '+agent.name+' / '+mode.name)[1].split('\n###')[0];
+      expect(section).toContain(JSON.stringify(mode.contract, null, 2));
+      expect(section).toContain(mode.instructions);
+      expect(section.split(common)).toHaveLength(2);
+    }
+  }
 });

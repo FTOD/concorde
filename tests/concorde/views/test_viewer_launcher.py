@@ -90,6 +90,7 @@ class ViewerLauncherTests(unittest.TestCase):
         with self.assertRaisesRegex(viewer.ViewerLaunchError, "symlink"):
             viewer._raw_graph(self.root, self.config)
 
+    @verifies("scenario.views.viewer-missing-runtime")
     def test_unsupported_node_and_invalid_ports_fail_without_viewer_execution(self):
         with patch.object(viewer.shutil, "which", return_value="/test/node"), patch.object(viewer.subprocess, "run") as run:
             run.return_value = subprocess.CompletedProcess([], 0, "v16.0.0\n", "")
@@ -99,6 +100,24 @@ class ViewerLauncherTests(unittest.TestCase):
             with self.subTest(port=port), self.assertRaises(SystemExit) as failed:
                 self.launch("--port", port)
             self.assertEqual(2, failed.exception.code)
+
+    @verifies("scenario.views.viewer-invalid-first-graph")
+    def test_first_graph_directory_rejects_without_fallback(self):
+        first = self.root / self.config["graph_paths"][0]
+        first.mkdir(parents=True)
+        with patch.object(viewer.subprocess, "run") as run:
+            self.assertEqual(3, self.launch())
+            run.assert_not_called()
+
+    @verifies("scenario.views.viewer-interrupted", "scenario.views.viewer-launch")
+    def test_interruption_returns_130_without_changing_graph(self):
+        graph = self.root / ".ua/knowledge-graph.json"
+        original = graph.read_bytes()
+        with patch.object(viewer.shutil, "which", return_value="/test/node"), patch.object(viewer.subprocess, "run") as run:
+            run.side_effect = [subprocess.CompletedProcess([], 0, "v22.1.0\n", ""), KeyboardInterrupt()]
+            self.assertEqual(130, self.launch())
+            self.assertEqual(2, run.call_count)
+        self.assertEqual(original, graph.read_bytes())
 
 
 if __name__ == "__main__":

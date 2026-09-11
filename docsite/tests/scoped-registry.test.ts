@@ -3,7 +3,7 @@ import {tmpdir} from 'node:os';
 import {resolve,dirname} from 'node:path';
 import {beforeEach,afterEach,it,expect} from 'vitest';
 import {legacyAliasRoute,loadScopedRegistry,rewriteLinks,primaryDocument,type Target} from '../plugins/scoped-content/model';
-import {materializeScoped,scopedSidebar} from '../plugins/scoped-content/materialize';
+import {materializeScoped,scopedSidebar,publicationSidebar} from '../plugins/scoped-content/materialize';
 import scopedContent,{validateScopedBuild} from '../plugins/scoped-content';
 import {promoteCandidate} from '../scripts/build';
 import type {LoadContext} from '@docusaurus/types';
@@ -47,6 +47,69 @@ beforeEach(()=>{
  save();
 });
 afterEach(()=>rmSync(root,{recursive:true,force:true}));
+it('scenario.views.publish-candidate: directory reading and secondary composition reference each registered page once',()=>{
+ targets[3].documents.push('specs/transfer/promises.md');save();
+ updateDocument('specs/transfer/promises.md',{targets:['service.transfer','module.ledger']});
+ const registry=loadScopedRegistry(root),sidebar=publicationSidebar(registry);
+ const flatten=(items:SidebarItem[]):SidebarItem[]=>items.flatMap(item=>[item,...flatten(item.items??[])]);
+ const all=flatten(sidebar);
+ const docs=all.flatMap(item=>item.type==='doc'?[item.id]:item.link?[item.link.id]:[]);
+ expect(docs).toHaveLength(registry.pages.length);
+ expect(new Set(docs).size).toBe(registry.pages.length);
+ const transfer=sidebar.find(item=>item.label==='transfer')!;
+ expect(transfer.link).toEqual({type:'doc',id:'transfer/module'});
+ expect(transfer.items).toEqual([{type:'doc',id:'transfer/promises',label:'promises'}]);
+ const composition=sidebar.find(item=>item.label==='Module composition')!;
+ expect(flatten(composition.items!).filter(item=>item.href==='/specs/transfer/promises')).toHaveLength(2);
+ expect(flatten(composition.items!).some(item=>item.type==='doc'||item.link)).toBe(false);
+});
+it('scenario.views.publish-without-graph: projection pairs track availability and content without changing registered identity',async()=>{
+ const registry=loadScopedRegistry(root);
+ const instructions='generated/docs/instructions.json',wire='generated/docs/wire.json';
+ const staged='docsite/.generated/content/specs/projections/';
+ const enable=()=>{
+  put(instructions,JSON.stringify({agents:[],skills:[]}));
+  put(wire,JSON.stringify({'z.type':{type:'string'},'a.type':{type:'object'}}));
+ };
+ for(const missing of [instructions,wire]){
+  enable();await materializeScoped(registry);
+  expect(existsSync(resolve(root,staged+'instructions.md'))).toBe(true);
+  expect(existsSync(resolve(root,staged+'wire.md'))).toBe(true);
+  expect(scopedSidebar(registry).at(-1)?.label).toBe('Projections');
+  rmSync(resolve(root,missing));await materializeScoped(registry);
+  expect(existsSync(resolve(root,staged+'instructions.md'))).toBe(false);
+  expect(existsSync(resolve(root,staged+'wire.md'))).toBe(false);
+  expect(scopedSidebar(registry).some(item=>item.label==='Projections')).toBe(false);
+ }
+ enable();await materializeScoped(registry);
+ put(wire,JSON.stringify({'current.type':{const:'current bytes'}}));
+ await materializeScoped(registry);
+ const text=readFileSync(resolve(root,staged+'wire.md'),'utf8');
+ expect(text).toContain('current bytes');expect(text).not.toContain('z.type');
+ const current=loadScopedRegistry(root);
+ expect(current.sourceDigest).toBe(registry.sourceDigest);
+ expect(current.pages).toEqual(registry.pages);
+});
+it('scenario.views.publish-without-graph: invalid projection JSON and unsafe reads invalidate preparation and retry replaces partial output',async()=>{
+ const registry=loadScopedRegistry(root);
+ const paths=['generated/docs/instructions.json','generated/docs/wire.json'];
+ const reset=()=>{
+  for(const path of paths)rmSync(resolve(root,path),{force:true,recursive:true});
+  put(paths[0],JSON.stringify({agents:[],skills:[]}));put(paths[1],'{}');
+ };
+ for(const path of paths)for(const failure of ['json','symlink','directory']){
+  reset();await materializeScoped(registry);
+  rmSync(resolve(root,path));
+  if(failure==='json')put(path,'{malformed');
+  if(failure==='symlink')symlinkSync(resolve(root,paths.find(other=>other!==path)!),resolve(root,path));
+  if(failure==='directory')mkdirSync(resolve(root,path));
+  await expect(materializeScoped(registry)).rejects.toThrow();
+  expect(existsSync(resolve(root,'docsite/.generated/scoped-materialization.json'))).toBe(false);
+  reset();await materializeScoped(registry);
+  expect(readFileSync(resolve(root,'docsite/.generated/scoped-materialization.json'),'utf8'))
+   .toBe(JSON.stringify({schema_version:1,sourceDigest:registry.sourceDigest})+'\n');
+ }
+});
 it('scenario.views.publish-repeat-without-graph: checked directory replacement removes obsolete output on consecutive promotions',async()=>{
  const obsolete=['graph.html','graph/index.html','architecture-graph.json','assets/obsolete-graph.js'];
  for(const path of obsolete)put('published/'+path,'previous graph output');
