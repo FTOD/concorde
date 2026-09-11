@@ -21,6 +21,13 @@ readiness, commit and delivery remain later responsibilities. Tasks support thos
 implementation and tests; they never require the later steps to have finished first. Full software
 acceptance stays in the plan and tasks, and all configured validation and required reviews still run.
 
+Every fresh task author receives `concorde-task-identity-constraints@1` with a sorted, unique
+`reserved_task_ids` list: all IDs from that target's retained task history, plus the current list
+when scope or code-review repair replaces it. This input is required even when empty and survives
+replanning through the retained history. It reserves identities without adding historical software
+obligations. The Host rejects a collision with the specific IDs before accepting the new list;
+it never rewrites author output or clears history to admit it.
+
 A listed test does not grant its transitive imports, fixtures or repository configuration to the
 programmer. Tests requiring inputs outside that invocation's grant are repository-level Host
 verification. The programmer records the attempted command and concrete missing inputs, continues
@@ -34,7 +41,7 @@ incomplete task list. The digest is SHA-256 of canonical JSON bytes (sorted keys
 separators, ASCII escaping), prefixed `sha256:`. It must match the current list and admitted intent;
 unresolved gaps, a completed list or a pending code-review repair reject the request.
 The normal Graph enters tasks after the required Spec review. A fresh task author receives only
-its complete Module Spec, plan, prior tasks and Host-generated `implementation_boundary` feedback.
+its complete Module Spec, plan, prior tasks, reserved IDs and Host-generated `implementation_boundary` feedback.
 It preserves software acceptance and returns new incomplete tasks with new IDs. The Host saves the
 original list, request digest and implementation revision in task history, invalidates checks and
 implementation evidence and continues implementation, validation and independent code review.

@@ -1332,7 +1332,11 @@ class Invocation:
                     or all(task["complete"] for task in state["tasks"]) or repair is not None):
                 raise SpecError("task scope repair requires the exact current incomplete task list and no pending review repair",
                                 "incompatible_handoff")
-        inputs = (typed("concorde-plan-artifact", {"plan": state["plan"]}),)
+        reserved_ids = {t["id"] for entry in state.get("task_history", []) for t in entry["tasks"]}
+        if scope_repair or repair is not None:
+            reserved_ids.update(t["id"] for t in state["tasks"])
+        inputs = (typed("concorde-plan-artifact", {"plan": state["plan"]}),
+                  typed("concorde-task-identity-constraints", {"reserved_task_ids": sorted(reserved_ids)}))
         if scope_repair:
             inputs = (*inputs,
                 typed("concorde-implementation-task", {"plan": state["plan"], "tasks": state["tasks"]}),
@@ -1355,12 +1359,12 @@ class Invocation:
         if self.host.mode == "describe-policy":
             return self.response("described")
         tasks = result["tasks"]
-        historical_ids = {t["id"] for entry in state.get("task_history", []) for t in entry["tasks"]}
-        if scope_repair:
-            historical_ids.update(t["id"] for t in state["tasks"])
-        if (not tasks or len({t["id"] for t in tasks}) != len(tasks) or any(t["complete"] for t in tasks)
-                or {t["id"] for t in tasks} & historical_ids):
-            raise SpecError("tasks must be nonempty, uniquely identified (including across repair history) "
+        collisions = sorted({t["id"] for t in tasks} & reserved_ids)
+        if collisions:
+            raise SpecError("task IDs are reserved by retained task history or the list being replaced: "
+                            + ", ".join(collisions), "invalid_completion")
+        if not tasks or len({t["id"] for t in tasks}) != len(tasks) or any(t["complete"] for t in tasks):
+            raise SpecError("tasks must be nonempty, uniquely identified "
                             "and initially incomplete", "invalid_completion")
         for task in tasks:
             self.repository.select(task["target_id"])

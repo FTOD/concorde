@@ -242,6 +242,15 @@ Developing one change:
 - THEN the loop stops with status `waiting` and preserves the candidate worktree
 - AND unrelated independent work may continue, and resuming after an explicit Spec repair does not repeat already-accepted authoring for the same task, focus and constraints
 
+### scenario.development.task-history-identities — Task authors receive reserved identities
+
+- GIVEN a target may retain task lists from earlier repair rounds
+- WHEN the Host invokes a fresh task author, including after replanning
+- THEN its typed stage inputs include every retained historical task ID and, for a scope or code-review repair, every ID in the list being replaced
+- AND those reserved IDs constrain identity only and add no software obligations or implementation contents
+- AND returned tasks must be nonempty, internally unique, initially incomplete and disjoint from the reserved IDs
+- AND a collision reports the conflicting IDs without rewriting the result, replacing tasks or discarding history
+
 ### scenario.development.task-scope-repair — Recover an implementation phase boundary error
 
 - GIVEN an existing incomplete task list whose acceptance requires later Host actions

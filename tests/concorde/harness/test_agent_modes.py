@@ -38,7 +38,8 @@ class AgentModeTests(unittest.TestCase):
         prompt = load_agent(PACKAGE, agent_name, mode_name)
         artifacts = []
         if mode_name == "tasks":
-            artifacts = [typed("concorde-plan-artifact", {"plan": "Accepted plan"})]
+            artifacts = [typed("concorde-plan-artifact", {"plan": "Accepted plan"}),
+                         typed("concorde-task-identity-constraints", {"reserved_task_ids": []})]
         elif mode_name == "implementation":
             artifacts = [typed("concorde-implementation-task", {"plan": "Accepted plan", "tasks": []})]
         elif mode_name == "investigation":
@@ -134,6 +135,31 @@ class AgentModeTests(unittest.TestCase):
             validate_mode_output(agent, "specify", typed("concorde-topology-author-result", {
                 "target_id": self.target, "context_id": "sha256:" + "1" * 64,
                 "outcome": "completed", "answer": "wrong paired result", "gaps": [], "documents": []}))
+
+    @verifies("scenario.harness.mode-boundary")
+    def test_task_identity_constraints_are_required_frozen_and_tasks_only(self):
+        agent = agent_definition("spec_engineer")
+        value = self.input("spec_engineer", "tasks")
+        validate_mode_input(agent, "tasks", value, phase="tasks")
+        snapshot = value["data"]["snapshot"]["data"]
+        snapshot["stage_inputs"].pop()
+        with self.assertRaisesRegex(ValueError, "stage inputs"):
+            validate_mode_input(agent, "tasks", value, phase="tasks")
+
+        contexts = []
+        for reserved in ([], ["task.retained"]):
+            contexts.append(resolve_context(self.repository, self.target, phase="tasks",
+                task="Implement the transfer contract", mode=mode_definition(agent, "tasks"),
+                stage_inputs=(typed("concorde-plan-artifact", {"plan": "Accepted plan"}),
+                    typed("concorde-task-identity-constraints", {"reserved_task_ids": reserved}))))
+        self.assertNotEqual(contexts[0].id, contexts[1].id)
+        for owner, name in (("spec_engineer", "plan"), ("programmer", "implementation"),
+                            ("spec_engineer", "spec-review"), ("programmer", "code-review")):
+            value = self.input(owner, name)
+            value["data"]["snapshot"]["data"]["stage_inputs"].append(
+                typed("concorde-task-identity-constraints", {"reserved_task_ids": ["task.retained"]}))
+            with self.subTest(mode=name), self.assertRaisesRegex(ValueError, "stage inputs"):
+                validate_mode_input(agent_definition(owner), name, value, phase=name)
 
     @verifies("scenario.harness.mode-boundary")
     def test_artifact_channels_do_not_cross_modes_or_enter_reviews(self):

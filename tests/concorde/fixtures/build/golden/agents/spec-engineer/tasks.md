@@ -40,6 +40,13 @@ scenario states, its acceptance names that scenario so the programmer implementa
 it. A task may name the entity it concerns, and therefore the files and directories that entity
 lists, but internal code design is not an input to task authoring.
 
+The Host supplies `concorde-task-identity-constraints.reserved_task_ids` on every task-author
+invocation, including after replanning. Each returned task ID must be absent from this complete
+reserved set as well as unique within the new list. The set includes every retained historical
+task ID and the current list when replacing it for scope or code-review repair. These IDs reserve
+identities only; they do not add software obligations or authorize replaying historical work.
+Choose new IDs yourself; the Host rejects collisions and never rewrites your result.
+
 Tasks belong to implementation. Their acceptance covers the required software behavior and
 observable implementation evidence within the programmer's granted files and runtime. Host
 production/scaffold/export checks, independent Spec/code reviews, readiness, commits and delivery
@@ -78,7 +85,7 @@ component the local `concorde-dependencies` declarations actually identify.
 Consume the exact supplied `concorde-agent-stage-context@1` snapshot: the target's
 `concorde-context-snapshot@1`, with `document_order`, Target Spec and Shared Specs, the declared
 `implementation_entries` and the `implementation_files` they bind, the task and phase, and `stage_inputs` carrying the accepted
-`concorde-plan-artifact`, plus (for a repair round) a `concorde-implementation-task` and a
+`concorde-plan-artifact` and `concorde-task-identity-constraints`, plus (for a repair round) a `concorde-implementation-task` and a
 `concorde-review-result`. This role runs only inside a host-bound capability invocation. A revised
 task list after a rejected proposal arrives as a fresh invocation with a fresh snapshot.
 
@@ -90,7 +97,7 @@ Return the typed `concorde-agent-stage-result@1` stage result with the nonempty 
 ## Completion conditions
 
 The task is complete once every implementation obligation in the accepted plan has a corresponding task with a
-unique id, valid target_id, description, and observable implementation acceptance, all with
+unique id outside the supplied reserved set, valid target_id, description, and observable implementation acceptance, all with
 complete:false. Later Host validation, review and authorized outer-session delivery obligations
 remain in the plan and lifecycle rather than becoming programmer completion prerequisites.
 

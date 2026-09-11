@@ -18,6 +18,73 @@ from tests.concorde.spec.support import CONFIGURATION, PACKAGE, ModelProcessDoub
 
 
 class ReviewTests(unittest.TestCase):
+    @verifies("scenario.development.task-history-identities", "scenario.development.task-scope-repair")
+    def test_replan_author_sees_all_retained_ids_and_collision_is_rejected_without_rewriting(self):
+        from concorde.spec.repository import digest
+        observed = []
+        def author(stage, snapshot, data, cwd):
+            if stage == "tasks":
+                identity = next(v for v in snapshot["stage_inputs"]
+                    if v["type_id"] == "concorde-task-identity-constraints")
+                reserved = identity["data"]["reserved_task_ids"]
+                self.assertEqual([f"task.round.{i}" for i in range(len(observed))], reserved)
+                self.assertEqual([], snapshot["implementation_artifacts"])
+                self.assertTrue(all("content" not in item for item in snapshot["implementation_files"]))
+                observed.append(snapshot)
+                data["tasks"][0]["id"] = f"task.round.{len(reserved)}"
+            if stage == "implementation":
+                for task in data["tasks"]:
+                    task["complete"] = False
+        self.call_capability("concorde-dev-loop", callback=author)
+        for _ in range(2):
+            tasks = read_change(self.root)["targets"]["service.transfer"]["tasks"]
+            self.call_capability("concorde-dev-loop", {**self.task,
+                "repair_task_scope": {"tasks_digest": digest(tasks)}}, callback=author)
+        history = read_change(self.root)["targets"]["service.transfer"]["task_history"]
+        self.assertEqual(2, len(history))
+        self.assertEqual(3, len(observed))
+        self.assertEqual(3, len({s["context_id"] for s in observed}))
+
+        # A real Spec revision selects the normal replan edge. Current tasks are cleared,
+        # but the two retained lists must still reach the fresh, Spec-only task author.
+        document = self.root / "specs/transfer/module.md"
+        document.write_text(document.read_text() + "\n")
+        replanned = []
+        def collide(stage, snapshot, data, cwd):
+            if stage == "tasks":
+                replanned.append(snapshot)
+                values = {v["type_id"]: v["data"] for v in snapshot["stage_inputs"]}
+                self.assertEqual(["task.round.0", "task.round.1"],
+                    values["concorde-task-identity-constraints"]["reserved_task_ids"])
+                self.assertNotIn("concorde-implementation-task", values)
+                self.assertIn("reserved_task_ids", snapshot["instructions"])
+                self.assertEqual([], snapshot["implementation_artifacts"])
+                data["tasks"][0]["id"] = "task.round.0"
+        rejected = self.call_capability("concorde-dev-loop", callback=collide)
+        self.assertEqual("child_blocked", rejected["errors"][0]["code"], rejected)
+        errors = json.loads(rejected["errors"][0]["message"].split("concorde-tasks blocked: ", 1)[1])
+        self.assertEqual("invalid_completion", errors[0]["code"])
+        self.assertIn("task.round.0", errors[0]["message"])
+        self.assertEqual(1, len(replanned))
+        self.assertIn("plan", [c["stage"] for c in self.model.calls])
+        state = read_change(self.root)["targets"]["service.transfer"]
+        self.assertEqual([], state["tasks"])
+        self.assertEqual(history, state["task_history"])
+        self.assertIsNone(state["implementation_digest"])
+        self.assertNotIn("implementation", [c["stage"] for c in self.model.calls])
+
+        def accept(stage, snapshot, data, cwd):
+            if stage == "tasks":
+                reserved = next(v["data"]["reserved_task_ids"] for v in snapshot["stage_inputs"]
+                    if v["type_id"] == "concorde-task-identity-constraints")
+                data["tasks"][0]["id"] = f"task.round.{len(reserved)}.replanned"
+        accepted = self.call_capability("concorde-dev-loop", callback=accept)
+        self.assertEqual("succeeded", accepted["status"], accepted)
+        self.assertEqual("ready", accepted["output"]["data"]["outcome"])
+        state = read_change(self.root)["targets"]["service.transfer"]
+        self.assertEqual("task.round.2.replanned", state["tasks"][0]["id"])
+        self.assertEqual(history, state["task_history"])
+
     @verifies("scenario.development.task-scope-repair", "scenario.development.dev-loop-ready")
     def test_deferred_repository_verification_still_requires_passing_host_checks(self):
         # The programmer cannot read this repository-level dependency, but the Host must
@@ -871,6 +938,28 @@ class RepairLoopTests(unittest.TestCase):
                 "description": "Repair the reported daily-limit defect.",
                 "acceptance": "Valid transfer subtracts; invalid amount or insufficient funds raises ValueError.",
                 "complete": False}]
+
+    @verifies("scenario.development.task-history-identities", "scenario.development.dev-loop-repair")
+    def test_code_review_repair_reserves_current_ids_before_archiving_them(self):
+        def callback(stage, snapshot, data, cwd):
+            if stage == "code-review":
+                data.update(status="findings", findings=[self.finding()], gaps=[])
+            if stage == "tasks":
+                values = {v["type_id"]: v["data"] for v in snapshot["stage_inputs"]}
+                reserved = values["concorde-task-identity-constraints"]["reserved_task_ids"]
+                self.assertEqual(["task.transfer"] if "concorde-review-result" in values else [], reserved)
+                # The unchanged process-double result deliberately reuses task.transfer.
+        rejected = self.call_capability("concorde-dev-loop", callback=callback)
+        self.assertEqual("child_blocked", rejected["errors"][0]["code"], rejected)
+        errors = json.loads(rejected["errors"][0]["message"].split("concorde-tasks blocked: ", 1)[1])
+        self.assertEqual("invalid_completion", errors[0]["code"])
+        self.assertIn("task.transfer", errors[0]["message"])
+        change = read_change(self.root)
+        state = change["targets"]["service.transfer"]
+        self.assertEqual([], state.get("task_history", []))
+        self.assertTrue(all(t["complete"] for t in state["tasks"]))
+        self.assertIsNotNone(change["graph"]["service.transfer"]["repair"])
+        self.assertEqual(1, [c["stage"] for c in self.model.calls].count("implementation"))
 
     @verifies("scenario.development.dev-loop-repair")
     def test_blocking_then_clean_repairs_once_and_reaches_ready(self):
