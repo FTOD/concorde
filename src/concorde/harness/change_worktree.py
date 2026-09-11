@@ -466,7 +466,8 @@ def record_transition(root: Path, target_id: str, **fields) -> None:
     save_change(root, change)
 
 
-def record_task_gaps(root: Path, target_id: str, task: str, phase: str, gaps, spec_digest: str) -> None:
+def record_task_gaps(root: Path, target_id: str, task: str, phase: str, gaps, spec_digest: str,
+                     *, review_context_id: str | None = None) -> None:
     """Persist task-local blocking contracts; unrelated progress cannot erase them."""
     from ..spec.repository import digest
     state = read_change(root)
@@ -488,7 +489,9 @@ def record_task_gaps(root: Path, target_id: str, task: str, phase: str, gaps, sp
             item["contexts"].append(gap["context_id"])
     for item in history:
         if (item["target_id"] == target_id and item["task"] == task and item["phase"] == phase
-                and not gaps and (phase == "specify" or item.get("spec_digest") != spec_digest)):
+                and not gaps and (phase == "specify" or item.get("spec_digest") != spec_digest
+                    or (phase in {"spec-review", "code-review"} and review_context_id is not None
+                        and item["gap"]["context_id"] != review_context_id))):
             item["status"] = "resolved"
     state["gaps"] = [item["gap"] for item in history if item["status"] == "open"]
     target = state["targets"].get(target_id)

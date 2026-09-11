@@ -187,7 +187,7 @@ def review(run, mode: str) -> dict:
         focus_id=run.task.get("focus_id"), constraints=tuple(run.task.get("constraints", [])),
         instructions=prompt.body, mode=mode_definition(agent_definition(prompt.binding.agent), phase))
     run.last_context = snapshot.id
-    pending = run.pending_gaps(phase, snapshot)
+    pending = run.pending_gaps(phase, snapshot, review_input_digest=info["input_digest"])
     if pending and run.host.track_gaps:
         value = _empty(run, info, "not_run", "Repair the recorded necessary contracts before resuming review.")
         reference = _persist(run, value)
@@ -266,7 +266,8 @@ def review(run, mode: str) -> dict:
                 "focus_id": run.task.get("focus_id"), "revision": info["revision"],
                 "semantic_completeness": "not_proven"})
             reference = _persist(run, reviewed, execution=result)
-            if data["status"] != "incomplete":
+            if (data["status"] != "incomplete" and (data["gaps"]
+                    or not any(f["severity"] == "blocking" for f in data["findings"]))):
                 run.record_gaps(phase, data["gaps"])
             run.host.evidence.append(result)
             run.completed.append("concorde-review")

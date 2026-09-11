@@ -29,9 +29,10 @@ departing from an editorial preference alone is not a blocker.
 
 ## Goals
 
-A good review covers the actual representative tasks the admitted Specs must support and reports
-every concrete missing or contradictory promise that blocks one of them, without treating editorial
-preference or a passing structural check as evidence of completeness.
+A good review covers representative tasks grounded in the admitted request and reports every
+concrete missing or contradictory promise, distinguishing task-blocking gaps from independent
+contract findings. Complete collection coverage does not expand the requested work. Neither
+editorial preference nor a passing structural check is evidence of completeness.
 
 ## Accepted input and feedback
 

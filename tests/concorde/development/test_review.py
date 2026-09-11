@@ -440,6 +440,74 @@ class ReviewTests(unittest.TestCase):
         self.assertIsNone(current(self.invocation(), "spec"))
 
     @verifies("scenario.development.dev-loop-spec-gap")
+    def test_changed_review_instructions_reassess_without_erasing_gaps_on_failure(self):
+        import hashlib
+        from contextlib import contextmanager
+        from concorde.harness import agent_model
+        from concorde.harness.agent_model import binding_digest
+        from concorde.development.review import load_role_prompt
+        first = self.call_capability("concorde-dev-loop", callback=self.missing("spec-review"))
+        self.assertEqual("blocked", first["status"], first)
+        original = read_change(self.root)["gap_history"][0]
+        self.call_capability("concorde-dev-loop")
+        self.assertFalse(any(c["stage"] == "spec-review" for c in self.model.calls))
+
+        def revised(suffix, *args, **kwargs):
+            prompt = load_role_prompt(*args, **kwargs)
+            if prompt.binding.mode != "spec-review":
+                return prompt
+            body = prompt.body + suffix
+            binding = replace(prompt.binding,
+                instructions_digest="sha256:" + hashlib.sha256(body.encode()).hexdigest())
+            return replace(prompt, body=body, binding=replace(binding, digest=binding_digest(binding)))
+
+        def changed(*args, **kwargs):
+            return revised("\nClarified task relevance.\n", *args, **kwargs)
+
+        @contextmanager
+        def instructions(loader):
+            # Admit the test's new instruction binding through the same preflight
+            # as a rebuilt package; all effects and mode contracts stay intact.
+            resolve = agent_model.resolve_agent
+            from concorde.distribution.build import render_agent
+            prompt = loader(PACKAGE, "spec-engineer", "spec-review")
+            def binding(package, name, mode=None):
+                return prompt.binding if mode == "spec-review" else resolve(package, name, mode)
+            def rendered(package, name, mode=None):
+                output = render_agent(package, name, mode)
+                return replace(output, content=prompt.body.encode()) if mode == "spec-review" else output
+            with patch("concorde.development.review.load_role_prompt", side_effect=loader), \
+                    patch("concorde.harness.agent_model.resolve_agent", side_effect=binding), \
+                    patch("concorde.distribution.build.render_agent", side_effect=rendered):
+                yield
+
+        def incomplete(stage, snapshot, data, cwd):
+            if stage == "spec-review":
+                data.update(status="incomplete", answer="Coverage could not be completed.")
+        with instructions(changed):
+            result = self.call_capability("concorde-dev-loop", callback=incomplete)
+            self.assertEqual("failed", result["status"], result)
+            self.assertTrue(any(c["stage"] == "spec-review" for c in self.model.calls))
+            self.assertEqual(original, read_change(self.root)["gap_history"][0])
+
+        # Another actual instruction revision permits a completed reassessment.
+        # The Host preserves the reviewer's independent finding and old history.
+        def changed_again(*args, **kwargs):
+            return revised("\nReassess coverage.\n", *args, **kwargs)
+        def advisory(stage, snapshot, data, cwd):
+            if stage == "spec-review":
+                self.missing(stage)(stage, snapshot, data, cwd)
+                data["findings"][0]["severity"] = "advisory"
+                data["gaps"] = []
+        with instructions(changed_again):
+            result = self.call_capability("concorde-dev-loop", callback=advisory)
+        self.assertEqual("succeeded", result["status"], result)
+        state = read_change(self.root)
+        self.assertEqual("resolved", state["gap_history"][0]["status"])
+        self.assertEqual(original["gap"], state["gap_history"][0]["gap"])
+        self.assertEqual([], state["gaps"])
+
+    @verifies("scenario.development.dev-loop-spec-gap")
     def test_gap_persists_deduplicates_and_requires_spec_repair_before_resume(self):
         result = self.call_capability("concorde-dev-loop", callback=self.missing("spec-review"))
         self.assertEqual("blocked", result["status"], result)
@@ -493,6 +561,30 @@ class ReviewTests(unittest.TestCase):
         retried = self.call_capability("concorde-dev-loop", {**self.task, "specify": False, "run_reviews": False})
         self.assertEqual("blocked", retried["status"], retried)
         self.assertTrue(read_change(self.root)["review_requirements"][self.task["target_id"]]["spec"])
+
+    @verifies("scenario.development.standalone-review")
+    def test_independent_contract_findings_remain_visible_without_claiming_completeness(self):
+        # Process doubles verify result retention and gates, not semantic relevance.
+        for mode in ("spec", "code"):
+            with self.subTest(mode=mode):
+                def independent(stage, snapshot, data, cwd):
+                    if stage == mode + "-review":
+                        data.update(status="findings", gaps=[], findings=[{
+                            "id": "independent-contract", "severity": "advisory",
+                            "target_id": snapshot["target_id"],
+                            "document": "specs/transfer/module.md", "contract": "Independent export",
+                            "location": {"path": "specs/transfer/module.md", "line": 1},
+                            "problem": "Export collision behavior is unspecified. The admitted pure transfer task "
+                                       "does not use or change export; this finding does not establish export completeness.",
+                            "affected_task": "Export colliding identifiers"}])
+                result = self.review(mode, callback=independent)
+                self.assertEqual("succeeded", result["status"], result)
+                report = result["output"]["data"]["reviews"][0]["data"]
+                self.assertEqual("findings", report["status"])
+                self.assertEqual("not_proven", report["semantic_completeness"])
+                self.assertEqual("independent-contract", report["findings"][0]["id"])
+                reference = result["output"]["data"]["artifacts"][0]
+                self.assertEqual(report, json.loads((self.root / reference["path"]).read_text())["data"])
 
     def test_advisory_findings_do_not_block_but_required_incomplete_review_does(self):
         def advisory(stage, snapshot, data, cwd):

@@ -1025,14 +1025,22 @@ class Invocation:
                 "concorde-main", "concorde-context-solve", "concorde-review"}:
             from ..harness.change_worktree import record_task_gaps
             record_task_gaps(self.repository.root, self.target.id, self.task["task"], phase, gaps,
-                             _target_revision(self.repository, self.target))
+                             _target_revision(self.repository, self.target),
+                             review_context_id=self.last_context if phase in {"spec-review", "code-review"} else None)
 
-    def pending_gaps(self, phase, snapshot=None, *, include_prerequisites=True):
+    def pending_gaps(self, phase, snapshot=None, *, include_prerequisites=True, review_input_digest=None):
         from ..harness.change_worktree import unchanged_task_gaps
         if phase == "specify" or self.host.mode != "execute":
             return []
         gaps = unchanged_task_gaps(self.repository.root, self.target.id, self.task["task"], phase,
                                   _target_revision(self.repository, self.target))
+        if review_input_digest is not None and phase in {"spec-review", "code-review"}:
+            # Use the review identity, not snapshot.id: snapshots also contain
+            # changing lifecycle status, which is not grounds to retry a gap.
+            change = read_change(self.repository.root)
+            prior = (change or {}).get("reviews", {}).get(self.target.id, {}).get(phase.split("-")[0])
+            if prior is not None and prior["input_digest"] != review_input_digest:
+                gaps = []
         if include_prerequisites:
             order = ("specify", "spec-review", "context-solve", "plan", "tasks", "implementation", "code-review")
             prerequisites = set(order[:order.index(phase)]) if phase in order else set()
