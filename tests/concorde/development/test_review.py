@@ -18,6 +18,88 @@ from tests.concorde.spec.support import CONFIGURATION, PACKAGE, ModelProcessDoub
 
 
 class ReviewTests(unittest.TestCase):
+    @verifies("scenario.development.task-scope-repair", "scenario.development.dev-loop-coordinated",
+              "scenario.development.dev-loop-spec-gap", "scenario.development.standalone-review")
+    def test_scope_repair_accepts_cached_component_gap_only_after_attributed_resolution(self):
+        from copy import deepcopy
+        from concorde.spec.repository import digest
+
+        task = {"target_id": "scope.bank", "task": "Implement the transfer contract"}
+        def initial(stage, snapshot, data, cwd):
+            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
+                data["tasks"][0]["acceptance"] += " Host validation must finish first."
+            if snapshot["target_id"] == "service.transfer":
+                self.missing("spec-review")(stage, snapshot, data, cwd)
+        first = self.call_capability("concorde-dev-loop", task, callback=initial)
+        self.assertEqual("blocked", first["status"], first)
+        before = read_change(self.root)["targets"]["scope.bank"]
+        cached = before["coordination"]["service.transfer"]
+        self.assertTrue(cached["gaps"])
+        request = {**task, "repair_task_scope": {"tasks_digest": digest(before["tasks"])}}
+        def repair(stage, snapshot, data, cwd):
+            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
+                data["tasks"][0]["id"] = "task.transfer.scope-repair"
+        def rejected():
+            history = read_change(self.root)["gap_history"]
+            result = self.call_capability("concorde-dev-loop", request, callback=repair)
+            self.assertNotEqual("succeeded", result["status"], result)
+            self.assertIn("contract gaps before repairing its task boundary", str(result))
+            state = read_change(self.root)
+            parent = state["targets"]["scope.bank"]
+            self.assertEqual(before["tasks"], parent["tasks"])
+            self.assertEqual(before["coordination"], parent["coordination"])
+            self.assertEqual(before.get("task_history", []), parent.get("task_history", []))
+            self.assertEqual(history, state["gap_history"])
+        rejected()  # The actual failed component left an open prerequisite.
+
+        document = self.root / "specs/transfer/module.md"
+        document.write_text(document.read_text() + "\nTransfer owns the daily-limit admission rule.\n")
+        reviewed = self.call_capability("concorde-review", {
+            "target_id": "service.transfer", "task": cached["task"], "review_mode": "spec"})
+        self.assertEqual("succeeded", reviewed["status"], reviewed)
+        resolved = read_change(self.root)["gap_history"]
+        self.assertTrue(resolved)
+        self.assertTrue(all(item["status"] == "resolved" for item in resolved))
+        self.assertEqual(cached["gaps"],
+                         read_change(self.root)["targets"]["scope.bank"]["coordination"]["service.transfer"]["gaps"])
+
+        # Corrupt only isolated fixture history to prove unknown or unrelated evidence
+        # cannot erase the real cached blocker. Restore the accepted Host history below.
+        for mismatch in ("missing", "target_id", "task", "question", "context", "reopened"):
+            with self.subTest(history=mismatch):
+                state = read_change(self.root)
+                history = deepcopy(resolved)
+                if mismatch == "missing":
+                    history = []
+                elif mismatch in {"target_id", "task"}:
+                    history[0][mismatch] = "unrelated"
+                elif mismatch == "question":
+                    history[0]["gap"]["question"] = "An unrelated question?"
+                elif mismatch == "context":
+                    history[0]["contexts"] = ["sha256:" + "f" * 64]
+                else:
+                    history[0]["status"] = "open"
+                state["gap_history"] = history
+                save_change(self.root, state)
+                rejected()
+        state = read_change(self.root)
+        state["gap_history"] = resolved
+        save_change(self.root, state)
+        result = self.call_capability("concorde-dev-loop", request, callback=repair)
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("ready", result["output"]["data"]["outcome"])
+        state = read_change(self.root)
+        parent = state["targets"]["scope.bank"]
+        self.assertEqual(before["tasks"], parent["task_history"][-1]["tasks"])
+        self.assertEqual(request["repair_task_scope"]["tasks_digest"], parent["task_history"][-1]["tasks_digest"])
+        self.assertEqual(before["coordination"], parent["task_history"][-1]["coordination"])
+        self.assertNotEqual(cached["task"], parent["coordination"]["service.transfer"]["task"])
+        self.assertEqual(resolved, state["gap_history"])
+        self.assertTrue(all(item["complete"] for item in parent["tasks"]))
+        calls = [(call["snapshot"]["target_id"], call["stage"]) for call in self.model.calls]
+        for phase in ("spec-review", "plan", "tasks", "implementation"):
+            self.assertIn(("service.transfer", phase), calls)
+
     @verifies("scenario.development.task-scope-repair", "scenario.development.dev-loop-coordinated")
     def test_coordinated_scope_repair_preserves_state_on_rerouting_or_component_gap(self):
         from concorde.spec.repository import digest

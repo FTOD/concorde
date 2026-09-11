@@ -155,6 +155,9 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
     target = repository.select(target_id, focus_id)
     from ..spec.typed_data import validate_typed
     for item in stage_inputs:
+        if phase != "tasks" and item.get("type_id") in {
+                "concorde-task-identity-constraints", "concorde-task-scope-feedback"}:
+            raise SpecError("task-control stage inputs require the tasks phase", "incompatible_handoff")
         if item.get("type_id") not in {"concorde-plan-artifact","concorde-task-identity-constraints","concorde-implementation-task","concorde-task-scope-feedback",
                                        "concorde-reflection-selection","concorde-review-result"}:
             raise SpecError("unknown stage input type", "incompatible_handoff")

@@ -15,11 +15,11 @@ from concorde.distribution.build import BuildError, load_agent, render_agent
 from concorde.harness.agent_executor import AgentProcessExecutor, CapabilityExecutionError, _completion_schema
 from concorde.harness.agent_model import (agent_definition, binding_digest, binding_from_json, binding_json,
     effective_mode_loop, load_agents, mode_definition, validate_mode_input, validate_mode_output)
-from concorde.harness.context import resolve_context, resolve_discovery_context, resolve_topology_author_context
+from concorde.harness.context import PHASES, resolve_context, resolve_discovery_context, resolve_topology_author_context
 from concorde.harness.harness import LoopPolicy
 from concorde.harness.permissions import (PolicyBinding,
     build_launch_specification, compile_policy, render_claude_configuration)
-from concorde.spec.repository import SpecRepository
+from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.typed_data import canonical, typed
 from concorde.spec.verification import verifies
 from tests.concorde.spec.support import PACKAGE, CONFIGURATION, ModelProcessDouble, project
@@ -137,6 +137,37 @@ class AgentModeTests(unittest.TestCase):
             validate_mode_output(agent, "specify", typed("concorde-topology-author-result", {
                 "target_id": self.target, "context_id": "sha256:" + "1" * 64,
                 "outcome": "completed", "answer": "wrong paired result", "gaps": [], "documents": []}))
+
+    @verifies("scenario.harness.mode-boundary")
+    def test_resolver_admits_task_control_artifacts_only_in_tasks_with_or_without_mode(self):
+        controls = (
+            typed("concorde-task-identity-constraints", {"reserved_task_ids": ["task.retained"]}),
+            typed("concorde-task-scope-feedback", {
+                "tasks_digest": "sha256:" + "1" * 64, "reason": "implementation_boundary"}),
+        )
+        modes = [mode for agent in load_agents().values() for mode in agent.modes]
+        for control in controls:
+            for phase in sorted(PHASES - {"tasks"}):
+                for mode in [None, *(mode for mode in modes if mode.phase == phase)]:
+                    with self.subTest(type_id=control["type_id"], phase=phase,
+                                      mode=mode.name if mode else None):
+                        with self.assertRaises(SpecError) as caught:
+                            resolve_context(self.repository, self.target, phase=phase,
+                                            mode=mode, stage_inputs=(control,))
+                        self.assertEqual("incompatible_handoff", caught.exception.code)
+        for mode in (None, mode_definition(agent_definition("spec_engineer"), "tasks")):
+            artifacts = (typed("concorde-plan-artifact", {"plan": "Accepted plan"}),
+                         typed("concorde-implementation-task", {"plan": "Accepted plan", "tasks": []}),
+                         *controls)
+            snapshot = resolve_context(self.repository, self.target, phase="tasks",
+                                       mode=mode, stage_inputs=artifacts)
+            self.assertEqual(list(artifacts), snapshot.value["stage_inputs"])
+            preview = resolve_context(self.repository, self.target, phase="tasks", mode=mode)
+            self.assertEqual([], preview.value["stage_inputs"])
+        with self.assertRaises(SpecError) as caught:
+            resolve_context(self.repository, self.target, phase="plan",
+                            mode=mode_definition(agent_definition("spec_engineer"), "tasks"))
+        self.assertEqual("permission_denied", caught.exception.code)
 
     @verifies("scenario.harness.mode-boundary")
     def test_task_identity_constraints_are_required_frozen_and_tasks_only(self):

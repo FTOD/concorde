@@ -1382,8 +1382,16 @@ class Invocation:
                 if key in state["coordination"] and _component_intent(items) != state["coordination"][key]["task"]}
             for key in replacements:
                 record = state["coordination"][key]
-                if record.get("gaps") or any(item["status"] == "open" and item["target_id"] == key
-                        and item["task"] == record["task"] for item in change.get("gap_history", [])):
+                history = [item for item in change.get("gap_history", [])
+                           if item["target_id"] == key and item["task"] == record["task"]]
+                # A fresh component review updates its durable history, not this parent's
+                # cached response. Only an attributed, resolved observation releases that cache.
+                unresolved_cache = any(not any(item["status"] == "resolved"
+                    and all(item["gap"].get(field) == gap.get(field)
+                            for field in ("target_id", "question", "blocked_step", "needed_contract"))
+                    and gap.get("context_id") in item.get("contexts", [])
+                    for item in history) for gap in record.get("gaps", []))
+                if unresolved_cache or any(item["status"] == "open" for item in history):
                     raise SpecError("resolve the component's contract gaps before repairing its task boundary",
                                     "spec_incomplete")
             prior_coordination = copy.deepcopy(state["coordination"])
