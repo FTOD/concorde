@@ -1,12 +1,16 @@
-import {spawnSync} from 'node:child_process';
-import {readFile} from 'node:fs/promises';
+import {captureProcess} from '../capture-process';
+import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {beforeAll,it,expect} from 'vitest';
 import {loadScopedRegistry} from '../../plugins/scoped-content/model';
 import {validateScopedBuild} from '../../plugins/scoped-content';
 const site=resolve(__dirname,'../..'),root=resolve(site,'..'),output=resolve(site,'build');
-beforeAll(()=>{
- const result=spawnSync(process.execPath,['--import','tsx','scripts/build.ts'],{cwd:site,encoding:'utf8',timeout:120000});
+beforeAll(async()=>{
+ await mkdir(resolve(output,'assets'),{recursive:true});
+ for(const path of ['graph.html','architecture-graph.json','assets/obsolete-graph.js'])
+  await writeFile(resolve(output,path),'obsolete graph output');
+ const result=captureProcess(process.execPath,['--import','tsx','scripts/build.ts'],{cwd:site,timeout:120000});
+ expect(result.error).toBeUndefined();expect(result.signal).toBeNull();
  expect(result.status,result.stdout+'\n'+result.stderr).toBe(0);
 },120000);
 it('publishes the current exact registry and verifies the promoted manifest',async()=>{
@@ -21,7 +25,7 @@ it('publishes the current exact registry and verifies the promoted manifest',asy
  expect(navbar).toContain('Spec Protocol');
  expect(navbar.indexOf('Spec Protocol')).toBeLessThan(navbar.indexOf('Module Specs'));
  expect(navbar).toContain('Module Specs');
- expect(navbar.indexOf('Module Specs')).toBeLessThan(navbar.indexOf('>Graph<'));
+ expect(navbar).not.toContain('>Graph<');
  expect(html).toContain('id="purpose"');expect(html).toContain('id="scenarios"');expect(html).toContain('id="entities"');expect(html).toContain('id="ontology"');expect(html).toContain('id="relationships"');expect(html).toContain('id="req.concorde.routing-no-access"');
  expect(html).not.toContain('<iframe');
 });
@@ -38,8 +42,7 @@ it('publishes the independent standard with chapter navigation and no Spec wrapp
   expect(html).toContain('theme-doc-sidebar-container');
   expect(html).not.toContain('provenanceShell');
  }
- const graph=JSON.parse(await readFile(resolve(output,'architecture-graph.json'),'utf8'));
- expect(graph.nodes.some((node:{id:string})=>node.id==='module.protocol')).toBe(false);
+
 });
 it('publishes the configured introduction at the root while preserving direct Spec navigation',async()=>{
  const home=await readFile(resolve(output,'index.html'),'utf8');
@@ -57,7 +60,7 @@ it('publishes the configured introduction at the root while preserving direct Sp
  expect(home).toContain('scope="col"');
  expect(home).toMatch(/role="region"[^>]*tabindex="0"/i);
  expect(home).toContain('href="/concorde/specs/concorde/module"');
- expect(home).toContain('href="/concorde/graph"');
+ expect(home).not.toContain('href="/concorde/graph"');
  expect(home).toContain('href="/concorde/protocol"');
  expect(home).toContain('name="description"');
  expect(home).not.toMatch(/http-equiv="refresh"/i);
@@ -72,10 +75,9 @@ it('preserves every legacy membership route as a redirect stub to its canonical 
   expect(stub).toContain(page.route);expect(stub).toContain('refresh');
  }
 });
-it('publishes the same typed relationship graph as the human navigation',async()=>{
- const graph=JSON.parse(await readFile(resolve(output,'architecture-graph.json'),'utf8'));const r=loadScopedRegistry(root);
- expect(graph.nodes).toEqual(r.targets);expect(graph.edges).toEqual(r.edges);
- const html=await readFile(resolve(output,'graph.html'),'utf8');expect(html).toContain('Architecture relationships');expect(html).toContain('module.development');
+it('scenario.views.publish-without-graph: omits graph routes and artifacts',async()=>{
+ for(const path of ['graph.html','graph/index.html','architecture-graph.json','assets/obsolete-graph.js'])
+  await expect(readFile(resolve(output,path))).rejects.toThrow();
 });
 it('publishes the Agent instructions and Wire contracts projection pages as rendered projections',async()=>{
  const instructions=await readFile(resolve(output,'specs/projections/instructions.html'),'utf8');
@@ -83,3 +85,15 @@ it('publishes the Agent instructions and Wire contracts projection pages as rend
  const wire=await readFile(resolve(output,'specs/projections/wire.html'),'utf8');
  expect(wire).toContain('concorde-main-request');expect(wire).toContain('rendered projection');
 });
+
+it('scenario.views.publish-repeat-without-graph: a second checked build preserves absence and reading',async()=>{
+ const result=captureProcess(process.execPath,['--import','tsx','scripts/build.ts'],{cwd:site,timeout:120000});
+ expect(result.error).toBeUndefined();expect(result.signal).toBeNull();
+ expect(result.status,result.stdout+'\n'+result.stderr).toBe(0);
+ await validateScopedBuild(root,output);
+ for(const path of ['graph.html','architecture-graph.json','assets/obsolete-graph.js'])
+  await expect(readFile(resolve(output,path))).rejects.toThrow();
+ const r=loadScopedRegistry(root);
+ const page=r.pages.find(p=>p.primaryOf===r.entryTarget)!;
+ expect(await readFile(resolve(output,page.route.slice(1)+'.html'),'utf8')).toContain('Module Specs');
+},120000);

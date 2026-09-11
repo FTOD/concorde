@@ -17,22 +17,21 @@ under `.concorde/` is excluded from published prose.
 The adapter publishes Profile 11 projects only: it reads `plugins/scoped-content` and registry
 schema 3, and refuses any other `profile_version` with an explicit error. Every registered document
 publishes once at a readable source-derived route: `specs/project/module.md` becomes
-`/specs/project/module`. The navbar exposes a single `Module Specs` tab alongside `Graph`;
+`/specs/project/module`. The navbar exposes a single `Module Specs` tab;
 there is no separate Implementation Specs tab, because Implementation Specs no longer exist. A
 Module name opens its `module.md` directly, while its additional documents and child Modules appear
 underneath; no duplicate main-Spec entry is generated. Document names omit `.md`. Source paths
 remain visible in provenance. Additional documents, including explicitly shared Module documents,
 remain part of the complete registered collection.
 
-The relationship graph distinguishes `composes`, `uses` and matched provided/required structured
-contracts. Shared capability Modules are siblings of their consumers. A listing entry declared by
-several Modules' entities appears once, with an edge from every listing Module. Each Module's Files
+Publication validates composition, dependencies and matched provided/required structured
+contracts. Shared capability Modules are siblings of their consumers. Implementation entries may be listed by several Modules. Each Module's Files
 section repeats its declared entries as written: an exact file, or a directory prefix ending in `/`
 that binds the regular files below it. Publication validates that an existing exact entry is a file
 and an existing directory entry a directory, and that no listed directory contains a registered Spec
 document; it does not read or publish implementation file bytes, and it never expands a directory
-entry into file names. Every Module's Architecture
-section renders its own inline Mermaid flowchart directly from the registered Markdown, with node
+entry into file names. Every Module's Ontology Relationships
+subsection renders its own inline Mermaid flowchart directly from the registered Markdown, with node
 labels equal to the declared entity titles and every edge labeled; there is no separate diagram
 source or build step.
 
@@ -40,12 +39,16 @@ Stable target/path-hash aliases redirect to current canonical document routes. C
 paths require deliberate migration of external links. Human navigation does not widen agent context.
 Older profiles require explicit migration; there is no compatibility publishing path for them.
 
+The docsite has no standalone graph page or Graph navigation entry. Understand Anything export
+and viewer commands remain independent of publication; inline Mermaid diagrams remain available
+in the documents that author them.
+
 ## Site identity
 
 Concorde enables a separate **Spec Protocol** tab for the independent Markdown standard under
 `protocol/`. It has its own sidebar and `/protocol/` routes and participates in site search.
 These chapters bypass the project Spec registry: they have no Module identity, membership, Spec
-provenance wrapper or architecture-graph node. Framework Module Specs remain under their existing
+provenance wrapper. Framework Module Specs remain under their existing
 tab. Protocol documentation is opt-in; scaffolded consumer sites do not enable it or acquire
 Concorde's standard as their own project Specs.
 
@@ -93,9 +96,9 @@ for narrow screens. Omitting it preserves the existing homepage layout.
 
 Concorde enables this introduction to present its core capabilities and installation steps. The
 renderer is the same packaged template every project receives; consumer scaffolding does not copy
-Concorde's homepage content. The main Spec link resolves from the registered entry Module, the
-architecture link uses `/graph`, and Protocol and repository links appear only when configured.
-All local navigation respects `baseUrl`. Homepage copy is outside Spec membership, graph nodes and
+Concorde's homepage content. The main Spec link resolves from the registered entry Module, and
+Protocol and repository links appear only when configured.
+All local navigation respects `baseUrl`. Homepage copy is outside Spec membership and
 the registered-page manifest; it grants no agent context and does not replace any Module's Spec.
 
 `docusaurus.config.ts` loads the identity once at startup and fails with an actionable error naming
@@ -137,18 +140,22 @@ Run commands from `docsite/`:
 | `npm run typecheck` | Type-check maintained TypeScript. |
 | `npm run check` | Run typechecking, all tests, source validation, and a production build. |
 
-Successful builds emit `build/build-manifest.json` using Build Manifest 17. It records registered
-document routes, typed relationships, exact source identities and completed build checks. A stale
+Successful builds emit `build/build-manifest.json` using Build Manifest 18. It records registered
+document routes, aliases and exact source identities. It neither emits nor requires
+`architecture-graph.json`; older manifest versions require a fresh build. A stale
 materialization or changed source prevents candidate promotion. The manifest stores no claim that
 a Module's implementation currently satisfies its promises.
 
 A failed candidate is removed and never replaces the last verified `build/`. Perceptual review of
 a published page remains an explicit human-evidence step.
+Successful promotion replaces the whole build directory, removing obsolete graph pages and their
+dedicated assets from previous builds. Scaffolding remains creation-only and does not delete old
+source files from existing consumer sites.
 
 ## Repository-specific evidence
 
 `docsite/tests/repository/` holds tests that assert facts about the Concorde repository itself —
-its own Module relationship graph, its own maintained specifications, and that `docsite/site.json` and
+its own Module navigation, its own maintained specifications, and that `docsite/site.json` and
 `.github/workflows/deploy-docsite.yml` reproduce Concorde's identity and deployment workflow. These
 tests are not part of the template: every other project that scaffolds the adapter carries its own
 `docsite/site.json` and no `tests/repository/` content.

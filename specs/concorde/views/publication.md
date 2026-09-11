@@ -17,6 +17,7 @@
 - WHEN `concorde docsite --propose` runs
 - THEN it returns a deterministic project-relative JSON scaffold proposal
 - AND it writes nothing to the project
+- AND the proposed publishing template contains no standalone graph page, Graph navigation entry or graph-view-only resources or dependencies
 
 ### scenario.views.scaffold-apply — Applying an accepted scaffold proposal
 
@@ -31,6 +32,94 @@
 - WHEN `--apply` is requested
 - THEN the application is rejected
 - AND any already-staged files are restored to their original bytes
+
+## Scaffold proposal exchange and ownership
+
+The Docsite scaffold command exchanges the following JSON value with its caller. The schema uses
+JSON Schema's `type`, `properties`, `required`, `items`, `enum`, `minItems` and
+`additionalProperties` vocabulary; the path, digest and content rules below further constrain it.
+`--apply --proposal PATH` accepts this value directly, as `{"proposal": value}`, or as
+`{"result": {"proposal": value}}` in the propose command's Tool result. PATH is a safe
+project-relative JSON file. Proposal generation returns `result.proposal` and a separate
+`result.prerequisites` array of `{name, status, detail}` strings for Node and npm; prerequisite
+warnings do not install dependencies or change proposal bytes.
+
+```concorde-contract
+{
+  "id": "contract.views.scaffold-proposal",
+  "version": 1,
+  "role": "provided",
+  "peer": "external:docsite-caller",
+  "schema": {
+    "type": "object",
+    "required": ["proposal_version", "template_root", "template_digest", "identity", "github_pages", "files", "conflicts"],
+    "properties": {
+      "proposal_version": {"enum": [1]},
+      "template_root": {"enum": ["docsite"]},
+      "template_digest": {"type": "string"},
+      "identity": {"type": "object"},
+      "github_pages": {"type": "boolean"},
+      "files": {"type": "array", "minItems": 1, "items": {
+        "type": "object", "required": ["path", "sha256"],
+        "properties": {"path": {"type": "string"}, "sha256": {"type": "string"}, "source": {"type": "string"}, "content": {"type": "string"}},
+        "additionalProperties": false
+      }},
+      "conflicts": {"type": "array", "items": {
+        "type": "object", "required": ["path", "reason"],
+        "properties": {"path": {"type": "string"}, "reason": {"type": "string"}},
+        "additionalProperties": false
+      }}
+    },
+    "additionalProperties": false
+  },
+  "semantics": "An exact, package-digest-bound scaffold proposal; the local ownership and content rules determine which files may be created. It grants no replacement or deletion authority.",
+  "example": {"proposal_version": 1, "template_root": "docsite", "template_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000", "identity": {"schema_version": 1, "title": "Example", "url": "https://localhost", "baseUrl": "/", "organizationName": "example", "projectName": "example"}, "github_pages": false, "files": [{"path": "docsite/package.json", "source": "docsite/package.json", "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000000"}], "conflicts": []}
+}
+```
+
+The example illustrates the schema, not an applicable package inventory or real digest. Each file
+entry has exactly one of `source` and `content`, and paths are unique and sorted. `sha256` hashes
+the resolved UTF-8 content bytes. The complete file set is the installed adapter inventory plus
+`docsite/site.json`, and, only when `github_pages` is true,
+`.github/workflows/deploy-docsite.yml`. An adapter entry's source and destination are its identical
+package-relative path; the workflow source is `docsite/scaffold/deploy-docsite.yml` and its only
+destination is the workflow path above. Only site identity uses inline `content`, containing the
+proposal's `identity` serialized as sorted-key, two-space-indented JSON with a final newline.
+No remapping, additional destination, partial inventory, replacement or deletion operation is
+owned. In particular, the scaffold does not upgrade an existing consumer site by deleting its old
+graph source files; graph removal from this repository's publishing template is a source change,
+and successful site builds replace obsolete published output as specified below.
+
+The adapter inventory consists of regular files below the installed package's `docsite/` with
+suffix `.css`, `.json`, `.md`, `.svg`, `.ts`, `.tsx` or `.yml`, excluding any directory component
+named `node_modules`, `build`, `.generated`, `.docusaurus` or `coverage`, the root-relative
+`tests/repository/` subtree, `scaffold/`, and the root `site.json`. Non-excluded symlinks are
+invalid. These template files contain no removed graph feature. Inventory discovery reads the
+installed template, never consumer Spec directories. `template_digest` hashes UTF-8 lines sorted
+by path, each `path`, a tab and the lowercase SHA-256 hex of its bytes, joined by newlines with a
+final newline. The workflow's own file digest also binds its bytes. A changed package digest or
+file digest invalidates acceptance.
+
+Identity has `schema_version: 1`, nonempty `title`, absolute HTTP(S) `url`, slash-prefixed and
+slash-suffixed `baseUrl`, `organizationName`, `projectName`, and optional absolute HTTP(S)
+`repository`. Title defaults to the registered entry Module's title. A GitHub repository supplies
+owner/repository names, `https://<owner>.github.io`, and `/<repo>/` (or `/` for the owner's Pages
+repository); otherwise defaults are `https://localhost`, `/` and the lowercase title with
+non-alphanumeric runs replaced by hyphens, stripped at the ends, falling back to `project`.
+Explicit options override their corresponding defaults. Scaffolding omits optional homepage and
+Protocol content. `conflicts` lists proposed paths already present, with reason `target already
+exists`; it is informational and authorizes no overwrite.
+
+Apply first validates the proposal and its owned inventory. If every destination already equals
+the accepted bytes it returns `unchanged` without writing. Otherwise every destination must be
+absent: any existing destination, including a mix of exact and absent files, returns `conflict`
+without writing. Existing symlinks or unsafe paths reject. The creation transaction checks a null
+before-digest (absence) for every destination before staging and again before each write; these
+before-digests are transaction state, not fields in the exchanged proposal. A concurrent change
+rejects with original-byte recovery for writes already performed. Invalid proposals return
+`invalid`; staging failures return `failed`; successful creation returns `success` with the
+created paths. Repeating an unchanged proposal is idempotent. No accepted proposal can replace or
+delete existing files, including project Specs.
 
 For a Module, its unique local `module.md` is the source entry, independent of collection order.
 
@@ -48,8 +137,22 @@ The route is `/specs/<source path with a leading specs/ root removed and .md dro
 path when a project's Specs are not entirely rooted at `specs/`. The primary sidebar mirrors the
 registered documents' own directory hierarchy with file-name entries, from registered documents
 only, never directory scanning. A secondary sidebar presents the Module composition tree. Every
-Module opens its `module.md`. The relationship graph distinguishes composes, uses and
-required-interface edges.
+Module opens its `module.md`.
+
+### scenario.views.publish-without-graph — Publishing retains reading and navigation without a graph view
+
+- GIVEN a valid registered project using the current publishing template
+- WHEN the site is built and promoted
+- THEN the site exposes no standalone `/graph` page, Graph navigation entry or graph-view UI
+- AND it emits no `architecture-graph.json` or graph-specific global-data projection
+- AND registered pages, directory and Module navigation, source provenance, identity anchors and inline Mermaid rendering remain available
+- AND enabled homepage, Protocol and instruction projection surfaces retain their normal reading and navigation behavior
+- BUT publication does not invoke, replace or remove the separate UA exporter or official viewer
+
+Removing this feature includes its dedicated implementation, resources and dependencies. A shared
+resource or dependency remains when another retained publication function needs it; in particular,
+inline Mermaid rendering remains supported. The docsite provides no substitute embedded UA view or
+redirect from the removed graph page. UA continues through its existing independent commands.
 
 ### scenario.views.publish-preserves-previous-on-failure — An incomplete or stale candidate does not replace the published build
 
@@ -58,18 +161,28 @@ required-interface edges.
 - THEN promotion is refused
 - AND the previously published build is preserved unchanged
 
-### scenario.views.publish-legacy-redirect — Legacy routes keep resolving after a document's membership changes
+### scenario.views.publish-legacy-redirect — Legacy routes resolve for current document memberships
 
-- GIVEN a document's previously published per-membership legacy route
+- GIVEN a registered document and a legacy alias derived from one of its current registered memberships
 - WHEN the current build is promoted
 - THEN a redirect stub for that legacy route still resolves to the document's one canonical page
+- AND aliases are recomputed from current memberships; publication does not retain historical aliases for removed memberships
 
-Every Concorde Module contains an inline Mermaid entity diagram in its `module.md` Relationships
-subsection, with accessible title and description. Publication renders that fence in its authored
-position; the containing Markdown is the sole authored diagram source and already participates in
-source identity. No external diagram JSON, standalone diagram HTML, renderer Skill or separate
-diagram installation is used. Local links resolve only registered document membership; unknown or
-ambiguous links fail validation.
+This compatibility promise concerns registered-document aliases, not the removed standalone graph
+page. Every Concorde Module contains an inline Mermaid entity diagram in its `module.md`
+Relationships subsection, with accessible title and description. Publication renders that fence in
+its authored position; the containing Markdown is the sole authored diagram source and already
+participates in source identity. No external diagram JSON, standalone diagram HTML, renderer Skill
+or separate diagram installation is used. Local links resolve only registered document membership;
+unknown or ambiguous links fail validation.
+
+### scenario.views.publish-repeat-without-graph — Rebuilding replaces obsolete graph output
+
+- GIVEN an existing published build that contains the former standalone graph page and architecture-graph artifact
+- WHEN a fresh build using the current publishing template successfully validates and is promoted
+- THEN the replacement published build contains neither the former graph page nor its dedicated artifacts or assets
+- AND a subsequent successful build retains that absence and the registered-document reading and navigation behavior
+- BUT a failed candidate leaves the previous published build unchanged under the normal promotion rules
 
 ## Project introduction
 
@@ -81,7 +194,7 @@ ambiguous links fail validation.
 - AND when `homepage.reference` is configured, a reference section after the quickstart renders its tables with section navigation, column headers and keyboard-accessible horizontal scrolling on narrow screens
 - AND its primary Spec navigation resolves to the registered entry Module's canonical page, with local links respecting the configured base URL
 - AND Protocol and repository links appear only when their corresponding site identity options are enabled
-- BUT the introduction does not join any Module collection, add a graph node or registered-page manifest entry, or grant agent context
+- BUT the introduction does not join any Module collection, add a registered-page manifest entry, or grant agent context
 
 ### scenario.views.publish-homepage-default — Preserving the default entry redirect
 
@@ -120,10 +233,10 @@ fails with its field path; omitting the object preserves the homepage without a 
 - BUT missing enabled content or a broken chapter link fails the site build
 
 The collection requires no project Spec metadata or registry membership, and its pages do not
-appear in the software architecture graph or registered Spec manifest. Omitting the option disables
-this collection; scaffolding a consumer project does not enable or copy it. The adapter renders
-inline `mermaid` fences using Docusaurus's Mermaid theme in both Protocol and registered Spec
-pages; both retain accessible titles and descriptions.
+appear in the registered Spec manifest. Omitting the option disables this collection; scaffolding
+a consumer project does not enable or copy it. The adapter renders inline `mermaid` fences using
+Docusaurus's Mermaid theme in both Protocol and registered Spec pages; both retain accessible
+titles and descriptions.
 
 These generated views are human navigation, not agent context grants. The publication Tool may read
 multiple registered collections deterministically; an agent still receives one host-bound target
@@ -132,8 +245,8 @@ snapshot.
 ## Main routing view
 
 Consumer-visible scaffold and publication lifecycle behavior remains on `module.views`. Select
-`module.views` for registry loading, page materialization, link rewriting, sidebars, graph
-construction, diagram staging or build-manifest validation.
+`module.views` for registry loading, page materialization, link rewriting, sidebars, inline diagram
+rendering or build-manifest validation.
 
 Production builds keep their Docusaurus-generated modules separate from the development preview.
 Building the site does not clear the preview's `.docusaurus` directory. Both views still derive

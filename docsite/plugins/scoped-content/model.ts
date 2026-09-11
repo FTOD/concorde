@@ -15,10 +15,9 @@ export interface Page {
   memberships: {targetId: string; kind: Kind; primary: boolean}[]; aliases: string[];
   kind: Kind; primaryOf: string | null;
 }
-export interface Edge {source: string; target: string; kind: 'composes' | 'uses' | 'requires'; contract?: string}
 export interface ScopedRegistry {
-  schema_version: 17; projectRoot: string; registryPath: string; entryTarget: string;
-  sourceDigest: string; targets: Target[]; pages: Page[]; edges: Edge[];
+  schema_version: 18; projectRoot: string; registryPath: string; entryTarget: string;
+  sourceDigest: string; targets: Target[]; pages: Page[];
 }
 export const hash = (value: string | Buffer) => 'sha256:' + createHash('sha256').update(value).digest('hex');
 function requireThat(value: unknown, message: string): asserts value {if (!value) throw new Error(message);}
@@ -146,7 +145,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
   requireThat(registry.schema_version === 3 && Array.isArray(registry.targets) && registry.targets.length, 'Module registry schema 3 required');
   const targets = registry.targets as Target[];
   const byId = new Map<string, Target>(); const allIds = new Set<string>();
-  const documentTargets = new Map<string, string[]>(); const edges: Edge[] = [];
+  const documentTargets = new Map<string, string[]>();
   const inputs: [string, string][] = [['.concorde/config.json', hash(configText)], [config.registry, hash(registryText)]];
   for (const t of targets) {
     requireThat(Object.keys(t).sort().join(',') === 'checks,documents,files,id,kind,parent,title,uses', `Invalid Module fields: ${t.id}`);
@@ -207,10 +206,8 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
       const parent = byId.get(cursor); requireThat(parent?.kind === 'module', `Unknown Module parent: ${cursor}`);
       requireThat(!seen.has(cursor), `Module composition cycle: ${t.id}`); seen.add(cursor); cursor = parent.parent;
     }
-    if (t.parent) edges.push({source: t.parent, target: t.id, kind: 'composes'});
     for (const peer of t.uses) {
       requireThat(peer !== t.id && byId.get(peer)?.kind === 'module', `Unknown/self Module dependency: ${peer}`);
-      edges.push({source: t.id, target: peer, kind: 'uses'});
     }
     const expected = new Set([...t.uses, ...targets.filter(child => child.parent === t.id).map(child => child.id)]);
     const declared = new Set<string>();
@@ -253,9 +250,8 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
   for (const c of required) {
     if (c.peer.startsWith('external:')) continue;
     const provider = providers.get(c.key); requireThat(provider?.owner === c.peer && provider.schema === c.schema, `Incompatible shared contract: ${c.key}`);
-    edges.push({source: c.owner, target: c.peer, kind: 'requires', contract: c.key});
   }
-  return {schema_version: 17, projectRoot: root, registryPath: config.registry, entryTarget: registry.entry_target, sourceDigest: hash(JSON.stringify(inputs)), targets, pages, edges};
+  return {schema_version: 18, projectRoot: root, registryPath: config.registry, entryTarget: registry.entry_target, sourceDigest: hash(JSON.stringify(inputs)), targets, pages};
 }
 function stable(value: unknown): string {
   if (Array.isArray(value)) return '['+value.map(stable).join(',')+']';

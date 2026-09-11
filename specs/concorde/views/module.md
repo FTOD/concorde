@@ -20,13 +20,13 @@ Views turns the project's explicit Spec registry into a documentation site that 
 reviewers read, deterministically projects that same registry into a skeleton Understand Anything
 knowledge graph, and separately lets a developer open an already-produced code-structure graph in
 the official Understand Anything viewer. Its publishing promises stop at rendering registered
-Markdown faithfully: it derives pages, navigation and relationship edges only from the registry,
-and it never infers a Module's completeness or correctness from a diagram, a route or a rendered
-page. Its graph-export promises stop at deriving Module, document and bound-file structure from the
-registry; it never scans the filesystem for undeclared content, and repeated export replaces only
-the elements it previously added. Its viewer promises stop at admission and launch: the launcher
-does not generate the graph it opens, does not judge whether that graph still agrees with the code,
-and does not grant an agent any access beyond its own host-bound Spec context.
+Markdown faithfully: it derives pages and navigation only from the registry, and it never infers a
+Module's completeness or correctness from a diagram, a route or a rendered page. Its graph-export
+promises stop at deriving Module, document and bound-file structure from the registry; it never
+scans the filesystem for undeclared content, and repeated export replaces only elements in its
+declared ownership scope. Its viewer promises stop at admission and launch: the launcher does not generate
+the graph it opens, does not judge whether that graph still agrees with the code, and does not grant
+an agent any access beyond its own host-bound Spec context.
 
 ## Requirements
 
@@ -34,9 +34,8 @@ and does not grant an agent any access beyond its own host-bound Spec context.
 
 Publication SHALL derive Module Spec pages and their navigation only from the explicit registry.
 
-This is the positive half of the registry-only promise: every published Module Spec is
-traceable to a registered entry. The optional project introduction and independent Protocol
-collection are presentation surfaces outside that membership. The companion prohibition on directory scanning is
+Every published Module Spec is traceable to a registered entry. The optional project introduction
+and independent Protocol collection are presentation surfaces outside that membership. See
 [req.views.no-directory-scanning](#req.views.no-directory-scanning).
 
 ### req.views.no-directory-scanning — No directory scanning or link-based discovery
@@ -45,26 +44,31 @@ Publication SHALL NOT discover Spec documents by scanning directories or followi
 
 ### req.views.one-page-per-document — One canonical page per registered document
 
-A physical Spec document SHALL publish at exactly one canonical page regardless of how many Modules
-register it.
+A physical Spec document SHALL publish at exactly one canonical page regardless of how many Modules register it.
 
 ### req.views.no-agent-context-grant — No extra agent context from a rendered view
 
-A rendered page or generated view SHALL NOT itself grant an agent invocation additional Spec context
-beyond its own host-bound target snapshot.
+A rendered page or generated view SHALL NOT itself grant an agent invocation additional Spec context beyond its own host-bound target snapshot.
 
 ### req.views.diagram-source-identity — Mermaid fence is the sole diagram source
 
-An inline Mermaid fence in a Module's Relationships subsection SHALL be its sole authored diagram
-source.
+An inline Mermaid fence in a Module's Relationships subsection SHALL be its sole authored diagram source.
 
 ### req.views.no-external-diagram-record — No external diagram record or output
 
 Publication SHALL create no external diagram record or `generated/diagrams` output.
 
-This is the companion prohibition to
-[req.views.diagram-source-identity](#req.views.diagram-source-identity): the authored fence is not
-just the sole source, publication also produces no external record derived from it.
+The authored fence is the sole source; publication produces no external record derived from it.
+
+### req.views.no-docsite-graph-view — No docsite graph view
+
+Publication SHALL NOT expose a standalone graph view.
+
+This removes the docsite graph page and route, Graph navigation entry, graph-specific UI,
+architecture-graph projection and artifact, and resources or dependencies used exclusively for that
+feature. It also applies to the publishing template supplied to consumer projects. Dependencies
+and resources still needed for ordinary reading, navigation or inline Mermaid rendering remain.
+The UA exporter and official viewer remain separate non-docsite facilities.
 
 ### req.views.production-preview-isolation — Production builds preserve preview output
 
@@ -76,8 +80,7 @@ Every content or source digest SHALL be `sha256:` followed by 64 lowercase hexad
 
 ### req.views.safe-relative-paths — Member paths are safe relative POSIX paths
 
-Every member path SHALL use POSIX separators without absolute paths, backslashes, empty, dot or
-traversal components, or symlinks.
+Every member path SHALL use POSIX separators without absolute paths, backslashes, empty, dot or traversal components, or symlinks.
 
 ### req.views.promote-atomic — Promotion restores the prior destination on failure
 
@@ -91,10 +94,13 @@ traversal components, or symlinks.
 
 The registry loader SHALL NOT follow a `concorde-contract` edge to import additional Module context.
 
-### req.views.no-graph-generation — Launcher never generates or verifies graph freshness
+### req.views.no-graph-generation — Launcher leaves graph contents unchanged
 
-The viewer launcher SHALL NOT generate, rewrite or verify the freshness of the graph it opens
-against source.
+The viewer launcher SHALL NOT modify graph contents, including generating or rewriting the graph it opens.
+
+### req.views.no-graph-freshness-verification — Launcher never verifies graph freshness
+
+The viewer launcher SHALL NOT verify the freshness of the graph it opens against source.
 
 ### req.views.no-dependency-install — Launcher resolves no dependencies or network access
 
@@ -102,41 +108,38 @@ The viewer launcher SHALL NOT resolve dependencies or perform network acquisitio
 
 ### req.views.cli-syntax-errors — Argument errors exit separately from launch failures
 
-Invalid launch syntax or a port outside 0-65535 SHALL exit through argument parsing with code 2,
-distinct from a failed launch's exit code 3.
+Invalid launch syntax or a port outside 0-65535 SHALL exit through argument parsing with code 2, distinct from a failed launch's exit code 3.
 
 ### req.views.ua-graph-registry-only — Exported skeleton derives only from the registry
 
-The UA graph exporter SHALL derive every node, edge and layer it adds only from the explicit
-registry and registered documents.
+The UA graph exporter SHALL limit derivation inputs to the explicit registry, registered documents, declared implementation listings and an admitted existing graph.
 
-### req.views.ua-graph-idempotent — Re-export replaces only Concorde-produced elements
+The existing graph supplies foreign-node reuse and the unlisted-file layer under the local overlay
+rules; it does not authorize discovery of additional project files or Spec membership. Fresh
+skeletons derive their structure solely from registered inputs, with initial project metadata as
+defined in the local serialized graph contract.
 
-A repeated export SHALL replace only the nodes, edges and layers the exporter itself produced,
-leaving every other element of an existing graph unchanged.
+### req.views.ua-graph-idempotent — Re-export replaces only Concorde-owned elements
+
+A repeated export SHALL replace only the nodes, edges and layers in the ownership scope defined by scenario.views.ua-graph-overlay, leaving every other element of an existing graph unchanged.
 
 ## Scenarios
 
-Scenario definitions for the docsite scaffold and top-level publish behavior are registered in
-[publication](publication.md). Scenario definitions for the registry-loading, materialization and
-build/promotion pipeline are registered in [pipeline](pipeline.md). Scenario definitions for the
-viewer launch command are registered in [viewer](viewer.md). Scenario definitions for the UA graph
-export command are registered in [ua-graph](ua-graph.md).
+Scaffold and top-level publication scenarios are defined in [publication](publication.md).
+Registry loading, materialization and build/promotion scenarios are defined in
+[pipeline](pipeline.md). Viewer launch scenarios are defined in [viewer](viewer.md), and UA graph
+export scenarios in [ua-graph](ua-graph.md).
 
 ## Ontology
 
-The Ontology names what Views consists of and touches at its boundary — its publication and
-viewer programs, the interfaces that reach them, and the publication and viewer data they exchange
-— and the labeled relationships that connect those things.
+The Ontology names the publication, viewer and UA export programs, their interfaces and the data
+they exchange. Removing the docsite graph view does not remove authored relationship diagrams,
+registry relationships or the independent UA facilities.
 
 ### Entities
 
-The four programs below realize scaffolding, publication, viewer launch and UA graph export; the
-interface entities are their means of use; the remaining entities name the publication, viewer and
-UA graph data the scenarios exchange. The docsite entity lists the whole `docsite/` directory and
-the scaffold entity its `src/concorde/views/` and `tests/concorde/views/` packages; the viewer
-launcher and the UA graph exporter each keep two exact entries, one of them inside a directory the
-scaffold entity otherwise lists, which the most-specific-entry rule assigns to the exact owner.
+Entity file declarations retain their exact registered entries. A more specific entry takes
+precedence over a containing directory entry.
 
 ```concorde-entities
 [
@@ -144,56 +147,43 @@ scaffold entity otherwise lists, which the most-specific-entry rule assigns to t
     "id": "entity.views.publication-docsite",
     "title": "Publication docsite",
     "kind": "program",
-    "responsibility": "Realizes registry-driven Markdown publication: materializes one canonical page and inline Mermaid rendering per physical document, derives navigation and the relationship graph, binds a candidate to exact source digests and route coverage, and promotes only a complete current candidate while preserving the previous successful build on failure.",
-    "files": [
-      "docsite/"
-    ]
+    "responsibility": "Realizes registry-driven Markdown publication: materializes one canonical page and inline Mermaid rendering per physical document, derives navigation, binds a candidate to exact source digests and route coverage, and promotes only a complete current candidate while preserving the previous successful build on failure.",
+    "files": ["docsite/"]
   },
   {
     "id": "entity.views.publication-scaffold",
     "title": "Publication scaffold",
     "kind": "program",
-    "responsibility": "Realizes exact docsite scaffold proposals and deploys the current publishing template for a registered project, without reading code to infer architecture.",
-    "files": [
-      "src/concorde/views/",
-      "tests/concorde/views/"
-    ]
+    "responsibility": "Realizes exact docsite scaffold proposals and deploys the current publishing template without a standalone graph view for a registered project, without reading code to infer architecture.",
+    "files": ["src/concorde/views/", "tests/concorde/views/"]
   },
   {
     "id": "entity.views.viewer-launcher",
     "title": "Viewer launcher",
     "kind": "program",
     "responsibility": "Realizes the deterministic admission and process-launch boundary that selects the first existing raw graph, verifies the installed runtime and launches the official viewer without generating the graph or installing dependencies.",
-    "files": [
-      "scripts/run-viewer.py",
-      "tests/concorde/views/test_viewer_launcher.py"
-    ]
+    "files": ["scripts/run-viewer.py", "tests/concorde/views/test_viewer_launcher.py"]
   },
   {
     "id": "entity.views.ua-graph-exporter",
     "title": "UA graph exporter",
     "kind": "program",
-    "responsibility": "Realizes the deterministic export or overlay of a skeleton Understand Anything graph from the registry's Module identities, relationships, documents and entity file listings, replacing on re-export only the nodes, edges and layers it previously added.",
-    "files": [
-      "src/concorde/views/ua_graph.py",
-      "tests/concorde/views/test_ua_graph.py"
-    ]
+    "responsibility": "Realizes the deterministic export or overlay of a skeleton Understand Anything graph from the registry's Module identities, relationships, documents and entity file listings, replacing on re-export only the nodes, edges and layers in its declared ownership scope.",
+    "files": ["src/concorde/views/ua_graph.py", "tests/concorde/views/test_ua_graph.py"]
   },
   {
     "id": "entity.views.file-transactions",
     "title": "File transactions",
     "kind": "shared program",
     "responsibility": "Realizes exact replacement proposals as staged filesystem operations with before-digest checks and original-byte recovery, for every Module that applies an accepted proposal.",
-    "files": [
-      "src/concorde/spec/changes.py"
-    ]
+    "files": ["src/concorde/spec/changes.py"]
   },
   {
     "id": "entity.views.spec",
     "title": "Spec",
     "kind": "used module",
     "target_id": "module.spec",
-    "responsibility": "Supplies the explicit registry, document memberships and relationships that publication renders, without recursive filename discovery."
+    "responsibility": "Supplies the explicit registry, document memberships, relationships and file bindings used by publication and UA export, without recursive filename discovery."
   },
   {
     "id": "entity.views.distribution",
@@ -240,9 +230,9 @@ scaffold entity otherwise lists, which the most-specific-entry rule assigns to t
   },
   {
     "id": "entity.views.navigation",
-    "title": "Navigation and relationship graph",
+    "title": "Spec navigation",
     "kind": "concept",
-    "responsibility": "The primary directory-mirroring sidebar, the secondary Module-composition view and the composes/uses/required-interface edges, all derived from the registry rather than from links or directory scanning."
+    "responsibility": "The primary directory-mirroring sidebar and secondary Module-composition view, derived from registered paths and parent relationships without directory scanning or a standalone graph view."
   },
   {
     "id": "entity.views.candidate-site",
@@ -287,18 +277,19 @@ scaffold entity otherwise lists, which the most-specific-entry rule assigns to t
 
 Publication scaffold and Publication docsite touch disjoint files and never edit each other's
 output: the scaffold's own exact-file transaction creates or updates project structure, and
-rendering project Specs never authorizes editing them. A candidate is promoted only when it is both
-complete and current; any invalid link, diagram or stale source during generation leaves the
-published site exactly as it was. The UA graph exporter only derives and writes a skeleton from the
-registry; it never judges whether the resulting graph still agrees with the code, and the viewer
-launcher still neither generates nor verifies the graph it opens. The viewer side is independent of
-publication: it admits an existing graph and a verified runtime and launches a process, and it
-proves nothing about whether that graph still agrees with the Specs this same Module publishes.
+rendering project Specs never authorizes editing them. A candidate is promoted only when complete
+and current; any invalid link, diagram or stale source during generation leaves the published site
+exactly as it was. Registry composition still supplies navigation, and dependency and interface
+agreements still undergo validation; none creates a standalone docsite graph projection.
+
+The UA graph exporter derives and writes a skeleton from the registry without judging agreement
+with code. The viewer launcher independently admits an existing graph and verified runtime and
+launches a process; it neither generates nor verifies the freshness of that graph.
 
 ```mermaid
 flowchart TB
     accTitle: Views entities and relationships
-    accDescr: Spec supplies registered documents and relationships to Publication docsite, which selects Registered Markdown documents and derives the Navigation and relationship graph; documents render as Canonical pages that, together with navigation, contribute to a Candidate site. The Docsite build interface builds and validates the candidate, which is promoted to the Published site only when current and complete. The Docsite scaffold command is realized by Publication scaffold, which feeds Publication docsite and stages accepted proposals through File transactions. The Viewer launch command is realized by the Viewer launcher. A Viewer launch request selects the Raw code graph, which, together with the Verified installed viewer that Distribution supplies, permits the Viewer process. The UA graph export command is realized by the UA graph exporter, which Spec supplies registry, memberships and file bindings to, and which writes or overlays the Raw code graph.
+    accDescr: Spec supplies publication inputs and UA export inputs. Publication docsite renders registered documents into canonical pages and derives Spec navigation for a checked candidate site. Publication scaffold applies accepted scaffold proposals through File transactions. Independently, UA graph exporter writes or overlays the raw graph, and Viewer launcher admits a graph and the installed viewer provisioned by Distribution to launch a viewer process.
     spec["Spec"]
     distribution["Distribution"]
     publicationDocsite["Publication docsite"]
@@ -312,7 +303,7 @@ flowchart TB
     uaGraphCommand["UA graph export command"]
     markdownDocuments["Registered Markdown documents"]
     canonicalPage["Canonical page"]
-    navigation["Navigation and relationship graph"]
+    navigation["Spec navigation"]
     candidateSite["Candidate site"]
     publishedSite["Published site"]
     viewerRequest["Viewer launch request"]
@@ -346,10 +337,11 @@ flowchart TB
 [
   {
     "target_id": "module.spec",
-    "responsibility": "Supply the explicit registry, document memberships and relationships that publication renders.",
-    "selection_condition": "When materializing pages, navigation or the relationship graph.",
+    "responsibility": "Supply the explicit registry, document memberships, relationships and entity file bindings consumed by publication and UA export.",
+    "selection_condition": "When loading publication inputs, materializing pages or navigation, or exporting the UA graph skeleton.",
     "relied_upon_promises": [
-      "Every registered document has exactly one identity and an explicit membership list, and relationships are declared rather than inferred, so a page and its edges can be derived without reading source code."
+      "Every registered document has exactly one identity and an explicit membership list, and relationships are declared rather than inferred, so pages and navigation can be derived without reading source code.",
+      "Registered Module identities, parent and uses relationships, document memberships and entity file listings provide the inputs for the UA skeleton; directory entries expand only under the Protocol's implementation-context rules."
     ]
   },
   {

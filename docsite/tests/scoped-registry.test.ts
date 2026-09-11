@@ -1,4 +1,4 @@
-import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync,symlinkSync} from 'node:fs';
+import {existsSync,mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync,symlinkSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {resolve,dirname} from 'node:path';
 import {beforeEach,afterEach,it,expect} from 'vitest';
@@ -47,7 +47,7 @@ beforeEach(()=>{
 });
 afterEach(()=>rmSync(root,{recursive:true,force:true}));
 it('admits arbitrary multi-document collections without frontmatter or ambient discovery',()=>{put('specs/ignored.md','UNREGISTERED');const r=loadScopedRegistry(root);expect(r.pages).toHaveLength(5);expect(r.pages.some(p=>p.content.includes('UNREGISTERED'))).toBe(false);});
-it('separates private Module composition from shared sibling dependencies',()=>{const r=loadScopedRegistry(root);expect(r.edges.filter(e=>e.kind==='uses')).toHaveLength(2);expect(r.edges.find(e=>e.kind==='composes')).toMatchObject({source:'service.transfer',target:'module.ledger'});});
+it('scenario.views.load-registry: separates private Module composition from shared sibling dependencies',()=>{const r=loadScopedRegistry(root);expect(r.targets.flatMap(t=>t.uses)).toHaveLength(2);expect(r.targets.find(t=>t.id==='module.ledger')?.parent).toBe('service.transfer');expect(r).not.toHaveProperty('edges');});
 it('allows the same implementation file to be listed by more than one Module',()=>{
  targets[0].files=['src/shared.ts'];targets[1].files=['src/shared.ts'];save();put('src/shared.ts','export const shared = true;\n');
  const r=loadScopedRegistry(root);
@@ -233,7 +233,7 @@ it('rejects a registered document staged under the reserved projections/ prefix'
  targets[1].documents.push('specs/projections/foo.md');putSpec('specs/projections/foo.md',['scope.audit'],'# Foo\nReserved staged path.');save();
  expect(()=>loadScopedRegistry(root)).toThrow(/[Pp]rojections/);
 });
-it('writes a legacy redirect stub for every alias during postBuild, and validateScopedBuild checks them',async()=>{
+it('scenario.views.validate-candidate-mismatch: writes a legacy redirect stub for every alias during postBuild, and validateScopedBuild checks them',async()=>{
  const registry=loadScopedRegistry(root);await materializeScoped(registry);
  const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
  await plugin.loadContent!();
@@ -246,10 +246,11 @@ it('writes a legacy redirect stub for every alias during postBuild, and validate
   expect(stub).toContain(page.route);expect(stub).toContain('refresh');
  }
  await expect(validateScopedBuild(root,outDir)).resolves.toBeUndefined();
+ expect(existsSync(resolve(outDir,'architecture-graph.json'))).toBe(false);
  const manifestPath=resolve(outDir,'build-manifest.json');
  const manifest=JSON.parse(readFileSync(manifestPath,'utf8'));
- writeFileSync(manifestPath,JSON.stringify({...manifest,schema_version:14}));
- await expect(validateScopedBuild(root,outDir)).rejects.toThrow(/Build Manifest 17/);
+ writeFileSync(manifestPath,JSON.stringify({...manifest,schema_version:17}));
+ await expect(validateScopedBuild(root,outDir)).rejects.toThrow(/Build Manifest 18/);
  writeFileSync(manifestPath,JSON.stringify(manifest));
  const [firstPage]=registry.pages;const [firstAlias]=firstPage.aliases;
  rmSync(resolve(outDir,firstAlias.slice(1)+'.html'));

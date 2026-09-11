@@ -7,18 +7,16 @@ const siteDir = resolve(__dirname, '../..');
 
 describe('accessible presentation contract', () => {
   it('provides semantic landmarks and named provenance', async () => {
-    const [config, rootPage, provenance, graph] = await Promise.all([
+    const [config, rootPage, provenance] = await Promise.all([
       readFile(resolve(siteDir, 'docusaurus.config.ts'), 'utf8'),
       readFile(resolve(siteDir, 'src/pages/index.tsx'), 'utf8'),
       readFile(resolve(siteDir, 'src/components/ContentProvenance.tsx'), 'utf8'),
-      readFile(resolve(siteDir, 'src/components/ScopedGraph.tsx'), 'utf8'),
     ]);
     expect(config).toContain("label: 'Module Specs'");
-    expect(config).toContain("label: 'Graph'");
+    expect(config).not.toContain("label: 'Graph'");
     expect(rootPage).toContain('httpEquiv="refresh"');
     expect(rootPage).toContain('<Link to={root.route}>');
     expect(provenance).toContain('aria-label="Content provenance"');
-    expect(graph).toContain('aria-label="Interactive architecture graph"');
   });
 
   it('keeps visible keyboard focus and a narrow-layout breakpoint', async () => {

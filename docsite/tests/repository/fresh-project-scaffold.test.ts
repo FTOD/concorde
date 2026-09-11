@@ -1,4 +1,4 @@
-import {spawnSync} from 'node:child_process';
+import {captureProcess} from '../capture-process';
 import {existsSync} from 'node:fs';
 import {mkdir, mkdtemp, readFile, rm, symlink, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -7,10 +7,10 @@ import {resolve} from 'node:path';
 import {afterAll, beforeAll, describe, expect, it} from 'vitest';
 
 /**
- * Concorde-repository evidence for feature.concorde.publish-project-docsite FR-009: a project holding
+ * Concorde-repository evidence for scenario.views.scaffold-propose: a project holding
  * only Profile 11 initialization outputs receives the packaged docsite through the native `docsite`
  * Tool and passes the adapter's validate and build steps. It reuses this checkout's installed
- * dependencies and pinned Archify skill, so it stays outside the packaged template.
+ * dependencies without a separate diagram renderer, so it stays outside the packaged template.
  */
 const siteDir = resolve(__dirname, '../..');
 const repositoryRoot = resolve(siteDir, '..');
@@ -19,12 +19,15 @@ const concordeTool = resolve(repositoryRoot, 'scripts/concorde.py');
 type Envelope = {status: string; artifacts?: string[]; findings?: Array<{rule_id: string; message: string}>; result: Record<string, unknown>};
 
 function run(command: string, args: string[], cwd: string) {
-  const result = spawnSync(command, args, {cwd, encoding: 'utf8', timeout: 240_000, env: {...process.env, NODE_ENV: 'production'}});
+  const result = captureProcess(command, args, {cwd, timeout: 240_000, env: {...process.env, NODE_ENV: 'production'}});
+  expect(result.error).toBeUndefined();
+  expect(result.signal).toBeNull();
   return result;
 }
 
 function tool(root: string, ...args: string[]): Envelope {
   const result = run('python3', [concordeTool, '--project-root', root, ...args], root);
+  expect(result.status, result.stderr).toBe(0);
   if (!result.stdout) throw new Error(`concorde ${args.join(' ')} produced no envelope: ${result.stderr}`);
   return JSON.parse(result.stdout) as Envelope;
 }
@@ -50,9 +53,6 @@ apply_project_proposal(root,package,project_proposal(root,package,'Atlas',config
   const applied = tool(root, 'docsite', '--apply', '--proposal', '.concorde/docsite-proposal.json', '--allow-primary-worktree');
   expect(applied.status).toBe('success');
   await symlink(resolve(siteDir, 'node_modules'), resolve(root, 'docsite/node_modules'), 'dir');
-  await mkdir(resolve(root, '.agents/skills'), {recursive: true});
-  await symlink(resolve(repositoryRoot, '.agents/skills/archify'), resolve(root, '.agents/skills/archify'), 'dir');
-  await writeFile(resolve(root, 'skills-lock.json'), await readFile(resolve(repositoryRoot, 'skills-lock.json')));
   await mkdir(resolve(root, 'generated/protocol'), {recursive: true});
   await writeFile(resolve(root, 'generated/protocol/framework-owned.txt'), 'Preserve Framework build assets.');
 }, 300_000);
@@ -62,12 +62,14 @@ afterAll(async () => {
 });
 
 describe('a project holding only Profile 11 initialization outputs', () => {
-  it('receives the packaged adapter and identity without synthetic prose or repository evidence', async () => {
+  it('scenario.views.scaffold-propose: receives the graph-free adapter and identity', async () => {
     const files = (docsiteProposal.result.proposal as {files: Array<{path: string}>}).files.map((file) => file.path);
     expect(files).toContain('docsite/docusaurus.config.ts');
     expect(files).toContain('docsite/package-lock.json');
     expect(files).toContain('docsite/site.json');
     expect(files).not.toContain('README.md');
+    expect(files).not.toContain('docsite/src/pages/graph.tsx');
+    expect(files).not.toContain('docsite/src/components/ScopedGraph.tsx');
     expect(files.some((path) => path.startsWith('docsite/tests/repository/') || path.startsWith('docsite/scaffold/'))).toBe(false);
     expect(files).not.toContain('.github/workflows/deploy-docsite.yml');
     const identity = JSON.parse(await readFile(resolve(root, 'docsite/site.json'), 'utf8')) as Record<string, unknown>;
@@ -80,12 +82,12 @@ describe('a project holding only Profile 11 initialization outputs', () => {
       .toBe(await readFile(resolve(siteDir, 'docusaurus.config.ts'), 'utf8'));
   });
 
-  it('is unchanged on a second proposal and refuses to overwrite', () => {
+  it('scenario.views.scaffold-apply: is unchanged on a second proposal and refuses to overwrite', () => {
     expect(tool(root, 'docsite', '--propose', '--allow-primary-worktree').status).toBe('unchanged');
     expect(tool(root, 'docsite', '--apply', '--proposal', '.concorde/docsite-proposal.json', '--allow-primary-worktree').status).toBe('unchanged');
   });
 
-  it('validates and builds with the adapter it received', async () => {
+  it('scenario.views.publish-without-graph / scenario.views.publish-homepage-default: builds the received adapter', async () => {
     await mkdir(resolve(root,'docsite/.docusaurus'),{recursive:true});
     await writeFile(resolve(root,'docsite/.docusaurus/preview-sentinel.json'),'Preview cache stays independent.');
     const validate = run(process.execPath, ['--import','tsx','scripts/validate.ts'], resolve(root, 'docsite'));
@@ -93,13 +95,15 @@ describe('a project holding only Profile 11 initialization outputs', () => {
     const build = run(process.execPath, ['--import','tsx','scripts/build.ts'], resolve(root, 'docsite'));
     expect(build.status, `${build.stdout}\n${build.stderr}`).toBe(0);
     const manifest = JSON.parse(await readFile(resolve(root,'docsite/build/build-manifest.json'),'utf8'));
-    expect(manifest.schema_version).toBe(17);expect(manifest.pages).toHaveLength(1);
+    expect(manifest.schema_version).toBe(18);expect(manifest.pages).toHaveLength(1);
     expect(manifest.pages[0].route).toBe('/specs/project/module');
     expect(manifest.pages[0].targets).toEqual(['module.atlas']);
     expect(manifest.pages[0].aliases).toEqual([expect.stringMatching(/^\/specs\/module\.atlas\/[0-9a-f]{16}$/)]);
     const homepage=await readFile(resolve(root,'docsite/build/index.html'),'utf8');expect(homepage).toContain(manifest.pages[0].route);
     expect(homepage).toMatch(/http-equiv="refresh"/i);
     expect(homepage).not.toContain('Specify the architecture.');
+    expect(existsSync(resolve(root,'docsite/build/graph.html'))).toBe(false);
+    expect(existsSync(resolve(root,'docsite/build/architecture-graph.json'))).toBe(false);
     expect(existsSync(resolve(root,'docsite/build',manifest.pages[0].route.slice(1)+'.html'))).toBe(true);
     const [legacyAlias]=manifest.pages[0].aliases as string[];
     const redirectStub=await readFile(resolve(root,'docsite/build',legacyAlias.slice(1)+'.html'),'utf8');

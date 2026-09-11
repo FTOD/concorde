@@ -13,6 +13,9 @@ The public API is TypeScript and Docusaurus plugin hooks. Profile 11 publication
 project registry, creates derived documentation, validates a built candidate, and promotes only a
 successfully checked candidate. It exposes no agent tool or read proxy. Consumers do not need a
 Python API or a provider Spec to invoke the functions and interpret the values defined here.
+Publication has no standalone graph view or architecture-graph output. Its registry validation and
+Module navigation still use declared relationships; inline authored Mermaid diagrams remain part
+of ordinary document rendering.
 
 ## Loading, materializing and building
 
@@ -22,6 +25,7 @@ Python API or a provider Spec to invoke the functions and interpret the values d
 - WHEN `loadScopedRegistry` runs
 - THEN it returns a model whose Module IDs are unique, whose Module parents are acyclic and whose entry target exists and is a Module
 - AND malformed identities, memberships or contract agreement throw before any file is written
+- AND it returns no graph-specific node or edge projection
 
 ### scenario.views.materialize — Materializing writes disposable staged content and its identity record
 
@@ -39,13 +43,10 @@ digest.
 
 ### scenario.views.id-anchors — Materializing injects scenario, requirement and entity anchors
 
-- GIVEN a loaded registry model whose documents define scenario and requirement headings and
-  `concorde-entities` blocks
+- GIVEN a loaded registry model whose documents define scenario and requirement headings and `concorde-entities` blocks
 - WHEN `materializeScoped` runs
-- THEN it emits every scenario and requirement heading with its own ID as an explicit heading
-  anchor, for example `### req.x — Title {#req.x}`
-- AND it inserts an HTML anchor `<a id="entity.x"></a>` immediately before every entity's
-  `concorde-entities` block
+- THEN it emits every scenario and requirement heading with its own ID as an explicit heading anchor, for example `### req.x — Title {#req.x}`
+- AND it inserts an HTML anchor `<a id="entity.x"></a>` immediately before every entity's `concorde-entities` block
 - AND a `path#id` link to that scenario, requirement or entity resolves on the published site
 
 ### scenario.views.build-site — buildSite runs the full prepare/build/validate/promote path
@@ -57,17 +58,18 @@ digest.
 
 ### scenario.views.validate-candidate-mismatch — Validation rejects a stale or incomplete candidate
 
-- GIVEN a build-manifest or architecture-graph artifact whose schema version, source digest, page inventory or redirect stub coverage does not exactly match the current model
+- GIVEN a build-manifest artifact whose schema version, source digest, page inventory or redirect stub coverage does not exactly match the current model
 - WHEN `validateScopedBuild` runs
 - THEN it rejects without repairing the artifacts or promoting output
 
-Digest format and path safety are Module-wide requirements, not outcomes of this one scenario;
-see [req.views.hash-format](module.md#req.views.hash-format) and
-[req.views.safe-relative-paths](module.md#req.views.safe-relative-paths) in `module.md`. Promotion
-atomicity and loader context isolation are likewise Module-wide; see
-[req.views.promote-atomic](module.md#req.views.promote-atomic),
+Digest format and path safety are Module-wide requirements; see
+[req.views.hash-format](module.md#req.views.hash-format) and
+[req.views.safe-relative-paths](module.md#req.views.safe-relative-paths). Promotion and loader
+isolation are specified by [req.views.promote-atomic](module.md#req.views.promote-atomic),
 [req.views.promote-requires-checked-candidate](module.md#req.views.promote-requires-checked-candidate)
 and [req.views.no-contract-context-expansion](module.md#req.views.no-contract-context-expansion).
+The absence of a standalone graph is specified by
+[req.views.no-docsite-graph-view](module.md#req.views.no-docsite-graph-view).
 
 ## Interface signatures
 
@@ -111,6 +113,7 @@ references. Malformed identities, memberships, diagram declarations or required/
 agreement throw `Error`; the loader never follows a contract edge to import extra context. A
 `concorde-contract` has id/version/role/peer/schema/semantics/example. Internal required contracts
 must match the named provider's schema; peers named `external:...` do not require a local provider.
+Removing graph presentation does not remove these validation responsibilities.
 
 ## Public model types
 
@@ -127,16 +130,15 @@ interface Page {
   memberships: {targetId: string; kind: Kind; primary: boolean}[];
   aliases: string[]; kind: Kind; primaryOf: string | null;
 }
-interface Edge {
-  source: string; target: string;
-  kind: 'composes' | 'uses' | 'requires';
-  contract?: string;
-}
 interface ScopedRegistry {
-  schema_version: 17; projectRoot: string; registryPath: string; entryTarget: string;
-  sourceDigest: string; targets: Target[]; pages: Page[]; edges: Edge[];
+  schema_version: 18; projectRoot: string; registryPath: string; entryTarget: string;
+  sourceDigest: string; targets: Target[]; pages: Page[];
 }
 ```
+
+Publication model schema 18 removes the former graph `edges` projection and `Edge` type.
+`Target.parent` and `Target.uses` remain registry metadata for navigation, provenance and validation.
+This change does not change registry schema 3, Profile 11 or any UA graph format.
 
 A file may be listed by several Modules, unlike a document: schema 3 has no single implementation
 owner, so a shared file's reverse lookup is a plain list of listing Modules rather than one
@@ -153,13 +155,12 @@ A shared physical document keeps its single document identity, identical byte di
 carrying a `memberships` entry `{targetId, kind, primary}` per referencing target in registry
 order. `kind` is the kind of the membership marked `primary`, else the first membership's kind;
 `primaryOf` is that membership's targetId, or `null` when no membership is primary. `aliases`
-lists, for every membership, the legacy route it previously published at:
+lists, for every current membership, its compatibility route in the legacy format:
 `/specs/<target-id>/<key>`, where `key` is the first 16 hex digits of `hash(sourcePath)` after
 `sha256:` (`legacyAliasRoute` computes this). The Markdown H1 supplies the page title, falling back
 to the primary membership's target title, or the first membership's target title when none is
-primary. `content` excludes front matter; `contentDigest` hashes the complete source bytes. Edges
-distinguish Module composition, uses and required-interface relationships; there is no
-implementation-reuse edge because Profile 11 has no separate Implementation kind.
+primary. Alias history is not a build input: removed memberships contribute no alias to a fresh
+build. `content` excludes front matter; `contentDigest` hashes the complete source bytes.
 
 `sourceDigest` hashes JSON serialization of ordered `[path, contentDigest]` pairs: configuration,
 registry and each distinct registered document in first-reference order. A shared physical document
@@ -174,8 +175,8 @@ Site identity schema 1 optionally carries the `homepage` presentation object des
 [publication](publication.md#scenario.views.publish-homepage). The content plugin passes the
 validated identity to the root renderer and watches `docsite/site.json` for changes. When the
 option is absent, the root preserves its redirect to the registered entry Module. The introduction
-is a human navigation surface outside registered Spec membership and `sourceDigest`; the existing
-registered-page manifest and architecture graph retain their registry-derived meanings.
+is a human navigation surface outside registered Spec membership and `sourceDigest`; the
+registered-page manifest retains its registry-derived meaning.
 
 ## Independent Protocol documentation
 
@@ -183,9 +184,9 @@ When `docsite/site.json` sets optional boolean `protocolDocs` to true, publicati
 **Spec Protocol** navbar tab before the software Spec tabs. A separate Docusaurus docs collection
 reads Markdown from `protocol/` and publishes it under `/protocol/` with its own chapter sidebar
 and local search index. The collection requires no project Spec metadata, Module identity or
-registry membership. Its pages do not appear in the software architecture graph or registered Spec
-manifest. Missing enabled content and broken chapter links fail the site build. Omitting the option
-disables this collection; scaffolding a consumer project does not enable or copy it.
+registry membership. Its pages do not appear in the registered Spec manifest. Missing enabled
+content and broken chapter links fail the site build. Omitting the option disables this collection;
+scaffolding a consumer project does not enable or copy it.
 
 The adapter renders inline `mermaid` fences using Docusaurus's Mermaid theme in both Protocol and
 registered Spec pages. Protocol illustrations remain part of their independent chapter sources;
@@ -198,12 +199,14 @@ renderer choice does not change the Protocol's tool-neutral requirements.
 The primary Spec navigation mirrors the directory hierarchy of explicitly registered source paths;
 it never discovers new membership by scanning directories. `scopedSidebar` returns one tree
 following registered Module parentage; there is no separate Implementation Spec sidebar, because
-Profile 11 registers only Modules. The navbar exposes Module Specs and Graph, and, when present,
-the optional independent Protocol tab and a self-hosting-only Projections group of rendered
-`generated/docs/instructions.json` and `generated/docs/wire.json` pages; an ordinary consumer
+Profile 11 registers only Modules. The navbar exposes Module Specs and, when present, the optional
+independent Protocol tab and a self-hosting-only Projections group of rendered
+`generated/docs/instructions.json` and `generated/docs/wire.json` pages. An ordinary consumer
 project produces neither file, so those pages are omitted rather than linking to unmaterialized
-content, and their own promises about agent context are the Development host boundary Spec's, not
-this one's.
+content. The Agent instructions projection displays common responsibilities and separate mode
+sections with each mode's context/result/authority contract and complete common-plus-selected-mode
+text; browsing these pages does not combine modes into a runtime prompt or grant agent context.
+There is no Graph navbar item, graph route, graph component or graph-specific global data.
 
 A Module category links directly to its `module.md` through a Docusaurus category `link` of type
 `doc`. Its child items contain only additional registered documents and child Modules, never a
@@ -222,8 +225,8 @@ marks that choice with `primary: true`, and diagrams and the site entry use it r
 arbitrary array order. `rewriteLinks` rewrites supported local Markdown links to the registered
 page routes. Diagram references use the owning document's Relationships subsection anchor; there
 are no external diagram-source or delivered-HTML links. Invalid or unregistered local destinations
-are rejected. Outside fenced code blocks it handles inline links and images with these forms, whose URL
-has no whitespace or closing parenthesis:
+are rejected. Outside fenced code blocks it handles inline links and images with these forms, whose
+URL has no whitespace or closing parenthesis:
 
 ```markdown
 [label](url)
@@ -232,19 +235,19 @@ has no whitespace or closing parenthesis:
 
 A URL beginning with a scheme, `#`, or `/` is preserved unchanged. Other destinations resolve
 relative to the source document directory using POSIX normalization; an optional `#anchor` is
-preserved. The resolved path selects the single page registered at that sourcePath — there is now
-exactly one — and an unregistered destination is rejected. Relative non-Spec assets have no
-matching page and are rejected; callers use a supported absolute or root-relative asset URL.
-Unsupported Markdown forms are left unchanged. Link validation occurs during rewrite/materialization,
-not during registry loading. The function returns text without changing sources.
+preserved. The resolved path selects the single page registered at that sourcePath, and an
+unregistered destination is rejected. Relative non-Spec assets have no matching page and are
+rejected; callers use a supported absolute or root-relative asset URL. Unsupported Markdown forms
+are left unchanged. Link validation occurs during rewrite/materialization, not during registry
+loading. The function returns text without changing sources.
 
 `contentLoaded({content, actions})` calls `actions.setGlobalData` with the Workspace 15 entry
-target, page metadata without Markdown bodies and architecture nodes/edges. `getPathsToWatch()`
-returns absolute configuration, registry and registered Markdown paths, which include the diagram
-sources. `postBuild({outDir, routesPaths})` requires the fresh source digest and materialization
-identity to match the loaded model, and every expected page route to be in the rendered route
-inventory after base-URL normalization. Otherwise it throws before emitting verification artifacts.
-After the build manifest and architecture graph, it writes one legacy redirect stub per alias at
+target and page metadata without Markdown bodies. It supplies no architecture nodes or edges.
+`getPathsToWatch()` returns absolute configuration, registry and registered Markdown paths, which
+include the inline diagram sources. `postBuild({outDir, routesPaths})` requires the fresh source
+digest and materialization identity to match the loaded model, and every expected page route to be
+in the rendered route inventory after base-URL normalization. Otherwise it throws before emitting
+verification artifacts. After the build manifest, it writes one legacy redirect stub per alias at
 `<outDir>/<alias without its leading slash>.html`: a minimal HTML document with a
 base-URL-prefixed `<meta http-equiv="refresh">` and `<link rel="canonical">` to the document's
 canonical page, plus a visible link, mirroring the default root redirect. These are the complete
@@ -252,34 +255,37 @@ collaborator promises this Profile 11 path relies on.
 
 ## Build artifacts, validation and promotion
 
-Successful plugin post-build writes these JSON artifacts in `outDir`:
+Successful plugin post-build writes this JSON verification artifact in `outDir`:
 
 ```typescript
 // build-manifest.json
-{ schema_version: 17, sourceDigest: string,
+{ schema_version: 18, sourceDigest: string,
   pages: {sourcePath: string; route: string; contentDigest: string; targets: string[]; aliases: string[]}[] }
-// architecture-graph.json
-{ schema_version: 1, sourceDigest: string, nodes: Target[], edges: Edge[] }
 ```
 
-`validateScopedBuild(root, directory)` reloads the current model and reads both artifacts from the
-candidate directory. It resolves with no value only when schema versions, source digests, ordered
-page path/route/digest/targets/aliases entries and complete ordered graph nodes/edges match
-exactly, and every alias has a redirect stub in the candidate directory whose content contains that
-page's canonical route. Stale or incomplete manifest/graph, missing files, a missing or
-non-matching redirect stub, or malformed JSON reject. This function does not repair artifacts or
-promote output. Route coverage is measured by the plugin's post-build hook; callers must not
-manufacture a manifest to bypass that hook.
+Build-manifest schema 18 identifies the publication contract without an architecture-graph
+artifact. Older manifests require a fresh build. Publication neither produces nor requires
+`architecture-graph.json`; it has no replacement graph artifact. UA export remains independent.
+
+`validateScopedBuild(root, directory)` reloads the current model and reads the manifest from the
+candidate directory. It resolves with no value only when its schema version, source digest and
+ordered page path/route/digest/targets/aliases entries match exactly, and every alias has a redirect
+stub in the candidate directory whose content contains that page's canonical route. A stale or
+incomplete manifest, missing manifest, missing or non-matching redirect stub, or malformed JSON
+rejects. This function does not repair artifacts or promote output. Route coverage is measured by
+the plugin's post-build hook; callers must not manufacture a manifest to bypass that hook.
 
 `buildSite` owns `docsite/.generated/candidate`, `docsite/build` and
 `docsite/.generated/previous-build`. It clears the candidate, prepares sources, runs Docusaurus,
 validates the built artifacts and only then calls `promoteCandidate`. Validation failure removes
-the candidate and preserves the previous build. Observed source changes during post-build or fresh
-validation reject; the identity describes the inputs actually checked and must be checked again if
-sources change before a later independent use of the candidate. Preparation/build callers must
-exclusively own these derived output directories through promotion; concurrent materialization or
-manual edits to staged/candidate artifacts are unsupported. The identity is a host build record,
-not a signature authenticating arbitrary externally supplied HTML.
+the candidate and preserves the previous build. Successful promotion replaces the previous build
+as a directory, so a previously published graph page or dedicated graph artifact cannot survive
+by being copied forward. Observed source changes during post-build or fresh validation reject;
+the identity describes the inputs actually checked and must be checked again if sources change
+before a later independent use of the candidate. Preparation/build callers must exclusively own
+these derived output directories through promotion; concurrent materialization or manual edits to
+staged/candidate artifacts are unsupported. The identity is a host build record, not a signature
+authenticating arbitrary externally supplied HTML.
 
 `promoteCandidate` is a filesystem transaction helper, with caller-supplied distinct candidate,
 destination and backup paths on a rename-compatible filesystem. Its caller must have successfully
@@ -306,9 +312,9 @@ Profile 11 publication requires one local `module.md` for every Module, and requ
 Requirements, Scenarios and Ontology headings to appear, by exact text and outside code fences, in
 that order, with Ontology's Entities and Relationships subsections each present in that order;
 other headings may interleave. `main_visible` is presentation metadata and does not trim a
-Module's context. Module composition, dependency declarations and required-interface
-contracts are checked independently as registry-derived edges. These checks establish structure,
-not universal semantic completeness.
+Module's context. Module composition, dependency declarations and required-interface contracts
+remain independently checked against the registry without producing a graph projection. These
+checks establish structure, not universal semantic completeness.
 
 Diagram rendering belongs to the normal Markdown/site candidate transaction. It writes no
 `generated/diagrams/` tree and cannot change Framework outputs under `generated/protocol`,
@@ -319,7 +325,8 @@ Production builds use `docsite/.generated/docusaurus-production` for Docusaurus-
 and aliases. `preparePublication` mode `build` clears only that generated directory; the build
 process sets `DOCUSAURUS_GENERATED_FILES_DIR_NAME` to the same relative path. Default preview mode
 uses `.docusaurus`. A production build preserves an active preview's generated modules and cache,
-so development-only debug routes cannot overwrite the production module graph.
+so development-only debug routes cannot overwrite the production module graph. Here, Docusaurus's
+module graph refers to its internal build machinery, not a published graph view.
 
 ## Mermaid rendering and source compatibility
 
@@ -333,6 +340,5 @@ source document and prevent publication of a candidate that silently drops a dia
 Source edits use ordinary document versioning: changing an edge, label, title or description
 changes the containing document digest and invalidates source-dependent build evidence. A shared
 Markdown member still publishes once and retains all registered memberships. Dependency links and
-diagram nodes do not add target contexts or graph edges to the explicit registry-derived
-relationship view. Rendering support still requires ordinary site dependencies to be installed;
-initialization does not fetch them.
+diagram nodes do not add target contexts or undeclared registry relationships. Rendering support
+still requires ordinary site dependencies to be installed; initialization does not fetch them.

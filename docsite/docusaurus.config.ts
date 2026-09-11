@@ -61,7 +61,6 @@ const config: Config = {
           {type: 'docSidebar', sidebarId: 'protocolSidebar', docsPluginId: 'protocol', label: 'Spec Protocol', position: 'left'},
         ] : []),
         {type: 'docSidebar', sidebarId: 'moduleSpecsSidebar', label: 'Module Specs', position: 'left'},
-        {to: '/graph', label: 'Graph', position: 'left'},
         ...(identity.repository ? [
           repositoryHost === 'github.com'
             ? {href: identity.repository, position: 'right', className: 'header-github-link', 'aria-label': 'GitHub repository'}

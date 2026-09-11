@@ -26,10 +26,8 @@ function redirectStub(target:string,title:string):string {
 export async function validateScopedBuild(root:string,directory:string) {
   const registry=loadScopedRegistry(root);
   const manifest=JSON.parse(await readFile(resolve(directory,'build-manifest.json'),'utf8'));
-  const graph=JSON.parse(await readFile(resolve(directory,'architecture-graph.json'),'utf8'));
   const expected=manifestPages(registry);
-  if(manifest.schema_version!==17||manifest.sourceDigest!==registry.sourceDigest||JSON.stringify(manifest.pages)!==JSON.stringify(expected))throw new Error('Stale or incomplete Build Manifest 17');
-  if(graph.schema_version!==1||graph.sourceDigest!==registry.sourceDigest||JSON.stringify(graph.edges)!==JSON.stringify(registry.edges)||JSON.stringify(graph.nodes)!==JSON.stringify(registry.targets))throw new Error('Stale architecture graph');
+  if(manifest.schema_version!==18||manifest.sourceDigest!==registry.sourceDigest||JSON.stringify(manifest.pages)!==JSON.stringify(expected))throw new Error('Stale or incomplete Build Manifest 18');
   for (const page of registry.pages) for (const alias of page.aliases) {
     const stubPath=resolve(directory,alias.replace(/^\//,'')+'.html');
     let stub:string;
@@ -43,7 +41,7 @@ export default function scopedContent(context:LoadContext,options:unknown):Plugi
   return {name:'concorde-content',
     async loadContent(){loaded=loadScopedRegistry(root);await requireMaterialized(loaded);return loaded;},
     async contentLoaded({content,actions}){actions.setGlobalData({schema_version:content.schema_version,entryTarget:content.entryTarget,
-      pages:content.pages.map(({content:_,...page})=>page),architectureGraph:{nodes:content.targets,edges:content.edges},
+      pages:content.pages.map(({content:_,...page})=>page),
       siteIdentity:loadSiteIdentity(context.siteDir)});},
     getPathsToWatch(){return ['docsite/site.json','.concorde/config.json','generated/docs/instructions.json','generated/docs/wire.json',
       ...(loaded?[loaded.registryPath,...loaded.pages.map(p=>p.sourcePath)]:[])].map(p=>resolve(root,p));},
@@ -54,7 +52,6 @@ export default function scopedContent(context:LoadContext,options:unknown):Plugi
       if(loaded.pages.some(p=>!routes.has(normalizeRoute(p.route))))throw new Error('Registered Spec page was not rendered');
       await writeFile(resolve(outDir,'build-manifest.json'),JSON.stringify({schema_version:loaded.schema_version,sourceDigest:loaded.sourceDigest,
         pages:manifestPages(loaded)},null,2)+'\n');
-      await writeFile(resolve(outDir,'architecture-graph.json'),JSON.stringify({schema_version:1,sourceDigest:loaded.sourceDigest,nodes:loaded.targets,edges:loaded.edges},null,2)+'\n');
       const target=(page:Page)=>withBaseUrl(context.baseUrl,page.route);
       for (const page of loaded.pages) for (const alias of page.aliases) {
         const stubPath=resolve(outDir,alias.replace(/^\//,'')+'.html');

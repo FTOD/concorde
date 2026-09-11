@@ -2,7 +2,7 @@ import {readFile} from 'node:fs/promises';
 import {mkdtemp, rm, mkdir, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {resolve} from 'node:path';
-import {spawnSync} from 'node:child_process';
+import {captureProcess} from '../capture-process';
 
 import {afterEach, describe, expect, it} from 'vitest';
 
@@ -20,8 +20,11 @@ async function temporaryRoot(prefix: string): Promise<string> {
 }
 
 function validate(root: string) {
-  return spawnSync(process.execPath, ['--import', 'tsx', 'scripts/validate.ts', '--project-root', root],
-    {cwd: siteDir, encoding: 'utf8'});
+  const result = captureProcess(process.execPath, ['--import', 'tsx', 'scripts/validate.ts', '--project-root', root],
+    {cwd: siteDir});
+  expect(result.error).toBeUndefined();
+  expect(result.signal).toBeNull();
+  return result;
 }
 
 describe('build interface', () => {
@@ -41,7 +44,7 @@ describe('build interface', () => {
   it('returns a non-zero diagnostic for an unconfigured project root', async () => {
     const root = await temporaryRoot('concorde-unconfigured-');
     const result = validate(root);
-    expect(result.status).not.toBe(0);
+    expect(result.status).toBe(1);
     expect(`${result.stdout}${result.stderr}`).toContain('.concorde/config.json');
   });
 
@@ -50,7 +53,7 @@ describe('build interface', () => {
     await mkdir(resolve(root, '.concorde'), {recursive: true});
     await writeFile(resolve(root, '.concorde/config.json'), JSON.stringify({profile_version: 7}), 'utf8');
     const result = validate(root);
-    expect(result.status).not.toBe(0);
+    expect(result.status).toBe(1);
     expect(`${result.stdout}${result.stderr}`).toContain('Profile 11 is required');
   });
 });
