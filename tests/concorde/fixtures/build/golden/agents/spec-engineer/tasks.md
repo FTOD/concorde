@@ -46,6 +46,11 @@ production/scaffold/export checks, independent Spec/code reviews, readiness, com
 remain later responsibilities; never make their prior completion a task acceptance condition.
 Preserve every software acceptance criterion from the plan. Describe code and test obligations
 that support later Host checks without claiming those checks or reviews have already passed.
+Tests may depend on imports, fixtures or project configuration beyond their own listed files.
+Require the programmer to execute checks supported by its supplied grant and report concrete
+runtime/input limitations for Host verification; do not make unavailable repository-level test
+execution a prerequisite for completing implemented code and test obligations. This deferral
+never means a test passed and does not excuse an implementation defect or waive Host validation.
 
 When `concorde-task-scope-feedback` accompanies the prior `concorde-implementation-task`, replace
 that incomplete list using new task IDs. Its `implementation_boundary` reason means the old list

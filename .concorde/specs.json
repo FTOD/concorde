@@ -269,12 +269,28 @@
       ],
       "checks": [
         "check.views.publication-types",
+        "check.views.repository-regressions",
         "check.views.ua-graph",
         "check.views.viewer"
       ]
     }
   ],
   "checks": [
+    {
+      "id": "check.views.repository-regressions",
+      "target_id": "module.views",
+      "argv": ["{python}", "docsite/tests/repository/run-checks.py"],
+      "timeout_seconds": 600,
+      "inputs": [
+        "agents", "capabilities", "prompts", "skills", "src", "protocol", "specs",
+        "docs", "scripts", "tests", "concorde.json", "pyproject.toml", "README.md", "skills-lock.json",
+        ".concorde/config.json", ".concorde/specs.json", ".github/workflows/deploy-docsite.yml", "docsite/README.md",
+        "docsite/docusaurus.config.ts", "docsite/package.json", "docsite/package-lock.json",
+        "docsite/plugins", "docsite/scaffold", "docsite/scripts", "docsite/sidebars.protocol.ts",
+        "docsite/sidebars.specs.ts", "docsite/site.json", "docsite/src", "docsite/static",
+        "docsite/tests", "docsite/tsconfig.json", "docsite/vitest.config.ts"
+      ]
+    },
     {
       "id": "check.spec.model",
       "target_id": "module.spec",
