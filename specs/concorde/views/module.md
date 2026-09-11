@@ -37,6 +37,9 @@ Publication SHALL derive Module Spec pages and their navigation only from the ex
 Every published Module Spec is traceable to a registered entry. The optional project introduction
 and independent Protocol collection are presentation surfaces outside that membership. See
 [req.views.no-directory-scanning](#req.views.no-directory-scanning).
+Previously published per-membership aliases are remembered in the existing published manifest
+only for currently registered source paths; they preserve navigation from earlier registry states
+without defining present membership, content or additional pages.
 
 ### req.views.no-directory-scanning — No directory scanning or link-based discovery
 

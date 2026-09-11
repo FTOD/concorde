@@ -159,8 +159,8 @@ lists, for every current membership, its compatibility route in the legacy forma
 `/specs/<target-id>/<key>`, where `key` is the first 16 hex digits of `hash(sourcePath)` after
 `sha256:` (`legacyAliasRoute` computes this). The Markdown H1 supplies the page title, falling back
 to the primary membership's target title, or the first membership's target title when none is
-primary. Alias history is not a build input: removed memberships contribute no alias to a fresh
-build. `content` excludes front matter; `contentDigest` hashes the complete source bytes.
+primary. Previously published aliases for that source path are appended under the input rules
+below. `content` excludes front matter; `contentDigest` hashes the complete source bytes.
 
 `sourceDigest` hashes JSON serialization of ordered `[path, contentDigest]` pairs: configuration,
 registry and each distinct registered document in first-reference order. A shared physical document
@@ -168,6 +168,36 @@ contributes its bytes once; membership changes are represented by the registry i
 Markdown digest includes every Mermaid fence and source declaration. Inline diagrams create no
 additional source or route record. This is a byte/version identity, not a semantic-completeness
 claim.
+
+## Published alias input
+
+`loadScopedRegistry` additionally reads the existing `docsite/build/build-manifest.json` through
+`safeRead`, solely to preserve ordinary legacy navigation. Absence (`ENOENT`) means no recorded
+history, as on a first build; other read errors, symlinks, non-files, malformed JSON or unsupported
+manifest shapes reject without writing. The input accepts the previously published manifest
+versions 17 and 18, both of which already record a `pages` array with `sourcePath` and `aliases`.
+Each entry must have a distinct safe relative Markdown `sourcePath` and a unique string array
+`aliases`. Each alias must exactly equal `legacyAliasRoute(targetId, sourcePath)` for a syntactically
+valid Module ID (`[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*`). The ID need not remain registered. Other
+manifest fields are not alias inputs; its old source digest is expected to differ after edits.
+
+For each currently registered source path, `Page.aliases` starts with current membership aliases
+in registry order, then appends distinct recorded aliases not already present in lexicographic
+order. A retained alias colliding with any current canonical route or another page's alias rejects.
+Old entries for paths no longer registered create no pages or redirects. This preserves membership
+changes at the same source path; a source-path rename has no historical identity mapping in this
+existing manifest. No directory scan, old HTML, graph route, graph redirect, architecture artifact
+or old asset is read or copied. History cannot add Spec membership or agent context.
+
+The registry `sourceDigest` retains its existing source-only meaning, and the materialization
+identity format stays unchanged. The effective alias inventory is checked separately: post-build
+reloads it and rejects if it differs from the loaded model, and candidate validation compares the
+complete ordered page inventory including aliases against a fresh load. Preparation/build callers
+exclusively own the published directory as well as the staged directories through promotion.
+Successful promotion stores the combined aliases in the existing schema-18 build manifest, so the
+next build retains them again without duplicate aliases or growing unrelated history. Failure
+leaves the prior published manifest as the next invocation's history input. Removing that durable
+output removes its recorded history; disposable materialization is never the history source.
 
 ## Project introduction
 
@@ -257,7 +287,7 @@ loading. The function returns text without changing sources.
 
 `contentLoaded({content, actions})` calls `actions.setGlobalData` with the Workspace 15 entry
 target and page metadata without Markdown bodies. It supplies no architecture nodes or edges.
-`getPathsToWatch()` returns absolute configuration, registry and registered Markdown paths, which
+`getPathsToWatch()` returns absolute configuration, published manifest, registry and registered Markdown paths, which
 include the inline diagram sources. `postBuild({outDir, routesPaths})` requires the fresh source
 digest and materialization identity to match the loaded model, and every expected page route to be
 in the rendered route inventory after base-URL normalization. Otherwise it throws before emitting
@@ -278,7 +308,8 @@ Successful plugin post-build writes this JSON verification artifact in `outDir`:
 ```
 
 Build-manifest schema 18 identifies the publication contract without an architecture-graph
-artifact. Older manifests require a fresh build. Publication neither produces nor requires
+artifact. Older manifests cannot validate as candidates and require a fresh build; schema 17's
+ordinary aliases can still supply the limited historical input described above. Publication neither produces nor requires
 `architecture-graph.json`; it has no replacement graph artifact. UA export remains independent.
 
 `validateScopedBuild(root, directory)` reloads the current model and reads the manifest from the

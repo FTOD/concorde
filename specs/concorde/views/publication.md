@@ -161,15 +161,18 @@ redirect from the removed graph page. UA continues through its existing independ
 - THEN promotion is refused
 - AND the previously published build is preserved unchanged
 
-### scenario.views.publish-legacy-redirect — Legacy routes resolve for current document memberships
+### scenario.views.publish-legacy-redirect — Legacy routes keep resolving after a document's membership changes
 
-- GIVEN a registered document and a legacy alias derived from one of its current registered memberships
+- GIVEN a document still registered at its source path and its previously published per-membership legacy route recorded in the last promoted build manifest
 - WHEN the current build is promoted
 - THEN a redirect stub for that legacy route still resolves to the document's one canonical page
-- AND aliases are recomputed from current memberships; publication does not retain historical aliases for removed memberships
+- AND removed memberships' recorded aliases and current memberships' aliases both resolve, without restoring removed memberships
+- AND repeated successful publication retains these aliases through the promoted manifest; failed candidates leave that manifest and the published redirects unchanged
 
-This compatibility promise concerns registered-document aliases, not the removed standalone graph
-page. Every Concorde Module contains an inline Mermaid entity diagram in its `module.md`
+The existing published manifest supplies the retained route information under the
+[pipeline's alias input rules](pipeline.md#published-alias-input). No new history file or producer
+interface is required. This compatibility promise concerns registered-document aliases, not the
+removed standalone graph page. Every Concorde Module contains an inline Mermaid entity diagram in its `module.md`
 Relationships subsection, with accessible title and description. Publication renders that fence in
 its authored position; the containing Markdown is the sole authored diagram source and already
 participates in source identity. No external diagram JSON, standalone diagram HTML, renderer Skill
