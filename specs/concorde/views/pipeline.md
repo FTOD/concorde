@@ -249,10 +249,15 @@ URL has no whitespace or closing parenthesis:
 ![label](url)
 ```
 
-A URL beginning with a scheme, `#`, or `/` is preserved unchanged. Other destinations resolve
-relative to the source document directory using POSIX normalization; an optional `#anchor` is
-preserved. The resolved path selects the single page registered at that sourcePath, and an
-unregistered destination is rejected. Relative non-Spec assets have no matching page and are
+A URL beginning with a scheme, `#`, or `/` is preserved unchanged. For other destinations,
+separate the suffix beginning at the first `#`, then separate the suffix beginning at the first
+`?` in the remaining part. Only the path before those suffixes resolves relative to the source
+document directory using POSIX normalization and selects the single page registered at that
+sourcePath. An empty path with a query selects the current source document. Append the original
+query and fragment suffixes to the canonical route in that order, preserving their contents,
+including additional question marks in a query and question marks within a fragment. Neither
+suffix participates in registered-document lookup. An invalid or unregistered source path is
+rejected even when it has a query. Relative non-Spec assets have no matching page and are
 rejected; callers use a supported absolute or root-relative asset URL. Unsupported Markdown forms
 are left unchanged by this rewrite function. A reference selects from all registered source
 paths, not just the referring Module's collection, so changing a document's membership alone does

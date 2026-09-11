@@ -83,6 +83,8 @@ class DocsiteScaffoldTests(unittest.TestCase):
         self.assertTrue(expected_adapter.issubset(paths))
         self.assertIn(f"{TEMPLATE_ROOT}/site.json", paths)
         self.assertNotIn("README.md", paths)
+        self.assertNotIn("docsite/src/pages/graph.tsx", paths)
+        self.assertNotIn("docsite/static/architecture-graph.json", paths)
         self.assertTrue(all(not path.startswith(f"{TEMPLATE_ROOT}/scaffold/") for path in paths))
         site_json_entry = next(item for item in proposal["files"] if item["path"] == f"{TEMPLATE_ROOT}/site.json")
         real_site_json = (REPOSITORY_ROOT / "docsite/site.json").read_text(encoding="utf-8")
@@ -193,6 +195,11 @@ class DocsiteScaffoldTests(unittest.TestCase):
             target = self.root / path
             self.assertTrue(target.is_file())
             self.assertEqual(target.read_bytes(), content)
+        self.assertFalse((self.root / "docsite/src/pages/graph.tsx").exists())
+        self.assertFalse((self.root / "docsite/static/architecture-graph.json").exists())
+        config = (self.root / "docsite/docusaurus.config.ts").read_text(encoding="utf-8")
+        self.assertNotIn("label: 'Graph'", config)
+        self.assertIn("@docusaurus/theme-mermaid", config)
         identity_path = self.root / "docsite/site.json"
         identity = json.loads(identity_path.read_text(encoding="utf-8"))
         self.assertEqual(identity, proposed.result["proposal"]["identity"])

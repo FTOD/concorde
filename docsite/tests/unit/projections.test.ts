@@ -100,3 +100,9 @@ it('scenario.views.publish-without-graph: preserves Agent, mode and Skill order 
     }
   }
 });
+
+it('scenario.views.publish-without-graph: embedded Markdown fences remain literal projection text', () => {
+  const body = 'Example:\n```md\n[not navigation](missing.md)\n```';
+  const page = renderInstructionsPage({agents: [], skills: [{name:'example',description:'Example',capability:'example',body}]});
+  expect(page).toContain('````text\n'+body+'\n````');
+});

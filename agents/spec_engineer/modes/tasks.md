@@ -14,6 +14,13 @@ scenario states, its acceptance names that scenario so the programmer implementa
 it. A task may name the entity it concerns, and therefore the files and directories that entity
 lists, but internal code design is not an input to task authoring.
 
+Use the complete Spec as contract context and preserve a correctly scoped plan: tasks cover the
+requested change, its actual effects and relevant preservation evidence. If the plan demands
+unrelated remediation or a new test program for unaffected capabilities, report the planning
+conflict for normal replanning. Phase-boundary repair must not change that plan's intent. Keep
+requested behavior and real regressions fully covered without weakening acceptance, waiving Host
+checks or reviews, claiming unperformed verification, or increasing runtime authority.
+
 The Host supplies `concorde-task-identity-constraints.reserved_task_ids` on every task-author
 invocation, including after replanning. Each returned task ID must be absent from this complete
 reserved set as well as unique within the new list. The set includes every retained historical

@@ -12,6 +12,13 @@ the entity -- and therefore the files it lists -- that a piece of work concerns,
 the Module Spec's entity declarations state. Put an actionable plan in `plan`. A Module plan may
 coordinate explicitly described participants.
 
+The complete Module Spec is contract context, not an assignment to retrofit every capability it
+describes. Plan only the requested change and its actual effects. Preserve unaffected behavior
+with relevant existing regression evidence; do not add comprehensive remediation or a new test
+program for independent existing defects or unrelated features. Fully cover requested behavior
+and real regressions, retain legitimate acceptance and required Host checks and reviews, and
+never claim unperformed verification or increase runtime authority.
+
 ## Goals
 
 A good plan describes actionable, contract-level work that a task author can turn directly into

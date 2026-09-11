@@ -4,6 +4,7 @@ import type {LoadContext,Plugin} from '@docusaurus/types';
 import {loadScopedRegistry,type Page,type ScopedRegistry} from './model';
 import {canonicalRoute,normalizeRoute} from './routes';
 import {loadSiteIdentity} from './site-identity';
+import {validateInternalLinks} from './internal-links';
 async function requireMaterialized(registry:ScopedRegistry):Promise<void> {
   const identity=JSON.parse(await readFile(resolve(registry.projectRoot,'docsite/.generated/scoped-materialization.json'),'utf8'));
   if(identity.schema_version!==1||identity.sourceDigest!==registry.sourceDigest)throw new Error('Materialized Spec source identity differs; prepare publication again');
@@ -18,7 +19,11 @@ function withBaseUrl(baseUrl:string,route:string):string {
 /** A minimal static redirect for a legacy `/specs/<target-id>/<hash>`
  * route kept compatible after the source-path canonical route replaced it. */
 function redirectStub(target:string,title:string):string {
+  const escape=(value:string)=>value.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const scriptTarget=JSON.stringify(target).replace(/</g,'\\u003c');
+  target=escape(target);title=escape(title);
   return '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"/>'+
+    `<script>location.replace(${scriptTarget}+location.search+location.hash)</script>`+
     `<meta http-equiv="refresh" content="0; url=${target}"/><link rel="canonical" href="${target}"/>`+
     `<title>${title}</title></head><body><main><p>This page moved. `+
     `<a href="${target}">Continue to ${title}</a>.</p></main></body></html>\n`;
@@ -35,6 +40,9 @@ export async function validateScopedBuild(root:string,directory:string) {
     catch {throw new Error(`Missing legacy redirect stub for ${alias}`);}
     if(!stub.includes(page.route))throw new Error(`Legacy redirect stub does not reference its canonical route: ${alias}`);
   }
+  await validateInternalLinks(directory,loadSiteIdentity(resolve(root,'docsite')),
+    new Map(registry.pages.flatMap(page=>page.aliases.map(alias=>[alias,page.route] as [string,string]))),
+    registry.pages.map(page=>page.route));
 }
 export default function scopedContent(context:LoadContext,options:unknown):Plugin<ScopedRegistry>{
   const root=resolve((options as {projectRoot?:string})?.projectRoot??resolve(context.siteDir,'..'));let loaded:ScopedRegistry;

@@ -1,7 +1,8 @@
-"""Host-only repository regressions in disposable scratch; never install dependencies.
+"""Host-only repository regressions with dependency preparation in disposable scratch.
 
 The configured read-only check grants repository inputs independently of programmer authority.
-Production tests write builds, so run them against a source copy outside the candidate.
+Install the copied lockfile's dependencies and run builds against a source copy outside
+the candidate; all dependency preparation and generated outputs stay in scratch.
 """
 from __future__ import annotations
 
@@ -21,9 +22,6 @@ FILES = ("concorde.json", "pyproject.toml", "README.md", ".concorde/config.json"
 
 
 def main() -> int:
-    installed = ROOT / "docsite/node_modules"
-    if not (installed / "vitest/vitest.mjs").is_file():
-        raise RuntimeError("Host publication checks require existing docsite/node_modules; no acquisition is allowed")
     with tempfile.TemporaryDirectory(prefix="concorde-publication-check-") as temporary:
         project = Path(temporary) / "project"
         project.mkdir()
@@ -37,13 +35,14 @@ def main() -> int:
             destination = project / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, destination)
-        (project / "docsite/node_modules").symlink_to(installed, target_is_directory=True)
         environment = {**os.environ, "PYTHONPATH": str(project / "src"), "PYTHONDONTWRITEBYTECODE": "1"}
         commands = [
+            (["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], project / "docsite"),
             ([sys.executable, "scripts/concorde.py", "build"], project),
             ([sys.executable, "-m", "unittest", "tests.concorde.views.test_ua_graph",
               "tests.concorde.views.test_viewer_launcher", "tests.concorde.views.test_docsite_scaffold",
-              "tests.concorde.views.test_docsite_template", "tests.concorde.views.test_scaffold_creation"], project),
+              "tests.concorde.views.test_docsite_template", "tests.concorde.views.test_scaffold_creation",
+              "tests.concorde.views.test_repository_checks"], project),
             (["node", "node_modules/vitest/vitest.mjs", "run", "--maxWorkers", "2",
               "--no-file-parallelism"], project / "docsite"),
         ]

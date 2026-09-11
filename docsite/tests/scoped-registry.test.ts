@@ -1,11 +1,20 @@
-import {existsSync,mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync,symlinkSync} from 'node:fs';
+import {existsSync,mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync,symlinkSync,readdirSync} from 'node:fs';
+import {EventEmitter} from 'node:events';
+import {createRequire} from 'node:module';
+import {runInNewContext} from 'node:vm';
+import {transpileModule,ModuleKind} from 'typescript';
+import {evaluate} from '@mdx-js/mdx';
+import * as jsxRuntime from 'react/jsx-runtime';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
 import {tmpdir} from 'node:os';
 import {resolve,dirname} from 'node:path';
 import {beforeEach,afterEach,it,expect} from 'vitest';
-import {legacyAliasRoute,loadScopedRegistry,rewriteLinks,primaryDocument,type Target} from '../plugins/scoped-content/model';
+import {legacyAliasRoute,loadScopedRegistry,rewriteLinks,primaryDocument,requireScoped,type Target} from '../plugins/scoped-content/model';
 import {materializeScoped,scopedSidebar,publicationSidebar} from '../plugins/scoped-content/materialize';
 import scopedContent,{validateScopedBuild} from '../plugins/scoped-content';
 import {promoteCandidate} from '../scripts/build';
+import {preparePublication,productionGeneratedDirectory} from '../scripts/prepare-publication';
 import type {LoadContext} from '@docusaurus/types';
 interface SidebarItem {type:string; label:string; href?:string; id?:string; link?:{type:'doc';id:string}; collapsed?:boolean; items?:SidebarItem[]}
 let root:string,targets:Target[];
@@ -39,6 +48,7 @@ function updateDocument(path:string,updates:Record<string,unknown>){
 }
 beforeEach(()=>{
  root=mkdtempSync(resolve(tmpdir(),'concorde-scoped-'));put('.concorde/config.json',JSON.stringify({profile_version:11,registry:'.concorde/specs.json'}));
+ put('docsite/site.json',JSON.stringify({schema_version:1,title:'Bank',url:'https://localhost',baseUrl:'/',organizationName:'bank',projectName:'bank'}));
  targets=[target('scope.bank',['specs/bank/module.md']),target('scope.audit',['specs/audit/module.md']),target('service.transfer',['specs/transfer/module.md','specs/transfer/promises.md']),target('module.ledger',['specs/ledger/module.md'])];
  targets[0].uses=['service.transfer'];targets[1].uses=['service.transfer'];targets[3].parent='service.transfer';
  targets[3].files=['src/ledger.ts'];put('src/ledger.ts','export const ledger = true;\n');
@@ -213,6 +223,40 @@ it('scenario.views.publish-candidate: rewrites only registered navigation to can
  expect(rewriteLinks(r,p)).toContain('[Example](unknown.md)');
  p.content+='\n[Wrong](unknown.md)';expect(()=>rewriteLinks(r,p)).toThrow(/Unregistered/);
 });
+it('scenario.views.materialize scenario.views.publish-legacy-redirect: source lookup preserves query and fragment suffixes',async()=>{
+ const links=[
+  ['../transfer/promises.md?view=compact#promise','/specs/transfer/promises?view=compact#promise'],
+  ['?view=compact','/specs/bank/module?view=compact'],
+  ['?view=compact#purpose','/specs/bank/module?view=compact#purpose'],
+  ['../transfer/promises.md?next=a?b#promise','/specs/transfer/promises?next=a?b#promise'],
+  ['../transfer/promises.md#promise?detail','/specs/transfer/promises#promise?detail'],
+  ['../transfer/promises.md?next=a?b#promise?detail#more','/specs/transfer/promises?next=a?b#promise?detail#more'],
+  ['../transfer/promises.md?#','/specs/transfer/promises?#'],
+  ['https://example.com/page?view=compact#promise','https://example.com/page?view=compact#promise'],
+  ['mailto:reader@example.com?subject=Read','mailto:reader@example.com?subject=Read'],
+  ['/specs/transfer/promises?view=compact#promise','/specs/transfer/promises?view=compact#promise'],
+  ['#purpose?detail','#purpose?detail'],
+ ];
+ const unchanged='[Reference][promise]\n\n[promise]: ../transfer/promises.md?view=compact#promise\n\n```md\n[Example](unknown.md?view=compact#promise)\n```';
+ putSpec('specs/bank/module.md',['scope.bank'],'# Bank\n\n'+links.map(([url],i)=>`[Link ${i}](${url})`).join('\n')+'\n\n'+unchanged);
+ const original=readFileSync(resolve(root,'specs/bank/module.md'));
+ const registry=loadScopedRegistry(root),page=registry.pages.find(p=>p.sourcePath==='specs/bank/module.md')!;
+ const rewritten=rewriteLinks(registry,page);
+ await materializeScoped(registry);
+ const staged=readFileSync(resolve(root,'docsite/.generated/content/specs/bank/module.md'),'utf8');
+ for(const text of [rewritten,staged]){
+  for(const [,destination] of links)expect(text).toContain(`](${destination})`);
+  expect(text).toContain(unchanged);
+ }
+ expect(readFileSync(resolve(root,'specs/bank/module.md'))).toEqual(original);
+});
+it('scenario.views.materialize: an unknown source with a query still rejects',async()=>{
+ putSpec('specs/bank/module.md',['scope.bank'],'# Bank\n\n[Unknown](unknown.md?view=compact#promise)');
+ const registry=loadScopedRegistry(root),page=registry.pages[0];
+ expect(()=>rewriteLinks(registry,page)).toThrow('Unregistered local link: specs/bank/module.md -> unknown.md?view=compact#promise');
+ await expect(materializeScoped(registry)).rejects.toThrow(/Unregistered local link/);
+ expect(existsSync(resolve(root,'docsite/.generated/scoped-materialization.json'))).toBe(false);
+});
 it('derives readable canonical routes, staged paths and legacy alias routes from source paths',()=>{
  const r=loadScopedRegistry(root);
  const arbitrary=r.pages.find(p=>p.sourcePath==='specs/transfer/module.md')!;
@@ -351,6 +395,7 @@ it('scenario.views.validate-candidate-mismatch: writes a legacy redirect stub fo
  await plugin.loadContent!();
  const outDir=mkdtempSync(resolve(tmpdir(),'concorde-outdir-'));
  const routesPaths=registry.pages.map(p=>p.route);
+ for(const page of registry.pages){const file=resolve(outDir,page.route.slice(1)+'.html');mkdirSync(dirname(file),{recursive:true});writeFileSync(file,'<main>Rendered page</main>');}
  // eslint-disable-next-line @typescript-eslint/no-explicit-any
  await plugin.postBuild!({outDir,routesPaths} as any);
  for(const page of registry.pages) for(const alias of page.aliases){
@@ -419,4 +464,159 @@ it('scenario.views.publish-preserves-previous-on-failure: postBuild refuses miss
  put(source,readFileSync(resolve(root,source),'utf8')+'\nChanged during build.');
  await expect(plugin.postBuild!({outDir,routesPaths} as any)).rejects.toThrow(/source changed/);
  expect(existsSync(resolve(outDir,'build-manifest.json'))).toBe(false);
+});
+
+it('scenario.views.publish-legacy-redirect: validates current cross-Module links and executes alias redirects',async()=>{
+ targets[2].documents=targets[2].documents.filter(path=>path!=='specs/transfer/promises.md');
+ targets[0].documents.push('specs/transfer/promises.md');save();
+ putSpec('specs/transfer/promises.md',['scope.bank'],'# Promise\n\n## Promise {#promise}\n\nRetained agreement.');
+ putSpec('specs/bank/module.md',['scope.bank'],'# Bank\n\n[Source reference](../transfer/promises.md#promise)\n\n[Canonical reference](/specs/transfer/promises#promise)\n\n[Retained form][agreement]\n\n[agreement]: /specs/transfer/promises#promise');
+ put('specs/bank/module.md',readFileSync(resolve(root,'specs/bank/module.md'),'utf8')+'\n[Query source reference](../transfer/promises.md?view=compact&next=a?b#promise)\n');
+ const originalSource=readFileSync(resolve(root,'specs/bank/module.md'));
+ const before=loadScopedRegistry(root);await materializeScoped(before);
+ expect(before.pages.find(page=>page.sourcePath==='specs/transfer/promises.md')!.documentTargets).toEqual(['scope.bank']);
+ const oldAlias=legacyAliasRoute('scope.bank','specs/transfer/promises.md');
+ targets[0].documents.pop();targets[2].documents.push('specs/transfer/promises.md');save();
+ updateDocument('specs/transfer/promises.md',{targets:['service.transfer']});
+ const registry=loadScopedRegistry(root);await materializeScoped(registry);
+ expect(registry.targets[0].documents).not.toContain('specs/transfer/promises.md');
+ const page=registry.pages.find(page=>page.sourcePath==='specs/transfer/promises.md')!;
+ const referring=registry.pages[0];
+ expect(readFileSync(resolve(root,'specs/bank/module.md'))).toEqual(originalSource);
+ const staged=readFileSync(resolve(root,'docsite/.generated/content/specs/bank/module.md'),'utf8');
+ expect(staged).toContain('[Source reference](/specs/transfer/promises#promise)');
+ expect(staged).toContain('[Query source reference](/specs/transfer/promises?view=compact&next=a?b#promise)');
+ expect(staged).toContain('[Canonical reference](/specs/transfer/promises#promise)');
+ expect(page.documentTargets).toEqual(['service.transfer']);
+ const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
+ await plugin.loadContent!();
+ const outDir=resolve(root,'candidate');mkdirSync(outDir);
+ for(const entry of registry.pages)put('candidate/'+entry.route.slice(1)+'.html','<h1 id="promise">Promise</h1>');
+ await plugin.postBuild!({outDir,routesPaths:registry.pages.map(page=>page.route)} as any);
+ const referrer='candidate/'+referring.route.slice(1)+'.html';
+ // Use the installed Markdown/MDX renderer for the actual retained source references,
+ // including reference syntax that rewriteLinks intentionally leaves untouched.
+ const rewritten=rewriteLinks(registry,referring);
+ expect(rewritten).toContain('[Retained form][agreement]');
+ const rendered=await evaluate(rewritten,{...jsxRuntime});
+ put(referrer,renderToStaticMarkup(createElement(rendered.default)));
+ expect(readFileSync(resolve(root,referrer),'utf8')).toContain('>Retained form</a>');
+ await expect(validateScopedBuild(root,outDir)).resolves.toBeUndefined();
+ for(const destination of [page.route,page.aliases[0]]){
+  put(referrer,`<a href="${destination}?view=full#promise">Read</a>`);
+  await expect(validateScopedBuild(root,outDir)).resolves.toBeUndefined();
+ }
+ for(const destination of [oldAlias+'#promise',page.route+'#missing']){
+  put(referrer,`<a href="${destination}">Read</a>`);
+  await expect(validateScopedBuild(root,outDir)).rejects.toThrow(/Unresolved internal navigation/);
+ }
+ const stub=readFileSync(resolve(outDir,page.aliases[0].slice(1)+'.html'),'utf8');
+ const script=stub.match(/<script>([\s\S]*?)<\/script>/)![1];
+ for(const [search,hash] of [['?view=full&mode=a%20b','#promise'],['','#promise'],['?view=full','']]){
+  const redirected:string[]=[];
+  runInNewContext(script,{location:{search,hash,replace:(url:string)=>redirected.push(url)}});
+  expect(redirected).toEqual([page.route+search+hash]);
+ }
+});
+
+it.each(['/', '/%E6%96%87%E6%A1%A3/'])('scenario.views.build-site scenario.views.publish-preserves-previous-on-failure scenario.views.validate-candidate-mismatch scenario.views.publish-repeat-without-graph: real pipeline preserves former graph output on failure and replaces it on success (%s)',async(baseUrl)=>{
+ const identity=JSON.parse(readFileSync(resolve(root,'docsite/site.json'),'utf8'));
+ put('docsite/site.json',JSON.stringify({...identity,baseUrl}));
+ const navigation=(route:string)=>baseUrl.toLowerCase()+route.slice(1);
+ const nativeRequire=createRequire(import.meta.url);
+ const buildPath=resolve(__dirname,'../scripts/build.ts');
+ const compiled=transpileModule(readFileSync(buildPath,'utf8'),{compilerOptions:{module:ModuleKind.CommonJS}}).outputText;
+ let destination=navigation('/specs/transfer/promises#promise');
+ let renderCount=0;
+ let failure:'none'|'source'|'manifest'='none';
+ // Execute the actual build module with this fixture as its site directory. Only the
+ // Docusaurus child is controlled: preparation, postBuild, validation and promotion run live.
+ const fixtureModule={exports:{} as {buildSite:()=>Promise<void>}};
+ const spawn=()=>{
+  const child=new EventEmitter();
+  queueMicrotask(async()=>{
+   try{
+    const registry=loadScopedRegistry(root);
+    const outDir=resolve(root,'docsite/.generated/candidate');
+    for(const page of registry.pages)put('docsite/.generated/candidate/'+page.route.slice(1)+'.html',
+     `<h1 id="promise">Promise</h1><a href="${destination}">Read</a>`);
+    const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl} as LoadContext,{});
+    await plugin.loadContent!();
+    await plugin.postBuild!({outDir,routesPaths:registry.pages.map(page=>baseUrl+page.route.slice(1))} as any);
+    if(failure==='source')put('specs/transfer/promises.md',
+     readFileSync(resolve(root,'specs/transfer/promises.md'),'utf8')+'\nChanged after postBuild.');
+    if(failure==='manifest'){
+     const path=resolve(outDir,'build-manifest.json');
+     const manifest=JSON.parse(readFileSync(path,'utf8'));
+     writeFileSync(path,JSON.stringify({...manifest,schema_version:17}));
+    }
+    renderCount++;child.emit('exit',0);
+   }catch(error){child.emit('error',error);}
+  });
+  return child;
+ };
+ runInNewContext(compiled,{
+  module:fixtureModule,exports:fixtureModule.exports,__dirname:resolve(root,'docsite/scripts'),process,
+  require:(id:string)=>{
+   if(id==='node:child_process')return{spawn};
+   if(id==='../plugins/scoped-content/model')return{requireScoped};
+   if(id==='../plugins/scoped-content')return{validateScopedBuild};
+   if(id==='./prepare-publication')return{preparePublication,productionGeneratedDirectory};
+   return nativeRequire(id);
+  },
+ });
+ const snapshot=(directory:string):Record<string,Buffer>=>{
+  const result:Record<string,Buffer>={};
+  const walk=(path:string)=>{for(const entry of readdirSync(resolve(directory,path),{withFileTypes:true})){
+   const name=path+entry.name;
+   if(entry.isDirectory())walk(name+'/');else result[name]=readFileSync(resolve(directory,name));
+  }};
+  walk('');return result;
+ };
+ await fixtureModule.exports.buildSite();
+ const published=resolve(root,'docsite/build');
+ const obsolete=['graph.html','graph/index.html','architecture-graph.json','assets/obsolete-graph.js'];
+ for(const path of obsolete)put('docsite/build/'+path,'previous graph output');
+ const previous=snapshot(published);
+ expect(Object.keys(previous)).toContain('build-manifest.json');
+ expect(Object.keys(previous).length).toBeGreaterThan(5);
+ for(const bad of ['/missing','/specs/transfer/promises#missing',legacyAliasRoute('scope.bank','specs/transfer/promises.md')+'#promise']){
+  destination=navigation(bad);
+  await expect(fixtureModule.exports.buildSite()).rejects.toThrow(/Unresolved internal navigation.*to /);
+  expect(snapshot(published)).toEqual(previous);
+  expect(existsSync(resolve(root,'docsite/.generated/candidate'))).toBe(false);
+  expect(existsSync(resolve(root,'docsite/.generated/previous-build'))).toBe(false);
+ }
+ destination=navigation('/specs/transfer/promises#promise');
+ const source=readFileSync(resolve(root,'specs/transfer/promises.md'),'utf8');
+ for(const invalid of ['source','manifest'] as const){
+  failure=invalid;
+  await expect(fixtureModule.exports.buildSite()).rejects.toThrow(/Build Manifest 18/);
+  expect(snapshot(published)).toEqual(previous);
+  expect(existsSync(resolve(root,'docsite/.generated/candidate'))).toBe(false);
+  expect(existsSync(resolve(root,'docsite/.generated/previous-build'))).toBe(false);
+  put('specs/transfer/promises.md',source);
+ }
+ failure='none';
+ for(let repeat=0;repeat<2;repeat++){
+  await fixtureModule.exports.buildSite();
+  await expect(validateScopedBuild(root,published)).resolves.toBeUndefined();
+  for(const path of obsolete)expect(existsSync(resolve(published,path))).toBe(false);
+  expect(readFileSync(resolve(published,'specs/bank/module.html'),'utf8')).toContain(destination);
+ }
+ expect(renderCount).toBe(8);
+});
+
+it('scenario.views.materialize scenario.views.build-site: rejects invalid materialization identities before emitting verification artifacts',async()=>{
+ const registry=loadScopedRegistry(root);await materializeScoped(registry);
+ const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
+ await plugin.loadContent!();
+ const outDir=resolve(root,'candidate');mkdirSync(outDir);
+ const identity='docsite/.generated/scoped-materialization.json';
+ for(const bytes of [null,'{malformed',JSON.stringify({schema_version:18,sourceDigest:registry.sourceDigest}),
+  JSON.stringify({schema_version:1,sourceDigest:'sha256:'+'0'.repeat(64)})]){
+  if(bytes===null)rmSync(resolve(root,identity));else put(identity,bytes);
+  await expect(plugin.postBuild!({outDir,routesPaths:registry.pages.map(page=>page.route)} as any)).rejects.toThrow();
+  expect(existsSync(resolve(outDir,'build-manifest.json'))).toBe(false);
+ }
 });

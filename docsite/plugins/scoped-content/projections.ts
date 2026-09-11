@@ -41,7 +41,8 @@ export function loadWireProjection(root: string): WireProjection {
 }
 
 function fence(body: string, language: string): string {
-  return '```' + language + '\n' + body.replace(/\n+$/, '') + '\n```';
+  const delimiter = '`'.repeat(Math.max(3, ...[...body.matchAll(/`+/g)].map(match => match[0].length + 1)));
+  return delimiter + language + '\n' + body.replace(/\n+$/, '') + '\n' + delimiter;
 }
 
 export function renderInstructionsPage(doc: InstructionsProjection): string {

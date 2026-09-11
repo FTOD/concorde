@@ -266,10 +266,15 @@ export function rewriteLinks(registry: ScopedRegistry,page: Page): string {
     if (fence) return line;
     return line.replace(/(!?\[[^\]]*\])\(([^\s)]+)\)/g,(whole,label:string,url:string)=> {
       if (/^(?:[a-z]+:|#|\/)/i.test(url)) return whole;
-      const [path,anchor] = url.split('#'); const source = posix.normalize(posix.join(posix.dirname(page.sourcePath),path));
+      const fragmentIndex = url.indexOf('#');
+      const beforeFragment = fragmentIndex < 0 ? url : url.slice(0,fragmentIndex);
+      const queryIndex = beforeFragment.indexOf('?');
+      const path = queryIndex < 0 ? beforeFragment : beforeFragment.slice(0,queryIndex);
+      const suffix = url.slice(path.length);
+      const source = path ? posix.normalize(posix.join(posix.dirname(page.sourcePath),path)) : page.sourcePath;
       const target = registry.pages.find(p=>p.sourcePath===source);
       requireThat(target, `Unregistered local link: ${page.sourcePath} -> ${url}`);
-      return `${label}(${target.route}${anchor?'#'+anchor:''})`;
+      return `${label}(${target.route}${suffix})`;
     });
   }).join('\n');
 }
