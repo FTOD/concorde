@@ -43,11 +43,10 @@ export default function scopedContent(context:LoadContext,options:unknown):Plugi
     async contentLoaded({content,actions}){actions.setGlobalData({schema_version:content.schema_version,entryTarget:content.entryTarget,
       pages:content.pages.map(({content:_,...page})=>page),
       siteIdentity:loadSiteIdentity(context.siteDir)});},
-    getPathsToWatch(){return ['docsite/site.json','docsite/build/build-manifest.json','.concorde/config.json','generated/docs/instructions.json','generated/docs/wire.json',
+    getPathsToWatch(){return ['docsite/site.json','.concorde/config.json','generated/docs/instructions.json','generated/docs/wire.json',
       ...(loaded?[loaded.registryPath,...loaded.pages.map(p=>p.sourcePath)]:[])].map(p=>resolve(root,p));},
     async postBuild({outDir,routesPaths}){
       const current=loadScopedRegistry(root);if(current.sourceDigest!==loaded.sourceDigest)throw new Error('Spec source changed during publication');
-      if(JSON.stringify(manifestPages(current))!==JSON.stringify(manifestPages(loaded)))throw new Error('Published legacy aliases changed during publication');
       await requireMaterialized(loaded);
       const routes=new Set(routesPaths.map(p=>normalizeRoute(canonicalRoute(p,context.baseUrl))));
       if(loaded.pages.some(p=>!routes.has(normalizeRoute(p.route))))throw new Error('Registered Spec page was not rendered');

@@ -163,16 +163,12 @@ redirect from the removed graph page. UA continues through its existing independ
 
 ### scenario.views.publish-legacy-redirect — Legacy routes keep resolving after a document's membership changes
 
-- GIVEN a document still registered at its source path and its previously published per-membership legacy route recorded in the last promoted build manifest
+- GIVEN a document's previously published per-membership legacy route
 - WHEN the current build is promoted
 - THEN a redirect stub for that legacy route still resolves to the document's one canonical page
-- AND removed memberships' recorded aliases and current memberships' aliases both resolve, without restoring removed memberships
-- AND repeated successful publication retains these aliases through the promoted manifest; failed candidates leave that manifest and the published redirects unchanged
 
-The existing published manifest supplies the retained route information under the
-[pipeline's alias input rules](pipeline.md#published-alias-input). No new history file or producer
-interface is required. This compatibility promise concerns registered-document aliases, not the
-removed standalone graph page. Every Concorde Module contains an inline Mermaid entity diagram in its `module.md`
+This compatibility promise concerns registered-document aliases, not the removed standalone graph
+page. Every Concorde Module contains an inline Mermaid entity diagram in its `module.md`
 Relationships subsection, with accessible title and description. Publication renders that fence in
 its authored position; the containing Markdown is the sole authored diagram source and already
 participates in source identity. No external diagram JSON, standalone diagram HTML, renderer Skill

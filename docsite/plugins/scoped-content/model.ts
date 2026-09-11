@@ -1,4 +1,4 @@
-/** Module publication model. Only registered documents become pages. */
+/** Module publication model. Registered documents are the only sources. */
 import {createHash} from 'node:crypto';
 import {existsSync, lstatSync, readFileSync} from 'node:fs';
 import {posix, resolve} from 'node:path';
@@ -113,30 +113,6 @@ export function safeRead(root: string, path: string): string {
   requireThat(lstatSync(current).isFile(), `Source is not a regular file: ${path}`);
   return readFileSync(current, 'utf8');
 }
-/** Reuse only ordinary aliases recorded by the last promoted site. Never copy its assets. */
-function publishedAliases(root: string): Map<string, string[]> {
-  const path = 'docsite/build/build-manifest.json'; let text: string;
-  try {text = safeRead(root, path);}
-  catch (error) {if ((error as NodeJS.ErrnoException).code === 'ENOENT') return new Map(); throw error;}
-  let manifest: any;
-  try {manifest = JSON.parse(text);}
-  catch {throw new Error(`Invalid published alias manifest: ${path}`);}
-  requireThat(manifest && [17, 18].includes(manifest.schema_version) && Array.isArray(manifest.pages),
-    `Unsupported published alias manifest: ${path}`);
-  const result = new Map<string, string[]>();
-  for (const page of manifest.pages) {
-    requireThat(page && typeof page.sourcePath === 'string' && page.sourcePath.endsWith('.md') &&
-      uniqueStrings(page.aliases) && !result.has(page.sourcePath), `Invalid published alias page: ${path}`);
-    safePath(page.sourcePath);
-    for (const alias of page.aliases) {
-      const parts = alias.split('/');
-      requireThat(parts.length === 4 && parts[0] === '' && parts[1] === 'specs' && ids.test(parts[2]) &&
-        alias === legacyAliasRoute(parts[2], page.sourcePath), `Invalid published legacy alias: ${alias}`);
-    }
-    result.set(page.sourcePath, page.aliases);
-  }
-  return result;
-}
 /** The adapter publishes Profile 11 projects only; anything else is an explicit error. */
 export function requireScoped(root: string): void {
   let profile: unknown;
@@ -249,7 +225,6 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     if (consumers.length > 1) requireThat(consumers.every(m => m.parent === t.parent), `Shared Module and consumers must be siblings: ${t.id}`);
   }
   const stripRoot = [...documentTargets.keys()].every(path => path.startsWith('specs/'));
-  const previousAliases = publishedAliases(root);
   const pages: Page[] = []; const routes = new Set<string>(); const aliases = new Set<string>();
   for (const [path, references] of documentTargets) {
     const {raw, content, declaration} = cache.get(path)!;
@@ -257,11 +232,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     const primary = memberships.find(m => m.primary); const owner = byId.get((primary ?? memberships[0]).targetId)!;
     const stagedPath = stripRoot ? path.slice('specs/'.length) : path; const route = '/specs/' + stagedPath.replace(/\.md$/, '');
     requireThat(!stagedPath.startsWith('projections/') && !routes.has(route), `Duplicate or reserved page route: ${route}`); routes.add(route);
-    const pageAliases = references.map(id => legacyAliasRoute(id, path));
-    pageAliases.push(...(previousAliases.get(path) ?? []).filter(alias => !pageAliases.includes(alias)).sort());
-    for (const alias of pageAliases) {
-      requireThat(!aliases.has(alias), `Legacy alias belongs to multiple pages: ${alias}`); aliases.add(alias);
-    }
+    const pageAliases = references.map(id => legacyAliasRoute(id, path)); pageAliases.forEach(alias => aliases.add(alias));
     const page: Page = {sourcePath: path, route, stagedPath, title: primary ? owner.title : posix.basename(path, '.md'),
       content, contentDigest: hash(raw), documentId: declaration.id, documentTargets: declaration.targets,
       mainVisible: declaration.main_visible, contextSection: references.length > 1 ? 'shared_specs' : 'target_spec',
