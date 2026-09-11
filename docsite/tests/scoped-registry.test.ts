@@ -47,7 +47,7 @@ beforeEach(()=>{
  save();
 });
 afterEach(()=>rmSync(root,{recursive:true,force:true}));
-it('scenario.views.publish-candidate: directory reading and secondary composition reference each registered page once',()=>{
+it('scenario.views.materialize scenario.views.publish-candidate scenario.views.publish-without-graph: materialized navigation preserves Module category and leaf links',async()=>{
  targets[3].documents.push('specs/transfer/promises.md');save();
  updateDocument('specs/transfer/promises.md',{targets:['service.transfer','module.ledger']});
  const registry=loadScopedRegistry(root),sidebar=publicationSidebar(registry);
@@ -57,11 +57,28 @@ it('scenario.views.publish-candidate: directory reading and secondary compositio
  expect(docs).toHaveLength(registry.pages.length);
  expect(new Set(docs).size).toBe(registry.pages.length);
  const transfer=sidebar.find(item=>item.label==='transfer')!;
- expect(transfer.link).toEqual({type:'doc',id:'transfer/module'});
- expect(transfer.items).toEqual([{type:'doc',id:'transfer/promises',label:'promises'}]);
+ expect(transfer.link).toBeUndefined();
+ expect(transfer.items).toEqual([
+  {type:'link',href:'/specs/transfer/module',label:'service.transfer'},
+  {type:'link',href:'/specs/transfer/promises',label:'promises'},
+ ]);
  const composition=sidebar.find(item=>item.label==='Module composition')!;
- expect(flatten(composition.items!).filter(item=>item.href==='/specs/transfer/promises')).toHaveLength(2);
- expect(flatten(composition.items!).some(item=>item.type==='doc'||item.link)).toBe(false);
+ const module=composition.items!.find(item=>item.label==='service.transfer')!;
+ expect(module.link).toEqual({type:'doc',id:'transfer/module'});
+ expect(module.items).toEqual([
+  {type:'doc',id:'transfer/promises',label:'promises'},
+  {type:'category',label:'module.ledger',link:{type:'doc',id:'ledger/module'},collapsed:true,
+   items:[{type:'link',label:'promises',href:'/specs/transfer/promises'}]},
+ ]);
+ expect(composition.items!.find(item=>item.label==='scope.audit')).toEqual(
+  {type:'doc',id:'audit/module',label:'scope.audit'});
+ expect(flatten(module.items!).some(item=>item.id==='transfer/module')).toBe(false);
+ expect(flatten(composition.items!).filter(item=>item.href==='/specs/transfer/promises')).toHaveLength(1);
+ await materializeScoped(registry);
+ const materialized=JSON.parse(readFileSync(resolve(root,'docsite/.generated/specs-sidebar.json'),'utf8'));
+ expect(materialized.moduleSpecsSidebar).toEqual(sidebar);
+ expect(all.some(item=>item.label==='Graph'||item.href==='/graph')).toBe(false);
+ expect(existsSync(resolve(root,'docsite/.generated/static/architecture-graph.json'))).toBe(false);
 });
 it('scenario.views.publish-without-graph: projection pairs track availability and content without changing registered identity',async()=>{
  const registry=loadScopedRegistry(root);

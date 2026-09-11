@@ -71,13 +71,34 @@ class ViewerLauncherTests(unittest.TestCase):
             viewer._raw_graph(self.root, self.config)
 
     @verifies("scenario.views.viewer-missing-runtime")
-    def test_stale_runtime_fails_before_any_process_starts(self):
-        marker = json.loads((self.root / self.marker).read_text())
-        marker["viewer_version"] = "0.0.0"
-        self.put(self.marker, marker)
-        with patch.object(viewer.subprocess, "run") as run:
-            self.assertEqual(3, self.launch())
-            run.assert_not_called()
+    def test_invalid_runtime_fails_before_any_process_starts(self):
+        marker = self.root / self.marker
+        package = self.root / self.viewer_root / "node_modules" / self.config["package"] / "package.json"
+        cases = [
+            (marker, None),
+            (marker, {"owner": "unverified"}),
+            (marker, {"viewer_version": "0.0.0"}),
+            (marker, {"viewer_entrypoint": "other.mjs"}),
+            (package, None),
+            (package, {"name": "other-viewer"}),
+            (package, {"version": "0.0.0"}),
+            (self.entrypoint, None),
+        ]
+        for path, updates in cases:
+            with self.subTest(path=str(path), updates=updates):
+                original = path.read_bytes()
+                try:
+                    if updates is None:
+                        path.unlink()
+                    else:
+                        path.write_text(json.dumps({**json.loads(original), **updates}))
+                    stderr = io.StringIO()
+                    with patch.object(viewer.subprocess, "run") as run, contextlib.redirect_stderr(stderr):
+                        self.assertEqual(3, viewer.main(["--project-root", str(self.root), "--port", "0", "--no-open"]))
+                        self.assertIn("CONCORDE VIEWER FAILED", stderr.getvalue())
+                        run.assert_not_called()
+                finally:
+                    path.write_bytes(original)
 
     @verifies("scenario.views.viewer-invalid-first-graph")
     def test_missing_graph_or_symlink_is_rejected(self):
@@ -90,7 +111,6 @@ class ViewerLauncherTests(unittest.TestCase):
         with self.assertRaisesRegex(viewer.ViewerLaunchError, "symlink"):
             viewer._raw_graph(self.root, self.config)
 
-    @verifies("scenario.views.viewer-missing-runtime")
     def test_unsupported_node_and_invalid_ports_fail_without_viewer_execution(self):
         with patch.object(viewer.shutil, "which", return_value="/test/node"), patch.object(viewer.subprocess, "run") as run:
             run.return_value = subprocess.CompletedProcess([], 0, "v16.0.0\n", "")
