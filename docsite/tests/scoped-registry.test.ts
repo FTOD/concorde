@@ -94,7 +94,7 @@ it('supports explicitly shared documents but rejects duplicate members in one co
 it('validates document identity, exact references and visibility type',()=>{updateDocument('specs/transfer/promises.md',{targets:['service.transfer','module.ledger']});expect(()=>loadScopedRegistry(root)).toThrow(/differ/);updateDocument('specs/transfer/promises.md',{targets:['service.transfer']});updateDocument('specs/ledger/module.md',{id:'document.specs.transfer.promises'});expect(()=>loadScopedRegistry(root)).toThrow(/Duplicate document identity/);updateDocument('specs/ledger/module.md',{id:'document.specs.ledger.module'});updateDocument('specs/transfer/promises.md',{main_visible:'yes'});expect(()=>loadScopedRegistry(root)).toThrow(/main_visible/);});
 it('binds source identity to content and membership order',()=>{const first=loadScopedRegistry(root).sourceDigest;targets[2].documents.reverse();save();const second=loadScopedRegistry(root).sourceDigest;expect(second).not.toBe(first);put('specs/transfer/promises.md',readFileSync(resolve(root,'specs/transfer/promises.md'),'utf8')+'\nChanged');expect(loadScopedRegistry(root).sourceDigest).not.toBe(second);});
 it('rejects symlink path components',()=>{rmSync(resolve(root,'specs/transfer/module.md'));symlinkSync(resolve(root,'specs/transfer/promises.md'),resolve(root,'specs/transfer/module.md'));expect(()=>loadScopedRegistry(root)).toThrow(/Symlink/);});
-it('rewrites only registered navigation to canonical routes and leaves code examples intact',()=>{
+it('scenario.views.publish-candidate: rewrites only registered navigation to canonical routes and leaves code examples intact',()=>{
  putSpec('specs/transfer/module.md',['service.transfer'],'# Use\n\n[Promise](promises.md)\n\n```md\n[Example](unknown.md)\n```');
  let r=loadScopedRegistry(root);let p=r.pages.find(p=>p.sourcePath==='specs/transfer/module.md')!;
  expect(rewriteLinks(r,p)).toContain('[Promise](/specs/transfer/promises)');
@@ -145,7 +145,7 @@ it('requires the Purpose, Requirements, Scenarios and Ontology headings on modul
  putSpec(main,['scope.bank'],[section('Purpose'),section('Requirements'),section('Scenarios'),'~~~~markdown\n## Ontology\n~~~~\n'].join('\n'));save();
  expect(()=>loadScopedRegistry(root)).toThrow(/Purpose, Requirements, Scenarios, Ontology/);
 });
-it('injects the ID of every scenario, requirement and entity as an anchor when materializing',async()=>{
+it('scenario.views.id-anchors: injects the ID of every scenario, requirement and entity as an anchor when materializing',async()=>{
  const main=targets[0].documents[0];
  const body=['## Purpose\n\nBank purpose.\n','## Requirements\n\n### req.bank.retry — Repeated requests\n\nBanking SHALL treat a repeated request as a new decision.\n',
   '## Scenarios\n\n#### scenario.bank.settle - Settlement\n\n- GIVEN a sender\n- WHEN a transfer is accepted\n- THEN both accounts settle\n\nSee [retry](#req.bank.retry) and [ledger](../ledger/module.md#entity.ledger.core).\n',
@@ -174,7 +174,7 @@ it('rejects sources changed between materialization and plugin loading even when
  await materializeScoped(changed);
  expect((await plugin().loadContent!())?.sourceDigest).toBe(changed.sourceDigest);
 });
-it('invalidates the previous materialization identity before a failed preparation',async()=>{
+it('scenario.views.materialize: invalidates the previous materialization identity before a failed preparation',async()=>{
  await materializeScoped(loadScopedRegistry(root));
  put('specs/transfer/promises.md',readFileSync(resolve(root,'specs/transfer/promises.md'),'utf8')+'\n[Missing](missing.md)');
  await expect(materializeScoped(loadScopedRegistry(root))).rejects.toThrow(/Unregistered/);
@@ -191,7 +191,7 @@ it('starts with Module roots and nests documents and children by registry owners
  ]);
  expect(sidebar[2].items!.at(-1)).toMatchObject({type:'doc',label:'module.ledger',id:'ledger/module'});
 });
-it('renders a Files section on a Module primary page from its bound files, and omits it when empty',async()=>{
+it('scenario.views.materialize: renders a Files section on a Module primary page from its bound files, and omits it when empty',async()=>{
  const registry=loadScopedRegistry(root);await materializeScoped(registry);
  const ledgerPage=readFileSync(resolve(root,'docsite/.generated/content/specs/ledger/module.md'),'utf8');
  expect(ledgerPage).toContain('## Files');expect(ledgerPage).toContain('`src/ledger.ts`');
@@ -256,4 +256,55 @@ it('scenario.views.validate-candidate-mismatch: writes a legacy redirect stub fo
  rmSync(resolve(outDir,firstAlias.slice(1)+'.html'));
  await expect(validateScopedBuild(root,outDir)).rejects.toThrow(/redirect stub/);
  rmSync(outDir,{recursive:true,force:true});
+});
+
+// Exercise the plugin's real post-build hook so no test bypasses route admission
+// by manufacturing a successful manifest.
+it('scenario.views.validate-candidate-mismatch: rejects every altered inventory without repairing it',async()=>{
+ const registry=loadScopedRegistry(root);await materializeScoped(registry);
+ const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
+ await plugin.loadContent!();
+ const outDir=resolve(root,'candidate');mkdirSync(outDir);
+ await plugin.postBuild!({outDir,routesPaths:registry.pages.map(p=>p.route)} as any);
+ const path=resolve(outDir,'build-manifest.json');
+ const original=readFileSync(path,'utf8');
+ const manifest=JSON.parse(original);
+ const variants=[
+  '{invalid json',
+  JSON.stringify({...manifest,sourceDigest:'sha256:'+'0'.repeat(64)}),
+  JSON.stringify({...manifest,pages:manifest.pages.slice(1)}),
+  JSON.stringify({...manifest,pages:[...manifest.pages].reverse()}),
+  ...['sourcePath','route','contentDigest','targets','aliases'].map(field=>{
+   const changed=JSON.parse(original);
+   changed.pages[0][field]=Array.isArray(changed.pages[0][field])?[]:'changed';
+   return JSON.stringify(changed);
+  }),
+ ];
+ for(const bytes of variants){
+  writeFileSync(path,bytes);
+  await expect(validateScopedBuild(root,outDir)).rejects.toThrow();
+  expect(readFileSync(path,'utf8')).toBe(bytes);
+ }
+ rmSync(path);
+ await expect(validateScopedBuild(root,outDir)).rejects.toThrow();
+ expect(existsSync(path)).toBe(false);
+ writeFileSync(path,original);
+ const stub=resolve(outDir,registry.pages[0].aliases[0].slice(1)+'.html');
+ writeFileSync(stub,'<a href="/wrong">Wrong destination</a>');
+ await expect(validateScopedBuild(root,outDir)).rejects.toThrow(/canonical route/);
+ expect(readFileSync(stub,'utf8')).toBe('<a href="/wrong">Wrong destination</a>');
+});
+
+it('scenario.views.publish-preserves-previous-on-failure: postBuild refuses missing routes and changed sources before artifacts',async()=>{
+ const registry=loadScopedRegistry(root);await materializeScoped(registry);
+ const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
+ await plugin.loadContent!();
+ const outDir=resolve(root,'candidate');mkdirSync(outDir);
+ const routesPaths=registry.pages.map(p=>p.route);
+ await expect(plugin.postBuild!({outDir,routesPaths:routesPaths.slice(1)} as any)).rejects.toThrow(/not rendered/);
+ expect(existsSync(resolve(outDir,'build-manifest.json'))).toBe(false);
+ const source='specs/transfer/promises.md';
+ put(source,readFileSync(resolve(root,source),'utf8')+'\nChanged during build.');
+ await expect(plugin.postBuild!({outDir,routesPaths} as any)).rejects.toThrow(/source changed/);
+ expect(existsSync(resolve(outDir,'build-manifest.json'))).toBe(false);
 });

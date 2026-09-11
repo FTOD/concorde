@@ -82,7 +82,7 @@ describe('site identity schema 1', () => {
     ['missing description', {...homepage, features: {...homepage.features, items: [{title: 'Feature'}]}}, /homepage.features.items\[0\].description/],
     ['invalid steps', {...homepage, workflow: {...homepage.workflow, steps: 'steps'}}, /homepage.workflow.steps/],
     ['empty code', {...homepage, quickstart: {...homepage.quickstart, code: ''}}, /homepage.quickstart.code/],
-  ])('rejects an invalid homepage: %s', (_label, value, field) => {
+  ])('scenario.views.publish-homepage-invalid: rejects an invalid homepage: %s', (_label, value, field) => {
     expect(() => parseSiteIdentity({...validValue, homepage: value})).toThrow(/docsite\/site.json/);
     expect(() => parseSiteIdentity({...validValue, homepage: value})).toThrow(field);
   });
