@@ -18,6 +18,98 @@ from tests.concorde.spec.support import CONFIGURATION, PACKAGE, ModelProcessDoub
 
 
 class ReviewTests(unittest.TestCase):
+    @verifies("scenario.harness.node-runtime")
+    def test_project_worker_pins_host_node_but_spec_capsule_does_not(self):
+        import os
+        import shutil
+        import tomllib
+        if not shutil.which("node"):
+            self.skipTest("Node is not installed")
+        self.configuration = typed("concorde-capability-configuration", {"integration": "codex", "enforcement": "native"})
+        config_path = self.root / ".concorde/config.json"
+        config = json.loads(config_path.read_text())
+        config["capability_configuration"] = self.configuration
+        config_path.write_text(json.dumps(config))
+        result = self.call_capability("concorde-dev-loop")
+        self.assertEqual("succeeded", result["status"], result)
+        for call in self.model.calls:
+            settings = {}
+            for i, arg in enumerate(call["argv"]):
+                if arg == "-c":
+                    settings.update(tomllib.loads(call["argv"][i + 1]))
+            if call["stage"] in {"implementation", "code-review"}:
+                self.assertFalse(settings["allow_login_shell"])
+                node = str(Path(shutil.which("node")).resolve())
+                self.assertEqual(str(Path(node).parent), settings["shell_environment_policy"]["set"]["PATH"].split(os.pathsep)[0])
+                profile = next(iter(settings["permissions"].values()))
+                self.assertEqual("read", profile["filesystem"][node])
+            else:
+                self.assertNotIn("shell_environment_policy", settings)
+
+    @verifies("scenario.development.task-scope-repair")
+    def test_invalid_scope_repair_cannot_replace_or_complete_original_tasks(self):
+        from concorde.spec.repository import digest
+        def incomplete(stage, snapshot, data, cwd):
+            if stage == "implementation":
+                for task in data["tasks"]:
+                    task["complete"] = False
+        self.call_capability("concorde-dev-loop", callback=incomplete)
+        original = read_change(self.root)["targets"]["service.transfer"]["tasks"]
+        request = {**self.task, "repair_task_scope": {"tasks_digest": digest(original)}}
+        for invalid in ("completed", "reused_id"):
+            def reject(stage, snapshot, data, cwd):
+                if stage == "tasks" and invalid == "completed":
+                    data["tasks"][0]["complete"] = True
+            result = self.call_capability("concorde-dev-loop", request, callback=reject)
+            self.assertNotEqual("succeeded", result["status"], result)
+            state = read_change(self.root)["targets"]["service.transfer"]
+            self.assertEqual(original, state["tasks"])
+            self.assertEqual([], state.get("task_history", []))
+            self.assertIsNone(state.get("implementation_digest"))
+
+    @verifies("scenario.development.task-scope-repair")
+    def test_incomplete_phase_tasks_repair_then_implementation_validation_review_ready(self):
+        from concorde.spec.repository import digest
+        def incomplete(stage, snapshot, data, cwd):
+            if stage == "tasks":
+                data["tasks"][0]["acceptance"] += " Host review and validation then commit must finish first."
+            if stage == "implementation":
+                for task in data["tasks"]:
+                    task["complete"] = False
+        first = self.call_capability("concorde-dev-loop", callback=incomplete)
+        self.assertNotEqual("succeeded", first["status"])
+        original = read_change(self.root)["targets"]["service.transfer"]["tasks"]
+        # A new Framework binding also changes this revision. Exercise fresh review
+        # and task revalidation with a meaning-preserving contract revision.
+        document = self.root / "specs/transfer/module.md"
+        document.write_text(document.read_text() + "\n")
+        request = {**self.task, "repair_task_scope": {"tasks_digest": digest(original)}}
+        def repair(stage, snapshot, data, cwd):
+            if stage == "tasks":
+                feedback = next(v for v in snapshot["stage_inputs"] if v["type_id"] == "concorde-task-scope-feedback")
+                self.assertEqual("implementation_boundary", feedback["data"]["reason"])
+                self.assertEqual([], snapshot["implementation_artifacts"])
+                self.assertTrue(all("content" not in item for item in snapshot["implementation_files"]))
+                data["tasks"][0]["id"] += ".scope-repair"
+        repaired = self.call_capability("concorde-dev-loop", request, callback=repair)
+        self.assertEqual("succeeded", repaired["status"], repaired)
+        self.assertEqual("ready", repaired["output"]["data"]["outcome"])
+        stages = [call["stage"] for call in self.model.calls]
+        self.assertLess(stages.index("tasks"), stages.index("implementation"))
+        self.assertLess(stages.index("implementation"), stages.index("code-review"))
+        state = read_change(self.root)
+        history = state["targets"]["service.transfer"]["task_history"]
+        self.assertEqual(original, history[0]["tasks"])
+        self.assertTrue(all(not t["complete"] for t in history[0]["tasks"]))
+        self.assertTrue(state["review_requirements"]["service.transfer"]["spec"])
+        self.assertTrue(state["review_requirements"]["service.transfer"]["code"])
+        replay = self.call_capability("concorde-dev-loop", request)
+        self.assertEqual("succeeded", replay["status"], replay)
+        self.assertFalse(any(c["stage"] in {"tasks", "implementation"} for c in self.model.calls))
+        stale = self.call_capability("concorde-dev-loop", {**request,
+            "repair_task_scope": {"tasks_digest": "sha256:" + "0" * 64}})
+        self.assertNotEqual("succeeded", stale["status"])
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

@@ -192,6 +192,28 @@ that attested file, adapts regular-file metadata masks as defined in
 task permissions. The executor repeats finalization from the original request immediately before
 launch and rejects a changed configuration.
 
+For native Codex invocations bound to the registered `implementation-workspace` Harness, the Host
+also selects an existing `node` from its filtered PATH. This fixed runtime catalog cannot be
+extended by task JSON. An absent Node adds no grant; a selected unsafe file fails closed. Node
+must resolve outside the project to a native executable named `node` with one hard link, root or
+current-user ownership, no group/world file write bit, and no world-writable or untrusted-owner
+ancestor. Its exact path, bytes, size, mode and owner use the same attestation as the client.
+Only that file is added read-only; its parent, adjacent package files and credentials remain
+ungranted. The finalized configuration pins shell PATH to the Node directory followed by
+`/usr/local/bin:/usr/bin:/bin`, disables login shells, profile loading and shell snapshots, and
+includes these settings in its digest. Before launch the Host repeats selection and attestation.
+It installs no toolchain or project package; the Host-selected local toolchain is also the one
+available to ordinary validation commands. Capsule and other integration boundaries are unchanged.
+
+### scenario.harness.node-runtime — Stable local Node in fresh native project invocations
+
+- GIVEN a trusted local Node selected by the Host PATH and a bound implementation workspace
+- WHEN the Host launches fresh native Codex invocations for project commands
+- THEN each shell resolves the attested Node and child Node commands use the same executable
+- AND its runtime grant is read-only and grants no enclosing directory, project secret or network
+- AND a changed selection, file digest, type, alias or trusted source fails before launch
+- AND task input cannot select a different runtime or expand the runtime catalog
+
 Every call starts a new process. Its stdin contains the complete host snapshot, task and role
 instructions; Profile 11 never passes predecessor transcripts. Spec review uses only its private
 capsule. Code review uses a distinct read-only implementation grant. Codex automatic AGENTS.md

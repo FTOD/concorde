@@ -190,6 +190,30 @@ def verify_runtime_bootstrap(files: tuple[RuntimeBootstrapFile, ...]) -> None:
             raise CapabilityExecutionError("Codex runtime bootstrap now has an untrusted owner")
 
 
+def resolve_node_runtime(project_root: str, environment: Mapping[str, str]) -> tuple[RuntimeBootstrapFile, ...]:
+    """Host policy: bind the existing PATH-selected native Node for project workers.
+
+    No task field selects a tool or adds an exception. Reuse native-file attestation;
+    absence is allowed for projects that do not use Node, but an unsafe selection fails.
+    """
+    selected = shutil.which("node", path=environment.get("PATH", os.defpath))
+    if selected is None:
+        return ()
+    files = resolve_runtime_bootstrap("codex", selected, project_root, environment)
+    path = Path(files[0].path)
+    if path.name != "node" or path.stat().st_nlink != 1:
+        raise CapabilityExecutionError("Node runtime must be an unaliased native node file")
+    # PATH is host input, but it must not turn a writable package/project directory
+    # into a trusted runtime source. Check the resolved ancestry, without granting it.
+    for parent in path.parents:
+        metadata = parent.stat()
+        if metadata.st_mode & stat.S_IWOTH:
+            raise CapabilityExecutionError("Node runtime has a world-writable ancestor")
+        if hasattr(os, "geteuid") and metadata.st_uid not in {0, os.geteuid()}:
+            raise CapabilityExecutionError("Node runtime has an untrusted ancestor owner")
+    return files
+
+
 def _completion_schema(specification: LaunchSpecification) -> dict[str, Any]:
     properties: dict[str, Any] = {
         "schema_version": {"type": "integer", "const": _completion_version(specification)},
@@ -669,6 +693,9 @@ class AgentProcessExecutor:
                     environment,
                 )
             )
+            if (config.enforcement == "native" and specification.integration == "codex"
+                    and binding is not None and binding.harness == "implementation-workspace"):
+                bootstrap = (*bootstrap, *resolve_node_runtime(specification.project_root, environment))
             finalized = finalize_launch_specification(specification, bootstrap)
             self.runtime_bootstrap_verifier(finalized.native_configuration.runtime_bootstrap)
         except CapabilityExecutionError:
@@ -817,6 +844,9 @@ class AgentProcessExecutor:
                         "Execute the complete bounded request supplied on stdin.",
                     )
                 self.runtime_bootstrap_verifier(config.runtime_bootstrap)
+                if len(config.runtime_bootstrap) == 2:
+                    if resolve_node_runtime(specification.project_root, environment) != config.runtime_bootstrap[1:]:
+                        raise CapabilityExecutionError("Node runtime selection changed after preflight")
                 # A file becoming a directory or alias after preflight invalidates
                 # the regular-file metadata adaptation. Rebuild from the request,
                 # never from the already adapted native rules.

@@ -36,6 +36,57 @@ from concorde.spec.verification import verifies  # noqa: E402
 
 
 class PermissionTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == "linux" and shutil.which("codex") and shutil.which("node"),
+                         "Native Linux Codex and Node are required")
+    @verifies("scenario.harness.node-runtime")
+    def test_fresh_native_node_commands_use_attested_runtime_without_parent_authority(self):
+        from concorde.harness.agent_executor import resolve_runtime_bootstrap, resolve_node_runtime, verify_runtime_bootstrap
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "app").mkdir()
+            (root / "secret").write_text("private")
+            policy = compile_policy(EffectDeclaration(("implementation",), ("implementation",), False, "none"),
+                PolicyBinding("concorde-implement", "implementation", 0, "writer", "writer"),
+                {"implementation": ("app",)})
+            for invocation in range(2):
+                bootstrap = (*resolve_runtime_bootstrap("codex", "codex", str(root), os.environ),
+                             *resolve_node_runtime(str(root), os.environ))
+                verify_runtime_bootstrap(bootstrap)
+                native = finalize_codex_configuration(render_codex_configuration(policy, native_enforcement=True),
+                    bootstrap, project_root=str(root))
+                self.assertEqual(2, len(bootstrap))
+                node = bootstrap[1].path
+                profile = native.configuration["permissions"][native.permission_profile]
+                self.assertEqual("read", profile["filesystem"][node])
+                self.assertNotIn(str(Path(node).parent), profile["filesystem"])
+                self.assertFalse(profile["network"]["enabled"])
+                self.assertFalse(native.configuration["allow_login_shell"])
+                options = [part for i, arg in enumerate(native.argv) if arg == "-c"
+                           for part in ("-c", native.argv[i + 1])]
+                script = '''const fs = require('node:fs');
+const {spawnSync} = require('node:child_process');
+const denied = p => { try { fs.readFileSync(p); return false; } catch { return true; } };
+let readonly = false; try { fs.openSync(process.execPath, 'r+'); } catch { readonly = true; }
+fs.writeFileSync('app/output', 'ok');
+const child = spawnSync('node', ['-e', "require('node:fs').writeFileSync('app/child', process.execPath)"], {stdio:'inherit'});
+console.log(JSON.stringify({node:process.execPath, version:process.version,
+ styleText:typeof require('node:util').styleText, child:child.status,
+ secret:denied('secret'), sibling:denied(require('node:path').join(require('node:path').dirname(process.execPath), 'npm')), readonly}));'''
+                environment = {**os.environ, **native.configuration["shell_environment_policy"]["set"]}
+                result = subprocess.run((native.argv[0], "sandbox", "-P", native.permission_profile,
+                    "-C", str(root), *options, "--", "/bin/bash", "--noprofile", "--norc", "-c",
+                    'node -e "$1"', "probe", script), cwd=root, env=environment,
+                    capture_output=True, text=True, timeout=30)
+                self.assertEqual(0, result.returncode, result.stderr)
+                data = json.loads(result.stdout)
+                self.assertEqual(node, data["node"])
+                self.assertEqual(node, (root / "app/child").read_text())
+                self.assertEqual(subprocess.check_output((node, "--version"), text=True).strip(), data["version"])
+                self.assertEqual(0, data["child"])
+                self.assertTrue(data["secret"] and data["sibling"] and data["readonly"], data)
+                if int(data["version"].split('.')[0][1:]) >= 22:
+                    self.assertEqual("function", data["styleText"])
+
     def setUp(self) -> None:
         self.effect = EffectDeclaration(
             reads=("selected-feature", "module-architecture", "required-feature-specs", "attempt"),
@@ -186,7 +237,7 @@ class PermissionTests(unittest.TestCase):
         self.assertTrue(compare_effective_boundaries(finalized, claude))
         with self.assertRaisesRegex(PermissionPolicyError, "exactly one"):
             finalize_codex_configuration(codex, ())
-        with self.assertRaisesRegex(PermissionPolicyError, "exactly one"):
+        with self.assertRaisesRegex(PermissionPolicyError, "duplicate"):
             finalize_codex_configuration(codex, (bootstrap, bootstrap))
         with self.assertRaisesRegex(PermissionPolicyError, "sha256 must be canonical"):
             runtime_bootstrap_file(

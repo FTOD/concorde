@@ -12,7 +12,9 @@ AGENTS = (spec_engineer.AGENT,)
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 
-REQUEST = shapes.task_request(target_required=True)
+REQUEST = shapes.obj({**shapes.TASK_FIELDS,
+    "repair_task_scope": shapes.obj({"tasks_digest": shapes.DIGEST}),
+}, (*shapes.TASK_OPTIONAL, "repair_task_scope"))
 RESPONSE = shapes.stage_response()
 
 

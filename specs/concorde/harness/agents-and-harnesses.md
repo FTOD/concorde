@@ -278,7 +278,7 @@ pairs: **stage** = `concorde-agent-stage-context` / `concorde-agent-stage-result
 | spec-engineer | specify | stage; specify | none | Structured document replacements, applied by Host |
 | spec-engineer | context-solve | stage; context-solve | none | Sufficient, incomplete, unsupported or conflicting assessment; no authored artifacts |
 | spec-engineer | plan | stage; plan | optional concorde-plan-artifact | Plan only; no source contents or writes |
-| spec-engineer | tasks | stage; tasks | required concorde-plan-artifact; optional concorde-implementation-task and concorde-review-result for repair | Acceptance tasks only; no source contents or writes |
+| spec-engineer | tasks | stage; tasks | required concorde-plan-artifact; optional concorde-implementation-task, concorde-review-result and concorde-task-scope-feedback for repair | Implementation acceptance tasks only; no source contents or writes |
 | spec-engineer | spec-review | review; spec-review | none | Independent Spec findings; no inherited author artifacts or writes |
 | spec-engineer | topology-author | topology; topology-author | none | Accepted target descriptor, target-local task, current complete collection, kind definition and candidate_document_references remain special inputs; return all target documents for Host application |
 | programmer | implementation | stage; implementation | required concorde-implementation-task; optional concorde-review-result | Fulfilled tasks only; may write granted implementation paths |
