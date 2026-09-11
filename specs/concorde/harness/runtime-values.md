@@ -100,15 +100,30 @@ runtime_bootstrap_file(*, path: str, sha256: str, size: int, mode: int,
                        owner: int | None) -> RuntimeBootstrapFile
 runtime_bootstrap_digest(files: tuple[RuntimeBootstrapFile, ...]) -> str
 finalize_codex_configuration(configuration: CodexLaunchConfiguration,
-                             runtime_bootstrap: tuple[RuntimeBootstrapFile, ...]) -> CodexLaunchConfiguration
+                             runtime_bootstrap: tuple[RuntimeBootstrapFile, ...], *,
+                             project_root: str | None = None) -> CodexLaunchConfiguration
 finalize_launch_specification(specification: LaunchSpecification,
                               runtime_bootstrap: tuple[RuntimeBootstrapFile, ...]) -> LaunchSpecification
 ```
 
 Attestations reject malformed digest/size/mode/owner fields. Native Codex finalization requires
-exactly one attested binary, adds only that file's read rule, selects its exact executable path and
+exactly one attested binary, adds that file's read rule, selects its exact executable path and
 recomputes configuration/launch identities. Claude and verified outer configurations use no native
 Codex bootstrap. Finalization preserves every task read/write/deny/network/credential field.
+
+When `project_root` is supplied, native Codex finalization inspects each write root. For an existing
+regular file with a single hard link and no symlink components below the project root, it adds explicit
+write entries for that file's `.git`, `.codex` and `.agents` child paths. These paths cannot exist
+beneath a regular file: the entries suppress Codex's directory-only metadata masks on the native
+file bind mount. They grant no parent directory or adjacent file. Directory roots retain their native
+metadata protections; a file intersecting any deny is never adapted. Symlink components and hard-link
+aliases in eligible write roots raise `PermissionPolicyError`. Missing paths retain their original
+rules; this adaptation does not implement pending-file creation or deletion of exact file mounts.
+Without `project_root`, finalization performs only bootstrap binding, for compatibility with callers
+that do not launch a writer. `finalize_launch_specification` always supplies its project root, and the
+executor reconstructs this finalization from the original request immediately before launch: a change
+to the resulting configuration fails closed. As with other direct native grants, the host owns the
+project while the invocation runs; this preflight does not serialize unrelated external writers.
 
 ## Agent binding
 

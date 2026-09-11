@@ -187,7 +187,10 @@ regular file outside project authority. Script/package shims, group/world-writab
 untrusted owners are rejected. The owner must be root or the current uid where available. Its bytes,
 path, size, permissions and owner are attested and checked again before use. Other integrations
 return an empty bootstrap tuple. The permission Module's locally declared finalization API adds only
-that attested file and rebinds the launch/configuration digests without widening task permissions.
+that attested file, adapts regular-file metadata masks as defined in
+[runtime values](runtime-values.md), and rebinds the launch/configuration digests without widening
+task permissions. The executor repeats finalization from the original request immediately before
+launch and rejects a changed configuration.
 
 Every call starts a new process. Its stdin contains the complete host snapshot, task and role
 instructions; Profile 11 never passes predecessor transcripts. Spec review uses only its private
@@ -309,6 +312,18 @@ attestation, so no configuration value selects that path.
 - AND it cannot read sibling files, ungranted Spec documents or the parent directory
 - AND every attempted write, including a new file, fails and leaves the fixture bytes unchanged
 - AND a loopback network connection is refused
+
+### scenario.harness.native-file-writes — Codex writes exact regular files without widening their parents
+
+- GIVEN a native Codex write grant containing an existing exact regular file, a directory, a redundant file inside that directory, or a mixture of these entries
+- AND default-deny filesystem access, read-only Spec context, denied credentials and project control files, and disabled network access
+- WHEN the host finalizes the launch against the project root and a command runs under its native sandbox
+- THEN the command can read and update each granted regular file and create new files inside a granted directory
+- AND it cannot read or modify adjacent ungranted original files, modify Spec context, credentials or protected project metadata, or create new files in the original ungranted parent directories
+- AND it cannot replace an exact regular-file bind mount with a directory or symlink, or open a network connection
+- AND the adapter adds no metadata exceptions for directory roots or paths intersecting a deny
+- AND a symlink or hard-link alias in an eligible write root is rejected before launch
+- AND a change from regular file to directory between preflight and launch invalidates the configuration and prevents execution
 
 ### scenario.harness.native-boundary-claude — Claude launch has no shell and confines file tools
 

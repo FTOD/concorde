@@ -5,8 +5,9 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import stat
 from dataclasses import asdict, dataclass, replace
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any, Literal, Mapping
 
 from .agent_model import AgentBinding
@@ -480,6 +481,8 @@ def render_codex_configuration(
 def finalize_codex_configuration(
     configuration: CodexLaunchConfiguration,
     runtime_bootstrap: tuple[RuntimeBootstrapFile, ...],
+    *,
+    project_root: str | None = None,
 ) -> CodexLaunchConfiguration:
     """Return the immutable native configuration after host runtime attestation."""
 
@@ -500,6 +503,8 @@ def finalize_codex_configuration(
     filesystem = profile_configuration.get("filesystem")
     if not isinstance(filesystem, dict):
         raise PermissionPolicyError("Codex permission profile has no filesystem table")
+    if project_root is not None:
+        _codex_regular_file_writes(configuration, filesystem, Path(project_root))
     for item in runtime_bootstrap:
         if item.path in filesystem and filesystem[item.path] != "read":
             raise PermissionPolicyError(f"runtime bootstrap conflicts with filesystem rule: {item.path}")
@@ -532,6 +537,43 @@ def finalize_codex_configuration(
         runtime_bootstrap_digest=bootstrap_digest,
         digest=_digest(payload),
     )
+
+
+def _codex_regular_file_writes(
+    configuration: CodexLaunchConfiguration,
+    filesystem: dict[str, Any],
+    project_root: Path,
+) -> None:
+    """Avoid Codex's directory-only metadata masks on regular-file bind mounts.
+
+    Explicit metadata entries are supported by the native profile. Under a
+    regular file they are unreachable (ENOTDIR), and remain within the original
+    write root. Never grant the parent, adapt directories, or override a deny.
+    The kernel file bind cannot be replaced with a directory by the command.
+    """
+    rules = filesystem[":workspace_roots"]
+    if not configuration.effective_write_paths:
+        return
+    root = project_root.resolve(strict=True)
+    for relative in configuration.effective_write_paths:
+        if any(_under(relative, denied) or _under(denied, relative)
+               for denied in configuration.effective_deny_paths):
+            continue
+        path = root
+        for part in PurePosixPath(relative).parts:
+            path = path / part
+            try:
+                metadata = path.lstat()
+            except FileNotFoundError:
+                break
+            if stat.S_ISLNK(metadata.st_mode):
+                raise PermissionPolicyError(f"Codex write root contains a symlink: {relative}")
+        else:
+            if stat.S_ISREG(metadata.st_mode):
+                if metadata.st_nlink != 1:
+                    raise PermissionPolicyError(f"Codex file write root has hard-link aliases: {relative}")
+                for name in (".git", ".codex", ".agents"):
+                    rules[f"{relative}/{name}"] = "write"
 
 
 def _claude_rules(tool: str, path: str) -> tuple[str, ...]:
@@ -777,7 +819,9 @@ def finalize_launch_specification(
     if specification.integration == "codex":
         if not isinstance(native, CodexLaunchConfiguration):
             raise PermissionPolicyError("Codex launch has a non-Codex native configuration")
-        native = finalize_codex_configuration(native, runtime_bootstrap)
+        native = finalize_codex_configuration(
+            native, runtime_bootstrap, project_root=specification.project_root,
+        )
     elif runtime_bootstrap:
         raise PermissionPolicyError("Claude launch cannot receive Codex runtime bootstrap files")
     return build_launch_specification(
