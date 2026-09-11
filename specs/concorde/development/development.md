@@ -15,6 +15,29 @@ implementation and checks. `specify=false` skips authoring; `run_reviews=false` 
 skips where no earlier requirement exists. These are configurations of one development lifecycle.
 Its successful output is a ready candidate, not an automatic merge.
 
+Task acceptance describes software behavior and implementation evidence within the programmer's
+granted files and runtime. Host production/scaffold/export validation, independent reviews,
+readiness, commit and delivery remain later responsibilities. Tasks support those checks through
+implementation and tests; they never require the later steps to have finished first. Full software
+acceptance stays in the plan and tasks, and all configured validation and required reviews still run.
+
+An explicit `repair_task_scope:{tasks_digest}` request repairs this phase error on an existing
+incomplete task list. The digest is SHA-256 of canonical JSON bytes (sorted keys, compact
+separators, ASCII escaping), prefixed `sha256:`. It must match the current list and admitted intent;
+unresolved gaps, a completed list or a pending code-review repair reject the request.
+The normal Graph enters tasks after the required Spec review. A fresh task author receives only
+its complete Module Spec, plan, prior tasks and Host-generated `implementation_boundary` feedback.
+It preserves software acceptance and returns new incomplete tasks with new IDs. The Host saves the
+original list, request digest and implementation revision in task history, invalidates checks and
+implementation evidence and continues implementation, validation and independent code review.
+After a Protocol binding or Spec revision, required Spec review runs on the current inputs first.
+The task author revalidates the preserved plan against that complete current Spec. A meaning
+change requiring a new plan returns conflicting or a Spec gap; successful boundary repair binds
+the replacement tasks to the current Spec revision and retains the old revision in history.
+Replaying a digest already consumed by that target resumes the replacement tasks without
+reauthoring them. Invalid or failed author output never replaces the old list. This is an explicit
+recovery entry, not another automatic retry edge or authority to edit Specs or bypass a gate.
+
 ## Stages and outcomes
 
 

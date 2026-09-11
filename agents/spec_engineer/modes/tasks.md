@@ -14,6 +14,22 @@ scenario states, its acceptance names that scenario so the programmer implementa
 it. A task may name the entity it concerns, and therefore the files and directories that entity
 lists, but internal code design is not an input to task authoring.
 
+Tasks belong to implementation. Their acceptance covers the required software behavior and
+observable implementation evidence within the programmer's granted files and runtime. Host
+production/scaffold/export checks, independent Spec/code reviews, readiness, commits and delivery
+remain later responsibilities; never make their prior completion a task acceptance condition.
+Preserve every software acceptance criterion from the plan. Describe code and test obligations
+that support later Host checks without claiming those checks or reviews have already passed.
+
+When `concorde-task-scope-feedback` accompanies the prior `concorde-implementation-task`, replace
+that incomplete list using new task IDs. Its `implementation_boundary` reason means the old list
+mixed implementation with later Host or outer-session responsibilities. Preserve the plan and
+software acceptance, correct only that phase boundary, and return all replacement tasks incomplete.
+No source contents or raw check logs are supplied or permitted by this feedback.
+Revalidate the preserved plan against the supplied current complete Spec, including after a
+Framework Protocol binding update. If changed meaning requires a different plan or contract,
+report conflicting or a precise Spec gap; scope repair must not silently change the plan's intent.
+
 When `stage_inputs` contains a `concorde-implementation-task` with completed tasks alongside a
 `concorde-review-result`, this is a bounded repair round: the prior tasks are already fulfilled and
 a programmer in code-review mode found blocking defects against them. Return repair tasks that address each blocking
@@ -42,8 +58,10 @@ Return the typed `concorde-agent-stage-result@1` stage result with the nonempty 
 
 ## Completion conditions
 
-The task is complete once every accepted plan item has at least one corresponding task with a
-unique id, valid target_id, description, and observable acceptance, all with complete:false.
+The task is complete once every implementation obligation in the accepted plan has a corresponding task with a
+unique id, valid target_id, description, and observable implementation acceptance, all with
+complete:false. Later Host validation, review and authorized outer-session delivery obligations
+remain in the plan and lifecycle rather than becoming programmer completion prerequisites.
 
 ## Missing information, failure and human decisions
 

@@ -22,7 +22,7 @@ MODES = (
     Mode('tasks', "agents/spec_engineer/modes/tasks.md",
         Constraints(EffectDeclaration(('spec-context',), (), False, "none"),
                     contexts=('concorde-agent-stage-context',), results=('concorde-agent-stage-result',)),
-        phase='tasks', action=None, stage_inputs=('concorde-plan-artifact', 'concorde-implementation-task', 'concorde-review-result'), required_inputs=('concorde-plan-artifact',),
+        phase='tasks', action=None, stage_inputs=('concorde-plan-artifact', 'concorde-implementation-task', 'concorde-review-result', 'concorde-task-scope-feedback'), required_inputs=('concorde-plan-artifact',),
         output_fields=('tasks',), outcomes=()),
     Mode('spec-review', "agents/spec_engineer/modes/spec-review.md",
         Constraints(EffectDeclaration(('spec-context',), (), False, "none"),

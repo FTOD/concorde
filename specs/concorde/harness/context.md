@@ -115,6 +115,7 @@ Ordinary `stage_inputs` are version-1 TypedValues with these payloads:
 `plan` and `tasks: list[{id, target_id, description, acceptance, complete}]`, with nonblank strings
 and a boolean `complete`; `concorde-reflection-selection` has `head: nonblank str` and
 `records: list[{id: str, path, digest: sha256, content: str}]`, with nonblank string fields.
+`concorde-task-scope-feedback` has `tasks_digest: sha256` and `reason: "implementation_boundary"`; only task authoring admits it with prior tasks and the plan. It carries no implementation contents or raw check logs.
 These records are closed objects. A stage input conveys only its declared content, not authority.
 Only `tasks` and `implementation` additionally admit `concorde-review-result@1`, carrying a typed
 review's target/focus, context/input identities, spec/code mode, status, representative tasks,
@@ -164,7 +165,7 @@ manifest, without discovering root AGENTS.md/CLAUDE.md. The installed root entry
 outer user sessions only. Package update leaves an old binding unchanged and resolution rejects
 `protocol_mismatch` until the developer explicitly accepts the installed version and manifest
 digest in `.concorde/config.json`. Changed bindings require new contexts.
-Stage inputs must be versioned plan, implementation-task, reflection-selection or review-result
+Stage inputs must be versioned plan, implementation-task, task-scope-feedback, reflection-selection or review-result
 values (the last only accompanies a bounded dev-loop code-review repair round: see
 `concorde-dev-loop` in the Development Module's host boundary). Code bytes
 are not embedded in a snapshot; implementation and the dedicated read-only code-review phase have

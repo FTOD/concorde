@@ -490,11 +490,13 @@ def finalize_codex_configuration(
         if runtime_bootstrap:
             raise PermissionPolicyError("outer Codex enforcement cannot add native runtime bootstrap files")
         return configuration
-    if len(runtime_bootstrap) != 1:
-        raise PermissionPolicyError("native Codex launch requires exactly one runtime bootstrap file")
+    if len(runtime_bootstrap) not in {1, 2}:
+        raise PermissionPolicyError("native Codex launch requires exactly one client and optional host-selected Node")
     paths = [item.path for item in runtime_bootstrap]
     if len(paths) != len(set(paths)):
         raise PermissionPolicyError("Codex runtime bootstrap contains duplicate paths")
+    if len(runtime_bootstrap) == 2 and Path(runtime_bootstrap[1].path).name != "node":
+        raise PermissionPolicyError("the only supported validation runtime is native Node")
     profile = configuration.permission_profile
     source_profile = configuration.configuration.get("permissions", {}).get(profile)
     if not isinstance(source_profile, Mapping):
@@ -518,6 +520,20 @@ def finalize_codex_configuration(
         configuration.network_enabled,
         executable=runtime_bootstrap[0].path,
     )
+    if len(runtime_bootstrap) == 2:
+        # Pin shell lookup as well as the read-only mount. Login startup files and
+        # snapshots must not silently replace it with an older system Node.
+        node_path = str(Path(runtime_bootstrap[1].path).parent) + ":/usr/local/bin:/usr/bin:/bin"
+        shell_settings = {
+            "allow_login_shell": False,
+            "shell_environment_policy": {"inherit": "core", "experimental_use_profile": False,
+                                         "set": {"PATH": node_path}},
+        }
+        complete_configuration.update(shell_settings)
+        complete_configuration["features"].update(shell_snapshot=False, shell_snapshot_v2=False)
+        extra = {**shell_settings, "features.shell_snapshot": False, "features.shell_snapshot_v2": False}
+        argv = (*argv[:-1], *(part for key, value in extra.items()
+                            for part in ("-c", f"{key}={_toml_value(value)}")), argv[-1])
     payload = {
         "integration": "codex",
         "profile": profile,

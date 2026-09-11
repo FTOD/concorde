@@ -107,9 +107,12 @@ finalize_launch_specification(specification: LaunchSpecification,
 ```
 
 Attestations reject malformed digest/size/mode/owner fields. Native Codex finalization requires
-exactly one attested binary, adds that file's read rule, selects its exact executable path and
+one attested client and optionally one Host-selected native Node as the second entry, adds only
+those files' read rules, selects the client's exact executable path and
 recomputes configuration/launch identities. Claude and verified outer configurations use no native
 Codex bootstrap. Finalization preserves every task read/write/deny/network/credential field.
+With Node, finalization also binds the shell environment and disables login/profile/snapshot
+overrides as specified in [execution](execution.md#scenario.harness.node-runtime).
 
 When `project_root` is supplied, native Codex finalization inspects each write root. For an existing
 regular file with a single hard link and no symlink components below the project root, it adds explicit

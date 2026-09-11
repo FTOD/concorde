@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -19,6 +20,7 @@ from concorde.harness.agent_executor import (  # noqa: E402
     AgentProcessExecutor,
     CapabilityExecutionError,
     resolve_runtime_bootstrap,
+    resolve_node_runtime,
     verify_runtime_bootstrap,
     _completion_schema,
     _prompt,
@@ -43,6 +45,40 @@ from concorde.spec.verification import verifies  # noqa: E402
 
 
 class AgentExecutorTests(unittest.TestCase):
+    @verifies("scenario.harness.node-runtime")
+    def test_node_runtime_rejects_unsafe_sources_aliases_and_changed_bytes(self):
+        with tempfile.TemporaryDirectory(dir=Path.home()) as temporary:
+            root = Path(temporary)
+            project = root / "project"
+            project.mkdir()
+            runtime = root / "runtime"
+            runtime.mkdir()
+            node = runtime / "node"
+            node.write_bytes(b"\x7fELFnative-node-fixture")
+            node.chmod(0o755)
+            environment = {"PATH": str(runtime)}
+            files = resolve_node_runtime(str(project), environment)
+            self.assertEqual(str(node), files[0].path)
+            verify_runtime_bootstrap(files)
+            node.write_bytes(b"\x7fELFchanged-node-fixture")
+            with self.assertRaises(CapabilityExecutionError):
+                verify_runtime_bootstrap(files)
+            os.link(node, runtime / "alias")
+            with self.assertRaises(CapabilityExecutionError):
+                resolve_node_runtime(str(project), environment)
+            (runtime / "alias").unlink()
+            node.chmod(0o775)
+            with self.assertRaises(CapabilityExecutionError):
+                resolve_node_runtime(str(project), environment)
+            node.chmod(0o755)
+            node.write_text("#!/bin/sh\nexit 0\n")
+            with self.assertRaises(CapabilityExecutionError):
+                resolve_node_runtime(str(project), environment)
+            node.write_bytes(b"\x7fELFnative-node-fixture")
+            with self.assertRaises(CapabilityExecutionError):
+                resolve_node_runtime(str(root), environment)
+            self.assertEqual((), resolve_node_runtime(str(project), {"PATH": str(project)}))
+
     def setUp(self):
         self.runtime_directory = tempfile.TemporaryDirectory()
         self.runtime_executable = Path(self.runtime_directory.name) / "codex"

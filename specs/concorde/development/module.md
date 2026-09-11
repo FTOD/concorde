@@ -242,6 +242,17 @@ Developing one change:
 - THEN the loop stops with status `waiting` and preserves the candidate worktree
 - AND unrelated independent work may continue, and resuming after an explicit Spec repair does not repeat already-accepted authoring for the same task, focus and constraints
 
+### scenario.development.task-scope-repair — Recover an implementation phase boundary error
+
+- GIVEN an existing incomplete task list whose acceptance requires later Host actions
+- WHEN a normal dev-loop request binds that list's canonical digest with repair_task_scope
+- THEN a fresh task author receives the admitted plan, prior tasks and typed semantic boundary feedback
+- AND no implementation contents or raw test logs enter that author's context
+- AND accepted replacement tasks start incomplete, preserve software acceptance and use new IDs
+- AND the original list remains in history and implementation precedes validation and required code review
+- AND only current successful evidence reaches ready, while a replay resumes without reauthoring
+- AND stale digests, unresolved gaps and invalid replacements cannot bypass the existing gates
+
 ### scenario.development.dev-loop-repair — Bounded automatic repair after blocking code review
 
 - GIVEN a code-owning target's code review returns blocking findings

@@ -47,6 +47,12 @@ scenario IDs the Spec context defines; the Spec itself never lists tests. The ho
 owns lifecycle state. The workspace is a candidate change and this component never independently
 merges or delivers it. Return every supplied task unchanged except complete:true when fulfilled.
 
+Task completion records implementation evidence, not final readiness. Run useful checks possible
+within the granted files and runtime, and state the checks actually run in the answer. Host
+validation and independent reviews follow implementation; do not claim their future results or
+commit the candidate. If an old task requires these later actions before completion, report its
+incomplete status honestly so the caller can request a task scope repair.
+
 When `stage_inputs` also contains a `concorde-review-result`, it is contract-level feedback from an
 independent programmer in code-review mode about the current implementation: fulfil the supplied repair tasks so the
 identified findings no longer apply. Findings are not permission to change Module Specs or entity

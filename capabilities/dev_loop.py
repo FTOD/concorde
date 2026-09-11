@@ -31,7 +31,8 @@ REQUEST = shapes.obj({
     **shapes.TASK_FIELDS,
     "specify": {"type": "boolean"},
     "run_reviews": {"type": "boolean"},
-}, ("target_id", *shapes.TASK_OPTIONAL, "specify", "run_reviews"))
+    "repair_task_scope": shapes.obj({"tasks_digest": shapes.DIGEST}),
+}, ("target_id", *shapes.TASK_OPTIONAL, "specify", "run_reviews", "repair_task_scope"))
 
 RESPONSE = shapes.stage_response()
 

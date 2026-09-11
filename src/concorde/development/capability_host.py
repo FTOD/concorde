@@ -1313,12 +1313,22 @@ class Invocation:
         if not self.host.coordinated:
             progress(self.repository.root, phase="tasks", status="active", invalidate=True)
         state = target_state(self.repository.root, self.target.id, self.task.get("focus_id"))
-        self.check_state(state)
+        scope_repair = self.task.get("repair_task_scope")
+        self.check_state(state, allow_stale_spec=bool(scope_repair))
         if not state["plan"]:
             raise SpecError("tasks require an authored plan", "missing_plan")
         change = read_change(self.repository.root, required=True)
         repair = change.get("graph", {}).get(self.target.id, {}).get("repair")
+        if scope_repair:
+            if (not state["tasks"] or scope_repair["tasks_digest"] != digest(canonical(state["tasks"]).encode())
+                    or all(task["complete"] for task in state["tasks"]) or repair is not None):
+                raise SpecError("task scope repair requires the exact current incomplete task list and no pending review repair",
+                                "incompatible_handoff")
         inputs = (typed("concorde-plan-artifact", {"plan": state["plan"]}),)
+        if scope_repair:
+            inputs = (*inputs,
+                typed("concorde-implementation-task", {"plan": state["plan"], "tasks": state["tasks"]}),
+                typed("concorde-task-scope-feedback", {**scope_repair, "reason": "implementation_boundary"}))
         if repair is not None:
             verify_artifacts(self.repository.root, repair["artifact"])
             review_value = validate_typed(decode(
@@ -1338,6 +1348,8 @@ class Invocation:
             return self.response("described")
         tasks = result["tasks"]
         historical_ids = {t["id"] for entry in state.get("task_history", []) for t in entry["tasks"]}
+        if scope_repair:
+            historical_ids.update(t["id"] for t in state["tasks"])
         if (not tasks or len({t["id"] for t in tasks}) != len(tasks) or any(t["complete"] for t in tasks)
                 or {t["id"] for t in tasks} & historical_ids):
             raise SpecError("tasks must be nonempty, uniquely identified (including across repair history) "
@@ -1351,6 +1363,12 @@ class Invocation:
             state.setdefault("task_history", []).append({"iteration": repair["iteration"],
                 "tasks": state["tasks"], "implementation_digest": state.get("implementation_digest")})
             state["repair_review"] = repair["artifact"]
+        if scope_repair:
+            state.setdefault("task_history", []).append({"reason": "implementation_boundary",
+                "tasks_digest": scope_repair["tasks_digest"], "tasks": state["tasks"],
+                "implementation_digest": state.get("implementation_digest"),
+                "spec_digest": state["spec_digest"]})
+            state["spec_digest"] = _target_revision(self.repository, self.target)
         state.update(tasks=tasks, checks=[], implementation_digest=None, phase="tasks", status="active")
         save_target_state(self.repository.root, state)
         if repair is not None:
@@ -1411,8 +1429,8 @@ class Invocation:
         self.record_gaps("implementation", [])
         return self.response(answer=result["answer"])
 
-    def check_state(self, state: dict) -> None:
-        if state.get("spec_digest") != _target_revision(self.repository, self.target):
+    def check_state(self, state: dict, *, allow_stale_spec: bool = False) -> None:
+        if not allow_stale_spec and state.get("spec_digest") != _target_revision(self.repository, self.target):
             raise SpecError("selected Spec or its registered authority changed; replan this change", "stale_context")
         if state.get("task") != self.task["task"] or state.get("constraints") != self.task.get("constraints", []):
             raise SpecError("change intent differs from the authored plan; replan explicitly", "incompatible_handoff")
@@ -1805,6 +1823,25 @@ class Invocation:
         if self.host.finalize_components and existing and all(task["complete"] for task in existing.get("tasks", [])):
             stages = ["validate"]
 
+        scope_repair = self.task.get("repair_task_scope")
+        if scope_repair:
+            if not existing:
+                raise SpecError("task scope repair requires an existing task list", "missing_tasks")
+            self.check_state(existing, allow_stale_spec=True)
+            consumed = any(item.get("tasks_digest") == scope_repair["tasks_digest"]
+                           and item.get("reason") == "implementation_boundary"
+                           for item in existing.get("task_history", []))
+            if consumed:
+                scope_repair = None  # replay resumes; it never reauthors an accepted replacement
+            elif (not existing.get("tasks") or all(t["complete"] for t in existing["tasks"])
+                    or digest(canonical(existing["tasks"]).encode()) != scope_repair["tasks_digest"]
+                    or change.get("graph", {}).get(self.target.id, {}).get("repair") is not None
+                    or blocked_phases):
+                raise SpecError("task scope repair requires current incomplete tasks without unresolved gaps or review repair",
+                                "incompatible_handoff")
+            else:
+                stages = ["tasks", "implement", "validate"]
+
         # Resume trimming (above) only decides where the traversed path *enters*; every node from
         # "tasks" onward is still declared below so a repair can re-enter "tasks" even when this
         # run resumed past it (e.g. straight at "validate").
@@ -1907,6 +1944,13 @@ class Invocation:
                         child_capability = "concorde-review"
                     payload = {"target_id": self.target.id, "task": self.task["task"],
                                "constraints": self.task.get("constraints", [])}
+                    if name == "tasks" and scope_repair and not any(
+                            item.get("tasks_digest") == scope_repair["tasks_digest"]
+                            for item in target_state(self.repository.root, self.target.id,
+                                self.task.get("focus_id")).get("task_history", [])):
+                        # The request only binds a list. Host-generated semantic feedback
+                        # contains neither source contents nor raw validation output.
+                        payload["repair_task_scope"] = scope_repair
                     if is_review:
                         payload["review_mode"] = mode
                     if self.task.get("focus_id"):
