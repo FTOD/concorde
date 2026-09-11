@@ -299,6 +299,135 @@ class PermissionTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform == "linux" and shutil.which("codex") and Path("/usr/bin/python3").exists(),
                          "Native Linux Codex sandbox is not installed")
+    @verifies("scenario.harness.native-file-writes", "scenario.harness.native-boundary-codex")
+    def test_native_file_directory_nested_and_mixed_writes_preserve_boundaries(self):
+        from concorde.harness.agent_executor import resolve_runtime_bootstrap
+        probe = '''import json, socket, sys
+from pathlib import Path
+root = Path(sys.argv[1]); result = {}; existing = set(json.loads(sys.argv[3]))
+for relative in json.loads(sys.argv[2]):
+    for operation in ("read", "write"):
+        try:
+            path = root / relative
+            if operation == "read": path.read_bytes()
+            elif relative in existing:
+                with path.open("r+b") as stream: stream.write(b"changed")
+            else: path.write_text("changed")
+            result[operation + ":" + relative] = True
+        except OSError as error:
+            result[operation + ":" + relative] = error.errno
+try:
+    socket.socket().connect(("127.0.0.1", 9)); result["network"] = True
+except OSError as error:
+    result["network"] = error.errno
+for operation in ("unlink", "directory", "symlink"):
+    try:
+        path = root / "scripts/run.py"
+        if operation == "unlink": path.unlink()
+        elif operation == "directory": path.mkdir()
+        else: path.symlink_to(root / "specs/provider.md")
+        result[operation] = True
+    except OSError as error:
+        result[operation] = error.errno
+print(json.dumps(result))
+'''
+        cases = {
+            "file": ("scripts/run.py",),
+            "directory": ("app",),
+            "nested": ("app", "app/allowed.py"),
+            "mixed": ("app", "app/allowed.py", "scripts/run.py"),
+        }
+        protected = ("specs/provider.md", ".env", "app/private.env", "AGENTS.md", "CLAUDE.md",
+                     ".git/config", ".codex/config.toml", ".agents/guard", ".concorde/config.json",
+                     "app/.git/config", "app/.codex/config.toml", "app/.agents/guard")
+        unreadable = ("scripts/sibling.py", "../foreign.py", *protected[1:])
+        existing = ("context.json", "app/allowed.py", "scripts/run.py", *unreadable, protected[0])
+        future = ("app/new.py", "scripts/future.py", "scripts/.git/new", "scripts/run.py/.codex/new")
+        for name, paths in cases.items():
+            with self.subTest(case=name), tempfile.TemporaryDirectory(prefix="concorde-native-writer-") as directory:
+                root = Path(directory) / "project"
+                root.mkdir()
+                for relative in existing:
+                    path = root / relative
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text("original")
+                policy = compile_policy(
+                    EffectDeclaration(("spec-context", "implementation"), ("implementation",), False, "none"),
+                    PolicyBinding("concorde-implement", "implementation", 0, "writer", "writer"),
+                    {"spec-context": ("context.json", "specs/provider.md"), "implementation": paths},
+                    deny_paths=tuple(path for path in protected[1:] if not path.startswith("app/.")),
+                )
+                rendered = render_codex_configuration(policy, native_enforcement=True)
+                native = finalize_codex_configuration(rendered,
+                    resolve_runtime_bootstrap("codex", "codex", str(root), os.environ), project_root=str(root))
+                self.assertTrue(compare_effective_boundaries(rendered, native))
+                rules = native.configuration["permissions"][native.permission_profile]["filesystem"][":workspace_roots"]
+                self.assertNotIn("scripts", rules)
+                self.assertNotIn("app/.git", rules)
+                options = [part for index, argument in enumerate(native.argv) if argument == "-c"
+                           for part in ("-c", native.argv[index + 1])]
+                process = subprocess.run((native.argv[0], "sandbox", "-P", native.permission_profile,
+                    "-C", str(root), *options, "--", "/usr/bin/python3", "-c", probe, str(root),
+                    json.dumps((*existing, *future)), json.dumps(existing)),
+                    cwd=root, capture_output=True, text=True, timeout=30)
+                self.assertEqual(0, process.returncode, process.stderr)
+                result = json.loads(process.stdout)
+                writable = set()
+                if "app" in paths:
+                    writable.update(("app/allowed.py", "app/new.py"))
+                if "scripts/run.py" in paths:
+                    writable.add("scripts/run.py")
+                for relative in existing:
+                    if relative in writable:
+                        self.assertIs(result["read:" + relative], True)
+                        self.assertIs(result["write:" + relative], True)
+                        self.assertEqual("changedl", (root / relative).read_text())
+                    else:
+                        self.assertIsNot(result["write:" + relative], True, relative)
+                        self.assertEqual("original", (root / relative).read_text())
+                for relative in unreadable:
+                    # Codex protects its directory metadata as read-only; the
+                    # enclosing authorized directory may expose its original bytes.
+                    if not relative.startswith("app/."):
+                        self.assertIsNot(result["read:" + relative], True)
+                for relative in future:
+                    self.assertEqual((root / relative).is_file(), relative in writable)
+                for operation in ("unlink", "directory", "symlink"):
+                    if "scripts/run.py" in paths:
+                        self.assertIsNot(result[operation], True)
+                self.assertIsNot(result["network"], True)
+                self.assertIn(result["network"], (errno.EPERM, errno.EACCES))
+
+    @verifies("scenario.harness.native-file-writes")
+    def test_regular_file_adaptation_rejects_aliases_and_preserves_denies(self):
+        bootstrap = runtime_bootstrap_file(path="/opt/codex", sha256="sha256:" + "b" * 64,
+                                           size=8192, mode=0o755, owner=0)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "app").mkdir()
+            (root / "app/owned.py").write_text("original")
+            (root / "alias").symlink_to(root / "app", target_is_directory=True)
+            (root / "link.py").symlink_to(root / "app/owned.py")
+            def finalize(path, denies=()):
+                policy = compile_policy(
+                    EffectDeclaration(("implementation",), ("implementation",), False, "none"),
+                    PolicyBinding("concorde-implement", "implementation", 0, "writer", "writer"),
+                    {"implementation": (path,)}, deny_paths=denies)
+                return finalize_codex_configuration(render_codex_configuration(policy, native_enforcement=True),
+                                                    (bootstrap,), project_root=str(root))
+            for path in ("alias/owned.py", "link.py"):
+                with self.assertRaisesRegex(PermissionPolicyError, "symlink"):
+                    finalize(path)
+            os.link(root / "app/owned.py", root / "hard.py")
+            with self.assertRaisesRegex(PermissionPolicyError, "hard-link"):
+                finalize("hard.py")
+            for denies in (("app",), ("app/owned.py",), ("app/owned.py/.git",)):
+                native = finalize("app/owned.py", denies)
+                rules = native.configuration["permissions"][native.permission_profile]["filesystem"][":workspace_roots"]
+                self.assertNotEqual("write", rules.get("app/owned.py/.git"))
+
+    @unittest.skipUnless(sys.platform == "linux" and shutil.which("codex") and Path("/usr/bin/python3").exists(),
+                         "Native Linux Codex sandbox is not installed")
     @verifies("scenario.harness.permission-compile", "scenario.harness.native-boundary-codex")
     def test_native_review_grants_allow_owned_reads_and_protect_host_files(self):
         from concorde.harness.agent_executor import resolve_runtime_bootstrap

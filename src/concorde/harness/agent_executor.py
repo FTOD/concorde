@@ -817,6 +817,11 @@ class AgentProcessExecutor:
                         "Execute the complete bounded request supplied on stdin.",
                     )
                 self.runtime_bootstrap_verifier(config.runtime_bootstrap)
+                # A file becoming a directory or alias after preflight invalidates
+                # the regular-file metadata adaptation. Rebuild from the request,
+                # never from the already adapted native rules.
+                if finalize_launch_specification(specification, config.runtime_bootstrap).digest != finalized.digest:
+                    raise CapabilityExecutionError("native filesystem inputs changed after preflight")
                 completed = self.runner(
                     tuple(argv),
                     cwd=finalized.project_root,

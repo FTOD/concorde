@@ -54,7 +54,7 @@ runtime_bootstrap_digest(files: tuple[RuntimeBootstrapFile, ...]) -> str
 compile_policy(effects: EffectDeclaration, binding: PolicyBinding, role_paths: Mapping[str, tuple[str, ...]], *, deny_paths: tuple[str, ...]=(), outer_sandbox_required: bool=False) -> NormalizedPolicy
 verify_effective_subset(declared: NormalizedPolicy, effective: NormalizedPolicy) -> None
 render_codex_configuration(policy: NormalizedPolicy, *, native_enforcement: bool, outer_sandbox: str | None=None) -> CodexLaunchConfiguration
-finalize_codex_configuration(configuration: CodexLaunchConfiguration, runtime_bootstrap: tuple[RuntimeBootstrapFile, ...]) -> CodexLaunchConfiguration
+finalize_codex_configuration(configuration: CodexLaunchConfiguration, runtime_bootstrap: tuple[RuntimeBootstrapFile, ...], *, project_root: str | None=None) -> CodexLaunchConfiguration
 render_claude_configuration(policy: NormalizedPolicy, *, native_enforcement: bool, outer_sandbox: str | None=None) -> ClaudeLaunchConfiguration
 compare_effective_boundaries(first: NativeLaunchConfiguration, second: NativeLaunchConfiguration) -> bool
 build_launch_specification(*, capability: str, stage: str, occurrence: int, role: str, integration: Literal['codex', 'claude'], agent: str, project_root: str, request: str, prompt: str, prior_results: tuple[str, ...], workspace_receipt_json: str, workspace_digest: str, policy: NormalizedPolicy, native_configuration: NativeLaunchConfiguration, runtime_input_json: str | None=None, capability_configuration_json: str | None=None, invocation_id: str | None=None, agent_binding_json: str | None=None) -> LaunchSpecification

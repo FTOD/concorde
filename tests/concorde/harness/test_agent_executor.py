@@ -48,6 +48,8 @@ class AgentExecutorTests(unittest.TestCase):
         self.runtime_executable = Path(self.runtime_directory.name) / "codex"
         self.runtime_executable.write_bytes(b"\x7fELFfixture-codex-runtime")
         self.runtime_executable.chmod(0o755)
+        self.project_root = Path(self.runtime_directory.name) / "project"
+        self.project_root.mkdir()
 
     def tearDown(self):
         self.runtime_directory.cleanup()
@@ -173,7 +175,7 @@ class AgentExecutorTests(unittest.TestCase):
             role="concorde-plan-author",
             integration=integration,
             agent="plan-author",
-            project_root="/fixture/project",
+            project_root=str(self.project_root),
             request="Plan the selected change",
             prompt="# Plan Author\n\nUse bounded context.",
             prior_results=("context:ready",),
@@ -226,7 +228,7 @@ class AgentExecutorTests(unittest.TestCase):
             (str(self.runtime_executable), "--ask-for-approval", "never", "exec"),
         )
         self.assertNotIn("--sandbox", argv)
-        self.assertEqual(cwd, "/fixture/project")
+        self.assertEqual(cwd, str(self.project_root))
         self.assertEqual(env, {"LANG": "C.UTF-8", "PATH": "/bin"})
         self.assertIn("Plan the selected change", input_text)
         self.assertIn("context:ready", input_text)
@@ -244,6 +246,22 @@ class AgentExecutorTests(unittest.TestCase):
         self.assertIn("--json", argv)
         with self.assertRaises(FrozenInstanceError):
             result.output = "changed"  # type: ignore[misc]
+
+    @verifies("scenario.harness.native-file-writes")
+    def test_file_type_change_after_preflight_prevents_process_launch(self):
+        spec = self.specification("codex")
+        path = self.project_root / spec.policy.write_paths[0]
+        path.parent.mkdir(parents=True)
+        path.write_text("original")
+        def version_probe(*args):
+            path.unlink()
+            path.mkdir()
+            return "codex-cli 9.1"
+        def runner(*args, **kwargs):
+            self.fail("stale file adaptation must not start the client")
+        with self.assertRaisesRegex(CapabilityExecutionError, "filesystem inputs changed"):
+            AgentProcessExecutor(runner=runner, version_probe=version_probe,
+                                 runtime_bootstrap_resolver=self.runtime_bootstrap)(spec)
 
     @verifies("scenario.harness.execute-success")
     def test_claude_process_handoff_uses_inline_strict_settings_and_no_retry(self):
