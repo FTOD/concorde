@@ -46,6 +46,17 @@ Publication SHALL NOT discover Spec documents by scanning directories or followi
 
 A physical Spec document SHALL publish at exactly one canonical page regardless of how many Modules register it.
 
+### req.views.current-internal-links — Published internal links resolve
+
+Publication SHALL promote only a candidate in which every internal navigation link retained in its published documents resolves to an available destination and, when specified, an existing anchor.
+
+The guarantee covers the site's own published pages, including enabled reading collections.
+Cross-Module references are valid navigation and do not establish document membership or expand
+Spec context. External destinations retain their existing handling; publication does not promise
+the continued availability of another website. Current-membership legacy aliases and failure
+behavior are defined in [publication](publication.md#scenario.views.publish-legacy-redirect)
+and [pipeline](pipeline.md#scenario.views.validate-candidate-mismatch).
+
 ### req.views.no-agent-context-grant — No extra agent context from a rendered view
 
 A rendered page or generated view SHALL NOT itself grant an agent invocation additional Spec context beyond its own host-bound target snapshot.

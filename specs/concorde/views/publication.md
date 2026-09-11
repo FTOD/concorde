@@ -156,35 +156,40 @@ redirect from the removed graph page. UA continues through its existing independ
 
 ### scenario.views.publish-preserves-previous-on-failure — An incomplete or stale candidate does not replace the published build
 
-- GIVEN changes to registered sources during generation, a missing expected page, or a failed Mermaid render
+- GIVEN changes to registered sources during generation, a missing expected page, an unresolved internal page or anchor link, or a failed Mermaid render
 - WHEN the candidate is validated before promotion
 - THEN promotion is refused
 - AND the previously published build is preserved unchanged
 
-### scenario.views.publish-legacy-redirect — Legacy routes keep resolving after a document's membership changes
+### scenario.views.publish-legacy-redirect — Current document references and membership aliases resolve
 
-- GIVEN a document's previously published per-membership legacy route
-- WHEN the current build is promoted
-- THEN a redirect stub for that legacy route still resolves to the document's one canonical page
+- GIVEN a still-registered document whose membership changes from Module A to Module B while a currently published document of A retains a reference to its source path or canonical page and an existing anchor
+- WHEN the current build is validated and promoted
+- THEN that retained reference reaches the document's single canonical page and the requested anchor independently of the referring document's Module membership
+- AND a redirect stub for every legacy alias derived from a current membership resolves to that same canonical page, preserving a requested fragment
+- BUT an unresolved retained internal reference prevents promotion until the reference is corrected
 
-The authoritative input for retaining aliases of removed document memberships, and the rule for
-carrying those aliases into a replacement build, remain unspecified in this contract. This is an
-existing unresolved part of legacy-route compatibility. The membership-derived alias rules in
-`pipeline.md` remain unchanged and do not establish how historical memberships are retained.
+A cross-Module reference is legitimate navigation: A need not register a document merely to link
+to it, and publication does not remove such a reference when membership changes. Canonical
+document identity and source-path resolution do not depend on the referring Module. This scenario
+does not promise an unchanged source path after a document is moved to a different filesystem path.
 
-Publication without a standalone graph preserves this scenario's compatibility obligation and the
-existing source-path, membership and alias rules. Removing the graph view does not select a new
-historical-alias policy, limit compatibility to current memberships, or resolve the unspecified
-historical input and retention rule. This clarification records that unresolved information; it
-does not claim that the compatibility scenario is fully specified or verified.
+The current registry and registered source documents are the authoritative inputs. Legacy aliases
+are generated only for current memberships under the rules in `pipeline.md`. Aliases of removed
+memberships have no indefinite retention guarantee and are not copied from a previous build. If a
+current document still uses an alias that those inputs do not resolve, publication rejects the
+candidate until that reference is corrected to the registered document's source path, canonical
+route or a current alias. The publisher neither invents historical membership nor silently drops
+the reference; no historical-alias store is required.
 
-This compatibility promise concerns registered-document aliases, not the removed standalone graph
-page. Every Concorde Module contains an inline Mermaid entity diagram in its `module.md`
+This compatibility promise concerns registered-document navigation, not the removed standalone
+graph page. Every Concorde Module contains an inline Mermaid entity diagram in its `module.md`
 Relationships subsection, with accessible title and description. Publication renders that fence in
 its authored position; the containing Markdown is the sole authored diagram source and already
 participates in source identity. No external diagram JSON, standalone diagram HTML, renderer Skill
-or separate diagram installation is used. Local links resolve only registered document membership;
-unknown or ambiguous links fail validation.
+or separate diagram installation is used. Local document links resolve against the complete
+explicit registered-page inventory, independently of the referring Module's collection; unknown
+or ambiguous destinations and missing anchors fail validation.
 
 ### scenario.views.publish-repeat-without-graph — Rebuilding replaces obsolete graph output
 

@@ -58,7 +58,7 @@ digest.
 
 ### scenario.views.validate-candidate-mismatch — Validation rejects a stale or incomplete candidate
 
-- GIVEN a build-manifest artifact whose schema version, source digest, page inventory or redirect stub coverage does not exactly match the current model
+- GIVEN a build-manifest artifact whose schema version, source digest, page inventory or redirect stub coverage does not exactly match the current model, or a retained internal navigation link whose destination or requested anchor is absent from the candidate
 - WHEN `validateScopedBuild` runs
 - THEN it rejects without repairing the artifacts or promoting output
 
@@ -155,9 +155,12 @@ A shared physical document keeps its single document identity, identical byte di
 carrying a `memberships` entry `{targetId, kind, primary}` per referencing target in registry
 order. `kind` is the kind of the membership marked `primary`, else the first membership's kind;
 `primaryOf` is that membership's targetId, or `null` when no membership is primary. `aliases`
-lists, for every membership, the legacy route it previously published at:
+lists, for every current membership, its legacy-format route:
 `/specs/<target-id>/<key>`, where `key` is the first 16 hex digits of `hash(sourcePath)` after
-`sha256:` (`legacyAliasRoute` computes this). The Markdown H1 supplies the page title, falling back
+`sha256:` (`legacyAliasRoute` computes this). Removed memberships contribute no alias; the model
+uses no prior build or historical membership record. A retained reference to a removed alias must
+be corrected if it cannot resolve under the current inputs, as specified in
+[current document references](publication.md#scenario.views.publish-legacy-redirect). The Markdown H1 supplies the page title, falling back
 to the primary membership's target title, or the first membership's target title when none is
 primary. `content` excludes front matter; `contentDigest` hashes the complete source bytes.
 
@@ -251,8 +254,12 @@ relative to the source document directory using POSIX normalization; an optional
 preserved. The resolved path selects the single page registered at that sourcePath, and an
 unregistered destination is rejected. Relative non-Spec assets have no matching page and are
 rejected; callers use a supported absolute or root-relative asset URL. Unsupported Markdown forms
-are left unchanged. Link validation occurs during rewrite/materialization, not during registry
-loading. The function returns text without changing sources.
+are left unchanged by this rewrite function. A reference selects from all registered source
+paths, not just the referring Module's collection, so changing a document's membership alone does
+not invalidate its source-path or canonical-page references. Link validation begins during
+rewrite/materialization, not during registry loading. The function returns text without changing
+sources. Preserving a URL or an unsupported Markdown form during rewriting does not exempt a
+navigation link emitted in the candidate from the final internal-link validation below.
 
 `contentLoaded({content, actions})` calls `actions.setGlobalData` with the Workspace 15 entry
 target and page metadata without Markdown bodies. It supplies no architecture nodes or edges.
@@ -263,7 +270,8 @@ in the rendered route inventory after base-URL normalization. Otherwise it throw
 verification artifacts. After the build manifest, it writes one legacy redirect stub per alias at
 `<outDir>/<alias without its leading slash>.html`: a minimal HTML document with a
 base-URL-prefixed `<meta http-equiv="refresh">` and `<link rel="canonical">` to the document's
-canonical page, plus a visible link, mirroring the default root redirect. These are the complete
+canonical page, plus a visible link, mirroring the default root redirect. Following an alias with
+a fragment preserves that fragment at the canonical destination. These are the complete
 collaborator promises this Profile 11 path relies on.
 
 ## Build artifacts, validation and promotion
@@ -285,8 +293,27 @@ candidate directory. It resolves with no value only when its schema version, sou
 ordered page path/route/digest/targets/aliases entries match exactly, and every alias has a redirect
 stub in the candidate directory whose content contains that page's canonical route. A stale or
 incomplete manifest, missing manifest, missing or non-matching redirect stub, or malformed JSON
-rejects. This function does not repair artifacts or promote output. Route coverage is measured by
-the plugin's post-build hook; callers must not manufacture a manifest to bypass that hook.
+rejects. It also validates internal navigation links in the completed candidate after redirect
+stubs exist. Every link emitted by the site's published documents must resolve to a candidate page
+or other existing site-owned destination; a nonempty fragment targeting a page must identify an
+anchor present on the resolved page. Current aliases resolve to their canonical pages for this
+check, including fragment validation. This covers same-page fragments, root-relative links and
+links produced by Markdown forms that `rewriteLinks` leaves unchanged, as well as rewritten
+source-path links. It includes enabled reading collections without adding them to Spec membership
+or the registered-page manifest.
+
+Resolve navigation URLs against the referring page and the configured site URL/base URL. A
+destination is internal when it has the configured site's origin and its path is within the
+configured base URL; same-site absolute URLs within that base URL are internal too. Query strings
+do not change the destination page or anchor lookup; preserve them in navigation. Other origins,
+same-origin destinations outside the base URL and non-navigation schemes retain their existing
+external handling without network availability checks. A missing destination, missing
+requested anchor or unresolved redirect rejects with the referring page and destination identified.
+Validation never silently removes a reference, infers document membership, repairs source text or
+retains historical output to make the check pass.
+
+This function does not repair artifacts or promote output. Route coverage is measured by the
+plugin's post-build hook; callers must not manufacture a manifest to bypass that hook.
 
 `buildSite` owns `docsite/.generated/candidate`, `docsite/build` and
 `docsite/.generated/previous-build`. It clears the candidate, prepares sources, runs Docusaurus,
