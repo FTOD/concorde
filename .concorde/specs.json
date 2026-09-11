@@ -96,6 +96,7 @@
         "src/concorde/spec/schema.py",
         "src/concorde/spec/typed_data.py",
         "src/concorde/spec/wire_shapes.py",
+        "tests/concorde/development/test_review.py",
         "tests/concorde/fixtures/build/golden/agents/",
         "tests/concorde/harness/",
         "tests/concorde/harness/test_agent_executor.py",
