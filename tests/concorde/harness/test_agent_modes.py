@@ -17,7 +17,7 @@ from concorde.harness.agent_model import (agent_definition, binding_digest, bind
     effective_mode_loop, load_agents, mode_definition, validate_mode_input, validate_mode_output)
 from concorde.harness.context import PHASES, resolve_context, resolve_discovery_context, resolve_topology_author_context
 from concorde.harness.harness import LoopPolicy
-from concorde.harness.permissions import (PolicyBinding,
+from concorde.harness.permissions import (PermissionPolicyError, PolicyBinding,
     build_launch_specification, compile_policy, render_claude_configuration)
 from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.typed_data import canonical, typed
@@ -70,10 +70,10 @@ class AgentModeTests(unittest.TestCase):
             data.update(change_id=None, expected_artifacts=[])
         return typed(mode.constraints.contexts[0], data)
 
-    def launch(self, agent_name, mode_name):
+    def launch(self, agent_name, mode_name, *, value=None):
         prompt = load_agent(PACKAGE, agent_name, mode_name)
         mode = mode_definition(agent_definition(agent_name), mode_name)
-        value = self.input(agent_name, mode_name)
+        value = value or self.input(agent_name, mode_name)
         snapshot = value["data"].get("snapshot", {}).get("data", value["data"])
         role = prompt.name
         roles = {"discovery-context" if agent_name == "coordinator" else "spec-context": ("context.json",)}
@@ -168,6 +168,41 @@ class AgentModeTests(unittest.TestCase):
             resolve_context(self.repository, self.target, phase="plan",
                             mode=mode_definition(agent_definition("spec_engineer"), "tasks"))
         self.assertEqual("permission_denied", caught.exception.code)
+
+    @verifies("scenario.harness.mode-boundary")
+    def test_scope_feedback_requires_prior_tasks_at_launch_but_allows_partial_preview(self):
+        agent = agent_definition("spec_engineer")
+        mode = mode_definition(agent, "tasks")
+        feedback = typed("concorde-task-scope-feedback", {
+            "tasks_digest": "sha256:" + "1" * 64, "reason": "implementation_boundary"})
+        preview = resolve_context(self.repository, self.target, phase="tasks", mode=mode,
+                                  stage_inputs=(feedback,))
+        self.assertEqual([feedback], preview.value["stage_inputs"])
+        for kind in ("ordinary", "repair", "missing-prior"):
+            with self.subTest(inputs=kind):
+                value = self.input("spec_engineer", "tasks")
+                artifacts = value["data"]["snapshot"]["data"]["stage_inputs"]
+                if kind != "ordinary":
+                    artifacts.append(feedback)
+                if kind == "repair":
+                    artifacts.append(typed("concorde-implementation-task", {
+                        "plan": "Accepted plan", "tasks": []}))
+                if kind == "missing-prior":
+                    with self.assertRaisesRegex(PermissionPolicyError, "stage inputs"):
+                        self.launch("spec_engineer", "tasks", value=value)
+                    launch = replace(self.launch("spec_engineer", "tasks"),
+                                     runtime_input_json=canonical(value))
+                    with self.assertRaisesRegex(CapabilityExecutionError, "stage inputs"):
+                        AgentProcessExecutor._preflight_agent_binding(launch)
+                    runner, probe = Mock(), Mock()
+                    with self.assertRaisesRegex(CapabilityExecutionError, "stage inputs"):
+                        AgentProcessExecutor(runner=runner, version_probe=probe)(launch)
+                    runner.assert_not_called()
+                    probe.assert_not_called()
+                else:
+                    launch = self.launch("spec_engineer", "tasks", value=value)
+                    binding = AgentProcessExecutor._preflight_agent_binding(launch)
+                    self.assertEqual("tasks", binding.mode)
 
     @verifies("scenario.harness.mode-boundary")
     def test_task_identity_constraints_are_required_frozen_and_tasks_only(self):

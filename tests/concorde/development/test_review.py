@@ -19,6 +19,105 @@ from tests.concorde.spec.support import CONFIGURATION, PACKAGE, ModelProcessDoub
 
 class ReviewTests(unittest.TestCase):
     @verifies("scenario.development.task-scope-repair", "scenario.development.dev-loop-coordinated",
+              "scenario.development.dev-loop-spec-gap")
+    def test_nested_scope_repair_requires_resolved_gap_from_recorded_component_intent(self):
+        from copy import deepcopy
+        from concorde.spec.repository import digest
+
+        task = {"target_id": "scope.bank", "task": "Implement the audited transfer contract"}
+        def coordinate(stage, snapshot, data, cwd):
+            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
+                data["tasks"][0].update(target_id="scope.audit", description="Implement audited transfers.")
+        def initial(stage, snapshot, data, cwd):
+            coordinate(stage, snapshot, data, cwd)
+            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
+                data["tasks"][0]["acceptance"] += " Host validation must finish first."
+            if snapshot["target_id"] == "service.transfer":
+                self.missing("spec-review")(stage, snapshot, data, cwd)
+        first = self.call_capability("concorde-dev-loop", task, callback=initial)
+        self.assertEqual("blocked", first["status"], first)
+        state = read_change(self.root)
+        before = state["targets"]["scope.bank"]
+        cached = before["coordination"]["scope.audit"]
+        child = state["targets"]["scope.audit"]
+        nested = child["coordination"]["service.transfer"]
+        self.assertEqual(cached["task"], child["task"])
+        self.assertEqual(nested["gaps"], cached["gaps"])
+        self.assertEqual("service.transfer", cached["gaps"][0]["target_id"])
+        self.assertTrue(all(item["target_id"] == "service.transfer" and item["task"] == nested["task"]
+                            for item in state["gap_history"]))
+        request = {**task, "repair_task_scope": {"tasks_digest": digest(before["tasks"])}}
+        def repair(stage, snapshot, data, cwd):
+            coordinate(stage, snapshot, data, cwd)
+            if stage == "tasks" and snapshot["target_id"] == "scope.bank":
+                data["tasks"][0]["id"] = "task.audit.scope-repair"
+        def rejected():
+            prior = read_change(self.root)
+            result = self.call_capability("concorde-dev-loop", request, callback=repair)
+            self.assertNotEqual("succeeded", result["status"], result)
+            self.assertIn("contract gaps before repairing its task boundary", str(result))
+            after = read_change(self.root)
+            for target_id in ("scope.bank", "scope.audit"):
+                for field in ("tasks", "task_history", "coordination"):
+                    self.assertEqual(prior["targets"][target_id].get(field),
+                                     after["targets"][target_id].get(field))
+            self.assertEqual(prior["gap_history"], after["gap_history"])
+        rejected()
+
+        document = self.root / "specs/transfer/module.md"
+        document.write_text(document.read_text() + "\nTransfer owns the daily-limit admission rule.\n")
+        reviewed = self.call_capability("concorde-review", {
+            "target_id": "service.transfer", "task": nested["task"], "review_mode": "spec"})
+        self.assertEqual("succeeded", reviewed["status"], reviewed)
+        resolved = read_change(self.root)["gap_history"]
+        self.assertTrue(resolved)
+        self.assertTrue(all(item["status"] == "resolved" for item in resolved))
+        self.assertEqual(cached["gaps"],
+                         read_change(self.root)["targets"]["scope.bank"]["coordination"]["scope.audit"]["gaps"])
+        # Alter only isolated fixture evidence; neither unrelated history nor a broken
+        # coordination chain can authorize replacement of the parent's accepted tasks.
+        for mismatch in ("missing", "target_id", "task", "context", "reopened",
+                         "child-intent", "nested-intent", "missing-coordination", "legacy-cache"):
+            with self.subTest(provenance=mismatch):
+                state = read_change(self.root)
+                state["gap_history"] = deepcopy(resolved)
+                state["targets"]["scope.audit"] = deepcopy(child)
+                state["targets"]["scope.bank"]["coordination"] = deepcopy(before["coordination"])
+                if mismatch == "missing":
+                    state["gap_history"] = []
+                elif mismatch in {"target_id", "task"}:
+                    state["gap_history"][0][mismatch] = "unrelated"
+                elif mismatch == "context":
+                    state["gap_history"][0]["contexts"] = ["sha256:" + "f" * 64]
+                elif mismatch == "reopened":
+                    state["gap_history"][0]["status"] = "open"
+                elif mismatch == "child-intent":
+                    state["targets"]["scope.audit"]["task"] = "Unrelated audit task"
+                elif mismatch == "nested-intent":
+                    state["targets"]["scope.audit"]["coordination"]["service.transfer"]["task"] = "Unrelated transfer task"
+                elif mismatch == "missing-coordination":
+                    state["targets"]["scope.audit"]["coordination"] = {}
+                else:
+                    state["targets"]["scope.bank"]["coordination"]["scope.audit"]["gaps"][0].pop("context_id")
+                save_change(self.root, state)
+                rejected()
+        state = read_change(self.root)
+        state["gap_history"] = resolved
+        state["targets"]["scope.audit"] = child
+        state["targets"]["scope.bank"]["coordination"] = before["coordination"]
+        save_change(self.root, state)
+        result = self.call_capability("concorde-dev-loop", request, callback=repair)
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual("ready", result["output"]["data"]["outcome"])
+        state = read_change(self.root)
+        parent = state["targets"]["scope.bank"]
+        self.assertEqual(before["tasks"], parent["task_history"][-1]["tasks"])
+        self.assertEqual(before["coordination"], parent["task_history"][-1]["coordination"])
+        self.assertEqual(resolved, state["gap_history"])
+        self.assertNotEqual(cached["task"], parent["coordination"]["scope.audit"]["task"])
+        self.assertTrue(all(item["complete"] for item in parent["tasks"]))
+
+    @verifies("scenario.development.task-scope-repair", "scenario.development.dev-loop-coordinated",
               "scenario.development.dev-loop-spec-gap", "scenario.development.standalone-review")
     def test_scope_repair_accepts_cached_component_gap_only_after_attributed_resolution(self):
         from copy import deepcopy
@@ -277,7 +376,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("task.round.2.replanned", state["tasks"][0]["id"])
         self.assertEqual(history, state["task_history"])
 
-    @verifies("scenario.development.task-scope-repair", "scenario.development.dev-loop-ready")
+    @verifies("scenario.development.validate-blocked")
     def test_deferred_repository_verification_still_requires_passing_host_checks(self):
         # The programmer cannot read this repository-level dependency, but the Host must
         # still execute it after accepting the implementation's fulfilled tasks.

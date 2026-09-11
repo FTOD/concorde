@@ -1382,11 +1382,24 @@ class Invocation:
                 if key in state["coordination"] and _component_intent(items) != state["coordination"][key]["task"]}
             for key in replacements:
                 record = state["coordination"][key]
+                owners = set()
+                pending = [(key, record["task"])]
+                while pending:
+                    owner, intent = pending.pop()
+                    if (owner, intent) in owners:
+                        continue
+                    owners.add((owner, intent))
+                    component = change["targets"].get(owner, {})
+                    if component.get("task") == intent:
+                        pending.extend((child, nested["task"])
+                            for child, nested in component.get("coordination", {}).items())
                 history = [item for item in change.get("gap_history", [])
-                           if item["target_id"] == key and item["task"] == record["task"]]
+                           if (item["target_id"], item["task"]) in owners]
                 # A fresh component review updates its durable history, not this parent's
-                # cached response. Only an attributed, resolved observation releases that cache.
+                # cached response. Nested gaps retain their owning task through the recorded
+                # coordination chain; a different component intent cannot supply provenance.
                 unresolved_cache = any(not any(item["status"] == "resolved"
+                    and item["target_id"] == gap.get("target_id")
                     and all(item["gap"].get(field) == gap.get(field)
                             for field in ("target_id", "question", "blocked_step", "needed_contract"))
                     and gap.get("context_id") in item.get("contexts", [])

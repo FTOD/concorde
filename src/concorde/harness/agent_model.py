@@ -165,7 +165,9 @@ def validate_mode_input(agent: Agent, mode_name: str, value: dict, *, phase: str
 def validate_mode_artifacts(mode: Mode, inputs, *, require_all: bool = True) -> None:
     types = [item["type_id"] for item in inputs]
     if (len(types) != len(set(types)) or set(types) - set(mode.stage_inputs)
-            or require_all and set(mode.required_inputs) - set(types)):
+            or require_all and (set(mode.required_inputs) - set(types)
+                or "concorde-task-scope-feedback" in types
+                    and "concorde-implementation-task" not in types)):
         raise ValueError("stage inputs do not match mode")
 
 
