@@ -60,3 +60,31 @@ canonical sha256 identity, strings checks unique string arrays and identifier ch
 Failures raise SpecError with code and field; typed path/JSON failures retain their TypedDataError
 contract. No lookup writes files, changes authority, silently retries a different path or reads
 source to invent missing Module meaning.
+
+## Task authoring transport values
+
+The Typed values interface admits the following existing version-1 records in the closed envelope
+`{type_id, schema_version: 1, data}`. Their data objects are closed as well; all fields below are
+required. They carry task metadata, not implementation contents or execution authority.
+
+| Type ID | Data shape | Meaning |
+| --- | --- | --- |
+| `concorde-task-scope-feedback` | `{tasks_digest: sha256, reason: "implementation_boundary"}` | Host feedback identifying the exact task list whose implementation acceptance must be separated from later Host responsibilities. `tasks_digest` is `sha256:` plus 64 lowercase hexadecimal digits, computed over the canonical JSON task list. The fixed reason requests preservation of software acceptance while correcting that phase boundary. |
+| `concorde-task-identity-constraints` | `{reserved_task_ids: string[]}` | The IDs a fresh task author must not reuse: retained history and, during replacement, the current task list. Strings are nonblank and unique; an empty array is valid. These are identity reservations only, not additional work obligations or permission to replay prior work. |
+
+`typed(type_id, data)` constructs and validates the envelope; `validate_typed(value, expected=None,
+field="")` validates an existing envelope and optionally its expected type. The validator checks
+the exact type, version, fields, digest syntax, fixed reason and ID-list shape without reading a
+change record. It does not prove that a digest names the current list, that reservations are
+complete, or that a caller may admit the value to a phase. Those contextual checks remain with the
+calling Host and the receiving Agent's mode. Neither value can complete tasks, waive validation or
+review, modify lifecycle state or widen file, network or credential authority by itself.
+
+### scenario.spec.task-control-values — Admit bounded task metadata without granting authority
+
+- GIVEN a task-scope-feedback or task-identity-constraints value using the shapes above
+- WHEN the Typed values interface validates it
+- THEN a valid version-1 value is returned without rewriting its data
+- AND unknown fields, malformed digests, other reason values, blank or duplicate reserved IDs, wrong types and unsupported versions raise TypedDataError with a code and field
+- AND repeated validation of unchanged input returns the same data without project reads, writes or lifecycle effects
+- BUT structural admission does not establish current task identity, complete history or phase authorization
