@@ -424,6 +424,7 @@ the most specific entry owns a file.
       "src/concorde/harness/agent_executor.py",
       "src/concorde/harness/agent_runtime.py",
       "src/concorde/harness/native_agent.py",
+      "tests/concorde/development/test_review.py",
       "tests/concorde/harness/test_agent_executor.py",
       "tests/concorde/harness/test_agent_runtime.py"
     ]
