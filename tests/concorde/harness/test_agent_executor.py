@@ -75,6 +75,10 @@ class AgentExecutorTests(unittest.TestCase):
             with self.assertRaises(CapabilityExecutionError):
                 resolve_node_runtime(str(project), environment)
             node.write_bytes(b"\x7fELFnative-node-fixture")
+            runtime.chmod(0o777)
+            with self.assertRaisesRegex(CapabilityExecutionError, "world-writable ancestor"):
+                resolve_node_runtime(str(project), environment)
+            runtime.chmod(0o755)
             with self.assertRaises(CapabilityExecutionError):
                 resolve_node_runtime(str(root), environment)
             self.assertEqual((), resolve_node_runtime(str(project), {"PATH": str(project)}))
