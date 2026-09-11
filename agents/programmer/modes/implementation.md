@@ -27,6 +27,16 @@ validation and independent reviews follow implementation; do not claim their fut
 commit the candidate. If an old task requires these later actions before completion, report its
 incomplete status honestly so the caller can request a task scope repair.
 
+A test's location inside a granted directory does not grant its imports, fixtures, project
+configuration or external dependencies. When execution needs inputs outside the supplied grant,
+record the attempted command and concrete missing input in the answer as deferred Host
+verification. Continue independent implementation and checks that the grant supports. For task
+acceptance qualified by "within the granted runtime" or "applicable implementation-level tests",
+that unavailable repository-level execution is not an implementation completion prerequisite.
+Assess the implemented behavior and test assertions honestly; never label a deferred test passed,
+invent replacement dependency behavior to obtain a pass, or expand authority to run it. Actual
+implementation defects or unfulfilled code/test obligations still keep their tasks incomplete.
+
 When `stage_inputs` also contains a `concorde-review-result`, it is contract-level feedback from an
 independent programmer in code-review mode about the current implementation: fulfil the supplied repair tasks so the
 identified findings no longer apply. Findings are not permission to change Module Specs or entity

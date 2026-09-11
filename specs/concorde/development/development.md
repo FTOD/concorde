@@ -21,6 +21,14 @@ readiness, commit and delivery remain later responsibilities. Tasks support thos
 implementation and tests; they never require the later steps to have finished first. Full software
 acceptance stays in the plan and tasks, and all configured validation and required reviews still run.
 
+A listed test does not grant its transitive imports, fixtures or repository configuration to the
+programmer. Tests requiring inputs outside that invocation's grant are repository-level Host
+verification. The programmer records the attempted command and concrete missing inputs, continues
+independent work, and distinguishes this deferral from a passing test and from an implementation
+defect. For acceptance qualified by the granted runtime, deferred repository-level execution does
+not prevent completion of otherwise fulfilled implementation and test obligations. An actual
+defect or missing implementation obligation remains incomplete; Host checks still gate readiness.
+
 An explicit `repair_task_scope:{tasks_digest}` request repairs this phase error on an existing
 incomplete task list. The digest is SHA-256 of canonical JSON bytes (sorted keys, compact
 separators, ASCII escaping), prefixed `sha256:`. It must match the current list and admitted intent;

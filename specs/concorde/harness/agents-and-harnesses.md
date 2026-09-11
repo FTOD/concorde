@@ -285,6 +285,14 @@ pairs: **stage** = `concorde-agent-stage-context` / `concorde-agent-stage-result
 | programmer | code-review | review; code-review | none | Independent code findings; authorized code read-only |
 | programmer | investigation | stage; implementation | required concorde-reflection-selection | Reflection findings only; authorized code read-only |
 
+Implementation mode executes useful tests supported by its actual grant. A listed test does not
+grant transitive imports or repository fixtures. It records a concrete unavailable input and
+attempted command as deferred Host verification, never as a passing result. Such execution is
+outside acceptance qualified by the granted runtime; fulfilled code and test obligations may
+complete while Host validation remains pending. Actual implementation defects and unfulfilled
+obligations still prevent completion. The task-author mode preserves this distinction without
+receiving source contents or raw execution logs, and neither mode widens the programmer's grant.
+
 The investigation retains the existing implementation phase on the stage wire while the explicit
 binding selects `investigation`; the reflection selection cannot be admitted to implementation
 mode. Reusing a wire pair does not merge its mode-specific artifact or result permissions. Unused

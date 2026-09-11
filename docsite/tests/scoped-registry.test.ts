@@ -5,6 +5,7 @@ import {beforeEach,afterEach,it,expect} from 'vitest';
 import {legacyAliasRoute,loadScopedRegistry,rewriteLinks,primaryDocument,type Target} from '../plugins/scoped-content/model';
 import {materializeScoped,scopedSidebar} from '../plugins/scoped-content/materialize';
 import scopedContent,{validateScopedBuild} from '../plugins/scoped-content';
+import {promoteCandidate} from '../scripts/build';
 import type {LoadContext} from '@docusaurus/types';
 interface SidebarItem {type:string; label:string; href?:string; id?:string; link?:{type:'doc';id:string}; collapsed?:boolean; items?:SidebarItem[]}
 let root:string,targets:Target[];
@@ -46,6 +47,37 @@ beforeEach(()=>{
  save();
 });
 afterEach(()=>rmSync(root,{recursive:true,force:true}));
+it('scenario.views.publish-repeat-without-graph: checked directory replacement removes obsolete output on consecutive promotions',async()=>{
+ const obsolete=['graph.html','graph/index.html','architecture-graph.json','assets/obsolete-graph.js'];
+ for(const path of obsolete)put('published/'+path,'previous graph output');
+ for(let iteration=0;iteration<2;iteration++){
+  const registry=loadScopedRegistry(root);await materializeScoped(registry);
+  const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
+  await plugin.loadContent!();
+  const outDir=resolve(root,'candidate');mkdirSync(outDir);
+  // Stand in for rendered pages; admission and promotion use the real plugin and validator.
+  for(const page of registry.pages)put('candidate/'+page.route.slice(1)+'.html',page.sourcePath);
+  await plugin.postBuild!({outDir,routesPaths:registry.pages.map(page=>page.route)} as any);
+  await validateScopedBuild(root,outDir);
+  await promoteCandidate(outDir,resolve(root,'published'),resolve(root,'backup'));
+  await validateScopedBuild(root,resolve(root,'published'));
+  for(const path of obsolete)expect(existsSync(resolve(root,'published',path))).toBe(false);
+  for(const page of registry.pages)
+   expect(readFileSync(resolve(root,'published',page.route.slice(1)+'.html'),'utf8')).toBe(page.sourcePath);
+ }
+});
+it('scenario.views.publish-without-graph: global data retains page metadata without bodies or architecture projections',async()=>{
+ put('docsite/site.json',JSON.stringify({schema_version:1,title:'Bank',url:'https://localhost',baseUrl:'/',organizationName:'bank',projectName:'bank'}));
+ const registry=loadScopedRegistry(root);await materializeScoped(registry);
+ const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
+ let data:any;
+ await plugin.contentLoaded!({content:registry,actions:{setGlobalData:(value:unknown)=>{data=value;}}} as any);
+ expect(data.schema_version).toBe(18);
+ expect(data.entryTarget).toBe(registry.entryTarget);
+ expect(data.pages).toEqual(registry.pages.map(({content,...page})=>page));
+ expect(data).not.toHaveProperty('nodes');expect(data).not.toHaveProperty('edges');
+ expect(data).not.toHaveProperty('targets');
+});
 it('admits arbitrary multi-document collections without frontmatter or ambient discovery',()=>{put('specs/ignored.md','UNREGISTERED');const r=loadScopedRegistry(root);expect(r.pages).toHaveLength(5);expect(r.pages.some(p=>p.content.includes('UNREGISTERED'))).toBe(false);});
 it('scenario.views.load-registry: separates private Module composition from shared sibling dependencies',()=>{const r=loadScopedRegistry(root);expect(r.targets.flatMap(t=>t.uses)).toHaveLength(2);expect(r.targets.find(t=>t.id==='module.ledger')?.parent).toBe('service.transfer');expect(r).not.toHaveProperty('edges');});
 it('allows the same implementation file to be listed by more than one Module',()=>{
