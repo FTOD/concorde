@@ -10,6 +10,20 @@ the graph is up to date with source.
 The [docsite](../docsite/README.md) provides the complementary view of authored Module Specs,
 composition, dependencies and architecture diagrams.
 
+## Do I need both commands every time?
+
+**No. If a graph already exists, starting the Viewer is the only command you need.** The two
+commands perform separate jobs:
+
+- **`ua-graph` prepares the data:** it creates a graph from the Spec registry or updates the
+  Concorde Module structure in an existing graph. Run it when you need an initial Spec-derived
+  graph or want to refresh that structure; it does not start the Viewer.
+- **The Viewer command opens the interface:** it displays the saved graph without regenerating it.
+  Run it whenever you want to browse the graph.
+
+Neither command performs Understand Anything's code analysis. Use UA's own analysis workflow when
+you need to generate or refresh code relationships.
+
 ## Run from a Concorde source checkout
 
 Use this route when you cloned this repository. Run all commands from the repository root, one
@@ -56,21 +70,29 @@ First complete the [Concorde installation](../README.md), including the installe
 `--apply` step. That provisions the managed Viewer; installation preview alone does not install it.
 Node.js 18+ must also be available on your PATH.
 
-From the consuming project's root, generate or update the graph:
-
-```bash
-python3 .concorde/framework/scripts/concorde.py ua-graph --allow-primary-worktree
-```
-
-Then open it using the managed launcher:
+**For everyday use with an existing graph, run only this command from the consuming project's
+root:**
 
 ```bash
 python3 .concorde/framework/scripts/run-viewer.py --project-root . --no-open
 ```
 
-As in a source checkout, skip export if you just want to open an existing graph, and open the full
-Dashboard URL printed by the Viewer. The launcher also accepts `--port 5173`; omit `--no-open`
-to allow browser opening. Startup checks the installed runtime and does not install dependencies.
+`--project-root .` selects the current project directory. `--no-open` suppresses automatic browser
+opening; open the complete Dashboard URL printed in the terminal, including its access token.
+Keep the terminal running and stop the Viewer with **Ctrl+C**. The launcher also accepts
+`--port 5173`; omit `--no-open` to allow browser opening. Startup checks the installed runtime and
+does not install dependencies.
+
+**Only when you need to create a Spec-derived graph or update its Module structure**, run this
+export command before starting the Viewer:
+
+```bash
+python3 .concorde/framework/scripts/concorde.py ua-graph --allow-primary-worktree
+```
+
+`--allow-primary-worktree` permits this command to write the graph in the primary checkout. It is
+an export permission, not a Viewer startup requirement. Once the graph exists, subsequent Viewer
+launches do not require another export.
 
 ## Graph locations and refresh behavior
 
