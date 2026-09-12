@@ -170,7 +170,7 @@ only when every registered document's path starts with `specs/` — and its `.md
 a project whose documents are not all under `specs/` keeps full paths. Its staged path is that same
 (possibly unstripped) relative path, `.md` extension kept. `loadScopedRegistry` throws when two
 documents would map to the same canonical route, when a canonical route equals a legacy alias
-route, or when a staged path falls under the reserved `projections/` prefix.
+route. The former `projections/` source prefix is no longer reserved.
 
 A referenced physical document retains one Page and one sole `owner`. `includedBy` records every
 Module whose one-level context includes it, in registry order, with all sorted inclusion reasons.
@@ -200,21 +200,16 @@ option is absent, the root preserves its redirect to the registered entry Module
 is a human navigation surface outside registered Spec membership and `sourceDigest`; the
 registered-page manifest retains its registry-derived meaning.
 
-## Independent Protocol documentation
+## Project-owned custom documentation
 
-When `docsite/site.json` sets optional boolean `protocolDocs` to true, publication adds a
-**Spec Protocol** navbar tab before the software Spec tabs. A separate Docusaurus docs collection
-reads Markdown from `protocol/` and publishes it under `/protocol/` with its own chapter sidebar
-and local search index. The collection requires no project Spec metadata, Module identity or
-registry membership. Its pages do not appear in the registered Spec manifest. Missing enabled
-content and broken chapter links fail the site build. Omitting the option disables this collection;
-scaffolding a consumer project does not enable or copy it.
-
-The adapter renders inline `mermaid` fences using Docusaurus's Mermaid theme in both Protocol and
-registered Spec pages. Protocol illustrations remain part of their independent chapter sources;
-software diagrams belong to their registered Markdown documents. Both retain accessible titles and
-descriptions, and neither creates a separate external diagram source or delivery route. This
-renderer choice does not change the Protocol's tool-neutral requirements.
+The generic template defaults to the Module Specs tab and registry-parent sidebar. Optional
+`customDocs` collections and `custom-docs/index.ts` supply independent project documentation
+and executable pages under the [custom docs agreement](publication.md#scenario.views.custom-docs).
+They remain outside registered-page identity, ownership and agent context. Collection paths cannot
+include registered Specs; duplicate published routes fail the build. Concorde configures its
+Protocol collection and Agent Flows extension through these same entry points. The removed
+`protocolDocs` option fails with migration guidance; unregistered instruction/wire projections
+are no longer read or published. Inline Mermaid remains supported in registered and custom docs.
 
 ## Materialization and required build collaborators
 
@@ -232,17 +227,10 @@ Read failures, JSON parse failures and version or digest mismatches reject post-
 verification artifacts are emitted; the normal build failure rules preserve the previously
 promoted site. This retains the existing identity format and comparisons.
 
-The primary Spec navigation mirrors the directory hierarchy of explicitly registered source paths;
-it never discovers new membership by scanning directories. `scopedSidebar` returns one tree
-following registered Module parentage; there is no separate Implementation Spec sidebar, because
-Profile 12 registers only Modules. The navbar exposes Module Specs and, when present, the optional
-independent Protocol tab and a self-hosting-only Projections group of rendered
-`generated/docs/instructions.json` and `generated/docs/wire.json` pages. An ordinary consumer
-project produces neither file, so those pages are omitted rather than linking to unmaterialized
-content. The Agent instructions projection displays common responsibilities and separate mode
-sections with each mode's context/result/authority contract and complete common-plus-selected-mode
-text; browsing these pages does not combine modes into a runtime prompt or grant agent context.
-There is no Graph navbar item, graph route, graph component or graph-specific global data.
+The only Module Spec navigation follows registry `parent` relationships. Root Modules are top-level
+items; each Module opens its `module.md` and expands to its owned supplementary documents and child
+Modules. No file-directory tree or outer composition category is generated. References remain
+navigation to the sole owner's canonical page and never create extra sidebar document entries.
 
 A Module category links directly to its `module.md` through a Docusaurus category `link` of type
 `doc`. Its child items contain only additional registered documents and child Modules, never a

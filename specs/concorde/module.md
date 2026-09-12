@@ -89,10 +89,13 @@ These scenarios state what a developer request accomplishes at the Framework's s
 
 ### scenario.concorde.inspect-answer — Answering a Spec-grounded question
 
-- GIVEN a developer asks a question or requests a view
+- GIVEN a developer asks a Spec-grounded question or requests a Spec or existing code-graph view
 - WHEN the request is routed to Development or Views
 - THEN the response is grounded in registered Spec documents and declared relationships, or in an existing raw code graph
 - AND answering the question does not mutate any project contract
+
+Project-owned custom documentation is a separate human reading surface outside Spec queries and
+agent Spec context; it does not acquire authority as a registered Module contract.
 
 ### scenario.concorde.inspect-gap — Missing Spec promise reported
 

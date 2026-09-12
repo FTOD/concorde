@@ -13,6 +13,8 @@ import {beforeEach,afterEach,it,expect} from 'vitest';
 import {injectAnchors,legacyAliasRoute,loadScopedRegistry,rewriteLinks,primaryDocument,requireScoped,type Target} from '../plugins/scoped-content/model';
 import {materializeScoped,scopedSidebar,publicationSidebar} from '../plugins/scoped-content/materialize';
 import scopedContent,{validateScopedBuild} from '../plugins/scoped-content';
+import {customDocsConfiguration} from '../plugins/scoped-content/custom-docs';
+import {parseSiteIdentity} from '../plugins/scoped-content/site-identity';
 import {promoteCandidate} from '../scripts/build';
 import {preparePublication,productionGeneratedDirectory} from '../scripts/prepare-publication';
 import type {LoadContext} from '@docusaurus/types';
@@ -107,78 +109,36 @@ it('scenario.views.materialize scenario.views.publish-candidate scenario.views.p
  const docs=all.flatMap(item=>item.type==='doc'?[item.id]:item.link?[item.link.id]:[]);
  expect(docs).toHaveLength(registry.pages.length);
  expect(new Set(docs).size).toBe(registry.pages.length);
- const transfer=sidebar.find(item=>item.label==='transfer')!;
- expect(transfer.link).toBeUndefined();
- expect(transfer.items).toEqual([
-  {type:'link',href:'/specs/transfer/module',label:'service.transfer'},
-  {type:'link',href:'/specs/transfer/promises',label:'service.transfer'},
- ]);
- const composition=sidebar.find(item=>item.label==='Module composition')!;
- const module=composition.items!.find(item=>item.label==='service.transfer')!;
+ expect(sidebar.some(item=>['Module composition','transfer','Projections'].includes(item.label!))).toBe(false);
+ const module=sidebar.find(item=>item.label==='service.transfer')!;
  expect(module.link).toEqual({type:'doc',id:'transfer/module'});
  expect(module.items).toEqual([
-  {type:'doc',id:'transfer/promises',label:'service.transfer'},
+  {type:'doc',id:'transfer/promises',label:'promises'},
   {type:'doc',label:'module.ledger',id:'ledger/module'},
  ]);
- expect(composition.items!.find(item=>item.label==='scope.audit')).toEqual(
+ expect(sidebar.find(item=>item.label==='scope.audit')).toEqual(
   {type:'doc',id:'audit/module',label:'scope.audit'});
  expect(flatten(module.items!).some(item=>item.id==='transfer/module')).toBe(false);
- expect(flatten(composition.items!).filter(item=>item.href==='/specs/transfer/promises')).toHaveLength(0);
+ expect(flatten(sidebar).filter(item=>item.href==='/specs/transfer/promises')).toHaveLength(0);
  await materializeScoped(registry);
  const materialized=JSON.parse(readFileSync(resolve(root,'docsite/.generated/specs-sidebar.json'),'utf8'));
  expect(materialized.moduleSpecsSidebar).toEqual(sidebar);
  expect(all.some(item=>item.label==='Graph'||item.href==='/graph')).toBe(false);
  expect(existsSync(resolve(root,'docsite/.generated/static/architecture-graph.json'))).toBe(false);
 });
-it('scenario.views.publish-without-graph: projection pairs track availability and content without changing registered identity',async()=>{
+it('scenario.views.publish-candidate: ignores retired projections and removes staged copies',async()=>{
  const registry=loadScopedRegistry(root);
- const instructions='generated/docs/instructions.json',wire='generated/docs/wire.json';
- const staged='docsite/.generated/content/specs/projections/';
- const enable=()=>{
-  put(instructions,JSON.stringify({agents:[],skills:[]}));
-  put(wire,JSON.stringify({'z.type':{type:'string'},'a.type':{type:'object'}}));
- };
- for(const missing of [instructions,wire]){
-  enable();await materializeScoped(registry);
-  expect(existsSync(resolve(root,staged+'instructions.md'))).toBe(true);
-  expect(existsSync(resolve(root,staged+'wire.md'))).toBe(true);
-  expect(scopedSidebar(registry).at(-1)?.label).toBe('Projections');
-  rmSync(resolve(root,missing));await materializeScoped(registry);
-  expect(existsSync(resolve(root,staged+'instructions.md'))).toBe(false);
-  expect(existsSync(resolve(root,staged+'wire.md'))).toBe(false);
-  expect(scopedSidebar(registry).some(item=>item.label==='Projections')).toBe(false);
+ for(const name of ['instructions','wire']) {
+  put('generated/docs/'+name+'.json','{invalid retired input');
+  put('docsite/.generated/content/specs/projections/'+name+'.md','Retired page');
  }
- enable();await materializeScoped(registry);
- put(wire,JSON.stringify({'current.type':{const:'current bytes'}}));
  await materializeScoped(registry);
- const text=readFileSync(resolve(root,staged+'wire.md'),'utf8');
- expect(text).toContain('current bytes');expect(text).not.toContain('z.type');
- const current=loadScopedRegistry(root);
- expect(current.sourceDigest).toBe(registry.sourceDigest);
- expect(current.pages).toEqual(registry.pages);
-});
-it('scenario.views.publish-without-graph: invalid projection JSON and unsafe reads invalidate preparation and retry replaces partial output',async()=>{
- const registry=loadScopedRegistry(root);
- const paths=['generated/docs/instructions.json','generated/docs/wire.json'];
- const reset=()=>{
-  for(const path of paths)rmSync(resolve(root,path),{force:true,recursive:true});
-  put(paths[0],JSON.stringify({agents:[],skills:[]}));put(paths[1],'{}');
- };
- for(const path of paths)for(const failure of ['json','symlink','directory']){
-  reset();await materializeScoped(registry);
-  rmSync(resolve(root,path));
-  if(failure==='json')put(path,'{malformed');
-  if(failure==='symlink')symlinkSync(resolve(root,paths.find(other=>other!==path)!),resolve(root,path));
-  if(failure==='directory')mkdirSync(resolve(root,path));
-  await expect(materializeScoped(registry)).rejects.toThrow();
-  expect(existsSync(resolve(root,'docsite/.generated/scoped-materialization.json'))).toBe(false);
-  reset();await materializeScoped(registry);
-  expect(readFileSync(resolve(root,'docsite/.generated/scoped-materialization.json'),'utf8'))
-   .toBe(JSON.stringify({schema_version:1,sourceDigest:registry.sourceDigest})+'\n');
- }
+ expect(existsSync(resolve(root,'docsite/.generated/content/specs/projections'))).toBe(false);
+ expect(scopedSidebar(registry).some(item=>item.label==='Projections')).toBe(false);
+ expect(loadScopedRegistry(root).sourceDigest).toBe(registry.sourceDigest);
 });
 it('scenario.views.publish-repeat-without-graph: checked directory replacement removes obsolete output on consecutive promotions',async()=>{
- const obsolete=['graph.html','graph/index.html','architecture-graph.json','assets/obsolete-graph.js'];
+ const obsolete=['graph.html','graph/index.html','architecture-graph.json','assets/obsolete-graph.js','specs/projections/instructions.html','specs/projections/wire.html'];
  for(const path of obsolete)put('published/'+path,'previous graph output');
  for(let iteration=0;iteration<2;iteration++){
   const registry=loadScopedRegistry(root);await materializeScoped(registry);
@@ -360,7 +320,7 @@ it('scenario.views.id-anchors: injects the ID of every scenario, requirement and
 it('rejects sources changed between materialization and plugin loading even when routes are unchanged',async()=>{
  const original=loadScopedRegistry(root);await materializeScoped(original);
  const staged=readFileSync(resolve(root,'docsite/.generated/content/specs/transfer/promises.md'),'utf8');
- expect(staged).toContain('title: service.transfer');expect(staged).toContain('sidebar_label: service.transfer');
+ expect(staged).toContain('title: promises');expect(staged).toContain('sidebar_label: promises');
  expect(staged).toContain('displayed_sidebar: moduleSpecsSidebar');
  const plugin=()=>scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
  expect((await plugin().loadContent!())?.sourceDigest).toBe(original.sourceDigest);
@@ -377,13 +337,13 @@ it('scenario.views.materialize: invalidates the previous materialization identit
  const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
  await expect(plugin.loadContent!()).rejects.toThrow(/ENOENT/);
 });
-it('starts with Module roots and nests documents and children by registry ownership',()=>{
+it('scenario.views.publish-candidate: starts with Module roots and nests documents and children by registry ownership',()=>{
  targets[0].documents.push('specs/bank/routing.md');putSpec('specs/bank/routing.md',['scope.bank'],'# Routing\nLocal routing facts.');save();
  const sidebar=scopedSidebar(loadScopedRegistry(root));
  expect(sidebar.map(item=>item.label)).toEqual(['scope.bank','scope.audit','service.transfer']);
  expect(sidebar[0]).toMatchObject({type:'category',collapsed:false});
  expect(sidebar[0].items).toEqual([
-  {type:'doc',id:'bank/routing',label:'Routing'},
+  {type:'doc',id:'bank/routing',label:'routing'},
  ]);
  expect(sidebar[2].items!.at(-1)).toMatchObject({type:'doc',label:'module.ledger',id:'ledger/module'});
 });
@@ -425,9 +385,9 @@ it('rejects a canonical route that collides with an alias',()=>{
  targets[1].documents.push(collidingPath);putSpec(collidingPath,['scope.audit'],'# Colliding\nCrafted to collide with a legacy alias.');save();
  expect(()=>loadScopedRegistry(root)).toThrow(/collides with an alias/);
 });
-it('rejects a registered document staged under the reserved projections/ prefix',()=>{
+it('allows registered documents under the formerly reserved projections/ prefix',()=>{
  targets[1].documents.push('specs/projections/foo.md');putSpec('specs/projections/foo.md',['scope.audit'],'# Foo\nReserved staged path.');save();
- expect(()=>loadScopedRegistry(root)).toThrow(/[Pp]rojections/);
+ expect(loadScopedRegistry(root).pages.some(page=>page.route==='/specs/projections/foo')).toBe(true);
 });
 it('scenario.views.validate-candidate-mismatch: writes a legacy redirect stub for every alias during postBuild, and validateScopedBuild checks them',async()=>{
  const registry=loadScopedRegistry(root);await materializeScoped(registry);
@@ -615,7 +575,7 @@ it.each(['/', '/%E6%96%87%E6%A1%A3/'])('scenario.views.build-site scenario.views
  };
  await fixtureModule.exports.buildSite();
  const published=resolve(root,'docsite/build');
- const obsolete=['graph.html','graph/index.html','architecture-graph.json','assets/obsolete-graph.js'];
+ const obsolete=['graph.html','graph/index.html','architecture-graph.json','assets/obsolete-graph.js','specs/projections/instructions.html','specs/projections/wire.html'];
  for(const path of obsolete)put('docsite/build/'+path,'previous graph output');
  const previous=snapshot(published);
  expect(Object.keys(previous)).toContain('build-manifest.json');
@@ -659,4 +619,83 @@ it('scenario.views.materialize scenario.views.build-site: rejects invalid materi
   await expect(plugin.postBuild!({outDir,routesPaths:registry.pages.map(page=>page.route)} as any)).rejects.toThrow();
   expect(existsSync(resolve(outDir,'build-manifest.json'))).toBe(false);
  }
+});
+
+
+it('scenario.views.custom-docs: rejects registered Spec sources in a custom collection',()=>{
+ const registry=loadScopedRegistry(root);
+ const identity=parseSiteIdentity({schema_version:1,title:'Bank',url:'https://example.com',baseUrl:'/',organizationName:'bank',projectName:'bank',
+  customDocs:[{id:'guides',label:'Guides',path:'../specs',routeBasePath:'guides'}]});
+ expect(()=>customDocsConfiguration(resolve(root,'docsite'),identity,registry)).toThrow(/includes registered Spec/);
+});
+
+it('scenario.views.custom-docs: rejects a custom page at a registered legacy alias before writing redirects',async()=>{
+ const registry=loadScopedRegistry(root);await materializeScoped(registry);
+ const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
+ await plugin.loadContent!();
+ const alias=registry.pages[0].aliases[0];
+ const outDir=resolve(root,'candidate');mkdirSync(outDir);
+ put('candidate/'+alias.slice(1)+'.html','Custom page');
+ await expect(plugin.postBuild!({outDir,routesPaths:[...registry.pages.map(page=>page.route),alias]} as any)).rejects.toThrow(/conflicts with registered Spec alias/);
+ expect(readFileSync(resolve(outDir,alias.slice(1)+'.html'),'utf8')).toBe('Custom page');
+});
+
+it('scenario.views.publish-candidate scenario.views.materialize: labels and order ignore headings and directories',async()=>{
+ const supplement='specs/bank/elsewhere/notes.md';
+ targets[2].documents.unshift(supplement);targets[2].title='Transfers';
+ putSpec(supplement,['service.transfer'],'# Unrelated heading\n\nSupplement.');
+ targets[0].references=[{kind:'module',id:'service.transfer'}];
+ targets[1].references=[{kind:'document',id:'document.specs.bank.elsewhere.notes'}];save();
+ const registry=loadScopedRegistry(root),sidebar=scopedSidebar(registry);
+ expect(sidebar.map(item=>item.label)).toEqual(['scope.bank','scope.audit','Transfers']);
+ expect(sidebar[2]).toMatchObject({link:{type:'doc',id:'transfer/module'},items:[
+  {type:'doc',id:'bank/elsewhere/notes',label:'notes'},
+  {type:'doc',id:'transfer/promises',label:'promises'},
+  {type:'doc',id:'ledger/module',label:'module.ledger'},
+ ]});
+ const refs=(items:SidebarItem[]):string[]=>items.flatMap(item=>[
+  ...(item.id?[item.id]:item.link?[item.link.id]:[]),...refs(item.items??[])]);
+ expect(refs(sidebar).sort()).toEqual(registry.pages.map(page=>page.stagedPath.replace(/\.md$/,'')).sort());
+ await materializeScoped(registry);
+ expect(readFileSync(resolve(root,'docsite/.generated/content/specs/bank/elsewhere/notes.md'),'utf8')).toContain('sidebar_label: notes');
+});
+
+it('scenario.views.custom-docs: adds collection and executable tabs without changing registered context inputs',()=>{
+ const before=loadScopedRegistry(root);
+ put('docsite/custom-docs/guides/index.md','---\nslug: /\n---\n# Handbook');
+ put('docsite/custom-docs/sidebar.js','module.exports = {guides: ["index"]};');
+ put('docsite/custom-docs/index.ts','module.exports.default = {plugins: ["example-plugin"], navbarItems: [{to: "/app", label: "App", position: "left"}]};');
+ const identity=parseSiteIdentity({...JSON.parse(readFileSync(resolve(root,'docsite/site.json'),'utf8')),
+  customDocs:[{id:'guides',label:'Handbook',path:'./custom-docs/guides',routeBasePath:'handbook',sidebarPath:'custom-docs/sidebar.js'}]});
+ const custom=customDocsConfiguration(resolve(root,'docsite'),identity,before);
+ expect(custom.plugins).toEqual([
+  ['@docusaurus/plugin-content-docs',expect.objectContaining({id:'guides',routeBasePath:'handbook',sidebarPath:resolve(root,'docsite/custom-docs/sidebar.js')})],
+  'example-plugin',
+ ]);
+ expect(custom.navbarItems.map(item=>item.label)).toEqual(['Handbook','App']);
+ expect(custom.docsRouteBasePath).toEqual(['/handbook']);
+ expect(custom.docsDir).toEqual(['./custom-docs/guides']);
+ put('docsite/site.json',JSON.stringify({...JSON.parse(readFileSync(resolve(root,'docsite/site.json'),'utf8')),customDocs:identity.customDocs}));
+ expect(loadScopedRegistry(root)).toEqual(before);
+});
+
+it.each(['missing','file','sidebar'])('scenario.views.custom-docs: rejects unavailable collection input %s',kind=>{
+ put('docsite/guide-file.md','# A file');put('docsite/guides/index.md','---\nslug: /\n---\n# Guide');
+ const identity=parseSiteIdentity({...JSON.parse(readFileSync(resolve(root,'docsite/site.json'),'utf8')),
+  customDocs:[{id:'guides',label:'Guides',path:kind==='missing'?'missing':kind==='file'?'guide-file.md':'guides',
+   routeBasePath:'guides',...(kind==='sidebar'?{sidebarPath:'missing-sidebar.ts'}:{})}]});
+ expect(()=>customDocsConfiguration(resolve(root,'docsite'),identity,loadScopedRegistry(root))).toThrow();
+});
+
+it('scenario.views.materialize: ignores stale unregistered projection inputs',async()=>{
+ const before=loadScopedRegistry(root);
+ put('generated/docs/instructions.json','invalid stale JSON');put('generated/docs/wire.json','invalid stale JSON');
+ const after=loadScopedRegistry(root);expect(after).toEqual(before);await materializeScoped(after);
+ expect(existsSync(resolve(root,'docsite/.generated/content/specs/projections'))).toBe(false);
+});
+
+it.each(['[]','{plugins: "bad"}','{navbarItems: {}}'])('scenario.views.custom-docs: rejects malformed executable extension %s',value=>{
+ put('docsite/custom-docs/index.ts','module.exports.default = '+value+';');
+ const identity=parseSiteIdentity(JSON.parse(readFileSync(resolve(root,'docsite/site.json'),'utf8')));
+ expect(()=>customDocsConfiguration(resolve(root,'docsite'),identity,loadScopedRegistry(root))).toThrow(/custom-docs\/index.ts/);
 });

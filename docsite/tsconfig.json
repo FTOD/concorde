@@ -4,7 +4,10 @@
     "baseUrl": ".",
     "noEmit": true,
     "strict": true,
-    "types": ["node", "vitest/globals"]
+    "types": [
+      "node",
+      "vitest/globals"
+    ]
   },
   "include": [
     "docusaurus.config.ts",
@@ -16,6 +19,8 @@
     "concorde-only/**/*.ts",
     "concorde-only/**/*.tsx",
     "tests/**/*.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "custom-docs/**/*.ts",
+    "custom-docs/**/*.tsx"
   ]
 }

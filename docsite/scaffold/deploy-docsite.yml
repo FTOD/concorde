@@ -35,11 +35,9 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      # This project's own source checkout distributes Concorde itself, so its docsite publishes
-      # rendered Agent instructions/Wire contracts pages from generated/docs/*.json; that Concorde
-      # build must run before the docsite steps below. An ordinary scaffolded consumer project has
-      # no scripts/concorde.py at its root, so this step is a no-op there.
-      - name: Build Concorde (Skills, roles, Protocol assets, docs projections)
+      # A Framework source checkout builds its runtime assets before publication.
+      # Ordinary scaffolded consumers have no Framework build command at their root.
+      - name: Build Concorde (Skills, roles, Protocol assets)
         if: hashFiles('scripts/concorde.py') != ''
         run: python3 scripts/concorde.py build
 

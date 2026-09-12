@@ -23,7 +23,7 @@ The existing host adapter implements each registered entry as a Python module de
 Agents, effects, composed entries and typed request/response contracts. In this adapter, rendered
 public Skills expose exactly one global or lifecycle capability. Stage capabilities have no Skill and no direct invocation. Every request
 passes through this host. The capability registry is a member of this complete Spec; exact wire
-schemas are code, exported by the build and published by the docsite, and this document states
+schemas are code, exported by the build for runtime/API use, and this document states
 their promises.
 
 Executable entry: `python3 scripts/run-capability.py <skill-name>`, no task command-line arguments.

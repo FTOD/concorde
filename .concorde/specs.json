@@ -406,7 +406,7 @@
         "docsite/plugins",
         "docsite/scaffold",
         "docsite/scripts",
-        "docsite/sidebars.protocol.ts",
+        "docsite/custom-docs",
         "docsite/sidebars.specs.ts",
         "docsite/site.json",
         "docsite/src",

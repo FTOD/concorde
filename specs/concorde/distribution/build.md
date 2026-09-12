@@ -10,13 +10,16 @@
 `build(project_root, integration="all", *, framework_prefix="")` renders Agent instructions,
 integration-specific Skill files (Codex `.agents/skills` and Claude `.claude/skills`),
 `generated/langgraph.json`, the rule assets (`generated/protocol/principles.md`, its kind
-definition, and `generated/protocol/schemas.json`), and documentation inventories
-(`generated/docs/instructions.json` and `generated/docs/wire.json`) deterministically from
+definition, and `generated/protocol/schemas.json`) deterministically from
 `agents/`, `protocol/`, `prompts/`, `skills/` and the capability contracts. The principles asset
 bundles the Protocol principles, Spec management (including Spec and Context) and Required format
 chapters with the separate Framework execution profile. The kind asset contains the Module chapter
 and its canonical templates. Framework configuration, phase authority and Mermaid authoring
 conventions belong to the execution profile, not the independent standard.
+
+The build no longer emits the docsite-only `generated/docs/instructions.json` or
+`generated/docs/wire.json`; normal owned-output cleanup retires old copies. This does not remove
+runtime Agent instructions, exported schema APIs or `generated/protocol/schemas.json`.
 
 ## Rendering and freshness
 
@@ -34,7 +37,7 @@ a Skill does not execute its Capability or add it to a Concorde Agent's Harness.
 
 - GIVEN the current `prompts/`, `skills/`, `capabilities/`, `agents/` and Protocol chapter sources
 - WHEN build runs for a selected integration
-- THEN it renders Agent instructions, Skill files, the Studio graph configuration, Protocol assets, schemas and documentation inventories deterministically
+- THEN it renders Agent instructions, Skill files, the Studio graph configuration, Protocol assets and runtime schemas deterministically
 - AND repeated renders of unchanged inputs are byte-identical and perform no network or process I/O
 
 ### scenario.distribution.build-write — write_build records source and output digests in the manifest
@@ -180,8 +183,7 @@ repair.
 
 Agent builds publish three common responsibility projections and twelve independent mode
 projections. Each mode projection concatenates only its Agent common source and selected mode
-source; the manifest records both source sets. The instructions documentation exposes each mode
-and its contract separately. Package validation compares sorted mode names in concorde-agents
+source; the manifest records both source sets. Package validation compares sorted mode names in concorde-agents
 with the Python inventory and rejects mode constraints wider than the owning Agent.
 
 Mode instruction file membership must equal the declared mode inventory. Agent Python bindings,

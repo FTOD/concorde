@@ -45,7 +45,7 @@ warnings do not install dependencies or change proposal bytes.
 ```concorde-contract
 {
   "id": "contract.views.scaffold-proposal",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "required": [
@@ -60,7 +60,7 @@ warnings do not install dependencies or change proposal bytes.
     "properties": {
       "proposal_version": {
         "enum": [
-          1
+          2
         ]
       },
       "template_root": {
@@ -127,7 +127,7 @@ warnings do not install dependencies or change proposal bytes.
   },
   "semantics": "An exact, package-digest-bound scaffold proposal; the local ownership and content rules determine which files may be created. It grants no replacement or deletion authority.",
   "example": {
-    "proposal_version": 1,
+    "proposal_version": 2,
     "template_root": "docsite",
     "template_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
     "identity": {
@@ -153,7 +153,7 @@ warnings do not install dependencies or change proposal bytes.
 ```concorde-contract-binding
 {
   "id": "contract.views.scaffold-proposal",
-  "version": 1,
+  "version": 2,
   "role": "provided",
   "peer": "external:docsite-caller",
   "selection_condition": "When a caller proposes or applies a docsite scaffold.",
@@ -166,6 +166,10 @@ warnings do not install dependencies or change proposal bytes.
 }
 ```
 
+
+Version 2 excludes project-owned custom docs and the retired projection publisher from the template.
+Version-1 proposals are rejected with instructions to regenerate using `docsite --propose`;
+acceptance of old template bytes does not authorize this changed inventory.
 
 The example illustrates the schema, not an applicable package inventory or real digest. Each file
 entry has exactly one of `source` and `content`, and paths are unique and sorted. `sha256` hashes
@@ -183,7 +187,7 @@ and successful site builds replace obsolete published output as specified below.
 The adapter inventory consists of regular files below the installed package's `docsite/` with
 suffix `.css`, `.json`, `.md`, `.svg`, `.ts`, `.tsx` or `.yml`, excluding any directory component
 named `node_modules`, `build`, `.generated`, `.docusaurus` or `coverage`, the root-relative
-`tests/repository/` subtree, `scaffold/`, and the root `site.json`. Non-excluded symlinks are
+`tests/repository/`, `concorde-only/` and `custom-docs/` subtrees, `scaffold/`, and the root `site.json`. Non-excluded symlinks are
 invalid. These template files contain no removed graph feature. Inventory discovery reads the
 installed template, never consumer Spec directories. `template_digest` hashes UTF-8 lines sorted
 by path, each `path`, a tab and the lowercase SHA-256 hex of its bytes, joined by newlines with a
@@ -224,10 +228,13 @@ For a Module, its unique local `module.md` is the source entry, independent of c
 - AND inline Mermaid fences render in their authored position using the site's locked Mermaid integration
 
 The route is `/specs/<source path with a leading specs/ root removed and .md dropped>`, or the full
-path when a project's Specs are not entirely rooted at `specs/`. The primary sidebar mirrors the
-registered documents' own directory hierarchy with file-name entries, from registered documents
-only, never directory scanning. A secondary sidebar presents the Module composition tree. Every
-Module opens its `module.md`.
+path when a project's Specs are not entirely rooted at `specs/`. The sole Module Specs sidebar
+uses registry Module parentage, with root Modules directly at the top level in registry order.
+There is no file-directory tree or outer Module composition category. Every Module opens its
+unique local `module.md`; expanding it reveals its owned supplementary documents in document
+order, followed by child Modules in registry order. Referenced documents remain under their sole
+owner and do not create duplicate pages or sidebar entries. A Module without children or
+supplements is a direct document link.
 
 ### scenario.views.publish-without-graph — Publishing retains reading and navigation without a graph view
 
@@ -235,8 +242,8 @@ Module opens its `module.md`.
 - WHEN the site is built and promoted
 - THEN the site exposes no standalone `/graph` page, Graph navigation entry or graph-view UI
 - AND it emits no `architecture-graph.json` or graph-specific global-data projection
-- AND registered pages, directory and Module navigation, source provenance, identity anchors and inline Mermaid rendering remain available
-- AND enabled homepage, Protocol and instruction projection surfaces retain their normal reading and navigation behavior
+- AND registered pages, Module navigation, source provenance, identity anchors and inline Mermaid rendering remain available
+- AND enabled homepage and project-owned custom documentation surfaces retain their normal reading and navigation behavior
 - BUT publication does not invoke, replace or remove the separate UA exporter or official viewer
 
 Removing this feature includes its dedicated implementation, resources and dependencies. A shared
@@ -289,48 +296,13 @@ or ambiguous destinations and missing anchors fail validation.
 - AND a subsequent successful build retains that absence and the registered-document reading and navigation behavior
 - BUT a failed candidate leaves the previous published build unchanged under the normal promotion rules
 
-## Retained projection input agreement
+## Retired unregistered projections
 
-For Concorde's self-hosted reading surfaces, the Docsite build interface consumes the existing
-Distribution (`module.distribution`) projections at the exact project-relative paths
-`generated/docs/instructions.json` and `generated/docs/wire.json`. Both files must exist to enable
-the pair of reading pages and their Projections navigation; if either is absent, both pages and
-that navigation are omitted. These presentation inputs do not join registered Spec membership,
-the registered-page manifest or its `sourceDigest`, and grant no Agent context.
-
-The JSON records have the following retained shapes, using TypeScript notation as in the local
-publication model. Neither file has a `schema_version` envelope.
-
-```typescript
-interface InstructionProjection {
-  agents: {
-    name: string; spec: string; harness: string; instructions: string; sources: string[];
-    modes: {name: string; instructions: string; contract: object}[];
-  }[];
-  skills: {name: string; description: string; capability: string; body: string}[];
-}
-type WireProjection = Record<string, object>; // type ID -> JSON Schema object
-```
-
-An Agent's `name` identifies its reading section, `spec` is a source path string, `harness` names
-its harness and `sources` lists its instruction source paths. Its `instructions` is the public
-common responsibility text. Each mode's `name` identifies the mode, its `contract` is displayed
-directly as JSON, and its `instructions` already contains the complete common-plus-selected-mode
-text: publication does not concatenate the common text again. Modes remain separate reading
-sections, never one combined runtime prompt. Skill records supply the skill name, description,
-capability identity and body for reading. Agent, mode and skill arrays retain input order.
-
-The wire projection maps each type ID directly to its JSON Schema object. Publication shows the
-type IDs in sorted order and displays their values as JSON. It has no `contracts` array and
-requires no synthetic title, version, semantics or example fields. These are the existing
-Distribution inputs, not a new producer format or a schema migration.
-
-When the pair is enabled, publication uses `safeRead` and JSON parsing for both files, preserving
-the path/read and parse failures defined by the build interface. This description adds no
-projection validator, duplicate-ID check or version admission rule. Failure follows the normal
-candidate failure and preservation rules. Repeated builds read current inputs and derive the
-pair's availability again. Neither projection enables a graph page or an embedded UA replacement;
-these reading semantics belong to [publication without a graph](#scenario.views.publish-without-graph).
+Publication ignores `generated/docs/instructions.json` and `generated/docs/wire.json`, even when
+stale files exist. It emits no Projections navigation or instruction/wire reading pages. Successful
+whole-directory promotion removes previously published projection pages; failed builds preserve
+the previous output. Runtime schema generation and APIs remain Distribution/Development facilities.
+Registered Specs are not restricted by the formerly reserved `projections/` source-path prefix.
 
 ## Project introduction
 
@@ -341,7 +313,7 @@ these reading semantics belong to [publication without a graph](#scenario.views.
 - THEN the root page renders the configured introduction, features, workflow and quickstart with the site's title and description metadata
 - AND when `homepage.reference` is configured, a reference section after the quickstart renders its tables with section navigation, column headers and keyboard-accessible horizontal scrolling on narrow screens
 - AND its primary Spec navigation resolves to the registered entry Module's canonical page, with local links respecting the configured base URL
-- AND Protocol and repository links appear only when their corresponding site identity options are enabled
+- AND project-owned `homepage.links` and the repository link appear only when configured
 - BUT the introduction does not join any Module collection, add a registered-page manifest entry, or grant agent context
 
 ### scenario.views.publish-homepage-default — Preserving the default entry redirect
@@ -371,20 +343,48 @@ a nonempty `tables` array. Each table has nonempty `title` and `description` str
 nonempty string per column. These values also render as plain text. Invalid reference content
 fails with its field path; omitting the object preserves the homepage without a reference section.
 
-## Independent Protocol documentation
+## Project-owned custom documentation
 
-### scenario.views.protocol-docs-tab — Enabling the optional Protocol documentation collection
+### scenario.views.custom-docs — Publishing separate project documentation
 
-- GIVEN `docsite/site.json` sets optional boolean `protocolDocs` to true
+- GIVEN a consumer project configures `customDocs` collections or a `custom-docs/index.ts` extension
+- WHEN its site builds
+- THEN its custom documents and pages have independent navbar entries outside Module Specs
+- AND custom pages do not register Spec ownership, appear in the registered-page manifest or grant agent Spec context
+- BUT a collection containing a registered Spec, a conflicting route, missing enabled content or broken internal link rejects the build
+
+The generic template defaults to one documentation tab, **Module Specs**. Optional `customDocs`
+in site identity is an array of collections with nonempty `id`, `label`, `path` and
+`routeBasePath`, plus optional `sidebarPath`. IDs are unique lowercase slug names other than
+`default`. Route bases are distinct, non-overlapping slash-separated alphanumeric/underscore/hyphen
+segments outside `specs/`. Paths and sidebar paths resolve relative to `docsite/`. Each collection
+publishes Markdown/MDX through an independent docs plugin, with its own sidebar and search index.
+Authors supply an index page with slug `/` for the collection tab's landing route.
+
+Optional project-owned `docsite/custom-docs/index.ts` exports an object with `plugins` and
+`navbarItems` arrays for executable custom pages. The adapter includes these additive extensions;
+Docusaurus rejects duplicate routes, including conflicts with registered pages. Extension authors
+keep their pages outside `/specs` and supply explicit tabs. Custom content stays outside the Spec
+registry; it is not an implicit source of Spec context. We recommend separate tabs for all custom
+docs rather than adding them to Module Specs. The scaffold excludes `custom-docs/`, the existing
+checkout-only `concorde-only/` assets, and project-owned site identity bytes.
+
+`homepage.links` optionally supplies an array of `{label, to}` values: nonempty labels and either
+local absolute routes or HTTP(S) URLs. Local links honor the site's base URL. No Protocol or Flow
+link is built into the homepage renderer.
+
+### scenario.views.protocol-docs-tab — Concorde publishes its standard through custom docs
+
+- GIVEN Concorde's project-owned configuration selects `protocol/` as a custom docs collection and registers the Agent Flows extension
 - WHEN the site builds
-- THEN a Spec Protocol navbar tab publishes the `protocol/` chapters under `/protocol/` with their own chapter sidebar and local search index, independent of any project Spec registry
-- BUT missing enabled content or a broken chapter link fails the site build
+- THEN Spec Protocol remains at `/protocol` with its chapter sidebar and search index and Agent Flows remains at `/agent-flows`
+- AND both retain independent tabs without Spec provenance wrappers or registry membership
+- BUT ordinary consumer scaffolds copy neither this configuration nor the site's custom documentation and assets
 
-The collection requires no project Spec metadata or registry membership, and its pages do not
-appear in the registered Spec manifest. Omitting the option disables this collection; scaffolding
-a consumer project does not enable or copy it. The adapter renders inline `mermaid` fences using
-Docusaurus's Mermaid theme in both Protocol and registered Spec pages; both retain accessible
-titles and descriptions.
+The removed `protocolDocs` field is rejected whenever present, including false, with a migration
+message directing authors to `customDocs` and the template README. Concorde's protocol collection
+and sidebar are project configuration, not a special case in the generic template. Inline Mermaid
+remains available in registered and custom documentation.
 
 These generated views are human navigation, not agent context grants. The publication Tool may read
 multiple registered collections deterministically; an agent still receives one host-bound target
@@ -399,11 +399,6 @@ rendering or build-manifest validation.
 Production builds keep their Docusaurus-generated modules separate from the development preview.
 Building the site does not clear the preview's `.docusaurus` directory. Both views still derive
 from the current registered sources and independently verify their publication inputs.
-
-For this Framework repository, the Agent instructions projection shows common responsibilities
-and separate mode sections. Each mode section displays its explicit context/result/authority
-contract and its complete common-plus-selected-mode instruction text. This human browsing view
-never combines all modes into one runtime prompt or grants an Agent additional context.
 
 ### scenario.views.publish-reference-link — References preserve one canonical page
 

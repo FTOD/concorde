@@ -23,7 +23,8 @@ it('scenario.views.publish-candidate: publishes the current exact registry and v
  expect(html).not.toContain('>Specs by source path<');expect(html).not.toContain('>Specs by target<');
  const navbar=html.match(/<nav\b[\s\S]*?<\/nav>/)![0];
  expect(navbar).toContain('Spec Protocol');
- expect(navbar.indexOf('Spec Protocol')).toBeLessThan(navbar.indexOf('Module Specs'));
+ expect(html).not.toContain('>Module composition<');
+ expect(html).not.toContain('>Projections<');
  expect(navbar).toContain('Module Specs');
  expect(navbar).toContain('Agent Flows');
  expect(navbar).not.toContain('>Graph<');
@@ -92,11 +93,9 @@ it('scenario.views.publish-without-graph: omits graph routes and artifacts',asyn
  for(const path of ['graph.html','graph/index.html','architecture-graph.json','assets/obsolete-graph.js'])
   await expect(readFile(resolve(output,path))).rejects.toThrow();
 });
-it('publishes the Agent instructions and Wire contracts projection pages as rendered projections',async()=>{
- const instructions=await readFile(resolve(output,'specs/projections/instructions.html'),'utf8');
- expect(instructions).toContain('concorde-main');expect(instructions).toContain('rendered projection');
- const wire=await readFile(resolve(output,'specs/projections/wire.html'),'utf8');
- expect(wire).toContain('concorde-main-request');expect(wire).toContain('rendered projection');
+it('does not publish retired unregistered projections',async()=>{
+ for(const name of ['instructions','wire'])
+  await expect(readFile(resolve(output,'specs/projections/'+name+'.html'))).rejects.toThrow();
 });
 
 it('scenario.views.publish-repeat-without-graph: a second checked build preserves absence and reading',async()=>{

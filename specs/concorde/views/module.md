@@ -18,7 +18,7 @@ Views turns the project's explicit Spec registry into a documentation site that 
 reviewers read, deterministically projects that same registry into a skeleton Understand Anything
 knowledge graph, and separately lets a developer open an already-produced code-structure graph in
 the official Understand Anything viewer. Its publishing promises stop at rendering registered
-Markdown faithfully: it derives pages and navigation only from the registry, and it never infers a
+Markdown faithfully: it derives Module Spec pages and navigation only from the registry, and it never infers a
 Module's completeness or correctness from a diagram, a route or a rendered page. Its graph-export
 promises stop at deriving Module, document and bound-file structure from the registry; it never
 scans the filesystem for undeclared content, and repeated export replaces only elements in its
@@ -33,8 +33,16 @@ an agent any access beyond its own host-bound Spec context.
 Publication SHALL derive Module Spec pages and their navigation only from the explicit registry.
 
 Every published Module Spec is traceable to a registered entry. The optional project introduction
-and independent Protocol collection are presentation surfaces outside that membership. See
+and project-owned custom docs are presentation surfaces outside that membership.
+The Module Specs sidebar follows registry parentage alone; custom docs use independent tabs. See
 [req.views.no-directory-scanning](#req.views.no-directory-scanning).
+
+### req.views.custom-docs — Separate project documentation
+
+Publication SHALL support project-owned custom docs through independent tabs outside Module Spec registration and agent Spec context.
+
+The generic template defaults to Module Specs alone and publishes no unregistered Projections
+section. See [custom docs](publication.md#scenario.views.custom-docs) for configuration and migration.
 
 ### req.views.no-directory-scanning — No directory scanning or link-based discovery
 
@@ -42,7 +50,7 @@ Publication SHALL NOT discover Spec documents by scanning directories or followi
 
 ### req.views.one-page-per-document — One canonical page per registered document
 
-A physical Spec document SHALL publish at exactly one canonical page regardless of how many Modules register it.
+A physical Spec document SHALL publish at exactly one canonical page regardless of how many Modules reference it.
 
 ### req.views.current-internal-links — Published internal links resolve
 
@@ -251,7 +259,7 @@ precedence over a containing directory entry.
     "id": "entity.views.navigation",
     "title": "Spec navigation",
     "kind": "concept",
-    "responsibility": "The primary directory-mirroring sidebar and secondary Module-composition view, derived from registered paths and parent relationships without directory scanning or a standalone graph view."
+    "responsibility": "One Module Specs sidebar derived only from registered Module parent relationships, with root Modules shown directly, each Module opening its reading entry and expanding to its owned supplemental documents and child Modules; registered paths remain source provenance and do not create directory navigation, an outer composition category or a standalone graph view."
   },
   {
     "id": "entity.views.candidate-site",

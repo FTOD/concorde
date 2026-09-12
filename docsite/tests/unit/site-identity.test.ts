@@ -60,11 +60,19 @@ describe('site identity schema 1', () => {
     expect(loadSiteIdentity(siteDir)).toMatchObject({title: 'Atlas', organizationName: 'atlas-org'});
   });
 
-  it('only enables the independent standard collection through an explicit boolean', () => {
-    expect(parseSiteIdentity(validValue).protocolDocs).toBeUndefined();
-    expect(parseSiteIdentity({...validValue, protocolDocs: true}).protocolDocs).toBe(true);
-    expect(parseSiteIdentity({...validValue, protocolDocs: false}).protocolDocs).toBe(false);
-    expect(() => parseSiteIdentity({...validValue, protocolDocs: 'true'})).toThrow(/protocolDocs/);
+  it.each([true, false, 'true'])('rejects retired protocolDocs with migration guidance: %s', value => {
+    expect(() => parseSiteIdentity({...validValue, protocolDocs: value})).toThrow(/Migrate to customDocs/);
+  });
+
+  it('supports independent custom docs and project-owned homepage links', () => {
+    const customDocs = [{id:'guides',label:'Guides',path:'./custom-docs/guides',routeBasePath:'guides'}];
+    expect(parseSiteIdentity({...validValue,customDocs}).customDocs).toEqual(customDocs);
+    const links = [{label:'Guides',to:'/guides'}];
+    expect(parseSiteIdentity({...validValue,homepage:{...homepage,links}}).homepage?.links).toEqual(links);
+  });
+
+  it.each(['specs', 'specs/extra', '../guides', '/guides', 'guides//extra'])('rejects conflicting or invalid custom route %s', routeBasePath => {
+    expect(() => parseSiteIdentity({...validValue,customDocs:[{id:'guides',label:'Guides',path:'guides',routeBasePath}]})).toThrow(/routeBasePath/);
   });
 
   it('keeps the landing page opt-in and preserves project-owned copy', () => {
@@ -138,4 +146,25 @@ describe('site identity schema 1', () => {
     expect(() => parseSiteIdentity(value)).toThrow(/docsite\/site\.json/);
     expect(() => parseSiteIdentity(value)).toThrow(rulePattern);
   });
+});
+
+describe('scenario.views.custom-docs: collection admission',()=>{
+ const collection={id:'guides',label:'Guides',path:'../guides',routeBasePath:'guides'};
+ it.each(['default','Uppercase','has_space',''])('rejects invalid ID %s',id=>{
+  expect(()=>parseSiteIdentity({...validValue,customDocs:[{...collection,id}]})).toThrow(/id/);
+ });
+ it.each(['label','path','sidebarPath'])('rejects empty %s',field=>{
+  expect(()=>parseSiteIdentity({...validValue,customDocs:[{...collection,[field]:''}]})).toThrow(new RegExp(field));
+ });
+ it.each(['path','sidebarPath'])('requires docsite-relative %s',field=>{
+  for(const path of ['/absolute','C:\\docs','C:/docs']){
+   expect(()=>parseSiteIdentity({...validValue,customDocs:[{...collection,[field]:path}]})).toThrow(/relative to docsite/);
+  }
+ });
+ it('rejects duplicate IDs and overlapping route bases in either order',()=>{
+  expect(()=>parseSiteIdentity({...validValue,customDocs:[collection,collection]})).toThrow(/id/);
+  for(const routes of [['guides','guides/api'],['guides/api','guides'],['guides','guides']]){
+   expect(()=>parseSiteIdentity({...validValue,customDocs:routes.map((routeBasePath,index)=>({...collection,id:'guide-'+index,routeBasePath}))})).toThrow(/routeBasePath/);
+  }
+ });
 });

@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 
-/** Site identity schema 1 — the only project-specific configuration the adapter reads. */
+/** Project-owned site identity and declarative custom collections (schema 1). */
 export interface HomepageItem {title: string; description: string}
 export interface HomepageTable {
   title: string;
@@ -16,9 +16,13 @@ export interface Homepage {
   features: {title: string; items: HomepageItem[]};
   workflow: {title: string; description: string; steps: HomepageItem[]};
   quickstart: {title: string; description: string; code: string};
+  links?: {label: string; to: string}[];
   reference?: {title: string; description: string; tables: HomepageTable[]};
 }
 
+export interface CustomDocs {
+  id: string; label: string; path: string; routeBasePath: string; sidebarPath?: string;
+}
 export interface SiteIdentity {
   schemaVersion: 1;
   title: string;
@@ -28,7 +32,7 @@ export interface SiteIdentity {
   projectName: string;
   repository?: string;
   tagline?: string;
-  protocolDocs?: boolean;
+  customDocs?: CustomDocs[];
   homepage?: Homepage;
 }
 
@@ -65,6 +69,42 @@ function items(value: unknown, field: string): HomepageItem[] {
 function strings(value: unknown, field: string): string[] {
   if (!Array.isArray(value) || value.length === 0) invalid(`${field} must be a non-empty array.`);
   return value.map((entry, index) => string(entry, `${field}[${index}]`));
+}
+
+function parseLinks(value: unknown): {label: string; to: string}[] {
+  if (!Array.isArray(value)) invalid('homepage.links must be an array.');
+  return value.map((value, index) => {
+    const field = `homepage.links[${index}]`, link = object(value, field);
+    const to = string(link.to, `${field}.to`);
+    if (!/^\/(?!\/)/.test(to) && !absoluteUrlPattern.test(to)) invalid(`${field}.to must be a local /route or HTTP(S) URL.`);
+    return {label: string(link.label, `${field}.label`), to};
+  });
+}
+
+function parseCustomDocs(value: unknown): CustomDocs[] {
+  if (!Array.isArray(value)) invalid('customDocs must be an array.');
+  const ids = new Set<string>(), routes: string[] = [];
+  return value.map((value, index) => {
+    const field = `customDocs[${index}]`, entry = object(value, field);
+    const id = string(entry.id, `${field}.id`);
+    const routeBasePath = string(entry.routeBasePath, `${field}.routeBasePath`);
+    if (!/^[a-z][a-z0-9-]*$/.test(id) || id === 'default' || ids.has(id)) invalid(`${field}.id must be unique and must not be default.`);
+    if (!/^[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.test(routeBasePath) ||
+        routeBasePath === 'specs' || routeBasePath.startsWith('specs/') ||
+        routes.some(route => route === routeBasePath || route.startsWith(routeBasePath + '/') || routeBasePath.startsWith(route + '/'))) {
+      invalid(`${field}.routeBasePath must be a distinct relative route outside specs/.`);
+    }
+    ids.add(id); routes.push(routeBasePath);
+    const relativePath = (value: unknown, name: string) => {
+      const path = string(value, `${field}.${name}`);
+      if (path.startsWith('/') || path.includes('\\') || /^[a-zA-Z]:/.test(path)) {
+        invalid(`${field}.${name} must be relative to docsite/.`);
+      }
+      return path;
+    };
+    return {id, routeBasePath, label: string(entry.label, `${field}.label`), path: relativePath(entry.path, 'path'),
+      ...(entry.sidebarPath !== undefined ? {sidebarPath: relativePath(entry.sidebarPath, 'sidebarPath')} : {})};
+  });
 }
 
 function parseReference(value: unknown): NonNullable<Homepage['reference']> {
@@ -104,6 +144,7 @@ function parseHomepage(value: unknown): Homepage {
       description: string(workflow.description, 'homepage.workflow.description'), steps: items(workflow.steps, 'homepage.workflow.steps')},
     quickstart: {title: string(quickstart.title, 'homepage.quickstart.title'),
       description: string(quickstart.description, 'homepage.quickstart.description'), code: string(quickstart.code, 'homepage.quickstart.code')},
+    ...(page.links !== undefined ? {links: parseLinks(page.links)} : {}),
     ...(page.reference !== undefined ? {reference: parseReference(page.reference)} : {}),
   };
 }
@@ -129,8 +170,8 @@ export function parseSiteIdentity(value: unknown): SiteIdentity {
   if (record.tagline !== undefined && !isNonEmptyString(record.tagline)) {
     invalid('tagline must be a non-empty string when present.');
   }
-  if (record.protocolDocs !== undefined && typeof record.protocolDocs !== 'boolean') {
-    invalid('protocolDocs must be a boolean when present.');
+  if ('protocolDocs' in record) {
+    invalid('protocolDocs was removed. Migrate to customDocs with id, label, path, routeBasePath and optional sidebarPath; see docsite/README.md.');
   }
 
   return {
@@ -142,7 +183,7 @@ export function parseSiteIdentity(value: unknown): SiteIdentity {
     projectName: (record.projectName as string).trim(),
     ...(record.repository !== undefined ? {repository: (record.repository as string).trim()} : {}),
     ...(record.tagline !== undefined ? {tagline: (record.tagline as string).trim()} : {}),
-    ...(record.protocolDocs !== undefined ? {protocolDocs: record.protocolDocs as boolean} : {}),
+    ...(record.customDocs !== undefined ? {customDocs: parseCustomDocs(record.customDocs)} : {}),
     ...(record.homepage !== undefined ? {homepage: parseHomepage(record.homepage)} : {}),
   };
 }

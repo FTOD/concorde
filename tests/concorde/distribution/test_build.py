@@ -102,20 +102,12 @@ class BuildGoldenTests(unittest.TestCase):
             self.assertEqual(payload["outputs"][output.path]["sources"], sorted(output.sources))
 
     @verifies("scenario.distribution.build-render")
-    def test_docs_instructions_projection_has_agent_entries_with_spec_and_harness(self):
+    def test_runtime_schemas_remain_without_docsite_projections(self):
         import json
 
-        payload = json.loads(self.by_path["generated/docs/instructions.json"].content)
-        self.assertEqual(
-            {entry["name"] for entry in payload["agents"]},
-            {f"concorde-{agent}" for agent in AGENT_ROOTS},
-        )
-        for entry in payload["agents"]:
-            self.assertTrue(entry["spec"].startswith("agents/"))
-            self.assertTrue(entry["spec"].endswith("/spec.md"))
-            self.assertTrue(entry["harness"])
-            self.assertTrue(entry["instructions"].strip())
-            self.assertTrue(entry["sources"])
+        self.assertFalse(any(path.startswith("generated/docs/") for path in self.by_path))
+        schemas = json.loads(self.by_path["generated/protocol/schemas.json"].content)
+        self.assertIn("concorde-main-request", schemas)
 
 
 class BuildDeterminismTests(unittest.TestCase):

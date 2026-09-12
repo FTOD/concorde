@@ -73,6 +73,66 @@ class DocsiteScaffoldTests(unittest.TestCase):
         self.assertEqual(first.status, "proposal")
         self.assertEqual(first.result["proposal"], second.result["proposal"])
 
+    @verifies("scenario.views.scaffold-stale-rejected")
+    def test_only_exact_inventory_is_admitted_before_destination_handling(self) -> None:
+        _init_project(self.root)
+        baseline = propose_docsite(self.root).result["proposal"]
+        workflow = propose_docsite(self.root, github_pages=True).result["proposal"]
+        cases = []
+
+        def variant(name, source=baseline):
+            value = json.loads(json.dumps(source))
+            cases.append((name, value))
+            return value
+
+        variant("partial")["files"].pop()
+        variant("additional")["files"].append({"path": "unrelated.txt", "content": "x",
+                                              "sha256": "sha256:" + hashlib.sha256(b"x").hexdigest()})
+        for destination in ("docsite/custom-docs/owned.md", "unrelated.txt"):
+            variant(destination)["files"][0]["path"] = destination
+        inline = variant("inline adapter")["files"][0]
+        inline.pop("source")
+        inline.update(content="arbitrary", sha256="sha256:" + hashlib.sha256(b"arbitrary").hexdigest())
+        identity = next(item for item in variant("identity bytes")["files"]
+                        if item["path"] == "docsite/site.json")
+        identity["content"] += " "
+        identity["sha256"] = "sha256:" + hashlib.sha256(identity["content"].encode()).hexdigest()
+        variant("unexpected workflow", workflow)["github_pages"] = False
+        variant("missing workflow")["github_pages"] = True
+        variant("remapped workflow", workflow)["files"][0]["path"] = "workflow.yml"
+        variant("wrong workflow source", workflow)["files"][0]["source"] = baseline["files"][0]["source"]
+        variant("duplicate")["files"].append(baseline["files"][0])
+        variant("unsorted")["files"].reverse()
+        variant("both forms")["files"][0]["content"] = "extra"
+        variant("wrong template root")["template_root"] = "other"
+        variant("nonboolean workflow")["github_pages"] = "false"
+
+        for name, proposal in cases:
+            with self.subTest(name=name):
+                path = self.root / ".concorde/docsite-proposal.json"
+                path.write_text(json.dumps(proposal), encoding="utf-8")
+                before = {str(p.relative_to(self.root)): p.read_bytes()
+                          for p in self.root.rglob("*") if p.is_file()}
+                with mock.patch("concorde.views.docsite_scaffold.apply_files") as apply:
+                    result = apply_docsite(self.root, ".concorde/docsite-proposal.json")
+                self.assertEqual(result.status, "invalid", result.findings)
+                apply.assert_not_called()
+                after = {str(p.relative_to(self.root)): p.read_bytes()
+                         for p in self.root.rglob("*") if p.is_file()}
+                self.assertEqual(after, before)
+
+    @verifies("scenario.views.scaffold-stale-rejected")
+    def test_old_proposal_requires_regeneration_without_writing(self) -> None:
+        _init_project(self.root)
+        proposal = propose_docsite(self.root).result["proposal"]
+        self.assertEqual(proposal["proposal_version"], 2)
+        proposal["proposal_version"] = 1
+        (self.root / "old-proposal.json").write_text(json.dumps(proposal))
+        result = apply_docsite(self.root, "old-proposal.json")
+        self.assertEqual(result.status, "invalid")
+        self.assertIn("regenerate with docsite --propose", str(result.findings))
+        self.assertFalse((self.root / "docsite").exists())
+
     @verifies("scenario.views.scaffold-propose")
     def test_proposal_file_set(self) -> None:
         _init_project(self.root)

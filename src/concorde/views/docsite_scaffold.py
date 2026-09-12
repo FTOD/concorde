@@ -24,7 +24,7 @@ from ..spec.model import Finding, ToolResult
 from ..spec.changes import apply_files, file_change
 from ..spec.repository import SpecError, SpecRepository
 
-PROPOSAL_VERSION = 1
+PROPOSAL_VERSION = 2
 SITE_IDENTITY_PATH = f"{TEMPLATE_ROOT}/site.json"
 WORKFLOW_SOURCE = f"{TEMPLATE_ROOT}/{WORKFLOW_TEMPLATE}"
 WORKFLOW_TARGET = ".github/workflows/deploy-docsite.yml"
@@ -298,50 +298,33 @@ def _load_accepted(root: Path, package: Path, proposal_path: str) -> tuple[dict[
     value = json.loads(path.read_text(encoding="utf-8"))
     value = value.get("result", {}).get("proposal", value.get("proposal", value))
     if not isinstance(value, dict) or value.get("proposal_version") != PROPOSAL_VERSION:
-        raise ValueError("unsupported or missing proposal_version")
+        raise ValueError("unsupported or missing proposal_version; regenerate with docsite --propose (proposal version 2)")
     files = value.get("files")
     if not isinstance(files, list) or not files:
         raise ValueError("proposal files must be a non-empty list")
     identity = value.get("identity")
     if not isinstance(identity, dict):
         raise ValueError("proposal identity must be an object")
-    github_pages = bool(value.get("github_pages", False))
+    github_pages = value.get("github_pages")
+    if not isinstance(github_pages, bool):
+        raise ValueError("proposal github_pages must be a boolean")
+    if value.get("template_root") != TEMPLATE_ROOT:
+        raise ValueError("proposal template_root must be docsite")
 
     adapter = adapter_files(package)
     actual_digest = template_digest(adapter)
     if actual_digest != value.get("template_digest"):
         raise ValueError("package bytes are stale relative to the accepted proposal template digest")
 
-    resolved: dict[str, bytes] = {}
-    for item in files:
-        if not isinstance(item, dict) or not isinstance(item.get("path"), str):
-            raise ValueError("proposal file entry must declare a path")
-        relative = safe_path(item["path"])
-        expected_sha = item.get("sha256")
-        if "source" in item:
-            source = item["source"]
-            if not isinstance(source, str):
-                raise ValueError(f"proposal source must be a string for {relative}")
-            if source == WORKFLOW_SOURCE:
-                content = workflow_template(package)
-            elif source in adapter:
-                content = adapter[source]
-            else:
-                raise ValueError(f"unknown template source for {relative}: {source}")
-            actual = "sha256:" + hashlib.sha256(content).hexdigest()
-            if actual != expected_sha:
-                raise ValueError(f"proposal source content hash does not match package bytes for {relative}")
-        elif "content" in item:
-            text = item["content"]
-            if not isinstance(text, str):
-                raise ValueError(f"proposal content must be a string for {relative}")
-            content = text.encode("utf-8")
-            actual = "sha256:" + hashlib.sha256(content).hexdigest()
-            if actual != expected_sha:
-                raise ValueError(f"proposal content hash does not match for {relative}")
-        else:
-            raise ValueError(f"proposal file entry must declare source or content for {relative}")
-        resolved[relative] = content
+    # Reconstruct the sole permitted inventory before touching any destination.
+    # Equality also enforces ordering, uniqueness, closed entry shapes, mappings,
+    # identity serialization and the current content hashes.
+    entries = _proposal_entries(package, adapter, identity, github_pages)
+    expected = [_file_entry(entry["path"], entry["content"], entry["source"])
+                for entry in entries]
+    if files != expected:
+        raise ValueError("proposal files must match the complete exact scaffold inventory and content hashes")
+    resolved = {entry["path"]: entry["content"] for entry in entries}
     return resolved, identity, github_pages, actual_digest
 
 

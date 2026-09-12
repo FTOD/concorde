@@ -228,6 +228,8 @@ class DocsiteTemplateRealRepositoryTests(unittest.TestCase):
             self.assertFalse(path.startswith("docsite/build/"))
             self.assertNotIn(".generated", path)
             self.assertFalse(path.startswith("docsite/tests/repository/"))
+            self.assertFalse(path.startswith("docsite/custom-docs/"))
+            self.assertFalse(path.startswith("docsite/concorde-only/"))
 
     def test_adapter_files_excludes_scaffold_from_real_repository(self):
         adapter = adapter_files(REPOSITORY_ROOT)

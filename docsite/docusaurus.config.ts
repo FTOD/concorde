@@ -1,19 +1,17 @@
 import {resolve} from 'node:path';
-import {existsSync} from 'node:fs';
 
 import type {Config, PluginModule} from '@docusaurus/types';
 import type {Options as ClassicOptions} from '@docusaurus/preset-classic';
 
+import {customDocsConfiguration} from './plugins/scoped-content/custom-docs';
+
 import scopedContent from './plugins/scoped-content';
-import {requireScoped} from './plugins/scoped-content/model';
+import {loadScopedRegistry,requireScoped} from './plugins/scoped-content/model';
 import {loadSiteIdentity} from './plugins/scoped-content/site-identity';
 
 const projectRoot = resolve(__dirname, '..');
 const identity = loadSiteIdentity(__dirname);
-const hasProtocolDocs = identity.protocolDocs === true;
-// Source-checkout extension; omitted from the installed site template inventory.
-const ownPluginPath = resolve(__dirname, 'concorde-only/plugin.ts');
-const ownPlugin = existsSync(ownPluginPath) ? require(ownPluginPath).default : null;
+const custom = customDocsConfiguration(__dirname, identity, loadScopedRegistry(projectRoot));
 requireScoped(projectRoot);
 const repositoryHost = identity.repository ? new URL(identity.repository).hostname : undefined;
 const config: Config = {
@@ -25,8 +23,9 @@ const config: Config = {
   organizationName: identity.organizationName,
   projectName: identity.projectName,
   onBrokenLinks: 'throw',
+  onDuplicateRoutes: 'throw',
   onBrokenAnchors: 'throw',
-  markdown: {format: 'md', mermaid: true, hooks: {onBrokenMarkdownLinks: 'throw'}},
+  markdown: {format: 'detect', mermaid: true, hooks: {onBrokenMarkdownLinks: 'throw'}},
   themes: ['@docusaurus/theme-mermaid'],
   trailingSlash: false,
   staticDirectories: ['static'],
@@ -43,30 +42,20 @@ const config: Config = {
     } satisfies ClassicOptions,
   ]],
   plugins: [
-    ...(ownPlugin ? [ownPlugin as PluginModule] : []),
+    ...custom.plugins,
     [scopedContent as unknown as PluginModule, {projectRoot}],
-    ...(hasProtocolDocs ? [
-      ['@docusaurus/plugin-content-docs', {
-        id: 'protocol', path: '../protocol', routeBasePath: 'protocol', sidebarPath: './sidebars.protocol.ts',
-        include: ['**/*.md'], numberPrefixParser: false,
-        showLastUpdateAuthor: false, showLastUpdateTime: false,
-      }],
-    ] : []),
     ['@easyops-cn/docusaurus-search-local', {
       hashed: true, indexDocs: true, indexBlog: false,
-      docsRouteBasePath: ['/specs', ...(hasProtocolDocs ? ['/protocol'] : [])],
-      docsDir: ['.generated/content/specs', ...(hasProtocolDocs ? ['../protocol'] : [])],
+      docsRouteBasePath: ['/specs', ...custom.docsRouteBasePath],
+      docsDir: ['.generated/content/specs', ...custom.docsDir],
     }],
   ],
   themeConfig: {
     navbar: {
       title: identity.title,
       items: [
-        ...(hasProtocolDocs ? [
-          {type: 'docSidebar', sidebarId: 'protocolSidebar', docsPluginId: 'protocol', label: 'Spec Protocol', position: 'left'},
-        ] : []),
         {type: 'docSidebar', sidebarId: 'moduleSpecsSidebar', label: 'Module Specs', position: 'left'},
-        ...(ownPlugin ? [{to: '/agent-flows', label: 'Agent Flows', position: 'left'}] : []),
+        ...custom.navbarItems,
         ...(identity.repository ? [
           repositoryHost === 'github.com'
             ? {href: identity.repository, position: 'right', className: 'header-github-link', 'aria-label': 'GitHub repository'}

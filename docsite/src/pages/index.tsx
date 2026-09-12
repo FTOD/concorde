@@ -67,7 +67,7 @@ export default function Home() {
       <nav className={styles.explore} aria-label="Explore documentation">
         <span>Go deeper</span>
         <Link to={root.route}>Module Specs <span aria-hidden="true">↗</span></Link>
-        {identity.protocolDocs && <Link to="/protocol">Spec Protocol <span aria-hidden="true">↗</span></Link>}
+        {page.links?.map(link => <Link key={link.to} to={link.to}>{link.label} <span aria-hidden="true">↗</span></Link>)}
         {identity.repository && <Link href={identity.repository}>Repository <span aria-hidden="true">↗</span></Link>}
       </nav>
 

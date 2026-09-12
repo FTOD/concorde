@@ -256,7 +256,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     const includedBy = [...contexts].filter(([, context]) => context.has(path))
       .map(([targetId, context]) => ({targetId, reasons: context.get(path)!}));
     const stagedPath = stripRoot ? path.slice('specs/'.length) : path; const route = '/specs/' + stagedPath.replace(/\.md$/, '');
-    requireThat(!stagedPath.startsWith('projections/') && !routes.has(route), `Duplicate or reserved page route: ${route}`); routes.add(route);
+    requireThat(!routes.has(route), `Duplicate page route: ${route}`); routes.add(route);
     const pageAliases = references.map(id => legacyAliasRoute(id, path)); pageAliases.forEach(alias => aliases.add(alias));
     const page: Page = {sourcePath: path, route, stagedPath, title: /^#\s+(.+)$/m.exec(prose(content))?.[1] ?? owner.title,
       content, contentDigest: hash(raw), documentId: declaration.id, owner: declaration.owner,

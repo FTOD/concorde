@@ -14,7 +14,7 @@ from typing import Iterator, Mapping
 
 
 TEMPLATE_ROOT = "docsite"
-EXCLUDED_DIRECTORIES = ("node_modules", "build", ".generated", ".docusaurus", "coverage", "tests/repository", "concorde-only")
+EXCLUDED_DIRECTORIES = ("node_modules", "build", ".generated", ".docusaurus", "coverage", "tests/repository", "concorde-only", "custom-docs")
 EXCLUDED_FILES = ("site.json",)
 ALLOWED_SUFFIXES = (".css", ".json", ".md", ".svg", ".ts", ".tsx", ".yml")
 SCAFFOLD_ONLY_DIRECTORIES = ("scaffold",)

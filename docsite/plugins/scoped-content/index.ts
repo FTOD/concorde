@@ -51,13 +51,16 @@ export default function scopedContent(context:LoadContext,options:unknown):Plugi
     async contentLoaded({content,actions}){actions.setGlobalData({schema_version:content.schema_version,entryTarget:content.entryTarget,
       pages:content.pages.map(({content:_,...page})=>page),
       siteIdentity:loadSiteIdentity(context.siteDir)});},
-    getPathsToWatch(){return ['docsite/site.json','.concorde/config.json','generated/docs/instructions.json','generated/docs/wire.json',
+    getPathsToWatch(){return ['docsite/site.json','.concorde/config.json',
       ...(loaded?[loaded.registryPath,...loaded.pages.map(p=>p.sourcePath)]:[])].map(p=>resolve(root,p));},
     async postBuild({outDir,routesPaths}){
       const current=loadScopedRegistry(root);if(current.sourceDigest!==loaded.sourceDigest)throw new Error('Spec source changed during publication');
       await requireMaterialized(loaded);
       const routes=new Set(routesPaths.map(p=>normalizeRoute(canonicalRoute(p,context.baseUrl))));
       if(loaded.pages.some(p=>!routes.has(normalizeRoute(p.route))))throw new Error('Registered Spec page was not rendered');
+      for (const page of loaded.pages) for (const alias of page.aliases) {
+        if (routes.has(normalizeRoute(alias))) throw new Error(`Custom page conflicts with registered Spec alias: ${alias}`);
+      }
       await writeFile(resolve(outDir,'build-manifest.json'),JSON.stringify({schema_version:loaded.schema_version,sourceDigest:loaded.sourceDigest,
         pages:manifestPages(loaded)},null,2)+'\n');
       const target=(page:Page)=>withBaseUrl(context.baseUrl,page.route);
