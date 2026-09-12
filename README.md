@@ -290,10 +290,16 @@ services or shared files. Each Spec document has one owning Module. A Module's e
 `references` includes other Module-owned documents or one registered document, expanded once;
 Markdown links remain navigation. Shared interfaces have one definition and local participant bindings.
 
-The repository's authored Specs now target Protocol 5/Profile 12/registry schema 4. Runtime
-admission, context serialization and publication migration remain incomplete; see the
-[Spec implementation status](specs/concorde/spec/registry.md#stable-id-spec-context-queries).
-A successful rule build alone does not establish runtime support.
+The repository's Specs, runtime admission, context serialization and publication support
+Protocol 5/Profile 12/registry schema 4. Resolved contexts retain unique owners, one-level reference
+provenance and exact byte digests without granting provider implementation access; see
+[Spec context queries](specs/concorde/spec/registry.md#stable-id-spec-context-queries).
+Runtime and publication tests verify these boundaries separately from the rule build.
+
+Concorde's own docsite includes an **Agent Flows** tab at `/concorde/agent-flows`, showing the actual
+executable LangGraph Flows, expanded Studio entries and routing handoffs with links to the Specs. This page
+is excluded from consumer site templates. Build the checkout with the development Python
+environment (`.venv`, or `CONCORDE_PYTHON` for a source copy) and `npm --prefix docsite run build`.
 
 | Part | The question it answers |
 | :--- | :--- |

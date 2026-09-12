@@ -146,6 +146,27 @@ class ProtocolFiveTests(unittest.TestCase):
         self.assertEqual('blocked', result['status'])
         self.assertEqual(before, (self.root / 'specs/ledger/module.md').read_bytes())
 
+    @verifies('scenario.spec.reference-resolution')
+    def test_referenced_bytes_invalidate_code_review_identity_without_expanding_code(self):
+        from concorde.development.capability_host import Invocation
+        from concorde.development.review import inputs
+        self.reference('service.transfer', 'module', 'module.ledger')
+        host = CapabilityHost(self.root, PACKAGE, allow_primary_worktree=True)
+        run = Invocation('concorde-review', CONFIGURATION,
+            {'target_id': 'service.transfer', 'task': 'Inspect transfer'}, host)
+        before, _ = inputs(run, 'code')
+        snapshot = resolve_context(self.repository(), 'service.transfer', phase='code-review')
+        path = self.root / 'specs/ledger/module.md'
+        path.write_text(path.read_text() + '\nClarified provider guarantee.\n')
+        after, _ = inputs(run, 'code')
+        self.assertNotEqual(before['input_digest'], after['input_digest'])
+        self.assertNotEqual(before['revision']['spec_digest'], after['revision']['spec_digest'])
+        self.assertEqual(before['revision']['implementation_digest'], after['revision']['implementation_digest'])
+        with self.assertRaises(SpecError) as caught:
+            recheck_context(self.repository(), snapshot)
+        self.assertEqual('stale_context', caught.exception.code)
+        self.assertNotIn('app/ledger.py', [a['path'] for a in snapshot.value['implementation_artifacts']])
+
     def _author_referenced_document(self, block_consumer):
         self.reference('module.ledger', 'document', 'document.transfer.promises')
         path = self.root / 'specs/transfer/promises.md'

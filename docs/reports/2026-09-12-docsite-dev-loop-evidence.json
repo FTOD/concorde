@@ -1,0 +1,954 @@
+{
+  "report_kind": "execution_report_evidence",
+  "report_date": "2026-09-12",
+  "not_a_reflection_record": true,
+  "code_snapshot": {
+    "commit": "0063338297944848218a695c10d1b8ac69d44db0",
+    "tree": "582d98137c043278dcc5f03784ea43b0a69fb9c0",
+    "main_before": "9b001d9190cadad1f487d317df564441547dfe21",
+    "original_base": "48f9581e03d73bd3662dd389cf21a247a6e3db21"
+  },
+  "scope_note": "Evidence concerns the delivered code snapshot. This retrospective report was authored afterwards. Test counts overlap; no deduplicated total is claimed.",
+  "delivery": {
+    "change_id": "change.5168b485-c195-417f-8ecb-5861cd9183f9",
+    "status": "delivered",
+    "target_branch": "concorde/delivered/change.5168b485-c195-417f-8ecb-5861cd9183f9",
+    "source_worktree": "/tmp/concorde-worktree-1o69shbp/project",
+    "retained_worktree": false,
+    "cleanup_error": null,
+    "confirmed_files": [],
+    "still_pending": []
+  },
+  "main_merge": {
+    "status": "merged",
+    "branch": "main",
+    "before": "9b001d9190cadad1f487d317df564441547dfe21",
+    "commit": "0063338297944848218a695c10d1b8ac69d44db0",
+    "tree": "582d98137c043278dcc5f03784ea43b0a69fb9c0"
+  },
+  "final_dev_loop": {
+    "invocation_id": "0018d8cb-03ba-4649-85f8-d858fd50c394",
+    "capability_id": "concorde-dev-loop",
+    "status": "succeeded",
+    "outcome": "ready",
+    "errors": [],
+    "checks": [
+      {
+        "check_id": "check.spec.model",
+        "exit_code": 0,
+        "log_digest": "sha256:71cfe597228d12592c28d77762ea5a842468dfd6b6d088b1d924c48c4e477b2c",
+        "source_digest": "sha256:602d8850f480091a17bda2edcce214a9cd9f4fcf413111fac8765791504adf65",
+        "status": "passed",
+        "target_id": "module.spec"
+      },
+      {
+        "check_id": "check.development.runtime",
+        "exit_code": 0,
+        "log_digest": "sha256:f571d4f401abc2963ee33c8648dff3757124686769124cb4cc3d75b2d41f9d80",
+        "source_digest": "sha256:d8bded0b0e71cdf0326f9209f642ef9f0720887c0c42a9ea140f25cd08e3de0d",
+        "status": "passed",
+        "target_id": "module.development"
+      },
+      {
+        "check_id": "check.views.publication-types",
+        "exit_code": 0,
+        "log_digest": "sha256:4d9a94f83945c28758be5f399ef1404b29c8fbada74e6bb2d7a3d8552b862f8a",
+        "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+        "status": "passed",
+        "target_id": "module.views"
+      },
+      {
+        "check_id": "check.views.repository-regressions",
+        "exit_code": 0,
+        "log_digest": "sha256:6f1a4121049f28463cefa2c74f986373bc39ffe7126be7db53ee207bf5faf833",
+        "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+        "status": "passed",
+        "target_id": "module.views"
+      },
+      {
+        "check_id": "check.views.ua-graph",
+        "exit_code": 0,
+        "log_digest": "sha256:ee816a20ff5da72e7a915df4b7933bc51a8bfe47f69d6df3712d58a476c6dcf8",
+        "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+        "status": "passed",
+        "target_id": "module.views"
+      },
+      {
+        "check_id": "check.views.viewer",
+        "exit_code": 0,
+        "log_digest": "sha256:baa148e53e3d13596114df295f32fa83662964a827f6e83ebe2e1bdd23f686eb",
+        "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+        "status": "passed",
+        "target_id": "module.views"
+      }
+    ],
+    "gaps": []
+  },
+  "final_lifecycle_reviews": [
+    {
+      "target_id": "module.views",
+      "review_mode": "spec",
+      "status": "findings",
+      "findings": [
+        {
+          "affected_task": "Preserve the independent viewer's admission and launch boundaries.",
+          "contract": "req.views.no-dependency-install",
+          "document": "specs/concorde/views/module.md",
+          "id": "finding.views.bundled-launcher-prohibitions",
+          "location": {
+            "line": null,
+            "path": "specs/concorde/views/module.md"
+          },
+          "problem": "The requirement combines two independently decidable prohibitions: resolving dependencies and performing network acquisition. Either can occur without the other, so they need separate requirement identities under the admitted one-behavior rule. This is an unchanged contract-format defect; it does not prevent assessing preservation of the viewer during docsite graph removal.",
+          "severity": "advisory",
+          "target_id": "module.views"
+        },
+        {
+          "affected_task": "Preserve instruction and wire projection reading surfaces after graph removal.",
+          "contract": "entity.views.distribution and the module.distribution dependency declaration",
+          "document": "specs/concorde/views/module.md",
+          "id": "finding.views.distribution-publication-role",
+          "location": {
+            "line": null,
+            "path": "specs/concorde/views/module.md"
+          },
+          "problem": "Publication now explicitly identifies Distribution as the producer of the retained instruction and wire projections, but its entity responsibility and dependency selection condition still describe only viewer provisioning and launch. Update that local dependency account to include publication consumption. The detailed projection agreement in publication.md supplies the necessary input and rendering promises, so this inconsistency does not block the retained reading task.",
+          "severity": "advisory",
+          "target_id": "module.views"
+        }
+      ],
+      "gaps": []
+    },
+    {
+      "target_id": "module.views",
+      "review_mode": "code",
+      "status": "findings",
+      "findings": [
+        {
+          "affected_task": "Preserve consumer scaffolding while supplying the graph-free publishing template.",
+          "contract": "contract.views.scaffold-proposal and scenario.views.scaffold-stale-rejected prohibit remapping, partial inventory and destinations outside scaffold ownership.",
+          "document": "specs/concorde/views/publication.md",
+          "id": "views-review-001",
+          "location": {
+            "line": 344,
+            "path": "src/concorde/views/docsite_scaffold.py"
+          },
+          "problem": "Accepted entries are collected without comparing their destinations and complete inventory with the expected scaffold. A proposal retaining the correct template digest can remap a valid template source to an arbitrary absent project-relative destination, or omit most files, and application accepts it. This violates the documented ownership boundary. Advisory because this pre-existing malformed-proposal behavior is outside the graph-removal change's normal scaffold path.",
+          "severity": "advisory",
+          "target_id": "module.views"
+        },
+        {
+          "affected_task": "Preserve creation-only application of the graph-free scaffold.",
+          "contract": "scenario.views.scaffold-apply requires null before-digests for every destination and rejection of concurrent creation.",
+          "document": "specs/concorde/views/publication.md",
+          "id": "views-review-002",
+          "location": {
+            "line": null,
+            "path": "src/concorde/views/docsite_scaffold.py"
+          },
+          "problem": "After checking that destinations are absent, apply_docsite constructs transactions using file_change, which captures their current bytes. A file created between that absence check and file_change becomes an accepted non-null before-digest and is overwritten. The new transaction tests pass null digests directly, so they do not exercise this caller behavior. Advisory because this pre-existing concurrency defect does not result from removing the graph feature.",
+          "severity": "advisory",
+          "target_id": "module.views"
+        },
+        {
+          "affected_task": "Preserve the independent official UA viewer's admission and launch behavior.",
+          "contract": "The viewer's required installed-runtime contract prohibits symlinks in relevant installed paths.",
+          "document": "specs/concorde/views/viewer.md",
+          "id": "views-review-003",
+          "location": {
+            "line": 69,
+            "path": "scripts/run-viewer.py"
+          },
+          "problem": "Runtime admission checks selected endpoints for symlinks but omits intermediate directories. For example, a symlinked viewer node_modules directory containing matching package metadata and an entrypoint passes admission and permits process launch. Advisory because this is an unchanged runtime-admission edge case, separate from the changed first-existing-graph handling and docsite removal.",
+          "severity": "advisory",
+          "target_id": "module.views"
+        }
+      ],
+      "gaps": []
+    },
+    {
+      "target_id": "module.spec",
+      "review_mode": "code",
+      "status": "findings",
+      "findings": [
+        {
+          "affected_task": "Preserve repository configuration admission while updating shared schemas and the Protocol manifest.",
+          "contract": "scenario.spec.reject-unsupported-profile and Framework configuration and storage versions",
+          "document": "specs/concorde/spec/values.md",
+          "id": "review.spec.profile-contradiction",
+          "location": {
+            "line": null,
+            "path": "specs/concorde/spec/values.md"
+          },
+          "problem": "The configuration prose requires profile_version 10 and the scenario rejects values other than 10, while the same scenario promises Profile 11 admission and the implementation accepts only 11. These promises contradict one another. This is advisory because the scoped changes preserve existing profile admission; they neither introduce nor depend on resolving this discrepancy.",
+          "severity": "advisory",
+          "target_id": "module.spec"
+        }
+      ],
+      "gaps": []
+    },
+    {
+      "target_id": "module.development",
+      "review_mode": "code",
+      "status": "no_findings",
+      "findings": [],
+      "gaps": []
+    },
+    {
+      "target_id": "module.reflections",
+      "review_mode": "code",
+      "status": "findings",
+      "findings": [
+        {
+          "affected_task": "Preserve Reflection gap-capture provenance.",
+          "contract": "scenario.reflections.capture-gap requires concerns to name the unique module.md independently of document order.",
+          "document": "specs/concorde/reflections/interfaces.md",
+          "id": "R1",
+          "location": {
+            "line": 152,
+            "path": "src/concorde/reflections/scoped_triage.py"
+          },
+          "problem": "Capture uses target.documents[0] for concerns. A collection ordered with another document first records the wrong entry. This is an independent discrepancy; the empty scoped change list supplies no causal connection to graph-view removal.",
+          "severity": "advisory",
+          "target_id": "module.reflections"
+        },
+        {
+          "affected_task": "Apply an explicit human disposition to an investigated report.",
+          "contract": "scenario.reflections.close-sets-disposition requires close to set resolved or dismissed with a resolution_note while preserving the report.",
+          "document": "specs/concorde/reflections/lifecycle.md",
+          "id": "R2",
+          "location": {
+            "line": 48,
+            "path": "src/concorde/reflections/scoped_triage.py"
+          },
+          "problem": "Close invokes remove_closed, which rejects an open report and deletes an already disposed report instead of recording the decision. The public request also provides no disposition or resolution_note fields. This independent lifecycle defect is outside the admitted graph-view removal scope.",
+          "severity": "advisory",
+          "target_id": "module.reflections"
+        },
+        {
+          "affected_task": "Require fresh approval when intended resolution changes.",
+          "contract": "scenario.reflections.implement-requires-current-approval prohibits reusing approval for a changed resolution.",
+          "document": "specs/concorde/reflections/lifecycle.md",
+          "id": "R3",
+          "location": {
+            "line": 132,
+            "path": "src/concorde/reflections/investigation.py"
+          },
+          "problem": "Approval reuse compares route, files, attribution, steps and validation but not finding.resolution, which becomes the downstream development task. Changed intended behavior can therefore retain approval when those other fields match. This is independent of the graph-view removal; same-bucket transition rejection can currently mask this path.",
+          "severity": "advisory",
+          "target_id": "module.reflections"
+        },
+        {
+          "affected_task": "Investigate an existing report again and implement its approved plan.",
+          "contract": "scenario.reflections.investigate-reproduces and scenario.reflections.implement-approved-plan support existing investigated reports.",
+          "document": "specs/concorde/reflections/lifecycle.md",
+          "id": "R4",
+          "location": {
+            "line": 844,
+            "path": "scripts/reflections_queue.py"
+          },
+          "problem": "Transition rejects an existing destination even when it is the source record itself. Reinvestigating a planned record whose intervention status remains unchanged therefore fails; implement also always reinvestigates and encounters this rejection. The plan is written before this failure. This independent lifecycle defect has no demonstrated connection to the admitted removal.",
+          "severity": "advisory",
+          "target_id": "module.reflections"
+        },
+        {
+          "affected_task": "Verify rejection of changed selected record bytes or HEAD.",
+          "contract": "scenario.reflections.investigate-stale-evidence requires evidence to change after selection and the call to reject it as stale.",
+          "document": "specs/concorde/reflections/lifecycle.md",
+          "id": "R5",
+          "location": {
+            "line": 138,
+            "path": "tests/concorde/reflections/test_scope_and_reflections.py"
+          },
+          "problem": "Both tests declaring this scenario inject an incorrect verified_commit into the returned finding instead of changing selected record bytes or HEAD. They exercise result mismatch rejection, not the declared stale-selection trigger. This verification discrepancy is advisory because no admitted change or acceptance task modifies these tests.",
+          "severity": "advisory",
+          "target_id": "module.reflections"
+        },
+        {
+          "affected_task": "Reject document-level heading injection in investigation section values.",
+          "contract": "req.reflections.no-heading-injection prohibits document-level Markdown headings in investigation section values.",
+          "document": "specs/concorde/reflections/module.md",
+          "id": "R6",
+          "location": {
+            "line": 110,
+            "path": "src/concorde/reflections/investigation.py"
+          },
+          "problem": "The heading check only recognizes heading markers at column zero. Markdown headings indented by one to three spaces bypass it and can enter persisted plan sections. This independent input-validation discrepancy is outside the demonstrated causal scope of graph-view removal.",
+          "severity": "advisory",
+          "target_id": "module.reflections"
+        }
+      ],
+      "gaps": []
+    }
+  ],
+  "final_independent_review": {
+    "invocation_id": "a8c95dad-1948-4453-9cd5-1bc78e40d1e0",
+    "status": "succeeded",
+    "outcome": "completed",
+    "reviews": [
+      {
+        "data": {
+          "answer": "No concrete defects found in the scoped Harness changes. Reviewed the complete admitted contract collection, relevant implementation, supplied patches and regression assertions. Validation commands were not run, as required by this mode. This review does not establish universal completeness or replace the Views lifecycle reviews.",
+          "context_id": "sha256:9cd35ce8039bc4d776578ca48a071cc00a4fa7dd02da9d85314f159a1babd7a9",
+          "findings": [],
+          "focus_id": null,
+          "gaps": [],
+          "input_digest": "sha256:780222adbc38e7d1824c31ad3142c6689fedcfb5fd177af7b558b747faf7d0cf",
+          "representative_tasks": [
+            "Admit task-control artifacts only in task authoring, requiring the plan, reserved identities and repair prerequisites at launch while permitting partial policy previews.",
+            "Preserve task-local gaps across unchanged or legacy review evidence and permit reassessment after relevant input changes.",
+            "Keep planning, task acceptance and implementation guidance bounded while preserving software obligations and subsequent Host verification.",
+            "Preserve scope guidance in the supplied generated Agent fixtures and exercise admitted behavior through regression assertions.",
+            "Bind the Host-selected Node runtime and adapt exact regular-file write grants while retaining native permission boundaries and prelaunch rechecks."
+          ],
+          "review_mode": "code",
+          "revision": {
+            "baseline": "48f9581e03d73bd3662dd389cf21a247a6e3db21",
+            "head": "0063338297944848218a695c10d1b8ac69d44db0",
+            "implementation_digest": "sha256:39aed62d7a48fae87cbab2def89ffead393218f409233af202ce25dc3320d259",
+            "spec_digest": "sha256:302a18a8193e9a6703dfa4238b8e77ca58cedc385de462404bbe1f1db558fa36"
+          },
+          "semantic_completeness": "not_proven",
+          "status": "no_findings",
+          "target_id": "module.harness"
+        },
+        "schema_version": 1,
+        "type_id": "concorde-review-result"
+      },
+      {
+        "data": {
+          "answer": "No concrete defect found in the scoped task-control schemas or their scenario test. One unrelated, retained configuration-contract contradiction is advisory. Review used source inspection only; generated fixture bytes and other Modules' phase enforcement were not assessed.",
+          "context_id": "sha256:5a33fff18c8d6d0aa0a722e120d2fdaf4b847e4b056d19394b02a01d4a9fb110",
+          "findings": [
+            {
+              "affected_task": "Preserve configuration compatibility while updating the Protocol manifest.",
+              "contract": "scenario.spec.reject-unsupported-profile and Framework configuration and storage versions",
+              "document": "specs/concorde/spec/values.md",
+              "id": "spec-profile-contradiction",
+              "location": {
+                "line": null,
+                "path": "specs/concorde/spec/values.md"
+              },
+              "problem": "The document requires profile_version 10 and rejects other values, but also promises normal admission for Profile 11. The implementation admits 11. These contradictory statements prevent an unambiguous compatibility judgment. This retained ambiguity is outside the task-control change's causal scope; it does not establish a regression or require configuration remediation in this task.",
+              "severity": "advisory",
+              "target_id": "module.spec"
+            }
+          ],
+          "focus_id": null,
+          "gaps": [],
+          "input_digest": "sha256:f2499d937701958756082a39d3e2ae283a4edadd6750c3fe9115c926860cef4b",
+          "representative_tasks": [
+            "Admit both version-1 task-control values with closed envelopes and data objects.",
+            "Reject invalid task-control fields, versions, digests, reasons and reserved-ID lists with typed diagnostics.",
+            "Preserve input data across repeated validation without project access or lifecycle effects.",
+            "Admit task-control values in context snapshots while preserving existing stage-input alternatives and leaving contextual authority checks to the Host.",
+            "Inspect the changed scenario declaration and test assertions against scenario.spec.task-control-values."
+          ],
+          "review_mode": "code",
+          "revision": {
+            "baseline": "48f9581e03d73bd3662dd389cf21a247a6e3db21",
+            "head": "0063338297944848218a695c10d1b8ac69d44db0",
+            "implementation_digest": "sha256:ab44e4cb4b3b12caa222689ce10562a4132809e38631028f3dfb94e58aee3801",
+            "spec_digest": "sha256:81001097d600532d778b443699c17a7ce1c34bae7f34c7e96eee3af82d23d523"
+          },
+          "semantic_completeness": "not_proven",
+          "status": "findings",
+          "target_id": "module.spec"
+        },
+        "schema_version": 1,
+        "type_id": "concorde-review-result"
+      },
+      {
+        "data": {
+          "answer": "Reviewed the complete admitted Spec collection and traced the scoped implementation changes and related test assertions. No concrete defects found in the covered tasks. This was a read-only review; validation commands were not run, and universal semantic completeness is not claimed.",
+          "context_id": "sha256:1c8d661e06d6899499c3c93e0eb2353b93a5cde81c3f225f857835768889859c",
+          "findings": [],
+          "focus_id": null,
+          "gaps": [],
+          "input_digest": "sha256:3c45c86020d96b83bdb8813b6478dadbc4525b25fde4dfc53ef375cda84a5656",
+          "representative_tasks": [
+            "Repair an exact incomplete task list while preserving history, reserving identities, and retaining implementation, validation and review gates.",
+            "Rebind changed coordinated component intent only after attributed contract-gap resolution while retaining unchanged participants.",
+            "Resume accepted scope repair without reauthoring and reject stale digests or invalid task replacements.",
+            "Reassess gaps after changed review inputs while preserving blockers on failed, incomplete or unchanged-input reviews.",
+            "Keep task-author inputs free of implementation contents and retain Host verification for deferred repository checks."
+          ],
+          "review_mode": "code",
+          "revision": {
+            "baseline": "48f9581e03d73bd3662dd389cf21a247a6e3db21",
+            "head": "0063338297944848218a695c10d1b8ac69d44db0",
+            "implementation_digest": "sha256:c9c305c2bb426cb9367d6124bd51c6d1bb7c15e3a1f0d42843ecc7d69fb15587",
+            "spec_digest": "sha256:ee756cafe9f5bf22fd1ea30bc4617de03ddacdb3c1699a7be62179677ac9316c"
+          },
+          "semantic_completeness": "not_proven",
+          "status": "no_findings",
+          "target_id": "module.development"
+        },
+        "schema_version": 1,
+        "type_id": "concorde-review-result"
+      },
+      {
+        "data": {
+          "answer": "No blocking defect found in Distribution's scoped guidance and fixture changes. One existing runtime defect is retained as advisory. Review used source inspection; validation commands were not run. Provider-owned task admission and recovery execution remain outside this Module review.",
+          "context_id": "sha256:16f44a3b2562d13ccced743f9b3b7b15650f9ea6817269552e8c9aa23cedc33c",
+          "findings": [
+            {
+              "affected_task": "Preserve a previously valid managed runtime when replacement provisioning fails.",
+              "contract": "scenario.distribution.runtime-provision-failure requires failed acquisition or verification to preserve the previously valid runtime.",
+              "document": "specs/concorde/distribution/runtime.md",
+              "id": "distribution-runtime-preservation",
+              "location": {
+                "line": 605,
+                "path": "src/concorde/distribution/managed_runtime.py"
+              },
+              "problem": "Rebuild deletes the existing runtime before acquiring and verifying its replacement. Failure subsequently removes partial state without restoring the old runtime. The admitted Spec already acknowledges this defect. It is advisory for this review because the scoped instruction and fixture changes neither modify provisioning nor depend on rebuilding a runtime; repairing this independent retained capability is outside the admitted task.",
+              "severity": "advisory",
+              "target_id": "module.distribution"
+            }
+          ],
+          "focus_id": null,
+          "gaps": [],
+          "input_digest": "sha256:e97db67de8e643532d92c1ac02b8600ff40ca5c88b3d85a743fb2d9501e2cb26",
+          "representative_tasks": [
+            "Publish task-scope repair guidance consistently in Codex and Claude Skill fixtures while preserving typed invocation and host authority boundaries.",
+            "Assess shared review guidance for task-relative severity, complete Module reading, retained gap guards and honest incomplete coverage.",
+            "Trace changed instruction sources through deterministic include resolution, rendering, source-digest recording and existing golden-fixture assertions."
+          ],
+          "review_mode": "code",
+          "revision": {
+            "baseline": "48f9581e03d73bd3662dd389cf21a247a6e3db21",
+            "head": "0063338297944848218a695c10d1b8ac69d44db0",
+            "implementation_digest": "sha256:34b8f3cdf11bb692393a27e5a40c85ec5d07d7bbbafa57170eeb5dcd8d33f1ad",
+            "spec_digest": "sha256:f33607cfa83abe4f27305d75bdcb43074ba4096c5f07e0b10b867127f80aae9e"
+          },
+          "semantic_completeness": "not_proven",
+          "status": "findings",
+          "target_id": "module.distribution"
+        },
+        "schema_version": 1,
+        "type_id": "concorde-review-result"
+      }
+    ]
+  },
+  "resolved_three_blockers": {
+    "original_invocation_id": "758bd0f8-9286-4bfe-b831-8e5cad9d45a9",
+    "original_status": "blocked",
+    "findings": [
+      {
+        "affected_task": "Admit task-scope repair feedback only together with the prior implementation tasks and accepted plan.",
+        "contract": "Context snapshot resolution: concorde-task-scope-feedback is admitted only to task authoring with prior tasks and the plan.",
+        "document": "specs/concorde/harness/context.md",
+        "id": "task-scope-feedback-missing-prior-tasks",
+        "location": {
+          "line": 165,
+          "path": "src/concorde/harness/agent_model.py"
+        },
+        "problem": "Task-mode admission accepts a plan, task-identity constraints and task-scope feedback without a concorde-implementation-task. validate_mode_artifacts checks allowed types and unconditional prerequisites, but never requires prior tasks when scope feedback is present. Consequently, actual launch admission can accept a boundary-repair invocation without the list whose acceptance and component responsibilities must be preserved. Require the prior-task artifact conditionally when scope feedback is supplied, and cover rejection of this combination in the admission tests.",
+        "severity": "blocking",
+        "target_id": "module.harness"
+      },
+      {
+        "affected_task": "Repair a coordinated task boundary after resolving a nested component's contract gap.",
+        "contract": "Coordinated scope repair preserves component routing and permits rebinding after attributed component gaps are resolved.",
+        "document": "specs/concorde/development/development.md",
+        "id": "nested-gap-resolution-unrecognized",
+        "location": {
+          "line": 1389,
+          "path": "src/concorde/development/capability_host.py"
+        },
+        "problem": "A coordinating child can propagate a nested component's gap into its parent's cached response. The new repair guard restricts history to the direct child's target and task before matching cached gaps. The nested component's correctly attributed resolution therefore cannot match, even after its contract is repaired and successfully reviewed. Changing the direct child's acceptance through scope repair remains rejected as spec_incomplete. This prevents the requested recovery for supported nested coordination; resolution must follow the cached gap's actual provenance while preserving attribution checks.",
+        "severity": "blocking",
+        "target_id": "module.development"
+      },
+      {
+        "affected_task": "Verify deferred repository checks and report accurate scenario coverage.",
+        "contract": "scenario.development.dev-loop-ready and scenario.development.task-scope-repair",
+        "document": "specs/concorde/development/module.md",
+        "id": "deferred-check-test-misdeclares-coverage",
+        "location": {
+          "line": 280,
+          "path": "tests/concorde/development/test_review.py"
+        },
+        "problem": "The new deferred-verification test declares successful readiness and task-scope repair, but deliberately fails validation, asserts readiness is absent, never reaches code review, and never submits repair_task_scope. It exercises the failed-check gate rather than either declared scenario's defining transition. These declarations misrepresent the changed test's coverage; scenario.development.validate-blocked describes its actual behavior.",
+        "severity": "blocking",
+        "target_id": "module.development"
+      }
+    ],
+    "fix_commit": "0063338297944848218a695c10d1b8ac69d44db0",
+    "red": {
+      "log": "/tmp/concorde-final-three-red-confirmed.log",
+      "exit_code": 1,
+      "tests": 2,
+      "failures": 2,
+      "causes": [
+        "missing prior tasks admitted at actual launch preflight",
+        "nested resolved gap rejected at parent task repair after actual Spec edit and accepted review"
+      ]
+    },
+    "green": {
+      "log": "/tmp/concorde-final-three-green-final.log",
+      "exit_code": 0,
+      "tests": 2,
+      "seconds": 13.027
+    },
+    "focused": {
+      "log": "/tmp/concorde-final-three-focused.log",
+      "exit_code": 0,
+      "tests": 127,
+      "seconds": 143.494,
+      "modules": [
+        "tests.concorde.harness.test_agent_modes",
+        "tests.concorde.harness.test_agent_binding",
+        "tests.concorde.harness.test_agent_executor",
+        "tests.concorde.harness.test_agent_model",
+        "tests.concorde.development.test_review",
+        "tests.concorde.development.test_run_capability"
+      ]
+    }
+  },
+  "url_equivalence_regression": {
+    "changed_files": [
+      "docsite/plugins/scoped-content/internal-links.ts",
+      "docsite/tests/unit/internal-links.test.ts"
+    ],
+    "checks": [
+      {
+        "name": "regression before fix: 7 failed / 20 passed",
+        "exit_code": 1,
+        "log": "/tmp/concorde-unreserved-maintenance-red.log",
+        "sha256": "6c95b9fc0324d1b93e6197b3d69962ecbc1932db3b5993df9084d43d113514ad"
+      },
+      {
+        "name": "focused helper/projections/scoped registry: 76 passed",
+        "exit_code": 0,
+        "log": "/tmp/concorde-unreserved-maintenance-focused.log",
+        "sha256": "c0f6ff35116ce836bff11d5c3698613795766e5ecae4561a96f80557fbaf4905"
+      },
+      {
+        "name": "TypeScript typecheck",
+        "exit_code": 0,
+        "log": "/tmp/concorde-unreserved-maintenance-typecheck.log",
+        "sha256": "c4afaaaa948bc314d88a5ed47eb290ddd5fd2cb2021e7d46550b0232eb4e7096"
+      },
+      {
+        "name": "build freshness: differences=[]",
+        "exit_code": 0,
+        "log": "/tmp/concorde-unreserved-maintenance-build-check.log",
+        "sha256": "03ee263bbcaff87e7a24539edeb4d0876ef26414fbd032220069d0ee42a6f44e"
+      }
+    ]
+  },
+  "integration_conflict_repair": {
+    "checkpoint": "fb2a76414e979aa8581a73e5e4b25db677fc75a5",
+    "merge_head": "cf52368bef50ff064547b0dfd35f702a426fc3ac",
+    "merge_parents": [
+      "fb2a76414e979aa8581a73e5e4b25db677fc75a5",
+      "9b001d9190cadad1f487d317df564441547dfe21"
+    ],
+    "tree": "8468728092b1b1aa9039bc06d774ef6254897ccf",
+    "conflicts": [
+      {
+        "path": ".concorde/specs.json",
+        "hunks": 1
+      },
+      {
+        "path": "agents/spec_engineer/modes/tasks.md",
+        "hunks": 1
+      },
+      {
+        "path": "docsite/tests/repository/run-checks.py",
+        "hunks": 4
+      },
+      {
+        "path": "src/concorde/development/capability_host.py",
+        "hunks": 1
+      },
+      {
+        "path": "src/concorde/harness/context.py",
+        "hunks": 1
+      },
+      {
+        "path": "tests/concorde/development/test_review.py",
+        "hunks": 2
+      },
+      {
+        "path": "tests/concorde/fixtures/build/golden/agents/spec-engineer/tasks.md",
+        "hunks": 1
+      },
+      {
+        "path": "tests/concorde/harness/test_agent_modes.py",
+        "hunks": 1
+      },
+      {
+        "path": "tests/concorde/spec/test_typed_data.py",
+        "hunks": 1
+      }
+    ],
+    "changed_from_checkpoint": [
+      ".concorde/reflections/index.json",
+      ".concorde/reflections/pending/R-073.md",
+      ".concorde/reflections/pending/R-074.md",
+      ".concorde/specs.json",
+      "docsite/tests/repository/run-checks.py",
+      "tests/concorde/development/test_review.py"
+    ],
+    "checks": [
+      {
+        "name": "build",
+        "exit_code": 0,
+        "log": "/tmp/concorde-integration-build.log",
+        "sha256": "23ab52d6ac8db8b29cb2c362e4dc8382c1ec537cdbf83f7f0fe7c4018cb6d4ea"
+      },
+      {
+        "name": "build freshness",
+        "exit_code": 0,
+        "log": "/tmp/concorde-integration-build-check.log",
+        "sha256": "03ee263bbcaff87e7a24539edeb4d0876ef26414fbd032220069d0ee42a6f44e"
+      },
+      {
+        "name": "99 focused tests",
+        "exit_code": 0,
+        "log": "/tmp/concorde-integration-focused.log",
+        "sha256": "321a90df93c2eeae4d02cef28521f933ff02c4e1984e3694a35c0b85bb31edca"
+      },
+      {
+        "name": "cold scratch: 58 Python and 144 TypeScript tests",
+        "exit_code": 0,
+        "log": "/tmp/concorde-integration-repository.log",
+        "sha256": "4e0f58471d4cbce715f4ebe8ce71fb8df34223c12c9e26f0e7dc70619f9d9340"
+      }
+    ]
+  },
+  "first_delivery_rejection": {
+    "invocation_id": "e6853c28-cbdb-4023-a7d7-0e7f23a3fd30",
+    "capability_id": "concorde-deliver",
+    "status": "blocked",
+    "outcome": null,
+    "errors": [
+      {
+        "code": "merge_conflict",
+        "field": "",
+        "message": "candidate conflicts with the primary branch; resolve it in its change worktree and revalidate"
+      }
+    ],
+    "checks": [],
+    "gaps": []
+  },
+  "successful_source_delivery": {
+    "invocation_id": "46d58f4b-978c-4af4-bd64-bd71d690d06c",
+    "capability_id": "concorde-deliver",
+    "status": "succeeded",
+    "outcome": "delivered",
+    "errors": [],
+    "checks": [
+      {
+        "check_id": "check.spec.model",
+        "exit_code": 0,
+        "log_digest": "sha256:ae2339016e73d5895b3d2dd33ebbed873e2eb139d72b7116c132271fdd94c308",
+        "source_digest": "sha256:602d8850f480091a17bda2edcce214a9cd9f4fcf413111fac8765791504adf65",
+        "status": "passed",
+        "target_id": "module.spec"
+      },
+      {
+        "check_id": "check.harness.runtime",
+        "exit_code": 0,
+        "log_digest": "sha256:8bcb9bd6fa9a9c4be3bde5a5d104ff5491891640feab2d9ca3439281d0a8539b",
+        "source_digest": "sha256:664820edb8a3d7c1ce75c88c57ff0889b5568ad5b422d8e87fd9ef45c7e82c9e",
+        "status": "passed",
+        "target_id": "module.harness"
+      },
+      {
+        "check_id": "check.development.runtime",
+        "exit_code": 0,
+        "log_digest": "sha256:dbd6ff42761e21894cb668bb74927c5d904430c676e897457e36aadd5249698a",
+        "source_digest": "sha256:d8bded0b0e71cdf0326f9209f642ef9f0720887c0c42a9ea140f25cd08e3de0d",
+        "status": "passed",
+        "target_id": "module.development"
+      },
+      {
+        "check_id": "check.views.publication-types",
+        "exit_code": 0,
+        "log_digest": "sha256:4d9a94f83945c28758be5f399ef1404b29c8fbada74e6bb2d7a3d8552b862f8a",
+        "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+        "status": "passed",
+        "target_id": "module.views"
+      },
+      {
+        "check_id": "check.views.repository-regressions",
+        "exit_code": 0,
+        "log_digest": "sha256:0b4feb0336854efd76541c159b0713ea22d68233940062de2cb52de8da905728",
+        "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+        "status": "passed",
+        "target_id": "module.views"
+      },
+      {
+        "check_id": "check.views.ua-graph",
+        "exit_code": 0,
+        "log_digest": "sha256:4457d04e020fd7b7d12a0612fd1c3d92bfe80b00afe8ec8cb2d1e870e9d58287",
+        "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+        "status": "passed",
+        "target_id": "module.views"
+      },
+      {
+        "check_id": "check.views.viewer",
+        "exit_code": 0,
+        "log_digest": "sha256:6769fff7af41234bafc8366ff203ae67b276d11943a57f9e9292d98c57904d7b",
+        "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+        "status": "passed",
+        "target_id": "module.views"
+      }
+    ],
+    "gaps": []
+  },
+  "successful_primary_merge": {
+    "invocation_id": "d262ea4b-5ca9-4ebc-893b-89c4646fe9b2",
+    "capability_id": "concorde-deliver",
+    "status": "succeeded",
+    "outcome": "delivered",
+    "errors": [],
+    "checks": [
+      {
+        "check_id": "check.spec.model",
+        "exit_code": 0,
+        "log_digest": "sha256:7f4231de082de7bcf29951b2a1b7d86041b3a2e9aee9d269febe18e09824cd25",
+        "source_digest": "sha256:602d8850f480091a17bda2edcce214a9cd9f4fcf413111fac8765791504adf65",
+        "status": "passed",
+        "target_id": "module.spec"
+      },
+      {
+        "check_id": "check.harness.runtime",
+        "exit_code": 0,
+        "log_digest": "sha256:9218cf9ab514036ce39db001410eceed8193bcd743622b5ef09726163c61629e",
+        "source_digest": "sha256:664820edb8a3d7c1ce75c88c57ff0889b5568ad5b422d8e87fd9ef45c7e82c9e",
+        "status": "passed",
+        "target_id": "module.harness"
+      },
+      {
+        "check_id": "check.development.runtime",
+        "exit_code": 0,
+        "log_digest": "sha256:b27c5f09bd51fb2dfc764a17f9393fab49c09cef9077c8bd1c577373423aa1eb",
+        "source_digest": "sha256:d8bded0b0e71cdf0326f9209f642ef9f0720887c0c42a9ea140f25cd08e3de0d",
+        "status": "passed",
+        "target_id": "module.development"
+      },
+      {
+        "check_id": "check.views.publication-types",
+        "exit_code": 0,
+        "log_digest": "sha256:4d9a94f83945c28758be5f399ef1404b29c8fbada74e6bb2d7a3d8552b862f8a",
+        "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+        "status": "passed",
+        "target_id": "module.views"
+      },
+      {
+        "check_id": "check.views.repository-regressions",
+        "exit_code": 0,
+        "log_digest": "sha256:c580a591e20a540ff6d4d0cc1b4a6cb977c9ede933cc52e4abfbf5d256b8818d",
+        "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+        "status": "passed",
+        "target_id": "module.views"
+      },
+      {
+        "check_id": "check.views.ua-graph",
+        "exit_code": 0,
+        "log_digest": "sha256:e3dadcdc27df87180db631bea830dab52e48e7c4c66877c9b5345422e77f9e64",
+        "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+        "status": "passed",
+        "target_id": "module.views"
+      },
+      {
+        "check_id": "check.views.viewer",
+        "exit_code": 0,
+        "log_digest": "sha256:6769fff7af41234bafc8366ff203ae67b276d11943a57f9e9292d98c57904d7b",
+        "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+        "status": "passed",
+        "target_id": "module.views"
+      }
+    ],
+    "gaps": []
+  },
+  "primary_integration_checks": [
+    {
+      "check_id": "check.spec.model",
+      "exit_code": 0,
+      "log_digest": "sha256:7f4231de082de7bcf29951b2a1b7d86041b3a2e9aee9d269febe18e09824cd25",
+      "source_digest": "sha256:602d8850f480091a17bda2edcce214a9cd9f4fcf413111fac8765791504adf65",
+      "status": "passed",
+      "target_id": "module.spec",
+      "observed_counts": {
+        "tests": 42
+      },
+      "log_path": ".concorde/deliveries/change.5168b485-c195-417f-8ecb-5861cd9183f9/primary/check.spec.model.log",
+      "log_sha256": "7f4231de082de7bcf29951b2a1b7d86041b3a2e9aee9d269febe18e09824cd25"
+    },
+    {
+      "check_id": "check.harness.runtime",
+      "exit_code": 0,
+      "log_digest": "sha256:9218cf9ab514036ce39db001410eceed8193bcd743622b5ef09726163c61629e",
+      "source_digest": "sha256:664820edb8a3d7c1ce75c88c57ff0889b5568ad5b422d8e87fd9ef45c7e82c9e",
+      "status": "passed",
+      "target_id": "module.harness",
+      "observed_counts": {
+        "tests": 80
+      },
+      "log_path": ".concorde/deliveries/change.5168b485-c195-417f-8ecb-5861cd9183f9/primary/check.harness.runtime.log",
+      "log_sha256": "9218cf9ab514036ce39db001410eceed8193bcd743622b5ef09726163c61629e"
+    },
+    {
+      "check_id": "check.development.runtime",
+      "exit_code": 0,
+      "log_digest": "sha256:b27c5f09bd51fb2dfc764a17f9393fab49c09cef9077c8bd1c577373423aa1eb",
+      "source_digest": "sha256:d8bded0b0e71cdf0326f9209f642ef9f0720887c0c42a9ea140f25cd08e3de0d",
+      "status": "passed",
+      "target_id": "module.development",
+      "observed_counts": {
+        "tests": 132,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "log_path": ".concorde/deliveries/change.5168b485-c195-417f-8ecb-5861cd9183f9/primary/check.development.runtime.log",
+      "log_sha256": "b27c5f09bd51fb2dfc764a17f9393fab49c09cef9077c8bd1c577373423aa1eb"
+    },
+    {
+      "check_id": "check.views.publication-types",
+      "exit_code": 0,
+      "log_digest": "sha256:4d9a94f83945c28758be5f399ef1404b29c8fbada74e6bb2d7a3d8552b862f8a",
+      "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+      "status": "passed",
+      "target_id": "module.views",
+      "observed_counts": {
+        "validation": "TypeScript typecheck"
+      },
+      "log_path": ".concorde/deliveries/change.5168b485-c195-417f-8ecb-5861cd9183f9/primary/check.views.publication-types.log",
+      "log_sha256": "4d9a94f83945c28758be5f399ef1404b29c8fbada74e6bb2d7a3d8552b862f8a"
+    },
+    {
+      "check_id": "check.views.repository-regressions",
+      "exit_code": 0,
+      "log_digest": "sha256:c580a591e20a540ff6d4d0cc1b4a6cb977c9ede933cc52e4abfbf5d256b8818d",
+      "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+      "status": "passed",
+      "target_id": "module.views",
+      "observed_counts": {
+        "typescript_tests": 144,
+        "typescript_files": 14,
+        "python_tests": 58
+      },
+      "log_path": ".concorde/deliveries/change.5168b485-c195-417f-8ecb-5861cd9183f9/primary/check.views.repository-regressions.log",
+      "log_sha256": "c580a591e20a540ff6d4d0cc1b4a6cb977c9ede933cc52e4abfbf5d256b8818d"
+    },
+    {
+      "check_id": "check.views.ua-graph",
+      "exit_code": 0,
+      "log_digest": "sha256:e3dadcdc27df87180db631bea830dab52e48e7c4c66877c9b5345422e77f9e64",
+      "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+      "status": "passed",
+      "target_id": "module.views",
+      "observed_counts": {
+        "tests": 12
+      },
+      "log_path": ".concorde/deliveries/change.5168b485-c195-417f-8ecb-5861cd9183f9/primary/check.views.ua-graph.log",
+      "log_sha256": "e3dadcdc27df87180db631bea830dab52e48e7c4c66877c9b5345422e77f9e64"
+    },
+    {
+      "check_id": "check.views.viewer",
+      "exit_code": 0,
+      "log_digest": "sha256:6769fff7af41234bafc8366ff203ae67b276d11943a57f9e9292d98c57904d7b",
+      "source_digest": "sha256:0e61d9470836a67264870a2480f4f9dd13e4f850ffd8efb7dc27640fd3a75050",
+      "status": "passed",
+      "target_id": "module.views",
+      "observed_counts": {
+        "tests": 7
+      },
+      "log_path": ".concorde/deliveries/change.5168b485-c195-417f-8ecb-5861cd9183f9/primary/check.views.viewer.log",
+      "log_sha256": "6769fff7af41234bafc8366ff203ae67b276d11943a57f9e9292d98c57904d7b"
+    }
+  ],
+  "post_merge_build": {
+    "status": "completed",
+    "authored_files_unchanged": true,
+    "head_unchanged": true,
+    "index_unchanged": true,
+    "commands": [
+      {
+        "command": "python3 scripts/concorde.py build",
+        "exit_code": 0
+      },
+      {
+        "command": "python3 scripts/concorde.py build --check",
+        "exit_code": 0
+      },
+      {
+        "command": "git diff --check",
+        "exit_code": 0
+      }
+    ]
+  },
+  "source_artifact_digests": [
+    {
+      "path": "/home/zhenyu/concorde/.concorde/deliveries/change.5168b485-c195-417f-8ecb-5861cd9183f9.json",
+      "sha256": "d3d25b42a063951e8196117346a99af5b1d1a6e4a23f657a252d5c33b68f5aba"
+    },
+    {
+      "path": "/tmp/concorde-final-three-normal-host-1-result.json",
+      "sha256": "dd502237a23e2ae39b3d39f0f7868a8ecdc8553d0745703dea8142f2658f83eb"
+    },
+    {
+      "path": "/tmp/concorde-final-three-normal-host-1-process-1.stdout.jsonl",
+      "sha256": "e9719081cbac8b2689d32a81db79c510d3420354035f51e28c2e5970c4cef64c"
+    },
+    {
+      "path": "/tmp/concorde-final-three-normal-host-1-process-2.stdout.jsonl",
+      "sha256": "f66460f871b8b6908bbf962d4da7b9ca5cb89f49e36de05ae089592bb53b7bb4"
+    },
+    {
+      "path": "/tmp/concorde-final-three-normal-host-1-process-3.stdout.jsonl",
+      "sha256": "743bff226809147c5d56f26c2e37e260536e18bb45bbf052baf54d4f152e5980"
+    },
+    {
+      "path": "/tmp/concorde-final-three-normal-host-1-process-4.stdout.jsonl",
+      "sha256": "69c56f03db7e6bbcc9e957e768aacd3eb12b678e9c087c6dd1b75c489cf9206f"
+    },
+    {
+      "path": "/tmp/concorde-final-three-normal-host-1-process-5.stdout.jsonl",
+      "sha256": "3a7a59c045bb7b23130bb066b619e0bcf7a8a4773b26b5176c29ccc69d9f2e92"
+    },
+    {
+      "path": "/tmp/concorde-final-three-independent-harness-review-result.json",
+      "sha256": "d68e3ea36d0eecd0e246ccca2f90f36ccca3fc3ec5821e26bf192ee243087562"
+    },
+    {
+      "path": "/tmp/concorde-integration-independent-harness-review-result.json",
+      "sha256": "79aea7811cee2994c9542333e3aa7a6db754ce53380cd8cd7f10e4bc6b26ef45"
+    },
+    {
+      "path": "/tmp/concorde-final-three-maintenance-result.json",
+      "sha256": "2918744b298ec7ee63166974f4be53c873724e1d257499dda65db899665177d9"
+    },
+    {
+      "path": "/tmp/concorde-unreserved-maintenance-result.json",
+      "sha256": "b27f92271dea88d39e7a94a3472ae14140ff6b8c024b652c466570cea4402982"
+    },
+    {
+      "path": "/tmp/concorde-integration-maintenance-result.json",
+      "sha256": "62919039eed62d16e5ffc19d6eeeef862bf27202a46199603e596808ca5e33ce"
+    },
+    {
+      "path": "/tmp/concorde-primary-post-delivery-build-result.json",
+      "sha256": "249881afc5b2d968abac7374c10941f9dd255572ebf4f232908febef9a8b2dd6"
+    },
+    {
+      "path": "/tmp/concorde-unreserved-source-delivery-result.json",
+      "sha256": "56a7df28988dff035790e07f1619f22b3a5b2ffba5ecca25996635ce9b413393"
+    },
+    {
+      "path": "/tmp/concorde-final-three-source-delivery-result.json",
+      "sha256": "c8dd4c9a248d407b4c0c1a95cdd5af48459fd42f51292783a0d956457c90de7e"
+    },
+    {
+      "path": "/tmp/concorde-final-main-merge-result.json",
+      "sha256": "3e817eb38d0f2799a90e4ee64e81275dc00ba45f60f23e588262b21f00190484"
+    }
+  ],
+  "portability_note": "Local .concorde and /tmp artifacts are not guaranteed to travel with Git; this attachment preserves selected outcomes and original findings. Source worktree cleanup was completed. No Reflection was created by this report."
+}
