@@ -1,0 +1,1842 @@
+{
+  "review_kind": "maintenance semantic review and deterministic verification",
+  "registry_digest": "sha256:1d2781e983d284758172af5a371c95fd61ab1f8748f34989614c34dd0cfaa49f",
+  "contexts": [
+    {
+      "module_id": "module.concorde",
+      "context_digest": "sha256:8491a19699fc38905ca0cac837a05d3bc1476f849ecdbbb6ec2b577a1bcc4e36",
+      "sources": [
+        {
+          "digest": "sha256:ed2bdb7ea144bbaa8fd3ffaeb93d52dc48928c204f29bf056c9987496771d14e",
+          "document_id": "document.development.capabilities",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/capabilities.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:9097ba6989e5be8bf8d8c90ee1ce1a1cafc113f0ddcb195c4e22b8cd9434f490",
+          "document_id": "document.development.delivery",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/delivery.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:90863a808a2b1c38c776781f39dfdaf5ea62511358e076a050fa330f978246dd",
+          "document_id": "document.development.development",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/development.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:f963492e9a5079d09b4f480c6b14a62d2603933d108e4794c94fb502eb803c55",
+          "document_id": "document.development.interfaces",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/interfaces.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:b274b61365cb493a1bcba0f1e6c8be702b69d8234ae52e255f7f029dec1632d0",
+          "document_id": "document.development.module",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/module.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:2c773d814e15c2960e39ac9b26854d2cb239299f915a0b94b7155ba006753037",
+          "document_id": "document.development.query-and-routing",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/query-and-routing.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:557229f5a73d8d61eaf6d13c37e37748ba42f0a3ca4f15400d2e878a4d16acd9",
+          "document_id": "document.development.review-and-gaps",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/review-and-gaps.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:a91cb17460ef83480bd60751edd34f9c8dd2307295f649d818c501620b7f5d5f",
+          "document_id": "document.development.review-result",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/review-result.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:a08c1566acaf0bca161a21ac82e8476ad2466004e58679efb9bfc4c7a7565485",
+          "document_id": "document.development.topology",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/topology.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:27dfca4d79a7be4d88056dd6607e27b7bc9dabacff165c76c92f9594bad28d65",
+          "document_id": "document.distribution.build",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/build.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:41cb277be7d1802dfbd9a6e49d3548677f313fc467927fae4595de3cb6600e55",
+          "document_id": "document.distribution.installation",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/installation.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:1ded754cb6d3cafb4aa23dc36ca65a15444d8d18a57912a8ca8104a065772ce8",
+          "document_id": "document.distribution.module",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/module.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:3f002c4c3ec93e7c8e2eedea5557e9385affa475f3ef7d44febbe9ec4405715e",
+          "document_id": "document.distribution.runtime",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/runtime.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:07076a72f265421d29f1fa83a2526704fbc46ced110775c48ab3dbc4a1c678c0",
+          "document_id": "document.harness.agents-and-harnesses",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/agents-and-harnesses.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:d5f806aaa319e91e66ee17c73e7054a96038120761d3d77ab43f8277aed21b64",
+          "document_id": "document.harness.context",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/context.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:f7f44be1d93f5e5b03c93fb948899b773d6559ac84c56d4c00f8ca2f0823b3db",
+          "document_id": "document.harness.execution",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/execution.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:5babf43f120733a148e5dd5115a8489097927c40e73c7177ba1312b7c34983f7",
+          "document_id": "document.harness.graphs-and-loops",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/graphs-and-loops.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:d3ce1a58def1c1fec379d7f14eb3af6bbcf4b88250350b7fba8ea87491bcfbda",
+          "document_id": "document.harness.host",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/host.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:65cc4d727648b157a34c57216a67173e07e59281008ad3dfbfd4bafeb095d090",
+          "document_id": "document.harness.module",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/module.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:b5f26690cd3eea4fc47f3d5e454a9f45377193f8928cb244af768f1d99024ea4",
+          "document_id": "document.harness.permissions",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/permissions.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:c8edbc28a71b005ed3c1e1bade59b846f6a5d345408f4a68b9d6384c482a0a8e",
+          "document_id": "document.harness.runtime-values",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/runtime-values.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:7b7bc860c43758a9c2e73f7c59a7a02418f95d248653e3e1a988d9739947567a",
+          "document_id": "document.harness.typed-values",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/typed-values.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:061f4863ed097f4150444a1a5af512642e08d1dad9936fbfe8ae0d046d511039",
+          "document_id": "document.concorde.module",
+          "main_visible": true,
+          "owner": "module.concorde",
+          "path": "specs/concorde/module.md",
+          "reasons": [
+            {
+              "id": "module.concorde",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:ef122bdd0865453c1c45ecf078a7038eda39447e8c9fbb3fa93bde5812823b5d",
+          "document_id": "document.reflections.interfaces",
+          "main_visible": true,
+          "owner": "module.reflections",
+          "path": "specs/concorde/reflections/interfaces.md",
+          "reasons": [
+            {
+              "id": "module.reflections",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:6be91240034d11fc52a7a6401a8917927c713dc7e25b92a24be713ceafd8fb2f",
+          "document_id": "document.reflections.lifecycle",
+          "main_visible": true,
+          "owner": "module.reflections",
+          "path": "specs/concorde/reflections/lifecycle.md",
+          "reasons": [
+            {
+              "id": "module.reflections",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:0ff79b0432cbcfa57bf25041db0bbb026713cfd8d2352554b8c33a78aac44437",
+          "document_id": "document.reflections.module",
+          "main_visible": true,
+          "owner": "module.reflections",
+          "path": "specs/concorde/reflections/module.md",
+          "reasons": [
+            {
+              "id": "module.reflections",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:72dad6d64364c40d610aea5830c885336943eaf35cfa592c1bf6617b2ef5fa08",
+          "document_id": "document.spec.initialize",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/initialize.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:fb4e9cae6e8dea38bb85370ac6dbc4351a4c1fe1bc3e0e33097fc42d322ddfd3",
+          "document_id": "document.spec.module",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/module.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:096725af407889d0f59675d4643896baf5d03fe15ce421a60e6fa6fde490b3fc",
+          "document_id": "document.spec.registry",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/registry.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:92dbf2428d77f61decdbacde7c26ac6ee3939374d105fd82c8c489ce6e140614",
+          "document_id": "document.spec.structure",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/structure.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:2e92bcf10f35c011f8a5f636bd9a2e0abfe6efb7e13114d1378c7cc11a361b9c",
+          "document_id": "document.spec.values",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/values.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:dc25d7783c1a3584725b8e0eec28fd853f0de410ba537b778352e5854e241560",
+          "document_id": "document.views.module",
+          "main_visible": true,
+          "owner": "module.views",
+          "path": "specs/concorde/views/module.md",
+          "reasons": [
+            {
+              "id": "module.views",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:99d68cbf78f50a65d6b931bded485f4b9c61f9c6c29de2efb927d33a8e5a8810",
+          "document_id": "document.views.pipeline",
+          "main_visible": true,
+          "owner": "module.views",
+          "path": "specs/concorde/views/pipeline.md",
+          "reasons": [
+            {
+              "id": "module.views",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:f134ea28d2e6339571e4491c8d16d30d9b95d92c973cf16ad6504a4c0cb9fbe1",
+          "document_id": "document.views.publication",
+          "main_visible": true,
+          "owner": "module.views",
+          "path": "specs/concorde/views/publication.md",
+          "reasons": [
+            {
+              "id": "module.views",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:a36fdc706120d9a2b56035109dec62373545cfe83d26e2caa3ba1b0889af4d8e",
+          "document_id": "document.views.ua-graph",
+          "main_visible": true,
+          "owner": "module.views",
+          "path": "specs/concorde/views/ua-graph.md",
+          "reasons": [
+            {
+              "id": "module.views",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:e2cd320785eea3b1f552fd3149d95a7df41c3addc76d49b501faaa2e8d0f7132",
+          "document_id": "document.views.viewer",
+          "main_visible": true,
+          "owner": "module.views",
+          "path": "specs/concorde/views/viewer.md",
+          "reasons": [
+            {
+              "id": "module.views",
+              "kind": "module"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module_id": "module.development",
+      "context_digest": "sha256:14ae71b26f0074bf255893c0d24003a2f1df276bc1d30a9b5ba139b5d1a60ea4",
+      "sources": [
+        {
+          "digest": "sha256:ed2bdb7ea144bbaa8fd3ffaeb93d52dc48928c204f29bf056c9987496771d14e",
+          "document_id": "document.development.capabilities",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/capabilities.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:9097ba6989e5be8bf8d8c90ee1ce1a1cafc113f0ddcb195c4e22b8cd9434f490",
+          "document_id": "document.development.delivery",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/delivery.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:90863a808a2b1c38c776781f39dfdaf5ea62511358e076a050fa330f978246dd",
+          "document_id": "document.development.development",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/development.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:f963492e9a5079d09b4f480c6b14a62d2603933d108e4794c94fb502eb803c55",
+          "document_id": "document.development.interfaces",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/interfaces.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:b274b61365cb493a1bcba0f1e6c8be702b69d8234ae52e255f7f029dec1632d0",
+          "document_id": "document.development.module",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/module.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:2c773d814e15c2960e39ac9b26854d2cb239299f915a0b94b7155ba006753037",
+          "document_id": "document.development.query-and-routing",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/query-and-routing.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:557229f5a73d8d61eaf6d13c37e37748ba42f0a3ca4f15400d2e878a4d16acd9",
+          "document_id": "document.development.review-and-gaps",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/review-and-gaps.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:a91cb17460ef83480bd60751edd34f9c8dd2307295f649d818c501620b7f5d5f",
+          "document_id": "document.development.review-result",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/review-result.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:a08c1566acaf0bca161a21ac82e8476ad2466004e58679efb9bfc4c7a7565485",
+          "document_id": "document.development.topology",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/topology.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:27dfca4d79a7be4d88056dd6607e27b7bc9dabacff165c76c92f9594bad28d65",
+          "document_id": "document.distribution.build",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/build.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:41cb277be7d1802dfbd9a6e49d3548677f313fc467927fae4595de3cb6600e55",
+          "document_id": "document.distribution.installation",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/installation.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:1ded754cb6d3cafb4aa23dc36ca65a15444d8d18a57912a8ca8104a065772ce8",
+          "document_id": "document.distribution.module",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/module.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:3f002c4c3ec93e7c8e2eedea5557e9385affa475f3ef7d44febbe9ec4405715e",
+          "document_id": "document.distribution.runtime",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/runtime.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:07076a72f265421d29f1fa83a2526704fbc46ced110775c48ab3dbc4a1c678c0",
+          "document_id": "document.harness.agents-and-harnesses",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/agents-and-harnesses.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:d5f806aaa319e91e66ee17c73e7054a96038120761d3d77ab43f8277aed21b64",
+          "document_id": "document.harness.context",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/context.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:f7f44be1d93f5e5b03c93fb948899b773d6559ac84c56d4c00f8ca2f0823b3db",
+          "document_id": "document.harness.execution",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/execution.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:5babf43f120733a148e5dd5115a8489097927c40e73c7177ba1312b7c34983f7",
+          "document_id": "document.harness.graphs-and-loops",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/graphs-and-loops.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:d3ce1a58def1c1fec379d7f14eb3af6bbcf4b88250350b7fba8ea87491bcfbda",
+          "document_id": "document.harness.host",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/host.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:65cc4d727648b157a34c57216a67173e07e59281008ad3dfbfd4bafeb095d090",
+          "document_id": "document.harness.module",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/module.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:b5f26690cd3eea4fc47f3d5e454a9f45377193f8928cb244af768f1d99024ea4",
+          "document_id": "document.harness.permissions",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/permissions.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:c8edbc28a71b005ed3c1e1bade59b846f6a5d345408f4a68b9d6384c482a0a8e",
+          "document_id": "document.harness.runtime-values",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/runtime-values.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:7b7bc860c43758a9c2e73f7c59a7a02418f95d248653e3e1a988d9739947567a",
+          "document_id": "document.harness.typed-values",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/typed-values.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:ef122bdd0865453c1c45ecf078a7038eda39447e8c9fbb3fa93bde5812823b5d",
+          "document_id": "document.reflections.interfaces",
+          "main_visible": true,
+          "owner": "module.reflections",
+          "path": "specs/concorde/reflections/interfaces.md",
+          "reasons": [
+            {
+              "id": "module.reflections",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:6be91240034d11fc52a7a6401a8917927c713dc7e25b92a24be713ceafd8fb2f",
+          "document_id": "document.reflections.lifecycle",
+          "main_visible": true,
+          "owner": "module.reflections",
+          "path": "specs/concorde/reflections/lifecycle.md",
+          "reasons": [
+            {
+              "id": "module.reflections",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:0ff79b0432cbcfa57bf25041db0bbb026713cfd8d2352554b8c33a78aac44437",
+          "document_id": "document.reflections.module",
+          "main_visible": true,
+          "owner": "module.reflections",
+          "path": "specs/concorde/reflections/module.md",
+          "reasons": [
+            {
+              "id": "module.reflections",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:72dad6d64364c40d610aea5830c885336943eaf35cfa592c1bf6617b2ef5fa08",
+          "document_id": "document.spec.initialize",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/initialize.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:fb4e9cae6e8dea38bb85370ac6dbc4351a4c1fe1bc3e0e33097fc42d322ddfd3",
+          "document_id": "document.spec.module",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/module.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:096725af407889d0f59675d4643896baf5d03fe15ce421a60e6fa6fde490b3fc",
+          "document_id": "document.spec.registry",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/registry.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:92dbf2428d77f61decdbacde7c26ac6ee3939374d105fd82c8c489ce6e140614",
+          "document_id": "document.spec.structure",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/structure.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:2e92bcf10f35c011f8a5f636bd9a2e0abfe6efb7e13114d1378c7cc11a361b9c",
+          "document_id": "document.spec.values",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/values.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module_id": "module.harness",
+      "context_digest": "sha256:9a73b83800ece9b551e8136834d921f13fa955f99600dcd7ba1d81cac3a5a348",
+      "sources": [
+        {
+          "digest": "sha256:a91cb17460ef83480bd60751edd34f9c8dd2307295f649d818c501620b7f5d5f",
+          "document_id": "document.development.review-result",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/review-result.md",
+          "reasons": [
+            {
+              "id": "document.development.review-result",
+              "kind": "document"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:27dfca4d79a7be4d88056dd6607e27b7bc9dabacff165c76c92f9594bad28d65",
+          "document_id": "document.distribution.build",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/build.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:41cb277be7d1802dfbd9a6e49d3548677f313fc467927fae4595de3cb6600e55",
+          "document_id": "document.distribution.installation",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/installation.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:1ded754cb6d3cafb4aa23dc36ca65a15444d8d18a57912a8ca8104a065772ce8",
+          "document_id": "document.distribution.module",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/module.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:3f002c4c3ec93e7c8e2eedea5557e9385affa475f3ef7d44febbe9ec4405715e",
+          "document_id": "document.distribution.runtime",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/runtime.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:07076a72f265421d29f1fa83a2526704fbc46ced110775c48ab3dbc4a1c678c0",
+          "document_id": "document.harness.agents-and-harnesses",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/agents-and-harnesses.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:d5f806aaa319e91e66ee17c73e7054a96038120761d3d77ab43f8277aed21b64",
+          "document_id": "document.harness.context",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/context.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:f7f44be1d93f5e5b03c93fb948899b773d6559ac84c56d4c00f8ca2f0823b3db",
+          "document_id": "document.harness.execution",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/execution.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:5babf43f120733a148e5dd5115a8489097927c40e73c7177ba1312b7c34983f7",
+          "document_id": "document.harness.graphs-and-loops",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/graphs-and-loops.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:d3ce1a58def1c1fec379d7f14eb3af6bbcf4b88250350b7fba8ea87491bcfbda",
+          "document_id": "document.harness.host",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/host.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:65cc4d727648b157a34c57216a67173e07e59281008ad3dfbfd4bafeb095d090",
+          "document_id": "document.harness.module",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/module.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:b5f26690cd3eea4fc47f3d5e454a9f45377193f8928cb244af768f1d99024ea4",
+          "document_id": "document.harness.permissions",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/permissions.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:c8edbc28a71b005ed3c1e1bade59b846f6a5d345408f4a68b9d6384c482a0a8e",
+          "document_id": "document.harness.runtime-values",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/runtime-values.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:7b7bc860c43758a9c2e73f7c59a7a02418f95d248653e3e1a988d9739947567a",
+          "document_id": "document.harness.typed-values",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/typed-values.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:72dad6d64364c40d610aea5830c885336943eaf35cfa592c1bf6617b2ef5fa08",
+          "document_id": "document.spec.initialize",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/initialize.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:fb4e9cae6e8dea38bb85370ac6dbc4351a4c1fe1bc3e0e33097fc42d322ddfd3",
+          "document_id": "document.spec.module",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/module.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:096725af407889d0f59675d4643896baf5d03fe15ce421a60e6fa6fde490b3fc",
+          "document_id": "document.spec.registry",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/registry.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:92dbf2428d77f61decdbacde7c26ac6ee3939374d105fd82c8c489ce6e140614",
+          "document_id": "document.spec.structure",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/structure.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:2e92bcf10f35c011f8a5f636bd9a2e0abfe6efb7e13114d1378c7cc11a361b9c",
+          "document_id": "document.spec.values",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/values.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module_id": "module.reflections",
+      "context_digest": "sha256:0bd08c04559ef194697e1ba8c3612077f687544630ac78caa28bc9634f669388",
+      "sources": [
+        {
+          "digest": "sha256:ed2bdb7ea144bbaa8fd3ffaeb93d52dc48928c204f29bf056c9987496771d14e",
+          "document_id": "document.development.capabilities",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/capabilities.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:9097ba6989e5be8bf8d8c90ee1ce1a1cafc113f0ddcb195c4e22b8cd9434f490",
+          "document_id": "document.development.delivery",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/delivery.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:90863a808a2b1c38c776781f39dfdaf5ea62511358e076a050fa330f978246dd",
+          "document_id": "document.development.development",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/development.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:f963492e9a5079d09b4f480c6b14a62d2603933d108e4794c94fb502eb803c55",
+          "document_id": "document.development.interfaces",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/interfaces.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:b274b61365cb493a1bcba0f1e6c8be702b69d8234ae52e255f7f029dec1632d0",
+          "document_id": "document.development.module",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/module.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:2c773d814e15c2960e39ac9b26854d2cb239299f915a0b94b7155ba006753037",
+          "document_id": "document.development.query-and-routing",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/query-and-routing.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:557229f5a73d8d61eaf6d13c37e37748ba42f0a3ca4f15400d2e878a4d16acd9",
+          "document_id": "document.development.review-and-gaps",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/review-and-gaps.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:a91cb17460ef83480bd60751edd34f9c8dd2307295f649d818c501620b7f5d5f",
+          "document_id": "document.development.review-result",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/review-result.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:a08c1566acaf0bca161a21ac82e8476ad2466004e58679efb9bfc4c7a7565485",
+          "document_id": "document.development.topology",
+          "main_visible": true,
+          "owner": "module.development",
+          "path": "specs/concorde/development/topology.md",
+          "reasons": [
+            {
+              "id": "module.development",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:27dfca4d79a7be4d88056dd6607e27b7bc9dabacff165c76c92f9594bad28d65",
+          "document_id": "document.distribution.build",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/build.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:41cb277be7d1802dfbd9a6e49d3548677f313fc467927fae4595de3cb6600e55",
+          "document_id": "document.distribution.installation",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/installation.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:1ded754cb6d3cafb4aa23dc36ca65a15444d8d18a57912a8ca8104a065772ce8",
+          "document_id": "document.distribution.module",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/module.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:3f002c4c3ec93e7c8e2eedea5557e9385affa475f3ef7d44febbe9ec4405715e",
+          "document_id": "document.distribution.runtime",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/runtime.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:07076a72f265421d29f1fa83a2526704fbc46ced110775c48ab3dbc4a1c678c0",
+          "document_id": "document.harness.agents-and-harnesses",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/agents-and-harnesses.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:d5f806aaa319e91e66ee17c73e7054a96038120761d3d77ab43f8277aed21b64",
+          "document_id": "document.harness.context",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/context.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:f7f44be1d93f5e5b03c93fb948899b773d6559ac84c56d4c00f8ca2f0823b3db",
+          "document_id": "document.harness.execution",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/execution.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:5babf43f120733a148e5dd5115a8489097927c40e73c7177ba1312b7c34983f7",
+          "document_id": "document.harness.graphs-and-loops",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/graphs-and-loops.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:d3ce1a58def1c1fec379d7f14eb3af6bbcf4b88250350b7fba8ea87491bcfbda",
+          "document_id": "document.harness.host",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/host.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:65cc4d727648b157a34c57216a67173e07e59281008ad3dfbfd4bafeb095d090",
+          "document_id": "document.harness.module",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/module.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:b5f26690cd3eea4fc47f3d5e454a9f45377193f8928cb244af768f1d99024ea4",
+          "document_id": "document.harness.permissions",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/permissions.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:c8edbc28a71b005ed3c1e1bade59b846f6a5d345408f4a68b9d6384c482a0a8e",
+          "document_id": "document.harness.runtime-values",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/runtime-values.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:7b7bc860c43758a9c2e73f7c59a7a02418f95d248653e3e1a988d9739947567a",
+          "document_id": "document.harness.typed-values",
+          "main_visible": true,
+          "owner": "module.harness",
+          "path": "specs/concorde/harness/typed-values.md",
+          "reasons": [
+            {
+              "id": "module.harness",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:ef122bdd0865453c1c45ecf078a7038eda39447e8c9fbb3fa93bde5812823b5d",
+          "document_id": "document.reflections.interfaces",
+          "main_visible": true,
+          "owner": "module.reflections",
+          "path": "specs/concorde/reflections/interfaces.md",
+          "reasons": [
+            {
+              "id": "module.reflections",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:6be91240034d11fc52a7a6401a8917927c713dc7e25b92a24be713ceafd8fb2f",
+          "document_id": "document.reflections.lifecycle",
+          "main_visible": true,
+          "owner": "module.reflections",
+          "path": "specs/concorde/reflections/lifecycle.md",
+          "reasons": [
+            {
+              "id": "module.reflections",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:0ff79b0432cbcfa57bf25041db0bbb026713cfd8d2352554b8c33a78aac44437",
+          "document_id": "document.reflections.module",
+          "main_visible": true,
+          "owner": "module.reflections",
+          "path": "specs/concorde/reflections/module.md",
+          "reasons": [
+            {
+              "id": "module.reflections",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:72dad6d64364c40d610aea5830c885336943eaf35cfa592c1bf6617b2ef5fa08",
+          "document_id": "document.spec.initialize",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/initialize.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:fb4e9cae6e8dea38bb85370ac6dbc4351a4c1fe1bc3e0e33097fc42d322ddfd3",
+          "document_id": "document.spec.module",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/module.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:096725af407889d0f59675d4643896baf5d03fe15ce421a60e6fa6fde490b3fc",
+          "document_id": "document.spec.registry",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/registry.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:92dbf2428d77f61decdbacde7c26ac6ee3939374d105fd82c8c489ce6e140614",
+          "document_id": "document.spec.structure",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/structure.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:2e92bcf10f35c011f8a5f636bd9a2e0abfe6efb7e13114d1378c7cc11a361b9c",
+          "document_id": "document.spec.values",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/values.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "module_id": "module.views",
+      "context_digest": "sha256:93f532dda5d705bfd78910bb7f8a1d2722dfb150f7e3ea06fe0815446ee397ae",
+      "sources": [
+        {
+          "digest": "sha256:27dfca4d79a7be4d88056dd6607e27b7bc9dabacff165c76c92f9594bad28d65",
+          "document_id": "document.distribution.build",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/build.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:41cb277be7d1802dfbd9a6e49d3548677f313fc467927fae4595de3cb6600e55",
+          "document_id": "document.distribution.installation",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/installation.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:1ded754cb6d3cafb4aa23dc36ca65a15444d8d18a57912a8ca8104a065772ce8",
+          "document_id": "document.distribution.module",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/module.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:3f002c4c3ec93e7c8e2eedea5557e9385affa475f3ef7d44febbe9ec4405715e",
+          "document_id": "document.distribution.runtime",
+          "main_visible": true,
+          "owner": "module.distribution",
+          "path": "specs/concorde/distribution/runtime.md",
+          "reasons": [
+            {
+              "id": "module.distribution",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:72dad6d64364c40d610aea5830c885336943eaf35cfa592c1bf6617b2ef5fa08",
+          "document_id": "document.spec.initialize",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/initialize.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:fb4e9cae6e8dea38bb85370ac6dbc4351a4c1fe1bc3e0e33097fc42d322ddfd3",
+          "document_id": "document.spec.module",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/module.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:096725af407889d0f59675d4643896baf5d03fe15ce421a60e6fa6fde490b3fc",
+          "document_id": "document.spec.registry",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/registry.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:92dbf2428d77f61decdbacde7c26ac6ee3939374d105fd82c8c489ce6e140614",
+          "document_id": "document.spec.structure",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/structure.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:2e92bcf10f35c011f8a5f636bd9a2e0abfe6efb7e13114d1378c7cc11a361b9c",
+          "document_id": "document.spec.values",
+          "main_visible": true,
+          "owner": "module.spec",
+          "path": "specs/concorde/spec/values.md",
+          "reasons": [
+            {
+              "id": "module.spec",
+              "kind": "module"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:dc25d7783c1a3584725b8e0eec28fd853f0de410ba537b778352e5854e241560",
+          "document_id": "document.views.module",
+          "main_visible": true,
+          "owner": "module.views",
+          "path": "specs/concorde/views/module.md",
+          "reasons": [
+            {
+              "id": "module.views",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:99d68cbf78f50a65d6b931bded485f4b9c61f9c6c29de2efb927d33a8e5a8810",
+          "document_id": "document.views.pipeline",
+          "main_visible": true,
+          "owner": "module.views",
+          "path": "specs/concorde/views/pipeline.md",
+          "reasons": [
+            {
+              "id": "module.views",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:f134ea28d2e6339571e4491c8d16d30d9b95d92c973cf16ad6504a4c0cb9fbe1",
+          "document_id": "document.views.publication",
+          "main_visible": true,
+          "owner": "module.views",
+          "path": "specs/concorde/views/publication.md",
+          "reasons": [
+            {
+              "id": "module.views",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:a36fdc706120d9a2b56035109dec62373545cfe83d26e2caa3ba1b0889af4d8e",
+          "document_id": "document.views.ua-graph",
+          "main_visible": true,
+          "owner": "module.views",
+          "path": "specs/concorde/views/ua-graph.md",
+          "reasons": [
+            {
+              "id": "module.views",
+              "kind": "owned"
+            }
+          ]
+        },
+        {
+          "digest": "sha256:e2cd320785eea3b1f552fd3149d95a7df41c3addc76d49b501faaa2e8d0f7132",
+          "document_id": "document.views.viewer",
+          "main_visible": true,
+          "owner": "module.views",
+          "path": "specs/concorde/views/viewer.md",
+          "reasons": [
+            {
+              "id": "module.views",
+              "kind": "owned"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "focus": [
+    "Flow terminology and LangGraph execution",
+    "inspection from executed definitions",
+    "bounded expansion, iteration, feedback and early stops",
+    "ephemeral authority and JSON boundaries",
+    "compatibility of public entries, stable Spec IDs and persisted lifecycle fields"
+  ],
+  "implementation_sources": [
+    {
+      "path": "src/concorde/development/capability_flow.py",
+      "digest": "sha256:5827a1c648b4dab06ce2845e2236ddf0ae2186870af6c4b5856059cef883487d"
+    },
+    {
+      "path": "src/concorde/development/capability_host.py",
+      "digest": "sha256:2efe515d3fa61374b52920a2916f81fb3bf90c2f9745c595c3c7c6dc27ab3f60"
+    },
+    {
+      "path": "src/concorde/development/coordination_flow.py",
+      "digest": "sha256:9db7d4b4c3ec8f1c8d2da291c5b6efefc74a6987908d810587fe6bcd2389a2b2"
+    },
+    {
+      "path": "src/concorde/development/discovery_flow.py",
+      "digest": "sha256:cfa2c05f84f471b80a4e8c38d38d6a6a803f58ff56c0ad6d552d11cbd004a956"
+    },
+    {
+      "path": "src/concorde/development/dispatch_flow.py",
+      "digest": "sha256:17bdb1fd91fd6dbc3deb0e1865c3a49368fed7bb75a97cae3a7150c64acdf311"
+    },
+    {
+      "path": "src/concorde/development/loop_flow.py",
+      "digest": "sha256:5382be14825121de1af688c89f209b0c16f1bac7d6a3f3ff7e793f2072dad618"
+    },
+    {
+      "path": "src/concorde/development/plan_flow.py",
+      "digest": "sha256:f33066cb37b2bb160b5d266cae43b06b94250c695c9b077edd2a55161c9fc62b"
+    },
+    {
+      "path": "src/concorde/development/project_flow.py",
+      "digest": "sha256:575d3bbcac63e4cc3d7f7a66829f24a0347fea0eb26b241264b312a819abd1ab"
+    },
+    {
+      "path": "src/concorde/development/query_flow.py",
+      "digest": "sha256:9e9c62c15bfc2f60dacc840e77d2d5496889566b5a2807c49b0201a87ea4a01c"
+    },
+    {
+      "path": "src/concorde/development/review.py",
+      "digest": "sha256:cafb927f0ec7757f8ecdd27ae90dc2c8a5453bdf0fdcec3a073911b44a357682"
+    },
+    {
+      "path": "src/concorde/development/topology_flow.py",
+      "digest": "sha256:3073781e6831cb1a75b88fe468718cf99a11f873a7e663c6729342434847fbaa"
+    },
+    {
+      "path": "src/concorde/harness/agent_flow.py",
+      "digest": "sha256:681dd662aecd0cda4e248cf7d8f404acb935fcdaace2d90bdaa3f0ad09491a52"
+    },
+    {
+      "path": "src/concorde/harness/agent_runtime.py",
+      "digest": "sha256:caa4f91bad6c990e5ef4d064957a71d473c370d1df15f9f9e8a7294ab090bff2"
+    },
+    {
+      "path": "src/concorde/harness/batch_flow.py",
+      "digest": "sha256:52d9b60f72a6bb5603c61d3769af7fdddd664e767317dd8b131dc681047d2aab"
+    },
+    {
+      "path": "src/concorde/harness/studio.py",
+      "digest": "sha256:3f2871caa54348644c03fb39c6c67c5d90da0b69f156e216e352d396c78a470f"
+    },
+    {
+      "path": "src/concorde/reflections/scoped_triage.py",
+      "digest": "sha256:b571883f491784aba571e2b66ca9a6c30a5c9526121df2cb7a9dcaa0c2613d85"
+    },
+    {
+      "path": "src/concorde/reflections/triage_flow.py",
+      "digest": "sha256:d76196be68951fe721628939aba7e0449653fb4b7e7145dcb141bc80b5e0c89a"
+    }
+  ],
+  "validation": {
+    "full_migration_suite": {
+      "tests": 719,
+      "skipped": 8,
+      "status": "passed"
+    },
+    "final_hardening_regression": {
+      "tests": 70,
+      "status": "passed"
+    },
+    "real_studio_server": {
+      "tests": 8,
+      "status": "passed"
+    },
+    "real_viewer_http_expansion": {
+      "tests": 1,
+      "status": "passed"
+    },
+    "spec_audit": {
+      "status": "passed",
+      "modules": 7,
+      "documents": 36,
+      "requirements": 125,
+      "scenarios": 152,
+      "entities": 90,
+      "canonical_contracts": 3,
+      "bindings": 4,
+      "links": 189,
+      "reference_boundary_cases": 9,
+      "preserved_baseline_ids": 0,
+      "context_files": {
+        "module.concorde": 36,
+        "module.spec": 5,
+        "module.harness": 19,
+        "module.development": 30,
+        "module.reflections": 30,
+        "module.distribution": 9,
+        "module.views": 14
+      },
+      "semantic_completeness": "not_proven",
+      "runtime_support": "not_assessed"
+    },
+    "framework_validation": {
+      "errors": 0,
+      "infos": 0,
+      "warnings": 42
+    },
+    "build_check": "passed",
+    "docsite_typecheck": "passed",
+    "docsite_spec_links": "passed",
+    "docsite_production_build": "passed"
+  }
+}

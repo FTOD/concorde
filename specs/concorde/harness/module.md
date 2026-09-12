@@ -21,7 +21,7 @@ values](typed-values.md). Their content remains authoritative regardless of navi
 The Harness configures and runs every Agent invocation in Concorde: it freezes the four context
 kinds an invocation may see, binds the Agent's authored Spec and registered Harness into a
 reproducible definition, compiles and enforces effective permissions, executes the bound Harness in
-a fresh native process, and coordinates every control flow as a LangGraph graph. Every other
+a fresh native process, and coordinates every control flow as a LangGraph Flow. Every other
 Concorde capability that needs a Spec- or task-bound model invocation relies on it, as does every
 Agent author who defines a new named Agent. Its boundary stops at the Spec Module it consults for
 project truth and the Distribution Module it consults for rendered instructions and Protocol
@@ -153,6 +153,15 @@ so identical values always digest identically.
 
 These scenarios state the success, failure and repeated-invocation promises realized in full by
 the registered companion documents.
+
+### scenario.harness.flow-inspection — Inspect execution without acquiring authority
+
+- GIVEN the executable Flow factories and host-bound public Studio entries
+- WHEN a viewer compiles them and requests their LangGraph nodes and edges
+- THEN it sees the actual admission, capability branches and composed Flow transitions without invoking an Agent or resolving project Spec contexts
+- AND private stages gain no public entry or additional permissions
+- AND the public checkpoint contains only JSON input and output while internal host objects and callbacks remain ephemeral
+- AND replay of the public capability revalidates the input and expected workspace before any effects
 
 ### Context freezing
 
@@ -512,7 +521,7 @@ and host authority and rendered into native enforcement or refused, guarded by t
 check before any unsafe mutation. That enforcement belongs to the selected native integration: the
 host renders a default-deny configuration, verifies that it equals the compiled policy and starts
 the process in a capsule or in the candidate worktree; it does not wrap the process in a sandbox
-of its own. Every control flow is a LangGraph graph whose nodes are
+of its own. Every control flow is a LangGraph Flow whose nodes are
 deterministic steps or Agent invocations; a leaf may be either. Recursive delegation runs inside the
 same graphs under shared budgets, depth limits and cancellation. Failures never retry with broader
 permissions, and process exit alone never establishes completion.
@@ -582,13 +591,6 @@ relied-upon behavior from this Module's perspective without importing another Mo
   context. Materializing admitted Capability and Tool contracts in the snapshot record, with their
   identities in the context digest, is pending implementation work that must not widen any existing
   grant.
-- Each Studio graph is currently a two-node validate-and-execute wrapper around `run_capability`;
-  most capabilities' real control flow still runs inside the host as direct Python calls, and only
-  the development loop is itself a LangGraph `StateGraph`. This Module requires every capability's
-  control flow to be a LangGraph graph that Studio exposes directly (see [host](host.md)).
-  Migrating the discovery loop, topology flow, reflection triage, the deterministic lifecycle
-  capabilities and the recursive `AgentRuntime` onto explicit `StateGraph` composition, and pointing
-  `generated/langgraph.json` at those graphs, is pending implementation work.
 - The Claude boundary has no physical probe. The Codex boundary is exercised by a real
   `codex sandbox` probe, but the Claude scenario checks only the rendered launch; that an Agent
   under restricted mode cannot reach files outside its grant rests on Claude Code's documented

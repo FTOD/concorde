@@ -30,9 +30,9 @@ by changed paths nor rewrites their severity. Required coverage, gap and freshne
 Development defaults `run_reviews` to true: Spec review follows authoring and precedes planning;
 code review follows implementation/checks and precedes ready. An explicit `run_reviews=false`
 records each skip. Once required, a review cannot be disabled by a resumed fast loop. Blocking contract gaps or
-behavior findings prevent advancement until the Graph admits a repair or clarification path; advisory
+behavior findings prevent advancement until the Flow admits a repair or clarification path; advisory
 findings remain available through result artifacts. AI feedback identifies the reviewed revision and
-can select only the transitions allowed by the Graph. It cannot grant human acceptance or wider permissions.
+can select only the transitions allowed by the Flow. It cannot grant human acceptance or wider permissions.
 Module changes review their own Spec before planning, then each affected component's full Spec and
 code in that component's own session. Host aggregation carries only their typed results.
 

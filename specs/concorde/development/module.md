@@ -10,7 +10,7 @@
 
 ## Purpose
 
-Development provides the capability invocation boundary and the deterministic host adapter that Concorde's own tooling runs on: capability admission and dispatch, the coordinator that answers questions and evolves project topology, the development graph that carries one intended change from an authored Spec to a ready candidate, deterministic validation, and delivery. It serves developers and their external agent runtimes submitting requests through installed `concorde-*` Skills, and every other Concorde capability that composes through this same boundary. Its promises end at a ready, delivered or primary-merged candidate; it relies on Harness to run every Agent invocation and isolate configured checks, Spec to resolve and validate project Specs, Reflections to retain gap history, and Distribution to own, build, install and verify instruction projections, including Skills.
+Development provides the capability invocation boundary and the deterministic host adapter that Concorde's own tooling runs on: capability admission and dispatch, the coordinator that answers questions and evolves project topology, the development Flow that carries one intended change from an authored Spec to a ready candidate, deterministic validation, and delivery. It serves developers and their external agent runtimes submitting requests through installed `concorde-*` Skills, and every other Concorde capability that composes through this same boundary. Its promises end at a ready, delivered or primary-merged candidate; it relies on Harness to run every Agent invocation and isolate configured checks, Spec to resolve and validate project Specs, Reflections to retain gap history, and Distribution to own, build, install and verify instruction projections, including Skills.
 
 ## Requirements
 
@@ -22,10 +22,12 @@ A global capability's own coordinator SHALL discover complete Module Spec contex
 
 A stage capability SHALL NOT reselect or expand the frozen context its composing capability gave it.
 
-### req.development.langgraph-control-flow — Control flow is a LangGraph graph
+### req.development.langgraph-control-flow — Orchestration executes as a LangGraph Flow
 
-Every capability's control flow SHALL be a LangGraph graph of deterministic steps and Agent
-invocations.
+Every capability's orchestration SHALL execute as a LangGraph Flow of deterministic operations,
+Agent invocations and explicitly represented transitions.
+
+Flow is the terminology defined by Harness in [Agent Flows and Loops](../harness/graphs-and-loops.md).
 
 ### req.development.no-implementation-for-non-code — No implementation contents for non-code phases
 
@@ -77,7 +79,7 @@ A target or focus hint SHALL NOT itself grant context or replace explicit resolu
 
 ### req.development.repair-edge-only — Code-review repair is the only automatic edge
 
-`review_code -> tasks` SHALL be the development graph's only automatic revision edge.
+`review_code -> tasks` SHALL be the development Flow's only automatic revision edge.
 
 ### req.development.non-repair-stops-graph — Other outcomes stop the graph for a decision
 
@@ -103,7 +105,25 @@ The host SHALL serialize shared lifecycle writes and final primary merges with t
 
 ## Scenarios
 
-Scenarios below are grouped by capability. The registered companion documents work out the exact wire shapes and mechanics they reference: [interfaces](interfaces.md) (the wire contracts, error codes and capability boundary), [capabilities](capabilities.md) (the capability registry), [query-and-routing](query-and-routing.md) (the query and routing graph), [development](development.md) (the development graph and its repair edge), [topology](topology.md) (the topology evolution graph), [review-and-gaps](review-and-gaps.md) (the review contract and gap handling) and [delivery](delivery.md) (branch publication and primary merging).
+Scenarios below are grouped by capability. The registered companion documents work out the exact wire shapes and mechanics they reference: [interfaces](interfaces.md) (the wire contracts, error codes and capability boundary), [capabilities](capabilities.md) (the capability registry), [query-and-routing](query-and-routing.md) (the query and routing graph), [development](development.md) (the development Flow and its repair edge), [topology](topology.md) (the topology evolution graph), [review-and-gaps](review-and-gaps.md) (the review contract and gap handling) and [delivery](delivery.md) (branch publication and primary merging).
+### scenario.development.flow-execution — Execute the inspected Flow
+
+- GIVEN an admitted capability request through a local or Studio entry
+- WHEN the host executes the request
+- THEN the same compiled Flow definitions select its capability branch, Agent stages and feedback transitions
+- AND discovery expansion, topology authors, component work and reflection resolutions advance through bounded Flow transitions
+- AND failed admission or a stopping outcome prevents dependent nodes from running
+- AND existing task identity, context isolation, review requirements and delivery authorization remain enforced
+- AND a change to the Flow that schedules scoped reviews invalidates their recorded input identity
+
+### scenario.development.flow-bounds — Preserve domain limits across Flow composition
+
+- GIVEN a Flow whose admitted work requires more than LangGraph's default scheduling limit
+- WHEN the host executes its bounded discovery, batch or review-repair transitions
+- THEN the configured scheduling allowance permits the admitted sequence to reach its domain completion or limit outcome
+- AND exhausting a declared domain limit does not silently restart the Flow or widen its authority
+
+
 
 Capability execution and the worktree boundary:
 
@@ -112,7 +132,7 @@ Capability execution and the worktree boundary:
 - GIVEN an installed `concorde-*` Skill names one registered global or lifecycle capability
 - AND stdin carries a well-formed `concorde-capability-invocation@3` envelope in `execute` mode
 - WHEN the host admits the request
-- THEN it selects the capability's declared execution graph and obtains every Agent invocation it needs, bound to current instructions, context and compiled authority, from Harness
+- THEN it selects the capability's declared execution Flow and obtains every Agent invocation it needs, bound to current instructions, context and compiled authority, from Harness
 - AND it returns a `concorde-capability-result@3` with status `succeeded` and the capability's own typed output
 
 See [single boundary](#req.development.single-boundary) and [distinct outcomes](#req.development.distinct-outcomes).
@@ -387,10 +407,11 @@ Two programs realize this Module's own code: the host adapter and the capability
     "id": "entity.development.development-host",
     "title": "Development host",
     "kind": "program",
-    "responsibility": "Realize capability admission and dispatch, the global discovery loop, the development graph with its bounded repair edge, topology preparation and application, review evidence and candidate readiness.",
+    "responsibility": "Realize capability admission and dispatch, the global discovery loop, the development Flow with its bounded repair edge, topology preparation and application, review evidence and candidate readiness.",
     "files": [
       "src/concorde/development/",
       "tests/concorde/development/",
+      "tests/concorde/harness/test_flows.py",
       "tests/concorde/support/capability_json.py"
     ]
   },
@@ -524,7 +545,7 @@ Development's sole structural parent is `module.concorde`; it has no submodules 
   {
     "target_id": "module.harness",
     "responsibility": "Freeze context kinds, bind Agents, compile permissions, execute invocations and isolate configured checks.",
-    "selection_condition": "When a capability graph reaches an Agent invocation, policy preview or configured deterministic check.",
+    "selection_condition": "When a capability Flow reaches an Agent invocation, policy preview or configured deterministic check.",
     "relied_upon_promises": [
       "[Freeze and recheck each stage input](../harness/context.md#contract.context.selection)",
       "[Stop rather than widen rejected authority](../harness/module.md#req.harness.permission-no-widen)",
@@ -564,6 +585,12 @@ Development's sole structural parent is `module.concorde`; it has no submodules 
 
 ## Unresolved information
 
-Two boundaries are known but not yet realized in code; they were already recorded before this
-Module's realizations were folded into entity file listings, and are repeated here rather than
-newly discovered. `capability_host.py` still contains invocation-binding mechanics (the freeze, compile, render, launch, execute and validate sequence of `Invocation.stage` and `MainInvocation.stage`) that belong to the Harness Module's own host contract; extracting them into a Harness-owned realization is pending. Only the development loop (`concorde-dev-loop`) currently runs as a LangGraph `StateGraph`; the discovery loop, the topology graph, the lifecycle capabilities and the reflections-triage composition still run as plain Python control flow and must move onto `StateGraph` composition to satisfy req.development.langgraph-control-flow. Neither gap changes this Module's promises; both are implementation work tracked against the entities above rather than open Spec questions.
+`capability_host.py` still contains invocation-binding mechanics (the freeze, compile, render,
+launch, execute and validate sequence of `Invocation.stage` and `MainInvocation.stage`) that belong
+to the Harness Module's own host contract; extracting them into a Harness-owned realization is pending.
+
+Capability admission and dispatch, query/discovery, topology authoring and application,
+planning, development and component coordination, and reflection triage execute through compiled
+Flow factories. Deterministic lifecycle operations are nodes in the same public capability Flow.
+Batch authoring, review and finalization use bounded Flow composition. The remaining invocation-binding
+ownership gap does not change this Module's promises.

@@ -25,9 +25,22 @@ it('scenario.views.publish-candidate: publishes the current exact registry and v
  expect(navbar).toContain('Spec Protocol');
  expect(navbar.indexOf('Spec Protocol')).toBeLessThan(navbar.indexOf('Module Specs'));
  expect(navbar).toContain('Module Specs');
+ expect(navbar).toContain('Agent Flows');
  expect(navbar).not.toContain('>Graph<');
  expect(html).toContain('id="purpose"');expect(html).toContain('id="scenarios"');expect(html).toContain('id="entities"');expect(html).toContain('id="ontology"');expect(html).toContain('id="relationships"');expect(html).toContain('id="req.concorde.routing-no-access"');
  expect(html).not.toContain('<iframe');
+});
+it('scenario.views.agent-flows: publishes executable flows with keyboard navigation and source fingerprints',async()=>{
+ const html=await readFile(resolve(output,'agent-flows.html'),'utf8');
+ expect(html).toContain('The development loop');
+ expect(html).toContain('The Studio entry Flow');
+ expect(html).toContain('Inspect every Flow family');
+ expect(html).not.toContain('Dedicated query and topology LangGraph factories are not implemented');
+ expect(html).toContain('loop_flow.py');
+ expect(html).toContain('sha256:');
+ expect(html).toMatch(/role="region"[^>]*tabindex="0"/i);
+ expect(html).toContain('href="#stage-tasks"');
+ expect(html).toContain('All transitions');
 });
 it('scenario.views.protocol-docs-tab: publishes the independent standard with chapter navigation and no Spec wrapper',async()=>{
  const overview=await readFile(resolve(output,'protocol.html'),'utf8');

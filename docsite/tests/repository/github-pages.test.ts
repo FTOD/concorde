@@ -22,12 +22,16 @@ describe('Concorde repository GitHub Pages deployment', () => {
     expect(canonicalRoute('/concorde/', identity.baseUrl)).toBe('/');
   });
 
-  it('deploys via a workflow byte-identical to the packaged scaffold template', async () => {
+  it('keeps graph inspection dependencies exclusive to the Concorde source workflow', async () => {
     const [workflow, scaffold] = await Promise.all([
       readFile(resolve(projectRoot, '.github/workflows/deploy-docsite.yml'), 'utf8'),
       readFile(resolve(siteDir, 'scaffold/deploy-docsite.yml'), 'utf8'),
     ]);
-    expect(workflow).toBe(scaffold);
+    const ownPreparation = /\n      # Only Concorde's own site[^]*?          uv sync --frozen --group dev\n/;
+    expect(workflow).toMatch(ownPreparation);
+    expect(workflow.replace(ownPreparation, '')).toBe(scaffold);
+    expect(scaffold).not.toContain('uv sync');
+    expect(scaffold).not.toContain('Agent Flows');
   });
 
   it('checks out once and deploys only the verified output', async () => {

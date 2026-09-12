@@ -18,25 +18,45 @@ def queue_module(package):
 
 
 def triage(run):
+    from .triage_flow import build_triage_flow
+    return build_triage_flow(triage_nodes(run).__getitem__).invoke({},
+        {"recursion_limit": max(25, len(run.task["reflection_ids"]) + 10)})["output"]
+
+
+def triage_nodes(run):
     from ..development.capability_host import Invocation, invoke_capability, _implementation_digest
     from ..harness.change_worktree import progress, read_change, target_state
-    root=run.repository.root;queue=queue_module(run.host.package_root)
-    action=run.task["action"];ids=run.task["reflection_ids"]
-    if action == "record-gaps":
-        return record_gaps(run, queue)
-    if run.task.get("gap_ids"):
-        raise SpecError("gap_ids are only accepted by record-gaps", "invalid_input")
-    _,_,parsed,_,raw=queue._load_reflections(root,required=True)
-    entries={entry.identifier:entry for entry in parsed.entries}
-    # A reflection is attributed to a Module or one of its scenarios; entities and requirements
-    # locate text inside a Module and are not separate attribution identities.
-    local={run.target.id,*(scenario.id for scenario in run.repository.scenarios(run.target))}
-    selected=ids or [entry.identifier for entry in parsed.entries if entry.feature in local]
-    if any(i not in entries or entries[i].feature not in local for i in selected):
-        raise SpecError("selected reflection does not belong to this target", "permission_denied")
-    if action!="status" and not ids:
-        raise SpecError("mutating triage requires explicit reflection_ids", "invalid_input")
-    if action=="status":
+    from langgraph.graph import END
+    from .triage_flow import build_triage_flow
+
+    root = run.repository.root
+    queue = queue_module(run.host.package_root)
+    action, ids = run.task["action"], run.task["reflection_ids"]
+    entries = raw = selected = head = before = selection = result = findings = None
+
+    def select_records(state):
+        nonlocal entries, raw, selected
+        if action == "record-gaps":
+            return {"route": "record_gaps"}
+        if run.task.get("gap_ids"):
+            raise SpecError("gap_ids are only accepted by record-gaps", "invalid_input")
+        _,_,parsed,_,raw=queue._load_reflections(root,required=True)
+        entries={entry.identifier:entry for entry in parsed.entries}
+        # A reflection is attributed to a Module or one of its scenarios; entities and requirements
+        # locate text inside a Module and are not separate attribution identities.
+        local={run.target.id,*(scenario.id for scenario in run.repository.scenarios(run.target))}
+        selected=ids or [entry.identifier for entry in parsed.entries if entry.feature in local]
+        if any(i not in entries or entries[i].feature not in local for i in selected):
+            raise SpecError("selected reflection does not belong to this target", "permission_denied")
+        if action!="status" and not ids:
+            raise SpecError("mutating triage requires explicit reflection_ids", "invalid_input")
+        return {"route": "status" if action == "status" else
+                "remove_records" if action in {"close", "merge"} else "prepare_investigation"}
+
+    def capture_gaps(state):
+        return {"output": record_gaps(run, queue)}
+
+    def status(state):
         plans=queue._load_plans(root,queue.load_config(root));head=queue._head_or_none(root)
         result=run.response(answer="Selected reflection metadata.")
         result["data"]["reflections"]=[{"id":i,"target_id":run.target.id,"status":entries[i].status,
@@ -44,53 +64,72 @@ def triage(run):
             "plan_status":plans[i]["status"] if i in plans else None,
             "verification":queue._verification_state(plans[i],head) if i in plans else None} for i in selected]
         result["data"]["gap_records"] = gap_records(run)
-        return result
-    if action in {"close","merge"}:
+        return {"output": result, "route": END}
+
+    def remove_records(state):
         (queue.remove_closed if action=="close" else queue.remove_merged)(root,ids)
-        return run.response(answer="Eligible records removed; Git history retains their disposition.")
-    progress(root, phase="reflection_investigation", status="active", invalidate=True)
-    if not run.target.files:
-        return run.response("unsupported","Select a Module whose entities list implementation files before code investigation.")
-    head=queue._captured_head(root);before=_implementation_digest(run.repository,run.target)
-    selection=typed("concorde-reflection-selection",{"head":head,"records":[
-        {"id":i,"path":entries[i].path,"digest":digest(raw[entries[i].path]),"content":raw[entries[i].path].decode()} for i in ids]})
-    result=run.stage("concorde-implement",inputs=(selection,),mode="investigation",readonly=True,defer_gap_resolution=True)
-    if result["outcome"] not in {"completed","sufficient"}:
-        return run.response(result["outcome"],result["answer"],gaps=result["gaps"])
-    if _implementation_digest(run.repository,run.target)!=before:
-        raise SpecError("read-only investigation modified code", "permission_denied")
-    findings=result.get("reflection_findings",[])
-    owned=set(run.repository.implementation_files(run.target))
-    if any(path not in owned for f in findings for path in f["files"]):
-        raise SpecError("reflection resolution crosses component ownership", "permission_denied")
-    if any(read_file(root,entries[i].path)!=raw[entries[i].path] for i in ids):
-        raise SpecError("reflection changed during investigation", "stale_reference")
-    routes={f["route"] for f in findings}
-    if action=="implement" and len(routes)!=1:
-        raise SpecError("one implementation action requires a consistent resolution route", "incompatible_handoff")
-    # The existing record parser/persistence contract remains host-private. None of these legacy
-    # artifact adapters are admitted to the next Spec-only agent context.
-    runtime={"data":{"head":head,"verified_on":date.today().isoformat(),
-        "task":{"data":{"reflection_ids":ids,"action":action,"feature_path":run.target.documents[0],
-                         "route":next(iter(routes),"blocked")}},
-        "artifacts":[artifact(root,i,entries[i].path) for i in ids]}}
-    apply_investigation(root,queue,runtime,typed("concorde-reflection-investigation-result",{"findings":findings}),
-                        entries,concorde_project=(root/"concorde.json").is_file())
-    run.record_gaps("implementation", [])
-    if action=="implement":
-        for f in findings:
-            # Only intended behavior is a task input. Investigation prose, source, evidence and
-            # logs must not contaminate specification/planning cognition.
-            child_host=replace(run.host,routed_target=run.target.id,coordinated=True)
-            child=invoke_capability(run.capability,"concorde-dev-loop",run.configuration,
-                typed("concorde-dev-loop-request",{"target_id":run.target.id,"task":f["resolution"],
-                    "specify":True}),child_host)
-            if child["status"]!="succeeded":
-                if child["output"]:
-                    data=child["output"]["data"]
-                    return run.response(data["outcome"],data["answer"],gaps=data["gaps"],artifacts=data["artifacts"])
-                raise SpecError("reflection implementation failed admission", "child_blocked")
-            queue.update_plan(root,f["reflection_id"],["status=implemented"])
+        return {"output": run.response(answer="Eligible records removed; Git history retains their disposition."), "route": END}
+
+    def prepare_investigation(state):
+        nonlocal head, before, selection
+        progress(root, phase="reflection_investigation", status="active", invalidate=True)
+        if not run.target.files:
+            return {"output": run.response("unsupported","Select a Module whose entities list implementation files before code investigation."), "route": END}
+        head=queue._captured_head(root);before=_implementation_digest(run.repository,run.target)
+        selection=typed("concorde-reflection-selection",{"head":head,"records":[
+            {"id":i,"path":entries[i].path,"digest":digest(raw[entries[i].path]),"content":raw[entries[i].path].decode()} for i in ids]})
+        return {"route": "investigate"}
+
+    def investigate(state):
+        nonlocal result
+        result=run.stage("concorde-implement",inputs=(selection,),mode="investigation",readonly=True,defer_gap_resolution=True)
+        if result["outcome"] not in {"completed","sufficient"}:
+            return {"output": run.response(result["outcome"],result["answer"],gaps=result["gaps"]), "route": END}
+        return {"route": "persist_findings"}
+
+    def persist_findings(state):
+        nonlocal findings
+        if _implementation_digest(run.repository,run.target)!=before:
+            raise SpecError("read-only investigation modified code", "permission_denied")
+        findings=result.get("reflection_findings",[])
+        owned=set(run.repository.implementation_files(run.target))
+        if any(path not in owned for f in findings for path in f["files"]):
+            raise SpecError("reflection resolution crosses component ownership", "permission_denied")
+        if any(read_file(root,entries[i].path)!=raw[entries[i].path] for i in ids):
+            raise SpecError("reflection changed during investigation", "stale_reference")
+        routes={f["route"] for f in findings}
+        if action=="implement" and len(routes)!=1:
+            raise SpecError("one implementation action requires a consistent resolution route", "incompatible_handoff")
+        # The existing record parser/persistence contract remains host-private. None of these legacy
+        # artifact adapters are admitted to the next Spec-only agent context.
+        runtime={"data":{"head":head,"verified_on":date.today().isoformat(),
+            "task":{"data":{"reflection_ids":ids,"action":action,"feature_path":run.target.documents[0],
+                             "route":next(iter(routes),"blocked")}},
+            "artifacts":[artifact(root,i,entries[i].path) for i in ids]}}
+        apply_investigation(root,queue,runtime,typed("concorde-reflection-investigation-result",{"findings":findings}),
+                            entries,concorde_project=(root/"concorde.json").is_file())
+        run.record_gaps("implementation", [])
+        return {"index": 0, "route": ("implement_resolution" if findings else "validate_candidate")
+                if action == "implement" else "finish"}
+
+    def implement_resolution(state):
+        f = findings[state["index"]]
+        # Only intended behavior is a task input. Investigation prose, source, evidence and
+        # logs must not contaminate specification/planning cognition.
+        child_host=replace(run.host,routed_target=run.target.id,coordinated=True)
+        child=invoke_capability(run.capability,"concorde-dev-loop",run.configuration,
+            typed("concorde-dev-loop-request",{"target_id":run.target.id,"task":f["resolution"],
+                "specify":True}),child_host)
+        if child["status"]!="succeeded":
+            if child["output"]:
+                data=child["output"]["data"]
+                return {"output": run.response(data["outcome"],data["answer"],gaps=data["gaps"],artifacts=data["artifacts"]), "route": END}
+            raise SpecError("reflection implementation failed admission", "child_blocked")
+        queue.update_plan(root,f["reflection_id"],["status=implemented"])
+        index = state["index"] + 1
+        return {"index": index, "route": "implement_resolution" if index < len(findings) else "validate_candidate"}
+
+    def validate_candidate(state):
         change = read_change(root, required=True)
         state = target_state(root, run.target.id, run.task.get("focus_id"))
         payload = {"target_id": run.target.id, "task": state["task"],
@@ -100,9 +139,18 @@ def triage(run):
         verified = Invocation("concorde-validate", run.configuration, payload,
                               replace(run.host, coordinated=False)).validate()
         data = verified["data"]
-        return run.response(data["outcome"], "Reflection implementation completed in the candidate worktree. "
-                            + data["answer"], checks=data["checks"], gaps=data["gaps"])
-    return run.response(answer="Reflection investigation persisted"+(" and component implementation completed in the candidate worktree." if action=="implement" else "."))
+        return {"output": run.response(data["outcome"], "Reflection implementation completed in the candidate worktree. "
+                            + data["answer"], checks=data["checks"], gaps=data["gaps"]), "route": END}
+
+    def finish(state):
+        return {"output": run.response(answer="Reflection investigation persisted"+(" and component implementation completed in the candidate worktree." if action=="implement" else ".")), "route": END}
+
+    nodes = {"select_records": select_records, "record_gaps": capture_gaps, "status": status,
+             "remove_records": remove_records, "prepare_investigation": prepare_investigation,
+             "investigate": investigate, "persist_findings": persist_findings,
+             "implement_resolution": implement_resolution, "validate_candidate": validate_candidate,
+             "finish": finish}
+    return nodes
 
 
 def record_gaps(run, queue):

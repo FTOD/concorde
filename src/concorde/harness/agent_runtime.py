@@ -227,76 +227,89 @@ class _Tree:
                 canonical(value) if value is not None else None, error,
                 canonical(details) if details is not None else None)
             self.events.append({"event": "return", **result.wire()})
-            return result
+            return {"result": result}
 
-        stop = stopped()
-        if stop:
-            return finish(stop, error=stop)
-        limits = self.runtime._limits
-        if depth > limits.max_depth or self.calls >= limits.max_calls:
-            return finish("limit_exhausted", error="call_limit")
-        self.calls += 1
-        definition = self.runtime._definitions.get(agent_id)
-        if definition is None or agent_id not in grant.agents:
-            return finish("rejected", error="agent_not_admitted")
-        deadline = min(deadline, monotonic() + definition.timeout_seconds)
-        effective = AgentGrant(grant.targets & definition.targets, grant.agents)
-        try:
-            if not effective.targets:
-                raise ValueError("empty target grant")
-            admitted_input = validate_typed(input, definition.input_type)
-            # The built-in task contract has a target hint, never a permission grant.
-            if (definition.input_type == "concorde-agent-task"
-                    and admitted_input["data"]["target_id"] not in effective.targets):
-                raise ValueError("task target is outside the grant")
-            if not self.runtime._spec_current(definition):
-                stop = stopped()
-                return finish(stop or "rejected", error=stop or "stale_definition")
-            context = validate_typed(self.runtime._resolve_context(definition, admitted_input, effective),
-                                     "concorde-context-snapshot")
-            snapshot = context["data"]
-            if snapshot["context_id"] != digest({key: value for key, value in snapshot.items() if key != "context_id"}):
-                raise ValueError("context identity is invalid")
-            if snapshot["implementation_artifacts"]:
-                raise ValueError("read-only analysis cannot admit implementation artifacts")
-            if snapshot["target_id"] not in effective.targets or snapshot["phase"] != "ask":
-                raise ValueError("context is outside the read-only grant")
-            if (definition.input_type == "concorde-agent-task"
-                    and snapshot["target_id"] != admitted_input["data"]["target_id"]):
-                raise ValueError("context target differs from admitted task")
-        except Exception:
-            stop = stopped()
-            return finish(stop or "rejected", error=stop or "admission_failed")
-        stop = stopped()
-        if stop:
-            return finish(stop, error=stop)
-        input_json, context_json = canonical(admitted_input), canonical(context)
-        binding = {"agent_id": agent_id, "spec": self.runtime._specs[agent_id],
-            "agent_definition": asdict(definition.agent),
-            "decision_reference": definition.decision_reference,
-            "native_binding": definition.binding.digest if definition.binding else None,
-            "input_json": input_json, "context_json": context_json,
-            "targets": sorted(effective.targets), "agents": sorted(effective.agents),
-            "delegates": sorted(definition.delegates),
-            "max_steps": definition.max_steps,
-            "limits": asdict(limits),
-            "input_type": definition.input_type, "result_type": definition.result_type}
-        self.events.append({"event": "admit", "invocation_id": invocation_id,
-            "parent_id": parent_id, "agent_id": agent_id, "depth": depth,
-            "binding_digest": digest(binding), "context_id": snapshot["context_id"],
-            "harness_id": definition.agent.harness.name,
-            "harness_configuration_json": canonical(asdict(definition.agent.harness))})
-        children = []
-        for child_id in sorted(definition.delegates & effective.agents):
-            child = self.runtime._definitions[child_id]
-            if not child.targets & effective.targets:
-                continue
-            children.append({"agent_id": child_id, "input_type": child.input_type,
-                "result_type": child.result_type,
-                "input_schema_json": canonical(json_schema(child.input_type)),
-                "result_schema_json": canonical(json_schema(child.result_type))})
+        from .agent_flow import build_agent_flow
+
+        definition = effective = input_json = context_json = snapshot = children = limits = step = None
         feedback = []
-        for _ in range(definition.max_steps):
+        steps = 0
+
+        def admit(state):
+            nonlocal definition, deadline, effective, input_json, context_json, snapshot, children, limits
+            stop = stopped()
+            if stop:
+                return finish(stop, error=stop)
+            limits = self.runtime._limits
+            if depth > limits.max_depth or self.calls >= limits.max_calls:
+                return finish("limit_exhausted", error="call_limit")
+            self.calls += 1
+            definition = self.runtime._definitions.get(agent_id)
+            if definition is None or agent_id not in grant.agents:
+                return finish("rejected", error="agent_not_admitted")
+            deadline = min(deadline, monotonic() + definition.timeout_seconds)
+            effective = AgentGrant(grant.targets & definition.targets, grant.agents)
+            try:
+                if not effective.targets:
+                    raise ValueError("empty target grant")
+                admitted_input = validate_typed(input, definition.input_type)
+                # The built-in task contract has a target hint, never a permission grant.
+                if (definition.input_type == "concorde-agent-task"
+                        and admitted_input["data"]["target_id"] not in effective.targets):
+                    raise ValueError("task target is outside the grant")
+                if not self.runtime._spec_current(definition):
+                    stop = stopped()
+                    return finish(stop or "rejected", error=stop or "stale_definition")
+                context = validate_typed(self.runtime._resolve_context(definition, admitted_input, effective),
+                                         "concorde-context-snapshot")
+                snapshot = context["data"]
+                if snapshot["context_id"] != digest({key: value for key, value in snapshot.items() if key != "context_id"}):
+                    raise ValueError("context identity is invalid")
+                if snapshot["implementation_artifacts"]:
+                    raise ValueError("read-only analysis cannot admit implementation artifacts")
+                if snapshot["target_id"] not in effective.targets or snapshot["phase"] != "ask":
+                    raise ValueError("context is outside the read-only grant")
+                if (definition.input_type == "concorde-agent-task"
+                        and snapshot["target_id"] != admitted_input["data"]["target_id"]):
+                    raise ValueError("context target differs from admitted task")
+            except Exception:
+                stop = stopped()
+                return finish(stop or "rejected", error=stop or "admission_failed")
+            stop = stopped()
+            if stop:
+                return finish(stop, error=stop)
+            input_json, context_json = canonical(admitted_input), canonical(context)
+            binding = {"agent_id": agent_id, "spec": self.runtime._specs[agent_id],
+                "agent_definition": asdict(definition.agent),
+                "decision_reference": definition.decision_reference,
+                "native_binding": definition.binding.digest if definition.binding else None,
+                "input_json": input_json, "context_json": context_json,
+                "targets": sorted(effective.targets), "agents": sorted(effective.agents),
+                "delegates": sorted(definition.delegates),
+                "max_steps": definition.max_steps,
+                "limits": asdict(limits),
+                "input_type": definition.input_type, "result_type": definition.result_type}
+            self.events.append({"event": "admit", "invocation_id": invocation_id,
+                "parent_id": parent_id, "agent_id": agent_id, "depth": depth,
+                "binding_digest": digest(binding), "context_id": snapshot["context_id"],
+                "harness_id": definition.agent.harness.name,
+                "harness_configuration_json": canonical(asdict(definition.agent.harness))})
+            children = []
+            for child_id in sorted(definition.delegates & effective.agents):
+                child = self.runtime._definitions[child_id]
+                if not child.targets & effective.targets:
+                    continue
+                children.append({"agent_id": child_id, "input_type": child.input_type,
+                    "result_type": child.result_type,
+                    "input_schema_json": canonical(json_schema(child.input_type)),
+                    "result_schema_json": canonical(json_schema(child.result_type))})
+            return {}
+
+        def decide(state):
+            nonlocal step, steps
+            if steps >= definition.max_steps:
+                return finish("limit_exhausted", error="step_limit")
+            steps += 1
             stop = stopped()
             if stop or self.decisions >= limits.max_decisions:
                 return finish(stop or "limit_exhausted", error=stop or "decision_limit")
@@ -347,6 +360,9 @@ class _Tree:
             stop = stopped()
             if stop:
                 return finish(stop, error=stop)
+            return {}
+
+        def validate_step(state):
             try:
                 if not isinstance(step, AgentStep):
                     raise ValueError("not an AgentStep")
@@ -370,8 +386,9 @@ class _Tree:
                 return finish("rejected", error="invalid_step")
             self.events.append({"event": "decision", "invocation_id": invocation_id,
                 "source": step.source, "action": step.action, "child_agent": step.agent_id})
-            if step.action == "complete":
-                return finish(step.outcome, step.value, details=step.details)
+            return {"action": step.action}
+
+        def delegate(state):
             if step.agent_id not in definition.delegates or step.agent_id not in effective.agents:
                 if self.calls >= limits.max_calls:
                     return finish("limit_exhausted", error="call_limit")
@@ -383,7 +400,17 @@ class _Tree:
                 feedback.append(self.call(step.agent_id, step.value, effective, invocation_id, depth + 1, deadline))
             if feedback[-1].outcome in {"cancelled", "limit_exhausted"}:
                 return finish(feedback[-1].outcome, error=feedback[-1].error)
-        return finish("limit_exhausted", error="step_limit")
+            return {}
+
+        def complete(state):
+            return finish(step.outcome, step.value, details=step.details)
+
+        nodes = {"admit": admit, "decide": decide, "validate_step": validate_step,
+                 "delegate": delegate, "complete": complete}
+        # A scheduling bound leaves room for the host's typed step/decision-limit result.
+        max_steps = max(item.max_steps for item in self.runtime._definitions.values())
+        return build_agent_flow(nodes.__getitem__).invoke({},
+            {"recursion_limit": 3 * max_steps + 4})["result"]
 
     @staticmethod
     def interruption(step, snapshot):

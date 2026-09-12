@@ -9,11 +9,11 @@
 
 ## Required orchestration model
 The registered companion documents of the Harness Module define the Agent model (A1–A5) and the
-Agent Graph and Loop model (G1–G4) this host composes. The Harness resolves Agent definitions,
+Agent Flow and Loop model (G1–G4) this host composes. The Harness resolves Agent definitions,
 their `spec.md` sources, Harness configurations and effective constraints into a reproducible
 `AgentBinding` that every structured launch carries, and its executor verifies that binding before
-any process starts. This Module MUST coordinate declared Graph transitions and bounded loops with
-attributed AI feedback and explicit human decisions, and every capability graph is a LangGraph
+any process starts. This Module MUST coordinate declared Flow transitions and bounded loops with
+attributed AI feedback and explicit human decisions, and every capability Flow is a LangGraph
 graph whose nodes are deterministic steps or Agent invocations. The wire `role` and `agent` fields
 remain compatibility identifiers derived from the bound Agent's name.
 
@@ -144,10 +144,10 @@ selected transitions (development.md's "AI and human feedback", G4). Repeated un
 feedback is guarded by code: new records carry the formal `source` value `code-driven` or
 `model-driven`, while retaining their descriptive legacy `trigger` label. A repair selected from
 review findings is model-driven; unchanged-feedback and limit stops are code-driven. Repeated unchanged blocking
-feedback across a repair attempt, or exhausting the declared limit, stops the Graph instead of
+feedback across a repair attempt, or exhausting the declared limit, stops the Flow instead of
 retrying forever: the change `status` becomes `waiting` (a human decision or a Spec/code change is
 needed) or `limit_exhausted` respectively, and the wire `outcome` remains `conflicting`. Elsewhere, a
-Spec gap (`spec_incomplete`) stops the Graph with status `waiting`, a failed deterministic check
+Spec gap (`spec_incomplete`) stops the Flow with status `waiting`, a failed deterministic check
 stops it with status `failed`, and another blocking/unsupported outcome stops it with status
 `blocked`. A human directly changing the Spec or the implementation between invocations resets the
 recorded repair count instead of silently continuing a stale repair attempt. Preserving the change

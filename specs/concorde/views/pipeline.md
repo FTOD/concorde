@@ -11,9 +11,30 @@ The public API is TypeScript and Docusaurus plugin hooks. Profile 12 publication
 project registry, creates derived documentation, validates a built candidate, and promotes only a
 successfully checked candidate. It exposes no agent tool or read proxy. Consumers do not need a
 Python API or a provider Spec to invoke the functions and interpret the values defined here.
-Publication has no standalone graph view or architecture-graph output. Its registry validation and
+Publication has no Module/Scenario graph view or architecture-graph output. Its registry validation and
 Module navigation still use declared relationships; inline authored Mermaid diagrams remain part
 of ordinary document rendering.
+
+## Concorde-only Agent execution publication
+
+### scenario.views.agent-flows — Inspect actual Agent and LangGraph execution
+
+- GIVEN Concorde's source checkout with the development Python environment and its own docsite extension
+- WHEN the site is built and the reader opens the top-level Agent Flows tab at `/agent-flows`
+- THEN the page shows compiled development, discovery/query, topology, planning, coordination, reflection and recursive Agent Flows plus expanded public Studio entries without executing Agents
+- AND the build invokes the same development topology factory as runtime, with new-change, skipped-authoring, resume and no-code variants
+- AND stage responsibilities, Agent calls, key inputs and outputs, stop conditions and bounded code-review repair are explained with valid links to their Spec sections
+- AND execution diagrams come from the same LangGraph factories as runtime, with runtime-bound Flow instances distinguished from public entries
+- AND source byte digests identify the inspected implementation inputs
+- AND light/dark themes, keyboard-focusable scroll regions, node-detail links, width controls and a textual transition list support long graphs and small screens
+- AND graph export or broken internal links fail the production build before promotion
+- AND the packaged consumer template excludes `docsite/concorde-only/`, exposes no Agent Flows tab or route, and requires no Python graph data
+
+This extension is private to the Concorde source checkout, not a Flow catalog protocol or a new
+Spec context input. `docsite/concorde-only/flows.py` inspects compiled factories; the plugin stages
+the result through Docusaurus `createData` and registers its own route. Use the checkout's `.venv`
+or set `CONCORDE_PYTHON` to the development interpreter when building a source copy. The ordinary
+publication registry and consumer build contract remain independent of this extension.
 
 ## Loading, materializing and building
 

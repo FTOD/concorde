@@ -71,13 +71,23 @@ The authored fence is the sole source; publication produces no external record d
 
 ### req.views.no-docsite-graph-view — No docsite graph view
 
-Publication SHALL NOT expose a standalone graph view.
+Publication SHALL NOT expose the former Module, Scenario or entity-relationship graph view.
 
 This removes the docsite graph page and route, Graph navigation entry, graph-specific UI,
 architecture-graph projection and artifact, and resources or dependencies used exclusively for that
 feature. It also applies to the publishing template supplied to consumer projects. Dependencies
 and resources still needed for ordinary reading, navigation or inline Mermaid rendering remain.
 The UA exporter and official viewer remain separate non-docsite facilities.
+
+Concorde's own source-checkout site has an independent Agent Flows page describing actual runtime
+execution. It is excluded from the consumer template and does not derive a graph from the Spec
+registry. See [Agent execution publication](pipeline.md#scenario.views.agent-flows).
+
+### req.views.agent-flows — Concorde-only execution diagrams
+
+Concorde's own docsite SHALL publish an Agent Flows tab whose LangGraph nodes and edges come from
+the current executable factories and whose explanations distinguish execution, wrappers and
+unimplemented design.
 
 ### req.views.production-preview-isolation — Production builds preserve preview output
 

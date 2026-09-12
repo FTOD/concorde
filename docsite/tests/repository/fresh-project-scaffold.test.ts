@@ -70,6 +70,7 @@ describe('a project holding only Profile 12 initialization outputs', () => {
     expect(files).not.toContain('README.md');
     expect(files).not.toContain('docsite/src/pages/graph.tsx');
     expect(files).not.toContain('docsite/src/components/ScopedGraph.tsx');
+    expect(files.some(path => path.startsWith('docsite/concorde-only/'))).toBe(false);
     expect(files.some((path) => path.startsWith('docsite/tests/repository/') || path.startsWith('docsite/scaffold/'))).toBe(false);
     expect(files).not.toContain('.github/workflows/deploy-docsite.yml');
     const identity = JSON.parse(await readFile(resolve(root, 'docsite/site.json'), 'utf8')) as Record<string, unknown>;
@@ -103,6 +104,7 @@ describe('a project holding only Profile 12 initialization outputs', () => {
     expect(homepage).toMatch(/http-equiv="refresh"/i);
     expect(homepage).not.toContain('Specify the architecture.');
     expect(existsSync(resolve(root,'docsite/build/graph.html'))).toBe(false);
+    expect(existsSync(resolve(root,'docsite/build/agent-flows.html'))).toBe(false);
     expect(existsSync(resolve(root,'docsite/build/architecture-graph.json'))).toBe(false);
     expect(existsSync(resolve(root,'docsite/build',manifest.pages[0].route.slice(1)+'.html'))).toBe(true);
     const [legacyAlias]=manifest.pages[0].aliases as string[];
@@ -111,6 +113,7 @@ describe('a project holding only Profile 12 initialization outputs', () => {
     expect(await readFile(resolve(root,'generated/protocol/framework-owned.txt'),'utf8')).toBe('Preserve Framework build assets.');
     const mainPage=await readFile(resolve(root,'docsite/build',manifest.pages[0].route.slice(1)+'.html'),'utf8');
     expect(mainPage.match(/<nav\b[\s\S]*?<\/nav>/)![0]).not.toContain('Spec Protocol');
+    expect(mainPage).not.toContain('Agent Flows');
     expect(mainPage).not.toContain('<iframe');
     expect(mainPage).toContain('id="purpose"');expect(mainPage).toContain('id="requirements"');expect(mainPage).toContain('id="scenarios"');expect(mainPage).toContain('id="ontology"');
     expect(mainPage).toContain('id="entities"');expect(mainPage).toContain('id="relationships"');

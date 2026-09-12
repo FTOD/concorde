@@ -5,7 +5,7 @@
   "main_visible": true
 }
 ```
-# Development Agent Graph and revision loops
+# Development Agent Flow and revision loops
 
 A developer supplies intended behavior and constraints for one top-level candidate change.
 `concorde-dev-loop` coordinates Spec authoring, review, context assessment, planning, tasks,
@@ -38,7 +38,7 @@ An explicit `repair_task_scope:{tasks_digest}` request repairs this phase error 
 incomplete task list. The digest is SHA-256 of canonical JSON bytes (sorted keys, compact
 separators, ASCII escaping), prefixed `sha256:`. It must match the current list and admitted intent;
 unresolved gaps, a completed list or a pending code-review repair reject the request.
-The normal Graph enters tasks after the required Spec review. A fresh task author receives only
+The normal Flow enters tasks after the required Spec review. A fresh task author receives only
 its complete Module Spec, plan, prior tasks, reserved IDs and Host-generated `implementation_boundary` feedback.
 It preserves software acceptance and returns new incomplete tasks with new IDs. The Host saves the
 original list, request digest and implementation revision in task history, invalidates checks and
@@ -94,15 +94,15 @@ stateDiagram-v2
 ## AI and human feedback
 
 Author, assessor, planner, task author, implementation and reviewer invocations MUST resolve their
-own Agent definitions and effective Harnesses. Shared Graph state contains admitted outputs and
+own Agent definitions and effective Harnesses. Shared Flow state contains admitted outputs and
 feedback, not their private transcripts. Review findings identify the input revision and the
 required repair. A code defect selects an implementation repair and another review; a necessary
 Spec gap selects a clarification or authorized Spec-authoring path before implementation resumes.
 
-The Graph MUST record which AI finding or human decision selected a transition. Repeated unchanged
+The Flow MUST record which AI finding or human decision selected a transition. Repeated unchanged
 blocking feedback waits for new information or stops at the declared limit. Human changes to intent
 create a revised task and invalidate dependent plans and evidence. Human acceptance required for
-another transition remains explicit; a reviewer cannot grant it. `ready` ends this Graph, while
+another transition remains explicit; a reviewer cannot grant it. `ready` ends this Flow, while
 user-authorized delivery remains a separate capability.
 
 ## Failure and recovery

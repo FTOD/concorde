@@ -1,4 +1,5 @@
 import {resolve} from 'node:path';
+import {existsSync} from 'node:fs';
 
 import type {Config, PluginModule} from '@docusaurus/types';
 import type {Options as ClassicOptions} from '@docusaurus/preset-classic';
@@ -10,6 +11,9 @@ import {loadSiteIdentity} from './plugins/scoped-content/site-identity';
 const projectRoot = resolve(__dirname, '..');
 const identity = loadSiteIdentity(__dirname);
 const hasProtocolDocs = identity.protocolDocs === true;
+// Source-checkout extension; omitted from the installed site template inventory.
+const ownPluginPath = resolve(__dirname, 'concorde-only/plugin.ts');
+const ownPlugin = existsSync(ownPluginPath) ? require(ownPluginPath).default : null;
 requireScoped(projectRoot);
 const repositoryHost = identity.repository ? new URL(identity.repository).hostname : undefined;
 const config: Config = {
@@ -39,6 +43,7 @@ const config: Config = {
     } satisfies ClassicOptions,
   ]],
   plugins: [
+    ...(ownPlugin ? [ownPlugin as PluginModule] : []),
     [scopedContent as unknown as PluginModule, {projectRoot}],
     ...(hasProtocolDocs ? [
       ['@docusaurus/plugin-content-docs', {
@@ -61,6 +66,7 @@ const config: Config = {
           {type: 'docSidebar', sidebarId: 'protocolSidebar', docsPluginId: 'protocol', label: 'Spec Protocol', position: 'left'},
         ] : []),
         {type: 'docSidebar', sidebarId: 'moduleSpecsSidebar', label: 'Module Specs', position: 'left'},
+        ...(ownPlugin ? [{to: '/agent-flows', label: 'Agent Flows', position: 'left'}] : []),
         ...(identity.repository ? [
           repositoryHost === 'github.com'
             ? {href: identity.repository, position: 'right', className: 'header-github-link', 'aria-label': 'GitHub repository'}

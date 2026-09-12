@@ -16,6 +16,12 @@ same entity-bound roots. The independent Spec Protocol standard is outside the r
 ownership available to a reflection investigation; a result that requires changing that standard
 cannot be applied through this Module-bound investigation.
 
+Reflection coordination executes as a [Flow](../harness/graphs-and-loops.md): record selection,
+investigation, findings persistence, implementation handoffs and final validation have explicit
+LangGraph nodes and transitions. Each selected resolution advances through a bounded iteration;
+a blocked child prevents dependent work. Deterministic status and disposition operations remain
+leaf nodes, and the Flow preserves the existing evidence, ownership and approval requirements.
+
 ## Investigation
 
 ### scenario.reflections.investigate-reproduces — Investigation binds evidence and writes a plan

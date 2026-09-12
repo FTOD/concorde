@@ -19,7 +19,7 @@ uv run --locked --group studio langgraph dev --config generated/langgraph.json -
 
 Open <https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024> and select an assistant.
 `generated/langgraph.json` (build output; run the build before starting Studio) registers all eight
-graphs, one per Skill, derived from `skills/`. The five stage capabilities run through their
+Flows, one per Skill, derived from `skills/`. The five stage capabilities run through their
 composing Skill and remain visible in stage/process events; stage capabilities have no
 executable entry, and Studio does not restore one. API health
 is available at <http://127.0.0.1:2024/ok> and API documentation at <http://127.0.0.1:2024/docs>.
@@ -68,9 +68,14 @@ project's initialized settings. A supplied configuration must match those settin
 has the same six fields and 1 MiB size limit as CLI stdin. Optional `expected_workspace` alongside
 `invocation` asserts exact absolute `project_root` and `package_root` identities; it never selects them.
 
-The visible graph has a `validate_invocation` node followed by the named capability node. Use Studio
-interrupt-before on the capability node to inspect the invocation before executing it. The execution
-node rechecks the envelope and workspace assertion when resumed. Inspect `result`, `policies` and
+The public Flow has a `validate_invocation` node followed by the named capability subflow. Expand
+that subflow to inspect admission, workspace/configuration binding and the capability's real dispatch
+branches. Query/discovery, topology, planning, development and reflection Flows are composed below it;
+`get_graph(xray=True)` exposes the same definitions. Use Studio interrupt-before on the public capability
+node to inspect the invocation before executing it. Replay rechecks the envelope and workspace assertion.
+Internal host Flows deliberately disable checkpoints: host objects live in per-run runtime context,
+while node updates and public checkpoints contain JSON. Internal nodes are inspectable, but internal
+checkpoint resume is not supported; pause or replay at the public capability boundary. Inspect `result`, `policies` and
 `events` in the final state. `result` is the unchanged `concorde-capability-result` schema 3 envelope.
 Input or workspace rejection clears previous output and returns a blocked result without execution.
 Always submit a complete invocation for a new run; LangGraph merges partial input into thread state.
@@ -175,10 +180,10 @@ PROJECT = Path(__file__).resolve().parent
 PACKAGE = PROJECT / ".concorde/framework"
 sys.path.insert(0, str(PACKAGE / "src"))
 from concorde.spec.contracts import SKILL_NAMES
-from concorde.harness.studio import build_studio_graph
+from concorde.harness.studio import build_studio_flow
 
 for capability in SKILL_NAMES:
-    globals()[capability.replace("-", "_")] = build_studio_graph(capability, PROJECT, PACKAGE)
+    globals()[capability.replace("-", "_")] = build_studio_flow(capability, PROJECT, PACKAGE)
 ```
 
 Register those variables in that project's `langgraph.json` (for example,

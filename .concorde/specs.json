@@ -200,6 +200,7 @@
         "src/concorde/spec/changes.py",
         "tests/concorde/development/",
         "tests/concorde/harness/test_change_worktree.py",
+        "tests/concorde/harness/test_flows.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_session_handoff.py",
         "tests/concorde/harness/test_worktree_boundary.py",

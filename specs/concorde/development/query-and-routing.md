@@ -5,7 +5,7 @@
   "main_visible": true
 }
 ```
-# Query and routing Agent Graph
+# Query and routing Agent Flow
 
 `concorde-main` accepts a question or task with optional routing hints. Main starts with the entry
 Module's complete collection, then explicitly expands other Module collections
@@ -18,18 +18,24 @@ source bodies directly and may reason across all selected Modules. Shared source
 once, with unique owners and per-Module inclusion reasons retained. Non-main documents stay complete.
 Registered references expand once; included Modules' references and ordinary links do not expand further. Additional contexts require explicit
 selection and deterministic host resolution. A capability that owns a mutation or lifecycle result
-has one main route and preserves the task and constraints unchanged.
+has one main route and preserves the task and constraints unchanged. For single-target review and
+development requests the coordinator returns only `target_id` and nullable `focus_id`; the host
+copies the original task and ordered constraints into the admitted worker request. Legacy route
+echoes remain accepted only when exactly equal. An explicit mismatch fails with
+`incompatible_handoff` naming each mismatched `routes[index].task` or `.constraints` field, before
+any worker starts. This binding does not relax target discovery, focus validation, context freshness
+or read-only review authority.
 
 A necessary missing promise returns a Spec gap with its target, context identity and blocked
 question. A prohibition, contradictory requirements or execution error remains distinguishable
 from a gap. Query completion returns an answer and limitations without authoring project files.
 The concrete Concorde project routing tables belong to each Module's registered routing document.
 
-The query graph runs coordinator discovery and direct answering without reading workers or a
+The query Flow runs coordinator discovery and direct answering without reading workers or a
 separate synthesis stage. Discovery requests are AI control feedback: admitted target references
 or an explicit target hint can select another complete context; when the sources suffice, the
 coordinator returns completed with its direct answer and no worker routes. A missing fact is
 reported with its owning Module and current context identity rather than causing
 unbounded context expansion. The loop records its configured limits and returns an explicit limit
 outcome if additional discovery cannot be admitted. Human clarification creates a revised task or
-context and starts fresh invocations under the Graph and Loop contract.
+context and starts fresh invocations under the Flow and Loop contract.

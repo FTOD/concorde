@@ -1,0 +1,58 @@
+.page {--flow-accent: var(--ifm-color-primary); max-width: 1240px; margin: auto; padding: 2.5rem 2rem 5rem;}
+:global([data-theme='dark']) .page {--flow-accent: #aaa7ff;}
+.page a {color: var(--flow-accent);}
+.header {max-width: 920px; margin-bottom: 1.5rem;}
+.header h1 {font-size: clamp(2.25rem, 4vw, 3rem); letter-spacing: -.04em; line-height: 1.12;}
+.header > p:not(.eyebrow) {font-size: 1.15rem; color: var(--ifm-color-emphasis-700); max-width: 760px;}
+.eyebrow {font-size: .78rem; font-weight: 700; letter-spacing: .14em; color: var(--flow-accent);}
+.sectionNav {display: flex; flex-wrap: wrap; gap: .6rem 1.4rem; margin-top: 1.5rem;}
+.section {padding-top: 1.5rem; margin-top: 1.5rem; border-top: 1px solid var(--ifm-color-emphasis-200); scroll-margin-top: 5rem;}
+.sectionHeading {max-width: 850px;}
+.badge {font-size: .7rem; letter-spacing: .08em; font-weight: 700; color: var(--flow-accent);}
+.section h2 {margin-top: .5rem; font-size: 2rem; letter-spacing: -.025em;}
+.controls {display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; margin: 1.5rem 0;}
+.controls label {font-weight: 600;}
+.controls select, .diagramTools button {font: inherit; color: var(--ifm-font-color-base); background: var(--ifm-background-surface-color); border: 1px solid var(--ifm-color-emphasis-400); border-radius: 6px; padding: .45rem .75rem; max-width: 100%;}
+.columns {display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 2rem; align-items: start; margin-bottom: 2rem;}
+.columns > * {min-width: 0;}
+.diagramTools {display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: .78rem; margin-bottom: .5rem;}
+.canvas {overflow: auto; max-height: 900px; border: 1px solid var(--ifm-color-emphasis-200); border-radius: 12px; background: var(--ifm-background-surface-color); scrollbar-gutter: stable;}
+.canvas svg {display: block; color: var(--ifm-color-emphasis-600);}
+.fit {width: 100%; min-width: 520px;}
+.readingSize {width: 720px; max-width: none;}
+.edge {color: var(--ifm-color-emphasis-500);}
+.repair {color: var(--flow-accent);}
+.edgeLabel {font: 13px var(--ifm-font-family-base); fill: var(--ifm-color-emphasis-700);}
+.agentNode rect {fill: var(--ifm-color-primary-lightest); fill-opacity: .12; stroke: var(--flow-accent); stroke-width: 1.5;}
+.hostNode rect {fill: var(--ifm-background-surface-color); stroke: var(--ifm-color-emphasis-500); stroke-width: 1.5;}
+.nodeLabel {font: 600 17px var(--ifm-font-family-base); fill: var(--ifm-font-color-base);}
+.nodeId {font: 12px var(--ifm-font-family-monospace); fill: var(--ifm-color-emphasis-700);}
+.canvas a:hover rect, .canvas a:focus rect {stroke-width: 3; fill-opacity: .25;}
+.page :is(a,button,select,summary,[tabindex]):focus-visible {outline: 3px solid var(--flow-accent); outline-offset: 4px;}
+.transitions {margin-top: 1rem; font-size: .86rem; overflow-wrap: anywhere;}
+.transitions ul {margin-top: 1rem;}
+.notes {font-size: .96rem; padding-top: .5rem;}
+.notes h3 {font-size: 1.12rem; margin-top: 1.6rem;}
+.notes h3:first-child {margin-top: 0;}
+.callout {background: var(--ifm-color-emphasis-100); border-left: 3px solid var(--flow-accent); padding: 1rem 1.15rem; border-radius: 0 8px 8px 0;}
+.callout p:last-child {margin-bottom: 0;}
+.stageGrid {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem;}
+.stage {padding: 1.5rem; border: 1px solid var(--ifm-color-emphasis-200); border-radius: 10px; scroll-margin-top: 5rem;}
+.stage h4 {font-size: 1.18rem; margin: .45rem 0 .8rem;}
+.stage p, .stage dl {font-size: .9rem;}
+.stage dt {font-weight: 650; color: var(--ifm-color-emphasis-700);}
+.stage dd {margin: 0 0 .7rem;}
+.sequence {padding-left: 1.6rem; max-width: 900px;}
+.sequence li {padding: .5rem 0 .8rem .6rem;}
+.sequence strong, .sequence span {display: block;}
+.sequence span {margin-top: .3rem; color: var(--ifm-color-emphasis-700);}
+.sources {margin-top: 1rem; padding-left: 1.2rem;}
+.sources li {margin-bottom: 1rem; overflow-wrap: anywhere;}
+.sources code {display: block; font-size: .75rem; white-space: normal;}
+@media (max-width: 800px) {
+  .page {padding: 2rem 1rem 3rem;}
+  .columns, .stageGrid {grid-template-columns: minmax(0, 1fr);}
+  .canvas {max-height: 70vh;}
+  .section h2 {font-size: 1.65rem;}
+  .diagramTools {flex-wrap: wrap;}
+}

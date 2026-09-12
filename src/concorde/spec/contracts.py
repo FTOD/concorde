@@ -262,7 +262,9 @@ def schemas() -> dict:
         "snapshot": typed_schema("concorde-discovery-context")})
     result["concorde-main-stage-result"] = obj({"context_id": DIGEST, "outcome": MAIN_OUTCOMES,
         "answer": {"type": "string"}, "expand_targets": array(STRING, unique=True),
-        "routes": array(ROUTE), "gaps": array(GAP),
+        # Selection-only routes keep single-target intent in host-owned input. Full routes
+        # remain readable for existing coordinators, but explicit echoes are checked exactly.
+        "routes": array(obj(ROUTE["properties"], ("task", "constraints"))), "gaps": array(GAP),
         "topology_design": {"anyOf": [typed_schema("concorde-topology-design"), {"type": "null"}]}})
     result["concorde-topology-author-context"] = obj({"context_id": DIGEST,
         "base_registry_digest": DIGEST, "target": TARGET_DESCRIPTOR, "task": STRING,

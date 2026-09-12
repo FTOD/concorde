@@ -96,7 +96,8 @@ def inputs(run, mode: str) -> tuple[dict, object]:
         "agent_binding_digest": prompt.binding.digest,
         "host_runtime": {path: digest(read_file(run.host.package_root, path)) for path in (
             "src/concorde/development/review.py", "src/concorde/harness/agent_executor.py",
-            "src/concorde/harness/permissions.py", "src/concorde/harness/context.py")},
+            "src/concorde/harness/permissions.py", "src/concorde/harness/context.py",
+            "src/concorde/harness/batch_flow.py")},
         "configuration": run.configuration}
     return {"review_mode": mode, "input_digest": digest(identity), "revision": revision, "changes": changes}, prompt
 
@@ -356,19 +357,24 @@ def review_scope(run, mode: str) -> dict:
             components.setdefault(target_id, {"task": consumer_task(run, target_id)["task"]})
     if not components:
         return review(run, mode)
-    outputs = [review(run, mode)["data"]] if mode == "spec" or run.target.files else []
+    outputs = []
     from .capability_host import invoke_capability
     affected_ids = {target.id for target in run.repository.covering_modules(run.target)}
     allowed = {run.target.id, *run.target.uses, *affected_ids, *spec_consumers(run),
                *(child.id for child in run.repository.children(run.target))}
-    for target_id, record in components.items():
+    def review_module(item):
+        if item is None:
+            if mode == "spec" or run.target.files:
+                outputs.append(review(run, mode)["data"])
+            return None
+        target_id, record = item
         if target_id == run.target.id:
-            continue
+            return None
         target = run.repository.select(target_id)
         if target.id not in allowed:
             raise SpecError("review target is outside declared composition, dependencies and implementation impact", "permission_denied")
         if mode == "code" and not target.files:
-            continue
+            return None
         task = {"target_id": target_id, "task": record["task"], "review_mode": mode,
                 "change_id": run.change_id, "constraints": run.task.get("constraints", [])}
         child_host = replace(run.host, routed_target=target_id, coordinated=True,
@@ -379,6 +385,9 @@ def review_scope(run, mode: str) -> dict:
         result = review(child, mode)
         run.host.evidence.extend(child_host.evidence)
         outputs.append(result["data"])
+    from ..harness.batch_flow import run_batch_flow
+    run_batch_flow([None, *components.items()], review_module,
+                   name="scope_review_flow", item_node="review_module")
     outcomes = {output["outcome"] for output in outputs}
     outcome = next((value for value in ("failed", "spec_incomplete", "conflicting", "unsupported", "described")
                     if value in outcomes), "completed")

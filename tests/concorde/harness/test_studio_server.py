@@ -122,6 +122,23 @@ class StudioServerTests(unittest.TestCase):
                 _, state = self.run_graph(invocation(capability, data={"invalid_field": True}))
                 self.assertEqual("blocked", state["result"]["status"], state)
 
+    @verifies("scenario.harness.flow-inspection")
+    def test_flow_topology_expands_over_the_real_viewer_api(self):
+        assistants = self.request("/assistants/search", {"limit": 100})
+        for assistant in assistants:
+            capability = assistant["graph_id"]
+            with self.subTest(capability=capability):
+                drawing = self.request(f"/assistants/{assistant['assistant_id']}/graph?xray=true")
+                nodes = {node["id"] for node in drawing["nodes"]}
+                self.assertIn(capability + ":admit_request", nodes)
+                self.assertIn(capability + ":execute:select_capability", nodes)
+                if capability == "concorde-main":
+                    self.assertTrue(any(node.endswith(":discover:expand_context") for node in nodes))
+                    self.assertTrue(any(node.endswith(":apply_atomically") for node in nodes))
+                if capability == "concorde-dev-loop":
+                    self.assertTrue(any(edge["source"].endswith(":review_code")
+                                        and edge["target"].endswith(":tasks") for edge in drawing["edges"]))
+
     def test_direct_execution_and_cli_skill_launcher_json_parity(self):
         value = invocation()
         _, direct = self.run_graph(value)

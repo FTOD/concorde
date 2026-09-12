@@ -293,6 +293,9 @@ class ModelProcessDouble:
                 else:
                     data.update(outcome='routed',routes=[{'target_id':'service.transfer','focus_id':None,
                         'task':snapshot['task'],'constraints':snapshot['constraints']}])
+            if snapshot['capability'] != 'concorde-main':
+                data['routes'] = [{k: v for k, v in route.items() if k in ('target_id', 'focus_id')}
+                                  for route in data['routes']]
             if self.callback:self.callback(stage,snapshot,data,Path(cwd))
             payload={key:item['const'] for key,item in properties.items() if 'const' in item}
             payload.update(status='success',output='Explicit main-process double.',limitations='none',

@@ -82,7 +82,7 @@ resources and the effective resources available to an invocation are distinct. A
 MUST NOT silently add Tools, context, credentials or environment access.
 
 The Harness MUST connect decision, action, observation and feedback through the selected control
-loop, which is a LangGraph graph as required by [Agent Graphs, Agent Loops and feedback](graphs-and-loops.md).
+loop, which is a LangGraph Flow as required by [Agent Flows, Agent Loops and feedback](graphs-and-loops.md).
 It MUST distinguish model reasoning, Tool execution and human decisions in its execution evidence.
 A model adapter, virtual environment or bag of Tools alone is not the complete Harness.
 
@@ -90,7 +90,7 @@ A model adapter, virtual environment or bag of Tools alone is not the complete H
 
 A Capability MUST declare its identity, purpose, inputs, results, effects, constraints and relevant
 failure or retry behavior. Its meaning is the functionality it provides, not the Python file that
-implements it. A deterministic operation, a composed operation or an Agent Graph may provide a
+implements it. A deterministic operation, a composed operation or an Agent Flow may provide a
 Capability when its complete contract is explicit.
 
 An Agent's Harness MUST reference its available Capabilities explicitly; those references and the

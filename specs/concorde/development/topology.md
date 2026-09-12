@@ -5,14 +5,14 @@
   "main_visible": true
 }
 ```
-# Topology evolution Agent Graph
+# Topology evolution Agent Flow
 
-Use this Graph when registered targets, document ownership and references, shared truth or routing structure
+Use this Flow when registered targets, document ownership and references, shared truth or routing structure
 must change together. The developer supplies intended behavior and constraints. Main designs a
 candidate registry; fresh target-local authors supply the affected Specs after design acceptance.
 A second acceptance binds the exact prepared transaction before application.
 
-Human acceptance is a Graph control input tied to the exact design or prepared application. A
+Human acceptance is a Flow control input tied to the exact design or prepared application. A
 rejection may select another design or authoring loop, but cannot authorize the rejected effects.
 The loop waits for a required decision and re-admits revised intent and current source identity.
 Coordinator and target-author invocations retain separate Agent definitions and Harness bindings.

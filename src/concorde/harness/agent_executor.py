@@ -280,6 +280,14 @@ def _completion_schema(specification: LaunchSpecification) -> dict[str, Any]:
                                 fields[key] = {**fields[key], "maxItems": 0}
                     if mode.outcomes:
                         fields["outcome"] = {"type": "string", "enum": list(mode.outcomes)}
+            if domain_type == "concorde-main-stage-result":
+                snapshot = json.loads(specification.runtime_input_json)["data"]["snapshot"]["data"]
+                if snapshot["capability"] != "concorde-main":
+                    # Native Codex requires all declared properties, so optional echoes in
+                    # the compatibility wire shape must not become model-authored inputs.
+                    from ..spec.contract_shapes import NULLABLE_ID, STRING, obj
+                    fields = definitions[domain_type]["properties"]
+                    fields["routes"]["items"] = obj({"target_id": STRING, "focus_id": NULLABLE_ID})
             if domain_type == "concorde-review-stage-result":
                 admitted = json.loads(specification.runtime_input_json)["data"]
                 snapshot = admitted["snapshot"]["data"]

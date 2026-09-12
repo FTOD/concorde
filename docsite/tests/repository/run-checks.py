@@ -35,7 +35,8 @@ def main() -> int:
             destination = project / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, destination)
-        environment = {**os.environ, "PYTHONPATH": str(project / "src"), "PYTHONDONTWRITEBYTECODE": "1"}
+        environment = {**os.environ, "PYTHONPATH": str(project / "src"), "PYTHONDONTWRITEBYTECODE": "1",
+                       "CONCORDE_PYTHON": sys.executable}
         commands = [
             (["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], project / "docsite"),
             ([sys.executable, "scripts/concorde.py", "build"], project),

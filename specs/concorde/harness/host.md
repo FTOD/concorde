@@ -28,11 +28,11 @@ launching anything or exposing context bodies.
 
 ## Control-flow substrate
 
-Every capability graph, including the global discovery loop, the development loop, topology
+Every capability Flow, including the global discovery loop, the development loop, topology
 evolution, reflection triage and the deterministic lifecycle capabilities, is a LangGraph
 `StateGraph`. Its nodes are deterministic steps, which make no model call, or Agent invocations,
-which do. The recursive delegation tree below is composed from the same graphs. These graphs are
-the Studio surface; no capability runs its control flow outside them. Graph structure alone proves
+which do. The recursive delegation tree below is composed from the same Flows. These Flows are
+the Studio surface; no capability runs its control flow outside them. Flow structure alone proves
 nothing about semantics: transitions, limits and evidence still follow G1–G4.
 
 ## Recursive Agent invocation
@@ -96,8 +96,12 @@ actual task closure; installation of an Agent definition alone is not admission.
 ## Studio execution view
 
 The Studio adapter starts or observes the same CapabilityHost used by CLI and Skill invocations.
-Its generated graph configuration exposes one graph per Skill; internal stages appear in execution
-events without gaining direct public entries. Studio receives an invocation wrapper containing the
+Its generated LangGraph configuration exposes one Flow per Skill. Studio expands the same
+admission, dispatch and composed Flow instances used by local calls, including query/discovery,
+topology, planning, development and reflection branches. Internal stages remain nodes rather than
+direct public capability entries. Separately bound recursive Agent and batch/coordination Flows
+are also inspectable from their executable factories; their runtime instances depend on host admission.
+Studio receives an invocation wrapper containing the
 existing schema-3 invocation and an optional expected_workspace assertion. Project and package
 roots remain host-bound; the assertion does not select another workspace.
 
