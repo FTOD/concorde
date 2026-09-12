@@ -77,6 +77,12 @@ class ProtocolFiveTests(unittest.TestCase):
         for check, snapshot in ((recheck_context, snap), (recheck_discovery_context, discovery)):
             with self.assertRaisesRegex(SpecError, 'changed'):
                 check(new, snapshot)
+        self.registry['targets'][0]['references'] = [{'kind': 'document', 'id': 'document.missing'}]
+        self.save()
+        for check, snapshot in ((recheck_context, snap), (recheck_discovery_context, discovery)):
+            with self.assertRaises(SpecError) as failure:
+                check(old, snapshot)
+            self.assertEqual('stale_context', failure.exception.code)
 
     def test_source_bytes_are_exact_and_discovery_injects_each_body_once(self):
         path = self.root / 'specs/transfer/promises.md'
@@ -139,6 +145,39 @@ class ProtocolFiveTests(unittest.TestCase):
             typed('concorde-specify-request', {'target_id': target.id, 'task': 'Clarify'}), host_context=host)
         self.assertEqual('blocked', result['status'])
         self.assertEqual(before, (self.root / 'specs/ledger/module.md').read_bytes())
+
+    def _author_referenced_document(self, block_consumer):
+        self.reference('module.ledger', 'document', 'document.transfer.promises')
+        path = self.root / 'specs/transfer/promises.md'
+        before = path.read_bytes()
+        proposed = before.decode() + '\nClarified canonical promise.\n'
+        def callback(stage, snapshot, result, cwd):
+            if stage == 'specify':
+                result['documents'] = [{'path': 'specs/transfer/promises.md', 'content': proposed}]
+            if stage == 'spec-review':
+                self.assertEqual(before, path.read_bytes())
+                self.assertIn('Clarified canonical promise.', json.dumps(snapshot))
+                if block_consumer and snapshot['target_id'] == 'module.ledger':
+                    result.update(status='findings', gaps=[{'question': 'Which limit applies?',
+                        'needed_contract': 'service.transfer canonical limit', 'blocked_step': 'Rely on the proposed limit'}])
+        double = ModelProcessDouble(callback)
+        host = CapabilityHost(self.root, PACKAGE, executor=double.executor, allow_primary_worktree=True)
+        result = run_capability('concorde-specify', CONFIGURATION, typed('concorde-specify-request', {
+            'target_id': 'service.transfer', 'task': 'Clarify the canonical promise'}), host_context=host)
+        return result, double, before, proposed, path
+
+    def test_owner_proposal_is_applied_only_after_each_context_accepts(self):
+        result, double, _, proposed, path = self._author_referenced_document(False)
+        self.assertEqual('succeeded', result['status'], result)
+        self.assertEqual(proposed, path.read_text())
+        self.assertEqual({'service.transfer', 'module.ledger'},
+            {c['snapshot']['target_id'] for c in double.calls if c['stage'] == 'spec-review'})
+
+    def test_consumer_rejection_preserves_all_original_bytes(self):
+        result, _, before, _, path = self._author_referenced_document(True)
+        self.assertEqual('spec_incomplete', result['output']['data']['outcome'], result)
+        self.assertEqual(before, path.read_bytes())
+        self.assertEqual('module.ledger', result['output']['data']['gaps'][0]['target_id'])
 
     def test_canonical_contract_and_complementary_bindings_are_independent(self):
         self.reference('service.transfer', 'document', 'document.ledger.api')

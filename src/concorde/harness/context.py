@@ -265,6 +265,22 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
     return TopologyAuthorContext(canonical({**manifest, "context_id": digest(manifest)}))
 
 
+def _stale_on_resolution_error(check):
+    """A formerly admitted selection becoming invalid is stale evidence, never a new grant."""
+    from functools import wraps
+
+    @wraps(check)
+    def checked(*args, **kwargs):
+        try:
+            return check(*args, **kwargs)
+        except (ValueError, OSError) as error:
+            if isinstance(error, SpecError) and error.code == "stale_context":
+                raise
+            raise SpecError(f"admitted context selection changed: {error}", "stale_context") from error
+    return checked
+
+
+@_stale_on_resolution_error
 def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, check_implementation: bool = True) -> None:
     value = snapshot.value
     declared = value.pop("context_id")
@@ -288,6 +304,7 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, ch
             raise SpecError("implementation input membership or bytes changed", "stale_context")
 
 
+@_stale_on_resolution_error
 def recheck_discovery_context(repository: SpecRepository, snapshot: DiscoveryContext) -> None:
     """Re-resolve every admitted Module and reject any changed discovery input."""
 
@@ -311,6 +328,7 @@ def recheck_discovery_context(repository: SpecRepository, snapshot: DiscoveryCon
         raise SpecError("Module discovery context changed", "stale_context")
 
 
+@_stale_on_resolution_error
 def recheck_topology_author_context(repository: SpecRepository, snapshot: TopologyAuthorContext, *,
                                    candidate_repository: SpecRepository | None = None) -> None:
     value = snapshot.value

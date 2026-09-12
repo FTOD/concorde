@@ -818,6 +818,31 @@ def _main_topology_response(action: str, repository: SpecRepository, proposal: d
         "workspace": workspace_context(repository.root)})
 
 
+def _review_candidate_contexts(repository, candidate, configuration, host, intent, constraints, completed):
+    """Review changed complete contexts before any proposed source bytes are applied."""
+    from .review import review
+    for target_id in repository.affected_contexts(candidate):
+        if target_id not in candidate.targets:
+            continue
+        task = {"target_id": target_id, "review_mode": "spec",
+                "task": "Check compatibility of this Module's complete candidate context. " + intent,
+                "constraints": constraints}
+        reviewer = Invocation("concorde-review", configuration, task,
+            replace(host, coordinated=True, track_gaps=False), candidate_repository=candidate)
+        result = review(reviewer, "spec")["data"]
+        if result["gaps"] or result["outcome"] == "completed":
+            from ..harness.change_worktree import record_task_gaps
+            evidence = result["reviews"][0]["data"] if result["reviews"] else None
+            record_task_gaps(repository.root, target_id, task["task"], "spec-review", result["gaps"],
+                _target_revision(candidate, candidate.select(target_id)),
+                review_input_digest=evidence["input_digest"] if evidence else None,
+                spec_resolution=candidate.spec_context(target_id).value)
+        if result["outcome"] != "completed":
+            return result
+        completed.append("concorde-review")
+    return None
+
+
 def _prepare_topology(configuration: dict, proposal: dict, host: CapabilityHost) -> dict:
     if host.mode == "execute":
         progress(host.project_root, phase="topology_authoring", status="active", invalidate=True)
@@ -890,22 +915,11 @@ def _prepare_topology(configuration: dict, proposal: dict, host: CapabilityHost)
             finding.message for finding in report.findings), "invalid_proposal")
     candidate_repository = SpecRepository(repository.root, host.package_root,
         registry_bytes=candidate_bytes, document_overrides=overrides)
-    from .review import review
-    for target_id in repository.affected_contexts(candidate_repository):
-        if target_id not in candidate_repository.targets:
-            continue
-        task = {"target_id": target_id, "task": "Check compatibility of this Module's complete candidate context. " + proposal["data"]["task"],
-                "constraints": proposal["data"]["constraints"]}
-        # New Modules are not yet selectable on disk. Bind this fresh read-only invocation to
-        # the admitted in-memory candidate, retaining ordinary reviewer permission limits.
-        reviewer = Invocation("concorde-review", configuration, {**task, "review_mode": "spec"},
-            replace(host, coordinated=True, track_gaps=False), candidate_repository=candidate_repository)
-        result = review(reviewer, "spec")
-        if result["data"]["outcome"] != "completed":
-            return _main_topology_response("accept-topology", repository, proposal,
-                outcome=result["data"]["outcome"], answer=result["data"]["answer"],
-                gaps=result["data"]["gaps"], completed=completed)
-        completed.append("concorde-review")
+    failure = _review_candidate_contexts(repository, candidate_repository, configuration, host,
+        proposal["data"]["task"], proposal["data"]["constraints"], completed)
+    if failure is not None:
+        return _main_topology_response("accept-topology", repository, proposal,
+            outcome=failure["outcome"], answer=failure["answer"], gaps=failure["gaps"], completed=completed)
     _validate_topology_proposal(host, proposal)
     changes = [file_change(repository.root, repository.registry_path, candidate_bytes.decode())]
     changes.extend(file_change(repository.root, path, content) for path, content in authored.items())
@@ -1280,6 +1294,16 @@ class Invocation:
                     raise SpecError("authored Module sections, definitions or architecture are invalid: "
                         + "; ".join(f.message for f in source_findings), "invalid_spec")
             if changes:
+                candidate = SpecRepository(self.repository.root, self.host.package_root,
+                    document_overrides={item["path"]: item["content"].encode() for item in changes})
+                if set(self.repository.affected_contexts(candidate)) - {self.target.id}:
+                    failure = _review_candidate_contexts(self.repository, candidate, self.configuration,
+                        self.host, self.task["task"], self.task.get("constraints", []), self.completed)
+                    if failure is not None:
+                        return self.response(failure["outcome"], failure["answer"], gaps=failure["gaps"],
+                                             artifacts=failure["artifacts"])
+                if read_file(self.repository.root, self.repository.registry_path) != self.repository.registry_bytes:
+                    raise SpecError("registry changed during canonical document review", "stale_context")
                 apply_files(self.repository.root, changes, set(self.target.documents), verify=verify)
                 self.repository = SpecRepository(self.host.project_root, self.host.package_root)
         self.record_gaps("specify", [])
