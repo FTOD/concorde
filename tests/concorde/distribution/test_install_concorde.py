@@ -96,7 +96,7 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertIn(".agents/skills/concorde-dev-loop/SKILL.md", outputs)
         self.assertIn(".concorde/framework/scripts/requirements.lock", outputs)
         self.assertIn(".concorde/framework/scripts/run-capability.py", outputs)
-        self.assertIn(".concorde/framework/scripts/run-viewer.py", outputs)
+        self.assertIn(".concorde/framework/scripts/run-ua-graph-viewer.py", outputs)
         self.assertIn(".concorde/framework/viewer/package-lock.json", outputs)
         self.assertFalse(any(path.startswith((
             ".concorde/framework/operations",
@@ -178,7 +178,7 @@ class NativeInstallerTests(unittest.TestCase):
                               "templates", "viewer", "scripts"):
                 (root / directory).mkdir()
             for name in ("concorde.py", "concorde.ps1", "concorde.sh", "reflections_queue.py",
-                         "requirements.lock", "run-capability.py", "run-viewer.py"):
+                         "requirements.lock", "run-capability.py", "run-ua-graph-viewer.py"):
                 (root / "scripts" / name).write_text("# script\n")
             (root / "viewer/package.json").write_text("{}\n")
             executable = root / "viewer/node_modules/understand-anything-viewer/bin/viewer.mjs"

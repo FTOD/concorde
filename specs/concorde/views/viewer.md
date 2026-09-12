@@ -8,11 +8,11 @@
 # Understand Anything viewer service
 
 This deterministic service opens an existing raw Understand Anything knowledge graph with the
-installer-owned official viewer. Its entry is `scripts/run-viewer.py` in the Framework package. It
+installer-owned official viewer. Its entry is `scripts/run-ua-graph-viewer.py` in the Framework package. It
 is a developer tool, not an agent Capability or a new Skill, and it launches no model cognition.
 
 ```bash
-python3 .concorde/framework/scripts/run-viewer.py --project-root . --no-open
+python3 .concorde/framework/scripts/run-ua-graph-viewer.py --project-root . --no-open
 ```
 
 | Argument | Contract |
@@ -26,7 +26,7 @@ python3 .concorde/framework/scripts/run-viewer.py --project-root . --no-open
 ### scenario.views.viewer-launch — Launching opens the first existing raw graph with the official viewer
 
 - GIVEN an installed Framework manifest, a verified runtime marker and at least one existing raw graph in the manifest's ordered graph_paths
-- WHEN `run-viewer.py --project-root PATH` runs
+- WHEN `run-ua-graph-viewer.py --project-root PATH` runs
 - THEN it selects the first existing graph, validates its shape and starts the official viewer with the requested port and browser behavior
 - AND it returns the child process's exit code
 

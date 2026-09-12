@@ -70,7 +70,7 @@ class ManifestContractTests(unittest.TestCase):
             "langgraph==1.2.11\n",
         )
         self.assertTrue((REPOSITORY_ROOT / "scripts/run-capability.py").is_file())
-        self.assertTrue((REPOSITORY_ROOT / "scripts/run-viewer.py").is_file())
+        self.assertTrue((REPOSITORY_ROOT / "scripts/run-ua-graph-viewer.py").is_file())
         lock = json.loads((REPOSITORY_ROOT / "viewer/package-lock.json").read_text())
         viewer = lock["packages"]["node_modules/understand-anything-viewer"]
         self.assertEqual(viewer["version"], "2.9.0")

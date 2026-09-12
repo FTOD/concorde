@@ -164,7 +164,7 @@ that need persistent source or dependency changes must prepare them in the imple
 Select `module.distribution` for manifest inventory, canonical Skill/role rendering, the build's
 agent surface ownership, and managed Python or viewer provisioning. Select `module.spec` when the
 requested behavior is project initialization or Protocol binding rather than installation
-ownership. Installation distributes `scripts/run-viewer.py` and provisions its pinned official
+ownership. Installation distributes `scripts/run-ua-graph-viewer.py` and provisions its pinned official
 viewer runtime; the launch interface and graph admission behavior are owned by `module.views` and
 documented in [Understand Anything viewer](../views/viewer.md). Native package acquisition and
 recovery remain on `module.distribution`; starting the viewer is a separate developer action.

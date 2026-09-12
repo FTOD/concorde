@@ -15,7 +15,7 @@ from concorde.spec.verification import verifies
 
 
 PACKAGE = Path(__file__).resolve().parents[3]
-SPEC = importlib.util.spec_from_file_location("concorde_viewer_launcher", PACKAGE / "scripts/run-viewer.py")
+SPEC = importlib.util.spec_from_file_location("concorde_viewer_launcher", PACKAGE / "scripts/run-ua-graph-viewer.py")
 viewer = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(viewer)
 

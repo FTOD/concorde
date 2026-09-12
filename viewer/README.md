@@ -61,7 +61,7 @@ On later runs, step 3 is enough to reopen the saved graph. Repeat step 2 when yo
 the Spec-derived structure. Remove `--no-open` to allow the Viewer to open your browser, or add
 `--port 5173` to request a particular port.
 
-The source checkout uses `viewer/node_modules` directly. `scripts/run-viewer.py` expects an
+The source checkout uses `viewer/node_modules` directly. `scripts/run-ua-graph-viewer.py` expects an
 installer-managed runtime and is intended for the installed-project route below.
 
 ## Run in a project with Concorde installed
@@ -74,7 +74,7 @@ Node.js 18+ must also be available on your PATH.
 root:**
 
 ```bash
-python3 .concorde/framework/scripts/run-viewer.py --project-root . --no-open
+python3 .concorde/framework/scripts/run-ua-graph-viewer.py --project-root . --no-open
 ```
 
 `--project-root .` selects the current project directory. `--no-open` suppresses automatic browser

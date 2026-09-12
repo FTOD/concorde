@@ -212,7 +212,7 @@
               "Query and maintain the reflection queue."
             ],
             [
-              "python3 scripts/run-viewer.py",
+              "python3 scripts/run-ua-graph-viewer.py",
               "Launch the code graph viewer."
             ],
             [

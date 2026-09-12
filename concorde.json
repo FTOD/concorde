@@ -29,7 +29,7 @@
     "npm_lock": "viewer/package-lock.json",
     "install_relative": "share/concorde/understand-anything-viewer",
     "entrypoint": "node_modules/understand-anything-viewer/bin/viewer.mjs",
-    "launcher": "scripts/run-viewer.py",
+    "launcher": "scripts/run-ua-graph-viewer.py",
     "graph_paths": [
       ".understand-anything/knowledge-graph.json",
       ".ua/knowledge-graph.json"

@@ -61,7 +61,7 @@ VIEWER = {
     "npm_lock": "viewer/package-lock.json",
     "install_relative": "share/concorde/understand-anything-viewer",
     "entrypoint": "node_modules/understand-anything-viewer/bin/viewer.mjs",
-    "launcher": "scripts/run-viewer.py",
+    "launcher": "scripts/run-ua-graph-viewer.py",
     "graph_paths": [
         ".understand-anything/knowledge-graph.json",
         ".ua/knowledge-graph.json",
@@ -224,7 +224,7 @@ def _package_files(package: Package) -> dict[str, bytes]:
         "reflections_queue.py",
         "requirements.lock",
         "run-capability.py",
-        "run-viewer.py",
+        "run-ua-graph-viewer.py",
     )
     for name in scripts:
         source = package.root / "scripts" / name

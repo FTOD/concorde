@@ -164,7 +164,7 @@ def _port(value: str) -> int:
 
 
 def create_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="run-viewer")
+    parser = argparse.ArgumentParser(prog="run-ua-graph-viewer")
     parser.add_argument("--project-root", default=".")
     parser.add_argument("--port", type=_port)
     parser.add_argument("--no-open", action="store_true")

@@ -215,7 +215,7 @@ project's root:
 
 ```bash
 python3 .concorde/framework/scripts/concorde.py ua-graph --allow-primary-worktree
-python3 .concorde/framework/scripts/run-viewer.py --project-root . --no-open
+python3 .concorde/framework/scripts/run-ua-graph-viewer.py --project-root . --no-open
 ```
 
 See the [graph exporter](specs/concorde/views/ua-graph.md) and
@@ -392,7 +392,7 @@ scripts under `.concorde/framework/`; Studio and development setup are documente
 | [LangGraph Studio](scripts/development/STUDIO.md) | Start, observe and debug the same eight public workflows through the shared CapabilityHost. |
 | `python3 scripts/install-concorde.py` | Preview or apply installation into a project. |
 | `python3 scripts/reflections_queue.py` | Query and maintain the reflection queue. |
-| `python3 scripts/run-viewer.py` | Launch the code graph viewer. |
+| `python3 scripts/run-ua-graph-viewer.py` | Launch the code graph viewer. |
 | `npm --prefix docsite run <script>` | `start`, `build`, `validate`, `typecheck`, `test`, `check`. |
 | `python3 scripts/development/run-tests.py` | Run the project's test suite. |
 | `python3 scripts/worktree-guard.py` | Explain or check the source-checkout worktree policy. |

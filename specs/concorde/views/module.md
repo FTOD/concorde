@@ -171,7 +171,7 @@ precedence over a containing directory entry.
     "title": "Viewer launcher",
     "kind": "program",
     "responsibility": "Realizes the deterministic admission and process-launch boundary that selects the first existing raw graph, verifies the installed runtime and launches the official viewer without generating the graph or installing dependencies.",
-    "files": ["scripts/run-viewer.py", "tests/concorde/views/test_viewer_launcher.py"]
+    "files": ["scripts/run-ua-graph-viewer.py", "tests/concorde/views/test_viewer_launcher.py"]
   },
   {
     "id": "entity.views.ua-graph-exporter",
@@ -217,7 +217,7 @@ precedence over a containing directory entry.
     "id": "entity.views.viewer-launch-command",
     "title": "Viewer launch command",
     "kind": "interface",
-    "responsibility": "The `python3 .../scripts/run-viewer.py --project-root PATH [--port N] [--no-open]` command that admits an existing raw graph and a verified runtime and launches the official viewer, returning its process exit code."
+    "responsibility": "The `python3 .../scripts/run-ua-graph-viewer.py --project-root PATH [--port N] [--no-open]` command that admits an existing raw graph and a verified runtime and launches the official viewer, returning its process exit code."
   },
   {
     "id": "entity.views.ua-graph-command",

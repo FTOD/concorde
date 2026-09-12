@@ -31,7 +31,7 @@ class DistributionTests(unittest.TestCase):
         self.assertEqual('success',report.status,[f.message for f in report.findings])
         self.assertEqual(7,len(repo.targets));self.assertTrue(all(t.kind=='module' for t in repo.targets.values()))
         self.assertEqual('module.concorde',repo.select('module.views').parent)
-        self.assertIn('scripts/run-viewer.py',repo.implementation_paths(repo.select('module.views')))
+        self.assertIn('scripts/run-ua-graph-viewer.py',repo.implementation_paths(repo.select('module.views')))
         for target in repo.targets.values():
             self.assertEqual(list(target.files),sorted(repo.entity_files(target)))
         shared=[path for path,users in repo.file_users.items() if len(users)>1]

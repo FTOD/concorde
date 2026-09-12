@@ -345,7 +345,7 @@
       ],
       "files": [
         "docsite/",
-        "scripts/run-viewer.py",
+        "scripts/run-ua-graph-viewer.py",
         "src/concorde/spec/changes.py",
         "src/concorde/views/",
         "src/concorde/views/ua_graph.py",
@@ -521,7 +521,7 @@
       ],
       "timeout_seconds": 60,
       "inputs": [
-        "scripts/run-viewer.py",
+        "scripts/run-ua-graph-viewer.py",
         "tests/concorde/views/test_viewer_launcher.py",
         "concorde.json"
       ]
