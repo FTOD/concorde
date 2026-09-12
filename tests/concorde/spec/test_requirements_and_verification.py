@@ -22,7 +22,7 @@ DIAGRAM = ('flowchart TB\n    accTitle: Shop\n    accDescr: The tests exercise t
 
 
 def reading_entry(requirements, scenarios, extra=""):
-    declaration = {"id": "document.shop", "targets": ["module.shop"], "main_visible": True}
+    declaration = {"id": "document.shop", "owner": "module.shop", "main_visible": True}
     return ("```concorde-document\n" + json.dumps(declaration) + "\n```\n\n# Shop\n\n## Purpose\n\n"
             "Shop sells things.\n\n## Requirements\n\n" + requirements + "\n\n## Scenarios\n\n" + scenarios
             + "\n\n## Ontology\n\n### Entities\n\n```concorde-entities\n" + json.dumps(ENTITIES)
@@ -43,19 +43,19 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         configuration = {"type_id": "concorde-capability-configuration", "schema_version": 1,
                          "data": {"integration": "claude", "enforcement": "native"}}
-        self.write(".concorde/config.json", json.dumps({"profile_version": 11, "registry": ".concorde/specs.json",
+        self.write(".concorde/config.json", json.dumps({"profile_version": 12, "registry": ".concorde/specs.json",
             "protocol": protocol_binding(PACKAGE), "capability_configuration": configuration}))
-        self.write(".concorde/specs.json", json.dumps({"schema_version": 3, "project_id": "project.shop",
+        self.write(".concorde/specs.json", json.dumps({"schema_version": 4, "project_id": "project.shop",
             "entry_target": "module.shop", "checks": [], "targets": [
                 {"id": "module.shop", "kind": "module", "title": "Shop", "documents": ["specs/shop/module.md", "specs/shop/notes.md"],
-                 "parent": None, "uses": [], "files": ["src/shop/", "tests/shop/"], "checks": []}]}))
+                 "parent": None, "uses": [], "files": ["src/shop/", "tests/shop/"], "checks": [], "references": []}]}))
         self.write("src/shop/cart.py", "def total(lines):\n    return sum(lines)\n")
         self.write("tests/shop/test_cart.py",
                    "from concorde.spec.verification import verifies\n\n"
                    "class CartTests:\n    @verifies('scenario.shop.submit')\n    def test_submit(self):\n        pass\n")
         self.write("specs/shop/module.md", reading_entry(REQUIREMENT, SCENARIO))
         self.write("specs/shop/notes.md", "```concorde-document\n" + json.dumps(
-            {"id": "document.shop.notes", "targets": ["module.shop"], "main_visible": False})
+            {"id": "document.shop.notes", "owner": "module.shop", "main_visible": False})
             + "\n```\n\n# Notes\n\nSee [checkout](module.md#scenario.shop.submit) and [the cart](module.md#entity.shop.cart).\n")
 
     def write(self, path, content):
@@ -131,7 +131,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
     @verifies("scenario.spec.link-anchors")
     def test_links_with_id_fragments_must_reach_the_defining_document(self):
         self.write("specs/shop/notes.md", "```concorde-document\n" + json.dumps(
-            {"id": "document.shop.notes", "targets": ["module.shop"], "main_visible": False})
+            {"id": "document.shop.notes", "owner": "module.shop", "main_visible": False})
             + "\n```\n\n# Notes\n\n[wrong document](#scenario.shop.submit) and [unknown](module.md#req.shop.missing)\n"
               "and [plain heading](module.md#purpose).\n")
         report = self.validate()
@@ -178,13 +178,13 @@ class RequirementsAndVerificationTests(unittest.TestCase):
     def test_a_declaration_in_a_file_the_module_does_not_list_is_a_warning(self):
         registry = json.loads((self.root / ".concorde/specs.json").read_text())
         registry["targets"].append({"id": "module.other", "kind": "module", "title": "Other",
-            "documents": ["specs/other/module.md"], "parent": None, "uses": [], "files": ["tests/other/"], "checks": []})
+            "documents": ["specs/other/module.md"], "parent": None, "uses": [], "files": ["tests/other/"], "checks": [], "references": []})
         registry["targets"][0]["files"] = ["src/shop/"]
         (self.root / ".concorde/specs.json").write_text(json.dumps(registry))
         entities = [{"id": "entity.other.tests", "title": "Other tests", "kind": "tests",
                      "responsibility": "Exercise the shop from outside.", "files": ["tests/other/"]}]
         self.write("specs/other/module.md", "```concorde-document\n" + json.dumps(
-            {"id": "document.other", "targets": ["module.other"], "main_visible": True})
+            {"id": "document.other", "owner": "module.other", "main_visible": True})
             + "\n```\n\n# Other\n\n## Purpose\n\nOther.\n\n## Requirements\n\nNone.\n\n## Scenarios\n\nNone.\n\n"
               "## Ontology\n\n### Entities\n\n```concorde-entities\n" + json.dumps(entities)
             + "\n```\n\n### Relationships\n\n```mermaid\nflowchart TB\n    tests[\"Other tests\"]\n```\n")

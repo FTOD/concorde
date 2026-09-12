@@ -1,4 +1,4 @@
-"""Profile 11 capability registry and versioned JSON contracts.
+"""Profile 12 capability registry and versioned JSON contracts.
 
 Public global and lifecycle capabilities are each paired with exactly one skill. Internal Skills
 describe only one host-bound agent role. Per-capability request/response contracts are owned by
@@ -20,14 +20,15 @@ CHECK = obj({"id": STRING, "target_id": STRING, "argv": {**array(STRING), "minIt
              "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600},
              "inputs": array(PATH, unique=True)}, ("inputs",))
 LISTING_ENTRY = {**STRING, "pattern": r"^[^/](?:[^/]*/)*[^/]*$"}
+REFERENCE = obj({"kind": {"enum": ["module", "document"]}, "id": STRING})
 TARGET_DESCRIPTOR = obj({"id": STRING, "kind": {"const": "module"},
     "title": STRING, "documents": {**array(PATH, unique=True), "minItems": 1},
-    "parent": NULLABLE_ID, "uses": array(STRING, unique=True),
+    "references": array(REFERENCE, unique=True), "parent": NULLABLE_ID, "uses": array(STRING, unique=True),
     "files": array(LISTING_ENTRY, unique=True), "checks": array(STRING, unique=True)})
 IMPLEMENTATION_FILE = obj({"path": PATH, "entity_id": NULLABLE_ID, "pending": {"type": "boolean"}})
 IMPLEMENTATION_ENTRY = obj({"path": LISTING_ENTRY, "entity_id": NULLABLE_ID, "pending": {"type": "boolean"},
                             "directory": {"type": "boolean"}})
-REGISTRY = obj({"schema_version": {"const": 3}, "project_id": STRING,
+REGISTRY = obj({"schema_version": {"const": 4}, "project_id": STRING,
     "entry_target": STRING, "targets": {**array(TARGET_DESCRIPTOR), "minItems": 1},
     "checks": array(CHECK)})
 SPEC_TASK = obj({"target_id": STRING, "task": STRING})
@@ -166,9 +167,16 @@ def schemas() -> dict:
         "action": {"enum": ["delegate", "complete"]}, "agent_id": NULLABLE_ID,
         "value_json": NULLABLE_ID, "outcome": outcomes, "details": details})
     document_ref = obj({"document_id": STRING, "path": PATH, "digest": DIGEST,
-        "targets": {**array(STRING, unique=True), "minItems": 1},
+        "owner": STRING,
         "main_visible": {"type": "boolean"}})
     document = obj({**document_ref["properties"], "content": {"type": "string"}})
+    reason = obj({"kind": {"enum": ["owned", "module", "document"]}, "id": STRING})
+    source_ref = obj({**document_ref["properties"], "reasons": array(reason, unique=True)})
+    source = obj({**source_ref["properties"], "content": {"type": "string"}})
+    def resolution(source_shape):
+        return obj({"query_id": STRING, "query_kind": {"enum": ["module", "scenario"]},
+            "module_id": STRING, "documents": array(PATH, unique=True),
+            "references": array(REFERENCE, unique=True), "sources": array(source_shape)})
     protocol_document = obj({"path": PATH, "digest": DIGEST, "content": {"type": "string"}})
     result["concorde-project-proposal"] = obj({"action": {"enum": ["initialize"]},
         "base_digest": {"anyOf": [DIGEST, {"type": "null"}]}, "files": array(PROPOSAL_FILE)})
@@ -179,13 +187,12 @@ def schemas() -> dict:
         "reason": {"const": "implementation_boundary"}})
     result["concorde-reflection-selection"] = obj({"head": STRING, "records": array(obj({"id":STRING,"path":PATH,"digest":DIGEST,"content":STRING}))})
     stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-task-identity-constraints","concorde-implementation-task","concorde-task-scope-feedback","concorde-reflection-selection","concorde-review-result")]}
-    result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 3},
+    result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 2},
         "target_id": STRING, "kind": {"const": "module"}, "focus_id": NULLABLE_ID,
         "phase": STRING, "task": STRING, "constraints": array(STRING),
         "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
         "protocol": array(protocol_document),
-        "document_order": array(PATH, unique=True), "target_spec": array(document),
-        "shared_specs": array(document), "instructions": {"type": "string"},
+        "spec_resolution": resolution(source), "instructions": {"type": "string"},
         "stage_inputs": array(stage_input),
         "implementation_entries": array(IMPLEMENTATION_ENTRY),
         "implementation_files": array(IMPLEMENTATION_FILE),
@@ -240,8 +247,7 @@ def schemas() -> dict:
         "base_registry_digest": DIGEST, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
         "files": {**array(PROPOSAL_FILE), "minItems": 1}})
     discovery_target = obj({"target_id": STRING, "kind": {"const": "module"},
-                            "document_order": array(PATH, unique=True),
-                            "target_spec": array(document_ref), "shared_specs": array(document_ref)})
+                            "spec_resolution": resolution(source_ref)})
     result["concorde-discovery-context"] = obj({"context_id": DIGEST, "schema_version": {"const": 2},
         "capability": {"enum": sorted(MAIN_ROUTED_CAPABILITIES)}, "phase": {"const": "route"},
         "action": {"enum": ["route", "ask", "design-topology"]},
@@ -262,10 +268,8 @@ def schemas() -> dict:
         "base_registry_digest": DIGEST, "target": TARGET_DESCRIPTOR, "task": STRING,
         "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
         "protocol": array(protocol_document),
-        "candidate_document_references": array(obj({"path": PATH,
-            "targets": {**array(STRING, unique=True), "minItems": 1}})),
-        "current_document_order": array(PATH, unique=True),
-        "target_spec": array(document), "shared_specs": array(document),
+        "candidate_references": array(REFERENCE, unique=True),
+        "spec_resolution": resolution(source),
         "instructions": {"type": "string"}, "workspace": WORKSPACE_CONTEXT})
     result["concorde-topology-author-result"] = obj({"context_id": DIGEST, "target_id": STRING,
         "outcome": WORKER_OUTCOMES, "answer": {"type": "string"}, "gaps": array(GAP),

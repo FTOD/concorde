@@ -62,7 +62,7 @@ editorial preference nor a passing structural check is evidence of completeness.
 
 ## Accepted input and feedback
 
-Consume the exact supplied `concorde-review-stage-context@1`: a complete `concorde-context-snapshot@1`
+Consume the exact supplied `concorde-review-stage-context@2`: a complete `concorde-context-snapshot@2`
 (Target Spec and Shared Specs for the reviewed target) plus the host-produced
 `concorde-review-input@1` naming the review mode and scoped changes. Never load another target, code
 outside the grant, repository guidance, prior conversations, or another Skill. This role runs only

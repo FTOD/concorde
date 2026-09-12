@@ -45,7 +45,7 @@ class ModuleArchitectureTests(unittest.TestCase):
     def test_main_document_does_not_depend_on_order_or_replace_full_context(self):
         topic = "specs/bank/routing.md"
         (self.root / topic).write_text('```concorde-document\n' + json.dumps({
-            "id": "document.bank.routing", "targets": ["scope.bank"], "main_visible": True,
+            "id": "document.bank.routing", "owner": "scope.bank", "main_visible": True,
         }) + '\n```\n\n# Routing\nRead the registered banking responsibilities.\n')
         self.registry["targets"][0]["documents"].insert(0, topic)
         self.save()
@@ -53,8 +53,8 @@ class ModuleArchitectureTests(unittest.TestCase):
         target = repository.select("scope.bank")
         self.assertEqual(self.main, target.primary_document)
         snapshot = resolve_context(repository, target.id).value
-        self.assertEqual([topic, self.main], snapshot["document_order"])
-        self.assertEqual([topic, self.main], [d["path"] for d in snapshot["target_spec"]])
+        self.assertEqual(sorted([topic, self.main]), [source["path"] for source in snapshot["spec_resolution"]["sources"]])
+        self.assertEqual(sorted([topic, self.main]), [d["path"] for d in snapshot["spec_resolution"]["sources"]])
         self.assertEqual("success", validate_repository(self.root).status)
 
     def test_missing_duplicate_or_shared_module_entry_is_rejected(self):
@@ -79,7 +79,7 @@ class ModuleArchitectureTests(unittest.TestCase):
     @verifies("scenario.spec.query-files", "scenario.spec.validate-structural-errors")
     def test_complete_context_ignores_visibility_and_architecture_heading_is_outside_fences(self):
         update_document_declaration(self.root, self.main, main_visible=False)
-        self.assertIn(self.main, resolve_context(SpecRepository(self.root), "scope.bank").value["document_order"])
+        self.assertIn(self.main, [source["path"] for source in resolve_context(SpecRepository(self.root), "scope.bank").value["spec_resolution"]["sources"]])
         update_document_declaration(self.root, self.main, main_visible=True)
         path = self.root / self.main
         body = path.read_text().replace("### Relationships", "### Vocabulary")

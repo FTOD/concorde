@@ -181,7 +181,6 @@ reverse index. Ownership or reference edits compare both old and candidate users
 resulting file set is unchanged. A Module reference tracks additions/removals to the provider's
 owned documents; changes only to the provider's references do not expand the consumer.
 
-These resolution and binding interfaces are specified migration work. The current runtime still
-admits Protocol 4.0.0/Profile 11/schema 3 and has no conforming `spec_files`/`spec_context` or
-Module-reference resolver. The authored Profile 12 registry must fail closed in that runtime;
-new documentation and successful build generation do not establish implementation support.
+The runtime implements these resolution and binding interfaces under Protocol 5.0.0/Profile 12/
+schema 4. Older profiles and membership-based declarations fail admission. Owned-definition and
+implementation queries remain separate from the explicit context resolver.

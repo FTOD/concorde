@@ -556,10 +556,10 @@ class ReviewTests(unittest.TestCase):
 
     @verifies("scenario.development.execute-capability")
     def test_modes_use_full_collection_fresh_sessions_and_no_write_grants(self):
-        self.registry["targets"][3]["documents"].append("specs/transfer/promises.md")
+        self.registry["targets"][3]["references"].append({"kind":"document","id":"document.transfer.promises"})
         (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
         update_document_declaration(self.root, "specs/transfer/promises.md",
-            targets=["service.transfer", "module.ledger"])
+            owner="service.transfer")
         calls, identities = [], []
         for mode in ("code", "spec"):
             result = self.review(mode)
@@ -571,8 +571,8 @@ class ReviewTests(unittest.TestCase):
             self.assertFalse(policy["network"])
             self.assertTrue(policy["fresh_session"])
             snapshot = calls[-1]["snapshot"]
-            self.assertEqual(["specs/transfer/module.md", "specs/transfer/promises.md"], snapshot["document_order"])
-            self.assertEqual(["specs/transfer/promises.md"], [x["path"] for x in snapshot["shared_specs"]])
+            self.assertEqual(["specs/transfer/module.md", "specs/transfer/promises.md"], [source["path"] for source in snapshot["spec_resolution"]["sources"]])
+            self.assertEqual(["specs/transfer/promises.md"], [x["path"] for x in snapshot["spec_resolution"]["sources"] if x["path"].endswith("promises.md")])
             self.assertNotIn("# Ledger API", calls[-1]["prompt"])
             self.assertNotIn("PRIVATE_CODE", calls[-1]["prompt"])
             if mode == "code":
@@ -1373,7 +1373,7 @@ class RepairLoopTests(unittest.TestCase):
     def test_admitted_specify_spec_change_does_not_spuriously_reset_the_graph_record(self):
         def callback(stage, snapshot, data, cwd):
             if stage == "specify" and snapshot["target_id"] == "service.transfer":
-                document = next(d for d in snapshot["target_spec"] if d["path"] == "specs/transfer/module.md")
+                document = next(d for d in snapshot["spec_resolution"]["sources"] if d["path"] == "specs/transfer/module.md")
                 data["documents"] = [{"path": "specs/transfer/module.md",
                     "content": document["content"] + "\nThe transfer capability documents an additional promise.\n"}]
         result = self.call_capability("concorde-dev-loop", callback=callback)

@@ -29,3 +29,5 @@ Mermaid flowchart inside its registered Markdown, so revising it is part of the 
 replacement, not a separate artifact.
 
 Keep entity titles and relationship diagram labels consistent, with every edge labeled by its relationship verb. Never infer Module behavior from implementation code.
+
+Propose replacements only for the selected Module-owned documents. References supply read-only context, never provider implementation or write authority. Define each structured contract once using concorde-contract; local concorde-contract-binding declarations name roles, peers, selection conditions, relied-upon guarantees and obligations without duplicating the definition.

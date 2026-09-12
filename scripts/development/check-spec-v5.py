@@ -277,7 +277,7 @@ def audit(base=None):
             "canonical_contracts": len(contracts), "bindings": len(bindings), "links": link_count,
             "reference_boundary_cases": example_count,
             "preserved_baseline_ids": stable, "context_files": {k: len(v) for k, v in contexts.items()},
-            "semantic_completeness": "not_proven", "runtime_support": "not_implemented"}
+            "semantic_completeness": "not_proven", "runtime_support": "not_assessed"}
 
 
 if __name__ == "__main__":

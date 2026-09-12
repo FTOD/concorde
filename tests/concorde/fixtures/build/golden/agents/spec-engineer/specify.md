@@ -66,6 +66,8 @@ replacement, not a separate artifact.
 
 Keep entity titles and relationship diagram labels consistent, with every edge labeled by its relationship verb. Never infer Module behavior from implementation code.
 
+Propose replacements only for the selected Module-owned documents. References supply read-only context, never provider implementation or write authority. Define each structured contract once using concorde-contract; local concorde-contract-binding declarations name roles, peers, selection conditions, relied-upon guarantees and obligations without duplicating the definition.
+
 Consume concorde-agent-stage-context and return concorde-agent-stage-result. Put Markdown
 replacements only in documents; return no plan, tasks or reflection findings. Completion means
 that each member the task intended to change has its replacement and all preserved collective
@@ -79,3 +81,5 @@ obligations by convention or infer them from ungranted context or code. Independ
 continue in the answer. Suggestions that do not block the current task are not contract gaps.
 Pure queries return the gaps; the host persists development gaps and any explicitly requested
 Reflection capture. A Spec repair requires a fresh context before resuming the affected step.
+
+Keep the selected consumer and blocked step as gap attribution. When known, identify the canonical definition ID, sole owner, source path and included digest in needed_contract. Never relabel a referenced definition as consumer-owned or fetch excluded sources.

@@ -306,6 +306,5 @@ These exporter boundaries are Module-wide requirements; see
 
 Context references are distinct graph edges and never acquire contains/depends_on meaning. A
 referenced document stays in its owner's layer; neither its implementation files nor its owner's
-references are imported. The current exporter still uses the schema-3 registry model and must
-migrate this derivation before its output can satisfy Profile 12. Existing external overlay
+references are imported. The exporter uses the schema-4 registry and keeps ownership, references and implementation listings separate. Existing external overlay
 admission remains contract version 1: the new edge type fits its open string type vocabulary.

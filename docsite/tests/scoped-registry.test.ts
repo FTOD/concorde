@@ -10,7 +10,7 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import {tmpdir} from 'node:os';
 import {resolve,dirname} from 'node:path';
 import {beforeEach,afterEach,it,expect} from 'vitest';
-import {legacyAliasRoute,loadScopedRegistry,rewriteLinks,primaryDocument,requireScoped,type Target} from '../plugins/scoped-content/model';
+import {injectAnchors,legacyAliasRoute,loadScopedRegistry,rewriteLinks,primaryDocument,requireScoped,type Target} from '../plugins/scoped-content/model';
 import {materializeScoped,scopedSidebar,publicationSidebar} from '../plugins/scoped-content/materialize';
 import scopedContent,{validateScopedBuild} from '../plugins/scoped-content';
 import {promoteCandidate} from '../scripts/build';
@@ -19,8 +19,8 @@ import type {LoadContext} from '@docusaurus/types';
 interface SidebarItem {type:string; label:string; href?:string; id?:string; link?:{type:'doc';id:string}; collapsed?:boolean; items?:SidebarItem[]}
 let root:string,targets:Target[];
 function put(path:string,text:string){mkdirSync(dirname(resolve(root,path)),{recursive:true});writeFileSync(resolve(root,path),text);}
-function target(id:string,documents:string[]):Target{return{id,kind:'module',title:id,documents,parent:null,uses:[],files:[],checks:[]};}
-function save(){put('.concorde/specs.json',JSON.stringify({schema_version:3,project_id:'project.bank',entry_target:'scope.bank',targets,checks:[]}));}
+function target(id:string,documents:string[]):Target{return{id,kind:'module',title:id,documents,references:[],parent:null,uses:[],files:[],checks:[]};}
+function save(){put('.concorde/specs.json',JSON.stringify({schema_version:4,project_id:'project.bank',entry_target:'scope.bank',targets,checks:[]}));}
 /** A minimal, Protocol-compliant module.md body: Purpose, Requirements, Scenarios and Ontology
  * (Entities with a concorde-entities block, Relationships with a Mermaid flowchart) — appended
  * only when writing a target's own primary document, never a shared or secondary document. */
@@ -40,14 +40,14 @@ function putSpec(path:string,references:string[],body:string,mainVisible=true){
   const peers=[...owner.uses,...targets.filter(t=>t.parent===owner.id).map(t=>t.id)];
   if(peers.length)body+='\n```concorde-dependencies\n'+JSON.stringify(peers.map(target_id=>({target_id,responsibility:'Provide the declared capability.',selection_condition:'Select for '+target_id,relied_upon_promises:['The interface returns a declared result or an explicit failure.']})))+'\n```\n';
  }
- put(path,'```concorde-document\n'+JSON.stringify({id,targets:references,main_visible:mainVisible},null,2)+'\n```\n\n'+body);
+ put(path,'```concorde-document\n'+JSON.stringify({id,owner:references[0],main_visible:mainVisible},null,2)+'\n```\n\n'+body);
 }
 function updateDocument(path:string,updates:Record<string,unknown>){
  const text=readFileSync(resolve(root,path),'utf8');const match=text.match(/^```concorde-document\s*\n([\s\S]*?)^```/m)!;
  const value={...JSON.parse(match[1]),...updates};put(path,'```concorde-document\n'+JSON.stringify(value,null,2)+'\n```'+text.slice(match[0].length));
 }
 beforeEach(()=>{
- root=mkdtempSync(resolve(tmpdir(),'concorde-scoped-'));put('.concorde/config.json',JSON.stringify({profile_version:11,registry:'.concorde/specs.json'}));
+ root=mkdtempSync(resolve(tmpdir(),'concorde-scoped-'));put('.concorde/config.json',JSON.stringify({profile_version:12,registry:'.concorde/specs.json'}));
  put('docsite/site.json',JSON.stringify({schema_version:1,title:'Bank',url:'https://localhost',baseUrl:'/',organizationName:'bank',projectName:'bank'}));
  targets=[target('scope.bank',['specs/bank/module.md']),target('scope.audit',['specs/audit/module.md']),target('service.transfer',['specs/transfer/module.md','specs/transfer/promises.md']),target('module.ledger',['specs/ledger/module.md'])];
  targets[0].uses=['service.transfer'];targets[1].uses=['service.transfer'];targets[3].parent='service.transfer';
@@ -57,9 +57,50 @@ beforeEach(()=>{
  save();
 });
 afterEach(()=>rmSync(root,{recursive:true,force:true}));
+it('scenario.views.publish-reference-link: one-level references retain all provenance without transclusion',async()=>{
+ targets[0].references=[{kind:'module',id:'service.transfer'},{kind:'document',id:'document.specs.transfer.promises'}];
+ targets[2].references=[{kind:'module',id:'module.ledger'}];
+ targets[3].references=[{kind:'module',id:'scope.bank'}];save();
+ const r=loadScopedRegistry(root);
+ const promise=r.pages.find(p=>p.sourcePath==='specs/transfer/promises.md')!;
+ expect(promise.owner).toBe('service.transfer');
+ expect(promise.includedBy.find(p=>p.targetId==='scope.bank')!.reasons).toEqual([
+  {kind:'document',id:'document.specs.transfer.promises'},{kind:'module',id:'service.transfer'}]);
+ expect(r.pages.find(p=>p.sourcePath==='specs/ledger/module.md')!.includedBy.map(p=>p.targetId)).not.toContain('scope.bank');
+ expect(r.pages.filter(p=>p.documentId===promise.documentId)).toHaveLength(1);
+ putSpec('specs/bank/module.md',['scope.bank'],'# Banking\n\n[Agreement](../transfer/promises.md)');
+ const linked=loadScopedRegistry(root);await materializeScoped(linked);
+ const body=readFileSync(resolve(root,'docsite/.generated/content/specs/bank/module.md'),'utf8');
+ expect(body).toContain('[Agreement](/specs/transfer/promises)');
+ expect(body).not.toContain('Local rules.');
+ const before=linked.sourceDigest;
+ targets[0].references.pop();save();
+ expect(loadScopedRegistry(root).pages.map(p=>p.sourcePath)).toEqual(linked.pages.map(p=>p.sourcePath));
+ expect(loadScopedRegistry(root).sourceDigest).not.toBe(before);
+});
+it('canonical contracts have one definition anchor and bindings require their included version',()=>{
+ const definition={id:'contract.read',version:2,schema:{type:'integer'},semantics:'Return a balance.',example:42};
+ const binding={id:'contract.read',version:2,role:'provided',peer:'service.transfer',selection_condition:'When reading.',relied_upon_guarantees:['Return a balance.'],obligations:['Handle missing accounts.']};
+ const fence=(kind:string,value:unknown)=>'\n```'+kind+'\n'+JSON.stringify(value)+'\n```\n';
+ put('specs/ledger/module.md',readFileSync(resolve(root,'specs/ledger/module.md'),'utf8')+fence('concorde-contract',definition)+fence('concorde-contract-binding',binding));
+ put('specs/transfer/module.md',readFileSync(resolve(root,'specs/transfer/module.md'),'utf8')+fence('concorde-contract-binding',{...binding,role:'required',peer:'module.ledger'}));
+ expect(()=>loadScopedRegistry(root)).toThrow(/Missing context definition/);
+ targets[2].references=[{kind:'document',id:'document.specs.ledger.module'}];save();
+ const r=loadScopedRegistry(root);
+ expect(injectAnchors(r.pages.find(p=>p.owner==='module.ledger')!.content).match(/<a id="contract.read"><\/a>/g)).toHaveLength(1);
+ expect(injectAnchors(r.pages.find(p=>p.primaryOf==='service.transfer')!.content)).not.toContain('<a id="contract.read">');
+});
+it('rejects wrong-kind references and malformed UTF-8 source bytes',()=>{
+ targets[0].references=[{kind:'document',id:'service.transfer'}];save();
+ expect(()=>loadScopedRegistry(root)).toThrow(/Unknown or self reference/);
+ targets[0].references=[];save();
+ const path=resolve(root,'specs/bank/module.md');
+ writeFileSync(path,Buffer.concat([readFileSync(path),Buffer.from([255])]));
+ expect(()=>loadScopedRegistry(root)).toThrow();
+});
 it('scenario.views.materialize scenario.views.publish-candidate scenario.views.publish-without-graph: materialized navigation preserves Module category and leaf links',async()=>{
- targets[3].documents.push('specs/transfer/promises.md');save();
- updateDocument('specs/transfer/promises.md',{targets:['service.transfer','module.ledger']});
+ targets[3].references.push({kind:'document',id:'document.specs.transfer.promises'});save();
+ updateDocument('specs/transfer/promises.md',{owner:'service.transfer'});
  const registry=loadScopedRegistry(root),sidebar=publicationSidebar(registry);
  const flatten=(items:SidebarItem[]):SidebarItem[]=>items.flatMap(item=>[item,...flatten(item.items??[])]);
  const all=flatten(sidebar);
@@ -70,20 +111,19 @@ it('scenario.views.materialize scenario.views.publish-candidate scenario.views.p
  expect(transfer.link).toBeUndefined();
  expect(transfer.items).toEqual([
   {type:'link',href:'/specs/transfer/module',label:'service.transfer'},
-  {type:'link',href:'/specs/transfer/promises',label:'promises'},
+  {type:'link',href:'/specs/transfer/promises',label:'service.transfer'},
  ]);
  const composition=sidebar.find(item=>item.label==='Module composition')!;
  const module=composition.items!.find(item=>item.label==='service.transfer')!;
  expect(module.link).toEqual({type:'doc',id:'transfer/module'});
  expect(module.items).toEqual([
-  {type:'doc',id:'transfer/promises',label:'promises'},
-  {type:'category',label:'module.ledger',link:{type:'doc',id:'ledger/module'},collapsed:true,
-   items:[{type:'link',label:'promises',href:'/specs/transfer/promises'}]},
+  {type:'doc',id:'transfer/promises',label:'service.transfer'},
+  {type:'doc',label:'module.ledger',id:'ledger/module'},
  ]);
  expect(composition.items!.find(item=>item.label==='scope.audit')).toEqual(
   {type:'doc',id:'audit/module',label:'scope.audit'});
  expect(flatten(module.items!).some(item=>item.id==='transfer/module')).toBe(false);
- expect(flatten(composition.items!).filter(item=>item.href==='/specs/transfer/promises')).toHaveLength(1);
+ expect(flatten(composition.items!).filter(item=>item.href==='/specs/transfer/promises')).toHaveLength(0);
  await materializeScoped(registry);
  const materialized=JSON.parse(readFileSync(resolve(root,'docsite/.generated/specs-sidebar.json'),'utf8'));
  expect(materialized.moduleSpecsSidebar).toEqual(sidebar);
@@ -162,7 +202,7 @@ it('scenario.views.publish-without-graph: global data retains page metadata with
  const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
  let data:any;
  await plugin.contentLoaded!({content:registry,actions:{setGlobalData:(value:unknown)=>{data=value;}}} as any);
- expect(data.schema_version).toBe(18);
+ expect(data.schema_version).toBe(19);
  expect(data.entryTarget).toBe(registry.entryTarget);
  expect(data.pages).toEqual(registry.pages.map(({content,...page})=>page));
  expect(data).not.toHaveProperty('nodes');expect(data).not.toHaveProperty('edges');
@@ -206,14 +246,14 @@ it('rejects cycles and unknown Module parents',()=>{
  targets[0].parent=null;targets[1].parent=null;targets[3].parent='missing';save();expect(()=>loadScopedRegistry(root)).toThrow(/Unknown Module parent/);
 });
 it('supports explicitly shared documents but rejects duplicate members in one collection',()=>{
- targets[3].documents.push('specs/transfer/promises.md');save();updateDocument('specs/transfer/promises.md',{targets:['service.transfer','module.ledger']});
+ targets[3].references.push({kind:'document',id:'document.specs.transfer.promises'});save();updateDocument('specs/transfer/promises.md',{owner:'service.transfer'});
  const r=loadScopedRegistry(root);expect(r.pages).toHaveLength(5);
  const shared=r.pages.find(p=>p.sourcePath==='specs/transfer/promises.md')!;
- expect(shared.memberships.map(m=>m.targetId).sort()).toEqual(['module.ledger','service.transfer']);
- expect(shared.contextSection).toBe('shared_specs');
- targets[3].documents.push('specs/transfer/promises.md');save();expect(()=>loadScopedRegistry(root)).toThrow(/unique/);
+ expect(shared.includedBy.map(m=>m.targetId).sort()).toEqual(['module.ledger','service.transfer']);
+ expect(shared.owner).toBe('service.transfer');
+ targets[3].references.push({kind:'document',id:'document.specs.transfer.promises'});save();expect(()=>loadScopedRegistry(root)).toThrow(/Duplicate reference/);
 });
-it('validates document identity, exact references and visibility type',()=>{updateDocument('specs/transfer/promises.md',{targets:['service.transfer','module.ledger']});expect(()=>loadScopedRegistry(root)).toThrow(/differ/);updateDocument('specs/transfer/promises.md',{targets:['service.transfer']});updateDocument('specs/ledger/module.md',{id:'document.specs.transfer.promises'});expect(()=>loadScopedRegistry(root)).toThrow(/Duplicate document identity/);updateDocument('specs/ledger/module.md',{id:'document.specs.ledger.module'});updateDocument('specs/transfer/promises.md',{main_visible:'yes'});expect(()=>loadScopedRegistry(root)).toThrow(/main_visible/);});
+it('validates document identity, exact references and visibility type',()=>{updateDocument('specs/transfer/promises.md',{owner:'module.ledger'});expect(()=>loadScopedRegistry(root)).toThrow(/differ/);updateDocument('specs/transfer/promises.md',{owner:'service.transfer'});updateDocument('specs/ledger/module.md',{id:'document.specs.transfer.promises'});expect(()=>loadScopedRegistry(root)).toThrow(/Duplicate document identity/);updateDocument('specs/ledger/module.md',{id:'document.specs.ledger.module'});updateDocument('specs/transfer/promises.md',{main_visible:'yes'});expect(()=>loadScopedRegistry(root)).toThrow(/main_visible/);});
 it('binds source identity to content and membership order',()=>{const first=loadScopedRegistry(root).sourceDigest;targets[2].documents.reverse();save();const second=loadScopedRegistry(root).sourceDigest;expect(second).not.toBe(first);put('specs/transfer/promises.md',readFileSync(resolve(root,'specs/transfer/promises.md'),'utf8')+'\nChanged');expect(loadScopedRegistry(root).sourceDigest).not.toBe(second);});
 it('rejects symlink path components',()=>{rmSync(resolve(root,'specs/transfer/module.md'));symlinkSync(resolve(root,'specs/transfer/promises.md'),resolve(root,'specs/transfer/module.md'));expect(()=>loadScopedRegistry(root)).toThrow(/Symlink/);});
 it('scenario.views.publish-candidate: rewrites only registered navigation to canonical routes and leaves code examples intact',()=>{
@@ -268,19 +308,19 @@ it('derives readable canonical routes, staged paths and legacy alias routes from
 });
 it('binds the Module category to module.md even when it is not the first member',()=>{
  const topic='specs/bank/routing.md';targets[0].documents.unshift(topic);putSpec(topic,['scope.bank'],'# Routing\nLocal routing facts.');save();
- const registry=loadScopedRegistry(root);const main=registry.pages.find(p=>p.memberships.some(m=>m.targetId==='scope.bank'&&m.primary))!;
+ const registry=loadScopedRegistry(root);const main=registry.pages.find(p=>p.primaryOf==='scope.bank')!;
  expect(primaryDocument(targets[0])).toBe('specs/bank/module.md');expect(main.sourcePath).toBe('specs/bank/module.md');
  const sidebar=scopedSidebar(registry) as SidebarItem[];
  const module=sidebar[0];
  expect(module.link).toEqual({type:'doc',id:'bank/module'});
  expect(module.items!.some(i=>i.id==='bank/module')).toBe(false);
- expect(registry.pages.filter(p=>p.memberships.some(m=>m.targetId==='scope.bank'))).toHaveLength(2);
+ expect(registry.pages.filter(p=>p.owner==='scope.bank')).toHaveLength(2);
 });
 it('requires one local Module entry and treats visibility as metadata',()=>{
  const main=targets[0].documents[0];targets[0].documents=['specs/unknown.md'];save();expect(()=>loadScopedRegistry(root)).toThrow(/module.md/);
  targets[0].documents=[main,'specs/extra/module.md'];save();expect(()=>loadScopedRegistry(root)).toThrow(/exactly one/);
- targets[0].documents=[main];targets[2].documents.push(main);save();updateDocument(main,{targets:['scope.bank','service.transfer']});expect(()=>loadScopedRegistry(root)).toThrow(/must be local|exactly one/);
- targets[2].documents.pop();save();updateDocument(main,{targets:['scope.bank'],main_visible:false});expect(loadScopedRegistry(root).pages.find(p=>p.sourcePath===main)?.mainVisible).toBe(false);
+ targets[0].documents=[main];targets[2].documents.push(main);save();updateDocument(main,{owner:'scope.bank'});expect(()=>loadScopedRegistry(root)).toThrow(/one owner|must be local|exactly one/);
+ targets[2].documents.pop();save();updateDocument(main,{owner:'scope.bank',main_visible:false});expect(loadScopedRegistry(root).pages.find(p=>p.sourcePath===main)?.mainVisible).toBe(false);
 });
 it('requires the Purpose, Requirements, Scenarios and Ontology headings on module.md, in order, with Entities and Relationships inside Ontology',()=>{
  const main=targets[0].documents[0];
@@ -320,7 +360,7 @@ it('scenario.views.id-anchors: injects the ID of every scenario, requirement and
 it('rejects sources changed between materialization and plugin loading even when routes are unchanged',async()=>{
  const original=loadScopedRegistry(root);await materializeScoped(original);
  const staged=readFileSync(resolve(root,'docsite/.generated/content/specs/transfer/promises.md'),'utf8');
- expect(staged).toContain('title: promises');expect(staged).toContain('sidebar_label: promises');
+ expect(staged).toContain('title: service.transfer');expect(staged).toContain('sidebar_label: service.transfer');
  expect(staged).toContain('displayed_sidebar: moduleSpecsSidebar');
  const plugin=()=>scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
  expect((await plugin().loadContent!())?.sourceDigest).toBe(original.sourceDigest);
@@ -343,7 +383,7 @@ it('starts with Module roots and nests documents and children by registry owners
  expect(sidebar.map(item=>item.label)).toEqual(['scope.bank','scope.audit','service.transfer']);
  expect(sidebar[0]).toMatchObject({type:'category',collapsed:false});
  expect(sidebar[0].items).toEqual([
-  {type:'doc',id:'bank/routing',label:'routing'},
+  {type:'doc',id:'bank/routing',label:'Routing'},
  ]);
  expect(sidebar[2].items!.at(-1)).toMatchObject({type:'doc',label:'module.ledger',id:'ledger/module'});
 });
@@ -361,15 +401,15 @@ it('renders a directory prefix entry exactly as declared',async()=>{
  expect(ledgerPage).toContain('- `src/`');expect(ledgerPage).not.toContain('`src/ledger.ts`');
 });
 it('keeps one sidebar without duplicate document entries when a document is shared',()=>{
- targets[3].documents.push('specs/transfer/promises.md');save();
- updateDocument('specs/transfer/promises.md',{targets:['service.transfer','module.ledger']});
+ targets[3].references.push({kind:'document',id:'document.specs.transfer.promises'});save();
+ updateDocument('specs/transfer/promises.md',{owner:'service.transfer'});
  const r=loadScopedRegistry(root);const sidebar=scopedSidebar(r);
  expect(sidebar.map(item=>item.label)).toEqual(['scope.bank','scope.audit','service.transfer']);
  const flatten=(items:SidebarItem[]):SidebarItem[]=>items.flatMap(item=>[item,...flatten(item.items??[])]);
  const items=flatten(sidebar);const docs=items.flatMap(item=>item.type==='doc'?[item.id]:item.link?[item.link.id]:[]);
  expect(docs).toHaveLength(r.pages.length);
  expect(new Set(docs).size).toBe(r.pages.length);
- expect(items.filter(item=>item.href==='/specs/transfer/promises')).toHaveLength(1);
+ expect(items.filter(item=>item.href==='/specs/transfer/promises')).toHaveLength(0);
 });
 it('strips the specs/ root only when every registered document is under it',()=>{
  targets[3].documents.push('docs/outside.md');putSpec('docs/outside.md',['module.ledger'],'# Outside\nNot under specs.');save();
@@ -407,7 +447,7 @@ it('scenario.views.validate-candidate-mismatch: writes a legacy redirect stub fo
  const manifestPath=resolve(outDir,'build-manifest.json');
  const manifest=JSON.parse(readFileSync(manifestPath,'utf8'));
  writeFileSync(manifestPath,JSON.stringify({...manifest,schema_version:17}));
- await expect(validateScopedBuild(root,outDir)).rejects.toThrow(/Build Manifest 18/);
+ await expect(validateScopedBuild(root,outDir)).rejects.toThrow(/Build Manifest 19/);
  writeFileSync(manifestPath,JSON.stringify(manifest));
  const [firstPage]=registry.pages;const [firstAlias]=firstPage.aliases;
  rmSync(resolve(outDir,firstAlias.slice(1)+'.html'));
@@ -431,7 +471,7 @@ it('scenario.views.validate-candidate-mismatch: rejects every altered inventory 
   JSON.stringify({...manifest,sourceDigest:'sha256:'+'0'.repeat(64)}),
   JSON.stringify({...manifest,pages:manifest.pages.slice(1)}),
   JSON.stringify({...manifest,pages:[...manifest.pages].reverse()}),
-  ...['sourcePath','route','contentDigest','targets','aliases'].map(field=>{
+  ...['sourcePath','route','contentDigest','owner','includedBy','aliases'].map(field=>{
    const changed=JSON.parse(original);
    changed.pages[0][field]=Array.isArray(changed.pages[0][field])?[]:'changed';
    return JSON.stringify(changed);
@@ -474,10 +514,10 @@ it('scenario.views.publish-legacy-redirect: validates current cross-Module links
  put('specs/bank/module.md',readFileSync(resolve(root,'specs/bank/module.md'),'utf8')+'\n[Query source reference](../transfer/promises.md?view=compact&next=a?b#promise)\n');
  const originalSource=readFileSync(resolve(root,'specs/bank/module.md'));
  const before=loadScopedRegistry(root);await materializeScoped(before);
- expect(before.pages.find(page=>page.sourcePath==='specs/transfer/promises.md')!.documentTargets).toEqual(['scope.bank']);
+ expect(before.pages.find(page=>page.sourcePath==='specs/transfer/promises.md')!.owner).toEqual('scope.bank');
  const oldAlias=legacyAliasRoute('scope.bank','specs/transfer/promises.md');
  targets[0].documents.pop();targets[2].documents.push('specs/transfer/promises.md');save();
- updateDocument('specs/transfer/promises.md',{targets:['service.transfer']});
+ updateDocument('specs/transfer/promises.md',{owner:'service.transfer'});
  const registry=loadScopedRegistry(root);await materializeScoped(registry);
  expect(registry.targets[0].documents).not.toContain('specs/transfer/promises.md');
  const page=registry.pages.find(page=>page.sourcePath==='specs/transfer/promises.md')!;
@@ -487,7 +527,7 @@ it('scenario.views.publish-legacy-redirect: validates current cross-Module links
  expect(staged).toContain('[Source reference](/specs/transfer/promises#promise)');
  expect(staged).toContain('[Query source reference](/specs/transfer/promises?view=compact&next=a?b#promise)');
  expect(staged).toContain('[Canonical reference](/specs/transfer/promises#promise)');
- expect(page.documentTargets).toEqual(['service.transfer']);
+ expect(page.owner).toEqual('service.transfer');
  const plugin=scopedContent({siteDir:resolve(root,'docsite'),baseUrl:'/'} as LoadContext,{});
  await plugin.loadContent!();
  const outDir=resolve(root,'candidate');mkdirSync(outDir);
@@ -591,7 +631,7 @@ it.each(['/', '/%E6%96%87%E6%A1%A3/'])('scenario.views.build-site scenario.views
  const source=readFileSync(resolve(root,'specs/transfer/promises.md'),'utf8');
  for(const invalid of ['source','manifest'] as const){
   failure=invalid;
-  await expect(fixtureModule.exports.buildSite()).rejects.toThrow(/Build Manifest 18/);
+  await expect(fixtureModule.exports.buildSite()).rejects.toThrow(/Build Manifest 19/);
   expect(snapshot(published)).toEqual(previous);
   expect(existsSync(resolve(root,'docsite/.generated/candidate'))).toBe(false);
   expect(existsSync(resolve(root,'docsite/.generated/previous-build'))).toBe(false);
@@ -613,7 +653,7 @@ it('scenario.views.materialize scenario.views.build-site: rejects invalid materi
  await plugin.loadContent!();
  const outDir=resolve(root,'candidate');mkdirSync(outDir);
  const identity='docsite/.generated/scoped-materialization.json';
- for(const bytes of [null,'{malformed',JSON.stringify({schema_version:18,sourceDigest:registry.sourceDigest}),
+ for(const bytes of [null,'{malformed',JSON.stringify({schema_version:19,sourceDigest:registry.sourceDigest}),
   JSON.stringify({schema_version:1,sourceDigest:'sha256:'+'0'.repeat(64)})]){
   if(bytes===null)rmSync(resolve(root,identity));else put(identity,bytes);
   await expect(plugin.postBuild!({outDir,routesPaths:registry.pages.map(page=>page.route)} as any)).rejects.toThrow();

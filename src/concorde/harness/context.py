@@ -64,33 +64,6 @@ class TopologyAuthorContext:
         return self.value["context_id"]
 
 
-def _document_value(document, *, content: bool = True) -> dict:
-    value = {
-        "document_id": document.document_id,
-        "path": document.path,
-        "digest": document.digest,
-        "targets": list(document.targets),
-        "main_visible": document.main_visible,
-    }
-    if content:
-        value["content"] = document.content
-    return value
-
-
-def _spec_sections(documents, *, references: dict[str, tuple[str, ...]] | None = None,
-                   main_only: bool = False) -> tuple[list[str], list[dict], list[dict]]:
-    selected = [document for document in documents
-                if not main_only or document.main_visible]
-    order = [document.path for document in selected]
-    target_spec = []
-    shared_specs = []
-    for document in selected:
-        targets = references.get(document.path, document.targets) if references else document.targets
-        section = shared_specs if len(targets) > 1 else target_spec
-        section.append(_document_value(document))
-    return order, target_spec, shared_specs
-
-
 def _protocol(repository: SpecRepository) -> list[dict]:
     protocol = []
     for path in PROTOCOL_PATHS:
@@ -162,14 +135,13 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
                                        "concorde-reflection-selection","concorde-review-result"}:
             raise SpecError("unknown stage input type", "incompatible_handoff")
         validate_typed(item, item["type_id"])
-    document_order, target_spec, shared_specs = _spec_sections(repository.documents(target))
+    resolution = repository.spec_context(focus_id or target.id).value
     # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
     from .change_worktree import workspace_context
-    manifest = {"schema_version": 3, "target_id": target.id, "kind": target.kind,
+    manifest = {"schema_version": 2, "target_id": target.id, "kind": target.kind,
         "focus_id": focus_id, "phase": phase, "task": task, "constraints": list(constraints),
         "protocol_binding": repository.config["protocol"], "protocol": _protocol(repository),
-        "document_order": document_order, "target_spec": target_spec,
-        "shared_specs": shared_specs, "instructions": instructions,
+        "spec_resolution": resolution, "instructions": instructions,
         "stage_inputs": list(stage_inputs),
         "implementation_entries": _implementation_entries(repository, target),
         "implementation_files": _implementation_files(repository, target),
@@ -184,7 +156,7 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
                               target_hint: str | None = None,
                               focus_hint: str | None = None,
                               constraints: tuple[str, ...] = (), instructions: str = "",
-                              workspace: dict | None = None) -> DiscoveryContext:
+                              workspace: dict | None = None, mode: Mode | None = None) -> DiscoveryContext:
     """Resolve complete selected Module contexts without model interpretation or summaries.
 
     Target sections retain document membership. Sorted source pools carry each physical file's
@@ -192,6 +164,9 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
     select another Module's collection.
     """
 
+    if mode is not None and (mode.phase != phase or mode.action != action
+            or "implementation" in mode.constraints.effects.reads):
+        raise SpecError("discovery selection exceeds the selected mode", "permission_denied")
     if phase not in DISCOVERY_PHASES:
         raise SpecError("unsupported discovery phase", "invalid_phase")
     if action not in {"route", "ask", "design-topology"}:
@@ -214,19 +189,12 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
                 "permission_denied",
                 target.id,
             )
-        document_order, target_spec, shared_specs = _spec_sections(
-            repository.documents(target))
-        for document in (*target_spec, *shared_specs):
-            documents[document["path"]] = document
-        targets.append({
-            "target_id": target.id,
-            "kind": target.kind,
-            "document_order": document_order,
-            "target_spec": [{key: value for key, value in document.items() if key != "content"}
-                            for document in target_spec],
-            "shared_specs": [{key: value for key, value in document.items() if key != "content"}
-                             for document in shared_specs],
-        })
+        resolution = repository.spec_context(target.id).value
+        for source in resolution["sources"]:
+            documents[source["path"]] = {key: value for key, value in source.items() if key != "reasons"}
+        resolution["sources"] = [{key: value for key, value in source.items() if key != "content"}
+                                 for source in resolution["sources"]]
+        targets.append({"target_id": target.id, "kind": target.kind, "spec_resolution": resolution})
     # File contents are deliberately absent from non-code cognition.
     from .change_worktree import workspace_context
     manifest = {
@@ -254,25 +222,34 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
 def resolve_topology_author_context(repository: SpecRepository, target: dict, *, task: str,
                                     instructions: str,
                                     candidate_document_references: tuple[dict, ...] = (),
-                                    workspace: dict | None = None) -> TopologyAuthorContext:
+                                    workspace: dict | None = None,
+                                    candidate_repository: SpecRepository | None = None) -> TopologyAuthorContext:
     """Build a private authoring context without exposing the target body to main."""
 
     if target.get("kind") != "module":
         raise SpecError("topology target has an unsupported kind", "invalid_spec")
     if not isinstance(task, str) or not task.strip():
         raise SpecError("topology Spec task is required", "invalid_input")
-    references = {item["path"]: tuple(item["targets"])
-                  for item in candidate_document_references}
-    current_paths = []
-    if target["id"] in repository.targets:
-        current = repository.targets[target["id"]]
-        current_paths.extend(current.documents)
-    for path in target["documents"]:
-        if path in repository.document_targets and path not in current_paths:
-            current_paths.append(path)
-    current_documents = [repository.document(path) for path in current_paths]
-    current_document_order, target_spec, shared_specs = _spec_sections(
-        current_documents, references=references)
+    # Freeze every currently available candidate-owned source and every explicit reference.
+    # New owned paths have no preexisting bytes; the author must propose their complete bodies.
+    from ..spec.repository import SpecTarget
+    owned = tuple(path for path in target["documents"] if path in repository.document_targets)
+    descriptor = SpecTarget(target["id"], "module", target["title"], owned, target["parent"],
+        tuple(target["uses"]), tuple(target["files"]), tuple(target["checks"]),
+        tuple((r["kind"], r["id"]) for r in target["references"]))
+    selection = candidate_repository or repository
+    paths = selection._context_paths(descriptor)
+    sources = []
+    for path, reasons in paths.items():
+        source_repository = selection if path in selection.document_overrides else repository
+        if path not in source_repository.document_targets and path in target["documents"]:
+            continue
+        document = source_repository.document(path)
+        sources.append({"document_id": document.document_id, "path": path, "owner": document.owner,
+            "digest": document.digest, "main_visible": document.main_visible,
+            "content": document.content, "reasons": reasons})
+    resolution = {"query_id": target["id"], "query_kind": "module", "module_id": target["id"],
+        "documents": list(target["documents"]), "references": target["references"], "sources": sources}
     from .change_worktree import workspace_context
     manifest = {
         "base_registry_digest": digest(repository.registry_bytes),
@@ -280,30 +257,44 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
         "task": task,
         "protocol_binding": repository.config["protocol"],
         "protocol": _protocol(repository),
-        "candidate_document_references": list(candidate_document_references),
-        "current_document_order": current_document_order,
-        "target_spec": target_spec,
-        "shared_specs": shared_specs,
+        "candidate_references": target["references"],
+        "spec_resolution": resolution,
         "instructions": instructions,
         "workspace": workspace if workspace is not None else workspace_context(repository.root),
     }
     return TopologyAuthorContext(canonical({**manifest, "context_id": digest(manifest)}))
 
 
+def _stale_on_resolution_error(check):
+    """A formerly admitted selection becoming invalid is stale evidence, never a new grant."""
+    from functools import wraps
+
+    @wraps(check)
+    def checked(*args, **kwargs):
+        try:
+            return check(*args, **kwargs)
+        except (ValueError, OSError) as error:
+            if isinstance(error, SpecError) and error.code == "stale_context":
+                raise
+            raise SpecError(f"admitted context selection changed: {error}", "stale_context") from error
+    return checked
+
+
+@_stale_on_resolution_error
 def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, check_implementation: bool = True) -> None:
     value = snapshot.value
     declared = value.pop("context_id")
     if digest(value) != declared:
         raise SpecError("context snapshot identity has changed", "stale_context")
     _recheck_workspace(repository.root, value["workspace"])
-    current = SpecRepository(repository.root, repository.package_root)
+    current = SpecRepository(repository.root, repository.package_root,
+        registry_bytes=repository.registry_bytes if repository.document_overrides else None,
+        document_overrides=repository.document_overrides)
     target = current.select(value["target_id"], value["focus_id"])
     if current.config["protocol"] != value["protocol_binding"]:
         raise SpecError("context Protocol binding has changed", "stale_context")
-    document_order, target_spec, shared_specs = _spec_sections(current.documents(target))
-    if (document_order != value["document_order"] or target_spec != value["target_spec"]
-            or shared_specs != value["shared_specs"]):
-        raise SpecError("context document membership, classification, declarations or bytes changed", "stale_context")
+    if current.spec_context(value["focus_id"] or target.id).value != value["spec_resolution"]:
+        raise SpecError("context ownership, references, provenance or bytes changed", "stale_context")
     if _implementation_entries(current, target) != value["implementation_entries"]:
         raise SpecError("listed implementation entries or their entities changed", "stale_context")
     if check_implementation and _implementation_files(current, target) != value["implementation_files"]:
@@ -313,6 +304,7 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, ch
             raise SpecError("implementation input membership or bytes changed", "stale_context")
 
 
+@_stale_on_resolution_error
 def recheck_discovery_context(repository: SpecRepository, snapshot: DiscoveryContext) -> None:
     """Re-resolve every admitted Module and reject any changed discovery input."""
 
@@ -336,7 +328,9 @@ def recheck_discovery_context(repository: SpecRepository, snapshot: DiscoveryCon
         raise SpecError("Module discovery context changed", "stale_context")
 
 
-def recheck_topology_author_context(repository: SpecRepository, snapshot: TopologyAuthorContext) -> None:
+@_stale_on_resolution_error
+def recheck_topology_author_context(repository: SpecRepository, snapshot: TopologyAuthorContext, *,
+                                   candidate_repository: SpecRepository | None = None) -> None:
     value = snapshot.value
     _recheck_workspace(repository.root, value["workspace"])
     current = SpecRepository(repository.root, repository.package_root)
@@ -345,7 +339,8 @@ def recheck_topology_author_context(repository: SpecRepository, snapshot: Topolo
         value["target"],
         task=value["task"],
         instructions=value["instructions"],
-        candidate_document_references=tuple(value["candidate_document_references"]),
+        candidate_document_references=(),
+        candidate_repository=candidate_repository,
         workspace=value["workspace"],
     )
     if resolved.serialized != snapshot.serialized:

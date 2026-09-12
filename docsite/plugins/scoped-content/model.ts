@@ -7,16 +7,17 @@ import matter from 'gray-matter';
 export type Kind = 'module';
 export interface Target {
   id: string; kind: Kind; title: string; documents: string[];
+  references: {kind: "module" | "document"; id: string}[];
   parent: string | null; uses: string[]; files: string[]; checks: string[];
 }
 export interface Page {
   sourcePath: string; route: string; stagedPath: string; title: string; content: string; contentDigest: string;
-  documentId: string; documentTargets: string[]; mainVisible: boolean; contextSection: 'target_spec' | 'shared_specs';
-  memberships: {targetId: string; kind: Kind; primary: boolean}[]; aliases: string[];
+  documentId: string; owner: string; mainVisible: boolean;
+  includedBy: {targetId: string; reasons: {kind: 'owned' | 'module' | 'document'; id: string}[]}[]; aliases: string[];
   kind: Kind; primaryOf: string | null;
 }
 export interface ScopedRegistry {
-  schema_version: 18; projectRoot: string; registryPath: string; entryTarget: string;
+  schema_version: 19; projectRoot: string; registryPath: string; entryTarget: string;
   sourceDigest: string; targets: Target[]; pages: Page[];
 }
 export const hash = (value: string | Buffer) => 'sha256:' + createHash('sha256').update(value).digest('hex');
@@ -26,7 +27,7 @@ function uniqueStrings(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(v => typeof v === 'string' && v.trim()) && new Set(value).size === value.length;
 }
 function safePath(path: string): void {
-  requireThat(typeof path === 'string' && path.length && !path.includes('\\') && !path.startsWith('/') &&
+  requireThat(typeof path === 'string' && path.length && !/[:\x00-\x1f\x7f]/.test(path) && !path.includes('\\') && !path.startsWith('/') &&
     path.split('/').every(p => p && p !== '.' && p !== '..'), `Unsafe source path: ${path}`);
 }
 export function legacyAliasRoute(targetId: string, sourcePath: string): string {
@@ -86,11 +87,12 @@ export function injectAnchors(content: string): string {
     if (marker) {
       if (!fence) {
         fence = marker[1];
-        if (/^ {0,3}`{3,}concorde-entities\s*$/.test(line)) {
+        if (/^ {0,3}`{3,}concorde-(?:entities|contract)\s*$/.test(line)) {
           const body: string[] = []; let j = i + 1;
           while (j < lines.length && !/^ {0,3}`{3,}\s*$/.test(lines[j])) body.push(lines[j++]);
           try {
-            const entries = JSON.parse(body.join('\n')) as {id?: unknown}[];
+            const parsed = JSON.parse(body.join('\n'));
+            const entries = (Array.isArray(parsed) ? parsed : [parsed]) as {id?: unknown}[];
             const anchors = entries.filter(e => typeof e.id === 'string').map(e => `<a id="${e.id as string}"></a>`);
             if (anchors.length) out.push(anchors.join(''), '');
           } catch {/* an unreadable block is reported by the registry loader, not here */}
@@ -111,9 +113,9 @@ export function safeRead(root: string, path: string): string {
     requireThat(!lstatSync(current).isSymbolicLink(), `Symlink source: ${path}`);
   }
   requireThat(lstatSync(current).isFile(), `Source is not a regular file: ${path}`);
-  return readFileSync(current, 'utf8');
+  return new TextDecoder('utf-8', {fatal: true, ignoreBOM: true}).decode(readFileSync(current));
 }
-/** The adapter publishes Profile 11 projects only; anything else is an explicit error. */
+/** The adapter publishes Profile 12 projects only; anything else is an explicit error. */
 export function requireScoped(root: string): void {
   let profile: unknown;
   try {profile = JSON.parse(safeRead(root, '.concorde/config.json')).profile_version;}
@@ -123,32 +125,32 @@ export function requireScoped(root: string): void {
     }
     throw error;
   }
-  if (profile !== 11) throw new Error(`Profile 11 is required to publish this project; .concorde/config.json declares profile_version ${String(profile)}.`);
+  if (profile !== 12) throw new Error(`Profile 12 is required to publish this project; .concorde/config.json declares profile_version ${String(profile)}.`);
 }
-interface DocumentContext {id: string; targets: string[]; main_visible: boolean}
+interface DocumentContext {id: string; owner: string; main_visible: boolean}
 function documentContext(source: string, path: string, expected: string[]): DocumentContext {
   const blocks = [...source.matchAll(/^```concorde-document\s*\n([\s\S]*?)^```\s*$/gm)];
   requireThat(blocks.length === 1, `Exactly one concorde-document block required: ${path}`);
   const value = JSON.parse(blocks[0][1]) as Partial<DocumentContext>;
-  requireThat(Object.keys(value).sort().join(',') === 'id,main_visible,targets', `Invalid concorde-document fields: ${path}`);
+  requireThat(Object.keys(value).sort().join(',') === 'id,main_visible,owner', `Invalid concorde-document fields: ${path}`);
   requireThat(typeof value.id === 'string' && ids.test(value.id), `Invalid document identity: ${path}`);
-  requireThat(uniqueStrings(value.targets) && value.targets.length && value.targets.every(t => ids.test(t)), `Invalid document targets: ${path}`);
+  requireThat(typeof value.owner === 'string' && ids.test(value.owner), `Invalid document targets: ${path}`);
   requireThat(typeof value.main_visible === 'boolean', `Invalid main_visible: ${path}`);
-  requireThat(value.targets.length === expected.length && value.targets.every(t => expected.includes(t)), `Document targets differ from registry membership: ${path}`);
+  requireThat(expected.length === 1 && value.owner === expected[0], `Document owner differs from registry ownership: ${path}`);
   return value as DocumentContext;
 }
 export function loadScopedRegistry(root: string): ScopedRegistry {
   const configText = safeRead(root, '.concorde/config.json'); const config = JSON.parse(configText);
-  requireThat(config.profile_version === 11, 'Profile 11 configuration required');
+  requireThat(config.profile_version === 12, 'Profile 12 configuration required');
   const registryText = safeRead(root, config.registry); const registry = JSON.parse(registryText);
   requireThat(Object.keys(registry).sort().join(',') === 'checks,entry_target,project_id,schema_version,targets', 'Invalid registry fields');
-  requireThat(registry.schema_version === 3 && Array.isArray(registry.targets) && registry.targets.length, 'Module registry schema 3 required');
+  requireThat(registry.schema_version === 4 && Array.isArray(registry.targets) && registry.targets.length, 'Module registry schema 4 required');
   const targets = registry.targets as Target[];
   const byId = new Map<string, Target>(); const allIds = new Set<string>();
   const documentTargets = new Map<string, string[]>();
   const inputs: [string, string][] = [['.concorde/config.json', hash(configText)], [config.registry, hash(registryText)]];
   for (const t of targets) {
-    requireThat(Object.keys(t).sort().join(',') === 'checks,documents,files,id,kind,parent,title,uses', `Invalid Module fields: ${t.id}`);
+    requireThat(Object.keys(t).sort().join(',') === 'checks,documents,files,id,kind,parent,references,title,uses', `Invalid Module fields: ${t.id}`);
     requireThat(typeof t.id === 'string' && ids.test(t.id) && !allIds.has(t.id), `Duplicate/invalid target identity: ${t.id}`); allIds.add(t.id);
     requireThat(t.kind === 'module' && typeof t.title === 'string' && t.title.trim(), `Invalid kind/title: ${t.id}`);
     requireThat(uniqueStrings(t.documents) && t.documents.length, `Explicit nonempty unique collection required: ${t.id}`);
@@ -157,7 +159,8 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     primaryDocument(t);
     for (const path of t.documents) {
       safePath(path); requireThat(path.endsWith('.md') && !/^(?:\.concorde|\.git)\//.test(path), `Spec documents must be durable Markdown: ${path}`);
-      const refs = documentTargets.get(path) ?? []; refs.push(t.id); documentTargets.set(path, refs);
+      requireThat(!documentTargets.has(path), `Document must have one owner: ${path}`);
+      documentTargets.set(path, [t.id]);
     }
     byId.set(t.id, t);
   }
@@ -173,7 +176,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
   // A listing entry is a safe project path outside project-control directories: either an exact
   // file, or a directory prefix ending in `/` that binds the regular files below it. No entry
   // names a registered Spec document and no directory entry contains one. Unlike a document, one
-  // entry may be listed by several Modules (schema 3 has no single implementation owner).
+  // entry may be listed by several Modules (schema 4 has no single implementation owner).
   for (const t of targets) for (const entry of t.files) {
     const directory = entry.endsWith('/'); const path = directory ? entry.slice(0, -1) : entry;
     safePath(path);
@@ -224,34 +227,74 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     const consumers = targets.filter(m => m.uses.includes(t.id));
     if (consumers.length > 1) requireThat(consumers.every(m => m.parent === t.parent), `Shared Module and consumers must be siblings: ${t.id}`);
   }
+  const byDocumentId = new Map([...cache].map(([path, value]) => [value.declaration.id, path]));
+  const contexts = new Map<string, Map<string, {kind: 'owned' | 'module' | 'document'; id: string}[]>>();
+  for (const t of targets) {
+    const context = new Map<string, {kind: 'owned' | 'module' | 'document'; id: string}[]>(
+      t.documents.map(path => [path, [{kind: 'owned', id: t.id}]]));
+    requireThat(Array.isArray(t.references), `Explicit references required: ${t.id}`);
+    const seen = new Set<string>();
+    for (const ref of t.references) {
+      requireThat(ref && Object.keys(ref).sort().join(',') === 'id,kind' &&
+        ['module', 'document'].includes(ref.kind) && typeof ref.id === 'string' && ids.test(ref.id), `Invalid reference: ${t.id}`);
+      const key = `${ref.kind}:${ref.id}`;
+      requireThat(!seen.has(key), `Duplicate reference: ${key}`); seen.add(key);
+      const paths = ref.kind === 'module' ? byId.get(ref.id)?.documents :
+        (byDocumentId.has(ref.id) ? [byDocumentId.get(ref.id)!] : undefined);
+      requireThat(paths && !(ref.kind === 'module' ? ref.id === t.id : t.documents.includes(paths[0])), `Unknown or self reference: ${key}`);
+      for (const path of paths) context.set(path, [...(context.get(path) ?? []), {...ref}]);
+    }
+    for (const reasons of context.values()) reasons.sort((a,b) => (a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    contexts.set(t.id, context);
+  }
   const stripRoot = [...documentTargets.keys()].every(path => path.startsWith('specs/'));
   const pages: Page[] = []; const routes = new Set<string>(); const aliases = new Set<string>();
   for (const [path, references] of documentTargets) {
     const {raw, content, declaration} = cache.get(path)!;
-    const memberships = references.map(id => {const t = byId.get(id)!; return {targetId: id, kind: t.kind, primary: primaryDocument(t) === path};});
-    const primary = memberships.find(m => m.primary); const owner = byId.get((primary ?? memberships[0]).targetId)!;
+    const owner = byId.get(declaration.owner)!;
+    const primary = primaryDocument(owner) === path;
+    const includedBy = [...contexts].filter(([, context]) => context.has(path))
+      .map(([targetId, context]) => ({targetId, reasons: context.get(path)!}));
     const stagedPath = stripRoot ? path.slice('specs/'.length) : path; const route = '/specs/' + stagedPath.replace(/\.md$/, '');
     requireThat(!stagedPath.startsWith('projections/') && !routes.has(route), `Duplicate or reserved page route: ${route}`); routes.add(route);
     const pageAliases = references.map(id => legacyAliasRoute(id, path)); pageAliases.forEach(alias => aliases.add(alias));
-    const page: Page = {sourcePath: path, route, stagedPath, title: primary ? owner.title : posix.basename(path, '.md'),
-      content, contentDigest: hash(raw), documentId: declaration.id, documentTargets: declaration.targets,
-      mainVisible: declaration.main_visible, contextSection: references.length > 1 ? 'shared_specs' : 'target_spec',
-      memberships, aliases: pageAliases, kind: owner.kind, primaryOf: primary?.targetId ?? null};
+    const page: Page = {sourcePath: path, route, stagedPath, title: /^#\s+(.+)$/m.exec(prose(content))?.[1] ?? owner.title,
+      content, contentDigest: hash(raw), documentId: declaration.id, owner: declaration.owner,
+      mainVisible: declaration.main_visible, includedBy, aliases: pageAliases, kind: owner.kind, primaryOf: primary ? owner.id : null};
     pages.push(page);
   }
   for (const route of routes) requireThat(!aliases.has(route), `Canonical route collides with an alias: ${route}`);
-  const providers = new Map<string, {owner: string; schema: string}>(); const required: {owner: string; peer: string; key: string; schema: string}[] = [];
-  for (const t of targets) for (const path of t.documents) for (const match of cache.get(path)!.content.matchAll(/^```concorde-contract\s*\n([\s\S]*?)^```\s*$/gm)) {
-    const c = JSON.parse(match[1]); const key = `${c.id}@${c.version}`; const schema = stable(c.schema);
-    if (c.role === 'provided') {requireThat(!providers.has(key), `Duplicate provider: ${key}`); providers.set(key, {owner: t.id, schema});}
-    else if (c.role === 'required') required.push({owner: t.id, peer: c.peer, key, schema});
-    else throw new Error(`Invalid contract role: ${key}`);
+  const definitions = new Map<string, {version: number; path: string}>();
+  const bindings: {id: string; version: number; role: string; peer: string; owner: string; path: string}[] = [];
+  for (const t of targets) for (const path of t.documents) {
+    for (const match of cache.get(path)!.content.matchAll(/^```concorde-contract\s*\n([\s\S]*?)^```\s*$/gm)) {
+      const c = JSON.parse(match[1]);
+      requireThat(Object.keys(c).sort().join(',') === 'example,id,schema,semantics,version' &&
+        typeof c.id === 'string' && ids.test(c.id) && Number.isInteger(c.version) && c.version > 0 &&
+        typeof c.semantics === 'string' && c.semantics.trim(), `Invalid canonical definition: ${path}`);
+      requireThat(!definitions.has(c.id), `Duplicate canonical definition: ${c.id}`);
+      definitions.set(c.id, {version: c.version, path});
+    }
+    for (const match of cache.get(path)!.content.matchAll(/^```concorde-contract-binding\s*\n([\s\S]*?)^```\s*$/gm)) {
+      const c = JSON.parse(match[1]);
+      requireThat(Object.keys(c).sort().join(',') === 'id,obligations,peer,relied_upon_guarantees,role,selection_condition,version' &&
+        typeof c.id === 'string' && ids.test(c.id) && Number.isInteger(c.version) && c.version > 0 &&
+        ['provided','required'].includes(c.role) && typeof c.peer === 'string' && c.peer.trim() &&
+        typeof c.selection_condition === 'string' && c.selection_condition.trim() &&
+        uniqueStrings(c.relied_upon_guarantees) && c.relied_upon_guarantees.length &&
+        uniqueStrings(c.obligations) && c.obligations.length, `Invalid participant binding: ${path}`);
+      requireThat(!bindings.some(b => b.owner === t.id && b.id === c.id && b.role === c.role && b.peer === c.peer), `Duplicate binding: ${c.id}`);
+      bindings.push({...c, owner: t.id, path});
+    }
   }
-  for (const c of required) {
-    if (c.peer.startsWith('external:')) continue;
-    const provider = providers.get(c.key); requireThat(provider?.owner === c.peer && provider.schema === c.schema, `Incompatible shared contract: ${c.key}`);
+  for (const b of bindings) {
+    const definition = definitions.get(b.id);
+    requireThat(definition?.version === b.version && contexts.get(b.owner)!.has(definition.path), `Missing context definition: ${b.id}`);
+    if (b.peer.startsWith('external:') && b.peer.length > 9) continue;
+    requireThat(bindings.some(p => p.owner === b.peer && p.peer === b.owner && p.id === b.id &&
+      p.version === b.version && p.role !== b.role), `Missing complementary binding: ${b.id}`);
   }
-  return {schema_version: 18, projectRoot: root, registryPath: config.registry, entryTarget: registry.entry_target, sourceDigest: hash(JSON.stringify(inputs)), targets, pages};
+  return {schema_version: 19, projectRoot: root, registryPath: config.registry, entryTarget: registry.entry_target, sourceDigest: hash(JSON.stringify(inputs)), targets, pages};
 }
 function stable(value: unknown): string {
   if (Array.isArray(value)) return '['+value.map(stable).join(',')+']';

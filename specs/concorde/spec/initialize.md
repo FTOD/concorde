@@ -161,4 +161,4 @@ document metadata names its single `owner`. Initialization pins Protocol 5.0.0/P
 the exact current manifest digest. A draft identifies missing behavior without inventing external
 definitions. Existing projects require an explicit atomic ownership/reference/metadata migration;
 an installer must not silently relabel old shared memberships or interpret them as references.
-The current initializer still emits the old schema and needs this implementation migration.
+The initializer emits this schema and metadata and validates the proposed overlay before application.

@@ -115,7 +115,7 @@ class TypedDataTests(unittest.TestCase):
             root = Path(temporary)
             path = root / ".concorde/config.json"
             path.parent.mkdir()
-            original = {"profile_version": 11, "registry": ".concorde/specs.json", "project_setting": {"keep": True}}
+            original = {"profile_version": 12, "registry": ".concorde/specs.json", "project_setting": {"keep": True}}
             path.write_text(json.dumps(original))
             with self.assertRaises(TypedDataError):
                 load_configuration(root)

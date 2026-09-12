@@ -360,4 +360,4 @@ capability, not to this Module; installation never creates the registry or a Mod
 
 ## Ownership, context and implementation status
 
-Build projection supports rendering these authored sources, but runtime admission, installation/initialization version handling and package Spec/wire alignment still require Protocol 5 migration. Build success proves output freshness only. Project updates must preserve explicit owner/reference choices and never silently migrate consumers.
+Runtime admission, initialization, installation inventory and package Spec/wire alignment support Protocol 5/Profile 12. Build success proves output freshness only. Project updates must preserve explicit owner/reference choices and never silently migrate consumers.

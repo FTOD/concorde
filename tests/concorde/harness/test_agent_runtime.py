@@ -389,7 +389,7 @@ class AgentRuntimeTests(unittest.TestCase):
             AgentGrant(frozenset({'service.transfer'}), frozenset({'A'}))).result
         self.assertEqual(result.outcome, 'completed')
         snapshot = decode(frames[0].context_json)['data']
-        self.assertEqual(snapshot['document_order'],
+        self.assertEqual([s['path'] for s in snapshot['spec_resolution']['sources']],
             ['specs/transfer/module.md', 'specs/transfer/promises.md'])
         self.assertEqual(snapshot['implementation_artifacts'], [])
 

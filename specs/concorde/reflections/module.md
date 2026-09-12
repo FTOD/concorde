@@ -247,4 +247,4 @@ runs through Development.
 
 ## Ownership, context and implementation status
 
-Reference inclusion does not change a Reflection's definition owner or grant provider write/code access. An included provider defect retains the provider identity while evidence records the affected consumer and snapshot. Repair routes to the sole owner; dependent consumer gaps remain open until fresh assessment. Legacy host attribution and snapshot provenance require migration to carry this distinction.
+Reference inclusion does not change a Reflection's definition owner or grant provider write/code access. An included provider defect retains the provider identity while evidence records the affected consumer and snapshot. Repair routes to the sole owner; dependent consumer gaps remain open until fresh assessment. Gap history and capture retain the complete source ownership and inclusion evidence for the consumer snapshot.

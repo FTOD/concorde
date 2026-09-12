@@ -604,6 +604,5 @@ relied-upon behavior from this Module's perspective without importing another Mo
   path remains in Permissions for a future trusted launcher, but the distributed local and Studio
   launchers supply no attestation, so no admitted configuration can select it.
 
-Protocol 5 ownership/reference resolution and version-2 context handoffs are specified but not yet
-implemented by the current Harness. See [context migration status](context.md#implementation-status).
+The Harness implements Protocol 5 ownership/reference resolution and version-2 context handoffs. See [context migration status](context.md#implementation-status).
 Referenced definitions remain read-only and do not enter local entity/file grants.

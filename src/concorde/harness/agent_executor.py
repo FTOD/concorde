@@ -289,9 +289,9 @@ def _completion_schema(specification: LaunchSpecification) -> dict[str, Any]:
                         "input_digest": review["input_digest"], "review_mode": review["review_mode"]}.items():
                     fields[key] = {"type": "string", "const": value}
                 finding = fields["findings"]["items"]["properties"]
-                finding["document"] = {"type": "string", "enum": snapshot["document_order"]}
-                finding["target_id"] = {"type": "string", "const": snapshot["target_id"]}
-                paths = [*snapshot["document_order"],
+                finding["document"] = {"type": "string", "enum": [source["path"] for source in snapshot["spec_resolution"]["sources"]]}
+                finding["target_id"] = {"type": "string", "enum": sorted({source["owner"] for source in snapshot["spec_resolution"]["sources"]})}
+                paths = [*[source["path"] for source in snapshot["spec_resolution"]["sources"]],
                     *(item["path"] for item in snapshot["implementation_artifacts"]),
                     *(item["path"] for item in review["changes"])]
                 finding["location"]["properties"]["path"] = {"type": "string", "enum": sorted(set(paths))}

@@ -36,27 +36,27 @@ class BoundaryTests(unittest.TestCase):
         return Invocation('concorde-validate', CONFIGURATION, task, self.host).verify_completion()
     @verifies("scenario.harness.context-freeze")
     def test_shared_physical_markdown_is_one_hop_context_not_entity_expansion(self):
-        self.registry['targets'][3]['documents'].append('specs/transfer/promises.md');self.save()
+        self.registry['targets'][3]['references'].append({'kind':'document','id':'document.transfer.promises'});self.save()
         update_document_declaration(self.root,'specs/transfer/promises.md',
-                                    targets=['service.transfer','module.ledger'])
+                                    owner='service.transfer')
         repo=SpecRepository(self.root)
         service=resolve_context(repo,'service.transfer').value
         module=resolve_context(repo,'module.ledger').value
-        self.assertEqual(['specs/transfer/promises.md'],[item['path'] for item in service['shared_specs']])
-        self.assertEqual(['specs/transfer/promises.md'],[item['path'] for item in module['shared_specs']])
-        self.assertEqual(['specs/ledger/module.md'],[item['path'] for item in module['target_spec']])
+        self.assertEqual(['specs/transfer/promises.md'],[item['path'] for item in service['spec_resolution']['sources'] if item['path'].endswith('promises.md')])
+        self.assertEqual(['specs/transfer/promises.md'],[item['path'] for item in module['spec_resolution']['sources'] if item['owner'] != 'module.ledger'])
+        self.assertEqual(['specs/ledger/module.md'],[item['path'] for item in module['spec_resolution']['sources'] if item['owner'] == 'module.ledger'])
         self.assertNotIn('specs/transfer/module.md',json.dumps(module))
-    def test_single_target_author_cannot_change_collective_shared_truth(self):
-        self.registry['targets'][3]['documents'].append('specs/transfer/promises.md');self.save()
+    def test_consumer_author_cannot_change_provider_truth(self):
+        self.registry['targets'][3]['references'].append({'kind':'document','id':'document.transfer.promises'});self.save()
         update_document_declaration(self.root,'specs/transfer/promises.md',
-                                    targets=['service.transfer','module.ledger'])
+                                    owner='service.transfer')
         path=self.root/'specs/transfer/promises.md';before=path.read_bytes()
         def cb(stage,snap,data,cwd):
             if stage=='specify':data['documents']=[{'path':'specs/transfer/promises.md',
                 'content':path.read_text()+'\nChanged by one target.\n'}]
-        result=self.call_capability('concorde-specify',callback=cb)
+        result=self.call_capability('concorde-specify',data={'target_id':'module.ledger','task':'Clarify consumer'},callback=cb)
         self.assertEqual('blocked',result['status'],result);self.assertEqual(before,path.read_bytes())
-        self.assertIn('shared Spec truth',result['errors'][0]['message'])
+        self.assertEqual('permission_denied',result['errors'][0]['code'])
     def test_target_author_cannot_persist_duplicate_document_identity(self):
         path=self.root/'specs/transfer/module.md';before=path.read_bytes()
         replacement=path.read_text().replace('"id": "document.transfer.feature"',

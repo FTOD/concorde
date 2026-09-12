@@ -341,9 +341,8 @@ preview; actual launch admission requires every mode-required input.
 
 ## Implementation status
 
-The existing snapshot/discovery serializers still use version-1 typed envelopes, legacy data
-versions and target_spec/shared_specs membership partitions. Profile 12 requires version-2
-snapshot/discovery payloads and version-2 agent-stage, main-stage, review-stage and topology-author
-context wrappers. Old forms are rejected, never reinterpreted as owner/reference provenance.
-The resolver, rechecks, capsule projection, typed schema export and worker grants must migrate
-together before execution on this registry. This Spec change does not implement that migration.
+Snapshot/discovery serializers and the agent-stage, main-stage, review-stage and topology-author
+wrappers use version 2. They freeze spec_resolution and original source pools, preserve owner and
+inclusion provenance, and reject version-1 membership partitions. Native capsules and grants keep
+referenced sources read-only; only owned entity listings grant implementation access. Rechecks
+compare declarations and exact bytes, including reference changes with unchanged path sets.

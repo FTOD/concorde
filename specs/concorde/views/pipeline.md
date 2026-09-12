@@ -389,8 +389,7 @@ still requires ordinary site dependencies to be installed; initialization does n
 
 ## Protocol 5 publication migration status
 
-The current TypeScript registry loader and publication model still expect Profile 11, registry
-schema 3, targets metadata and publication schema 18. Schema 19 above is the intended contract;
-the renderer, manifest checks, anchors for canonical contracts/bindings, watch invalidation and
-navigation require migration before a Profile 12 publication can be certified. Generated rule
-assets do not establish that the existing docsite has implemented owner/reference support.
+The TypeScript loader admits Profile 12/schema 4 and publishes schema 19 with unique owner and
+includedBy provenance. It validates one-level references and canonical definition/binding agreement,
+exposes canonical definition anchors and renders links without transclusion. Manifest identity and
+watched registry/source inputs invalidate publication when ownership or references change.

@@ -217,9 +217,11 @@ flowchart TB
 
 ## Unresolved information
 
-`spec_files(entity_id)` is specified in [registry](registry.md) to resolve a Module or scenario identity to its complete file set, but not yet implemented; the retired `spec_pair` query (Module paired with an Implementation Spec) has no replacement now that Implementation Specs no longer exist. `initialize.py` still writes an external JSON diagram at a legacy path although initialization now only needs an inline Mermaid stub; that migration is unresolved implementation work, not a contract gap. `model.py` retains pre-Profile-10 entity classes beyond `Finding` and `ToolResult` until the legacy package is fully removed.
+`spec_files` and `spec_context` now resolve Module and scenario queries through unique document
+ownership and explicit one-level references. The retired `spec_pair` is not a Protocol 5 query.
+Initialization emits the inline four-part Module stub, Profile 12/schema 4 and owner metadata.
+`model.py` retains the compatibility `ProposalFile` record alongside `Finding` and `ToolResult`.
 
-The Protocol 5 migration additionally requires Profile 12/schema 4 admission, owner metadata,
-one-level references, contract definitions/bindings, context provenance and affected-consumer
-validation. The legacy repository/parser/initializer and exported wire schemas do not implement
-these rules yet. See [resolution interfaces](registry.md#stable-id-spec-context-queries).
+The runtime admits Profile 12/schema 4, validates canonical definitions and participant bindings,
+and records exact source bytes, ownership, declarations and inclusion provenance. Structural
+validation and passing tests do not establish semantic completeness.

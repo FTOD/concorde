@@ -1,4 +1,4 @@
-"""Module contracts with four mandatory parts and entity-listed implementation files (Profile 11).
+"""Module contracts with four mandatory parts and entity-listed implementation files (Profile 12).
 
 Module composition, dependency and file listing are independent relations. Resolving a Module
 never reads a collaborator's body or a listed file's contents; requirements, scenarios and
@@ -19,13 +19,14 @@ from .frontmatter import parse_document
 from .schema import ContractError, admit, validate
 
 
-PROFILE_VERSION = 11
-PROTOCOL_VERSION = "4.0.0"
-REGISTRY_SCHEMA = 3
+PROFILE_VERSION = 12
+PROTOCOL_VERSION = "5.0.0"
+REGISTRY_SCHEMA = 4
 KINDS = frozenset({"module"})
 SPEC_KINDS = frozenset({"module"})
 IDENTITY = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$")
 CONTRACT_BLOCK = re.compile(r"^```concorde-contract\s*\n(.*?)^```\s*$", re.M | re.S)
+BINDING_BLOCK = re.compile(r"^```concorde-contract-binding\s*\n(.*?)^```\s*$", re.M | re.S)
 DEPENDENCIES_BLOCK = re.compile(r"^```concorde-dependencies\s*\n(.*?)^```\s*$", re.M | re.S)
 DOCUMENT_BLOCK = re.compile(r"^```concorde-document\s*\n(.*?)^```\s*$", re.M | re.S)
 ENTITIES_BLOCK = re.compile(r"^```concorde-entities\s*\n(.*?)^```\s*$", re.M | re.S)
@@ -38,7 +39,7 @@ REQUIREMENT_ITEM = re.compile(r"^req\.[a-z0-9.-]+[ \t]*:")
 SHALL = re.compile(r"\bSHALL(?: NOT)?\b")
 MANDATORY_SECTIONS = ("Purpose", "Requirements", "Scenarios", "Ontology")
 ONTOLOGY_SECTIONS = ("Entities", "Relationships")
-ANCHOR_PREFIXES = ("scenario.", "req.", "entity.")
+ANCHOR_PREFIXES = ("scenario.", "req.", "entity.", "contract.")
 CONTROL_PREFIXES = (".concorde/", ".git/", ".agents/", ".claude/", ".codex/", "generated/")
 SKIPPED_DIRECTORIES = frozenset({"node_modules", "__pycache__", ".venv", "build", "dist"})
 SKIPPED_SUFFIXES = (".pyc", ".log")
@@ -185,6 +186,7 @@ class SpecTarget:
     uses: tuple[str, ...]
     files: tuple[str, ...]
     checks: tuple[str, ...]
+    references: tuple[tuple[str, str], ...] = ()
 
     @property
     def primary_document(self) -> str:
@@ -198,10 +200,25 @@ class SpecDocument:
     content: str
     digest: str
     document_id: str
-    targets: tuple[str, ...]
+    owner: str
     main_visible: bool
     metadata: dict
     body: str
+
+@dataclass(frozen=True)
+class SpecResolution:
+    """Canonical immutable resolution; decoding cannot mutate the repository snapshot."""
+    serialized: str
+
+    @property
+    def value(self) -> dict:
+        return decode(self.serialized)
+
+    def __getattr__(self, name):
+        value = self.value
+        if name in value:
+            return value[name]
+        raise AttributeError(name)
 
 
 @dataclass(frozen=True)
@@ -257,15 +274,17 @@ class ModuleDefinitions:
 class SpecRepository:
     def __init__(self, project_root: Path | str, package_root: Path | str | None = None, *,
                  registry_bytes: bytes | None = None,
-                 document_overrides: dict[str, bytes] | None = None):
+                 document_overrides: dict[str, bytes] | None = None,
+                 _defer_document_admission: bool = False):
         root = Path(project_root)
         if root.is_symlink() or not root.is_dir():
             raise SpecError("project root must be a real directory")
         self.root = root.resolve()
+        self._draft_admission = _defer_document_admission
         self.package_root = Path(package_root).resolve() if package_root else Path(__file__).resolve().parents[3]
         self.config = decode(read_file(self.root, ".concorde/config.json").decode())
         if self.config.get("profile_version") != PROFILE_VERSION:
-            raise SpecError("Profile 11 (four-part Module) is required; older profiles need explicit migration", "unsupported_profile")
+            raise SpecError("Profile 12 is required; older profiles need explicit migration", "unsupported_profile")
         if set(self.config) != {"profile_version", "registry", "protocol", "capability_configuration"}:
             raise SpecError("configuration fields must be profile_version, registry, protocol, capability_configuration")
         self.registry_path = safe_path(self.config["registry"])
@@ -289,6 +308,10 @@ class SpecRepository:
         if self.entry_target not in self.targets:
             raise SpecError("entry_target must name one registered target")
         self.protocol_manifest, self.protocol_assets = self._protocol()
+        if not _defer_document_admission:
+            self._document_index()
+            for target in self.targets.values():
+                self._context_paths(target)
 
     def _protocol(self) -> tuple[dict, dict[str, bytes]]:
         from ..distribution.build import BuildError, verify_fresh
@@ -316,7 +339,7 @@ class SpecRepository:
     def _load_registry(self) -> None:
         if not isinstance(self.registry["targets"], list) or not self.registry["targets"]:
             raise SpecError("registry requires targets")
-        fields = {"id", "kind", "title", "documents", "parent", "uses", "files", "checks"}
+        fields = {"id", "kind", "title", "documents", "references", "parent", "uses", "files", "checks"}
         for raw in self.registry["targets"]:
             if not isinstance(raw, dict) or set(raw) != fields:
                 raise SpecError(f"target fields must be {sorted(fields)}")
@@ -333,11 +356,26 @@ class SpecRepository:
                 if not path.endswith(".md") or path.startswith((".concorde/", ".git/")):
                     raise SpecError(f"Spec documents must be durable Markdown: {path}")
                 self.document_targets.setdefault(path, []).append(target_id)
+                if len(self.document_targets[path]) != 1:
+                    raise SpecError(f"document must have exactly one owner: {path}", "invalid_owner", path)
+            references = raw["references"]
+            if not isinstance(references, list):
+                raise SpecError("references must be an explicit array", "invalid_reference", target_id)
+            pairs = []
+            for reference in references:
+                if (not isinstance(reference, dict) or set(reference) != {"kind", "id"}
+                        or not isinstance(reference["kind"], str)
+                        or reference["kind"] not in {"module", "document"}):
+                    raise SpecError("reference requires kind module|document and id", "invalid_reference", target_id)
+                pair = (reference["kind"], identifier(reference["id"]))
+                if pair in pairs or pair == ("module", target_id):
+                    raise SpecError("duplicate or self reference", "invalid_reference", target_id)
+                pairs.append(pair)
             files = strings(raw["files"], "files")
             if list(files) != sorted(files):
                 raise SpecError(f"target {target_id} files must be sorted")
             self.targets[target_id] = SpecTarget(target_id, raw["kind"], raw["title"], documents,
-                raw["parent"], strings(raw["uses"], "uses"), files, strings(raw["checks"], "checks"))
+                raw["parent"], strings(raw["uses"], "uses"), files, strings(raw["checks"], "checks"), tuple(pairs))
         for target in self.targets.values():
             if self.document_targets[target.primary_document] != [target.id]:
                 raise SpecError(f"Module reading entry must belong only to its Module: {target.primary_document}")
@@ -409,8 +447,132 @@ class SpecRepository:
     def documents(self, target: SpecTarget) -> tuple[SpecDocument, ...]:
         return tuple(self.document(path) for path in target.documents)
 
+    def _document_index(self) -> dict[str, str]:
+        """Read identity declarations only; do not load unselected document bodies."""
+        if hasattr(self, "_identity_paths"):
+            return dict(self._identity_paths)
+        import io
+        result = {}
+        for path, owners in self.document_targets.items():
+            if path in self.document_overrides:
+                stream = io.BytesIO(self.document_overrides[path])
+            else:
+                source = checked_path(self.root, path)
+                if not source.is_file() and self._draft_admission:
+                    continue
+                if not source.is_file():
+                    raise SpecError(f"required regular file is missing: {path}", "missing_source", path)
+                stream = os.fdopen(os.open(source, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)), "rb")
+            lines = None
+            with stream:
+                for raw_line in stream:
+                    line = raw_line.decode("utf-8")
+                    if lines is None:
+                        if line.strip() == "```concorde-document":
+                            lines = []
+                    elif line.strip() == "```":
+                        break
+                    else:
+                        lines.append(line)
+                else:
+                    raise SpecError(f"document declaration missing: {path}")
+            value = decode("".join(lines))
+            if (not isinstance(value, dict) or set(value) != {"id", "owner", "main_visible"}
+                    or (not self._draft_admission and value["owner"] != owners[0]) or type(value["main_visible"]) is not bool):
+                raise SpecError(f"invalid document ownership declaration: {path}", "invalid_owner", path)
+            identity = identifier(value["id"])
+            if identity in result or identity in self.targets:
+                raise SpecError(f"duplicate document identity: {identity}", "invalid_owner", path)
+            result[identity] = path
+        self._identity_paths = dict(result)
+        return result
+
+    def _query(self, query_id: str) -> tuple[SpecTarget, str]:
+        if query_id in self.targets:
+            return self.targets[query_id], "module"
+        if query_id.startswith("scenario."):
+            # Resolve heading declarations only. Entity, dependency and interface parsers must
+            # not turn a locator query into a read of unrelated Module behavioral definitions.
+            import io
+            matches = []
+            for path, owners in self.document_targets.items():
+                stream = (io.BytesIO(self.document_overrides[path]) if path in self.document_overrides
+                          else os.fdopen(os.open(checked_path(self.root, path),
+                               os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)), "rb"))
+                fence = None
+                with stream:
+                    for raw in stream:
+                        marker = re.match(rb"^ {0,3}(`{3,}|~{3,})", raw)
+                        if marker:
+                            token = marker.group(1)
+                            if fence is None:
+                                fence = token
+                            elif token[0] == fence[0] and len(token) >= len(fence) and not raw[marker.end():].strip():
+                                fence = None
+                            continue
+                        if fence is not None or not raw.startswith(b"#"):
+                            continue
+                        heading = HEADING.match(raw.decode("utf-8").rstrip("\r\n"))
+                        scenario = SCENARIO_HEADING.match(heading.group(2)) if heading and 2 <= len(heading.group(1)) <= 5 else None
+                        if scenario and scenario.group(1) == query_id:
+                            matches.append(owners[0])
+            if len(matches) == 1:
+                return self.targets[matches[0]], "scenario"
+        raise SpecError(f"unsupported or unknown context identity: {query_id}", "invalid_target", query_id)
+
+    def _context_paths(self, target: SpecTarget) -> dict[str, list[dict]]:
+        index = self._document_index()
+        paths = {path: [{"kind": "owned", "id": target.id}] for path in target.documents}
+        for kind, identity in target.references:
+            if kind == "module":
+                if identity not in self.targets or identity == target.id:
+                    raise SpecError(f"unknown or self Module reference: {identity}", "invalid_reference", target.id)
+                selected = self.targets[identity].documents
+            else:
+                if identity not in index:
+                    raise SpecError(f"unknown document reference: {identity}", "invalid_reference", target.id)
+                selected = (index[identity],)
+                if selected[0] in target.documents:
+                    raise SpecError(f"self document reference: {identity}", "invalid_reference", target.id)
+            for path in selected:
+                paths.setdefault(path, []).append({"kind": kind, "id": identity})
+        return {path: sorted(paths[path], key=lambda reason: (reason["kind"], reason["id"]))
+                for path in sorted(paths)}
+
+    def spec_files(self, entity_id: str) -> tuple[str, ...]:
+        target, _ = self._query(entity_id)
+        return tuple(self._context_paths(target))
+
+    def spec_context(self, entity_id: str) -> SpecResolution:
+        target, kind = self._query(entity_id)
+        sources = []
+        for path, reasons in self._context_paths(target).items():
+            document = self.document(path)
+            sources.append({"document_id": document.document_id, "path": path,
+                            "owner": document.owner, "digest": document.digest,
+                            "main_visible": document.main_visible, "content": document.content,
+                            "reasons": reasons})
+        return SpecResolution(canonical({"query_id": entity_id, "query_kind": kind,
+            "module_id": target.id, "documents": list(target.documents),
+            "references": [{"kind": k, "id": i} for k, i in target.references], "sources": sources}))
+
+    def context_users(self, document_id: str) -> tuple[str, ...]:
+        index = self._document_index()
+        if document_id not in index:
+            raise SpecError(f"unknown document: {document_id}", "invalid_target")
+        return tuple(sorted(t.id for t in self.targets.values()
+                            if index[document_id] in self._context_paths(t)))
+
+    def context_identities(self) -> dict[str, str]:
+        return {target.id: digest(self.spec_context(target.id).value) for target in self.targets.values()}
+
+    def affected_contexts(self, candidate: SpecRepository) -> tuple[str, ...]:
+        before, after = self.context_identities(), candidate.context_identities()
+        return tuple(sorted(identity for identity in before.keys() | after.keys()
+                            if before.get(identity) != after.get(identity)))
+
     def document(self, path: str) -> SpecDocument:
-        """Read one declared Spec truth and verify its registry reference set."""
+        """Read one owned Spec document and verify its unique registry owner."""
 
         if path not in self.document_targets:
             raise SpecError(f"unregistered Spec document: {path}")
@@ -427,40 +589,66 @@ class SpecRepository:
         if len(blocks) != 1:
             raise SpecError(f"Spec document requires exactly one concorde-document block: {path}")
         value = decode(blocks[0].group(1))
-        if not isinstance(value, dict) or set(value) != {"id", "targets", "main_visible"}:
-            raise SpecError(f"concorde-document requires id/targets/main_visible: {path}")
+        if not isinstance(value, dict) or set(value) != {"id", "owner", "main_visible"}:
+            raise SpecError(f"concorde-document requires id/owner/main_visible: {path}")
         document_id = identifier(value["id"])
-        targets = strings(value["targets"], "document targets", nonempty=True)
+        expected_ids = getattr(self, "_identity_paths", {})
+        if expected_ids and expected_ids.get(document_id) != path:
+            raise SpecError(f"document identity changed after admission: {path}", "stale_context", path)
+        owner = identifier(value["owner"])
         if type(value["main_visible"]) is not bool:
             raise SpecError(f"document main_visible must be boolean: {path}")
         expected = tuple(self.document_targets[path])
-        if set(targets) != set(expected) or len(targets) != len(expected):
+        if expected != (owner,):
             raise SpecError(
-                f"document target declaration differs from registry membership: {path}"
+                f"document owner differs from registry ownership: {path}"
             )
-        document = SpecDocument(path, text, digest(raw), document_id, targets,
+        document = SpecDocument(path, text, digest(raw), document_id, owner,
                                 value["main_visible"], metadata, body)
         self._document_cache[path] = document
         return document
 
     def contracts(self, target: SpecTarget) -> tuple[dict, ...]:
+        return self._contracts_in_documents(self.documents(target))
+
+    def _contracts_in_documents(self, documents) -> tuple[dict, ...]:
         contracts = []
-        for document in self.documents(target):
+        for document in documents:
             for match in CONTRACT_BLOCK.finditer(document.body):
                 value = decode(match.group(1))
-                if set(value) != {"id", "version", "role", "peer", "schema", "semantics", "example"}:
-                    raise SpecError(f"contract requires id/version/role/peer/schema/semantics/example: {document.path}")
+                if not isinstance(value, dict) or set(value) != {"id", "version", "schema", "semantics", "example"}:
+                    raise SpecError(f"contract requires id/version/schema/semantics/example: {document.path}")
                 identifier(value["id"])
-                if type(value["version"]) is not int or value["version"] < 1 or value["role"] not in {"provided", "required"}:
-                    raise SpecError("invalid contract version or role")
+                if type(value["version"]) is not int or value["version"] < 1:
+                    raise SpecError("invalid contract version")
                 if not isinstance(value["semantics"], str) or not value["semantics"].strip():
                     raise SpecError("contract semantics must be local and nonempty")
-                if not isinstance(value["peer"], str) or not value["peer"]:
-                    raise SpecError("contract peer must be a target ID or external:name")
                 admit(value["schema"])
                 validate(value["example"], value["schema"])
-                contracts.append({**value, "source": document.path, "owner": target.id})
+                contracts.append({**value, "source": document.path, "owner": document.owner})
         return tuple(contracts)
+
+    def context_contracts(self, target: SpecTarget) -> tuple[dict, ...]:
+        return self._contracts_in_documents(self.document(path) for path in self.spec_files(target.id))
+
+    def contract_bindings(self, target: SpecTarget) -> tuple[dict, ...]:
+        result = []
+        fields = {"id", "version", "role", "peer", "selection_condition", "relied_upon_guarantees", "obligations"}
+        for document in self.documents(target):
+            for match in BINDING_BLOCK.finditer(document.body):
+                value = decode(match.group(1))
+                if not isinstance(value, dict) or set(value) != fields:
+                    raise SpecError(f"invalid contract binding fields: {document.path}")
+                identifier(value["id"])
+                if type(value["version"]) is not int or value["version"] < 1 or value["role"] not in {"provided", "required"}:
+                    raise SpecError(f"invalid binding version or role: {document.path}")
+                for key in ("peer", "selection_condition"):
+                    if not isinstance(value[key], str) or not value[key].strip():
+                        raise SpecError(f"binding {key} must be nonempty: {document.path}")
+                for key in ("relied_upon_guarantees", "obligations"):
+                    strings(value[key], key, nonempty=True)
+                result.append({**value, "source": document.path, "owner": target.id})
+        return tuple(result)
 
     def dependencies(self, target: SpecTarget) -> tuple[dict, ...]:
         """Read the Module's own relied-upon promises, without following a dependency."""
@@ -510,10 +698,7 @@ class SpecRepository:
         entities: list[SpecEntity] = []
         seen: dict[str, str] = {}
         for document in self.documents(target):
-            shared = len(document.targets) > 1
             document_scenarios, document_requirements = _parse_definitions(document, target.id)
-            if shared and (document_scenarios or document_requirements):
-                raise SpecError(f"a shared document cannot define scenarios or requirements: {document.path}")
             for scenario in document_scenarios:
                 if scenario.id in seen:
                     raise SpecError(f"duplicate scenario definition: {scenario.id} ({seen[scenario.id]}, {document.path})")
@@ -525,8 +710,6 @@ class SpecRepository:
             scenarios.extend(document_scenarios)
             requirements.extend(document_requirements)
             document_entities = _parse_entities(document, target.id)
-            if shared and document_entities:
-                raise SpecError(f"a shared document cannot declare entities: {document.path}")
             for entity in document_entities:
                 if entity.id in seen:
                     raise SpecError(f"duplicate entity definition: {entity.id} ({seen[entity.id]}, {document.path})")

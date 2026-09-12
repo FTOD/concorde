@@ -1,6 +1,6 @@
 # Mode: design-topology
 
-Read all source bodies in the discovery pool using each Module document_order and membership. Expand only explicitly identified Module targets when necessary; return a new typed expansion request, never continue a conversation.
+Read all source bodies in the discovery pool using each Module spec_resolution, original ownership and inclusion reasons. Expand only explicitly identified Module targets when necessary; return a new typed expansion request, never continue a conversation.
 For `design-topology`, expand every Module collection needed to understand the
 requested system change. Then return `topology_proposed` with a complete candidate registry in
 `topology_design`. Preserve unchanged registry fields exactly. Every added or changed target needs

@@ -30,7 +30,7 @@ from ..spec.repository import SpecError, SpecRepository, bound_by, digest, read_
 
 def _changes(repository, target, mode, baseline) -> list[dict]:
     """Read history only for the current grant; never admit a project-wide diff."""
-    spec_paths = target.documents
+    spec_paths = repository.spec_files(target.id)
     # Directory entries scope history by their base path; only the files they bind are admitted.
     entries = spec_paths if mode == "spec" else repository.implementation_entries(target)
     roots = spec_paths if mode == "spec" else repository.implementation_paths(target)
@@ -47,7 +47,8 @@ def _changes(repository, target, mode, baseline) -> list[dict]:
                 previous[path] = oid
     changes = []
     for path in sorted(current | previous.keys()):
-        after = read_file(repository.root, path) if path in current else b""
+        after = ((repository.document_overrides[path] if path in repository.document_overrides
+                  else read_file(repository.root, path)) if path in current else b"")
         oid = previous.get(path)
         if oid and path in current:
             git_digest = hashlib.new("sha1" if len(oid) == 40 else "sha256",
@@ -70,7 +71,8 @@ def _changes(repository, target, mode, baseline) -> list[dict]:
 
 def inputs(run, mode: str) -> tuple[dict, object]:
     from .capability_host import _target_revision, _implementation_digest
-    repository = SpecRepository(run.repository.root, run.host.package_root)
+    repository = (run.repository if getattr(run, "candidate_review", False) else
+                  SpecRepository(run.repository.root, run.host.package_root))
     target = repository.select(run.target.id, run.task.get("focus_id"))
     if mode not in REVIEW_STAGES:
         raise SpecError("review_mode must be spec or code", "invalid_input")
@@ -110,7 +112,7 @@ def _empty(run, info, status, answer) -> dict:
 def _persist(run, value, *, execution=None, receipt=None, failure=None) -> dict:
     """Host run records are separate from the reviewer's empty write grant."""
     mode = value["data"]["review_mode"]
-    path = f".concorde/runs/{run.host.invocation_id}/review-{run.target.id}-{mode}.json"
+    path = f".concorde/runs/{run.host.invocation_id}/review-{run.target.id}-{mode}-{uuid.uuid4()}.json"
     destination = checked_path(run.repository.root, path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(canonical(value) + "\n")
@@ -120,7 +122,7 @@ def _persist(run, value, *, execution=None, receipt=None, failure=None) -> dict:
         private.write_text(canonical({"execution": asdict(execution) if execution else None,
                                       "receipt": asdict(receipt) if receipt else None,
                                       "failure": failure}) + "\n")
-    state = read_change(run.repository.root)
+    state = None if getattr(run, "candidate_review", False) else read_change(run.repository.root)
     if state is not None:
         intent = {"task": run.task["task"], "focus_id": run.task.get("focus_id"),
                   "constraints": run.task.get("constraints", [])}
@@ -156,14 +158,16 @@ def _validate(run, snapshot, info, data):
         raise SpecError("findings review requires concrete findings or gaps", "invalid_completion")
     if data["status"] != "incomplete" and not data["representative_tasks"]:
         raise SpecError("completed review requires representative task coverage", "invalid_completion")
-    allowed = set(run.target.documents)
+    spec_paths = set(run.repository.spec_files(run.target.id))
+    allowed = set(spec_paths)
     if info["review_mode"] == "code":
         allowed.update(run.repository.implementation_files(run.target))
         allowed.update(item["path"] for item in info["changes"])
     for finding in findings:
         if any(not finding[key].strip() for key in ("id", "contract", "problem", "affected_task")):
             raise SpecError("review findings require nonblank evidence and an affected task", "invalid_completion")
-        if (finding["target_id"] != run.target.id or finding["document"] not in run.target.documents
+        if (finding["document"] not in spec_paths
+                or finding["target_id"] != run.repository.document(finding["document"]).owner
                 or finding["location"]["path"] not in allowed):
             raise SpecError("review finding crosses target authority", "permission_denied")
         if (info["review_mode"] == "spec" and finding["severity"] == "blocking"
@@ -302,23 +306,60 @@ def review(run, mode: str) -> dict:
         return run.response("failed", reviewed["data"]["answer"], artifacts=[reference], reviews=[reviewed])
 
 
+def spec_consumers(run) -> set[str]:
+    """Current inclusion plus the retained old/candidate impact union."""
+    state = read_change(run.repository.root) or {}
+    selected = set(state.get("spec_context_impacts", {}).get(run.target.id, []))
+    for path in run.target.documents:
+        selected.update(run.repository.context_users(run.repository.document(path).document_id))
+    selected.update(state.get("shared_spec_reviews", {}).get(run.target.id, {}))
+    baseline = state.get("base_commit")
+    if baseline:
+        # Git objects from this candidate's declared base are host-only inputs. Never inspect
+        # another worktree's project files to reconstruct old ownership or inclusion.
+        raw = git(run.repository.root, "show", f"{baseline}:{run.repository.registry_path}", check=False)
+        if raw.returncode == 0:
+            from ..spec.typed_data import decode
+            registry = decode(raw.stdout)
+            overrides = {}
+            for path in {path for target in registry["targets"] for path in target["documents"]}:
+                result = subprocess.run(("git", "show", f"{baseline}:{path}"), cwd=run.repository.root,
+                    capture_output=True, check=True)
+                overrides[path] = result.stdout
+            old = SpecRepository(run.repository.root, run.host.package_root,
+                registry_bytes=raw.stdout.encode(), document_overrides=overrides)
+            if run.target.id in old.targets:
+                for path in old.select(run.target.id).documents:
+                    selected.update(old.context_users(old.document(path).document_id))
+    return selected & run.repository.targets.keys() - {run.target.id}
+
+
+def consumer_task(run, target_id):
+    return {"target_id": target_id,
+        "task": "Review this Module's reliance on the changed canonical Spec. " + run.task["task"],
+        "constraints": run.task.get("constraints", []), "change_id": run.change_id}
+
+
 def review_scope(run, mode: str) -> dict:
     """Review each using Module in a separate context after shared implementation changes."""
     change = read_change(run.repository.root)
     work = (change or {}).get("targets", {}).get(run.target.id, {})
-    components = dict(work.get("coordination", {}))
+    components = {} if mode == "spec" and run.host.track_gaps else dict(work.get("coordination", {}))
     if mode == "code":
         affected = run.repository.covering_modules(run.target)
         for target in affected:
             if target.id != run.target.id:
                 components.setdefault(target.id, {"task":
                     "Check this Module's own contract against the shared implementation change. " + run.task["task"]})
-    if not components or (mode == "spec" and run.host.track_gaps):
+    if mode == "spec":
+        for target_id in spec_consumers(run):
+            components.setdefault(target_id, {"task": consumer_task(run, target_id)["task"]})
+    if not components:
         return review(run, mode)
     outputs = [review(run, mode)["data"]] if mode == "spec" or run.target.files else []
     from .capability_host import invoke_capability
     affected_ids = {target.id for target in run.repository.covering_modules(run.target)}
-    allowed = {run.target.id, *run.target.uses, *affected_ids,
+    allowed = {run.target.id, *run.target.uses, *affected_ids, *spec_consumers(run),
                *(child.id for child in run.repository.children(run.target))}
     for target_id, record in components.items():
         if target_id == run.target.id:
@@ -342,6 +383,20 @@ def review_scope(run, mode: str) -> dict:
     outcome = next((value for value in ("failed", "spec_incomplete", "conflicting", "unsupported", "described")
                     if value in outcomes), "completed")
     run.completed = [name for output in outputs for name in output["completed_capabilities"]]
+    if mode == "spec" and run.host.mode == "execute":
+        state = read_change(run.repository.root)
+        if state is not None:
+            peers = spec_consumers(run)
+            records = {}
+            for output in outputs:
+                for value in output["reviews"]:
+                    target_id = value["data"]["target_id"]
+                    if target_id in peers:
+                        reference = next(ref for ref in output["artifacts"] if ref["id"] == f"review.{target_id}.spec")
+                        records[target_id] = {"artifact": reference, "task": components[target_id]["task"],
+                                              "constraints": run.task.get("constraints", [])}
+            state.setdefault("shared_spec_reviews", {})[run.target.id] = records
+            save_change(run.repository.root, state)
     if mode == "code" and run.host.mode == "execute":
         state = read_change(run.repository.root)
         if state is not None:
@@ -412,6 +467,30 @@ def require_reviews(run, enabled: bool) -> None:
 
 def verify_required(run) -> None:
     state = read_change(run.repository.root, required=True)
+    if state.get("review_requirements", {}).get(run.target.id, {}).get("spec"):
+        from .capability_host import Invocation
+        peers = spec_consumers(run)
+        records = state.get("shared_spec_reviews", {}).get(run.target.id, {})
+        if set(records) != peers:
+            raise SpecError("required Spec consumer reviews are missing", "review_required")
+        for target_id in peers:
+            record = records[target_id]
+            task = {"target_id": target_id, "task": record["task"],
+                    "constraints": record["constraints"], "change_id": run.change_id}
+            reviewer = Invocation("concorde-review", run.configuration, task,
+                replace(run.host, routed_target=target_id, coordinated=True))
+            try:
+                verify_artifacts(run.repository.root, record["artifact"])
+                data = validate_typed(json.loads(read_file(run.repository.root,
+                    record["artifact"]["path"]).decode()), "concorde-review-result")["data"]
+                valid = (data["target_id"] == target_id and data["review_mode"] == "spec"
+                    and data["input_digest"] == inputs(reviewer, "spec")[0]["input_digest"]
+                    and data["status"] in {"no_findings", "findings"} and not data["gaps"]
+                    and not any(f["severity"] == "blocking" for f in data["findings"]))
+            except (ValueError, OSError, KeyError):
+                valid = False
+            if not valid:
+                raise SpecError(f"Spec consumer review is failed or stale for {target_id}", "review_required")
     if state["targets"]:
         for mode, required in state.get("review_requirements", {}).get(run.target.id, {}).items():
             if required:

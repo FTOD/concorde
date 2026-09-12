@@ -53,7 +53,7 @@ class NativeInstallerTests(unittest.TestCase):
 
     def test_manifest_is_single_profile_and_inventory_authority(self):
         self.assertEqual(self.package.version, "5.0.0")
-        self.assertEqual(self.package.manifest["architecture_profile"], 11)
+        self.assertEqual(self.package.manifest["architecture_profile"], 12)
         self.assertEqual(self.package.manifest["workspace_protocol"], 15)
         self.assertEqual(len(self.package.manifest["templates"]), 5)
         self.assertEqual(

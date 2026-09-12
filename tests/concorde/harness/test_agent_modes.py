@@ -53,7 +53,7 @@ class AgentModeTests(unittest.TestCase):
             return typed(mode.constraints.contexts[0], {"snapshot": typed("concorde-discovery-context", snapshot.value)})
         if mode_name == "topology-author":
             target = next(item for item in self.registry["targets"] if item["id"] == self.target)
-            references = tuple({"path": path, "targets": [self.target]} for path in target["documents"])
+            references = tuple({"path": path, "owner": self.target} for path in target["documents"])
             snapshot = resolve_topology_author_context(self.repository, target,
                 task="Accepted target-local task", instructions=prompt.body,
                 candidate_document_references=references)
@@ -121,7 +121,7 @@ class AgentModeTests(unittest.TestCase):
         topology = self.input("spec_engineer", "topology-author")["data"]
         self.assertEqual(self.target, topology["target"]["id"])
         self.assertEqual("Accepted target-local task", topology["task"])
-        self.assertTrue(topology["candidate_document_references"])
+        self.assertEqual(topology["target"]["references"], topology["candidate_references"])
 
     @verifies("scenario.harness.mode-boundary")
     def test_same_agent_rejects_wrong_context_output_pair_and_unknown_mode(self):

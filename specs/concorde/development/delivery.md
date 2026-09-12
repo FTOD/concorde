@@ -65,4 +65,4 @@ Readiness and delivery also recheck the owner and every old/candidate context co
 Spec documents. Reference-only changes and provider inventory changes invalidate dependent review
 identities even when the implementation reverse index is unchanged. Each consumer retains its
 own context and code grant; no delivery check transfers provider ownership or authority. The
-legacy evidence collector must migrate before this Protocol 5 guarantee is implemented.
+evidence collector binds complete resolutions and separately retained consumer review artifacts.

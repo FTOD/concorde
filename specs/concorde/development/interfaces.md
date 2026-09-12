@@ -290,9 +290,8 @@ updated; a mismatched package/context is rejected instead of reinterpreted.
 
 Unknown fields, an incompatible `type_id`, an unsupported `schema_version`, and an unsafe or
 non-project-relative path are all rejected before any agent launches, with the `TypedDataError`
-codes named below. The target interface versions are specified here. Legacy exports do not yet include the new
-context forms; package/schema alignment checks must be migrated before these handoffs can run.
-The existing validation command cannot certify Profile 12 support.
+codes named below. Exported schemas implement the versions specified here, including the version-2
+context forms; package/schema alignment checks verify those identities.
 
 | Error code | Meaning |
 | --- | --- |
@@ -326,6 +325,9 @@ The existing validation command cannot certify Profile 12 support.
 | `invalid_delivery` | A delivery receipt has an invalid or mismatched identity. |
 | `invalid_entry_target` | The registry's `entry_target` is not a Module, so main discovery cannot start there. |
 | `invalid_field` | A TypedValue field fails its JSON Schema: wrong type or format, a missing or unknown field, non-unique items, or a mode/action-specific requirement. |
+| `invalid_owner` | A document has duplicate or inconsistent ownership or identity. |
+| `invalid_reference` | An explicit reference is duplicate, self-directed, unknown or has the wrong kind. |
+| `invalid_target` | A context query does not name a registered Module or scenario. |
 | `invalid_focus` | A focus hint was given without its required target hint. |
 | `invalid_input` | A request's fields are structurally invalid for the requested action (for example, a missing name or configuration on initialization). |
 | `invalid_json` | stdin is not parseable JSON. |
@@ -636,7 +638,7 @@ Review attribution follows the [canonical review-result interface](review-result
 routes a provider repair to its sole owner and retains the consumer's blocked-step evidence;
 included-file read scope never grants authority to write the provider definition.
 
-The current host, wire exports, topology authoring agreement, permission projection and evidence
-invalidation still implement the old membership model. Version-2 context wrappers, owner-authored
-shared-interface changes and consumer-specific checks are required implementation migration work.
+The host uses version-2 context wrappers and owner-only author proposals. Candidate overlays receive
+separate consumer compatibility reviews; plans, review records and readiness checks bind the complete
+owner/reference resolution. Old and candidate consumers are retained for evidence rechecks.
 No lifecycle readiness or delivery is established by this documentation maintenance.

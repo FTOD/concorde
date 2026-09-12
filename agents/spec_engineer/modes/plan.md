@@ -27,8 +27,8 @@ state.
 
 ## Accepted input and feedback
 
-Consume the exact supplied `concorde-agent-stage-context@1` snapshot: the target's
-`concorde-context-snapshot@1`, with `document_order`, Target Spec and Shared Specs, the declared
+Consume the exact supplied `concorde-agent-stage-context@2` snapshot: the target's
+`concorde-context-snapshot@2`, with `spec_resolution` with complete owned and directly referenced sources, original owners and inclusion reasons, the declared
 `implementation_entries` (exact files and directory prefixes, their entity and pending status) and
 the `implementation_files` those entries bind (paths, their entity and pending status, never
 contents), the task and phase, and any `stage_inputs` (for example a prior `concorde-plan-artifact` under revision).

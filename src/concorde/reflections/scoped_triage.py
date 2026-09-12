@@ -5,7 +5,7 @@ import sys
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
-from ..spec.typed_data import typed, artifact
+from ..spec.typed_data import typed, artifact, canonical
 from ..spec.repository import SpecError, read_file, digest
 from .investigation import apply_investigation
 
@@ -148,7 +148,7 @@ def record_gaps(run, queue):
         title = "Missing contract: " + gap["needed_contract"].replace("\n", " ")[:180]
         today = date.today().isoformat()
         metadata = {"id": identifier, "title": title, "phase": phase, "date": today,
-            "feature": target.id, "kind": "specification", "concerns": target.documents[0],
+            "feature": target.id, "kind": "specification", "concerns": target.primary_document,
             "status": "open"}
         front = "\n".join(f"{key}: {json.dumps(value, ensure_ascii=False)}" for key, value in metadata.items())
         content = (f"---\n{front}\n---\n\n# {identifier} · {title}\n\n"
@@ -158,6 +158,7 @@ def record_gaps(run, queue):
             f"## Impact\n\nThe dependent step remains paused: {gap['blocked_step']}\n\n"
             f"## Evidence\n\nCaptured gap {item['id']} from context {gap['context_id']}, "
             f"phase {item['phase']}, change {state['change_id']}. This is a reported gap awaiting investigation.\n\n"
+            + "Source ownership and inclusion evidence: " + canonical(item.get("context_evidence", {})) + "\n\n"
             "## Triage Analysis\n\n## Proposed Resolution\n\n## Intervention Rationale\n\n"
             "## User Comments\n\n## Occurrences\n\n"
             f"- {phase} {today} {target.id} — {gap['blocked_step']}\n")

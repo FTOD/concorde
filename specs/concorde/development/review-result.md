@@ -55,5 +55,4 @@ old review evidence cannot be reused across the Protocol binding change.
 This record is an output of Development review and an input to Harness repair admission. It has
 no independent mutation effect. Invalid shapes fail typed admission; stale identity or an
 inadmissible repair stops the affected transition without retrying under wider permissions.
-An unchanged valid result is idempotent metadata, not a command to replay a repair. Current legacy
-exports preserve this wire shape but do not yet implement the new owner-aware admission semantics.
+An unchanged valid result is idempotent metadata, not a command to replay a repair. The retained wire shape now uses owner-aware admission and complete context freshness checks.
