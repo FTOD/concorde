@@ -1,15 +1,13 @@
 ```concorde-document
 {
   "id": "document.development.topology",
-  "targets": [
-    "module.development"
-  ],
+  "owner": "module.development",
   "main_visible": true
 }
 ```
 # Topology evolution Agent Graph
 
-Use this Graph when registered targets, document membership, shared truth or routing structure
+Use this Graph when registered targets, document ownership and references, shared truth or routing structure
 must change together. The developer supplies intended behavior and constraints. Main designs a
 candidate registry; fresh target-local authors supply the affected Specs after design acceptance.
 A second acceptance binds the exact prepared transaction before application.
@@ -34,7 +32,7 @@ stateDiagram-v2
   Applied --> [*]
 ```
 
-No target author writes project files. A gap or disagreement over exact shared bytes leaves the
+No target author writes project files. A gap or unresolved consumer compatibility leaves the
 pre-design project unchanged. Prepared
 artifacts contain full proposed bytes, but only their path/digest enters coordinator cognition.
 Application is one host transaction with current before-digests and final repository validation.
@@ -44,4 +42,4 @@ Every new Concorde Module includes a local `module.md` with an inline Mermaid en
 whose `accTitle` and `accDescr` describe it for readers who cannot see it. Its author returns the
 complete registered Markdown replacements, including diagram fences. The host checks all proposed
 files as one overlay before exposing the prepared application. Diagram content cannot widen Spec
-membership or agent permissions. Shared sources remain subject to identical-byte agreement.
+membership or agent permissions. Only the sole owner proposes shared source bytes; all affected consumers receive separate compatibility checks.

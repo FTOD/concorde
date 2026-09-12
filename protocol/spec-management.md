@@ -5,71 +5,83 @@ make an authored contract unambiguous regardless of where its documents are stor
 publishes them. A registry is the explicit inventory of these declarations; its storage format and
 the configuration used to locate it are separate from the meanings defined here.
 
-This chapter explains the meaning of the declarations. The Required format chapter specifies
-their mandatory syntax, and the Protocol templates provide authoring starters for them.
+This chapter explains the meaning of the declarations. The Required format chapter specifies their
+mandatory syntax, and the Protocol templates provide authoring starters for them.
 
 ## Spec and Context
 
 [Spec and Context](spec-management/spec-and-context.md) defines the queryable entities and the
 deterministic mapping from a query identity to its complete Spec file set. Module queries select
-their own contracts; scenario queries select the providing Module's complete context. The rules
-use explicit identity, ownership and document membership. A Module's implementation context is
+their own contracts; scenario queries select the providing Module's complete context. The rules use
+explicit identity, unique ownership and Module references. A Module's implementation context is
 resolved separately from its entity file bindings.
 
 ## Stable identities
 
-Modules, physical Spec documents, scenarios, requirements and entities MUST have stable
-identities, unique across those categories within a project. An identity is distinct from a title
-or file path. Renaming a title or relocating a document does not by itself change what it
-identifies.
+Modules, physical Spec documents, scenarios, requirements and entities MUST have stable identities,
+unique across those categories within a project. An identity is distinct from a title or file path.
+Renaming a title or relocating a document does not by itself change what it identifies.
 
-Scenarios, requirements and entities each belong to one providing Module. Their definitions MUST
-be located in documents that belong to that Module alone. Their project-wide unique IDs identify
+Scenarios, requirements and entities each belong to one providing Module. Their definitions MUST be
+located in documents that belong to that Module alone. Their project-wide unique IDs identify
 locally owned parts of a contract; they do not make those parts independent document collections.
 
-An identity is also the anchor of its definition. A link to the defining document whose fragment
-is the identity, such as `inventory/module.md#req.inventory.no-oversell`, reaches that definition
-wherever the document is published. The path locates the document and may change when the
-document moves; the fragment is the stable part. A link is navigation and grants nothing.
+An identity is also the anchor of its definition. A link to the defining document whose fragment is
+the identity, such as `inventory/module.md#req.inventory.no-oversell`, reaches that definition
+wherever the document is published. The path locates the document and may change when the document
+moves; the fragment is the stable part. A link is navigation and grants nothing.
 
 For example, `module.inventory`, `scenario.inventory.reserve`, `req.inventory.no-oversell`,
 `entity.inventory.stock-ledger` and `document.inventory.contract` identify a Module, one of its
-scenarios, one of its requirements, one of its entities and a document describing it. The
-particular prefixes in these examples aid recognition; ownership follows the explicit
-declarations and document membership.
+scenarios, one of its requirements, one of its entities and a document describing it. The particular
+prefixes in these examples aid recognition; ownership follows the explicit declarations and document
+ownership.
 
-## Document collections and reading entries
+## Document ownership, references and reading entries
 
-Every Module MUST register a nonempty collection of Markdown documents and exactly one local
-`module.md` reading entry. That entry belongs only to its Module. Additional documents MAY be
-shared by explicitly registering the same physical document in each participating Module's
-collection. Shared content must be meaningful and consistent in every collection that includes it.
+Every Module registers a nonempty `documents` collection with exactly one local `module.md` reading
+entry. Registering a physical document establishes its sole owner. Multiple ownership, unregistered
+documents and aliases of a physical file are invalid. Reading order and visibility are presentation
+attributes; all selected files are included in full.
 
-Membership determines the complete Spec. Neither a hyperlink nor a directory walk changes it.
-Document order and a reading entry help navigation; they do not make other members optional.
+The Module registration also declares `references`, a distinct list of typed stable identities:
+
+```json
+{
+  "id": "module.checkout",
+  "documents": ["checkout/module.md", "checkout/scenarios.md"],
+  "references": [
+    {"kind": "module", "id": "module.inventory"},
+    {"kind": "document", "id": "document.delivery-terms"}
+  ]
+}
+```
+
+This is a partial registration example, not a second context list. A Module reference includes all
+documents owned by that Module; a document reference includes just that file. It does not include
+the referenced Module's own references. A reference MUST resolve to its declared kind; duplicate
+reference pairs and references to the selecting Module or its own documents are invalid. Overlapping
+Module/document references are allowed and produce one copy with all inclusion reasons. Cycles
+between Modules' references are permitted because resolution never recurses.
 
 ```mermaid
 flowchart TB
-    accTitle: Explicit document collections with one shared document
-    accDescr: Checkout registers its own module.md and a shared delivery-terms document. Fulfilment registers its own module.md and the same delivery-terms document. The shared document has one identity and belongs to both complete collections, even when main_visible is false.
-    checkout["Checkout collection<br/>module.checkout"]
-    fulfilment["Fulfilment collection<br/>module.fulfilment"]
-    checkoutMain["checkout/module.md<br/>Checkout reading entry"]
-    fulfilmentMain["fulfilment/module.md<br/>Fulfilment reading entry"]
-    shared["delivery-terms.md<br/>one physical document"]
-    metadata["id: document.delivery-terms<br/>targets: both Module IDs<br/>main_visible: false"]
-    checkout -->|registers| checkoutMain
-    fulfilment -->|registers| fulfilmentMain
-    checkout -->|registers| shared
-    fulfilment -->|registers| shared
-    shared -->|declares| metadata
+    accTitle: One owner and explicit context inclusion
+    accDescr: Fulfilment owns its reading entry and delivery terms. Checkout owns its reading entry and references only delivery terms. Checkout does not acquire Fulfilment's other documents or ownership.
+    checkout["Checkout Module"]
+    fulfilment["Fulfilment Module"]
+    checkoutMain["checkout/module.md"]
+    fulfilmentMain["fulfilment/module.md"]
+    terms["delivery-terms.md"]
+    checkout -->|owns| checkoutMain
+    fulfilment -->|owns| fulfilmentMain
+    fulfilment -->|owns| terms
+    checkout -->|references document| terms
 ```
 
-The example gives each Module a complete two-document collection. The shared document is a member
-of both, but neither Module acquires the other's reading entry. Display visibility does not alter
-that membership. Paths locate documents; the document ID supplies stable identity. Because the
-shared document has two owners, it cannot define scenarios, requirements or entities; those
-definitions live in single-owner documents.
+Delivery terms can define Fulfilment-owned requirements, scenarios, entities and interfaces.
+Checkout reads them without acquiring those definitions, the remaining Fulfilment context, its
+implementation files, or authority to edit the terms.
 
 ## Document metadata
 
@@ -78,22 +90,15 @@ Every registered physical Spec document MUST contain exactly one JSON `concorde-
 ```concorde-document
 {
   "id": "document.inventory.contract",
-  "targets": ["module.inventory"],
+  "owner": "module.inventory",
   "main_visible": true
 }
 ```
 
-`id` identifies the physical document. `targets` is a nonempty list containing exactly the Module
-identities whose collections register that document, without duplicates. Both sides of the
-membership declaration MUST agree. An explicitly shared document lists all referring Modules.
-
-`main_visible` is a boolean indicating whether the document is included in a main reading view.
-It is presentation metadata: false does not remove the document from the complete contract or
-make its contents less authoritative. A publisher decides how to present such views without
-changing the registered collection.
-
-The block above is an example of the syntax required in project Specs. It is not a declaration
-that this Protocol chapter belongs to the example Module.
+`id` identifies the document. `owner` MUST equal the sole Module whose `documents` registers it.
+`main_visible` is a boolean controlling the main reading view only. Metadata does not declare
+references: the Module registration is their sole authority. The example is syntax, not a
+declaration that this Protocol chapter belongs to Inventory.
 
 ## Relationship declarations
 
@@ -106,7 +111,9 @@ An inventory MUST distinguish these relationships:
 - **File listing:** a Module's `files` identify the implementation files its entities bind, as
   exact files or directory prefixes. The inventory value MUST equal the union of the Module's
   entity file declarations, entry for entry.
-- **Document membership:** a Module's `documents` identify its complete registered collection.
+- **Document ownership:** a Module's `documents` identify the documents it alone owns.
+- **Context inclusion:** a Module's `references` identify other Modules or registered documents
+  to include once, without following their references. These do not imply any other relationship.
 
 All references MUST resolve to the appropriate kind of entity. File paths and display titles MUST
 NOT be used to infer undeclared parentage, dependencies or file ownership.
@@ -123,8 +130,7 @@ collection with a JSON `concorde-dependencies` declaration. Each entry has four 
     "responsibility": "Maintain available stock and reservations.",
     "selection_condition": "When checkout needs to reserve the requested quantity.",
     "relied_upon_promises": [
-      "scenario.inventory.reserve: a successful reservation makes the requested quantity unavailable to later reservations.",
-      "Insufficient stock returns a failure without creating a reservation."
+      "[Reservation outcome](inventory/module.md#scenario.inventory.reserve), used to decide whether checkout can proceed."
     ]
   }
 ]
@@ -133,9 +139,12 @@ collection with a JSON `concorde-dependencies` declaration. Each entry has four 
 `target_id` identifies the provider. `responsibility` describes what it supplies.
 `selection_condition` explains when this collaboration applies; it is not an agent-routing command.
 `relied_upon_promises` is a nonempty list of the guarantees the consumer or parent relies on; a
-promise MAY begin with the provider's scenario or requirement identity. The set of provider
-identities MUST agree with the Module's direct dependency and child relationships. A relationship
-edge alone does not supply these behavioral promises.
+promise SHOULD be a Markdown link to a canonical provider definition with a local explanation of why
+it is needed. Required definitions MUST be present in the resolved context through explicit
+references; a prose link alone does not load them. Consumer obligations and failure reactions stay
+local; the provider schema and common behavior MUST NOT be copied into a second authority. The set
+of provider identities MUST agree with the Module's direct dependency and child relationships. A
+relationship edge alone does not supply these behavioral promises.
 
 ```mermaid
 flowchart TB
@@ -155,7 +164,7 @@ flowchart TB
 
 Both representations identify the same provider: one records the relationship, the other supplies
 its local meaning. For composition, the child's `parent` reference and the parent's local child
-declaration must likewise agree. Following either relationship does not expand document membership.
+declaration must likewise agree. Following either relationship does not expand context.
 
 ## Entity declarations
 
@@ -190,8 +199,8 @@ trailing slash; `pending` names the subset of those entries that are declared bu
 because those files belong to that Module. An entity without `files` and without `target_id` is a
 concept, record, interface or actor.
 
-Within one Module each entry appears under one entity, and a file covered by several entries of
-the Module belongs to the most specific one. The union of a Module's entity entries is its
+Within one Module each entry appears under one entity, and a file covered by several entries of the
+Module belongs to the most specific one. The union of a Module's entity entries is its
 implementation file listing and MUST equal the inventory's `files` for that Module, entry for entry.
 Every child and every used Module MUST be represented by an entity with the corresponding
 `target_id`, and every `target_id` MUST name a child or used Module. Listing a file grants nothing
@@ -199,52 +208,66 @@ by itself; a development tool decides which phases may read or change listed fil
 
 ## Structured interface agreements
 
-An interface may exchange structured values. A JSON `concorde-contract` block records an explicit
-provided or required agreement for such a value. It has these fields:
+An interface remains an entity of its owning Module. Its definition MAY occupy a separate owned
+document referenced by any number of Modules. Each structured contract ID has exactly one canonical
+`concorde-contract` definition, with `id`, `version`, `schema`, `semantics` and `example`. `version`
+is a positive integer and `example` MUST satisfy `schema`. Definitions are unique across the
+project's identity categories; a binding uses an existing ID without defining it again.
 
-- `id`: the stable identity of the exchanged contract.
-- `version`: a positive integer identifying the contract version.
-- `role`: `provided` or `required` from the declaring Module's perspective.
-- `peer`: the counterpart's Module identity, or `external:<name>` for an external participant.
-- `schema`: the declared structure of the value.
-- `semantics`: a nonempty local explanation of its meaning.
-- `example`: a value conforming to the declared schema.
+The owning document centralizes the structure, meaning, inputs and outputs, errors, side effects,
+compatibility and related scenarios. Those behaviors MAY be stated by ordinary Markdown links to
+other canonical definitions only when all necessary definitions occur in each consuming context.
+There is no recursive inclusion or special link syntax. The schema's supported vocabulary MUST be
+explicit and offline; schema references cannot load Spec files or remote resources.
 
-A required agreement with an internal provider MUST match that provider's contract identity,
-version and schema. Local semantic promises must also be compatible. Matching fields alone does
-not establish that agreement. Contract identity is shared across its provided and required
-declarations; those declarations are not duplicate Module, scenario, entity or document
-identities. The prose around a declaration SHOULD relate it to the interface entity that
-exchanges the value and to the scenarios in which it is exchanged.
+Each participant declares a `concorde-contract-binding` with `id`, `version`, `role`, `peer`,
+`selection_condition`, `relied_upon_guarantees` and `obligations`. Role is `provided` or `required`;
+peer is a Module ID or `external:<name>`. Both guarantee and obligation lists are nonempty strings.
+Guarantees SHOULD link to the canonical definition/scenarios and explain their local use. Bindings
+MUST NOT repeat schema, example or common semantics. Consumers retain their own use conditions,
+obligations and error reactions. The defining owner need not be every provider, but every
+participant MUST include the exact definition version in its resolved context.
 
-The schema representation and supported vocabulary must be explicit to its consumers. A schema
-or example does not replace the scenarios that state inputs, effects, errors and compatibility.
+For an internal peer, the counterpart MUST declare a complementary role for the same ID/version and
+identify the participant as peer. External peers need no project-owned counterpart. A binding cannot
+override a definition. Multiple providers may implement one canonical contract; contradictory
+bindings or duplicate participant/peer/role bindings are errors. Structural matching does not prove
+behavioral compatibility.
+
+Changing the canonical agreement requires review of its owner and all contexts that include its
+document, whether through Module or document references. Byte or inclusion changes invalidate their
+dependent context/review identities. A behavior or schema change increments the contract version and
+updates affected bindings atomically; editorial changes still invalidate byte-bound evidence.
+Ownership transfer preserves IDs and atomically reconciles registrations, metadata, links, bindings
+and affected references. Publication shows the definition once with owner and consumer links,
+without transcluding it into consumer pages.
 
 ## Relationship diagrams
 
 A Module's relationships are authored as Mermaid flowchart fences inside its registered Markdown
 documents. The fences in the Relationships subsection of the reading entry's Ontology are the
-authoritative relationship model: their nodes MUST be exactly the Module's entity titles and
-every edge MUST carry a label. Further diagrams in other registered documents MAY illustrate
-behavior or detail. An inline fence is part of its containing document and adds no file to the
-collection. Rendered diagrams, indexes and navigation views derive from the registered documents
-and MUST NOT create a second authority for the contract or change its membership.
+authoritative relationship model: their nodes MUST be exactly the owning Module's entity titles,
+excluding included foreign entities and every edge MUST carry a label. Further diagrams in other
+registered documents MAY illustrate behavior or detail. An inline fence is part of its containing
+document and adds no file to the collection. Rendered diagrams, indexes and navigation views derive
+from the registered documents and MUST NOT create a second authority for the contract or change
+ownership or context inclusion.
 
 ## Scenario verification index
 
-A tool MAY derive a verification index from the Module's implementation files: for every
-scenario, the tests that declare its identity. The index is derived from the tests alone, in the
-declaration syntax the tool defines; no Spec document contributes to it and no Spec document lists
-a test. It is implementation metadata beside the reverse file index, reported as coverage
-evidence, and it does not change identities, membership or the contract.
+A tool MAY derive a verification index from the Module's implementation files: for every scenario,
+the tests that declare its identity. The index is derived from the tests alone, in the declaration
+syntax the tool defines; no Spec document contributes to it and no Spec document lists a test. It is
+implementation metadata beside the reverse file index, reported as coverage evidence, and it does
+not change identities, ownership, references or the contract.
 
 ## Versions and consistency
 
 A project identifies the Protocol version its specifications follow. This is distinct from the
-versions of its own interface agreements and any registry serialization used by a tool.
-Tools may additionally identify exact revisions or content digests for reproducibility.
+versions of its own interface agreements and any registry serialization used by a tool. Tools may
+additionally identify exact revisions or content digests for reproducibility.
 
-Identities, collection membership, local dependency promises, entity declarations and file
-listings MUST describe one consistent model. A structured declaration cannot override
-contradictory prose, and prose cannot silently add a relationship missing from the explicit
+Identities, ownership, references, interface bindings, local dependency promises, entity
+declarations and file listings MUST describe one consistent model. A structured declaration cannot
+override contradictory prose, and prose cannot silently add a relationship missing from the explicit
 inventory.

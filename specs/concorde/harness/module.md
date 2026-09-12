@@ -1,16 +1,14 @@
 ```concorde-document
 {
   "id": "document.harness.module",
-  "targets": [
-    "module.harness"
-  ],
+  "owner": "module.harness",
   "main_visible": true
 }
 ```
 
 # Harness
 
-`module.harness` follows Spec Protocol 4.0.0. Its sole structural parent is `module.concorde`. The
+`module.harness` follows Spec Protocol 5.0.0. Its sole structural parent is `module.concorde`. The
 complete contract is the Markdown collection explicitly registered in `.concorde/specs.json`; links
 and entity file listings do not expand it. This reading entry introduces the collection; the
 registered companion documents explain [Agents and Harnesses](agents-and-harnesses.md), [Agent
@@ -185,7 +183,7 @@ rule: see [names for every phase](#req.harness.context-file-names-every-phase) a
 #### scenario.harness.context-stale-recheck — Reject reuse after an admitted input changed
 
 - GIVEN a previously resolved context snapshot
-- AND a document, membership, Protocol binding or other admitted byte has since changed
+- AND a document, ownership, reference declaration, inclusion reason, Protocol binding or other admitted byte has since changed
 - WHEN recheck_context or recheck_discovery_context is called with that snapshot
 - THEN the call raises SpecError with code stale_context
 - AND the caller must resolve a fresh snapshot before continuing
@@ -196,7 +194,7 @@ See [the changed-input recheck bound](#req.harness.context-recheck).
 
 - GIVEN a nonempty, duplicate-free ordered tuple of registered Module IDs, a capability, a phase of route, and an action of route, ask or design-topology
 - WHEN resolve_discovery_context is called
-- THEN the host returns a DiscoveryContext whose documents pool contains each selected Module's complete registered documents exactly once
+- THEN the host returns a DiscoveryContext whose documents pool contains the one-level union for every selected Module, deduplicated with ownership and inclusion reasons
 - AND a focus hint is admitted only when it names a scenario of the target hint's own Module
 - AND the returned topology equals the exact registry only for the design-topology action, and is null for every other action
 
@@ -501,7 +499,7 @@ the most specific entry owns a file.
 ### Relationships
 
 Each invocation is the unit of work this Module executes. Its Spec context is the selected
-Module's complete registered collection; its implementation context is the Protocol-defined set of
+Module's complete one-level owned/reference context; its implementation context is the Protocol-defined set of
 files the Module's own entities bind — every phase sees their names, only programmer implementation,
 code-review and investigation modes see authorized contents; its capability context is the admitted Capability and Tool
 contracts; its task context is the task, constraints, stage artifacts and lifecycle metadata. The
@@ -563,7 +561,7 @@ relied-upon behavior from this Module's perspective without importing another Mo
     "responsibility": "Admit the registry and resolve identities, document collections, entity file listings and file ownership.",
     "selection_condition": "When freezing any context kind or checking a target, focus or binding.",
     "relied_upon_promises": [
-      "Selection returns the complete registered collection and declared entity listing entries of one identity without following relationships, and a changed source is visible as a changed digest."
+      "[Resolve the full one-level context and own implementation bindings; rebuild snapshots after changes](../spec/registry.md#stable-id-spec-context-queries)"
     ]
   },
   {
@@ -571,7 +569,7 @@ relied-upon behavior from this Module's perspective without importing another Mo
     "responsibility": "Render Agent instructions and Protocol assets from authored sources and attest their freshness.",
     "selection_condition": "When resolving an Agent binding or admitting the Protocol rule bundle for a launch.",
     "relied_upon_promises": [
-      "A rendered instruction or rule asset is traceable to its authored source through the build manifest, and a stale build is reported rather than served."
+      "[Load only fresh, source-traceable instructions and pinned rule assets](../distribution/build.md)"
     ]
   }
 ]
@@ -605,3 +603,7 @@ relied-upon behavior from this Module's perspective without importing another Mo
 - Project configuration admits `enforcement: native` only. The attested outer-sandbox rendering
   path remains in Permissions for a future trusted launcher, but the distributed local and Studio
   launchers supply no attestation, so no admitted configuration can select it.
+
+Protocol 5 ownership/reference resolution and version-2 context handoffs are specified but not yet
+implemented by the current Harness. See [context migration status](context.md#implementation-status).
+Referenced definitions remain read-only and do not enter local entity/file grants.

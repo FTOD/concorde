@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.views.viewer",
-  "targets": [
-    "module.views"
-  ],
+  "owner": "module.views",
   "main_visible": true
 }
 ```

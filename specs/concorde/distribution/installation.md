@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.distribution.installation",
-  "targets": [
-    "module.distribution"
-  ],
+  "owner": "module.distribution",
   "main_visible": true
 }
 ```
@@ -16,11 +14,11 @@ authored under `protocol/` and distributed with the independent standard. The `t
 links to those sources. Plan, task and reflection starters remain Framework workflow assets; they
 are not additional Protocol Spec kinds.
 
-The Framework identifies its supported project configuration as Profile 11. Initialization writes
-`.concorde/config.json` with `profile_version: 11`, the `registry` path, an accepted Protocol
+The Framework identifies its supported project configuration as Profile 12. Initialization writes
+`.concorde/config.json` with `profile_version: 12`, the `registry` path, an accepted Protocol
 `version` and manifest `digest` under `protocol`, and the typed `capability_configuration` for
-integration and enforcement. Its registry uses JSON schema version 3. Profile 11 and registry
-schema 3 are Framework compatibility and storage versions; Spec Protocol 4.0.0 identifies the
+integration and enforcement. Its registry uses JSON schema version 4. Profile 12 and registry
+schema 4 are Framework compatibility and storage versions; Spec Protocol 5.0.0 identifies the
 independent specification standard. Installation and initialization preserve these separate roles.
 
 ## Installing and updating a target project
@@ -104,7 +102,7 @@ separate and versioned. Check verifies receipt hashes and required runtime ident
 changing project behavior.
 
 The distributable manifest is `concorde.json` schema_version 3, Concorde 5.0.0, Architecture
-Profile 11, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 3 Agents with 12 explicit modes and 13
+Profile 12, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 3 Agents with 12 explicit modes and 13
 capabilities, of which 7 are Skills (global or lifecycle) and 6 are stages reachable only through a
 composing capability, explicit package roots including `prompts`/`capabilities`/`protocol`, and 5
 templates. Codex `.agents/skills` and Claude `.claude/skills` expose the same 8 Skills; canonical

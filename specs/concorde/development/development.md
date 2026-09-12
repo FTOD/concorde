@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.development.development",
-  "targets": [
-    "module.development"
-  ],
+  "owner": "module.development",
   "main_visible": true
 }
 ```

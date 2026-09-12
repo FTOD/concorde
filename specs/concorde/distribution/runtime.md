@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.distribution.runtime",
-  "targets": [
-    "module.distribution"
-  ],
+  "owner": "module.distribution",
   "main_visible": true
 }
 ```

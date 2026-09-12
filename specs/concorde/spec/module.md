@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.spec.module",
-  "targets": [
-    "module.spec"
-  ],
+  "owner": "module.spec",
   "main_visible": true
 }
 ```
@@ -16,9 +14,9 @@ Spec owns the project Spec model: the pinned Protocol binding, the explicit regi
 
 ## Requirements
 
-### req.spec.no-body-read — No reads of a collaborator's Spec body
+### req.spec.no-body-read — Metadata resolution does not read collaborator bodies
 
-Resolving a Module's identity, membership or file listing SHALL NOT read a collaborator Module's
+Resolving a Module's identity, ownership or file listing SHALL NOT read a collaborator Module's
 Spec body or a listed file's contents.
 
 ### req.spec.one-owner-per-module — One owning entity per bound file
@@ -48,7 +46,7 @@ The registered companion documents [registry](registry.md), [values](values.md),
 
 ### scenario.spec.admit-inventory — Admitting a consistent Module inventory
 
-- GIVEN an explicit registry with Module identities, one structural parent per Module, directed uses, entity listing entries and document membership
+- GIVEN an explicit registry with Module identities, one structural parent per Module, directed uses, entity listing entries and document ownership and references
 - AND a Protocol binding that matches the installed Protocol assets
 - WHEN the repository is constructed
 - THEN it admits immutable Module descriptors, file-ownership and reverse-user indexes
@@ -95,7 +93,7 @@ the exact entries they realize, and the most specific entry decides which entity
     "id": "entity.spec.registry",
     "title": "Registry",
     "kind": "concept",
-    "responsibility": "The explicit schema-3 JSON inventory of Module identities, document membership, parent/uses relationships, entity listing entries (exact files and directory prefixes) and checks that the repository admits."
+    "responsibility": "The explicit schema-4 JSON inventory of Module identities, document ownership and references, parent/uses relationships, entity listing entries (exact files and directory prefixes) and checks that the repository admits."
   },
   {
     "id": "entity.spec.protocol-binding",
@@ -107,7 +105,7 @@ the exact entries they realize, and the most specific entry decides which entity
     "id": "entity.spec.repository-api",
     "title": "SpecRepository API",
     "kind": "interface",
-    "responsibility": "The Python query surface (select, documents, contracts, dependencies, spec_files) other Framework code uses to read admitted Spec structure without writing files."
+    "responsibility": "The Python query surface for ownership, owned definitions, one-level context resolution and affected-consumer provenance, separate from implementation listing queries."
   },
   {
     "id": "entity.spec.validator",
@@ -128,6 +126,7 @@ the exact entries they realize, and the most specific entry decides which entity
     "responsibility": "Realizes registry admission, selection and reverse indexes, deterministic structural validation, project initialization, the concorde-init capability and the package entry points.",
     "files": [
       "capabilities/init.py",
+      "scripts/development/check-spec-v5.py",
       "src/concorde/__init__.py",
       "src/concorde/__main__.py",
       "src/concorde/spec/",
@@ -166,7 +165,7 @@ the exact entries they realize, and the most specific entry decides which entity
     "id": "entity.spec.protocol-text",
     "title": "Protocol text",
     "kind": "authored standard",
-    "responsibility": "Authors the independent Spec Protocol 4.0.0 chapters and templates: principles, Module specifications, Spec management, Spec and Context, Required format, and the Module and Scenario templates.",
+    "responsibility": "Authors the independent Spec Protocol 5.0.0 chapters and templates: principles, Module specifications, Spec management, Spec and Context, Required format, and the Module and Scenario templates.",
     "files": [
       "protocol/"
     ]
@@ -219,3 +218,8 @@ flowchart TB
 ## Unresolved information
 
 `spec_files(entity_id)` is specified in [registry](registry.md) to resolve a Module or scenario identity to its complete file set, but not yet implemented; the retired `spec_pair` query (Module paired with an Implementation Spec) has no replacement now that Implementation Specs no longer exist. `initialize.py` still writes an external JSON diagram at a legacy path although initialization now only needs an inline Mermaid stub; that migration is unresolved implementation work, not a contract gap. `model.py` retains pre-Profile-10 entity classes beyond `Finding` and `ToolResult` until the legacy package is fully removed.
+
+The Protocol 5 migration additionally requires Profile 12/schema 4 admission, owner metadata,
+one-level references, contract definitions/bindings, context provenance and affected-consumer
+validation. The legacy repository/parser/initializer and exported wire schemas do not implement
+these rules yet. See [resolution interfaces](registry.md#stable-id-spec-context-queries).

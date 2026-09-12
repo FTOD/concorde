@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.harness.agents-and-harnesses",
-  "targets": [
-    "module.harness"
-  ],
+  "owner": "module.harness",
   "main_visible": true
 }
 ```
@@ -280,7 +278,7 @@ pairs: **stage** = `concorde-agent-stage-context` / `concorde-agent-stage-result
 | spec-engineer | plan | stage; plan | optional concorde-plan-artifact | Plan only; no source contents or writes |
 | spec-engineer | tasks | stage; tasks | required concorde-plan-artifact and concorde-task-identity-constraints; optional concorde-implementation-task, concorde-review-result and concorde-task-scope-feedback for repair | Implementation acceptance tasks with new IDs outside the reserved set; no source contents or writes |
 | spec-engineer | spec-review | review; spec-review | none | Independent Spec findings; no inherited author artifacts or writes |
-| spec-engineer | topology-author | topology; topology-author | none | Accepted target descriptor, target-local task, current complete collection, kind definition and candidate_document_references remain special inputs; return all target documents for Host application |
+| spec-engineer | topology-author | topology; topology-author | none | Accepted target descriptor, target-local task, complete one-level context, kind definition and candidate_references remain special inputs; return only candidate-owned documents for Host application |
 | programmer | implementation | stage; implementation | required concorde-implementation-task; optional concorde-review-result | Fulfilled tasks only; may write granted implementation paths |
 | programmer | code-review | review; code-review | none | Independent code findings; authorized code read-only |
 | programmer | investigation | stage; implementation | required concorde-reflection-selection | Reflection findings only; authorized code read-only |

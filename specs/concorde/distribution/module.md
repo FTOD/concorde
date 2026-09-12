@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.distribution.module",
-  "targets": [
-    "module.distribution"
-  ],
+  "owner": "module.distribution",
   "main_visible": true
 }
 ```
@@ -344,7 +342,7 @@ flowchart TB
     "responsibility": "Define the project configuration and registry that installation, configuration and initialization read or write.",
     "selection_condition": "When installing into or configuring an initialized project, or when a Protocol binding must be checked.",
     "relied_upon_promises": [
-      "An initialized project has exactly one configuration with a pinned Protocol binding, and an incompatible binding is reported as a mismatch rather than reinterpreted."
+      "[Preserve the accepted binding and reject incompatible configuration](../spec/values.md#framework-configuration-and-storage-versions)"
     ]
   }
 ]
@@ -359,3 +357,7 @@ by code, and callers must not infer recovery from the absence of success metadat
 
 Project initialization and Protocol-binding decisions belong to `module.spec`'s `concorde-init`
 capability, not to this Module; installation never creates the registry or a Module stub itself.
+
+## Ownership, context and implementation status
+
+Build projection supports rendering these authored sources, but runtime admission, installation/initialization version handling and package Spec/wire alignment still require Protocol 5 migration. Build success proves output freshness only. Project updates must preserve explicit owner/reference choices and never silently migrate consumers.

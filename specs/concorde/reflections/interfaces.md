@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.reflections.interfaces",
-  "targets": [
-    "module.reflections"
-  ],
+  "owner": "module.reflections",
   "main_visible": true
 }
 ```
@@ -79,3 +77,12 @@ containing that component may capture a gap; foreign or resolved gaps are reject
 read/assessment requests never trigger capture. Existing scenario-owned records are selected with
 the current owning `target_id` and optional `focus_id`, preserving their historical `feature`
 field. The public metadata above is sufficient for selection without reading control files.
+
+## Included provider definitions
+
+When a consumer encounters a defective or missing provider guarantee, its blocked-step gap stays
+attributed to the selected task/consumer. `needed_contract` and the evidence identify the canonical
+definition's sole owner, document and included source digest when known. Capturing that gap retains
+both roles rather than relabeling a foreign scenario as consumer-owned. Investigation may propose
+an owner-routed repair through Development; capture alone grants no provider Spec/code access.
+Context or definition changes require fresh assessment and do not silently close the record.

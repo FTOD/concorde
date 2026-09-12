@@ -1,20 +1,20 @@
 # Module template
 
-Copy the Markdown block below into the Module's `module.md` reading entry, replace placeholders
-with project facts and explicitly register the complete collection. This is a starter layout for
-the [required format](../format.md), not another kind of Spec or a completed contract.
+Copy the Markdown block below into the Module's `module.md` reading entry, replace placeholders with
+project facts and explicitly register the complete collection. This is a starter layout for the
+[required format](../format.md), not another kind of Spec or a completed contract.
 
 The four headings Purpose, Requirements, Scenarios and Ontology are mandatory in this order, and
-Ontology holds the Entities and Relationships subsections. Requirement and scenario definitions
-and further entity blocks may also live in other single-owner documents of the collection. The
-Mermaid flowchart must name exactly the declared entity titles and label every edge with the
-relationship verb.
+Ontology holds the Entities and Relationships subsections. Requirement and scenario definitions and
+further entity blocks may also live in other single-owner documents of the collection. The Mermaid
+flowchart must name exactly the declared entity titles and label every edge with the relationship
+verb.
 
 ````markdown
 ```concorde-document
 {
   "id": "[document-id]",
-  "targets": ["[module-id]"],
+  "owner": "[module-id]",
   "main_visible": true
 }
 ```
@@ -23,8 +23,8 @@ relationship verb.
 
 ## Purpose
 
-[Two or three sentences of plain prose: what this Module is for, who uses it and the boundary of
-its promises. No lists, tables or code.]
+[Two or three sentences of plain prose: what this Module is for, who uses it and the boundary of its
+promises. No lists, tables or code.]
 
 ## Requirements
 
@@ -98,8 +98,8 @@ flowchart TB
 
 ## Dependencies and composition
 
-[Describe how each direct dependency or child contributes to this Module's promises.]
-[Remove the block below if there are no direct dependencies or children.]
+[Describe how each direct dependency or child contributes to this Module's promises.] [Remove the
+block below if there are no direct dependencies or children.]
 
 ```concorde-dependencies
 [
@@ -107,7 +107,7 @@ flowchart TB
     "target_id": "[provider-module-id]",
     "responsibility": "[Provider responsibility]",
     "selection_condition": "[When this collaboration applies]",
-    "relied_upon_promises": ["[scenario.provider.name: required provider guarantee]"]
+    "relied_upon_promises": ["[Guarantee](provider/interface.md#scenario.provider.name): [why this Module needs it]"]
   }
 ]
 ```
@@ -117,9 +117,59 @@ flowchart TB
 [Name unknown facts and the behavior they leave unspecified, or state that none remain.]
 ````
 
-Every relied-upon collaborator promise must be understandable locally; a link to another Spec
-cannot supply missing meaning. Optional section headings may change without changing identity.
-The inventory's `files` for this Module must equal the union of the entity `files` above, entry
-for entry: an entry ending in `/` stays that directory prefix and is never expanded into names.
-Tests are listed on the entity they realize like any other file; each test declares the scenario
-it verifies, and no Spec section lists tests.
+Register `references: []` or explicit `{kind, id}` entries on the Module, never in document
+metadata. Include canonical collaborator definitions through these references and link to them in
+prose. State local conditions and obligations without duplicating provider schemas. A link by itself
+does not include its target, and referenced Modules' references are never followed. Optional section
+headings may change without changing identity. The inventory's `files` for this Module must equal
+the union of the entity `files` above, entry for entry: an entry ending in `/` stays that directory
+prefix and is never expanded into names. Tests are listed on the entity they realize like any other
+file; each test declares the scenario it verifies, and no Spec section lists tests.
+
+## Optional shared interface document
+
+An interface may live in another document owned by this Module. Give that file its own
+`concorde-document` ID and the same owner, and add it to this Module's `documents`. Consumers add
+its document ID or this Module ID to their own `references`; they do not register it as owned. Use
+this fragment once in the owner document, after replacing the illustrative fields:
+
+````markdown
+```concorde-contract
+{
+  "id": "contract.example.request",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "properties": {"request_id": {"type": "string", "minLength": 1}},
+    "required": ["request_id"],
+    "additionalProperties": false
+  },
+  "semantics": "[Meaning of the request and its result; relate it to the interface entity.]",
+  "example": {"request_id": "example-1"}
+}
+```
+
+[Declare the offline schema vocabulary; state inputs, outputs, errors, effects, compatibility and
+links to the defining scenarios. Ensure every necessary definition is in each participant's
+explicitly resolved context. Omit neither failure nor repeated-invocation behavior.]
+````
+
+Each participant uses this separate fragment, with its actual peer and role. Internal participants
+need complementary bindings; an external peer has the form `external:<name>`.
+
+````markdown
+```concorde-contract-binding
+{
+  "id": "contract.example.request",
+  "version": 1,
+  "role": "required",
+  "peer": "module.provider",
+  "selection_condition": "[When this participant uses the interface.]",
+  "relied_upon_guarantees": ["[Request agreement](../provider/interface.md#contract.example.request): [local reliance]."],
+  "obligations": ["[This participant's duties and response to failure.]"]
+}
+```
+````
+
+Do not copy the schema or example into the binding. These are illustrative placeholders, not another
+Spec kind or an assertion that the example Modules and paths exist in a project.

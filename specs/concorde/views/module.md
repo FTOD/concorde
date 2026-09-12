@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.views.module",
-  "targets": [
-    "module.views"
-  ],
+  "owner": "module.views",
   "main_visible": true
 }
 ```
@@ -51,9 +49,9 @@ A physical Spec document SHALL publish at exactly one canonical page regardless 
 Publication SHALL promote only a candidate in which every internal navigation link retained in its published documents resolves to an available destination and, when specified, an existing anchor.
 
 The guarantee covers the site's own published pages, including enabled reading collections.
-Cross-Module references are valid navigation and do not establish document membership or expand
+Cross-Module references are valid navigation and do not establish document ownership and references or expand
 Spec context. External destinations retain their existing handling; publication does not promise
-the continued availability of another website. Current-membership legacy aliases and failure
+the continued availability of another website. Current-owner legacy aliases and failure
 behavior are defined in [publication](publication.md#scenario.views.publish-legacy-redirect)
 and [pipeline](pipeline.md#scenario.views.validate-candidate-mismatch).
 
@@ -194,7 +192,7 @@ precedence over a containing directory entry.
     "title": "Spec",
     "kind": "used module",
     "target_id": "module.spec",
-    "responsibility": "Supplies the explicit registry, document memberships, relationships and file bindings used by publication and UA export, without recursive filename discovery."
+    "responsibility": "Supplies the explicit registry, document ownership and references, relationships and file bindings used by publication and UA export, without recursive filename discovery."
   },
   {
     "id": "entity.views.distribution",
@@ -213,7 +211,7 @@ precedence over a containing directory entry.
     "id": "entity.views.docsite-build-interface",
     "title": "Docsite build interface",
     "kind": "interface",
-    "responsibility": "The TypeScript requireScoped/loadScopedRegistry/materializeScoped/buildSite/promoteCandidate functions and Docusaurus plugin hooks, plus the project-local npm run validate/npm run build commands, that admit only a Profile 11 project, load the registry, stage Markdown and navigation, build and validate a candidate and promote only a checked result."
+    "responsibility": "The TypeScript requireScoped/loadScopedRegistry/materializeScoped/buildSite/promoteCandidate functions and Docusaurus plugin hooks, plus the project-local npm run validate/npm run build commands, that admit only a Profile 12 project, load the registry, stage Markdown and navigation, build and validate a candidate and promote only a checked result."
   },
   {
     "id": "entity.views.viewer-launch-command",
@@ -231,13 +229,13 @@ precedence over a containing directory entry.
     "id": "entity.views.markdown-documents",
     "title": "Registered Markdown documents",
     "kind": "concept",
-    "responsibility": "Every physical Spec document explicitly registered in the project's Spec registry, including documents shared by several Modules, which publication renders without directory scanning."
+    "responsibility": "Every physical Spec document explicitly registered in the project's Spec registry, including solely owned documents referenced by several Modules, which publication renders without directory scanning."
   },
   {
     "id": "entity.views.canonical-page",
     "title": "Canonical page",
     "kind": "record",
-    "responsibility": "The one rendered page a registered physical document publishes at its readable derived route, carrying its membership, aliases and content digest even when the document is shared by several Modules."
+    "responsibility": "The one rendered page a registered physical document publishes at its readable derived route, carrying its sole owner, inclusion provenance, aliases and content digest even when several Modules reference it."
   },
   {
     "id": "entity.views.navigation",
@@ -338,7 +336,7 @@ flowchart TB
     verifiedViewer -->|supplies the official entrypoint to| viewerProcess
     distribution -->|provisions and verifies| verifiedViewer
     uaGraphCommand -->|is realized by| uaGraphExporter
-    spec -->|supplies registry, memberships and file bindings to| uaGraphExporter
+    spec -->|supplies ownership, references and file bindings to| uaGraphExporter
     uaGraphExporter -->|writes or overlays| codeGraph
 ```
 
@@ -348,11 +346,11 @@ flowchart TB
 [
   {
     "target_id": "module.spec",
-    "responsibility": "Supply the explicit registry, document memberships, relationships and entity file bindings consumed by publication and UA export.",
+    "responsibility": "Supply the explicit registry, document ownership and references, relationships and entity file bindings consumed by publication and UA export.",
     "selection_condition": "When loading publication inputs, materializing pages or navigation, or exporting the UA graph skeleton.",
     "relied_upon_promises": [
-      "Every registered document has exactly one identity and an explicit membership list, and relationships are declared rather than inferred, so pages and navigation can be derived without reading source code.",
-      "Registered Module identities, parent and uses relationships, document memberships and entity file listings provide the inputs for the UA skeleton; directory entries expand only under the Protocol's implementation-context rules."
+      "[Derive pages and graph structure from explicit unique ownership, references and entity listings](../spec/structure.md#registry-shape)",
+      "[Resolve inclusion provenance without recursive reads](../spec/registry.md#stable-id-spec-context-queries)"
     ]
   },
   {
@@ -360,7 +358,7 @@ flowchart TB
     "responsibility": "Provision and verify the official viewer package inside the managed runtime.",
     "selection_condition": "When launching the viewer.",
     "relied_upon_promises": [
-      "A verified runtime receipt identifies the exact viewer entrypoint, and a missing or unverified runtime is reported rather than substituted."
+      "[Launch only the exact verified viewer entrypoint and stop on an absent receipt](../distribution/runtime.md)"
     ]
   }
 ]
@@ -368,6 +366,10 @@ flowchart TB
 
 ## Unresolved information
 
-Publication accepts Profile 11 projects only. `requireScoped` refuses any other `profile_version`
+Publication accepts Profile 12 projects only. `requireScoped` refuses any other `profile_version`
 with an explicit error, and no compatibility rendering path exists for an older profile: migrating
 such a project is a separate, explicit topology change that this Module does not perform.
+
+## Ownership, context and implementation status
+
+Publication schema 19, unique owners, reference provenance, canonical contract anchors and UA reference edges are specified target behavior. Existing loaders/exporters still require migration; see the pipeline and exporter implementation status. Reference inclusion creates no transclusion, implementation grant or new page authority.

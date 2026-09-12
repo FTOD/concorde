@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.views.publication",
-  "targets": [
-    "module.views"
-  ],
+  "owner": "module.views",
   "main_visible": true
 }
 ```
@@ -48,34 +46,126 @@ warnings do not install dependencies or change proposal bytes.
 {
   "id": "contract.views.scaffold-proposal",
   "version": 1,
-  "role": "provided",
-  "peer": "external:docsite-caller",
   "schema": {
     "type": "object",
-    "required": ["proposal_version", "template_root", "template_digest", "identity", "github_pages", "files", "conflicts"],
+    "required": [
+      "proposal_version",
+      "template_root",
+      "template_digest",
+      "identity",
+      "github_pages",
+      "files",
+      "conflicts"
+    ],
     "properties": {
-      "proposal_version": {"enum": [1]},
-      "template_root": {"enum": ["docsite"]},
-      "template_digest": {"type": "string"},
-      "identity": {"type": "object"},
-      "github_pages": {"type": "boolean"},
-      "files": {"type": "array", "minItems": 1, "items": {
-        "type": "object", "required": ["path", "sha256"],
-        "properties": {"path": {"type": "string"}, "sha256": {"type": "string"}, "source": {"type": "string"}, "content": {"type": "string"}},
-        "additionalProperties": false
-      }},
-      "conflicts": {"type": "array", "items": {
-        "type": "object", "required": ["path", "reason"],
-        "properties": {"path": {"type": "string"}, "reason": {"type": "string"}},
-        "additionalProperties": false
-      }}
+      "proposal_version": {
+        "enum": [
+          1
+        ]
+      },
+      "template_root": {
+        "enum": [
+          "docsite"
+        ]
+      },
+      "template_digest": {
+        "type": "string"
+      },
+      "identity": {
+        "type": "object"
+      },
+      "github_pages": {
+        "type": "boolean"
+      },
+      "files": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "sha256": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "conflicts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "path",
+            "reason"
+          ],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
     },
     "additionalProperties": false
   },
   "semantics": "An exact, package-digest-bound scaffold proposal; the local ownership and content rules determine which files may be created. It grants no replacement or deletion authority.",
-  "example": {"proposal_version": 1, "template_root": "docsite", "template_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000", "identity": {"schema_version": 1, "title": "Example", "url": "https://localhost", "baseUrl": "/", "organizationName": "example", "projectName": "example"}, "github_pages": false, "files": [{"path": "docsite/package.json", "source": "docsite/package.json", "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000000"}], "conflicts": []}
+  "example": {
+    "proposal_version": 1,
+    "template_root": "docsite",
+    "template_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "identity": {
+      "schema_version": 1,
+      "title": "Example",
+      "url": "https://localhost",
+      "baseUrl": "/",
+      "organizationName": "example",
+      "projectName": "example"
+    },
+    "github_pages": false,
+    "files": [
+      {
+        "path": "docsite/package.json",
+        "source": "docsite/package.json",
+        "sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ],
+    "conflicts": []
+  }
 }
 ```
+```concorde-contract-binding
+{
+  "id": "contract.views.scaffold-proposal",
+  "version": 1,
+  "role": "provided",
+  "peer": "external:docsite-caller",
+  "selection_condition": "When a caller proposes or applies a docsite scaffold.",
+  "relied_upon_guarantees": [
+    "[Canonical agreement](#contract.views.scaffold-proposal) defines the exchanged value for this operation."
+  ],
+  "obligations": [
+    "Preserve unrelated files and enforce exact proposal digests before applying any scaffold change."
+  ]
+}
+```
+
 
 The example illustrates the schema, not an applicable package inventory or real digest. Each file
 entry has exactly one of `source` and `content`, and paths are unique and sorted. `sha256` hashes
@@ -130,7 +220,7 @@ For a Module, its unique local `module.md` is the source entry, independent of c
 - GIVEN an explicitly registered project registry
 - WHEN the site is built
 - THEN every registered physical document publishes exactly one canonical page at a readable route derived from its source path
-- AND a document shared by several Modules still publishes once, showing every declared membership
+- AND a document referenced by several Modules still publishes once, showing its sole owner and every explicit inclusion reason
 - AND inline Mermaid fences render in their authored position using the site's locked Mermaid integration
 
 The route is `/specs/<source path with a leading specs/ root removed and .md dropped>`, or the full
@@ -161,25 +251,25 @@ redirect from the removed graph page. UA continues through its existing independ
 - THEN promotion is refused
 - AND the previously published build is preserved unchanged
 
-### scenario.views.publish-legacy-redirect — Current document references and membership aliases resolve
+### scenario.views.publish-legacy-redirect — Current document references and ownership aliases resolve
 
-- GIVEN a still-registered document whose membership changes from Module A to Module B while a currently published document of A retains a reference to its source path or canonical page and an existing anchor
+- GIVEN a still-registered document whose owner changes from Module A to Module B while a currently published document of A retains a reference to its source path or canonical page and an existing anchor
 - WHEN the current build is validated and promoted
-- THEN that retained reference reaches the document's single canonical page and the requested anchor independently of the referring document's Module membership
-- AND a redirect stub for every legacy alias derived from a current membership resolves to that same canonical page, preserving a requested fragment
+- THEN that retained reference reaches the document's single canonical page and the requested anchor independently of the referring document's owner
+- AND a redirect stub for every legacy alias derived from a current owner resolves to that same canonical page, preserving a requested fragment
 - BUT an unresolved retained internal reference prevents promotion until the reference is corrected
 
 A cross-Module reference is legitimate navigation: A need not register a document merely to link
-to it, and publication does not remove such a reference when membership changes. Canonical
+to it, and publication does not remove such a reference when ownership changes. Canonical
 document identity and source-path resolution do not depend on the referring Module. This scenario
 does not promise an unchanged source path after a document is moved to a different filesystem path.
 
 The current registry and registered source documents are the authoritative inputs. Legacy aliases
-are generated only for current memberships under the rules in `pipeline.md`. Aliases of removed
-memberships have no indefinite retention guarantee and are not copied from a previous build. If a
+are generated only for current owners under the rules in `pipeline.md`. Aliases of removed
+ownerships have no indefinite retention guarantee and are not copied from a previous build. If a
 current document still uses an alias that those inputs do not resolve, publication rejects the
 candidate until that reference is corrected to the registered document's source path, canonical
-route or a current alias. The publisher neither invents historical membership nor silently drops
+route or a current alias. The publisher neither invents historical ownership nor silently drops
 the reference; no historical-alias store is required.
 
 This compatibility promise concerns registered-document navigation, not the removed standalone
@@ -314,3 +404,11 @@ For this Framework repository, the Agent instructions projection shows common re
 and separate mode sections. Each mode section displays its explicit context/result/authority
 contract and its complete common-plus-selected-mode instruction text. This human browsing view
 never combines all modes into one runtime prompt or grants an Agent additional context.
+
+### scenario.views.publish-reference-link — References preserve one canonical page
+
+- GIVEN one provider-owned interface document referenced by two consumer Modules, one by Module and one by document ID
+- WHEN a publication candidate is built
+- THEN it emits one canonical definition page with its sole owner and inclusion provenance
+- AND consumer Markdown links point to that page and its stable contract/scenario anchors without embedding its body
+- AND reference or ownership changes invalidate source-bound publication evidence

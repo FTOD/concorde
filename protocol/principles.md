@@ -1,23 +1,23 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 4.0.0 defines Module Specs and their organization. These requirements apply
-to project specifications, including the specifications of software that implements this
-Protocol. They do not require the Protocol text to describe itself as a Module.
+Concorde Spec Protocol 5.0.0 defines Module Specs and their organization. These requirements apply
+to project specifications, including the specifications of software that implements this Protocol.
+They do not require the Protocol text to describe itself as a Module.
 
 ## Requirement language
 
-**MUST** states a requirement for conformance. **MUST NOT** states a prohibition. **SHOULD** states a
-recommendation that may be departed from for an explained reason. **MAY** states an allowed choice.
-Examples illustrate the rules; their names, paths and subject matter are not prescribed.
+**MUST** states a requirement for conformance. **MUST NOT** states a prohibition. **SHOULD** states
+a recommendation that may be departed from for an explained reason. **MAY** states an allowed
+choice. Examples illustrate the rules; their names, paths and subject matter are not prescribed.
 
 ### P1. A Module describes a cohesive software responsibility in four parts
 
 A **Module** is a cohesive software responsibility. It is a unit of specification, not a unit of
 implementation: a Module need not correspond to a package, directory, process, service or other
-physical unit. Its realization may be spread across several such units, shared with other
-Modules, or supplied entirely by its children. The Module's boundary is established by its
-purpose, requirements, scenarios and entities; its file bindings record where that
-responsibility is realized and do not define it.
+physical unit. Its realization may be spread across several such units, shared with other Modules,
+or supplied entirely by its children. The Module's boundary is established by its purpose,
+requirements, scenarios and entities; its file bindings record where that responsibility is realized
+and do not define it.
 
 A Module's Spec MUST contain four parts:
 
@@ -34,87 +34,93 @@ A Module's Spec MUST contain four parts:
 
 Purpose, requirements and scenarios form the Module's **functional spec**: they state what the
 Module promises. The Ontology forms its **architecture spec**: it states how the Module is built.
-The word ontology is used in its plain sense, the Module's account of what exists in its domain
-and how those things stand to one another. It asks for no formal ontology language, and it is not
-limited to business concepts: a program or a file the Module consists of belongs to its Ontology
-as much as a business record or an external actor does.
+The word ontology is used in its plain sense, the Module's account of what exists in its domain and
+how those things stand to one another. It asks for no formal ontology language, and it is not
+limited to business concepts: a program or a file the Module consists of belongs to its Ontology as
+much as a business record or an external actor does.
 
 Requirements and scenarios differ in granularity and in owner. A requirement is a coarse promise
 about the Module and belongs to the Module alone. A scenario is one specific, testable situation;
-whatever it must additionally guarantee is written into its own steps and prose rather than
-attached as a separate requirement. Implementation detail cannot replace either part. An interface
-is an entity whose behavior is given by scenarios; inputs, outputs, effects, errors, compatibility
-and repeated-invocation behavior are scenario steps, not a separate kind of declaration.
+whatever it must additionally guarantee is written into its own steps and prose rather than attached
+as a separate requirement. Implementation detail cannot replace either part. An interface is an
+entity whose behavior is given by scenarios; inputs, outputs, effects, errors, compatibility and
+repeated-invocation behavior are specified through a canonical interface definition and its related
+scenarios, not a second kind of Spec.
 
 The Module definition applies recursively to submodules. Each Module MUST have at most one
 structural parent, and parent relationships MUST be acyclic. Composition and dependency are
-distinct: using a capability does not give the consumer structural ownership of its provider.
-A capability shared by several consumers has one identity and is a sibling of those consumers.
+distinct: using a capability does not give the consumer structural ownership of its provider. A
+capability shared by several consumers has one identity and is a sibling of those consumers.
 
 ### P2. Implementation files are Module metadata
 
-An entity MAY bind project-relative implementation files, each listing entry naming either an
-exact file or a directory prefix. A directory prefix binds every regular file below it, including
-files created later. The Module's **implementation files** are the union of what its entities'
-entries bind. Binding files records which files realize the Module; it does not make those files
-part of the Spec and does not let the code supply a promise the Spec omits.
+An entity MAY bind project-relative implementation files, each listing entry naming either an exact
+file or a directory prefix. A directory prefix binds every regular file below it, including files
+created later. The Module's **implementation files** are the union of what its entities' entries
+bind. Binding files records which files realize the Module; it does not make those files part of the
+Spec and does not let the code supply a promise the Spec omits.
 
-Within one Module each file belongs to exactly one entity: when several entries of the same
-Module cover a file, the most specific entry owns it, an exact file before a directory and a
-longer directory before a shorter one. Several Modules MAY list the same file or directory when
-one realization serves several contracts; that file then has several using Modules and a change
-to it concerns all of them. Reuse does not merge Module identities or create another structural
-parent. Listing a directory does not by itself establish a Module boundary; the Module's declared
-purpose, requirements, scenarios and entities do.
+Within one Module each file belongs to exactly one entity: when several entries of the same Module
+cover a file, the most specific entry owns it, an exact file before a directory and a longer
+directory before a shorter one. Several Modules MAY list the same file or directory when one
+realization serves several contracts; that file then has several using Modules and a change to it
+concerns all of them. Reuse does not merge Module identities or create another structural parent.
+Listing a directory does not by itself establish a Module boundary; the Module's declared purpose,
+requirements, scenarios and entities do.
 
 A declared entry MAY be pending: intended but not yet created. A pending declaration describes an
-intended output, not evidence that the file or directory exists. An entry that is declared without
-a pending marker MUST exist.
+intended output, not evidence that the file or directory exists. An entry that is declared without a
+pending marker MUST exist.
 
 Tests are implementation files like any other. A test declares which scenario it verifies by that
 scenario's identity; a Spec never lists tests. A tool derives each scenario's verifying tests from
-those declarations. That derived coverage is evidence about the tests, not part of the contract,
-and a scenario without a declared test remains a promise the Module makes.
+those declarations. That derived coverage is evidence about the tests, not part of the contract, and
+a scenario without a declared test remains a promise the Module makes.
 
-The files a Module lists, together with their pending status, form that Module's
-**implementation context**; Spec management defines how it is resolved and keeps it separate from
-the Module's Spec context.
+The files a Module lists, together with their pending status, form that Module's **implementation
+context**; Spec management defines how it is resolved and keeps it separate from the Module's Spec
+context.
 
-### P3. A Module Spec is a complete contract context
+### P3. A Module resolves a complete contract context
 
-Each Module MUST have a stable identity and an explicitly registered, nonempty Markdown collection
-with exactly one local `module.md` reading entry. Its complete collection MUST explain the Module's
-purpose, requirements, scenarios, entities and relationships without requiring another Module's
-documents or source code to supply missing meaning.
+Each Module MUST have a stable identity and a nonempty `documents` collection that it owns, with
+exactly one local `module.md` reading entry. Every physical Spec document MUST have exactly one
+owning Module. Ownership of a requirement, scenario, entity or interface definition follows its
+defining document and remains unchanged when another Module reads it.
 
-For every direct dependency and submodule, the containing or consuming Module MUST state the
-provider's identity, responsibility, selection condition and relied-upon promises locally.
-These statements describe the composition or dependency from that Module's own perspective.
+Each Module MUST independently declare `references` in its registration record. A reference selects
+either another Module's entire owned document collection or one registered document by stable
+identity. References determine context inclusion, not ownership, composition, dependency,
+implementation file binding or permission. Only the selected Module's references are expanded, once:
+referenced Modules' references and Markdown links MUST NOT be followed. The complete context is the
+deduplicated union of full owned and directly referenced documents.
 
-Document membership MUST be explicit. A parent, dependency, file binding, hyperlink, directory
-location or selected scenario does not add or remove documents from the collection. Explicitly
-shared Module documents belong to every collection that registers them. Sharing one document does
-not include the other documents of any referring Module.
+That resolved context MUST explain the selected Module's purpose, requirements, scenarios, entities
+and relationships without undeclared reading or source code supplying missing meaning. For each
+dependency and child the local contract states responsibility, selection conditions, which canonical
+guarantees it relies on and its own obligations or reactions. It SHOULD link to included provider
+definitions instead of copying them. Shared interfaces MAY be ordinary documents owned by one Module
+and referenced by many; they do not require a new Spec kind or Module.
 
-Selecting a scenario MUST resolve to its providing Module and use that Module's full contract
-context. The included files are its registered Markdown collection. Spec management's Spec and
-Context rules define the query domain and deterministic mapping. File bindings and mentions of
-other Modules do not expand that file set implicitly.
+A scenario query MUST first resolve its unique owning Module, then return that Module's complete
+context. Context resolution MUST be deterministic and record identities, inclusion provenance and
+exact byte digests. Referenced definitions do not become local entities or requirements, and do not
+add provider implementation files or diagram nodes to the consumer.
 
-Every scenario, requirement and entity is addressable: its identity is the anchor of its
-definition, so a plain Markdown link to the defining document with the identity as fragment
-reaches it. Such a link is navigation; it selects no context and changes no membership.
+All prose references use ordinary Markdown links. Publishing renders them as links, never content
+inclusion; only registered Module references select Agent context. Every requirement, scenario,
+entity and structured contract has its stable identity as its definition anchor.
 
-An unspecified promise MUST remain identifiable as unspecified. An honest draft MAY describe known
-facts and name unresolved questions; it cannot claim completeness for the unresolved behavior.
+A missing required definition is a gap. A reader MUST NOT silently fetch more files to repair it. An
+honest draft identifies unresolved meaning and does not claim completeness for it.
 
 ### P4. Conformance concerns both meaning and structure
 
-A claim of conformance MUST identify the Protocol version it applies to. Stable identity, explicit
-membership, consistent relationship declarations, the four mandatory parts, one statement per
-requirement and consistent file listings are structural requirements. Complete and mutually
-consistent requirements, scenarios and relationships, and requirements that can each be judged
-true or false, are semantic requirements.
+A claim of conformance MUST identify the Protocol version it applies to. Stable identity, unique
+document ownership, explicit one-level references, consistent relationship declarations, the four
+mandatory parts, one statement per requirement and consistent file listings are structural
+requirements. Complete and mutually consistent requirements, scenarios and relationships, and
+requirements that can each be judged true or false, are semantic requirements.
 
 A document heading, diagram or correctly shaped metadata block does not establish semantic
 completeness. Structural checks can establish particular invariants; they cannot establish that
@@ -122,8 +128,9 @@ every intended behavior has been specified or that an implementation fulfills it
 
 The Protocol defines the meaning to preserve. A tool's configuration version, serialized registry
 version, execution policy or review procedure is a separate agreement. Tools that represent these
-specifications MUST preserve their identities, memberships, relationship meanings and contracts.
+specifications MUST preserve their identities, ownership, context inclusion, relationship meanings
+and contracts.
 
-The Required format chapter defines the mandatory representation of authored Spec documents.
-The Protocol templates demonstrate starting layouts; filling them out does not replace the
-semantic and structural requirements above.
+The Required format chapter defines the mandatory representation of authored Spec documents. The
+Protocol templates demonstrate starting layouts; filling them out does not replace the semantic and
+structural requirements above.

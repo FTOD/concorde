@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.spec.registry",
-  "targets": [
-    "module.spec"
-  ],
+  "owner": "module.spec",
   "main_visible": true
 }
 ```
@@ -17,8 +15,8 @@ This document defines `SpecRepository`'s selection and query behavior: what a ca
 
 - GIVEN a registered Module identity
 - WHEN a caller selects it
-- THEN the repository returns that Module's complete descriptor: its documents, dependencies, contracts and entity listing entries
-- AND no other Module's Spec body is read to produce that result
+- THEN the repository returns that Module's complete descriptor including its owned documents and explicit references
+- AND resolving its context includes only the full documents selected by those declarations, with original ownership retained
 
 ### scenario.spec.select-scenario-focus — Selecting through a scenario focus
 
@@ -38,7 +36,7 @@ This document defines `SpecRepository`'s selection and query behavior: what a ca
 
 - GIVEN a registered Module identity or a registered scenario identity
 - WHEN a caller queries its Spec file set
-- THEN the query returns the owning Module's complete registered document collection, deduplicated and in a reproducible order
+- THEN the query returns the owning Module's complete resolved document context, deduplicated and sorted by canonical path
 - BUT it neither follows uses, parentage nor entity listing entries, and it never reads the returned files' contents
 
 ## Requirements
@@ -59,13 +57,13 @@ A caller SHALL reconstruct the repository to observe source changes.
 
 Repeated queries against the same admitted repository SHALL return results in the same order.
 
-### req.spec.local-contracts-only — Contracts include only locally declared blocks
+### req.spec.local-contracts-only — Definition ownership stays local
 
-contracts(target) SHALL include only the blocks declared in the target's own registered documents.
+contracts(target) SHALL return only canonical definitions in documents owned by the target.
 
 ### req.spec.contracts-defer-agreement-checks — Cross-Module checks stay with the validator
 
-contracts(target) SHALL leave duplicate-provider and cross-Module agreement checks to the
+contracts(target) SHALL leave canonical-definition uniqueness and cross-Module binding checks to the
 repository validator.
 
 ## Interface signatures
@@ -110,7 +108,7 @@ entries whose file or directory does not exist yet. `entity_files` is keyed by d
 directory prefix covers every path below it, and `covering_modules` answers the same question for one
 Module's whole listing, so a peer that binds a file inside a listed directory is found as well.
 
-No call above writes project files. Host candidate overlays stay in memory. A repository is a snapshot-oriented reader with document caching; reconstruct it after source changes. Selection returns the full target descriptor even with a scenario focus. Module document membership is exactly registered and one-hop; paths, links and entity file listings never add another Module's remaining body.
+No call above writes project files. Host candidate overlays stay in memory. A repository is a snapshot-oriented reader with document caching; reconstruct it after source changes. Selection returns the full target descriptor even with a scenario focus. Ownership and references are explicit; context expands references once. Paths, links and entity file listings do not add files.
 
 ## Required collaborator promises
 
@@ -144,33 +142,46 @@ JSON pointer (empty for an admission/root error). Invalid `project-path` values 
 no partial tuple on any error, and separately raises `SpecError` for malformed contract metadata.
 It rejects unknown keywords, remote references, invalid schemas and invalid examples without network
 access. Local `contracts` includes every block from the target's own registered documents, returns an
-empty tuple when no blocks exist, and leaves duplicate-provider/global consumer agreement checks to the
-separate repository validator. These are complete required promises for selection and local parsing;
-no agent needs to read the collaborators' implementation or other Spec files to use this API.
+empty tuple when no blocks exist, and leaves canonical-definition uniqueness and global binding checks to the
+separate repository validator. This is the canonical offline schema and path boundary used by interface definitions; consumers
+include this document explicitly and link to it without copying its vocabulary.
 
 ## Stable-ID Spec context queries
 
-`spec_files(entity_id: str) -> tuple[str, ...]` is a specified read-only metadata query, not yet
-implemented by code. It admits exactly the Protocol's supported query domain by explicit registered
-identity:
+`spec_files(entity_id: str) -> tuple[str, ...]` is the metadata-only locator query. Module and
+scenario identities resolve to the selected owner's full context, sorted by canonical path:
+owned documents plus one-level Module/document references. It does not read those files' bodies.
+A scenario's defining document never trims the result or transfers the scenario to a consumer.
+Document IDs, requirements, entities and paths are unsupported query kinds (`SpecError/invalid_target`).
+Unknown references, wrong kinds, ambiguous ownership and unsafe aliases reject the selection.
 
-| Selected identity | Returned complete file set |
-| --- | --- |
-| Module | Its registered Markdown documents, in registration order. |
-| Scenario | Its providing Module's complete collection, independent of its defining document. |
+`spec_context(entity_id: str) -> SpecResolution` reads the resolved files and supplies exact byte
+digests, original owner and every inclusion reason. It rejects unavailable required bytes rather
+than returning a partial success. Reconstruct the repository after source changes. Both APIs are
+read-only, offline and deterministic. Neither follows links, parentage, uses, referenced Modules'
+references or implementation listings.
 
-The returned paths are unique exact project-relative paths. A document identity, heading, directory
-or unknown ID raises `SpecError/invalid_target`; identity prefixes and file locations never supply
-missing ownership. A query does not follow uses, parentage or entity listing entries. It neither reads
-implementation source files nor grants a worker access to the returned paths.
+`SpecResolution` is a closed record with `query_id`, `query_kind` (`module` or `scenario`),
+`module_id`, `documents` (the selected owner's ordered registered paths), `references` (its typed
+reference pairs) and `sources` (sorted complete records). Each source has `document_id`, `path`,
+`owner`, `digest`, `main_visible`, `content` and `reasons`. A reason is `{kind, id}`: kind `owned`
+names the selected Module, kind `module` names a direct referenced Module, and kind `document`
+names a direct referenced document. Reasons are unique and sorted by kind then ID. Digests hash
+exact bytes before UTF-8 decoding; invalid UTF-8 rejects resolution. The record is bound into
+the Harness snapshot, not independently authored as another context inventory.
 
-The retired `spec_pair` query, which paired a Module with one of its Implementation Specs, has no
-replacement now that Implementation Specs no longer exist: a Module's entity listing entries are
-visible directly inside its own Spec context, as declared entries and bound file names, and in its separately defined
-implementation context, as file contents for code-writing and code-review phases. A normal
-`select(target_id, focus_id)` call remains Module-oriented and unchanged.
+`context_contracts(target)` returns canonical contracts in this resolution with owner/document
+provenance; `contract_bindings(target)` returns only owned bindings. `definitions`, `entities`,
+`scenarios`, dependency and implementation queries remain ownership-only. Reference inclusion
+never affects their entity union, diagram requirements or code permissions.
 
-This query returns locators only, preserves explicit membership and performs no writes or network
-I/O. Repeat queries against the same admitted repository yield the same order. Reconstruct the
-repository after source changes. This query interface is a specified addition; its implementation
-must be supplied before claiming complete Framework query support for Spec Protocol 4.0.0.
+`context_users(document_id)` returns the owner plus every Module whose one-level context includes
+the document, sorted by Module ID. It drives review/invalidation, separately from the implementation
+reverse index. Ownership or reference edits compare both old and candidate users, even when the
+resulting file set is unchanged. A Module reference tracks additions/removals to the provider's
+owned documents; changes only to the provider's references do not expand the consumer.
+
+These resolution and binding interfaces are specified migration work. The current runtime still
+admits Protocol 4.0.0/Profile 11/schema 3 and has no conforming `spec_files`/`spec_context` or
+Module-reference resolver. The authored Profile 12 registry must fail closed in that runtime;
+new documentation and successful build generation do not establish implementation support.

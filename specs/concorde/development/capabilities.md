@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.development.capabilities",
-  "targets": [
-    "module.development"
-  ],
+  "owner": "module.development",
   "main_visible": true
 }
 ```
@@ -103,17 +101,16 @@ the same identifiers, classes, boolean `deterministic` values and Skill names, a
 none for a stage. The block is intentional redundancy so that this Spec explains the workflow
 without reading Python; it never adds a capability that code does not implement.
 
-Target workers use `concorde-agent-stage-context@1`/`concorde-agent-stage-result@1` with explicit
-document order, Target Spec and Shared Specs. Coordinator questions, routing and topology design
-use `concorde-main-stage-context@1`/`concorde-main-stage-result@1` with explicit complete Module contexts, deduplicated original source pools and per-Module membership. Accepted topology design uses
-`concorde-topology-proposal@1`, `concorde-topology-author-context@1`/`concorde-topology-author-result@1`
-and a host-private `concorde-topology-application@1` artifact; shared replacements require every
-reference and identical bytes. Plan artifacts, implementation tasks and selected reflections have
+Target workers use `concorde-agent-stage-context@2`/`concorde-agent-stage-result@1` with explicit
+document order, owned and directly referenced Specs. Coordinator questions, routing and topology design
+use `concorde-main-stage-context@2`/`concorde-main-stage-result@1` with explicit complete Module contexts, deduplicated original source pools and per-Module resolution provenance. Accepted topology design uses
+`concorde-topology-proposal@1`, `concorde-topology-author-context@2`/`concorde-topology-author-result@1`
+and a host-private `concorde-topology-application@1` artifact; shared replacements require sole-owner authoring and compatibility evidence for each affected consumer. Plan artifacts, implementation tasks and selected reflections have
 separate registered type identities. Fresh snapshots accompany every handoff. Deterministic outputs
 carry identities and digests, never non-visible Module collections, code or logs into main or
 unrelated cognition.
 
-Reviewers use `concorde-review-stage-context@1` containing a full `concorde-context-snapshot@1`
+Reviewers use `concorde-review-stage-context@2` containing a full `concorde-context-snapshot@2`
 and host-produced `concorde-review-input@1`; they return `concorde-review-stage-result@1`. The host
 publishes `concorde-review-result@1` with target/focus/revision identity and
 `semantic_completeness=not_proven`. Spec and code modes use different fresh roles, with no writes in

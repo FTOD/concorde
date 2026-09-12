@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.harness.permissions",
-  "targets": [
-    "module.harness"
-  ],
+  "owner": "module.harness",
   "main_visible": true
 }
 ```

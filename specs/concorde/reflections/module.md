@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.reflections.module",
-  "targets": [
-    "module.reflections"
-  ],
+  "owner": "module.reflections",
   "main_visible": true
 }
 ```
@@ -233,7 +231,7 @@ runs through Development.
     "responsibility": "Run investigation and approved implementation as separately bound invocations and development loops.",
     "selection_condition": "When turning approved intended behavior into a development or investigation invocation.",
     "relied_upon_promises": [
-      "An investigation or development invocation is fresh, bound to one Module and its recorded task, and reports its own completion, gaps and evidence without delivering."
+      "[Request fresh owner-bound investigation or development and retain its outcome without delivering](../development/development.md)"
     ]
   },
   {
@@ -241,8 +239,12 @@ runs through Development.
     "responsibility": "Resolve Module and scenario identities for attribution.",
     "selection_condition": "When admitting a record's owner or a selected local scenario identity.",
     "relied_upon_promises": [
-      "A registered identity resolves to exactly one providing Module, and an unknown or foreign identity is rejected."
+      "[Resolve the record to its unique scenario owner and reject foreign selection](../spec/registry.md#stable-id-spec-context-queries)"
     ]
   }
 ]
 ```
+
+## Ownership, context and implementation status
+
+Reference inclusion does not change a Reflection's definition owner or grant provider write/code access. An included provider defect retains the provider identity while evidence records the affected consumer and snapshot. Repair routes to the sole owner; dependent consumer gaps remain open until fresh assessment. Legacy host attribution and snapshot provenance require migration to carry this distinction.

@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
-  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-4.0.0-6264e8" alt="Spec Protocol 4.0.0" /></a>
+  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-5.0.0-6264e8" alt="Spec Protocol 5.0.0" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/agents-Codex_%C2%B7_Claude-273449" alt="Integrations: Codex and Claude" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
 </p>
@@ -284,9 +284,16 @@ See the [Studio guide](scripts/development/STUDIO.md) for debugging, results and
 
 ## The contract at the center
 
-Concorde's independent **Spec Protocol 4.0.0** defines one specification category: a **Module Spec**.
+Concorde's independent **Spec Protocol 5.0.0** defines one specification category: a **Module Spec**.
 A Module describes a cohesive software responsibility; its implementation may span packages,
-services or shared files.
+services or shared files. Each Spec document has one owning Module. A Module's explicit
+`references` includes other Module-owned documents or one registered document, expanded once;
+Markdown links remain navigation. Shared interfaces have one definition and local participant bindings.
+
+The repository's authored Specs now target Protocol 5/Profile 12/registry schema 4. Runtime
+admission, context serialization and publication migration remain incomplete; see the
+[Spec implementation status](specs/concorde/spec/registry.md#stable-id-spec-context-queries).
+A successful rule build alone does not establish runtime support.
 
 | Part | The question it answers |
 | :--- | :--- |

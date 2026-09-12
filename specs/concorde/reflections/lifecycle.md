@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.reflections.lifecycle",
-  "targets": [
-    "module.reflections"
-  ],
+  "owner": "module.reflections",
   "main_visible": true
 }
 ```

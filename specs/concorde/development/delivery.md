@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.development.delivery",
-  "targets": [
-    "module.development"
-  ],
+  "owner": "module.development",
   "main_visible": true
 }
 ```
@@ -62,3 +60,9 @@ No operation discards unrelated local edits.
 Historical schema-1 receipts for the former direct-primary delivery retain their recorded target
 and may finish cleanup without another merge. Their responses must not claim that the primary
 branch was left unchanged. They are not staged-branch receipts and cannot authorize merge_primary.
+
+Readiness and delivery also recheck the owner and every old/candidate context consumer of changed
+Spec documents. Reference-only changes and provider inventory changes invalidate dependent review
+identities even when the implementation reverse index is unchanged. Each consumer retains its
+own context and code grant; no delivery check transfers provider ownership or authority. The
+legacy evidence collector must migrate before this Protocol 5 guarantee is implemented.

@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.harness.host",
-  "targets": [
-    "module.harness"
-  ],
+  "owner": "module.harness",
   "main_visible": true
 }
 ```

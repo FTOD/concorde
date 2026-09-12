@@ -1,17 +1,14 @@
 ```concorde-document
 {
   "id": "document.development.review-and-gaps",
-  "targets": [
-    "module.development"
-  ],
+  "owner": "module.development",
   "main_visible": true
 }
 ```
 # AI review feedback and gap handling
 
 
-`concorde-review` uses separate fresh Spec and code reviewers. Spec review sees the complete Target
-Spec and Shared Specs, task and scoped Spec patches; code review additionally sees only the owning
+`concorde-review` uses separate fresh Spec and code reviewers. Spec review sees the complete owned and directly referenced Specs, task and scoped Spec patches; code review additionally sees only the owning
 target's registered implementation files, the files its declared entries currently bind, and scoped
 code patches. Neither has project write authority.
 Each reviewer resolves a separate Agent definition and Harness under read-only permissions.
@@ -73,3 +70,9 @@ names, so a new file below it needs no separate declaration.
 The review input identity includes the selected Agent/Mode binding digest. Changes to the mode
 contract, common or selected instructions, authority ceiling or recorded build invalidate review
 evidence. Sharing a definition with an author does not admit the author conversation or artifacts.
+
+Canonical interface edits invalidate review for the owner and each old/candidate context consumer,
+including those that reference the whole provider Module. Each reviewer retains foreign definition
+ownership and assesses local reliance/obligations. Repairing that definition belongs to its sole
+owner; inclusion grants no write permission or provider code. Reference-only changes also require
+fresh evidence even when the complete file set is unchanged.

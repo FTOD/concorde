@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.development.interfaces",
-  "targets": [
-    "module.development"
-  ],
+  "owner": "module.development",
   "main_visible": true
 }
 ```
@@ -75,7 +73,7 @@ Final primary merging is a separate merge_primary:true request requiring explici
 and the primary owning session. Only one agent owns primary writes; the host serializes shared
 lifecycle writes and final merges with the repository lock.
 
-The host resolves the complete selected Target Spec plus one-hop Shared Specs and Protocol/kind definition for every stage.
+The host resolves the complete selected owned and directly referenced Specs and Protocol/kind definition for every stage.
 Spec-only agents, including Spec reviewers, start in a private capsule containing only frozen input.
 Implementation workers receive the complete Module context plus the contents of its own listed implementation files. Planners and task authors already see those file names through the Module's entity declarations, but receive no file contents. Code reviewers
 use a distinct read-only implementation role with only the current listed implementation files. Sessions are fresh, network and credential
@@ -93,7 +91,7 @@ routed through a Module. The host
 then starts the capability's different bounded worker or composite flow. For questions,
 `concorde-main` answers directly from complete contexts resolved by Python and injected into the
 coordinator. Source pools deduplicate full document bodies, while target
-records retain their exact membership. Additional selections restart the coordinator with the
+records retain sole ownership and every inclusion reason. Additional selections restart the coordinator with the
 expanded complete context; no reading worker or synthesis stage intervenes. An optional caller
 target/focus is a routing hint, not a context grant.
 
@@ -107,8 +105,8 @@ before-digest-bound application artifact. The public response exposes its Artifa
 contents. `apply-topology` is the second developer gate and atomically applies the exact reviewed
 artifact or leaves/restores the project. A stale registry, Protocol, Spec input, application digest
 or invalid final target state blocks mutation.
-Document membership changes require tasks for all retained current/candidate references. A shared
-replacement is admitted only when every candidate referencing target author returns identical bytes.
+Ownership/reference changes reconcile all old and candidate context consumers. Only the candidate
+owner supplies replacement bytes; each consumer reviews compatibility under its own resolved context.
 
 No Skill returns context manifests; context resolution is host-internal and
 `describe-policy` mode already previews the exact grants a capability would receive without
@@ -118,8 +116,8 @@ bound Agent and Harness identity (`agent`, `harness`, `agent_binding_digest`, `i
 launch would use without reading its rendered instructions. Complete cognitive snapshots never cross
 the Skill result boundary.
 
-Authoring returns local document replacements; the host alone applies them. A single-target author
-cannot change a multiply referenced document. Planning runs a separate
+Authoring returns local document replacements; the host alone applies them. An owner may propose a change to its document even when others reference it; acceptance requires
+the affected-consumer checks, while a referencing author cannot replace provider documents. Planning runs a separate
 context assessment first and stores a target plan only for a sufficient context and nonempty result.
 One `.concorde/worktree.json` owns the change, its root task, target records, phase/status, gaps and
 validation identity. Plans and auxiliary files live under `.concorde/work/<target-id>/`. There is no
@@ -161,40 +159,22 @@ remain in the candidate when a later component blocks. Cross-component validatio
 affected local author finishes; it cannot prevent resuming an incomplete reconciliation. No component
 code changes before this agreement. Component development loops report completion to the same owning change.
 
-This agreement uses the offline object-schema subset: `type`, `properties`, `required`,
-`additionalProperties` and `minLength` have their ordinary JSON Schema meanings. All properties
-listed as required must occur, unknown properties are rejected, and string lengths are measured
-in characters. The example’s target ID illustrates a separately registered consumer project.
+The canonical [context selection agreement](../harness/context.md#contract.context.selection)
+is included through Development's Module reference to Harness.
 
-```concorde-contract
+```concorde-contract-binding
 {
   "id": "contract.context.selection",
-  "version": 1,
+  "version": 2,
   "role": "required",
   "peer": "module.harness",
-  "schema": {
-    "type": "object",
-    "properties": {
-      "target_id": {
-        "type": "string",
-        "minLength": 1
-      },
-      "task": {
-        "type": "string",
-        "minLength": 1
-      }
-    },
-    "required": [
-      "target_id",
-      "task"
-    ],
-    "additionalProperties": false
-  },
-  "semantics": "Select target_id's exact Target Spec plus Shared Specs and assess exactly task. Shared membership adds only that document; no relationship or link expands another entity context.",
-  "example": {
-    "target_id": "service.transfer",
-    "task": "Explain transfer admission"
-  }
+  "selection_condition": "Before assessment, planning, authoring or review for a selected Module.",
+  "relied_upon_guarantees": [
+    "[Selection](../harness/context.md#contract.context.selection) determines the complete admitted contract and its original owners."
+  ],
+  "obligations": [
+    "Supply the explicit Module and task; stop dependent transitions on gaps or stale context, and never treat included provider definitions as writable local Specs."
+  ]
 }
 ```
 
@@ -245,13 +225,13 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-context-snapshot@1` | Every stage capability's frozen input | Carries `target_id`, `kind`, `focus_id`, `phase`, `task`, `constraints`, `protocol_binding`, `protocol`, `document_order`, `target_spec`, `shared_specs`, `instructions`, `stage_inputs`, `implementation_artifacts` (populated only for implementation/code-review) and `workspace`. A changed membership or byte digest is rejected as `stale_context`. |
-| `concorde-agent-task@1` | Host or admitted parent to Agent | `{task, target_id}`; nonempty task and explicit target hint, validated against the host grant. |
-| `concorde-agent-answer@1` | Generic Agent to parent | `{answer}`; nonempty task-relevant answer, never a context snapshot. |
-| `concorde-agent-interruption@1` | Agent to parent | `{gaps, decision}`; gaps contain question, blocked_step, needed_contract, target_id and context_id. Spec incomplete requires nonempty bound gaps and null decision; waiting requires a nonempty decision question and no gaps. |
-| `concorde-agent-loop-context@1` | Host to fresh native decision | `{invocation_id, parent_id, agent_id, input_json, context_json, feedback, children, result_schema_json}`. JSON transport strings contain host-validated typed values. Each child descriptor has agent_id, input_type, result_type, input_schema_json and result_schema_json. Feedback has invocation_id, parent_id, agent_id, outcome, value_json, error and nullable typed details; no child private context. |
-| `concorde-agent-loop-step@1` | Native decision to host | `{source, action, agent_id, value_json, outcome, details}`. Source is code-driven or model-driven (native must use model-driven). Delegate requires a child ID and typed input, completed decision outcome and null details. Complete has no child ID and returns a typed result only for completed. Other outcomes are spec_incomplete, waiting, cancelled, failed, limit_exhausted or rejected; only gaps/waiting carry typed interruption details. |
-| `concorde-agent-stage-context@1` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@1, change_id, expected_artifacts}`. |
+| `concorde-context-snapshot@2` | Every stage capability's frozen input | [Canonical snapshot](../harness/context.md#context-snapshot-resolution); preserve its resolution provenance and reject stale inputs. |
+| `concorde-agent-task@1` | Host or admitted parent to Agent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
+| `concorde-agent-answer@1` | Generic Agent to parent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
+| `concorde-agent-interruption@1` | Agent to parent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
+| `concorde-agent-loop-context@1` | Host to fresh native decision | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
+| `concorde-agent-loop-step@1` | Native decision to host | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
+| `concorde-agent-stage-context@2` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@2, change_id, expected_artifacts}`. |
 | `concorde-agent-stage-result@1` | Worker to host, the completion | `{context_id, outcome, answer, gaps, documents, plan, tasks, reflection_findings?}`; `documents`/`plan`/`tasks`/`reflection_findings` are populated only by the phase that produces them. A mismatched `context_id` is rejected as `incompatible_handoff`. |
 
 ### Review types
@@ -259,7 +239,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | Type | Carried by | Promise |
 | --- | --- | --- |
 | `concorde-review-input@1` | Host-produced, inside the review stage context | `{review_mode, input_digest, revision, changes: [{path,patch}]}`; binds the exact Spec/code revision under review. |
-| `concorde-review-stage-context@1` | Host to reviewer, the launch | `{snapshot: concorde-context-snapshot@1, review: concorde-review-input@1}`. |
+| `concorde-review-stage-context@2` | Host to reviewer, the launch | `{snapshot: concorde-context-snapshot@2, review: concorde-review-input@1}`. |
 | `concorde-review-stage-result@1` | Reviewer to host, the completion | `{context_id, input_digest, review_mode, status: no_findings\|findings\|incomplete, representative_tasks, findings, gaps, answer}`. |
 | `concorde-review-result@1` | Published in `concorde-review-response@1.reviews` | The stage result plus `target_id`, `focus_id`, `revision`, a nullable `context_id`, `status` extended with skipped\|not_run, and `semantic_completeness: "not_proven"`. |
 
@@ -267,22 +247,22 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-discovery-context@1` | Host to coordinator, during direct questions, routing or topology design | `{context_id, schema_version: 1, capability: main\|dev-loop, phase: route, action: route\|ask\|design-topology, task, constraints, target_hint, focus_hint, protocol_binding, protocol, topology (nullable registry, design-topology only), targets, documents, instructions, workspace}`. |
-| `concorde-main-stage-context@1` | Wraps the discovery context for launch | `{snapshot: concorde-discovery-context@1}`. |
+| `concorde-discovery-context@2` | Host to coordinator | [Canonical discovery context](../harness/context.md#global-spec-context-assembly); only explicit selections may expand discovery. |
+| `concorde-main-stage-context@2` | Wraps the discovery context for launch | `{snapshot: concorde-discovery-context@2}`. |
 | `concorde-main-stage-result@1` | Coordinator to host, the completion | `{context_id, outcome, answer, expand_targets, routes, gaps, topology_design (nullable)}`. |
 | `concorde-topology-design@1` | design-topology's output, embedded in the main stage result | `{summary, registry, spec_tasks (nonempty), migration_constraints, acceptance (nonempty)}`. |
 | `concorde-topology-proposal@1` | design-topology's response, and accept-topology's request | `{proposal_id, base_registry_digest, protocol_binding, context_id, discovered_targets (nonempty), task, constraints, target_hint, focus_hint, design: concorde-topology-design@1, workspace}`; a stale `base_registry_digest` or `protocol_binding` is rejected as `stale_proposal`. |
-| `concorde-topology-author-context@1` | Host to target-local Spec author, during accept-topology | `{context_id, base_registry_digest, target, task, protocol_binding, protocol, candidate_document_references, current_document_order, target_spec, shared_specs, instructions, workspace}`. |
+| `concorde-topology-author-context@2` | Host to target-local Spec author, during accept-topology | `{context_id, base_registry_digest, target, task, protocol_binding, protocol, candidate_references, spec_resolution, instructions, workspace}`. |
 | `concorde-topology-author-result@1` | Author to host, the completion | `{context_id, target_id, outcome, answer, gaps, documents}`. |
 | `concorde-topology-application@1` | Host-private, produced by accept-topology and consumed by apply-topology | `{application_id, topology_proposal: concorde-topology-proposal@1, base_registry_digest, protocol_binding, files (nonempty)}`; the public response exposes only its ArtifactRef, never these bytes. |
 
-In the discovery context, each target records `target_id`, `kind: module`, `document_order`,
-`target_spec` and `shared_specs`. The two Spec sections contain document
-references `{document_id, path, digest, targets, main_visible}`. The top-level documents pool
-supplies each referenced document's full record with `content` once per path. Pools are sorted by
-path; target registration order and shared ownership remain explicit. Inline diagrams are already
-part of their Markdown document bodies, so they need no separate pool. No visibility flag trims
-these complete contexts.
+The canonical [discovery record](../harness/context.md#global-spec-context-assembly) defines
+deduplicated source pools and per-Module provenance. Development retains it unchanged in each
+handoff and checks currentness before using its result; it does not define a second record shape.
+The topology-author context's `candidate_references` is the candidate Module's explicit references;
+`spec_resolution` is its candidate one-level resolution. Providers are read-only unless the author
+is their candidate owner. Ownership transfers, additions and removals bind both prior and candidate
+descriptors and all affected consumers in the prepared application.
 
 For ask, the coordinator may expand explicitly selected contexts or complete directly from their
 original contents with no routes. Other routed capabilities preserve one target task and its
@@ -310,10 +290,9 @@ updated; a mismatched package/context is rejected instead of reinterpreted.
 
 Unknown fields, an incompatible `type_id`, an unsupported `schema_version`, and an unsafe or
 non-project-relative path are all rejected before any agent launches, with the `TypedDataError`
-codes named below. Every identity named in this section exists in the exported schemas or the
-invocation envelope, and every exported identity appears here at least once with its version;
-`python -m concorde validate` enforces this alignment deterministically
-(`CONCORDE-SPEC-CAPABILITIES-001`, `CONCORDE-SPEC-TYPES-001`).
+codes named below. The target interface versions are specified here. Legacy exports do not yet include the new
+context forms; package/schema alignment checks must be migrated before these handoffs can run.
+The existing validation command cannot certify Profile 12 support.
 
 | Error code | Meaning |
 | --- | --- |
@@ -470,8 +449,7 @@ discovery; a current-change resumption supplies both target_id and change_id. Th
 and Studio admit this capability directly. Review runs in the current worktree without creating
 a development change or requiring a Reflection record. The host may persist reports and existing
 change evidence, but reviewers receive no project write authority.
-Spec mode uses the complete admitted Target Spec plus Shared
-Specs, Protocol/kind rules, task and only that collection's Spec changes. Code mode uses those
+Spec mode uses the complete admitted owned and directly referenced Specs, Protocol/kind rules, task and scoped changes to any document included in that context. Code mode uses those
 contracts, the target's exact current registered implementation-file enumeration and scoped code
 changes. Both roles have empty write grants, no network/credentials, fresh sessions, and empty
 predecessor input. Code review does not reuse implement's writable policy.
@@ -484,11 +462,12 @@ supplies content. Deleted files under a current grant appear as scoped changes; 
 grants never expose their old contents. Full admitted current documents always accompany Spec review,
 even when a focus or patch names only a small portion.
 
-Private `concorde-review-stage-context@1` contains a full context snapshot and a
+Private `concorde-review-stage-context@2` contains a full context snapshot and a
 `concorde-review-input@1` with review_mode, input_digest, revision and changes. Each change is
 `{path, patch}`; binary changes carry only digest markers. The revision has spec_digest,
 nullable implementation_digest, nullable baseline and nullable head. spec_digest binds the selected
-target descriptor, pinned Protocol and ordered complete document byte digests. Code mode additionally
+target descriptor, ownership, explicit references, all inclusion reasons, pinned Protocol and ordered
+complete document byte digests, including referenced provider documents. Code mode additionally
 binds every currently enumerated implementation path/byte digest. input_digest covers these values,
 scoped changes, absolute current worktree/branch, target/focus, task/constraints/change identity,
 initialized configuration, canonical
@@ -567,103 +546,39 @@ reflections-triage record-gaps action creates or reuses a durable Reflection lin
 the gap nor silently turns a query into authoring, investigation or implementation.
 
 ## Required collaborator interfaces
-The Harness, Spec and Distribution Modules provide the collaborator interfaces below; their
-complete value records are defined in those Modules' own collections and are not members of this
-one. These local required views are the promises this host relies on, independently of
-implementation imports.
 
-- Registry (`module.spec`): `SpecRepository(project_root, package_root=None, *, registry_bytes=None,
-  document_overrides=None)` returns the read-only admitted repository described in the local registry-value document.
-  `select(target_id, focus_id=None)` returns SpecTarget; documents/contracts/implementation_entries/
-  implementation_paths/implementation_files/missing_entries use that descriptor and the complete
-  locally defined return shapes: declared listing entries, their base paths, the existing files those
-  entries bind, and the entries that do not exist yet. Reconstruct after changes; reject
-  unknown/foreign selection, unsafe paths, invalid bindings and stale sources before granting access.
-- Context (`module.harness`): `resolve_context(repository: SpecRepository, target_id: str, *,
-  phase: str="ask", task: str="Understand this Spec", focus_id: str|None=None,
-  constraints: tuple[str,...]=(), instructions: str="", stage_inputs: tuple[dict,...]=(),
-  workspace: dict|None=None) -> ContextSnapshot`. Snapshot exposes canonical serialized JSON,
-  `.value: dict` conforming to the local context-snapshot schema and `.id: str`. It returns every
-  registered document once, separated by local/shared membership, plus pinned rules and explicit
-  inputs. Implementation/code-review phases include only registered code ArtifactRefs.
-  `recheck_context(repository, snapshot, *, check_implementation: bool=True) -> None` reconstructs
-  current context and rejects changed membership, classification, bytes or worktree identity via
-  SpecError(code="stale_context"). Declared listing entries are always compared; the bound file names
-  and code ArtifactRefs are compared only when `check_implementation` is true, so a code writer may
-  create a file below a listed directory without invalidating its own frozen context. These APIs read but never write project sources or execute an
-  agent, and this Module is host-internal: no Skill exposes its return values directly.
-- Permissions (`module.harness`): `compile_policy(effects, binding, role_paths, *, deny_paths=(),
-  outer_sandbox_required=False) -> NormalizedPolicy`, the Codex/Claude renderers, and
-  `build_launch_specification(...) -> LaunchSpecification` have complete signatures and value types
-  in the local runtime-value document. They must reject widening, preserve empty reviewer writes and bind
-  policy/native/context identities. `PermissionPolicyError(ValueError)` aborts the launch; an opaque
-  task string cannot supply outer enforcement.
-- Execution (`module.harness`): `AgentProcessExecutor()` constructs the default host executor;
-  `executor(launch: LaunchSpecification) -> CapabilityExecutionResult` starts one fresh native process.
-  A host may inject a callable with this same interface for a verified backend. The exact result,
-  completion and error/receipt records are in the local runtime-value document. Successful exit without matching
-  completion is failure. `CapabilityExecutionError(RuntimeError)` has a nullable receipt and stops the
-  affected transition; it never retries permissively. Typed result validation remains mandatory for
-  injected executors. Code/log material never becomes a later Spec-only input.
-- Wire (`module.harness`): `typed(type_id: str, data: dict) -> dict` and
-  `validate_typed(value: Any, expected: str|None=None, field: str="") -> dict` admit exactly
-  `{type_id,schema_version:1,data}` against the complete local wire schemas, rejecting unknown
-  types/versions/properties and invalid fields. `decode(text: str) -> Any` rejects duplicate keys and
-  non-finite JSON numbers; `canonical(value: Any) -> str` uses sorted compact JSON. Artifact helpers
-  `artifact(project: Path, identifier: str, relative: str) -> {id,path,digest}` and
-  `verify_artifacts(project: Path, value: Any, field: str="") -> None` bind regular-file bytes and
-  reject stale references recursively in objects/lists. `checked_path(project, relative, field="")`
-  rejects aliases and symlink traversal. `TypedDataError(ValueError)` carries code/field; no
-  helper expands context or performs remote schema retrieval.
-- Configuration (host-owned adapter): `load_configuration(project_root: str|Path) -> dict`
-  returns the initialized concorde-capability-configuration TypedValue from `.concorde/config.json`.
-  Ordinary invocations and child stages must equal that snapshot; mismatch stops the transition.
-  It neither grants permissions nor silently falls back to caller-provided settings.
-- Package assets (`module.distribution`): `build(project_root, integration="all", *,
-  framework_prefix="") -> BuildResult` renders every Agent, Skill and Studio-graph projection from
-  `agents/`/`prompts/`/`skills/`/`capabilities/`; `write_build(...)` also writes them, including
-  `generated/build-manifest.json`. `check_build(project_root, integration="all") -> (bool,
-  tuple[str,...])` renders into a temporary directory and reports every stale or drifted output
-  without writing. `verify_fresh(project_root) -> None` raises `BuildError` with code `stale_build`
-  when a recorded source has changed since the last build; the host calls it before every top-level
-  invocation except a lifecycle capability. `load_agent(package_root, name) -> SkillPrompt` returns
-  one Agent's rendered body, effect declaration, and complete `AgentBinding` from the current build
-  (`load_role_prompt` remains as a compatibility alias). `resolve_agent_spec`/`resolve_role_prompt`/
-  `resolve_skill_source(project_root, relative_path) -> ResolvedPrompt` and
-  `find_unreachable_prompts(project_root, roots) -> tuple[str,...]` resolve and check `@include`
-  prompt sources, raising `PromptResolverError` on a malformed, unresolved or unreachable source.
-  `validate_package(root: Path) -> list[Finding]` runs the prompt/capability-module/Agent/contract/
-  Spec-alignment/build-output checks behind `python -m concorde validate` and `build --check`.
-  `python -m concorde protocol-manifest [--write] [--bind-project]` reports, accepts, or binds the
-  tracked Protocol digest to the current build. The host supplies rendered bodies inline and admits
-  only role-specific paths; it does not let the worker reopen the source package.
+Canonical interfaces are supplied by the Module references in Development's registration. These
+links state local uses and obligations; providers own the definitions, schemas and error semantics.
+
+| Provider definition | Development use and obligation |
+| --- | --- |
+| [Registry and resolution](../spec/registry.md), [values](../spec/values.md) | Select the unique task owner, freeze its complete resolved context, reconstruct after changes and stop on failed admission. |
+| [Context](../harness/context.md#contract.context.selection) | Bind every stage to the current task and exact snapshot; handle gaps and stale-context failures before progressing. |
+| [Runtime values](../harness/runtime-values.md) and [permissions](../harness/permissions.md) | Compile bounded role permissions and preserve empty reviewer writes; never widen a policy after rejection. |
+| [Execution](../harness/execution.md) | Require the bound fresh process and matching completion; stop on failure and retain private evidence. |
+| [Typed values](../harness/typed-values.md) | Validate every handoff before state mutation; never use raw logs or code as later Spec-only input. |
+| [Build](../distribution/build.md) and [installation](../distribution/installation.md) | Require fresh projections and the pinned Protocol assets before launch; a mismatch blocks the invocation. |
+| [Validation](../spec/structure.md) | Require structural evidence and separately configured checks; never interpret it as semantic proof. |
+| [Reflection interface](../reflections/interfaces.md) | Preserve returned gap/Reflection identities; only explicitly selected records may start a transition. |
+
+Configuration loading remains Development-owned: `load_configuration(project_root: str|Path)`
+returns the initialized configuration TypedValue. Ordinary invocations and child stages must equal
+that snapshot; mismatch stops the transition without fallback or expanded authority.
+
+### File transactions
+
 - File transactions (this Module's own `entity.development.file-transactions`, also listed by Spec, Reflections and Views): `file_change(root: Path, path: str, content: str) ->
   {path,before_digest,content}` captures current bytes (null digest for new files).
   `apply_files(root: Path, changes: list[dict], allowed: set[str], *, verify=None) -> list[str]` requires
   nonempty unique allowed paths, UTF-8 replacement text and exact before digests. It rechecks before
   writes, optionally calls the zero-argument verifier, and restores written bytes on failure.
   Stale or foreign proposals raise SpecError; no partial transaction is reported successful.
-- Validation (`module.spec`): `validate_repository(root: Path|str, target_id: str|None=None,
-  package_root: Path|str|None=None) -> ToolResult` returns status=success|invalid, findings and a result
-  containing source_digest for the assessed Spec state. Findings have rule_id/message/remediation.
-  It checks structure/references/types/permissions and explicitly does not prove semantics.
-  Configured implementation checks execute separately through Harness's read-only executor using registered argv/timeouts;
-  they return check_id/target_id/status/exit_code/source_digest/log_digest as locally defined, with
-  raw output retained privately. No check result is an arbitrary source-read proxy for an agent.
 
-A host launching review therefore resolves the current target and full context, derives only scoped
-changes, compiles the selected read-only role, builds a fresh launch with review-stage input, validates
-its typed completion and stores a version-bound public report. Each prerequisite and failure channel
-is supplied within this collection; no provider Spec or source is needed to plan that interaction.
+### Gap capture
 
-The read-only reflections-triage `status` response exposes `gap_records`, each with id (a digest),
-target_id, task, phase, the existing structured gap, status=open|resolved, and nullable reflection_id.
-It lists current change history owned by the selected target, including participating component gaps
-for a coordinating Module. Use the returned id values as record-gaps gap_ids; IDs remain stable across
-context-only retries and are not calculated by the caller. Status without a managed change returns
-an empty list. record-gaps requires a nonempty explicit list and reflection_ids=[]: omitted/empty
-lists never mean all; unknown or resolved IDs fail as stale_reference. A repeated capture returns
-the existing link. The public metadata is sufficient for selection without reading control files.
+The [Reflection interface](../reflections/interfaces.md) owns status/record-gaps semantics.
+Development passes host-bound gap provenance, retains history and treats capture as a link to
+feedback, never as resolution or approval to implement.
 
 ## Diagrams as part of registered documents
 Relationships diagrams in this project are inline Mermaid flowchart fences inside a registered
@@ -672,10 +587,10 @@ Module's main diagram, in its `module.md` Relationships subsection, describes it
 and directed relationships; further diagrams may appear in other registered documents. The entire
 containing Markdown document is the diagram's only authored source.
 
-The diagram's bytes already occur in `target_spec` or `shared_specs` and participate in document,
+The diagram's bytes already occur in `documents` and participate in document,
 revision and context digests; no separate diagram-source pool or result field exists. Authors
 return a changed fence as part of the changed `documents` entry that contains it. Shared Markdown
-changes require coordinated authoring from every explicitly registered owner; non-author roles
+changes are authored once by the sole owner and reviewed for all affected direct context consumers; non-author roles
 cannot replace these sources; and rendered SVG/HTML is never a cognitive input or another
 authority.
 
@@ -704,3 +619,24 @@ context for each consumer plus its authorized code. Required peer review artifac
 with their own intent; later source, Spec or membership changes invalidate those results. A single
 consumer's completion never establishes compatibility for every Module that lists the same shared
 file.
+
+## Canonical review-result value
+
+The [review-result interface](review-result.md) is the single definition of the public review
+record. Harness explicitly references that document for repair stage admission. Development
+checks task intent, evidence currentness and permitted repair transitions before supplying it.
+
+## Reference changes and implementation status
+
+Before review/readiness, compute affected Spec consumers from the union of old and candidate
+one-level contexts. A provider document edit, ownership transfer, changed reference or changed
+provider document inventory invalidates each affected context and dependent plan/review. Changed
+code additionally uses the independent listing reverse index. A reference is never a code grant.
+Review attribution follows the [canonical review-result interface](review-result.md). Development
+routes a provider repair to its sole owner and retains the consumer's blocked-step evidence;
+included-file read scope never grants authority to write the provider definition.
+
+The current host, wire exports, topology authoring agreement, permission projection and evidence
+invalidation still implement the old membership model. Version-2 context wrappers, owner-authored
+shared-interface changes and consumer-specific checks are required implementation migration work.
+No lifecycle readiness or delivery is established by this documentation maintenance.

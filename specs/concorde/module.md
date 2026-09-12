@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.concorde.module",
-  "targets": [
-    "module.concorde"
-  ],
+  "owner": "module.concorde",
   "main_visible": true
 }
 ```
@@ -23,7 +21,7 @@ The reflection system retains feedback and persistent gaps attributed to Modules
 supports investigation within their declared boundaries, and routes approved resolutions into
 fresh development tasks while preserving explicit developer control of report disposition.
 
-It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 4.0.0; its complete contract is the Markdown collection explicitly registered for `module.concorde` in `.concorde/specs.json`, and this reading entry is that collection's only document. This root Module owns no implementation files of its own; its promises are realized entirely by its six child Modules.
+It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 5.0.0; its complete context is derived from the owned documents and references registered for `module.concorde` in `.concorde/specs.json`. This reading entry is its only owned document. This root Module owns no implementation files of its own; its promises are realized entirely by its six child Modules.
 
 ## Requirements
 
@@ -166,7 +164,7 @@ Relationships subsection below traces how a request moves between them.
     "id": "entity.concorde.protocol",
     "title": "Spec Protocol",
     "kind": "external standard",
-    "responsibility": "The independent Spec Protocol 4.0.0 that defines what a Module Spec must explain; Spec admits and pins it but does not own its meaning."
+    "responsibility": "The independent Spec Protocol 5.0.0 that defines what a Module Spec must explain; Spec admits and pins it but does not own its meaning."
   },
   {
     "id": "entity.concorde.spec",
@@ -263,8 +261,9 @@ These entries describe the six children registered for this Module from the Fram
     "responsibility": "Own the project Spec model: Protocol binding, registry, structural validation and initialization.",
     "selection_condition": "When any entry must identify a Module, resolve its documents and entity file bindings, or initialize a project.",
     "relied_upon_promises": [
-      "Every registered identity, membership and file binding resolves deterministically and structural inconsistencies are rejected before any Agent runs.",
-      "Initialization creates an honest stub with a pinned Protocol binding and never overwrites an existing project."
+      "[Use deterministic identity and context resolution for routing](spec/registry.md#stable-id-spec-context-queries)",
+      "[Require structural validation before bounded work](spec/structure.md#scenario.spec.validate-success)",
+      "[Begin with an honest pinned stub when creating a project](spec/initialize.md#scenarios)"
     ]
   },
   {
@@ -272,8 +271,10 @@ These entries describe the six children registered for this Module from the Fram
     "responsibility": "Configure and run every Agent invocation: frozen context kinds, Agent and Harness bindings, effective permissions, native execution and LangGraph control flow.",
     "selection_condition": "When an entry needs an Agent to reason or act.",
     "relied_upon_promises": [
-      "An invocation receives only its frozen Spec, implementation, capability and task context and acts only within its compiled permissions; process exit alone is never success.",
-      "Every control flow is an inspectable LangGraph graph with bounded loops and typed completions."
+      "[Freeze the selected contract before invocation](harness/context.md#contract.context.selection)",
+      "[Keep invocation authority bounded](harness/module.md#req.harness.permission-no-widen)",
+      "[Require typed completion before reporting success](harness/module.md#req.harness.execute-exit-insufficient)",
+      "[Compose inspectable bounded control flow](harness/graphs-and-loops.md)"
     ]
   },
   {
@@ -281,8 +282,8 @@ These entries describe the six children registered for this Module from the Fram
     "responsibility": "Provide the capability invocation boundary and the query, development, topology, validation and delivery workflows.",
     "selection_condition": "When a developer asks a question, develops a change, evolves topology, checks or delivers a candidate.",
     "relied_upon_promises": [
-      "A request completes with a typed result that distinguishes a ready candidate, an attributed gap, a conflict or a completed answer, and development ends at ready without delivering.",
-      "Delivery changes a destination only under its separately authorized request."
+      "[Retain distinct completion and gap outcomes and stop development at ready](development/development.md)",
+      "[Require a separate authorized delivery request](development/delivery.md)"
     ]
   },
   {
@@ -290,7 +291,8 @@ These entries describe the six children registered for this Module from the Fram
     "responsibility": "Retain, investigate and resolve explicitly attributed feedback and persistent gaps.",
     "selection_condition": "When a developer works with recorded feedback.",
     "relied_upon_promises": [
-      "Only explicitly selected records change, ordinary feedback never becomes a Reflection automatically, and human disposition controls resolution."
+      "[Capture only selected records and preserve attribution](reflections/interfaces.md)",
+      "[Retain human disposition when coordinating resolution](reflections/lifecycle.md)"
     ]
   },
   {
@@ -298,8 +300,9 @@ These entries describe the six children registered for this Module from the Fram
     "responsibility": "Own Skill sources and invocation instructions, build authored projections, install and configure owned integrations and provision the managed runtime.",
     "selection_condition": "When a project adopts, updates or configures the Framework, or when built assets must be current.",
     "relied_upon_promises": [
-      "Installation and provisioning preserve user-owned content and restore previously valid owned state on failure.",
-      "Generated assets are derived from authored sources and a stale build is refused rather than executed."
+      "[Preserve user-owned content during installation](distribution/installation.md)",
+      "[Require valid provisioning evidence](distribution/runtime.md)",
+      "[Reject stale projections before execution](distribution/build.md)"
     ]
   },
   {
@@ -307,7 +310,8 @@ These entries describe the six children registered for this Module from the Fram
     "responsibility": "Publish registered Specs as a navigable site and open an existing raw code graph.",
     "selection_condition": "When a developer wants to read Specs or inspect the code graph.",
     "relied_upon_promises": [
-      "Published pages derive from registered sources without creating a second authority, and viewing never mutates project contracts."
+      "[Publish one canonical definition with owner and inclusion provenance](views/publication.md#scenario.views.publish-reference-link)",
+      "[Keep project contracts unchanged during viewing](views/viewer.md)"
     ]
   }
 ]
@@ -332,3 +336,7 @@ Human views are complementary entries: Views presents registered contracts and d
 ## Unresolved information
 
 None beyond what each child Module records in its own Unresolved information: this root Module delegates every unresolved business fact to the child Module that owns the affected contract.
+
+## Ownership, context and implementation status
+
+This root owns only its reading entry but explicitly references all six child Modules, so its resolved context includes their owned documents once. Child references do not expand again. Protocol 5/Profile 12/schema 4 is the authored target; runtime support remains incomplete as recorded in each owning Module. This maintenance produces no lifecycle-ready or delivery evidence.

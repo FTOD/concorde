@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.harness.runtime-values",
-  "targets": [
-    "module.harness"
-  ],
+  "owner": "module.harness",
   "main_visible": true
 }
 ```
@@ -217,7 +215,7 @@ build_launch_specification(*, capability: str, stage: str, occurrence: int, role
 
 The returned frozen `LaunchSpecification` has exactly the parameters above as attributes plus
 `digest: str`. JSON arguments are serialized objects, not paths. The workspace receipt must bind
-`source_digest` to `workspace_digest` and contain the host role-path mapping. Typed Profile 11
+`source_digest` to `workspace_digest` and contain the host role-path mapping. Typed Profile 12
 launches supply runtime input, configuration and a fresh invocation ID together, use an empty
 `prior_results` tuple and a context identity as the workspace digest. Input/configuration type and
 version admission remains the host's obligation. A configuration/policy/integration mismatch or
@@ -246,7 +244,7 @@ returns another launch: the original requested digest and finalized digest are i
 name and nonempty evidence. A `CapabilityCompletion` is a frozen record with:
 
 ```python
-schema_version: int                       # 3 for typed Profile 11; legacy untyped launches use 1
+schema_version: int                       # 3 for typed Profile 12; legacy untyped launches use 1
 capability: str
 stage: str
 occurrence: int
@@ -321,13 +319,13 @@ carries a relationship label. Each Module's main diagram describes its principal
 directed relationships. The entire containing Markdown document is the diagram's only authored
 source; there is no separate diagram source record or field.
 
-The fence's bytes already occur in `target_spec` or `shared_specs` as ordinary content of that
+The fence's bytes already occur in `documents` as ordinary content of that
 document and participate in its document, revision and context digests. A changed fence is a
 changed document like any other prose edit, so authors return it inside `documents`. Shared
-Markdown changes require coordinated authoring from every explicitly registered owner. Non-author
+Markdown changes require one proposal from the sole owner and compatibility checks for every affected context consumer. Non-author
 roles cannot replace these sources. Rendered SVG/HTML is never a cognitive input or another
 authority.
 
 A prior revision carried diagrams as external JSON sources referenced by a registry `diagrams`
 declaration. That representation and registry field are retired: every current diagram is inline
-Markdown, and Context(M) is exactly a Module's registered document collection.
+Markdown, and Context(M) is the one-level union of owned and explicitly referenced documents.

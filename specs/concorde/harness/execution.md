@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.harness.execution",
-  "targets": [
-    "module.harness"
-  ],
+  "owner": "module.harness",
   "main_visible": true
 }
 ```
@@ -215,7 +213,7 @@ available to ordinary validation commands. Capsule and other integration boundar
 - AND task input cannot select a different runtime or expand the runtime catalog
 
 Every call starts a new process. Its stdin contains the complete host snapshot, task and role
-instructions; Profile 11 never passes predecessor transcripts. Spec review uses only its private
+instructions; Profile 12 never passes predecessor transcripts. Spec review uses only its private
 capsule. Code review uses a distinct read-only implementation grant. Codex automatic AGENTS.md
 loading is disabled, and its generation schema is adapted to supported strict syntax while the host
 continues to validate the original typed contracts. The executor parses the native lifecycle output
@@ -452,7 +450,7 @@ Each invocation's deadline is also bounded by its canonical Agent/Harness timeou
 ancestor deadline. Descendants and continuations cannot extend those deadlines.
 
 The resolver receives `(node: RuntimeAgent, validated_input: dict, effective_grant: AgentGrant)`
-and returns a complete typed `concorde-context-snapshot@1`. Its target must be admitted, its phase
+and returns a complete typed `concorde-context-snapshot@2`. Its target must be admitted, its phase
 must be `ask`, its context ID must match its bytes and implementation artifacts must be empty.
 For `concorde-agent-task`, the task target must also match the snapshot. The host uses the existing
 context service to resolve the complete collection; task text and paths are not authority.

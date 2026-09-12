@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.development.module",
-  "targets": [
-    "module.development"
-  ],
+  "owner": "module.development",
   "main_visible": true
 }
 ```
@@ -86,10 +84,10 @@ A target or focus hint SHALL NOT itself grant context or replace explicit resolu
 Every other non-successful outcome SHALL stop the graph for a human decision or an explicit Spec or
 code change.
 
-### req.development.shared-document-agreement — Shared documents require identical bytes to apply
+### req.development.shared-document-agreement — Shared changes require owner authoring and consumer agreement
 
-A document referenced by several candidate targets SHALL be applied only when every referencing
-target's author returns identical bytes for it.
+A referenced document change SHALL be applied only from its sole owner's proposal after compatibility
+review in every affected consumer's resolved context.
 
 ### req.development.single-primary-writer — Only one agent writes to primary
 
@@ -290,7 +288,7 @@ Evolving topology:
 
 ### scenario.development.topology-design — Design a candidate registry
 
-- GIVEN a change to identities, composition, dependencies, document membership or file listings
+- GIVEN a change to identities, composition, dependencies, document ownership and references or file listings
 - WHEN `concorde-main` runs `design-topology`
 - THEN it admits exact registry metadata and the Module kind definition, withholds implementation file contents, and returns a digest-bound candidate registry, local Spec tasks, migration constraints and acceptance conditions
 - AND no project file changes
@@ -311,12 +309,12 @@ Evolving topology:
 
 ### scenario.development.topology-stale — Stale or conflicting input is rejected
 
-- GIVEN the registry, Protocol or a candidate's shared document bytes changed since the design was produced, or two candidate authors return different bytes for the same shared document
+- GIVEN the registry, Protocol or a candidate's shared document bytes changed since the design was produced, or a non-owner proposes a provider document replacement or affected-consumer compatibility remains unresolved
 - WHEN `accept-topology` or `apply-topology` processes that input
 - THEN the host rejects the mutation and leaves the pre-existing project files unchanged
 - AND no target author ever writes a project file directly
 
-See [shared documents require identical bytes to apply](#req.development.shared-document-agreement).
+See [owner authoring and consumer agreement](#req.development.shared-document-agreement).
 
 Validating a candidate:
 
@@ -528,9 +526,11 @@ Development's sole structural parent is `module.concorde`; it has no submodules 
     "responsibility": "Freeze context kinds, bind Agents, compile permissions, execute invocations and isolate configured checks.",
     "selection_condition": "When a capability graph reaches an Agent invocation, policy preview or configured deterministic check.",
     "relied_upon_promises": [
-      "A stage receives exactly its frozen context kinds and compiled authority, and only a matching typed completion with enforcement evidence is returned; nothing retries with wider permissions.",
-      "A recursive delegation tree shares finite budgets and cancellation and returns only typed results.",
-      "Configured checks and descendants cannot mutate project files; they receive independent external scratch and host-only output, terminate before cleanup and fail closed when enforcement is unavailable."
+      "[Freeze and recheck each stage input](../harness/context.md#contract.context.selection)",
+      "[Stop rather than widen rejected authority](../harness/module.md#req.harness.permission-no-widen)",
+      "[Admit only matching typed completions and enforcement evidence](../harness/execution.md)",
+      "[Preserve finite delegation budgets and cancellation](../harness/graphs-and-loops.md)",
+      "[Require read-only checks and retain raw output privately](../harness/module.md#req.harness.check-project-read-only)"
     ]
   },
   {
@@ -538,7 +538,8 @@ Development's sole structural parent is `module.concorde`; it has no submodules 
     "responsibility": "Select Module descriptors, documents and implementation bindings, and validate Spec structure.",
     "selection_condition": "When routing, binding a target, deriving affected implementation users or recording validation evidence.",
     "relied_upon_promises": [
-      "Selection and the reverse index identify every affected Module deterministically, and structural validation reports invalid state with a source digest without proving semantics."
+      "[Find every affected consumer before coordinating work](../spec/registry.md#stable-id-spec-context-queries)",
+      "[Require source-bound structural evidence without claiming semantic proof](../spec/structure.md#scenario.spec.validate-success)"
     ]
   },
   {
@@ -546,7 +547,7 @@ Development's sole structural parent is `module.concorde`; it has no submodules 
     "responsibility": "Retain explicitly captured development gaps and reports.",
     "selection_condition": "When a developer explicitly records gaps from a change's history.",
     "relied_upon_promises": [
-      "Recording a gap creates or reuses a durable link without resolving the gap or starting work."
+      "[Create or reuse an explicit gap link without resolving it or starting repair](../reflections/interfaces.md#scenario.reflections.capture-gap)"
     ]
   },
   {
@@ -554,9 +555,8 @@ Development's sole structural parent is `module.concorde`; it has no submodules 
     "responsibility": "Own and distribute the public Skill instruction surface, render package projections and report build freshness.",
     "selection_condition": "When a developer runtime uses an installed Skill, an invocation requires fresh projections, or delivery verifies an integrated checkout.",
     "relied_upon_promises": [
-      "Every global or lifecycle capability has exactly one public Skill that instructs the external runtime to submit its declared typed request; stage capabilities have no public Skill.",
-      "Skill sources and shared invocation instructions belong to Distribution and never become a Concorde Agent's Harness inputs.",
-      "Rendering a merged checkout's own sources before validation is deterministic and a build failure prevents the primary update."
+      "[Use canonical Skill/Agent projections and require a successful deterministic build before integration](../distribution/build.md)",
+      "[Keep installed Skill sources outside bounded Agent context](../distribution/installation.md)"
     ]
   }
 ]

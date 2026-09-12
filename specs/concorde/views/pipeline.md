@@ -1,15 +1,13 @@
 ```concorde-document
 {
   "id": "document.views.pipeline",
-  "targets": [
-    "module.views"
-  ],
+  "owner": "module.views",
   "main_visible": true
 }
 ```
 # Publication pipeline
 
-The public API is TypeScript and Docusaurus plugin hooks. Profile 11 publication reads an explicit
+The public API is TypeScript and Docusaurus plugin hooks. Profile 12 publication reads an explicit
 project registry, creates derived documentation, validates a built candidate, and promotes only a
 successfully checked candidate. It exposes no agent tool or read proxy. Consumers do not need a
 Python API or a provider Spec to invoke the functions and interpret the values defined here.
@@ -21,10 +19,10 @@ of ordinary document rendering.
 
 ### scenario.views.load-registry — Loading the registry validates identities and memberships
 
-- GIVEN `.concorde/config.json` with `profile_version: 11` and a safe relative registry path
+- GIVEN `.concorde/config.json` with `profile_version: 12` and a safe relative registry path
 - WHEN `loadScopedRegistry` runs
 - THEN it returns a model whose Module IDs are unique, whose Module parents are acyclic and whose entry target exists and is a Module
-- AND malformed identities, memberships or contract agreement throw before any file is written
+- AND malformed identities, ownership, references or contract bindings throw before any file is written
 - AND it returns no graph-specific node or edge projection
 
 ### scenario.views.materialize — Materializing writes disposable staged content and its identity record
@@ -97,23 +95,24 @@ promoteCandidate(candidate: string, destination: string, backup: string): Promis
 `root` is a project-root filesystem path. `safeRead` requires a regular file and returns UTF-8
 text; invalid paths throw `Error`, and OS read errors retain their Node error code. `hash` returns
 `sha256:` followed by 64 lowercase hexadecimal digits. `requireScoped` returns normally only for
-`profile_version === 11`; a missing configuration, a different profile, and a malformed JSON,
+`profile_version === 12`; a missing configuration, a different profile, and a malformed JSON,
 unsafe path or read error each throw an `Error` naming the reason. Every entry point of this public
-build contract calls it first: publication accepts Profile 11 projects only, and no other profile
+build contract calls it first: publication accepts Profile 12 projects only, and no other profile
 has a compatibility rendering path.
 
-`loadScopedRegistry` reads `.concorde/config.json`, which must contain `profile_version: 11` and a
+`loadScopedRegistry` reads `.concorde/config.json`, which must contain `profile_version: 12` and a
 safe relative `registry` path. The registry is
-`{schema_version: 3, project_id: string, entry_target: string, targets: Module[], checks: unknown[]}`
+`{schema_version: 4, project_id: string, entry_target: string, targets: Module[], checks: unknown[]}`
 with project metadata retained in its source bytes. Each Target has all the fields below. Its IDs
 are unique, Module parents are acyclic, the entry target exists and is a Module, and `uses` names
-Modules. Every document has exactly one `concorde-document` block
-`{id: stable_id, targets: nonempty_unique_target_ids, main_visible: boolean}` matching its
-references. Malformed identities, memberships, diagram declarations or required/provided contract
-agreement throw `Error`; the loader never follows a contract edge to import extra context. A
-`concorde-contract` has id/version/role/peer/schema/semantics/example. Internal required contracts
-must match the named provider's schema; peers named `external:...` do not require a local provider.
-Removing graph presentation does not remove these validation responsibilities.
+Modules. Each Module has explicit `references` with typed Module/document identities. Every
+document has one `concorde-document` block `{id, owner, main_visible}` matching sole ownership in
+`documents`. Malformed identities, ownership, references, diagrams or contract bindings throw
+`Error` before writes. Canonical contracts contain id/version/schema/semantics/example; separate
+bindings select them with local role/peer/conditions/guarantees/obligations. Included definitions
+retain their owner and only the explicit one-level resolution supplies validation context.
+The loader never follows links or interface bindings as context edges. Removing graph presentation
+does not remove ownership, reference or agreement validation responsibilities.
 
 ## Public model types
 
@@ -121,26 +120,27 @@ Removing graph presentation does not remove these validation responsibilities.
 type Kind = 'module';
 interface Target {
   id: string; kind: Kind; title: string; documents: string[];
+  references: {kind: "module" | "document"; id: string}[];
   parent: string | null; uses: string[]; files: string[]; checks: string[];
 }
 interface Page {
   sourcePath: string; route: string; stagedPath: string; title: string; content: string;
-  contentDigest: string; documentId: string; documentTargets: string[]; mainVisible: boolean;
-  contextSection: 'target_spec' | 'shared_specs';
-  memberships: {targetId: string; kind: Kind; primary: boolean}[];
+  contentDigest: string; documentId: string; owner: string; mainVisible: boolean;
+  includedBy: {targetId: string; reasons: {kind: 'owned' | 'module' | 'document'; id: string}[]}[];
   aliases: string[]; kind: Kind; primaryOf: string | null;
 }
 interface ScopedRegistry {
-  schema_version: 18; projectRoot: string; registryPath: string; entryTarget: string;
+  schema_version: 19; projectRoot: string; registryPath: string; entryTarget: string;
   sourceDigest: string; targets: Target[]; pages: Page[];
 }
 ```
 
-Publication model schema 18 removes the former graph `edges` projection and `Edge` type.
+Publication model schema 19 replaces shared membership fields with sole owner and explicit inclusion
+provenance. It retains the absence of the former graph `edges` projection and `Edge` type.
 `Target.parent` and `Target.uses` remain registry metadata for navigation, provenance and validation.
-This change does not change registry schema 3, Profile 11 or any UA graph format.
+This change does not change registry schema 4, Profile 12 or any UA graph format.
 
-A file may be listed by several Modules, unlike a document: schema 3 has no single implementation
+A file may be listed by several Modules, unlike a document: schema 4 has no single implementation
 owner, so a shared file's reverse lookup is a plain list of listing Modules rather than one
 authoritative binding. Target/document order follows the registry. There is exactly one Page per
 distinct registered physical document, in the order its sourcePath was first registered. Its
@@ -151,22 +151,21 @@ a project whose documents are not all under `specs/` keeps full paths. Its stage
 documents would map to the same canonical route, when a canonical route equals a legacy alias
 route, or when a staged path falls under the reserved `projections/` prefix.
 
-A shared physical document keeps its single document identity, identical byte digest and one Page,
-carrying a `memberships` entry `{targetId, kind, primary}` per referencing target in registry
-order. `kind` is the kind of the membership marked `primary`, else the first membership's kind;
-`primaryOf` is that membership's targetId, or `null` when no membership is primary. `aliases`
-lists, for every current membership, its legacy-format route:
-`/specs/<target-id>/<key>`, where `key` is the first 16 hex digits of `hash(sourcePath)` after
-`sha256:` (`legacyAliasRoute` computes this). Removed memberships contribute no alias; the model
-uses no prior build or historical membership record. A retained reference to a removed alias must
-be corrected if it cannot resolve under the current inputs, as specified in
-[current document references](publication.md#scenario.views.publish-legacy-redirect). The Markdown H1 supplies the page title, falling back
-to the primary membership's target title, or the first membership's target title when none is
-primary. `content` excludes front matter; `contentDigest` hashes the complete source bytes.
+A referenced physical document retains one Page and one sole `owner`. `includedBy` records every
+Module whose one-level context includes it, in registry order, with all sorted inclusion reasons.
+`kind` is `module`; `primaryOf` is the owner only when this page is its unique module.md, otherwise
+null. `aliases` lists the legacy-format route for the current owner only:
+`/specs/<owner-id>/<key>`, where `key` is the first 16 hex digits of `hash(sourcePath)` after
+`sha256:`. References contribute no ownership alias. Removed owners contribute no alias and no
+historical aliases are inferred. Retained links to a removed alias must be corrected or fail the
+candidate, as specified in [current document references](publication.md#scenario.views.publish-legacy-redirect).
+The Markdown H1 supplies the title, falling back to the owner's title. `content` excludes front
+matter; `contentDigest` hashes complete source bytes. Body Markdown links remain links and never
+transclude another file. Ownership and inclusion provenance may be displayed beside the page.
 
 `sourceDigest` hashes JSON serialization of ordered `[path, contentDigest]` pairs: configuration,
 registry and each distinct registered document in first-reference order. A shared physical document
-contributes its bytes once; membership changes are represented by the registry input. The complete
+contributes its bytes once; ownership and reference changes are represented by the registry input. The complete
 Markdown digest includes every Mermaid fence and source declaration. Inline diagrams create no
 additional source or route record. This is a byte/version identity, not a semantic-completeness
 claim.
@@ -201,7 +200,7 @@ renderer choice does not change the Protocol's tool-neutral requirements.
 The materialization identity is the UTF-8 JSON file
 `docsite/.generated/scoped-materialization.json`, relative to the project root, containing
 `{schema_version: 1, sourceDigest: string}`. Its version 1 is independent of `ScopedRegistry`
-schema 18. Materialization writes compact JSON followed by a newline, after the assets and
+schema 19. Materialization writes compact JSON followed by a newline, after the assets and
 sidebar succeed as specified in [materialization](#scenario.views.materialize). `sourceDigest`
 is the loaded registry's source digest, with the digest format defined above; the record adds no
 page inventory or projection-content identity.
@@ -215,7 +214,7 @@ promoted site. This retains the existing identity format and comparisons.
 The primary Spec navigation mirrors the directory hierarchy of explicitly registered source paths;
 it never discovers new membership by scanning directories. `scopedSidebar` returns one tree
 following registered Module parentage; there is no separate Implementation Spec sidebar, because
-Profile 11 registers only Modules. The navbar exposes Module Specs and, when present, the optional
+Profile 12 registers only Modules. The navbar exposes Module Specs and, when present, the optional
 independent Protocol tab and a self-hosting-only Projections group of rendered
 `generated/docs/instructions.json` and `generated/docs/wire.json` pages. An ordinary consumer
 project produces neither file, so those pages are omitted rather than linking to unmaterialized
@@ -234,10 +233,10 @@ Document titles and labels use the filename without `.md`, except Module entry p
 the Module's title. Source provenance retains the exact source path.
 
 Every registered document has one Docusaurus doc reference, either as an item or a category link.
-Further appearances of explicitly shared Module documents use links to the same canonical page.
+Consumer appearances of referenced documents use ordinary links to that same canonical page.
 This preserves access through each owning Module without duplicate doc IDs. `primaryDocument`
-requires exactly one registered `module.md` for a Module; a Page's matching `memberships` entry
-marks that choice with `primary: true`, and diagrams and the site entry use it rather than
+requires exactly one registered `module.md` for a Module; a Page's sole `owner` and `primaryOf`
+marks that choice with the owning Module ID, and diagrams and the site entry use it rather than
 arbitrary array order. `rewriteLinks` rewrites supported local Markdown links to the registered
 page routes. Diagram references use the owning document's Relationships subsection anchor; there
 are no external diagram-source or delivered-HTML links. Invalid or unregistered local destinations
@@ -260,7 +259,7 @@ suffix participates in registered-document lookup. An invalid or unregistered so
 rejected even when it has a query. Relative non-Spec assets have no matching page and are
 rejected; callers use a supported absolute or root-relative asset URL. Unsupported Markdown forms
 are left unchanged by this rewrite function. A reference selects from all registered source
-paths, not just the referring Module's collection, so changing a document's membership alone does
+paths, not just the referring Module's collection, so changing a document's owner alone does
 not invalidate its source-path or canonical-page references. Link validation begins during
 rewrite/materialization, not during registry loading. The function returns text without changing
 sources. Preserving a URL or an unsupported Markdown form during rewriting does not exempt a
@@ -277,7 +276,7 @@ verification artifacts. After the build manifest, it writes one legacy redirect 
 base-URL-prefixed `<meta http-equiv="refresh">` and `<link rel="canonical">` to the document's
 canonical page, plus a visible link, mirroring the default root redirect. Following an alias with
 a fragment preserves that fragment at the canonical destination. These are the complete
-collaborator promises this Profile 11 path relies on.
+collaborator promises this Profile 12 path relies on.
 
 ## Build artifacts, validation and promotion
 
@@ -285,17 +284,17 @@ Successful plugin post-build writes this JSON verification artifact in `outDir`:
 
 ```typescript
 // build-manifest.json
-{ schema_version: 18, sourceDigest: string,
-  pages: {sourcePath: string; route: string; contentDigest: string; targets: string[]; aliases: string[]}[] }
+{ schema_version: 19, sourceDigest: string,
+  pages: {sourcePath: string; route: string; contentDigest: string; owner: string; includedBy: Page["includedBy"]; aliases: string[]}[] }
 ```
 
-Build-manifest schema 18 identifies the publication contract without an architecture-graph
+Build-manifest schema 19 identifies the publication contract without an architecture-graph
 artifact. Older manifests require a fresh build. Publication neither produces nor requires
 `architecture-graph.json`; it has no replacement graph artifact. UA export remains independent.
 
 `validateScopedBuild(root, directory)` reloads the current model and reads the manifest from the
 candidate directory. It resolves with no value only when its schema version, source digest and
-ordered page path/route/digest/targets/aliases entries match exactly, and every alias has a redirect
+ordered page path/route/digest/owner/includedBy/aliases entries match exactly, and every alias has a redirect
 stub in the candidate directory whose content contains that page's canonical route. A stale or
 incomplete manifest, missing manifest, missing or non-matching redirect stub, or malformed JSON
 rejects. It also validates internal navigation links in the completed candidate after redirect
@@ -314,7 +313,7 @@ do not change the destination page or anchor lookup; preserve them in navigation
 same-origin destinations outside the base URL and non-navigation schemes retain their existing
 external handling without network availability checks. A missing destination, missing
 requested anchor or unresolved redirect rejects with the referring page and destination identified.
-Validation never silently removes a reference, infers document membership, repairs source text or
+Validation never silently removes a reference, infers document ownership and references, repairs source text or
 retains historical output to make the check pass.
 
 This function does not repair artifacts or promote output. Route coverage is measured by the
@@ -341,7 +340,7 @@ rollback can still require operator recovery. The helper itself does not validat
 must not be called on unchecked or stale output.
 
 ```typescript
-requireScoped(projectRoot);       // throws unless the project declares profile_version 11
+requireScoped(projectRoot);       // throws unless the project declares profile_version 12
 const registry = loadScopedRegistry(projectRoot);
 await materializeScoped(registry); // stage derived assets; not yet a published build
 await buildSite();                // integrated prepare/build/validate/promotion path
@@ -353,7 +352,7 @@ supports every possible future task; independent Spec review and actual task gap
 
 ## Module main-document validation
 
-Profile 11 publication requires one local `module.md` for every Module, and requires its Purpose,
+Profile 12 publication requires one local `module.md` for every Module, and requires its Purpose,
 Requirements, Scenarios and Ontology headings to appear, by exact text and outside code fences, in
 that order, with Ontology's Entities and Relationships subsections each present in that order;
 other headings may interleave. `main_visible` is presentation metadata and does not trim a
@@ -384,6 +383,14 @@ source document and prevent publication of a candidate that silently drops a dia
 
 Source edits use ordinary document versioning: changing an edge, label, title or description
 changes the containing document digest and invalidates source-dependent build evidence. A shared
-Markdown member still publishes once and retains all registered memberships. Dependency links and
+Markdown document still publishes once and retains its sole owner and all explicit inclusion reasons. Dependency links and
 diagram nodes do not add target contexts or undeclared registry relationships. Rendering support
 still requires ordinary site dependencies to be installed; initialization does not fetch them.
+
+## Protocol 5 publication migration status
+
+The current TypeScript registry loader and publication model still expect Profile 11, registry
+schema 3, targets metadata and publication schema 18. Schema 19 above is the intended contract;
+the renderer, manifest checks, anchors for canonical contracts/bindings, watch invalidation and
+navigation require migration before a Profile 12 publication can be certified. Generated rule
+assets do not establish that the existing docsite has implemented owner/reference support.

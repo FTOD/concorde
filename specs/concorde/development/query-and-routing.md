@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.development.query-and-routing",
-  "targets": [
-    "module.development"
-  ],
+  "owner": "module.development",
   "main_visible": true
 }
 ```
@@ -15,10 +13,10 @@ when needed. It identifies the owning target from admitted responsibilities and 
 It never reads implementation files or searches code to fill missing Module semantics.
 
 For a query, Python resolves each explicitly selected Module's complete Spec context: every
-registered document, including its inline diagrams. The coordinator receives the original
+owned or explicitly referenced document, including its inline diagrams. The coordinator receives the original
 source bodies directly and may reason across all selected Modules. Shared sources are included
-once, with per-Module membership retained. Non-main documents remain complete members; references
-to another Module do not implicitly select its context. Additional contexts require explicit
+once, with unique owners and per-Module inclusion reasons retained. Non-main documents stay complete.
+Registered references expand once; included Modules' references and ordinary links do not expand further. Additional contexts require explicit
 selection and deterministic host resolution. A capability that owns a mutation or lifecycle result
 has one main route and preserves the task and constraints unchanged.
 

@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.harness.graphs-and-loops",
-  "targets": [
-    "module.harness"
-  ],
+  "owner": "module.harness",
   "main_visible": true
 }
 ```

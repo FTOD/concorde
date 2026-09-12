@@ -1,9 +1,7 @@
 ```concorde-document
 {
   "id": "document.views.ua-graph",
-  "targets": [
-    "module.views"
-  ],
+  "owner": "module.views",
   "main_visible": true
 }
 ```
@@ -46,33 +44,127 @@ not shape-checked; only a nonempty string `filePath` participates in reuse. Miss
 {
   "id": "contract.views.ua-overlay-input",
   "version": 1,
-  "role": "required",
-  "peer": "external:ua-graph-producer",
   "schema": {
     "type": "object",
-    "required": ["version", "project", "nodes", "edges"],
+    "required": [
+      "version",
+      "project",
+      "nodes",
+      "edges"
+    ],
     "properties": {
-      "version": {"type": "string"},
-      "project": {"type": "object"},
-      "nodes": {"type": "array", "items": {
-        "type": "object", "required": ["id", "type"],
-        "properties": {"id": {"type": "string", "minLength": 1}, "type": {"type": "string", "minLength": 1}, "tags": {"type": "array", "items": {"type": "string"}}}
-      }},
-      "edges": {"type": "array", "items": {
-        "type": "object", "required": ["source", "target", "type"],
-        "properties": {"source": {"type": "string", "minLength": 1}, "target": {"type": "string", "minLength": 1}, "type": {"type": "string", "minLength": 1}}
-      }},
-      "layers": {"type": "array", "items": {
-        "type": "object", "required": ["id"],
-        "properties": {"id": {"type": "string", "minLength": 1}}
-      }},
-      "tour": {"type": "array"}
+      "version": {
+        "type": "string"
+      },
+      "project": {
+        "type": "object"
+      },
+      "nodes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "type"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": {
+              "type": "string",
+              "minLength": 1
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "edges": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "source",
+            "target",
+            "type"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "target": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "layers": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "tour": {
+        "type": "array"
+      }
     }
   },
   "semantics": "Existing graph input for skeleton overlay, subject to local unique-ID, path safety, reserved ownership and generated-ID collision rules. Extension fields outside ownership preserve their JSON values.",
-  "example": {"version": "1.0.0", "project": {"name": "Example"}, "nodes": [{"id": "scan:readme", "type": "document", "filePath": "README.md"}], "edges": [], "layers": [], "tour": []}
+  "example": {
+    "version": "1.0.0",
+    "project": {
+      "name": "Example"
+    },
+    "nodes": [
+      {
+        "id": "scan:readme",
+        "type": "document",
+        "filePath": "README.md"
+      }
+    ],
+    "edges": [],
+    "layers": [],
+    "tour": []
+  }
 }
 ```
+```concorde-contract-binding
+{
+  "id": "contract.views.ua-overlay-input",
+  "version": 1,
+  "role": "required",
+  "peer": "external:ua-graph-producer",
+  "selection_condition": "When overlaying an existing graph produced outside Concorde.",
+  "relied_upon_guarantees": [
+    "[Canonical agreement](#contract.views.ua-overlay-input) defines the exchanged value for this operation."
+  ],
+  "obligations": [
+    "Validate the input and preserve fields outside exporter ownership; reject invalid graphs without writes."
+  ]
+}
+```
+
 
 New skeletons have `version: "1.0.0"`, `tour: []`, and a `project` object with `name` equal to
 the registry project ID, `languages: []`, `frameworks: []`, `description` equal to
@@ -95,7 +187,8 @@ registry IDs or project-relative POSIX paths without hashing or escaping.
 
 Documents are resolved before implementation files, with one generated record per ID. Thus a
 bound Markdown file already generated as a registered document retains that document's summary.
-Shared paths use the first registered Module's node selection and pending state. Each generated
+Shared implementation paths use the first registered listing Module's node selection and pending state.
+Spec documents always use their sole owner; references never alter their layer or implementation status. Each generated
 edge has `source`, `target`, `type`, `direction: "forward"` and numeric `weight`; only the rows
 with descriptions below include `description`. There is no generated edge ID.
 
@@ -103,7 +196,8 @@ with descriptions below include `description`. There is no generated edge ID.
 | --- | --- | --- |
 | Composition | parent Module → child Module | `contains`, `1.0`, `composes` |
 | Dependency | consuming Module → used Module | `depends_on`, `0.8`, local dependency responsibility (fallback `uses`) |
-| Document membership | document → registering Module | `documents`, `0.7`, no description |
+| Document ownership | document → sole owner Module | `documents`, `0.7`, `owned by <target-id>` |
+| Explicit context reference | selecting Module → referenced Module or document | `references`, `0.6`, `module` or `document` |
 | Implementation listing | listing Module → bound file | `contains`, `0.9`, `<entity-id>: <entity-title>` for that Module's most-specific owning entity |
 | Additional file lister | file → each lister after the first | `related`, `0.5`, `also listed by <target-id>` |
 
@@ -134,11 +228,11 @@ created by `--check`.
   path
 - WHEN `ua-graph` runs
 - THEN it writes `.ua/knowledge-graph.json` with one node per registered Module, `contains` edges
-  for composition, `depends_on` edges for `uses`, `documents` edges for registered documents, and
+  for composition, `depends_on` edges for `uses`, `documents` edges to sole document owners, explicit `references` edges without recursive expansion, and
   `contains` edges from each Module to the files its entities bind
 - AND it writes one layer per Module whose registry `files` are nonempty, whose members are the
   files for which that Module is the first registered lister together with the documents that
-  Module is the first registered target for, and no `layer:unlisted`
+  Module solely owns, and no `layer:unlisted`
 
 ## Overlaying an existing graph
 
@@ -167,8 +261,8 @@ defines the existing independent export behavior and adds no docsite graph funct
 - AND a Module's bound file reuses an existing node's ID when the UA graph already has a
   file-like node at that `filePath`, instead of creating a duplicate
 - AND a Module's registered document likewise reuses an existing document-like node's ID at that
-  `filePath` instead of creating a duplicate, and joins the layer of the first Module registered
-  for it when that Module has nonempty registry `files`; otherwise it remains outside generated
+  `filePath` instead of creating a duplicate, and joins the layer of its sole owner
+  when that Module has nonempty registry `files`; otherwise it remains outside generated
   layers, in both fresh export and overlay, and never joins `layer:unlisted`
 - AND running the export again against its own prior output produces byte-identical output
 
@@ -209,3 +303,9 @@ defines the existing independent export behavior and adds no docsite graph funct
 These exporter boundaries are Module-wide requirements; see
 [req.views.ua-graph-registry-only](module.md#req.views.ua-graph-registry-only) and
 [req.views.ua-graph-idempotent](module.md#req.views.ua-graph-idempotent) in `module.md`.
+
+Context references are distinct graph edges and never acquire contains/depends_on meaning. A
+referenced document stays in its owner's layer; neither its implementation files nor its owner's
+references are imported. The current exporter still uses the schema-3 registry model and must
+migrate this derivation before its output can satisfy Profile 12. Existing external overlay
+admission remains contract version 1: the new edge type fits its open string type vocabulary.
