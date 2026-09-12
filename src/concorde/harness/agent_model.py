@@ -154,7 +154,7 @@ def validate_mode_input(agent: Agent, mode_name: str, value: dict, *, phase: str
         raise ValueError("mode cannot admit implementation contents")
     if mode.name.endswith("-review") and data["review"]["data"]["review_mode"] != mode.name.split("-")[0]:
         raise ValueError("review input does not match mode")
-    if mode.name == "spec-review" and any(change["path"] not in snapshot["document_order"]
+    if mode.name == "spec-review" and any(change["path"] not in [source["path"] for source in snapshot["spec_resolution"]["sources"]]
             for change in data["review"]["data"]["changes"]):
         raise ValueError("Spec review cannot admit implementation patches")
     if data.get("expected_artifacts"):

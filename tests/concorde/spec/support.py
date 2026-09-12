@@ -1,4 +1,4 @@
-"""Consumer fixture and explicit model-process double for the Profile 11 boundary."""
+"""Consumer fixture and explicit model-process double for the Profile 12 boundary."""
 import json
 import re
 import tempfile
@@ -27,7 +27,7 @@ def module_document(document_id, target_id, title, purpose, scenarios, entities,
                     diagram, dependencies=(), trailer='', requirements='No Module-level requirement is stated here.'):
     """One four-part reading entry: Purpose, Requirements, Scenarios and an Ontology whose
     Entities subsection declares the entities and whose Relationships subsection draws them."""
-    text = (block('concorde-document', {'id':document_id,'targets':[target_id],'main_visible':True})
+    text = (block('concorde-document', {'id':document_id,'owner': target_id,'main_visible':True})
         + f'\n# {title}\n\n## Purpose\n\n{purpose}\n\n## Requirements\n\n{requirements}\n\n'
           f'## Scenarios\n\n{scenarios}\n\n## Ontology\n\n### Entities\n\n{entities[0]}\n\n'
         + block('concorde-entities', entities[1])
@@ -155,7 +155,7 @@ LEDGER = module_document('document.ledger.api','module.ledger','Ledger API',
     '    account -->|indexes| store')
 
 PROMISES = (block('concorde-document', {'id':'document.transfer.promises',
-    'targets':['service.transfer'],'main_visible':True})
+    'owner': 'service.transfer','main_visible':True})
     + '\n# Local promises\n\nBalance and amount are integers. No network, persistence or implicit\n'
       'retry is performed by transfer. This complete collection defines all facts required to\n'
       'implement and test transfer.\n')
@@ -172,7 +172,7 @@ def project(root):
     targets[2].update(uses=['module.ledger'], files=['app/transfer.py','checks/transfer_check.py'],
                       checks=['check.transfer'])
     targets[3].update(files=['app/ledger.py'])
-    registry={'schema_version':3,'project_id':'project.bank','entry_target':'scope.bank','targets':targets,
+    registry={'schema_version':4,'project_id':'project.bank','entry_target':'scope.bank','targets':targets,
       'checks':[{'id':'check.transfer','target_id':'service.transfer',
                  'argv':['{python}','checks/transfer_check.py'],'timeout_seconds':10}]}
     (root/'.concorde/specs.json').write_text(json.dumps(registry))
@@ -229,9 +229,9 @@ class ModelProcessDouble:
             return subprocess.CompletedProcess(argv,0,stdout,'')
         if value['type_id']=='concorde-topology-author-context':
             current={item['path']:item['content']
-                     for section in ('target_spec','shared_specs') for item in snapshot[section]}
+                     for item in snapshot['spec_resolution']['sources']}
             target=snapshot['target']
-            candidate={item['path']:item['targets'] for item in snapshot['candidate_document_references']}
+            candidate={path:target['id'] for path in target['documents']}
             def initial(path):
                 document_id='document.'+re.sub(r'[^a-z0-9.-]+','-',path.lower().removesuffix('.md').replace('/','.'))
                 local=target['id'].split('.')[-1]
@@ -262,8 +262,8 @@ class ModelProcessDouble:
                     ('The provisional boundary and its declared providers are the only known entities.', entities),
                     'The developer specifies the provisional boundary; declared providers remain external.',
                     diagram, dependencies).replace(
-                        json.dumps({'id':document_id,'targets':[target['id']],'main_visible':True},indent=2),
-                        json.dumps({'id':document_id,'targets':candidate[path],'main_visible':True},indent=2))
+                        json.dumps({'id':document_id,'owner':target['id'],'main_visible':True},indent=2),
+                        json.dumps({'id':document_id,'owner':candidate[path],'main_visible':True},indent=2))
             documents=[{'path':path,'content':current.get(path,initial(path))}
                        for path in target['documents']]
             data={'context_id':snapshot['context_id'],'target_id':target['id'],'outcome':'completed',
@@ -308,7 +308,7 @@ class ModelProcessDouble:
             task_target=snapshot['target_id']
             if snapshot['target_id'] in {'scope.bank','scope.audit'}:
                 body='\n'.join(item['content']
-                    for section in ('target_spec','shared_specs') for item in snapshot[section])
+                    for item in snapshot['spec_resolution']['sources'])
                 dependencies=re.search(r'```concorde-dependencies\s*\n(.*?)^```',body,re.M|re.S)
                 if dependencies is None:raise AssertionError('Module task fixture requires local participant declarations')
                 task_target=json.loads(dependencies.group(1))[0]['target_id']

@@ -392,22 +392,31 @@ class WorktreeLifecycleTests(unittest.TestCase):
     @verifies("scenario.development.dev-loop-spec-gap", "scenario.development.dev-loop-coordinated")
     def test_partial_spec_reconciliation_is_explicit_and_resumes_completed_authors(self):
         before_primary = (self.primary / "specs/transfer/module.md").read_bytes()
-        def contract(role, peer, value_type, example):
-            return "\n```concorde-contract\n" + json.dumps({"id": "contract.fixture.sync", "version": 1,
-                "role": role, "peer": peer, "schema": {"type": value_type},
-                "semantics": "The coordinated value has the agreed representation.", "example": example}) + "\n```\n"
+        def binding(role, peer):
+            return "\n```concorde-contract-binding\n" + json.dumps({"id": "contract.fixture.sync", "version": 1,
+                "role": role, "peer": peer, "selection_condition": "When coordinating values.",
+                "relied_upon_guarantees": ["Return the agreed representation."],
+                "obligations": ["Handle the agreed value."]}) + "\n```\n"
         consumer = self.change / "specs/transfer/module.md"
         provider = self.change / "specs/ledger/module.md"
-        consumer.write_text(consumer.read_text() + contract("required", "module.ledger", "integer", 7))
-        provider.write_text(provider.read_text() + contract("provided", "service.transfer", "integer", 7))
+        consumer.write_text(consumer.read_text() + binding("required", "module.ledger"))
+        provider.write_text(provider.read_text() + "\n```concorde-contract\n" + json.dumps({
+            "id": "contract.fixture.sync", "version": 1, "schema": {"type": "integer"},
+            "semantics": "The coordinated value has the agreed representation.", "example": 7}) + "\n```\n"
+            + binding("provided", "service.transfer"))
+        registry_path = self.change / ".concorde/specs.json"
+        registry = json.loads(registry_path.read_text())
+        next(t for t in registry["targets"] if t["id"] == "service.transfer")["references"] = [
+            {"kind": "document", "id": "document.ledger.api"}]
+        registry_path.write_text(json.dumps(registry))
         task = {"target_id": "scope.bank", "task": "Coordinate transfer and ledger changes"}
         def partial(stage, snapshot, data, cwd):
             if stage == "tasks" and snapshot["target_id"] == "scope.bank":
                 data["tasks"].append({"id": "task.ledger", "target_id": "module.ledger",
                     "description": "Implement the ledger API", "acceptance": "Read a known balance", "complete": False})
             if stage == "specify" and snapshot["target_id"] == "service.transfer":
-                document = snapshot["target_spec"][0]
-                replacement = document["content"].replace('"type": "integer"', '"type": "string"').replace('"example": 7', '"example": "new"')
+                document = next(s for s in snapshot["spec_resolution"]["sources"] if s["owner"] == snapshot["target_id"])
+                replacement = document["content"].replace('"version": 1', '"version": 2').replace('"type": "integer"', '"type": "string"').replace('"example": 7', '"example": "new"')
                 data["documents"] = [{"path": document["path"], "content": replacement + "\nClarified candidate promise.\n"}]
             if stage == "specify" and snapshot["target_id"] == "module.ledger":
                 data.update(outcome="spec_incomplete", gaps=[{"question": "Which account is known?",
@@ -426,8 +435,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertFalse(any(c["stage"] == "implementation" for c in self.last_double.calls))
         def finish_provider(stage, snapshot, data, cwd):
             if stage == "specify" and snapshot["target_id"] == "module.ledger":
-                document = snapshot["target_spec"][0]
-                replacement = document["content"].replace('"type": "integer"', '"type": "string"').replace('"example": 7', '"example": "new"')
+                document = next(s for s in snapshot["spec_resolution"]["sources"] if s["owner"] == snapshot["target_id"])
+                replacement = document["content"].replace('"version": 1', '"version": 2').replace('"type": "integer"', '"type": "string"').replace('"example": 7', '"example": "new"')
                 data["documents"] = [{"path": document["path"], "content": replacement}]
         result = self.call_capability(self.change, "concorde-dev-loop", task, finish_provider)
         self.assertEqual("succeeded", result["status"], result)

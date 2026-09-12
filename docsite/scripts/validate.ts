@@ -18,7 +18,7 @@ async function main() {
   if (hasDocsProjections(root)) verifyConcordeBuildFresh(root);
   const registry = loadScopedRegistry(root);
   registry.pages.forEach((page) => rewriteLinks(registry, page));
-  process.stdout.write(`Validated Profile 10: ${registry.targets.length} targets, ${registry.pages.length} document memberships.\n`);
+  process.stdout.write(`Validated Profile 12: ${registry.targets.length} targets, ${registry.pages.length} owned documents.\n`);
 }
 
 void main().catch((error: unknown) => { console.error(error); process.exitCode = 1; });

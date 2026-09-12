@@ -372,4 +372,4 @@ such a project is a separate, explicit topology change that this Module does not
 
 ## Ownership, context and implementation status
 
-Publication schema 19, unique owners, reference provenance, canonical contract anchors and UA reference edges are specified target behavior. Existing loaders/exporters still require migration; see the pipeline and exporter implementation status. Reference inclusion creates no transclusion, implementation grant or new page authority.
+The loaders and exporters implement publication schema 19, unique owners, reference provenance, canonical contract anchors and UA reference edges. Reference inclusion creates no transclusion, implementation grant or new page authority.

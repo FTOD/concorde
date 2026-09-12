@@ -24,7 +24,7 @@ PACKAGE = Path(__file__).resolve().parents[3]
 def reading_entry(target_id, title, purpose, scenario, entities, diagram, dependencies=None,
                   requirements="No Module-level requirement is stated."):
     """One valid four-part reading entry for the small composition fixture."""
-    declaration = {"id": "document." + target_id, "targets": [target_id], "main_visible": True}
+    declaration = {"id": "document." + target_id, "owner": target_id, "main_visible": True}
     text = ("```concorde-document\n" + json.dumps(declaration, indent=2) + "\n```\n\n"
         f"# {title}\n\n## Purpose\n\n{purpose}\n\n## Requirements\n\n{requirements}\n\n"
         f"## Scenarios\n\n{scenario}\n"
@@ -45,7 +45,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.configuration = {"type_id": "concorde-capability-configuration", "schema_version": 1,
                               "data": {"integration": "claude", "enforcement": "native"}}
-        self.write(".concorde/config.json", json.dumps({"profile_version": 11,
+        self.write(".concorde/config.json", json.dumps({"profile_version": 12,
             "registry": ".concorde/specs.json", "protocol": protocol_binding(PACKAGE),
             "capability_configuration": self.configuration}))
         self.write("source/shared.py", "def value():\n    return 42\n# PRIVATE_SOURCE_MARKER\n")
@@ -80,7 +80,7 @@ class ModuleImplementationTests(unittest.TestCase):
             requirements="### req.a.pure — A never changes the shared value\n\n"
                          "A SHALL NOT change the shared value.\n"))
         self.write("specs/a/details.md", "```concorde-document\n" + json.dumps(
-            {"id": "document.a.details", "targets": ["module.a"], "main_visible": True}, indent=2)
+            {"id": "document.a.details", "owner": "module.a", "main_visible": True}, indent=2)
             + "\n```\n\n# Local details\n\nA_OWN_ADDITIONAL_CONTRACT: the adapted integer is never negative.\n")
         self.write("specs/b/module.md", reading_entry("module.b", "b",
             "B_PRIVATE_SPEC: B reads the shared integer and promises exactly 42.",
@@ -94,14 +94,14 @@ class ModuleImplementationTests(unittest.TestCase):
         targets = [
             {"id": "module.root", "kind": "module", "title": "root",
              "documents": ["specs/root/module.md"], "parent": None, "uses": [],
-             "files": [], "checks": []},
+             "files": [], "checks": [], "references": []},
             {"id": "module.a", "kind": "module", "title": "a",
              "documents": ["specs/a/module.md", "specs/a/details.md"], "parent": "module.root",
-             "uses": [], "files": ["source/a.py", "source/shared.py"], "checks": []},
+             "uses": [], "files": ["source/a.py", "source/shared.py"], "checks": [], "references": []},
             {"id": "module.b", "kind": "module", "title": "b",
              "documents": ["specs/b/module.md"], "parent": "module.root", "uses": [],
-             "files": ["source/shared.py"], "checks": []}]
-        self.registry = {"schema_version": 3, "project_id": "project.test",
+             "files": ["source/shared.py"], "checks": [], "references": []}]
+        self.registry = {"schema_version": 4, "project_id": "project.test",
                          "entry_target": "module.root", "targets": targets, "checks": []}
         self.save_registry()
 

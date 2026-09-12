@@ -96,7 +96,7 @@ BETA_DOC = module_document(
 
 def _target(target_id, title, documents, *, parent=None, uses=(), files=()):
     return {"id": target_id, "kind": "module", "title": title, "documents": documents,
-            "parent": parent, "uses": list(uses), "files": sorted(files), "checks": []}
+            "parent": parent, "uses": list(uses), "files": sorted(files), "checks": [], "references": []}
 
 
 def build_project(root: Path) -> None:
@@ -111,7 +111,7 @@ def build_project(root: Path) -> None:
         _target("module.beta", "Beta", ["specs/beta/module.md"], parent="module.root",
                 files=["src/beta/service.py", "src/shared/util.py"]),
     ]
-    registry = {"schema_version": 3, "project_id": "project.fixture", "entry_target": "module.root",
+    registry = {"schema_version": 4, "project_id": "project.fixture", "entry_target": "module.root",
                 "targets": targets, "checks": []}
     (root / ".concorde/specs.json").write_text(json.dumps(registry))
     files = {

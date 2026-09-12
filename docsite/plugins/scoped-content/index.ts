@@ -10,8 +10,8 @@ async function requireMaterialized(registry:ScopedRegistry):Promise<void> {
   if(identity.schema_version!==1||identity.sourceDigest!==registry.sourceDigest)throw new Error('Materialized Spec source identity differs; prepare publication again');
 }
 function manifestPages(registry:ScopedRegistry) {
-  return registry.pages.map(({sourcePath,route,contentDigest,memberships,aliases})=>
-    ({sourcePath,route,contentDigest,targets:memberships.map(m=>m.targetId),aliases}));
+  return registry.pages.map(({sourcePath,route,contentDigest,owner,includedBy,aliases})=>
+    ({sourcePath,route,contentDigest,owner,includedBy,aliases}));
 }
 function withBaseUrl(baseUrl:string,route:string):string {
   return (baseUrl==='/'?'':baseUrl.replace(/\/$/,''))+route;
@@ -32,7 +32,7 @@ export async function validateScopedBuild(root:string,directory:string) {
   const registry=loadScopedRegistry(root);
   const manifest=JSON.parse(await readFile(resolve(directory,'build-manifest.json'),'utf8'));
   const expected=manifestPages(registry);
-  if(manifest.schema_version!==18||manifest.sourceDigest!==registry.sourceDigest||JSON.stringify(manifest.pages)!==JSON.stringify(expected))throw new Error('Stale or incomplete Build Manifest 18');
+  if(manifest.schema_version!==19||manifest.sourceDigest!==registry.sourceDigest||JSON.stringify(manifest.pages)!==JSON.stringify(expected))throw new Error('Stale or incomplete Build Manifest 19');
   for (const page of registry.pages) for (const alias of page.aliases) {
     const stubPath=resolve(directory,alias.replace(/^\//,'')+'.html');
     let stub:string;

@@ -190,10 +190,9 @@ verify_fresh reject the old build even when a common instruction body is unchang
 
 ## Protocol and runtime support are separate
 
-The authored target is Protocol 5.0.0 with source_profile 12. Its tracked manifest binds the exact
-generated rule and schema bytes; project configuration binds the exact manifest bytes. The wire
-schema asset currently exports legacy runtime types and does not itself implement the new Spec
-registry format or context wrappers. Build/check freshness can pass while runtime conformance is
-still incomplete. Package validation must report unsupported versions/alignment gaps honestly;
-it must not substitute old membership rules or silently downgrade a project's binding. Updates
-to exported context schemas must rebuild and explicitly rebind the manifest in the same worktree.
+The package supports Protocol 5.0.0 with source_profile 12. Its tracked manifest binds the exact
+generated rule and versioned schema bytes; project configuration binds the exact manifest bytes.
+Context payloads and wrappers export version 2. Build freshness establishes projection integrity;
+structural validation, configured checks and review evidence remain separate. Updates to exported
+schemas require a rebuild and explicit manifest rebinding in the same worktree. Consumer package
+updates preserve the existing binding until explicitly accepted.

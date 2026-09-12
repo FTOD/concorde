@@ -21,8 +21,7 @@ class ScopeReflectionTests(unittest.TestCase):
         self.assertEqual('succeeded',result['status'],result)
         task_call=next(call for call in self.double.calls if call['stage']=='tasks')
         self.assertIn('"target_id": "service.transfer"',
-                      '\n'.join(item['content'] for section in ('target_spec','shared_specs')
-                                for item in task_call['snapshot'][section]))
+                      '\n'.join(item['content'] for item in task_call['snapshot']['spec_resolution']['sources']))
         domain=[c for c in self.double.calls if c['capability']!='concorde-coordinator' and c['snapshot']['target_id']=='scope.bank']
         self.assertTrue(domain);self.assertTrue(any(c['capability']!='concorde-coordinator' and
             c['snapshot']['target_id']=='service.transfer' for c in self.double.calls))

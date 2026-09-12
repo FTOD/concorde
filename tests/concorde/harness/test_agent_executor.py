@@ -630,7 +630,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
 
         snapshot_data = {
             "context_id": "sha256:" + "3" * 64,
-            "schema_version": 3,
+            "schema_version": 2,
             "target_id": "service.fixture",
             "kind": "module",
             "focus_id": None,
@@ -639,13 +639,12 @@ class AgentBindingPreflightTests(unittest.TestCase):
             "constraints": [],
             "protocol_binding": {"version": PROTOCOL_VERSION, "digest": "sha256:" + "4" * 64},
             "protocol": [],
-            "document_order": ["specs/fixture.md"],
-            "target_spec": [{
-                "document_id": "document.fixture", "path": "specs/fixture.md",
-                "digest": "sha256:" + "5" * 64, "targets": ["service.fixture"],
-                "main_visible": True, "content": "# Fixture\n",
-            }],
-            "shared_specs": [],
+            "spec_resolution": {"query_id": "service.fixture", "query_kind": "module",
+                "module_id": "service.fixture", "documents": ["specs/fixture.md"], "references": [],
+                "sources": [{"document_id": "document.fixture", "path": "specs/fixture.md",
+                    "digest": "sha256:" + "5" * 64, "owner": "service.fixture",
+                    "main_visible": True, "content": "# Fixture\n",
+                    "reasons": [{"kind": "owned", "id": "service.fixture"}]}]},
             "instructions": "Fixture role instructions.",
             "stage_inputs": [],
             "implementation_entries": [{"path": "app/fixture.py", "entity_id": "entity.fixture.code",
@@ -662,9 +661,9 @@ class AgentBindingPreflightTests(unittest.TestCase):
             },
         }
         runtime_value = {
-            "type_id": "concorde-agent-stage-context", "schema_version": 1,
+            "type_id": "concorde-agent-stage-context", "schema_version": 2,
             "data": {
-                "snapshot": {"type_id": "concorde-context-snapshot", "schema_version": 1, "data": snapshot_data},
+                "snapshot": {"type_id": "concorde-context-snapshot", "schema_version": 2, "data": snapshot_data},
                 "change_id": None, "expected_artifacts": [],
             },
         }

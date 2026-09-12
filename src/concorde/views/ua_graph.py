@@ -173,7 +173,14 @@ def _build_elements(repository: SpecRepository, *,
                 node_id = _resolve_document_node(path, document_id, overlay=overlay, index=index, created=nodes)
                 doc_node_ids[path] = node_id
                 layer_members.setdefault(target.id, set()).add(node_id)
-            edges.append(_edge(doc_node_ids[path], f"module:{target.id}", "documents", 0.7))
+            edges.append(_edge(doc_node_ids[path], f"module:{target.id}", "documents", 0.7, f"owned by {target.id}"))
+
+    document_index = repository._document_index()
+    for target in targets:
+        repository.spec_files(target.id)  # Reject invalid declarations before producing a graph.
+        for kind, identity in target.references:
+            destination = f"module:{identity}" if kind == "module" else doc_node_ids[document_index[identity]]
+            edges.append(_edge(f"module:{target.id}", destination, "references", 0.6, kind))
 
     file_node_ids: dict[str, str] = {}
     for target in targets:

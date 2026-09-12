@@ -46,6 +46,7 @@ _PROTOCOL_VOCABULARY = frozenset(
         "concorde-dependencies",
         "concorde-entities",
         "concorde-contract",
+        "concorde-contract-binding",
     }
 )
 
@@ -799,7 +800,8 @@ def _validate_spec_types(root: Path, documents: dict[str, str]) -> list[Finding]
             "Register the Development interfaces document with that document id.")]
     path, text = boundary
     findings: list[Finding] = []
-    expected: dict[str, int] = {name: 1 for name in schemas()}
+    from ..spec.wire_shapes import type_version
+    expected: dict[str, int] = {name: type_version(name) for name in schemas()}
     expected.update(_ENVELOPE_VERSIONS)
     found: dict[str, set[int]] = {}
     for token in _SPEC_TYPE_TOKEN.findall(text):

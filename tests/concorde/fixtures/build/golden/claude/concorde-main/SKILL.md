@@ -607,7 +607,7 @@ This complete schema is the invocation's input field. It does not grant project 
           "type": "object",
           "properties": {
             "schema_version": {
-              "const": 3
+              "const": 4
             },
             "project_id": {
               "type": "string",
@@ -641,6 +641,30 @@ This complete schema is the invocation's input field. It does not grant project 
                     },
                     "uniqueItems": true,
                     "minItems": 1
+                  },
+                  "references": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "module",
+                            "document"
+                          ]
+                        },
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "uniqueItems": true
                   },
                   "parent": {
                     "anyOf": [
@@ -684,6 +708,7 @@ This complete schema is the invocation's input field. It does not grant project 
                   "kind",
                   "title",
                   "documents",
+                  "references",
                   "parent",
                   "uses",
                   "files",

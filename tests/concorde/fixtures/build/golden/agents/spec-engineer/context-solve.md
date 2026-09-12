@@ -46,8 +46,8 @@ on a false gap or allowed to proceed on a false sufficiency.
 
 ## Accepted input and feedback
 
-Consume the exact supplied `concorde-agent-stage-context@1` snapshot: the target's
-`concorde-context-snapshot@1`, with `document_order`, Target Spec and Shared Specs, the declared
+Consume the exact supplied `concorde-agent-stage-context@2` snapshot: the target's
+`concorde-context-snapshot@2`, with `spec_resolution` with complete owned and directly referenced sources, original owners and inclusion reasons, the declared
 `implementation_entries` and the `implementation_files` they bind, plus the task and phase. This role runs only inside a host-bound capability
 invocation. A re-assessment after a Spec repair arrives as a fresh invocation with a fresh
 snapshot, not a continuation.
@@ -75,3 +75,5 @@ obligations by convention or infer them from ungranted context or code. Independ
 continue in the answer. Suggestions that do not block the current task are not contract gaps.
 Pure queries return the gaps; the host persists development gaps and any explicitly requested
 Reflection capture. A Spec repair requires a fresh context before resuming the affected step.
+
+Keep the selected consumer and blocked step as gap attribution. When known, identify the canonical definition ID, sole owner, source path and included digest in needed_contract. Never relabel a referenced definition as consumer-owned or fetch excluded sources.

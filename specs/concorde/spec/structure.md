@@ -130,7 +130,7 @@ Structural checks report missing references/definitions separately from semantic
 - AND no conforming context or interface agreement is claimed
 
 The maintenance-only `scripts/development/check-spec-v5.py` audits the authored registry without
-constructing a legacy runtime repository. It checks ownership, references, binding/example shape,
+constructing the runtime repository. It checks ownership, references, binding/example shape,
 links, the unchanged Markdown/diagram grammar, entity/file/dependency consistency and manifest
 digests; `--base REVISION` also checks stable Requirement/Scenario/Entity ownership against Git.
 It is independent documentation evidence, not a lifecycle check or a semantic-completeness claim.

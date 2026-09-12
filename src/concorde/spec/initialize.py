@@ -1,4 +1,4 @@
-"""Initialize the four-part Module profile (Profile 11) with an honest, self-contained Module stub."""
+"""Initialize the four-part Module profile (Profile 12) with an honest, self-contained Module stub."""
 from __future__ import annotations
 
 import json
@@ -27,12 +27,12 @@ def protocol_binding(package: Path) -> dict:
 
 def empty_target(target_id: str, kind: str, title: str, documents: list[str]) -> dict:
     return {"id": target_id, "kind": kind, "title": title, "documents": documents,
-            "parent": None, "uses": [], "files": [], "checks": []}
+            "references": [], "parent": None, "uses": [], "files": [], "checks": []}
 
 
 def initial_module_text(target_id: str, name: str) -> str:
     """An honest four-part stub of the known authoring boundary, not invented business design."""
-    declaration = {"id": "document." + target_id, "targets": [target_id], "main_visible": True}
+    declaration = {"id": "document." + target_id, "owner": target_id, "main_visible": True}
     local = target_id.split(".")[-1]
     entities = [
         {"id": f"entity.{local}.project-spec", "title": "Project Spec", "kind": "document collection",

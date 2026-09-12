@@ -8,7 +8,7 @@ import {afterAll, beforeAll, describe, expect, it} from 'vitest';
 
 /**
  * Concorde-repository evidence for scenario.views.scaffold-propose: a project holding
- * only Profile 11 initialization outputs receives the packaged docsite through the native `docsite`
+ * only Profile 12 initialization outputs receives the packaged docsite through the native `docsite`
  * Tool and passes the adapter's validate and build steps. It reuses this checkout's installed
  * dependencies without a separate diagram renderer, so it stays outside the packaged template.
  */
@@ -61,7 +61,7 @@ afterAll(async () => {
   if (root) await rm(root, {recursive: true, force: true});
 });
 
-describe('a project holding only Profile 11 initialization outputs', () => {
+describe('a project holding only Profile 12 initialization outputs', () => {
   it('scenario.views.scaffold-propose: receives the graph-free adapter and identity', async () => {
     const files = (docsiteProposal.result.proposal as {files: Array<{path: string}>}).files.map((file) => file.path);
     expect(files).toContain('docsite/docusaurus.config.ts');
@@ -95,9 +95,9 @@ describe('a project holding only Profile 11 initialization outputs', () => {
     const build = run(process.execPath, ['--import','tsx','scripts/build.ts'], resolve(root, 'docsite'));
     expect(build.status, `${build.stdout}\n${build.stderr}`).toBe(0);
     const manifest = JSON.parse(await readFile(resolve(root,'docsite/build/build-manifest.json'),'utf8'));
-    expect(manifest.schema_version).toBe(18);expect(manifest.pages).toHaveLength(1);
+    expect(manifest.schema_version).toBe(19);expect(manifest.pages).toHaveLength(1);
     expect(manifest.pages[0].route).toBe('/specs/project/module');
-    expect(manifest.pages[0].targets).toEqual(['module.atlas']);
+    expect(manifest.pages[0].owner).toEqual('module.atlas');
     expect(manifest.pages[0].aliases).toEqual([expect.stringMatching(/^\/specs\/module\.atlas\/[0-9a-f]{16}$/)]);
     const homepage=await readFile(resolve(root,'docsite/build/index.html'),'utf8');expect(homepage).toContain(manifest.pages[0].route);
     expect(homepage).toMatch(/http-equiv="refresh"/i);

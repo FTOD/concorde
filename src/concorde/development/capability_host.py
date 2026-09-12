@@ -1,4 +1,4 @@
-"""Trusted execution of every public Concorde capability under Profile 11.
+"""Trusted execution of every public Concorde capability under Profile 12.
 
 Agents consume frozen Spec snapshots. Deterministic checks execute separately and their raw
 output never becomes a non-implementation agent input. Each stage starts a fresh process.
@@ -202,7 +202,7 @@ def _impact_revisions(repository: SpecRepository, targets) -> list[dict]:
 
 def _target_revision(repository: SpecRepository, target) -> str:
     return digest({"target": asdict(target), "protocol": repository.config["protocol"],
-                   "documents": [(doc.path, doc.digest) for doc in repository.documents(target)]})
+                   "spec_resolution": repository.spec_context(target.id).value})
 
 
 def _check_revision(repository: SpecRepository, target) -> str:
@@ -592,7 +592,8 @@ def _inspect_topology_design(repository: SpecRepository, design_value: dict,
     # This validates IDs, parentage, ownership, focus/check references and entry selection without
     # opening the candidate document paths. Their existence/content is validated after authoring.
     try:
-        SpecRepository(repository.root, repository.package_root, registry_bytes=candidate_bytes)
+        SpecRepository(repository.root, repository.package_root, registry_bytes=candidate_bytes,
+                       _defer_document_admission=True)
     except SpecError as error:
         raise SpecError(
             "topology candidate registry is invalid: " + str(error),
@@ -628,7 +629,7 @@ def _inspect_topology_design(repository: SpecRepository, design_value: dict,
         if target_id in candidate_targets and target_id not in tasks)
     if missing_document_tasks:
         raise SpecError(
-            f"changed document sharing requires every retained referencing target task: {missing_document_tasks}",
+            f"changed document ownership requires every retained owner task: {missing_document_tasks}",
             "invalid_proposal",
         )
     def relations(targets):
@@ -708,11 +709,12 @@ def _validate_topology_proposal(host: CapabilityHost, proposal: dict) -> tuple[S
 
 def _topology_author(repository: SpecRepository, configuration: dict, host: CapabilityHost,
                      target: dict, task: str, occurrence: int,
-                     candidate_document_references: tuple[dict, ...]) -> dict:
+                     candidate_document_references: tuple[dict, ...],
+                     candidate_repository: SpecRepository | None = None) -> dict:
     role = "concorde-spec-engineer"
     prompt = load_role_prompt(host.package_root, role, "topology-author")
     snapshot = resolve_topology_author_context(repository, target, task=task, instructions=prompt.body,
-        candidate_document_references=candidate_document_references)
+        candidate_document_references=candidate_document_references, candidate_repository=candidate_repository)
     before_registry = repository.registry_bytes
     with tempfile.TemporaryDirectory(prefix="concorde-topology-author-") as directory:
         capsule = Path(directory)
@@ -792,7 +794,7 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
                             "invalid_completion")
         if read_file(repository.root, repository.registry_path) != before_registry:
             raise SpecError("registry changed during topology authoring", "stale_context")
-        recheck_topology_author_context(repository, snapshot)
+        recheck_topology_author_context(repository, snapshot, candidate_repository=candidate_repository)
         if load_configuration(repository.root) != configuration:
             raise SpecError("configuration changed during topology authoring", "configuration_mismatch")
         if context_file.read_text() != snapshot.serialized + "\n":
@@ -833,12 +835,32 @@ def _prepare_topology(configuration: dict, proposal: dict, host: CapabilityHost)
     for candidate_target in candidate["targets"]:
         for path in candidate_target["documents"]:
             candidate_references.setdefault(path, []).append(candidate_target["id"])
-    for occurrence, (target_id, task) in enumerate(tasks.items()):
+    # Stage known provider authors before their consumers so candidate inventory additions
+    # are available through explicit references. Cycles retain declared task order.
+    pending_authors = dict(tasks)
+    ordered_authors = []
+    document_ids = repository._document_index()
+    while pending_authors:
+        def providers(target_id):
+            selected = set()
+            for reference in candidate_targets[target_id]["references"]:
+                if reference["kind"] == "module":
+                    selected.add(reference["id"])
+                elif reference["id"] in document_ids:
+                    selected.update(candidate_references.get(document_ids[reference["id"]], []))
+            return selected
+        ready = next((key for key in pending_authors if not providers(key) & pending_authors.keys()),
+                     next(iter(pending_authors)))
+        ordered_authors.append((ready, pending_authors.pop(ready)))
+    for occurrence, (target_id, task) in enumerate(ordered_authors):
         target = candidate_targets[target_id]
-        references = tuple({"path": path, "targets": candidate_references[path]}
+        references = tuple({"path": path, "owner": candidate_references[path][0]}
                            for path in target["documents"])
+        author_repository = SpecRepository(repository.root, host.package_root,
+            registry_bytes=candidate_bytes, document_overrides={path: items[0][1].encode() for path, items in proposals.items()},
+            _defer_document_admission=True)
         result = _topology_author(repository, configuration, host, target, task, occurrence,
-                                  references)
+                                  references, candidate_repository=author_repository)
         if result["outcome"] != "completed":
             return _main_topology_response("accept-topology", repository, proposal,
                 outcome=result["outcome"], answer=result["answer"], gaps=result["gaps"],
@@ -857,29 +879,34 @@ def _prepare_topology(configuration: dict, proposal: dict, host: CapabilityHost)
             completed=completed)
     authored: dict[str, str] = {}
     for path, items in proposals.items():
-        contents = {content for _, content in items}
-        if len(contents) != 1:
-            return _main_topology_response("accept-topology", repository, proposal,
-                outcome="conflicting",
-                answer=f"Referencing target authors returned conflicting shared truth: {path}",
-                completed=completed)
-        content = next(iter(contents))
-        references = set(candidate_references[path])
-        current = read_file(repository.root, path).decode() if path in repository.document_targets else None
-        if len(references) > 1 and content != current:
-            represented = {target_id for target_id, _ in items}
-            if represented != references:
-                return _main_topology_response("accept-topology", repository, proposal,
-                    outcome="conflicting",
-                    answer=f"Changing shared truth requires every referencing target author: {path}",
-                    completed=completed)
-        authored[path] = content
+        if len(items) != 1 or items[0][0] != candidate_references[path][0]:
+            raise SpecError("only the unique candidate owner may propose document bytes", "permission_denied", path)
+        authored[path] = items[0][1]
     overrides = {path: content.encode() for path, content in authored.items()}
     report = validate_repository(repository.root, package_root=host.package_root,
         registry_bytes=candidate_bytes, document_overrides=overrides)
     if report.status != "success":
         raise SpecError("topology candidate validation failed: " + "; ".join(
             finding.message for finding in report.findings), "invalid_proposal")
+    candidate_repository = SpecRepository(repository.root, host.package_root,
+        registry_bytes=candidate_bytes, document_overrides=overrides)
+    from .review import review
+    for target_id in repository.affected_contexts(candidate_repository):
+        if target_id not in candidate_repository.targets:
+            continue
+        task = {"target_id": target_id, "task": "Check compatibility of this Module's complete candidate context. " + proposal["data"]["task"],
+                "constraints": proposal["data"]["constraints"]}
+        # New Modules are not yet selectable on disk. Bind this fresh read-only invocation to
+        # the admitted in-memory candidate, retaining ordinary reviewer permission limits.
+        reviewer = Invocation("concorde-review", configuration, {**task, "review_mode": "spec"},
+            replace(host, coordinated=True, track_gaps=False), candidate_repository=candidate_repository)
+        result = review(reviewer, "spec")
+        if result["data"]["outcome"] != "completed":
+            return _main_topology_response("accept-topology", repository, proposal,
+                outcome=result["data"]["outcome"], answer=result["data"]["answer"],
+                gaps=result["data"]["gaps"], completed=completed)
+        completed.append("concorde-review")
+    _validate_topology_proposal(host, proposal)
     changes = [file_change(repository.root, repository.registry_path, candidate_bytes.decode())]
     changes.extend(file_change(repository.root, path, content) for path, content in authored.items())
     application_payload = {"topology_proposal": proposal,
@@ -934,19 +961,6 @@ def _apply_topology(application_ref: dict, host: CapabilityHost) -> dict:
     if actual_documents != expected_documents or len({item["path"] for item in files}) != len(files):
         raise SpecError("topology application document set differs from accepted design",
                         "invalid_proposal")
-    candidate_references: dict[str, set[str]] = {}
-    for target in design["registry"]["targets"]:
-        for path in target["documents"]:
-            candidate_references.setdefault(path, set()).add(target["id"])
-    for item in files:
-        if item["path"] == repository.registry_path:
-            continue
-        current = (read_file(repository.root, item["path"]).decode()
-                   if item["path"] in repository.document_targets else None)
-        references = candidate_references[item["path"]]
-        if len(references) > 1 and item["content"] != current and not references.issubset(task_ids):
-            raise SpecError("shared truth application omitted a referencing target task",
-                            "invalid_proposal", item["path"])
     if host.mode == "describe-policy":
         return _main_topology_response("apply-topology", repository, proposal,
             outcome="described", answer="Topology application is deterministic and launches no agent.")
@@ -974,6 +988,13 @@ def _apply_topology(application_ref: dict, host: CapabilityHost) -> dict:
         change.update(target_id=owner, focus_id=None, task=proposal["data"]["task"],
                       constraints=proposal["data"]["constraints"], phase="specified", status="active",
                       outcome="topology_applied", gaps=[])
+        candidate_repository = SpecRepository(repository.root, host.package_root,
+            registry_bytes=candidate_bytes, document_overrides={item["path"]: item["content"].encode()
+                for item in files if item["path"] != repository.registry_path})
+        impacts = change.setdefault("spec_context_impacts", {})
+        impacts[owner] = sorted(set(impacts.get(owner, [])) | set(repository.affected_contexts(candidate_repository)))
+        change["validated_tree"] = None
+        change["validation"] = None
         transaction.append(file_change(repository.root, STATE_PATH, canonical(change) + "\n"))
         allowed.add(STATE_PATH)
     changed = [path for path in apply_files(repository.root, transaction, allowed, verify=verify)
@@ -995,9 +1016,15 @@ def _apply_topology(application_ref: dict, host: CapabilityHost) -> dict:
 
 
 class Invocation:
-    def __init__(self, capability: str, configuration: dict, task: dict, host: CapabilityHost):
+    def __init__(self, capability: str, configuration: dict, task: dict, host: CapabilityHost, *,
+                 candidate_repository: SpecRepository | None = None):
         self.capability, self.configuration, self.task, self.host = capability, configuration, task, host
-        self.repository = SpecRepository(host.project_root, host.package_root)
+        self.candidate_review = candidate_repository is not None
+        if candidate_repository is not None and (capability != "concorde-review"
+                or task.get("review_mode") != "spec" or candidate_repository.root != host.project_root.resolve()
+                or candidate_repository.package_root != host.package_root.resolve()):
+            raise SpecError("candidate overlays are limited to the bound read-only Spec review", "permission_denied")
+        self.repository = candidate_repository or SpecRepository(host.project_root, host.package_root)
         self.target = self.repository.select(task["target_id"], task.get("focus_id"))
         change = read_change(host.project_root)
         if task.get("change_id") is not None and (change is None or task["change_id"] != change["change_id"]):
@@ -1018,6 +1045,8 @@ class Invocation:
         return typed(CAPABILITY_CONTRACTS[self.capability][1], data)
 
     def record_gaps(self, phase, gaps, *, review_input_digest=None):
+        if getattr(self, "candidate_review", False):
+            return
         if self.host.mode != "execute":
             return
         change = read_change(self.repository.root)
@@ -1030,9 +1059,12 @@ class Invocation:
             from ..harness.change_worktree import record_task_gaps
             record_task_gaps(self.repository.root, self.target.id, self.task["task"], phase, gaps,
                              _target_revision(self.repository, self.target),
-                             review_input_digest=review_input_digest)
+                             review_input_digest=review_input_digest,
+                             spec_resolution=self.repository.spec_context(self.target.id).value)
 
     def pending_gaps(self, phase, snapshot=None, *, include_prerequisites=True, review_input_digest=None):
+        if getattr(self, "candidate_review", False):
+            return []
         from ..harness.change_worktree import unchanged_task_gaps
         if phase == "specify" or self.host.mode != "execute":
             return []
@@ -1188,6 +1220,7 @@ class Invocation:
             return data
 
     def author(self, capability: str) -> dict:
+        before_contexts = self.repository.context_identities()
         if not self.host.coordinated:
             progress(self.repository.root, phase="specify", status="active", invalidate=True)
         result = self.stage(capability, defer_gap_resolution=True)
@@ -1201,24 +1234,18 @@ class Invocation:
                 if item["path"] not in self.target.documents:
                     raise SpecError("Spec author returned a document outside its target", "permission_denied")
                 before = read_file(self.repository.root, item["path"]).decode()
-                if (len(self.repository.document_targets[item["path"]]) > 1
-                        and item["content"] != before):
-                    raise SpecError(
-                        "shared Spec truth requires a topology change with every referencing target",
-                        "permission_denied",
-                        item["path"],
-                    )
                 if item["content"] != before:
                     candidate_repository = SpecRepository(
                         self.repository.root,
                         self.host.package_root,
                         document_overrides={item["path"]: item["content"].encode()},
+                        _defer_document_admission=True,
                     )
                     current_document = self.repository.document(item["path"])
                     candidate_document = candidate_repository.document(item["path"])
-                    current_declaration = (current_document.document_id, current_document.targets,
+                    current_declaration = (current_document.document_id, current_document.owner,
                                            current_document.main_visible)
-                    candidate_declaration = (candidate_document.document_id, candidate_document.targets,
+                    candidate_declaration = (candidate_document.document_id, candidate_document.owner,
                                              candidate_document.main_visible)
                     if candidate_declaration != current_declaration:
                         raise SpecError(
@@ -1258,6 +1285,14 @@ class Invocation:
         self.record_gaps("specify", [])
         change = read_change(self.repository.root)
         if change is not None:
+            after_contexts = self.repository.context_identities()
+            affected = {key for key in before_contexts.keys() | after_contexts.keys()
+                        if before_contexts.get(key) != after_contexts.get(key)}
+            impacts = change.setdefault("spec_context_impacts", {})
+            impacts[self.target.id] = sorted(set(impacts.get(self.target.id, [])) | affected)
+            if affected:
+                change["validated_tree"] = None
+                change["validation"] = None
             revision = _target_revision(self.repository, self.target)
             change.setdefault("authored_specs", {})[self.target.id] = {
                 "task": self.task["task"], "focus_id": self.task.get("focus_id"),
@@ -2334,7 +2369,7 @@ def validate_invocation(value: Any, capability: str | None = None) -> dict:
     if not isinstance(value, dict) or set(value) != {"type_id", "schema_version", "capability_id", "mode", "configuration", "input"}:
         raise SpecError("invocation fields do not match schema 3", "invalid_input")
     if value["type_id"] != "concorde-capability-invocation" or type(value["schema_version"]) is not int or value["schema_version"] != 3:
-        raise SpecError("Profile 11 requires concorde-capability-invocation schema 3", "unsupported_version")
+        raise SpecError("Profile 12 requires concorde-capability-invocation schema 3", "unsupported_version")
     if capability is not None and value["capability_id"] != capability:
         raise SpecError("invocation does not match this entry point", "incompatible_handoff")
     return value

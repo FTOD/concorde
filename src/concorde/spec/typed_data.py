@@ -13,7 +13,7 @@ import re
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from .wire_shapes import ARTIFACT, PATH, STRING, array, obj, typed_schema
+from .wire_shapes import ARTIFACT, PATH, STRING, array, obj, typed_schema, type_version
 
 
 class TypedDataError(ValueError):
@@ -149,7 +149,7 @@ def checked_path(project: Path, relative: str, field: str = "") -> Path:
 
 
 def typed(type_id: str, data: dict) -> dict:
-    return validate_typed({"type_id": type_id, "schema_version": 1, "data": data})
+    return validate_typed({"type_id": type_id, "schema_version": type_version(type_id), "data": data})
 
 
 def validate_typed(value: Any, expected: str | None = None, field: str = "") -> dict:
@@ -160,8 +160,8 @@ def validate_typed(value: Any, expected: str | None = None, field: str = "") -> 
         raise TypedDataError("unknown_type", _pointer(field, "type_id"), "unknown data type")
     if expected is not None and type_id != expected:
         raise TypedDataError("incompatible_handoff", _pointer(field, "type_id"), f"expected {expected}")
-    if type(value.get("schema_version")) is not int or value["schema_version"] != 1:
-        raise TypedDataError("unsupported_version", _pointer(field, "schema_version"), f"{type_id} requires schema_version 1")
+    if type(value.get("schema_version")) is not int or value["schema_version"] != type_version(type_id):
+        raise TypedDataError("unsupported_version", _pointer(field, "schema_version"), f"{type_id} requires schema_version {type_version(type_id)}")
     check_schema(value, typed_schema(type_id), field)
     result = copy.deepcopy(value)
     data = result["data"]

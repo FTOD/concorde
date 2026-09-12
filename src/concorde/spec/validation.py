@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .model import Finding, ToolResult
 from .repository import (ANCHOR_PREFIXES, HEADING, IDENTITY, LIST_ITEM, MANDATORY_SECTIONS,
-                         ONTOLOGY_SECTIONS, ENTITIES_BLOCK, SKIPPED_DIRECTORIES, SKIPPED_SUFFIXES, SpecError,
+                         ONTOLOGY_SECTIONS, ENTITIES_BLOCK, BINDING_BLOCK, DEPENDENCIES_BLOCK, SKIPPED_DIRECTORIES, SKIPPED_SUFFIXES, SpecError,
                          SpecRepository, SpecTarget, digest, entry_exists, is_directory_entry, read_file,
                          walk_lines)
 from .typed_data import checked_path
@@ -245,6 +245,23 @@ def definition_findings(repository: SpecRepository, target_id: str | None = None
     identities: dict[str, tuple[str, str]] = {}
     for target in repository.targets.values():
         identities.setdefault(target.id, ("Module", target.primary_document))
+    for path in repository.document_targets:
+        try:
+            document = repository.document(path)
+            identities.setdefault(document.document_id, ("document", path))
+        except (ValueError, OSError):
+            continue
+    for target in repository.targets.values():
+        try:
+            for contract in repository.contracts(target):
+                previous = identities.get(contract["id"])
+                if previous is not None:
+                    findings.append(Finding("CONCORDE-IDENTITY-001", "error", contract["source"],
+                        f"canonical contract identity {contract['id']} is already used by {previous}",
+                        "Keep one globally unique identity for each definition.", subject_id=contract["id"]))
+                identities[contract["id"]] = ("contract", contract["source"])
+        except (ValueError, OSError):
+            continue
     for target in repository.targets.values():
         if target_id is not None and target.id != target_id:
             continue
@@ -421,6 +438,7 @@ def link_findings(repository: SpecRepository) -> tuple[Finding, ...]:
     for target in repository.targets.values():
         try:
             anchors.update(repository.definitions(target).anchors)
+            anchors.update({c["id"]: c["source"] for c in repository.contracts(target)})
         except (ValueError, OSError, KeyError, TypeError):
             continue
     for path in repository.document_targets:
@@ -428,27 +446,37 @@ def link_findings(repository: SpecRepository) -> tuple[Finding, ...]:
             document = repository.document(path)
         except (ValueError, OSError, KeyError, TypeError):
             continue
-        for number, kind, line in walk_lines(document.body):
-            if kind != "prose":
-                continue
+        from urllib.parse import urlsplit, unquote
+        lines = [(number, False, line) for number, kind, line in walk_lines(document.body) if kind == "prose"]
+        for pattern in (BINDING_BLOCK, DEPENDENCIES_BLOCK):
+            lines.extend((document.body[:match.start()].count("\n") + 1, True, match.group(1))
+                         for match in pattern.finditer(document.body))
+        for number, required, line in lines:
             for match in LINK.finditer(line):
                 url = match.group(1)
-                if re.match(r"^(?:[a-z][a-z0-9+.-]*:|/)", url, re.I) or "#" not in url:
+                parsed = urlsplit(url)
+                if parsed.scheme or parsed.netloc or parsed.path.startswith("/"):
                     continue
-                location, fragment = url.split("#", 1)
-                if not (fragment.startswith(ANCHOR_PREFIXES) and IDENTITY.fullmatch(fragment)):
-                    continue
-                defining = anchors.get(fragment)
-                if defining is None:
-                    findings.append(Finding("CONCORDE-LINK-001", "error", path,
-                        f"link fragment #{fragment} names no scenario, requirement or entity",
-                        "Link to a defined ID, or use a plain heading fragment.", line=number, subject_id=fragment))
-                    continue
+                location, fragment = unquote(parsed.path), unquote(parsed.fragment)
                 linked = path if not location else os.path.normpath(os.path.join(os.path.dirname(path), location)).replace(os.sep, "/")
-                if linked != defining:
-                    findings.append(Finding("CONCORDE-LINK-001", "error", path,
-                        f"link {url} addresses #{fragment}, which is defined in {defining}",
-                        "Point the link at the document that defines the ID.", line=number, subject_id=fragment))
+                if fragment.startswith(ANCHOR_PREFIXES) and IDENTITY.fullmatch(fragment):
+                    defining = anchors.get(fragment)
+                    if defining is None or linked != defining:
+                        findings.append(Finding("CONCORDE-LINK-001", "error", path,
+                            (f"link {url} addresses #{fragment}, which is defined in {defining}" if defining else
+                             f"link fragment #{fragment} names no scenario, requirement, entity or contract"),
+                            "Point the link at the document that defines the ID.", line=number, subject_id=fragment))
+                if required:
+                    try:
+                        included = linked in repository.spec_files(document.owner)
+                    except (ValueError, OSError):
+                        included = False
+                    if not included:
+                        owner = repository.document_targets.get(linked, ["unknown owner"])[0]
+                        findings.append(Finding("CONCORDE-CONTEXT-001", "error", path,
+                            f"{document.owner} cannot rely on excluded definition {url}, owned by {owner}",
+                            "Declare the necessary reference or repair the consumer's local obligation; do not fetch undeclared context.",
+                            line=number, subject_id=document.owner))
     return tuple(findings)
 
 
@@ -516,35 +544,41 @@ def validate_repository(root: str | Path, target_id: str | None = None,
         findings.append(Finding(code, "error", path, message, "Reconcile the registered Spec and retry."))
     try:
         repository = SpecRepository(root, package_root, registry_bytes=registry_bytes,
-                                    document_overrides=document_overrides)
+                                    document_overrides=document_overrides, _defer_document_admission=True)
         if target_id and target_id != ".":
             repository.select(target_id)
-        provided = {}
-        required = []
+        definitions = {}
+        bindings = []
+        contexts = {}
         for target in repository.targets.values():
             try:
                 documents = repository.documents(target)
                 artifacts.extend(doc.path for doc in documents)
                 inputs.extend((doc.path, doc.digest) for doc in documents)
+                contexts[target.id] = set(repository.spec_files(target.id))
                 for contract in repository.contracts(target):
-                    key = (contract["id"], contract["version"])
-                    if contract["role"] == "provided":
-                        if key in provided:
-                            error("CONCORDE-CONTRACT-001", contract["source"], f"duplicate provider for {key}")
-                        provided[key] = contract
-                    else:
-                        required.append(contract)
+                    if contract["id"] in definitions:
+                        error("CONCORDE-CONTRACT-001", contract["source"], f"duplicate canonical definition: {contract['id']}")
+                    definitions[contract["id"]] = contract
+                bindings.extend(repository.contract_bindings(target))
             except (ValueError, OSError) as problem:
                 error("CONCORDE-SPEC-001", target.primary_document, str(problem))
-        for contract in required:
-            if contract["peer"].startswith("external:"):
+        seen_bindings = set()
+        for binding in bindings:
+            key = (binding["owner"], binding["id"], binding["role"], binding["peer"])
+            if key in seen_bindings:
+                error("CONCORDE-CONTRACT-001", binding["source"], "duplicate participant binding")
+            seen_bindings.add(key)
+            definition = definitions.get(binding["id"])
+            if (not definition or definition["version"] != binding["version"]
+                    or definition["source"] not in contexts.get(binding["owner"], set())):
+                error("CONCORDE-CONTRACT-002", binding["source"], f"canonical definition/version absent from {binding['owner']} context: {binding['id']}")
+            if binding["peer"].startswith("external:") and len(binding["peer"]) > 9:
                 continue
-            provider = provided.get((contract["id"], contract["version"]))
-            if not provider or provider["owner"] != contract["peer"]:
-                error("CONCORDE-CONTRACT-002", contract["source"], f"missing named provider for {contract['id']}")
-            elif provider["schema"] != contract["schema"]:
-                # The first version admits exact shared wire schemas, with independent perspective prose.
-                error("CONCORDE-CONTRACT-003", contract["source"], f"incompatible shared wire schema for {contract['id']}")
+            if not any(peer["owner"] == binding["peer"] and peer["peer"] == binding["owner"]
+                       and peer["id"] == binding["id"] and peer["version"] == binding["version"]
+                       and peer["role"] != binding["role"] for peer in bindings):
+                error("CONCORDE-CONTRACT-003", binding["source"], f"missing complementary peer binding: {binding['id']}")
         findings.extend(document_context_findings(repository))
         findings.extend(module_findings(repository))
         findings.extend(definition_findings(repository))
@@ -582,6 +616,6 @@ def validate_repository(root: str | Path, target_id: str | None = None,
                        "four mandatory Module sections", "requirement, scenario and entity syntax",
                        "ID anchors in local links", "entity file listings and registry files",
                        "relationship diagram entities and labeled edges", "contract examples",
-                       "shared wire schema equality", "Module dependency promises",
+                       "canonical definitions and complementary participant bindings", "Module dependency promises",
                        "scenario verification declarations"],
             "semantic_completeness": "not_proven"})

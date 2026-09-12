@@ -66,8 +66,8 @@ component the local `concorde-dependencies` declarations actually identify.
 
 ## Accepted input and feedback
 
-Consume the exact supplied `concorde-agent-stage-context@1` snapshot: the target's
-`concorde-context-snapshot@1`, with `document_order`, Target Spec and Shared Specs, the declared
+Consume the exact supplied `concorde-agent-stage-context@2` snapshot: the target's
+`concorde-context-snapshot@2`, with `spec_resolution` with complete owned and directly referenced sources, original owners and inclusion reasons, the declared
 `implementation_entries` and the `implementation_files` they bind, the task and phase, and `stage_inputs` carrying the accepted
 `concorde-plan-artifact` and `concorde-task-identity-constraints`, plus (for a repair round) a `concorde-implementation-task` and a
 `concorde-review-result`. This role runs only inside a host-bound capability invocation. A revised

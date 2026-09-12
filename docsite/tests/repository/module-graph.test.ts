@@ -5,7 +5,7 @@ const root=resolve(__dirname,'../../..');
 describe('Module navigation metadata',()=>{
  it('scenario.views.load-registry: retains relationships without a graph projection',()=>{
   const a=loadScopedRegistry(root),b=loadScopedRegistry(root);
-  expect(a.schema_version).toBe(18);
+  expect(a.schema_version).toBe(19);
   expect(a).not.toHaveProperty('edges');
   expect(a.targets.some(t=>t.parent!==null)).toBe(true);
   expect(a.targets.some(t=>t.uses.length>0)).toBe(true);
