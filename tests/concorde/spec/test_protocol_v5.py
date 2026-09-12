@@ -62,6 +62,7 @@ class ProtocolFiveTests(unittest.TestCase):
         r = self.repository()
         with patch.object(r, 'document', side_effect=AssertionError('body read')):
             self.assertEqual(('specs/bank/module.md', 'specs/transfer/promises.md'), r.spec_files('scope.bank'))
+            self.assertEqual(('specs/transfer/module.md', 'specs/transfer/promises.md'), r.spec_files('scenario.transfer.debit'))
 
     def test_reference_changes_with_identical_files_invalidate_snapshot_discovery_and_revision(self):
         self.reference('scope.bank', 'module', 'service.transfer')
@@ -93,7 +94,8 @@ class ProtocolFiveTests(unittest.TestCase):
 
     @verifies('scenario.spec.reference-invalid')
     def test_invalid_reference_kinds_unknown_self_and_duplicates_fail_closed(self):
-        for refs in ([{'kind': 'path', 'id': 'document.transfer.promises'}],
+        for refs in ([{'kind': [], 'id': 'document.transfer.promises'}],
+                     [{'kind': 'path', 'id': 'document.transfer.promises'}],
                      [{'kind': 'module', 'id': 'document.transfer.promises'}],
                      [{'kind': 'document', 'id': 'service.transfer'}],
                      [{'kind': 'module', 'id': 'scope.bank'}],

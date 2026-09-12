@@ -364,6 +364,7 @@ class SpecRepository:
             pairs = []
             for reference in references:
                 if (not isinstance(reference, dict) or set(reference) != {"kind", "id"}
+                        or not isinstance(reference["kind"], str)
                         or reference["kind"] not in {"module", "document"}):
                     raise SpecError("reference requires kind module|document and id", "invalid_reference", target_id)
                 pair = (reference["kind"], identifier(reference["id"]))
@@ -490,10 +491,33 @@ class SpecRepository:
         if query_id in self.targets:
             return self.targets[query_id], "module"
         if query_id.startswith("scenario."):
-            owners = [target for target in self.targets.values()
-                      if any(s.id == query_id for s in self.scenarios(target))]
-            if len(owners) == 1:
-                return owners[0], "scenario"
+            # Resolve heading declarations only. Entity, dependency and interface parsers must
+            # not turn a locator query into a read of unrelated Module behavioral definitions.
+            import io
+            matches = []
+            for path, owners in self.document_targets.items():
+                stream = (io.BytesIO(self.document_overrides[path]) if path in self.document_overrides
+                          else os.fdopen(os.open(checked_path(self.root, path),
+                               os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)), "rb"))
+                fence = None
+                with stream:
+                    for raw in stream:
+                        marker = re.match(rb"^ {0,3}(`{3,}|~{3,})", raw)
+                        if marker:
+                            token = marker.group(1)
+                            if fence is None:
+                                fence = token
+                            elif token[0] == fence[0] and len(token) >= len(fence) and not raw[marker.end():].strip():
+                                fence = None
+                            continue
+                        if fence is not None or not raw.startswith(b"#"):
+                            continue
+                        heading = HEADING.match(raw.decode("utf-8").rstrip("\r\n"))
+                        scenario = SCENARIO_HEADING.match(heading.group(2)) if heading and 2 <= len(heading.group(1)) <= 5 else None
+                        if scenario and scenario.group(1) == query_id:
+                            matches.append(owners[0])
+            if len(matches) == 1:
+                return self.targets[matches[0]], "scenario"
         raise SpecError(f"unsupported or unknown context identity: {query_id}", "invalid_target", query_id)
 
     def _context_paths(self, target: SpecTarget) -> dict[str, list[dict]]:
@@ -568,6 +592,9 @@ class SpecRepository:
         if not isinstance(value, dict) or set(value) != {"id", "owner", "main_visible"}:
             raise SpecError(f"concorde-document requires id/owner/main_visible: {path}")
         document_id = identifier(value["id"])
+        expected_ids = getattr(self, "_identity_paths", {})
+        if expected_ids and expected_ids.get(document_id) != path:
+            raise SpecError(f"document identity changed after admission: {path}", "stale_context", path)
         owner = identifier(value["owner"])
         if type(value["main_visible"]) is not bool:
             raise SpecError(f"document main_visible must be boolean: {path}")
