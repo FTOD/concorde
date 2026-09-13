@@ -1,11 +1,12 @@
-"""Global reflection queue: report status, capture recorded gaps, and investigate, implement,
+"""Reflection queue: report status, capture recorded gaps, and investigate, implement,
 merge or close owned reflections."""
 from concorde.spec import contract_shapes as shapes
 from agents import programmer
 
 from . import external_name
 
-CLASS = "global"
+PUBLIC = True
+CONTEXT_SELECTION = "bound"
 DETERMINISTIC = False
 AGENTS = (programmer.AGENT,)
 USES = ("dev_loop",)
@@ -18,7 +19,7 @@ REQUEST = shapes.obj({
     "gap_ids": shapes.array(shapes.DIGEST, unique=True),
 }, (*shapes.TASK_OPTIONAL, "task", "gap_ids"))
 
-_BASE_RESPONSE = shapes.stage_response()
+_BASE_RESPONSE = shapes.capability_response()
 RESPONSE = {
     **_BASE_RESPONSE,
     "properties": {

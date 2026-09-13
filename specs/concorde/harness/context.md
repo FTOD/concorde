@@ -24,7 +24,7 @@ implementation context; this Module realizes those definitions and adds the two 
 A kind may be empty for a phase, but the frozen closure is never empty. Agent instructions, the
 Protocol rule bundle and installed Skills are not context: instructions belong to the Agent
 definition and are injected beside the context, and a Skill is the developer-facing projection of
-a global or lifecycle capability. The snapshot identity covers every admitted byte of every kind.
+a public Capability. The snapshot identity covers every admitted byte of every kind.
 
 ## Context snapshot resolution
 
@@ -196,7 +196,7 @@ Ordinary owner authoring can update content and diagram fences while preserving 
 document ID, owner, visibility or registered references change through topology reconciliation.
 
 Context solving is a separate fresh spec-engineer context-solve mode, run directly by the
-`concorde-context-solve` stage capability or as `concorde-plan`'s preliminary sufficiency check. It returns
+`concorde-context-solve` capability or as `concorde-plan`'s preliminary sufficiency check. It returns
 sufficient, spec_incomplete, unsupported, conflicting or failed. A gap
 must name question, blocked_step and needed_contract. It cannot fetch missing context. Known missing
 runtime fields fail admission; semantic incompleteness is task-specific, never universally proven.
@@ -280,7 +280,7 @@ includes non-main documents in full, never follows dependencies or hyperlinks im
 substitutes an answer or summary for an original source.
 
 Inputs require a nonempty, duplicate-free ordered tuple of Module IDs, a nonblank task,
-capability concorde-main or concorde-dev-loop, phase route, and action route, ask or
+capability concorde-main, concorde-dev-loop, concorde-review, phase route, and action route, ask or
 design-topology. A focus hint requires a target hint and must belong to that Module. Unsupported
 phases/actions, invalid selections, unavailable required files and inconsistent membership reject
 resolution; no partial context is returned. Hints do not themselves add a Module's documents.

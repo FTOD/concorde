@@ -1,6 +1,6 @@
 ---
 name: concorde-configure
-description: "Lifecycle: apply the initialized integration and enforcement configuration."
+description: "Capability: apply the initialized integration and enforcement configuration."
 argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:

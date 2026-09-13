@@ -1,6 +1,6 @@
 ---
 name: concorde-dev-loop
-description: "Global development loop: route one change, then specify, review the Spec, plan, task, implement, validate and review code to a ready candidate; specify=false skips authoring and run_reviews=false records explicit review skips."
+description: "Development loop: route one change, then specify, review the Spec, plan, task, implement, validate and review code to a ready candidate; specify=false skips authoring and run_reviews=false records explicit review skips."
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"

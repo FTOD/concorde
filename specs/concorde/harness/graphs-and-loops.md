@@ -118,6 +118,6 @@ coordinates authoring, assessment, planning, implementation and independent revi
 repair or human-clarification loops. Reflection handling may select an investigation or development
 Flow after a human disposition. Delivery remains a separately authorized deterministic capability.
 
-Existing topic Specs retain their task and authority contracts. The global/lifecycle/stage adapter
+Existing topic Specs retain their task and authority contracts. The capability adapter
 and existing Skill names remain compatible identifiers. A stage sequence satisfies only the
 transitions it implements and records; a graph library or a function name proves nothing by itself.

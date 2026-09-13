@@ -1,10 +1,11 @@
-"""Global entry: answer questions, route work, and design or apply system topology."""
+"""Capability: answer questions, route work, and design or apply system topology."""
 from concorde.spec import contract_shapes as shapes
 from agents import coordinator, spec_engineer
 
 from . import external_name
 
-CLASS = "global"
+PUBLIC = True
+CONTEXT_SELECTION = "discover"
 DETERMINISTIC = False
 AGENTS = (coordinator.AGENT, spec_engineer.AGENT)
 USES = ()

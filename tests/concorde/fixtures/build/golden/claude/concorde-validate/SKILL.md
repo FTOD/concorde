@@ -1,6 +1,6 @@
 ---
 name: concorde-validate
-description: "Lifecycle: run deterministic Spec and configured code checks and record readiness for the current candidate."
+description: "Capability: run deterministic Spec and configured code checks and record readiness for the current candidate."
 argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:

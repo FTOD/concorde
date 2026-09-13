@@ -1,6 +1,6 @@
 ---
 name: concorde-deliver
-description: "Lifecycle: stage a verified change, remove its worktree, and explicitly merge from the primary session."
+description: "Capability: stage a verified change, remove its worktree, and explicitly merge from the primary session."
 argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:

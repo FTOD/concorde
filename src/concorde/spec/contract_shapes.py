@@ -14,7 +14,7 @@ __all__ = [
     "ARTIFACT", "DIGEST", "PATH", "STRING", "array", "obj", "typed_schema",
     "TASK_FIELDS", "TASK_OPTIONAL", "NULLABLE_ID", "GAP", "CHECK_RESULT", "ROUTE",
     "MAIN_OUTCOMES", "WORKTREE_SUMMARY", "COMPONENT_PROGRESS", "WORKSPACE_CONTEXT",
-    "task_request", "stage_response",
+    "task_request", "capability_response",
 ]
 
 TASK_FIELDS = {"target_id": STRING, "task": STRING, "focus_id": STRING,
@@ -48,8 +48,8 @@ WORKSPACE_CONTEXT = obj({"kind": {"enum": ["primary", "change", "unversioned"]},
 def task_request(target_required: bool = True) -> dict:
     """The task-selection request shape shared by every capability.
 
-    ``target_required=True`` (stage capabilities: the target is already bound) requires
-    ``target_id``; ``target_required=False`` (global capabilities: main still has to route)
+    ``target_required=True`` (the target is already bound) requires
+    ``target_id``; ``target_required=False`` (the coordinator still has to route)
     leaves it optional alongside the other task fields.
     """
 
@@ -57,8 +57,8 @@ def task_request(target_required: bool = True) -> dict:
     return obj(TASK_FIELDS, optional)
 
 
-def stage_response() -> dict:
-    """The stage/lifecycle response shape shared by every capability."""
+def capability_response() -> dict:
+    """The common response shape shared by capabilities."""
 
     return obj({
         "target_id": STRING, "focus_id": NULLABLE_ID, "change_id": NULLABLE_ID,

@@ -32,7 +32,8 @@ VALID_ALPHA = '''from concorde.spec import contract_shapes as shapes
 from agents import coordinator
 from . import external_name
 
-CLASS = "stage"
+PUBLIC = False
+CONTEXT_SELECTION = "bound"
 DETERMINISTIC = False
 AGENTS = (coordinator.AGENT,)
 USES = ()
@@ -171,7 +172,7 @@ class PromptRuleTests(unittest.TestCase):
 
 
 class CapabilityModuleRuleTests(unittest.TestCase):
-    """Rule 2: capability module inventory, mandatory constants, CLASS, USES, ROLES, skills."""
+    """Rule 2: capability module inventory, mandatory properties, context selection, USES, Agents, Skills."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -201,11 +202,23 @@ class CapabilityModuleRuleTests(unittest.TestCase):
         findings = package_validation._validate_capability_modules(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings), findings)
 
-    def test_invalid_class_value_is_reported(self) -> None:
-        broken = VALID_ALPHA.replace('CLASS = "stage"', 'CLASS = "bogus"')
+    def test_invalid_context_selection_is_reported(self) -> None:
+        broken = VALID_ALPHA.replace('CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "bogus"')
         _capabilities_package(self.root, alpha_source=broken)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CLASS-001" for f in findings), findings)
+        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONTEXT-001" for f in findings), findings)
+
+    def test_public_requires_an_explicit_boolean(self) -> None:
+        for declaration in ('', 'PUBLIC = "false"\n', 'PUBLIC = 0\n', 'PUBLIC = None\n'):
+            with self.subTest(declaration=declaration):
+                _capabilities_package(self.root, alpha_source=VALID_ALPHA.replace('PUBLIC = False\n', declaration))
+                findings = package_validation._validate_capability_modules(self.root)
+                self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings), findings)
+
+    def test_removed_class_declaration_is_rejected(self) -> None:
+        _capabilities_package(self.root, alpha_source=VALID_ALPHA + '\nCLASS = "stage"\n')
+        findings = package_validation._validate_capability_modules(self.root)
+        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings), findings)
 
     def test_unknown_uses_name_is_reported(self) -> None:
         broken = VALID_ALPHA.replace("USES = ()", 'USES = ("unknown",)')
@@ -228,20 +241,20 @@ class CapabilityModuleRuleTests(unittest.TestCase):
         findings = package_validation._validate_capability_modules(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-AGENTS-001" for f in findings), findings)
 
-    def test_global_capability_without_a_skill_is_reported(self) -> None:
-        broken = VALID_ALPHA.replace('CLASS = "stage"', 'CLASS = "global"')
+    def test_public_capability_without_a_skill_is_reported(self) -> None:
+        broken = VALID_ALPHA.replace('PUBLIC = False', 'PUBLIC = True')
         _capabilities_package(self.root, alpha_source=broken)
         findings = package_validation._validate_capability_modules(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-SKILL-001" for f in findings), findings)
 
-    def test_stage_capability_with_a_skill_is_reported(self) -> None:
+    def test_nonpublic_capability_with_a_skill_is_reported(self) -> None:
         _capabilities_package(self.root)
         _skill(self.root)
         findings = package_validation._validate_capability_modules(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-SKILL-001" for f in findings), findings)
 
-    def test_global_capability_with_exactly_one_skill_has_no_skill_finding(self) -> None:
-        broken = VALID_ALPHA.replace('CLASS = "stage"', 'CLASS = "global"')
+    def test_public_capability_with_exactly_one_skill_has_no_skill_finding(self) -> None:
+        broken = VALID_ALPHA.replace('PUBLIC = False', 'PUBLIC = True')
         _capabilities_package(self.root, alpha_source=broken)
         _skill(self.root)
         findings = package_validation._validate_capability_modules(self.root)
@@ -271,7 +284,7 @@ class CapabilityModuleRuleTests(unittest.TestCase):
                 self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings), findings)
 
     @verifies("scenario.distribution.capability-determinism")
-    def test_deterministic_matches_direct_model_calls_independently_of_stage_class(self) -> None:
+    def test_deterministic_matches_direct_model_calls_from_direct_model_calls(self) -> None:
         for agents in ("()", "(coordinator.AGENT,)"):
             for deterministic in (True, False):
                 with self.subTest(agents=agents, deterministic=deterministic):
@@ -311,17 +324,18 @@ class CapabilityModuleRuleTests(unittest.TestCase):
         pure = VALID_ALPHA.replace("AGENTS = (coordinator.AGENT,)", "AGENTS = ()")
         pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
         _capabilities_package(self.root, alpha_source=pure)
-        with mock.patch.object(package_validation, "MAIN_ROUTED_CAPABILITIES", {"concorde-alpha"}):
-            findings = package_validation._validate_capability_modules(self.root)
+        pure = pure.replace('CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "discover"')
+        _capabilities_package(self.root, alpha_source=pure)
+        findings = package_validation._validate_capability_modules(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-DETERMINISTIC-001" for f in findings), findings)
 
     @verifies("scenario.distribution.capability-determinism")
-    def test_lifecycle_cannot_admit_model_calls_even_when_flag_is_false(self) -> None:
-        source = VALID_ALPHA.replace('CLASS = "stage"', 'CLASS = "lifecycle"')
+    def test_no_context_selection_cannot_admit_model_calls(self) -> None:
+        source = VALID_ALPHA.replace('CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "none"').replace('PUBLIC = False', 'PUBLIC = True')
         _capabilities_package(self.root, alpha_source=source)
         _skill(self.root)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-DETERMINISTIC-001" for f in findings), findings)
+        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONTEXT-001" for f in findings), findings)
 
 
 class AgentRuleTests(unittest.TestCase):
@@ -565,7 +579,7 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
         _capabilities_package(self.root)
         for value in (False, True, "false", 0, 1, None, "missing"):
             with self.subTest(value=value):
-                entry = {"id": "alpha", "class": "stage", "skill": None}
+                entry = {"id": "alpha", "public": False, "context_selection": "bound", "skill": None}
                 if value != "missing":
                     entry["deterministic"] = value
                 body = "```concorde-capabilities\n" + json.dumps([entry]) + "\n```"
@@ -585,7 +599,7 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
 
     def test_two_capabilities_blocks_is_reported(self) -> None:
         _capabilities_package(self.root)
-        block = '```concorde-capabilities\n[{"id": "alpha", "class": "stage", "deterministic": false, "skill": null}]\n```'
+        block = '```concorde-capabilities\n[{"id": "alpha", "public": false, "context_selection": "bound", "deterministic": false, "skill": null}]\n```'
         _document(self.root, "specs/one.md", "document.one", block)
         _document(self.root, "specs/two.md", "document.two", block)
         _registry(self.root, documents=["specs/one.md", "specs/two.md"])
@@ -602,23 +616,23 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
         self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
 
     def test_matching_capabilities_block_has_no_findings(self) -> None:
-        global_alpha = VALID_ALPHA.replace('CLASS = "stage"', 'CLASS = "global"')
-        _capabilities_package(self.root, alpha_source=global_alpha)
+        public_alpha = VALID_ALPHA.replace('PUBLIC = False', 'PUBLIC = True')
+        _capabilities_package(self.root, alpha_source=public_alpha)
         _skill(self.root)
         block = "```concorde-capabilities\n" + json.dumps(
-            [{"id": "alpha", "class": "global", "deterministic": False, "skill": "concorde-alpha"}]) + "\n```"
+            [{"id": "alpha", "public": True, "context_selection": "bound", "deterministic": False, "skill": "concorde-alpha"}]) + "\n```"
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_capabilities_block(
             self.root, package_validation._registered_documents(self.root))
         self.assertEqual([], findings)
 
-    def test_mismatched_class_is_reported(self) -> None:
-        global_alpha = VALID_ALPHA.replace('CLASS = "stage"', 'CLASS = "global"')
-        _capabilities_package(self.root, alpha_source=global_alpha)
+    def test_mismatched_context_selection_is_reported(self) -> None:
+        public_alpha = VALID_ALPHA.replace('PUBLIC = False', 'PUBLIC = True')
+        _capabilities_package(self.root, alpha_source=public_alpha)
         _skill(self.root)
         block = "```concorde-capabilities\n" + json.dumps(
-            [{"id": "alpha", "class": "lifecycle", "deterministic": False, "skill": "concorde-alpha"}]) + "\n```"
+            [{"id": "alpha", "public": True, "context_selection": "none", "deterministic": False, "skill": "concorde-alpha"}]) + "\n```"
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_capabilities_block(
@@ -636,8 +650,8 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
     def test_extra_capability_entry_is_reported(self) -> None:
         _capabilities_package(self.root)
         block = "```concorde-capabilities\n" + json.dumps([
-            {"id": "alpha", "class": "stage", "deterministic": False, "skill": None},
-            {"id": "ghost", "class": "stage", "deterministic": False, "skill": None},
+            {"id": "alpha", "public": False, "context_selection": "bound", "deterministic": False, "skill": None},
+            {"id": "ghost", "public": False, "context_selection": "bound", "deterministic": False, "skill": None},
         ]) + "\n```"
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])

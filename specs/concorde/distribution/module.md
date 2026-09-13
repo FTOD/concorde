@@ -152,7 +152,7 @@ directory prefixes; the capability providers retain their own executable contrac
     "id": "entity.distribution.skill-sources",
     "title": "Skill sources",
     "kind": "authored instructions",
-    "responsibility": "Own the public Skill wrappers and shared invocation instructions that adapt global and lifecycle capability contracts for the developer's external agent runtime.",
+    "responsibility": "Own the public Skill wrappers and shared invocation instructions that adapt public capability contracts for the developer's external agent runtime.",
     "files": [
       "prompts/workflow-host/",
       "skills/"
@@ -222,7 +222,7 @@ directory prefixes; the capability providers retain their own executable contrac
     "id": "entity.distribution.build-manifest",
     "title": "Build manifest",
     "kind": "record",
-    "responsibility": "The recorded source-to-output digest identity at `generated/build-manifest.json` that establishes freshness and that the host checks before every top-level capability invocation except a lifecycle capability."
+    "responsibility": "The recorded source-to-output digest identity at `generated/build-manifest.json` that establishes freshness and that the host checks before every top-level capability invocation except a deterministic capability."
   },
   {
     "id": "entity.distribution.package-inventory",

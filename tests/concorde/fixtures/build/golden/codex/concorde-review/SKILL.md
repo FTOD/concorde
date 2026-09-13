@@ -1,6 +1,6 @@
 ---
 name: concorde-review
-description: "Global review: route a standalone Spec review, code review or source diagnosis to its owning Module and return scoped, read-only findings."
+description: "Capability: route a standalone Spec review, code review or source diagnosis to its owning Module and return scoped, read-only findings."
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"

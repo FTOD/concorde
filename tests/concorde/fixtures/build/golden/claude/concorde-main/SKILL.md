@@ -1,6 +1,6 @@
 ---
 name: concorde-main
-description: "Global entry: answer questions, route work, and design or apply system topology from complete Module Specs."
+description: "Capability: answer questions, route work, and design or apply system topology from complete Module Specs."
 argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
@@ -34,7 +34,7 @@ configuration (null to load initialized host settings, or a matching concorde-ca
 Ask and design-topology requests require task and accept optional target_id/focus_id (a candidate
 scenario ID) routing hints and constraints. Accept-topology requires the exact topology_proposal returned by design. Apply-
 topology requires only the exact application ArtifactRef returned by accept.
-The hint never grants Spec access to the coordinator. The global development loop
+The hint never grants Spec access to the coordinator. The development loop
 (`concorde-dev-loop`) accepts the same task, with optional target_id, focus_id, constraints, and
 change_id, and uses main's discovery to select one mutation target; its internal
 stages are bound to one target by the loop and are never invoked directly.

@@ -1,6 +1,6 @@
 ---
 name: concorde-reflections-triage
-description: "Global reflection queue: report status, capture recorded gaps, and investigate, implement, merge or close owned reflections."
+description: "Reflection queue: report status, capture recorded gaps, and investigate, implement, merge or close owned reflections."
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"

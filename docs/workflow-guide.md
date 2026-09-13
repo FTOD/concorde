@@ -15,7 +15,7 @@ support this work through installable Skills. The reflection system retains feed
 Spec gaps, coordinates investigation and routes approved resolutions into new development tasks.
 
 The development and delivery workflows below build on these foundations. The **Spec Protocol
-4.0.0** defines one specification category:
+5.0.0** defines one specification category:
 
 - **Module Spec:** a self-contained contract in four mandatory parts. Purpose, Requirements (one
   decidable SHALL statement each, about the Module) and Scenarios (testable GIVEN/WHEN/THEN
@@ -45,7 +45,7 @@ The Protocol standard is independent of the software Specs that implement it:
 ```text
 protocol/                 Independent standard, organized as ordinary chapters
 specs/concorde/           Module contracts, entities and architectures
-.concorde/specs.json       Registry schema 3: Modules and their relationships
+.concorde/specs.json       Registry schema 4: Modules and their relationships
 ```
 
 Start with the [Concorde Module](../specs/concorde/module.md), its
@@ -57,8 +57,8 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 
 ## Install and initialize
 
-The installer distributes a deterministic build's output — eight Skills exposing thirteen
-capabilities, three common Agent instruction sets and twelve explicit mode projections (from
+The installer distributes a deterministic build's output — eight Skills exposing selected entries from thirteen
+Capabilities, three common Agent instruction sets and twelve explicit mode projections (from
 `agents/<name>/spec.md` and `agents/<name>/modes/`), and five Markdown templates — to Codex or Claude.
 Check `python3 scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
@@ -110,18 +110,18 @@ originals. Shared source bodies are deduplicated while preserving each Module's 
 not a context grant. The loop executes specification,
 context assessment, plan, tasks, implementation and checks, ending at a ready candidate.
 
-Capabilities fall into three classes, distinguished by who selects context. Global capabilities
-(`concorde-main`, the development loop `concorde-dev-loop`, `concorde-review`, and `concorde-reflections-triage`)
-receive only intent, at most with routing hints, and let main select the target. `concorde-dev-loop`
-takes optional `specify`/`run_reviews` flags: `specify=false` skips Spec authoring (the former fast
-loop) and `run_reviews=false` records an explicit skip for each review mode instead of running it; a
-review already required for a change cannot be disabled by a later `run_reviews=false`. Lifecycle
-capabilities (`concorde-init`, `concorde-configure`,
-`concorde-validate`, `concorde-deliver`) are deterministic host behavior with no agent cognition.
-Every other capability — `concorde-specify`, `concorde-context-solve`,
-`concorde-plan`, `concorde-tasks`, `concorde-implement` — is a stage: it receives an
-already bound target and one frozen context from its composing capability, and is never projected as a
-Skill; stage capabilities have no executable entry.
+Every callable entry is a Capability. Each independently declares public exposure, context
+selection, determinism, launched Agents and composed capabilities; its size or position in a Flow
+does not create a separate type. A Flow organizes calls, branches and loops. A Skill exposes a
+public Capability to the developer's external agent runtime.
+
+Capabilities with `CONTEXT_SELECTION="discover"` use the coordinator to discover complete Module
+contracts; `bound` consumes the selected Module without expanding its context; `none` performs
+deterministic host work without Agent context selection. `PUBLIC` independently decides whether a
+Capability has a Skill. For example, reflections-triage is public and uses a bound Module, while
+specify is non-public and runs only through declared composition.
+
+`concorde-dev-loop` takes optional `specify` and `run_reviews` flags. `specify=false` skips Spec authoring; `run_reviews=false` records explicit review skips without cancelling a review already required for the change.
 
 `concorde-review` accepts a `task` and `review_mode: "spec"` or `"code"`, with optional target/focus
 routing hints. It selects the owning Module and starts a fresh read-only reviewer in the current
@@ -347,7 +347,7 @@ implementation mode may write granted code; reviews and investigations remain re
 phase and target gets a fresh invocation and context identity, so a reviewer never inherits the
 author's conversation, artifacts or write authority merely because they share an Agent definition.
 
-The thirteen capability names and eight public Skills remain distinct. Their required boolean
+The thirteen Capability names and eight public Skills remain distinct. Their required boolean
 DETERMINISTIC metadata means no supported model-call path when true, including Host routing and
 transitive USES. Only init, configure, validate and deliver are true. USES is Host composition; all
 three Agents and their modes still have empty callable capability context.

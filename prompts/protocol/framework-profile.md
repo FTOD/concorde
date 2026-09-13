@@ -39,8 +39,8 @@ Spec authors, assessors, planners and task authors use only the selected Module'
 project-Spec collection. They MUST NOT read source code to supply missing Module meaning. Only the
 code-writing phase receives the complete implementation context; code review receives its separately
 declared read-only subset. Agent instructions, the Protocol rule bundle and Skills are not context:
-instructions belong to the Agent definition, and a Skill is the installed projection of a global or
-lifecycle capability for the developer's own agent runtime.
+instructions belong to the Agent definition, and a Skill is the installed projection of a public
+Capability for the developer's own agent runtime.
 
 Context identities cover ownership, explicit references, inclusion reasons and document bytes,
 Protocol and instructions, declared stage artifacts, declared listing entries and lifecycle

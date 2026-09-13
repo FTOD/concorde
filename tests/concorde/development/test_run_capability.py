@@ -55,7 +55,7 @@ class RunCapabilityLauncherTests(unittest.TestCase):
                 )
 
     @verifies("scenario.development.execute-unregistered")
-    def test_refuses_a_stage_capability_name(self):
+    def test_refuses_a_nonpublic_capability_name(self):
         process = _run(["concorde-plan"], "")
         self.assertEqual(3, process.returncode)
         output = json.loads(process.stdout)
@@ -95,7 +95,7 @@ class RunCapabilityLauncherTests(unittest.TestCase):
                 self.assertTrue(payload["langgraph"])
                 self.assertTrue(payload["python_version"])
 
-    def test_runtime_check_refuses_a_stage_capability_and_extra_arguments(self):
+    def test_runtime_check_refuses_a_nonpublic_capability_and_extra_arguments(self):
         for argv in (["concorde-plan", "--runtime-check"], ["concorde-main", "--runtime-check", "extra"]):
             with self.subTest(argv=argv):
                 process = _run(argv)

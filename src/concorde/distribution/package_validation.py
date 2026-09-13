@@ -26,7 +26,7 @@ from .prompt_resolver import (
     resolve_role_prompt,
     resolve_skill_source,
 )
-from ..spec.contracts import INTERNAL_SKILLS, CAPABILITY_NAMES, MAIN_ROUTED_CAPABILITIES, exported_types, schemas
+from ..spec.contracts import INTERNAL_SKILLS, CAPABILITY_NAMES, exported_types, schemas
 
 _SUBJECT = "module.distribution"
 
@@ -223,14 +223,15 @@ def _validate_capability_modules(root: Path) -> list[Finding]:
                 f"capability module {name!r} could not be imported.",
                 "Fix the import error in the capability module."))
             continue
-        missing = [attribute for attribute in ("CLASS", "DETERMINISTIC", "AGENTS", "USES", "EXTERNAL_NAME", "REQUEST", "RESPONSE", "run")
+        missing = [attribute for attribute in ("PUBLIC", "CONTEXT_SELECTION", "DETERMINISTIC", "AGENTS", "USES", "EXTERNAL_NAME", "REQUEST", "RESPONSE", "run")
                    if not hasattr(module, attribute)]
         if missing:
             findings.append(_finding("CONCORDE-CAPABILITY-CONSTANTS-001", source,
                 f"capability module {name!r} is missing mandatory constants: {missing}.",
-                "Declare CLASS, DETERMINISTIC, AGENTS, USES, EXTERNAL_NAME, REQUEST, RESPONSE and run()."))
+                "Declare PUBLIC, CONTEXT_SELECTION, DETERMINISTIC, AGENTS, USES, EXTERNAL_NAME, REQUEST, RESPONSE and run()."))
             continue
-        if (not isinstance(module.CLASS, str) or type(module.DETERMINISTIC) is not bool
+        if (type(module.PUBLIC) is not bool or not isinstance(module.CONTEXT_SELECTION, str)
+                or type(module.DETERMINISTIC) is not bool
                 or not isinstance(module.AGENTS, tuple) or not isinstance(module.USES, tuple)
                 or not all(isinstance(used, str) for used in module.USES)
                 or not isinstance(module.EXTERNAL_NAME, str)
@@ -238,13 +239,17 @@ def _validate_capability_modules(root: Path) -> list[Finding]:
                 or not callable(module.run)):
             findings.append(_finding("CONCORDE-CAPABILITY-CONSTANTS-001", source,
                 f"capability module {name!r} declares a mandatory constant with the wrong type.",
-                "CLASS/EXTERNAL_NAME are str; DETERMINISTIC is bool; AGENTS is a tuple; USES is a tuple of str; REQUEST/RESPONSE are dict; run is callable."))
+                "PUBLIC/DETERMINISTIC are bool; CONTEXT_SELECTION/EXTERNAL_NAME are str; AGENTS is a tuple; USES is a tuple of str; REQUEST/RESPONSE are dict; run is callable."))
             continue
         valid_modules[name] = module
-        if module.CLASS not in {"global", "lifecycle", "stage"}:
-            findings.append(_finding("CONCORDE-CAPABILITY-CLASS-001", source,
-                f"capability {name!r} declares CLASS {module.CLASS!r}.",
-                "CLASS must be one of global, lifecycle, stage."))
+        if hasattr(module, "CLASS"):
+            findings.append(_finding("CONCORDE-CAPABILITY-CONSTANTS-001", source,
+                f"capability {name!r} retains the removed CLASS declaration.",
+                "Remove CLASS; declare exposure, context selection and determinism independently."))
+        if module.CONTEXT_SELECTION not in {"discover", "bound", "none"}:
+            findings.append(_finding("CONCORDE-CAPABILITY-CONTEXT-001", source,
+                f"capability {name!r} declares CONTEXT_SELECTION {module.CONTEXT_SELECTION!r}.",
+                "CONTEXT_SELECTION must be discover, bound or none."))
         unknown_uses = sorted(set(module.USES) - declared)
         if unknown_uses:
             findings.append(_finding("CONCORDE-CAPABILITY-USES-001", source,
@@ -260,15 +265,15 @@ def _validate_capability_modules(root: Path) -> list[Finding]:
                 f"capability {name!r} EXTERNAL_NAME is {module.EXTERNAL_NAME!r}, expected {expected_external!r}.",
                 "EXTERNAL_NAME is always 'concorde-' plus the module name with underscores hyphenated."))
         skills = skill_capabilities.get(name, [])
-        should_have_skill = module.CLASS in {"global", "lifecycle"}
+        should_have_skill = module.PUBLIC
         if should_have_skill and len(skills) != 1:
             findings.append(_finding("CONCORDE-CAPABILITY-SKILL-001", source,
-                f"{module.CLASS} capability {name!r} must have exactly one skill naming it; found {skills}.",
+                f"public capability {name!r} must have exactly one skill naming it; found {skills}.",
                 "Add or deduplicate the skills/<name>/SKILL.md declaring capability: " + name + "."))
         if not should_have_skill and skills:
             findings.append(_finding("CONCORDE-CAPABILITY-SKILL-001", source,
-                f"stage capability {name!r} must have no skill; found {skills}.",
-                "Stage capabilities are never projected as a skill; remove the skill source."))
+                f"non-public capability {name!r} must have no skill; found {skills}.",
+                "Only PUBLIC=True capabilities are projected as Skills; remove the skill source."))
 
     visiting: set[str] = set()
     visited: set[str] = set()
@@ -288,15 +293,18 @@ def _validate_capability_modules(root: Path) -> list[Finding]:
         visiting.add(name)
         children = [visit(used, (*chain, name)) for used in module.USES]
         # Routing may call the coordinator even when it is not in this module's AGENTS.
-        calls_model = bool(module.AGENTS) or module.EXTERNAL_NAME in MAIN_ROUTED_CAPABILITIES or any(children)
+        calls_model = bool(module.AGENTS) or module.CONTEXT_SELECTION == "discover" or any(children)
         resolved = all(child is not None for child in children) and all(
             isinstance(agent, Agent) for agent in module.AGENTS)
-        if resolved and (module.DETERMINISTIC != (not calls_model)
-                         or (module.CLASS == "lifecycle" and not module.DETERMINISTIC)):
+        if resolved and module.DETERMINISTIC != (not calls_model):
             findings.append(_finding("CONCORDE-CAPABILITY-DETERMINISTIC-001", f"capabilities/{name}.py",
                 f"capability {name!r} declares DETERMINISTIC={module.DETERMINISTIC}, "
                 f"but its Agent, routing and transitive USES declarations imply model_calls={calls_model}.",
-                "Set DETERMINISTIC to true exactly when no supported path calls a model; lifecycle capabilities must remain deterministic."))
+                "Set DETERMINISTIC to true exactly when no supported path calls a model."))
+        if resolved and module.CONTEXT_SELECTION == "none" and calls_model:
+            findings.append(_finding("CONCORDE-CAPABILITY-CONTEXT-001", f"capabilities/{name}.py",
+                f"capability {name!r} selects no Agent context but its composition calls a model.",
+                "Model-backed capabilities must declare discover or bound context selection."))
         visiting.discard(name)
         visited.add(name)
         model_calls[name] = calls_model if resolved else None
@@ -608,7 +616,7 @@ def _find_boundary_document(documents: dict[str, str]) -> tuple[str, str] | None
 
 
 def _capability_code_inventory(root: Path) -> dict[str, dict[str, object]] | None:
-    """``{external-id-without-prefix: {"class": ..., "deterministic": ..., "skill": ...}}`` from code.
+    """``{external-id-without-prefix: {"public": ..., "context_selection": ..., "deterministic": ..., "skill": ...}}`` from code.
 
     Mirrors ``_validate_capability_modules``'s own reads of the capability package and the skill
     sources, so this rule and rule 2 agree on what "the code" declares without a second inventory
@@ -622,11 +630,12 @@ def _capability_code_inventory(root: Path) -> dict[str, dict[str, object]] | Non
     result: dict[str, dict[str, object]] = {}
     for name in inventory.CAPABILITIES:
         module = modules.get(name)
-        if module is None or not hasattr(module, "CLASS"):
+        if module is None or not hasattr(module, "PUBLIC"):
             continue
         skills = skill_capabilities.get(name, [])
         result[name.replace("_", "-")] = {
-            "class": module.CLASS,
+            "public": module.PUBLIC,
+            "context_selection": getattr(module, "CONTEXT_SELECTION", None),
             "deterministic": getattr(module, "DETERMINISTIC", None),
             "skill": skills[0] if len(skills) == 1 else None,
         }
@@ -650,21 +659,23 @@ def _validate_spec_capabilities_block(root: Path, documents: dict[str, str]) -> 
     except json.JSONDecodeError as error:
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
             f"concorde-capabilities block is not valid JSON: {error}",
-            "Fix the JSON array of {id, class, deterministic, skill} entries."))
+            "Fix the JSON array of {id, public, context_selection, deterministic, skill} entries."))
         return findings
     valid_shape = (isinstance(entries, list)
-        and all(isinstance(item, dict) and set(item) == {"id", "class", "deterministic", "skill"}
-                and isinstance(item["id"], str) and isinstance(item["class"], str)
+        and all(isinstance(item, dict) and set(item) == {"id", "public", "context_selection", "deterministic", "skill"}
+                and isinstance(item["id"], str) and type(item["public"]) is bool
+                and isinstance(item["context_selection"], str)
+                and item["context_selection"] in {"discover", "bound", "none"}
                 and type(item["deterministic"]) is bool
                 and (item["skill"] is None or isinstance(item["skill"], str)) for item in entries))
     if not valid_shape:
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
-            "concorde-capabilities block must be a JSON array of {id, class, deterministic, skill} objects.",
-            "Match exactly id/class/deterministic/skill for every entry, with a boolean deterministic value."))
+            "concorde-capabilities block must be a JSON array of {id, public, context_selection, deterministic, skill} objects.",
+            "Match exactly id/public/context_selection/deterministic/skill, with boolean public and deterministic values."))
         return findings
-    declared: dict[str, tuple[object, object, object]] = {}
+    declared: dict[str, tuple[object, ...]] = {}
     for entry in entries:
-        declared[entry["id"]] = (entry["class"], entry["deterministic"], entry["skill"])
+        declared[entry["id"]] = (entry["public"], entry["context_selection"], entry["deterministic"], entry["skill"])
     if len(declared) != len(entries):
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
             "concorde-capabilities entries must have unique id values.",
@@ -675,11 +686,11 @@ def _validate_spec_capabilities_block(root: Path, documents: dict[str, str]) -> 
             "capabilities/__init__.py is missing, unsafe, or declares no CAPABILITIES tuple.",
             "Add capabilities/__init__.py with an explicit CAPABILITIES inventory."))
         return findings
-    expected = {capability_id: (data["class"], data["deterministic"], data["skill"]) for capability_id, data in code.items()}
+    expected = {capability_id: (data["public"], data["context_selection"], data["deterministic"], data["skill"]) for capability_id, data in code.items()}
     for capability_id in sorted(set(expected) - set(declared)):
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
             f"concorde-capabilities block is missing capability {capability_id!r}.",
-            "Add its {id, class, deterministic, skill} entry to the block."))
+            "Add its {id, public, context_selection, deterministic, skill} entry to the block."))
     for capability_id in sorted(set(declared) - set(expected)):
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
             f"concorde-capabilities block declares unknown capability {capability_id!r}.",
@@ -689,7 +700,7 @@ def _validate_spec_capabilities_block(root: Path, documents: dict[str, str]) -> 
             findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
                 f"concorde-capabilities entry {capability_id!r} is {declared[capability_id]!r}, "
                 f"code declares {expected[capability_id]!r}.",
-                "Match class, deterministic and skill exactly to the capability module and its skill."))
+                "Match public, context_selection, deterministic and skill exactly to the capability module and its skill."))
     return findings
 
 

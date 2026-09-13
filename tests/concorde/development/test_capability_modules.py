@@ -18,10 +18,10 @@ sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.spec.contracts import (  # noqa: E402
     COMPOSITE_CAPABILITIES,
-    GLOBAL_CAPABILITIES,
-    STAGE_CAPABILITIES,
-    LIFECYCLE_CAPABILITIES,
-    MAIN_ROUTED_CAPABILITIES,
+    PUBLIC_CAPABILITIES,
+    INTERNAL_CAPABILITIES,
+    DETERMINISTIC_CAPABILITIES,
+    DISCOVERY_CAPABILITIES,
     CAPABILITY_NAMES,
     SKILL_NAMES,
     dependencies,
@@ -48,22 +48,17 @@ class CapabilityModuleContractTests(unittest.TestCase):
             self.assertEqual(module.EXTERNAL_NAME, capabilities.external_name(name))
             self.assertEqual(module.EXTERNAL_NAME, "concorde-" + name.replace("_", "-"))
 
-    def test_class_matches_the_global_lifecycle_stage_partition(self):
-        modules = _modules()
-        for name, module in modules.items():
-            external = module.EXTERNAL_NAME
-            if external in GLOBAL_CAPABILITIES:
-                self.assertEqual(module.CLASS, "global", external)
-            elif external in LIFECYCLE_CAPABILITIES:
-                self.assertEqual(module.CLASS, "lifecycle", external)
-            elif external in STAGE_CAPABILITIES:
-                self.assertEqual(module.CLASS, "stage", external)
-            else:
-                self.fail(f"{external} is not classified by any known capability partition")
-        self.assertEqual(
-            {name for name, module in modules.items() if module.CLASS == "global"},
-            {name for name in capabilities.CAPABILITIES if capabilities.external_name(name) in GLOBAL_CAPABILITIES},
-        )
+    def test_capability_properties_are_independent_and_drive_the_catalog(self):
+        for module in _modules().values():
+            name = module.EXTERNAL_NAME
+            self.assertFalse(hasattr(module, "CLASS"))
+            self.assertIs(type(module.PUBLIC), bool)
+            self.assertIs(type(module.DETERMINISTIC), bool)
+            self.assertIn(module.CONTEXT_SELECTION, {"discover", "bound", "none"})
+            self.assertEqual(module.PUBLIC, name in PUBLIC_CAPABILITIES)
+            self.assertEqual(not module.PUBLIC, name in INTERNAL_CAPABILITIES)
+            self.assertEqual(module.DETERMINISTIC, name in DETERMINISTIC_CAPABILITIES)
+            self.assertEqual(module.CONTEXT_SELECTION == "discover", name in DISCOVERY_CAPABILITIES)
 
     def test_agents_and_uses_match_dependencies_exactly(self):
         # dependencies() is the deterministic policy source, historically a flattened mix of Agent
@@ -77,7 +72,7 @@ class CapabilityModuleContractTests(unittest.TestCase):
             declared_agents = {"concorde-" + agent.name.replace("_", "-") for agent in module.AGENTS}
             used_names = {capabilities.external_name(used) for used in module.USES}
             expected = declared_agents | used_names
-            if external in MAIN_ROUTED_CAPABILITIES and external != "concorde-main":
+            if external in DISCOVERY_CAPABILITIES and external != "concorde-main":
                 expected = expected | {"concorde-coordinator"}
             self.assertEqual(set(dependencies(external)), expected, f"{external}: (AGENTS, USES) do not reconstruct dependencies()")
 
@@ -144,17 +139,14 @@ class CapabilityModuleContractTests(unittest.TestCase):
             module = importlib.import_module(f"{capabilities.__name__}.{name}")
             self.assertTrue(callable(module.run))
 
-    def test_main_routed_capabilities_match_the_global_class(self):
-        self.assertEqual(set(MAIN_ROUTED_CAPABILITIES), {"concorde-main", "concorde-dev-loop", "concorde-review"})
-        self.assertTrue(set(MAIN_ROUTED_CAPABILITIES).issubset(GLOBAL_CAPABILITIES))
+    def test_discovery_preserves_the_existing_routing_boundary(self):
+        self.assertEqual(set(DISCOVERY_CAPABILITIES), {"concorde-main", "concorde-dev-loop", "concorde-review"})
+        self.assertEqual("bound", _modules()["reflections_triage"].CONTEXT_SELECTION)
+        self.assertTrue(_modules()["reflections_triage"].PUBLIC)
 
-    def test_every_public_capability_class_is_global_or_lifecycle(self):
-        modules = _modules()
-        for name, module in modules.items():
-            if module.EXTERNAL_NAME in SKILL_NAMES:
-                self.assertIn(module.CLASS, {"global", "lifecycle"}, module.EXTERNAL_NAME)
-            else:
-                self.assertEqual(module.CLASS, "stage", module.EXTERNAL_NAME)
+    def test_only_public_capabilities_are_projected_as_skills(self):
+        self.assertEqual(set(SKILL_NAMES), {module.EXTERNAL_NAME for module in _modules().values() if module.PUBLIC})
+        self.assertEqual({"concorde-specify", "concorde-context-solve", "concorde-plan", "concorde-tasks", "concorde-implement"}, set(INTERNAL_CAPABILITIES))
 
 
 class InProcessCompositionTests(unittest.TestCase):

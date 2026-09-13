@@ -1,10 +1,11 @@
-"""Lifecycle: stage a verified change, clean up, and explicitly merge from the primary session.
+"""Capability: stage a verified change, clean up, and explicitly merge from the primary session.
 Deterministic; runs no agent cognition and selects no context."""
 from concorde.spec import contract_shapes as shapes
 
 from . import external_name
 
-CLASS = "lifecycle"
+PUBLIC = True
+CONTEXT_SELECTION = "none"
 DETERMINISTIC = True
 AGENTS = ()
 USES = ()
@@ -20,7 +21,7 @@ REQUEST = shapes.obj({
     "merge_primary": {"type": "boolean"},
 }, ("target_id", "task", "focus_id", "constraints", "keep_worktree", "merge_primary"))
 
-RESPONSE = shapes.stage_response()
+RESPONSE = shapes.capability_response()
 
 
 def run(host, configuration, request):

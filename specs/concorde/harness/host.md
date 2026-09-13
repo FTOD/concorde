@@ -29,7 +29,7 @@ launching anything or exposing context bodies.
 ## Control-flow substrate
 
 Every capability Flow, including the global discovery loop, the development loop, topology
-evolution, reflection triage and the deterministic lifecycle capabilities, is a LangGraph
+evolution, reflection triage and the deterministic capabilities, is a LangGraph
 `StateGraph`. Its nodes are deterministic steps, which make no model call, or Agent invocations,
 which do. The recursive delegation tree below is composed from the same Flows. These Flows are
 the Studio surface; no capability runs its control flow outside them. Flow structure alone proves
@@ -43,7 +43,7 @@ explicit `AgentGrant`; task JSON cannot construct these authority-bearing object
 `AgentRun` and retains its events as host evidence. The runtime owns resolution of complete child
 contexts, explicit delegation edges, typed child feedback, fresh native decisions, shared finite
 call/decision/depth/time limits and cancellation propagation. This is in-process composition, not
-a public stage capability or a change to existing global routing. Default stage invocations retain
+another public Capability or a change to existing global routing. Default worker invocations retain
 their existing one-decision contract until an enclosing host explicitly composes an Agent loop.
 
 The execution collaborator supplies an already constructed `AgentRuntime` whose
@@ -98,8 +98,8 @@ actual task closure; installation of an Agent definition alone is not admission.
 The Studio adapter starts or observes the same CapabilityHost used by CLI and Skill invocations.
 Its generated LangGraph configuration exposes one Flow per Skill. Studio expands the same
 admission, dispatch and composed Flow instances used by local calls, including query/discovery,
-topology, planning, development and reflection branches. Internal stages remain nodes rather than
-direct public capability entries. Separately bound recursive Agent and batch/coordination Flows
+topology, planning, development and reflection branches. Non-public Capabilities remain callable
+through declared composition. Separately bound recursive Agent and batch/coordination Flows
 are also inspectable from their executable factories; their runtime instances depend on host admission.
 Studio receives an invocation wrapper containing the
 existing schema-3 invocation and an optional expected_workspace assertion. Project and package

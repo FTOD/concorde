@@ -44,7 +44,7 @@ A model is a resource used through the Harness. Responsibilities, task informati
 Capability or Tool descriptions may all be presented as model context, while retaining distinct
 identities and contracts. Loading an instruction or mentioning a Tool does not itself grant
 authority to execute an operation. Skills are not Agent context: a Skill is the installed projection
-of a global or lifecycle capability for the developer's own agent runtime. The four context kinds
+of a public Capability for the developer's own agent runtime. The four context kinds
 an invocation receives are defined in [context](context.md).
 
 ## A1. Agent Spec and Python definition
@@ -104,8 +104,8 @@ The composition MUST identify required capabilities without exposing unrelated d
 private invocation context. Runtime host composition and Agent-available capabilities MUST be
 distinguishable; a host's ability to compose an operation does not make it callable by every Agent.
 
-Existing `capabilities/` modules and global/lifecycle/stage classes describe Concorde's current host
-adapter; the Development Module registers that inventory. Those adapter classes do not exhaust the
+Existing `capabilities/` modules and exposure and context-selection properties describe Concorde's current host
+adapter; the Development Module registers that inventory. Those adapter properties do not exhaust the
 meaning of Capability or turn every capability into an Agent.
 
 ## A4. Constraints, context and invocation

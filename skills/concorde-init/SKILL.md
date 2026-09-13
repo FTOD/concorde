@@ -1,6 +1,6 @@
 ---
 name: concorde-init
-description: "Lifecycle: propose and apply explicit project initialization with a pinned Protocol and an honest registry stub."
+description: "Capability: propose and apply explicit project initialization with a pinned Protocol and an honest registry stub."
 capability: init
 ---
 

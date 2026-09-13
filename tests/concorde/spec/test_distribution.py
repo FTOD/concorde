@@ -41,7 +41,7 @@ class DistributionTests(unittest.TestCase):
                              tuple(t.id for t in repo.affected_modules([path])))
         text='\n'.join(d.body for d in repo.documents(repo.select('module.development')))
         for op in CAPABILITY_NAMES:self.assertIn(op+'-request',text)
-    def test_launcher_refuses_a_stage_capability_name_and_accepts_a_public_skill(self):
+    def test_launcher_refuses_a_nonpublic_capability_name_and_accepts_a_public_skill(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);project(root)
             launcher=str(PACKAGE/'scripts/run-capability.py')

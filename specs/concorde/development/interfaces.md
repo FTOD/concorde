@@ -21,7 +21,7 @@ remain compatibility identifiers derived from the bound Agent's name.
 A Capability provides usable or composable functionality under the Agent and Harness contract.
 The existing host adapter implements each registered entry as a Python module declaring launched
 Agents, effects, composed entries and typed request/response contracts. In this adapter, rendered
-public Skills expose exactly one global or lifecycle capability. Stage capabilities have no Skill and no direct invocation. Every request
+public Skills expose exactly one public Capability. Non-public capabilities have no Skill or direct launcher entry. Every request
 passes through this host. The capability registry is a member of this complete Spec; exact wire
 schemas are code, exported by the build for runtime/API use, and this document states
 their promises.
@@ -42,12 +42,12 @@ stdout is `concorde-capability-result@3` with capability_id, invocation_id, mode
 succeeded|blocked|failed|described, workspace (null or host-supplied worktree metadata), output
 (typed response or null) and errors [{code,field,message}]. Exit 0 means succeeded/described; 3 means
 blocked/failed. Describe-policy does not launch agents or mutate project state; policy descriptions
-go to stderr. Before executing or describing a top-level non-lifecycle capability, the host
+go to stderr. Before executing or describing a top-level model-backed capability, the host
 verifies the build manifest and refuses a stale build with `stale_build`. The deterministic
-lifecycle capabilities `concorde-init`, `concorde-configure`, `concorde-validate` and
+capabilities `concorde-init`, `concorde-configure`, `concorde-validate` and
 `concorde-deliver` are exempt from this entry check because they launch no Agents and consume no
 generated Agent instructions. Loading an Agent independently verifies build freshness before
-trusting its generated binding. The lifecycle exception does not waive Protocol, input,
+trusting its generated binding. The deterministic-entry exception does not waive Protocol, input,
 permission, validation or delivery-evidence checks; see the canonical
 [build admission scenario](../distribution/build.md#scenario.distribution.build-stale-blocks-execution).
 
@@ -88,7 +88,7 @@ the attested outer-sandbox rendering path stays in Permissions for a trusted emb
 admitted configuration selects it. Executor completions must match invocation, policy,
 launch and context identities. No ambient conversation or predecessor transcript is admitted.
 
-Every new agent-backed task in a global capability first launches `concorde-coordinator` with the
+Every new task requiring discover context selection first launches `concorde-coordinator` with the
 entry Module.
 Main discovery can
 admit registered complete Module collections on demand; each admission starts a fresh process with a new context identity. Main never reads implementation file contents or code. For capabilities other than
@@ -199,14 +199,14 @@ proposal and the stage-input artifacts that pass between stages inside one capab
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-capability-invocation@3` | Every request, on stdin | `{type_id, schema_version: 3, capability_id, mode: execute\|describe-policy, configuration, input}`. `capability_id` must name a Skill; a stage or unknown name is refused with `unknown_capability`. `configuration` is a `concorde-capability-configuration@1` TypedValue or null (falls back to the initialized project settings); `input` is the named capability's own request TypedValue. Any other `schema_version` is refused with `unsupported_version`. |
+| `concorde-capability-invocation@3` | Every request, on stdin | `{type_id, schema_version: 3, capability_id, mode: execute\|describe-policy, configuration, input}`. `capability_id` must name a Skill; a non-public or unknown name is refused with `unknown_capability`. `configuration` is a `concorde-capability-configuration@1` TypedValue or null (falls back to the initialized project settings); `input` is the named capability's own request TypedValue. Any other `schema_version` is refused with `unsupported_version`. |
 | `concorde-capability-result@3` | Every response, on stdout | `{type_id, schema_version: 3, capability_id, invocation_id, mode, status: succeeded\|blocked\|failed\|described, workspace, output, errors: [{code,field,message}]}`. `output` is the named capability's own response TypedValue or null; `workspace` is null or host-supplied worktree metadata. Exit code 0 means `succeeded`/`described`; 3 means `blocked`/`failed`. |
 | `concorde-capability-configuration@1` | The invocation's `configuration` field, and `concorde-configure-request@1`/`-response@1` | `{integration: codex\|claude, enforcement: native}`; `outer` is not admitted while the distributed launchers supply no sandbox attestation. Stored at initialization under `.concorde/config.json`'s `capability_configuration` key; an invocation or child stage whose configuration differs from that stored snapshot stops with `configuration_mismatch`. |
 
 ### Capability requests and responses
 
 Common request task fields (named once, not repeated per row): `target_id` (required for every
-stage capability; an optional routing hint for `main`, `dev-loop` and `reflections-triage`), `task`,
+bound Module request; an optional routing hint for `main`, `dev-loop` and `review`), `task`,
 `focus_id` (a candidate scenario ID), `constraints`, `change_id`. Common response fields (present in every capability response
 except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, `context_id`,
 `outcome`, `answer`, `artifacts`, `gaps`, `checks`, `completed_capabilities`.
@@ -221,7 +221,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | `concorde-validate-request@1` / `concorde-validate-response@1` | validate | Requires `target_id` and `task`; adds optional `run_checks`. Response is the common shape only. |
 | `concorde-deliver-request@1` / `concorde-deliver-response@1` | deliver | Requires only `change_id`; adds optional `target_id`, `task`, `focus_id`, `constraints`, `keep_worktree` and `merge_primary`. Response is the common shape only. |
 | `concorde-specify-request@1` / `concorde-specify-response@1` | specify (stage) | Requires `target_id` and `task`. Response is the common shape only. |
-| `concorde-review-request@1` / `concorde-review-response@1` | review (global) | Requires `task` and `review_mode` (spec\|code); optional target/focus are routing hints for a new standalone task. A composing capability or current-change resumption supplies the bound target. Response adds `reviews` (`concorde-review-result@1` TypedValues). |
+| `concorde-review-request@1` / `concorde-review-response@1` | review | Requires `task` and `review_mode` (spec\|code); optional target/focus are routing hints for a new standalone task. A composing capability or current-change resumption supplies the bound target. Response adds `reviews` (`concorde-review-result@1` TypedValues). |
 | `concorde-context-solve-request@1` / `concorde-context-solve-response@1` | context-solve (stage) | Requires `target_id` and `task`. Response is the common shape only. |
 | `concorde-plan-request@1` / `concorde-plan-response@1` | plan (stage) | Requires `target_id` and `task`. Response is the common shape only. |
 | `concorde-tasks-request@1` / `concorde-tasks-response@1` | tasks (stage) | Requires `target_id` and `task`. Response is the common shape only. |
@@ -231,7 +231,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-context-snapshot@2` | Every stage capability's frozen input | [Canonical snapshot](../harness/context.md#context-snapshot-resolution); preserve its resolution provenance and reject stale inputs. |
+| `concorde-context-snapshot@2` | Every bound worker invocation's frozen input | [Canonical snapshot](../harness/context.md#context-snapshot-resolution); preserve its resolution provenance and reject stale inputs. |
 | `concorde-agent-task@1` | Host or admitted parent to Agent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
 | `concorde-agent-answer@1` | Generic Agent to parent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
 | `concorde-agent-interruption@1` | Agent to parent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
@@ -449,7 +449,7 @@ tree and affected-Module revision comparisons remain additional defenses against
 external changes; they do not supply the write boundary or claim semantic completeness.
 
 ## Independent review contract
-`concorde-review` is a public global capability requiring task and review_mode=spec|code, with
+`concorde-review` is a public Capability with discover context selection requiring task and review_mode=spec|code, with
 optional target/focus routing hints, constraints and current-worktree change_id. A new standalone
 request uses Spec-only coordinator discovery to select one owning Module, then starts a fresh
 read-only reviewer. A composing capability may supply its trusted bound target without repeating

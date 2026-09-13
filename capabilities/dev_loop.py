@@ -1,4 +1,4 @@
-"""Global development loop: route one change, then specify, review, plan, task, implement,
+"""Development loop: route one change, then specify, review, plan, task, implement,
 validate and review code to a ready candidate.
 
 ``specify=false`` skips Spec authoring (the former fast loop); ``run_reviews=false`` records an
@@ -17,7 +17,8 @@ from agents import coordinator
 
 from . import external_name
 
-CLASS = "global"
+PUBLIC = True
+CONTEXT_SELECTION = "discover"
 DETERMINISTIC = False
 AGENTS = (coordinator.AGENT,)
 USES = ("specify", "review", "plan", "tasks", "implement", "validate")
@@ -36,7 +37,7 @@ REQUEST = shapes.obj({
     "repair_task_scope": shapes.obj({"tasks_digest": shapes.DIGEST}),
 }, ("target_id", *shapes.TASK_OPTIONAL, "specify", "run_reviews", "repair_task_scope"))
 
-RESPONSE = shapes.stage_response()
+RESPONSE = shapes.capability_response()
 
 
 def run(host, configuration, request):

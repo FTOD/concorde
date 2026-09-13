@@ -26,7 +26,7 @@ runtime Agent instructions, exported schema APIs or `generated/protocol/schemas.
 A **Skill** is an instruction artifact for the developer's external agent runtime. Distribution
 owns its authored source under `skills/`, shared invocation instructions under
 `prompts/workflow-host/`, and rendered integration-specific installation. Each public Skill maps to
-one global or lifecycle Capability; stage capabilities have no Skill. The external runtime reads
+one public Capability; non-public capabilities have no Skill. The external runtime reads
 the Skill and submits the declared typed request through `scripts/run-capability.py`; Development
 admits and executes that request. That entry path is project-relative, so a rendered Skill
 carries no worktree identity: it binds to the worktree in which the developer's runtime executes
@@ -57,10 +57,10 @@ a Skill does not execute its Capability or add it to a Concorde Agent's Harness.
 ### scenario.distribution.build-stale-blocks-execution — A stale build fails closed
 
 - GIVEN a recorded source has changed since the last build
-- WHEN a top-level non-lifecycle capability is invoked in execute or describe-policy mode
+- WHEN a top-level model-backed capability is invoked in execute or describe-policy mode
 - THEN verify_fresh raises a `stale_build` BuildError and the invocation does not proceed with stale instructions
 
-The deterministic lifecycle capabilities `concorde-init`, `concorde-configure`,
+The deterministic capabilities `concorde-init`, `concorde-configure`,
 `concorde-validate` and `concorde-deliver` are exempt from this entry check: they launch no Agents
 and consume no generated Agent instructions. Loading an Agent still verifies freshness
 independently. This exception does not waive Protocol, input, permission or evidence checks.
@@ -87,16 +87,16 @@ prefixes themselves.
 
 ### scenario.distribution.capability-determinism — Capability metadata accounts for model calls
 
-- GIVEN capability modules declaring their class, Agents, host routing and acyclic `USES` composition
+- GIVEN capability modules declaring public exposure, context selection, Agents, host routing and acyclic `USES` composition
 - WHEN package validation checks their metadata
 - THEN each module must declare a boolean `DETERMINISTIC`, rejecting missing values, strings and integers
 - AND the flag must be true exactly when neither its Agents, host routing nor any transitive composed capability can call a model
-- AND lifecycle capabilities must remain deterministic
-- AND the single registered `concorde-capabilities` block must contain the same boolean `deterministic` for every capability alongside its `id`, `class` and `skill`
+- AND a capability declaring no Agent context selection must have no model-call path
+- AND the single registered `concorde-capabilities` block must contain the same boolean `deterministic` for every capability alongside its `id`, `public`, `context_selection` and `skill`
 - BUT a path that skips model execution does not make a model-backed capability deterministic
 
 Validation checks declared model-call paths, not arbitrary Python or subprocess behavior. It
-reports invalid metadata with `CONCORDE-CAPABILITY-CONSTANTS-001`, inconsistent classification
+reports invalid metadata with `CONCORDE-CAPABILITY-CONSTANTS-001`, inconsistent determinism
 with `CONCORDE-CAPABILITY-DETERMINISTIC-001`, and Spec metadata drift with
 `CONCORDE-SPEC-CAPABILITIES-001`. Unknown or cyclic composition remains a composition error;
 validation cannot certify its determinism.

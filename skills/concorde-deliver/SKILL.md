@@ -1,6 +1,6 @@
 ---
 name: concorde-deliver
-description: "Lifecycle: stage a verified change, remove its worktree, and explicitly merge from the primary session."
+description: "Capability: stage a verified change, remove its worktree, and explicitly merge from the primary session."
 capability: deliver
 ---
 

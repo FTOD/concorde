@@ -1,10 +1,10 @@
 """Profile 12 capability registry and versioned JSON contracts.
 
-Public global and lifecycle capabilities are each paired with exactly one skill. Internal Skills
-describe only one host-bound agent role. Per-capability request/response contracts are owned by
-the top-level ``capabilities/`` package
-(one module per capability); ``schemas()`` collects them lazily so this module never imports that
-package at module-load time. The internal (non-capability) data types below — topology
+Public capabilities are each paired with exactly one Skill; non-public capabilities require
+declared composition. Internal Skills describe only one host-bound agent role. Per-capability
+request/response contracts are owned by the top-level ``capabilities/`` package, one module per
+capability. Exposure, context selection, determinism and composition are derived from their
+declarations; there is no capability class taxonomy. The internal data types below — topology
 design/proposal/application, discovery context, context snapshots, review internals — are not
 owned by any one capability and stay defined directly here.
 """
@@ -35,7 +35,28 @@ SPEC_TASK = obj({"target_id": STRING, "task": STRING})
 PROPOSAL_FILE = obj({"path": PATH, "before_digest": {"anyOf": [DIGEST, {"type": "null"}]},
                      "content": {"type": "string"}})
 
-STAGE_ROLES = {
+
+def load_capability_inventory():
+    """Import the repository-root ``capabilities`` package normally.
+
+    ``tests/concorde`` holds one flat package per Module and none of them is named
+    ``capabilities``, so test discovery (``unittest discover -s tests/concorde``) no longer risks
+    registering an unrelated test package under the plain ``capabilities`` name. A plain import
+    is therefore safe here.
+    """
+
+    import sys
+    from pathlib import Path
+
+    package_root = Path(__file__).resolve().parents[3]
+    if str(package_root) not in sys.path:
+        sys.path.insert(0, str(package_root))
+    import capabilities
+
+    return capabilities
+
+
+CAPABILITY_AGENT_MODES = {
     "concorde-specify": ("specify", "concorde-spec-engineer"),
     "concorde-plan": ("plan", "concorde-spec-engineer"),
     "concorde-tasks": ("tasks", "concorde-spec-engineer"),
@@ -45,19 +66,27 @@ STAGE_ROLES = {
 REVIEW_STAGES = {"spec": ("spec-review", "concorde-spec-engineer"),
                  "code": ("code-review", "concorde-programmer")}
 MAIN_CAPABILITY = "concorde-main"
-GLOBAL_CAPABILITIES = (MAIN_CAPABILITY, "concorde-dev-loop", "concorde-reflections-triage", "concorde-review")
-LIFECYCLE_CAPABILITIES = ("concorde-init", "concorde-configure", "concorde-validate", "concorde-deliver")
-STAGE_CAPABILITIES = ("concorde-specify", "concorde-context-solve",
-                       "concorde-plan", "concorde-tasks", "concorde-implement")
-SKILL_NAMES = tuple(sorted(GLOBAL_CAPABILITIES + LIFECYCLE_CAPABILITIES))
-CAPABILITY_NAMES = tuple(sorted((*GLOBAL_CAPABILITIES, *LIFECYCLE_CAPABILITIES, *STAGE_CAPABILITIES)))
-assert set(SKILL_NAMES) | set(STAGE_CAPABILITIES) == set(CAPABILITY_NAMES), "capability classes must partition CAPABILITY_NAMES"
-assert not (set(SKILL_NAMES) & set(STAGE_CAPABILITIES)), "capability classes must be disjoint"
-assert len(CAPABILITY_NAMES) == len(set(CAPABILITY_NAMES)), "CAPABILITY_NAMES must not contain duplicates"
-MAIN_ROUTED_CAPABILITIES = frozenset({MAIN_CAPABILITY, "concorde-dev-loop", "concorde-review"})
-# Capabilities whose module declares a nonempty USES (it composes other capabilities in-process).
-COMPOSITE_CAPABILITIES = ("concorde-dev-loop", "concorde-reflections-triage")
-INTERNAL_SKILLS = tuple(sorted({"concorde-coordinator", *(role for _, role in STAGE_ROLES.values()),
+
+
+def capability_modules() -> dict:
+    """Load the capability declarations; schemas and Agent definitions have no registry dependency."""
+    import importlib
+    inventory = load_capability_inventory()
+    return {inventory.external_name(name): importlib.import_module(f"{inventory.__name__}.{name}")
+            for name in inventory.CAPABILITIES}
+
+
+_MODULES = capability_modules()
+CAPABILITY_NAMES = tuple(sorted(_MODULES))
+PUBLIC_CAPABILITIES = tuple(name for name in CAPABILITY_NAMES if _MODULES[name].PUBLIC)
+INTERNAL_CAPABILITIES = tuple(name for name in CAPABILITY_NAMES if not _MODULES[name].PUBLIC)
+SKILL_NAMES = PUBLIC_CAPABILITIES
+DISCOVERY_CAPABILITIES = frozenset(name for name in CAPABILITY_NAMES
+                                   if _MODULES[name].CONTEXT_SELECTION == "discover")
+DETERMINISTIC_CAPABILITIES = frozenset(name for name in CAPABILITY_NAMES if _MODULES[name].DETERMINISTIC)
+COMPOSITE_CAPABILITIES = tuple(name for name in CAPABILITY_NAMES if _MODULES[name].USES)
+assert len(CAPABILITY_NAMES) == len(load_capability_inventory().CAPABILITIES), "capability identities must be unique"
+INTERNAL_SKILLS = tuple(sorted({"concorde-coordinator", *(role for _, role in CAPABILITY_AGENT_MODES.values()),
                                 *(role for _, role in REVIEW_STAGES.values())}))
 INTERNAL_DATA_TYPES = (
     "concorde-agent-task",
@@ -84,20 +113,11 @@ INTERNAL_DATA_TYPES = (
 
 
 def dependencies(capability: str) -> tuple[str, ...]:
-    if capability == MAIN_CAPABILITY:
-        result = ("concorde-coordinator", "concorde-spec-engineer")
-    elif capability == "concorde-plan":
-        result = ("concorde-spec-engineer",)
-    elif capability == "concorde-review":
-        result = tuple(role for _, role in REVIEW_STAGES.values())
-    elif capability == "concorde-dev-loop":
-        result = tuple("concorde-"+x for x in ("specify","review","plan","tasks","implement","validate"))
-    elif capability == "concorde-reflections-triage":
-        result = ("concorde-programmer", "concorde-dev-loop")
-    else:
-        result = (STAGE_ROLES[capability][1],) if capability in STAGE_ROLES else ()
-    return (("concorde-coordinator", *result)
-            if capability in MAIN_ROUTED_CAPABILITIES and capability != MAIN_CAPABILITY else result)
+    module = _MODULES[capability]
+    agents = tuple("concorde-" + agent.name.replace("_", "-") for agent in module.AGENTS)
+    children = tuple("concorde-" + name.replace("_", "-") for name in module.USES)
+    routing = ("concorde-coordinator",) if module.CONTEXT_SELECTION == "discover" else ()
+    return tuple(dict.fromkeys((*routing, *agents, *children)))
 
 
 def contracts() -> dict[str, tuple[str, str]]:
@@ -109,31 +129,10 @@ def exported_types() -> tuple[str, ...]:
                  for suffix in ("request", "response")) + INTERNAL_DATA_TYPES
 
 
-def load_capability_inventory():
-    """Import the repository-root ``capabilities`` package normally.
-
-    ``tests/concorde`` holds one flat package per Module and none of them is named
-    ``capabilities``, so test discovery (``unittest discover -s tests/concorde``) no longer risks
-    registering an unrelated test package under the plain ``capabilities`` name. A plain import
-    is therefore safe here.
-    """
-
-    import sys
-    from pathlib import Path
-
-    package_root = Path(__file__).resolve().parents[3]
-    if str(package_root) not in sys.path:
-        sys.path.insert(0, str(package_root))
-    import capabilities
-
-    return capabilities
-
-
 def _capability_schemas() -> dict:
     """Collect every capability module's own REQUEST/RESPONSE (proposal section 6.2).
 
-    Imported lazily, and only here, so this module never depends on the top-level
-    ``capabilities`` package at import time (avoiding any import-order cycle with it).
+    Capability schema declarations use dependency-free contract shapes.
     """
 
     import importlib
@@ -249,7 +248,7 @@ def schemas() -> dict:
     discovery_target = obj({"target_id": STRING, "kind": {"const": "module"},
                             "spec_resolution": resolution(source_ref)})
     result["concorde-discovery-context"] = obj({"context_id": DIGEST, "schema_version": {"const": 2},
-        "capability": {"enum": sorted(MAIN_ROUTED_CAPABILITIES)}, "phase": {"const": "route"},
+        "capability": {"enum": sorted(DISCOVERY_CAPABILITIES)}, "phase": {"const": "route"},
         "action": {"enum": ["route", "ask", "design-topology"]},
         "task": STRING, "constraints": array(STRING), "target_hint": NULLABLE_ID,
         "focus_hint": NULLABLE_ID, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),

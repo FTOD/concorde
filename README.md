@@ -326,8 +326,7 @@ Read the [Protocol](protocol/README.md), start from the
 | Initialize or configure a project | `concorde-init` · `concorde-configure` |
 | Validate a candidate or deliver a verified change | `concorde-validate` · `concorde-deliver` |
 
-These eight public Skills expose the global and lifecycle capabilities. Internal stages are
-composed by the host. See the [capability registry](specs/concorde/development/capabilities.md)
+These eight public Skills expose selected Capabilities. Other Capabilities are composed by the host. See the [capability registry](specs/concorde/development/capabilities.md)
 for the full interface.
 
 ## Agents, capabilities and executable entry points
@@ -350,26 +349,30 @@ invocation receives fresh, explicitly bounded context and permissions.
 
 ### Capability inventory
 
-| Class | Capability | Behavior | Public Skill |
-| :--- | :--- | :--- | :--- |
-| Global | `main` | Answer questions, route requests, and design and apply accepted topology changes. | `concorde-main` |
-| Global | `dev-loop` | Route a change through specification, planning, implementation, validation and review to a ready candidate. | `concorde-dev-loop` |
-| Global | `review` | Run a standalone Spec or code review, including source diagnosis. | `concorde-review` |
-| Global | `reflections-triage` | Inspect feedback, capture gaps, investigate, implement resolutions and manage owned records. | `concorde-reflections-triage` |
-| Lifecycle | `init` | Propose and apply project initialization with a pinned Protocol. | `concorde-init` |
-| Lifecycle | `configure` | Apply integration and enforcement configuration. | `concorde-configure` |
-| Lifecycle | `validate` | Run deterministic Spec and configured code checks and record readiness. | `concorde-validate` |
-| Lifecycle | `deliver` | Stage a verified candidate on its own branch and clean up; merge into the primary branch on a separate explicit request. | `concorde-deliver` |
-| Stage | `specify` | Author Spec replacements for the bound Module. | — |
-| Stage | `context-solve` | Validate Module participant routing and assess context sufficiency. | — |
-| Stage | `plan` | Assess sufficiency and produce a revision-bound plan. | — |
-| Stage | `tasks` | Derive acceptance tasks from the accepted plan. | — |
-| Stage | `implement` | Implement component tasks or coordinate participating components. | — |
+| Capability | Behavior | Public Skill |
+| :--- | :--- | :--- |
+| `main` | Answer questions, route requests, and design and apply accepted topology changes. | `concorde-main` |
+| `dev-loop` | Route a change through specification, planning, implementation, validation and review to a ready candidate. | `concorde-dev-loop` |
+| `review` | Run a standalone Spec or code review, including source diagnosis. | `concorde-review` |
+| `reflections-triage` | Inspect feedback, capture gaps, investigate, implement resolutions and manage owned records. | `concorde-reflections-triage` |
+| `init` | Propose and apply project initialization with a pinned Protocol. | `concorde-init` |
+| `configure` | Apply integration and enforcement configuration. | `concorde-configure` |
+| `validate` | Run deterministic Spec and configured code checks and record readiness. | `concorde-validate` |
+| `deliver` | Stage a verified candidate on its own branch and clean up; merge into the primary branch on a separate explicit request. | `concorde-deliver` |
+| `specify` | Author Spec replacements for the bound Module. | — |
+| `context-solve` | Validate Module participant routing and assess context sufficiency. | — |
+| `plan` | Assess sufficiency and produce a revision-bound plan. | — |
+| `tasks` | Derive acceptance tasks from the accepted plan. | — |
+| `implement` | Implement component tasks or coordinate participating components. | — |
 
-The four lifecycle capabilities make no model calls; the other nine may call a model. The eight
-public Skills each expose one global or lifecycle capability. The five stages have no standalone
+Four Capabilities make no model calls; the other nine may call a model. The eight public Skills
+each expose one Capability. The five non-public Capabilities have no standalone
 launcher and are reachable only through declared host composition. Current Agents have no admitted
 Capability references of their own; the host composes the workflows.
+
+Each Capability declares public exposure, context selection (`discover`, `bound` or `none`),
+determinism, launched Agents and composed capabilities independently. A Flow organizes calls,
+branches and loops; “stage” describes a position in execution, not a type of Capability.
 
 The source inventory is [capabilities/](capabilities/__init__.py); the
 [capability registry](specs/concorde/development/capabilities.md) describes the contracts.

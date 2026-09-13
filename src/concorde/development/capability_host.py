@@ -27,8 +27,8 @@ from ..harness.check_executor import CHECK_POLICY, CheckSandboxError, execute_ch
 from ..harness.permissions import (PolicyBinding, PermissionPolicyError, compile_policy, render_codex_configuration,
     render_claude_configuration, build_launch_specification, CapabilityExecutionResult)
 from ..distribution.build import BuildError, load_role_prompt, verify_fresh
-from ..spec.contracts import (STAGE_ROLES,
-    MAIN_CAPABILITY, MAIN_ROUTED_CAPABILITIES, LIFECYCLE_CAPABILITIES, load_capability_inventory)
+from ..spec.contracts import (CAPABILITY_AGENT_MODES,
+    MAIN_CAPABILITY, DISCOVERY_CAPABILITIES, DETERMINISTIC_CAPABILITIES, load_capability_inventory)
 from ..harness.change_worktree import (STATE_PATH, WORK_PATH, bind_owner, create_worktree,
     ensure_change, graph_state, progress, read_change, record_transition, refresh_registry,
     save_change, save_target_state, snapshot_tree, target_state, work_path, workspace_context, resume_owner,
@@ -260,7 +260,7 @@ class MainInvocation:
 
     def __init__(self, capability: str, configuration: dict, task: dict, host: CapabilityHost):
         self.capability, self.configuration, self.task, self.host = capability, configuration, task, host
-        if capability not in MAIN_ROUTED_CAPABILITIES:
+        if capability not in DISCOVERY_CAPABILITIES:
             raise SpecError("capability does not support main discovery", "unknown_capability")
         self.action = task.get("action", "route") if capability == MAIN_CAPABILITY else "route"
         self.repository = SpecRepository(host.project_root, host.package_root)
@@ -1201,7 +1201,7 @@ class Invocation:
 
     def stage(self, capability: str, *, inputs: tuple[dict, ...] = (), readonly=False,
               defer_gap_resolution=False, mode: str | None = None) -> dict:
-        phase, role = STAGE_ROLES[capability]
+        phase, role = CAPABILITY_AGENT_MODES[capability]
         mode = mode or phase
         prompt = load_role_prompt(self.host.package_root, role, mode)
         readonly = readonly or mode == "investigation"
@@ -2385,10 +2385,10 @@ def _dispatch_nodes(capability, configuration, task, host):
     def prepare_target(state):
         nonlocal task, host, run
         main_completed: tuple[str, ...] = ()
-        if (capability in MAIN_ROUTED_CAPABILITIES and host.routed_target is not None
+        if (capability in DISCOVERY_CAPABILITIES and host.routed_target is not None
                 and task.get("target_id") != host.routed_target):
-            raise SpecError("child target differs from the host's main route", "incompatible_handoff")
-        if capability in MAIN_ROUTED_CAPABILITIES:
+            raise SpecError("child target differs from the host's discovery route", "incompatible_handoff")
+        if capability in DISCOVERY_CAPABILITIES:
             if host.routed_target is None and (task.get("change_id") or capability == "concorde-dev-loop"):
                 change = read_change(host.project_root)
                 if change is not None:
@@ -2433,7 +2433,7 @@ def _dispatch_nodes(capability, configuration, task, host):
         return {"route": route}
 
     def describe_policy():
-        stages = [capability] if capability in STAGE_ROLES else []
+        stages = [capability] if capability in CAPABILITY_AGENT_MODES else []
         describe_reviews = False
         if capability == "concorde-dev-loop":
             describe_reviews = task.get("run_reviews", True)
@@ -2557,8 +2557,8 @@ def capability_flow_nodes(capability, configuration, runtime_input, *, host_cont
             raise SpecError("unknown registered capability", "unknown_capability")
         if host.mode not in {"execute", "describe-policy"}:
             raise SpecError("unknown capability mode", "invalid_input")
-        if host.depth == 1 and capability not in LIFECYCLE_CAPABILITIES:
-            # The build is the only instruction source. Lifecycle capabilities run no agent
+        if host.depth == 1 and capability not in DETERMINISTIC_CAPABILITIES:
+            # The build is the only instruction source. Deterministic capabilities run no agent
             # cognition and load no Agent, so they never consume generated/; every other
             # top-level invocation is verified once here, and load_agent verifies it
             # again independently before trusting any generated/agents/*.md body.

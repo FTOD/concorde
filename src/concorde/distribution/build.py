@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from ..spec.frontmatter import FrontMatterError, parse_document
+from ..spec.contracts import SKILL_NAMES
 from ..harness.effects import EffectDeclaration
 from ..spec.typed_data import json_schema
 from .prompt_resolver import (
@@ -71,17 +72,6 @@ AGENT_ROOTS: dict[str, str] = {
 }
 # Compatibility alias for one release: new code should read AGENT_ROOTS.
 ROLE_ROOTS: dict[str, str] = AGENT_ROOTS
-
-SKILL_NAMES: tuple[str, ...] = (
-    "concorde-main",
-    "concorde-dev-loop",
-    "concorde-reflections-triage",
-    "concorde-review",
-    "concorde-init",
-    "concorde-configure",
-    "concorde-validate",
-    "concorde-deliver",
-)
 
 SKILL_SOURCES: dict[str, str] = {name: f"skills/{name}/SKILL.md" for name in SKILL_NAMES}
 

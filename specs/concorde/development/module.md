@@ -16,7 +16,7 @@ Development provides the capability invocation boundary and the deterministic ho
 
 ### req.development.global-discovery — Coordinator discovers complete Module contexts
 
-A global capability's own coordinator SHALL discover complete Module Spec contexts.
+A Capability with discover context selection SHALL use its coordinator to discover complete Module Spec contexts.
 
 ### req.development.stage-no-reselect — Stage capabilities never reselect their context
 
@@ -60,13 +60,13 @@ and every other linked worktree are not inputs; see
 A capability result SHALL distinguish admission, domain and execution outcomes instead of collapsing
 them into one generic failure.
 
-### req.development.stage-no-skill — Stage capabilities have no installed Skill
+### req.development.stage-no-skill — Non-public capabilities have no installed Skill
 
-A stage capability SHALL have no installed Skill.
+A non-public Capability SHALL have no installed Skill.
 
-### req.development.stage-in-process-only — Stage capabilities are reachable only in-process
+### req.development.stage-in-process-only — Non-public capabilities require declared composition
 
-A stage capability SHALL be reachable only in-process from a capability that declares it in its
+A non-public Capability SHALL be reachable only in-process from a capability that declares it in its
 composition.
 
 ### req.development.routing-hint-not-context — Routing hints only steer selection
@@ -129,7 +129,7 @@ Capability execution and the worktree boundary:
 
 ### scenario.development.execute-capability — Successful capability execution
 
-- GIVEN an installed `concorde-*` Skill names one registered global or lifecycle capability
+- GIVEN an installed `concorde-*` Skill names one registered public Capability
 - AND stdin carries a well-formed `concorde-capability-invocation@3` envelope in `execute` mode
 - WHEN the host admits the request
 - THEN it selects the capability's declared execution Flow and obtains every Agent invocation it needs, bound to current instructions, context and compiled authority, from Harness
@@ -149,13 +149,13 @@ See [single boundary](#req.development.single-boundary) and [distinct outcomes](
 
 ### scenario.development.execute-unregistered — Unregistered or private capability refused
 
-- GIVEN a `capability_id` that names no registered Skill, or a stage capability invoked directly instead of through its composing capability
+- GIVEN a `capability_id` that names no registered Skill, or a non-public capability invoked directly instead of through its composing capability
 - WHEN the host admits the request
 - THEN it refuses the request with `unknown_capability`
 - AND no Agent is launched and no project file changes
 
-See [stage capabilities have no installed Skill](#req.development.stage-no-skill) and
-[stage capabilities are reachable only in-process](#req.development.stage-in-process-only).
+See [non-public capabilities have no installed Skill](#req.development.stage-no-skill) and
+[non-public capabilities require declared composition](#req.development.stage-in-process-only).
 
 ### scenario.development.execute-blocked-launch — Stale build or unenforceable permission blocks launch
 
@@ -419,7 +419,7 @@ Two programs realize this Module's own code: the host adapter and the capability
     "id": "entity.development.development-capabilities",
     "title": "Development capabilities",
     "kind": "program",
-    "responsibility": "Declare the Development Module's global, lifecycle and stage capability contracts and their host composition; Distribution supplies the Skills that expose public entries.",
+    "responsibility": "Declare the Development Module's capability contracts, exposure and context selection and their host composition; Distribution supplies the Skills that expose public entries.",
     "files": [
       "capabilities/context_solve.py",
       "capabilities/deliver.py",
@@ -504,7 +504,11 @@ Two programs realize this Module's own code: the host adapter and the capability
 
 ### Relationships
 
-A capability is global, lifecycle or stage. A global capability's own coordinator discovers complete Module Spec contexts and may span several targets and stages; a lifecycle capability is deterministic host behavior with no agent cognition; a stage capability receives an already bound target and one frozen context from its composing capability and never reselects or expands it. Development capabilities is the code inventory of capability contracts and composition. Distribution supplies installed Skills to the external developer runtime, which reads their instructions and submits requests. Development host admits, dispatches, coordinates and completes those requests, and prepares, evolves and finalizes the candidate worktree that carries one change's progress, gaps and evidence.
+Every entry is a Capability with independent public exposure, context selection, determinism and
+composition properties. Discover context selection uses the coordinator to select complete Module
+contexts; bound context selection consumes an already selected Module without expanding it; none
+performs deterministic host work without Agent context selection. Public capabilities have Skills,
+while non-public capabilities require declared in-process composition. Development capabilities is the code inventory of capability contracts and composition. Distribution supplies installed Skills to the external developer runtime, which reads their instructions and submits requests. Development host admits, dispatches, coordinates and completes those requests, and prepares, evolves and finalizes the candidate worktree that carries one change's progress, gaps and evidence.
 
 A candidate owns its own component progress, gaps and evidence, and reviews refer to the exact candidate inputs they assessed. A code defect can select the bounded task/implementation repair edge; a necessary contract gap waits for a Spec revision instead. Finalization includes every Module that lists an affected shared file. Readiness, authorized delivery and primary merging are separate completion states.
 

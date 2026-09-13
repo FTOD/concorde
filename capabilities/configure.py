@@ -1,10 +1,11 @@
-"""Lifecycle: apply the initialized integration and enforcement configuration. Deterministic;
+"""Capability: apply the initialized integration and enforcement configuration. Deterministic;
 runs no agent cognition and selects no context."""
 from concorde.spec import contract_shapes as shapes
 
 from . import external_name
 
-CLASS = "lifecycle"
+PUBLIC = True
+CONTEXT_SELECTION = "none"
 DETERMINISTIC = True
 AGENTS = ()
 USES = ()

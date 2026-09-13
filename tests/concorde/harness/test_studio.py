@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 from langgraph.checkpoint.memory import InMemorySaver
 from concorde.spec.typed_data import typed
-from concorde.spec.contracts import SKILL_NAMES, STAGE_CAPABILITIES
+from concorde.spec.contracts import SKILL_NAMES, INTERNAL_CAPABILITIES
 from concorde.development.capability_service import CapabilityHost, run_capability
 from concorde.harness.studio import build_studio_graph
 from concorde.spec.verification import verifies
@@ -192,7 +192,7 @@ class StudioTests(unittest.TestCase):
         self.assertEqual([], self.double.calls)
 
     def test_internal_stages_cannot_be_published_as_direct_studio_entries(self):
-        for capability in STAGE_CAPABILITIES:
+        for capability in INTERNAL_CAPABILITIES:
             with self.subTest(capability=capability), self.assertRaisesRegex(ValueError, "public capability"):
                 build_studio_graph(capability, self.root, PACKAGE)
 
