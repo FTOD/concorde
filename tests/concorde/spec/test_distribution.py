@@ -29,7 +29,7 @@ class DistributionTests(unittest.TestCase):
     def test_self_architecture_lists_every_implementation_file_under_an_entity(self):
         repo=SpecRepository(PACKAGE);report=validate_repository(PACKAGE)
         self.assertEqual('success',report.status,[f.message for f in report.findings])
-        self.assertEqual(7,len(repo.targets));self.assertTrue(all(t.kind=='module' for t in repo.targets.values()))
+        self.assertEqual(17,len(repo.targets));self.assertTrue(all(t.kind=='module' for t in repo.targets.values()))
         self.assertEqual('module.concorde',repo.select('module.views').parent)
         self.assertIn('scripts/run-ua-graph-viewer.py',repo.implementation_paths(repo.select('module.views')))
         for target in repo.targets.values():
@@ -37,9 +37,11 @@ class DistributionTests(unittest.TestCase):
         shared=[path for path,users in repo.file_users.items() if len(users)>1]
         self.assertTrue(shared,'the self-hosted project shares implementation files between Modules')
         for path in shared:
-            self.assertEqual(repo.file_users[path],
-                             tuple(t.id for t in repo.affected_modules([path])))
-        text='\n'.join(d.body for d in repo.documents(repo.select('module.development')))
+            self.assertEqual(set(repo.listing_users(path)),
+                             {t.id for t in repo.affected_modules([path])})
+        self.assertEqual({'module.development', 'module.dev-loop', 'module.specify-loop'},
+                         {t.id for t in repo.affected_modules(['tests/concorde/development/test_specify_loop.py'])})
+        text='\n'.join(repo.document(path).body for path in repo.spec_files('module.development'))
         for op in CAPABILITY_NAMES:self.assertIn(op+'-request',text)
     def test_launcher_refuses_a_nonpublic_capability_name_and_accepts_a_public_skill(self):
         with tempfile.TemporaryDirectory() as directory:

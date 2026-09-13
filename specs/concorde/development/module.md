@@ -6,25 +6,18 @@
 }
 ```
 
-# Development
+# Development capability host
 
 ## Purpose
 
-Development provides the capability invocation boundary and the deterministic host adapter that Concorde's own tooling runs on: capability admission and dispatch, the coordinator that answers questions and evolves project topology, the standalone Spec authoring and review Flow, the development Flow that carries one intended change from an authored Spec to a ready candidate, deterministic validation, and delivery. It serves developers and their external agent runtimes submitting requests through installed `concorde-*` Skills, and every other Concorde capability that composes through this same boundary. Its promises end at a ready, delivered or primary-merged candidate; it relies on Harness to run every Agent invocation and isolate configured checks, Spec to resolve and validate project Specs, Reflections to retain gap history, and Distribution to own, build, install and verify instruction projections, including Skills.
+Development supplies the common capability invocation boundary, typed admission, dispatch and
+host-owned state mechanics used by Concorde's providers and flows. It serves external runtimes and
+declared composing capabilities. Providers own their individual semantics and sibling flows own
+their sequencing and completion policies; this host does not make dev-loop a universal capability
+precondition. Harness binds execution, Spec resolves contracts, Reflections captures explicit gaps,
+and Distribution supplies fresh instruction projections.
 
 ## Requirements
-
-### req.development.global-discovery — Coordinator discovers complete Module contexts
-
-A Capability with discover context selection SHALL use its coordinator to discover complete Module Spec contexts.
-
-### req.development.specify-loop-composition — Spec preparation has one reusable entry
-
-The development Flow SHALL compose concorde-specify-loop for its Spec authoring and review stages.
-
-### req.development.specify-loop-boundary — Spec completion is independently available
-
-Concorde-specify-loop SHALL complete Spec preparation independently of implementation readiness.
 
 ### req.development.stage-no-reselect — Bound capabilities preserve their context
 
@@ -41,11 +34,6 @@ Flow is the terminology defined by Harness in [Agent Flows and Loops](../harness
 
 A planner, task author or Spec-only reviewer SHALL NOT receive the contents of this Module's or any
 other Module's listed implementation files.
-
-### req.development.explicit-skip-sticky — Review skips cannot cancel required reviews
-
-A `run_reviews=false` retry SHALL NOT cancel a Spec or code review already required for this change
-by an earlier enabled invocation.
 
 ### req.development.single-boundary — Every invocation passes through the host adapter
 
@@ -77,43 +65,8 @@ A non-public Capability SHALL have no installed Skill.
 A non-public Capability SHALL be reachable only in-process from a capability that declares it in its
 composition.
 
-### req.development.routing-hint-not-context — Routing hints only steer selection
-
-A target or focus hint SHALL only steer selection.
-
-### req.development.routing-hint-no-grant — Routing hints never grant context
-
-A target or focus hint SHALL NOT itself grant context or replace explicit resolution.
-
-### req.development.repair-edge-only — Code-review repair is the only automatic edge
-
-`review_code -> tasks` SHALL be the development Flow's only automatic revision edge.
-
-### req.development.non-repair-stops-graph — Other outcomes stop the graph for a decision
-
-Every other non-successful outcome SHALL stop the graph for a human decision or an explicit Spec or
-code change.
-
-### req.development.shared-document-agreement — Shared changes require owner authoring and consumer agreement
-
-A referenced document change SHALL be applied only from its sole owner's proposal after compatibility
-review in every affected consumer's resolved context.
-
-### req.development.single-primary-writer — Only one agent writes to primary
-
-At most one agent SHALL own writes in the primary worktree at a time.
-
-### req.development.check-isolation — Configured checks use enforced read-only execution
-
-Development SHALL execute configured checks through Harness's OS-enforced project-read-only executor.
-
-### req.development.primary-writes-serialized — Repository lock serializes primary writes
-
-The host SHALL serialize shared lifecycle writes and final primary merges with the repository lock.
-
 ## Scenarios
 
-Scenarios below are grouped by capability. The registered companion documents work out the exact wire shapes and mechanics they reference: [interfaces](interfaces.md) (the wire contracts, error codes and capability boundary), [capabilities](capabilities.md) (the capability registry), [query-and-routing](query-and-routing.md) (the query and routing graph), [development](development.md) (the development Flow and its repair edge), [topology](topology.md) (the topology evolution graph), [review-and-gaps](review-and-gaps.md) (the review contract and gap handling) and [delivery](delivery.md) (branch publication and primary merging).
 ### scenario.development.flow-execution — Execute the inspected Flow
 
 - GIVEN an admitted capability request through a local or Studio entry
@@ -133,7 +86,6 @@ Scenarios below are grouped by capability. The registered companion documents wo
 
 
 
-Capability execution and the worktree boundary:
 
 ### scenario.development.execute-capability — Successful capability execution
 
@@ -144,16 +96,6 @@ Capability execution and the worktree boundary:
 - AND it returns a `concorde-capability-result@3` with status `succeeded` and the capability's own typed output
 
 See [single boundary](#req.development.single-boundary) and [distinct outcomes](#req.development.distinct-outcomes).
-
-### scenario.development.standalone-review — Public review without a development change
-
-- GIVEN an initialized project without a managed development change or selected Reflection record
-- AND a task with review_mode spec or code and optional target/focus routing hints
-- WHEN the user invokes the public `concorde-review` Skill or its Studio entry
-- THEN a Spec-only coordinator selects one owning Module and a separate fresh reviewer receives its complete contract and, in code mode, only its admitted implementation files and scoped changes
-- AND neither Agent receives write, network or credential authority
-- AND the host returns typed review coverage, findings, gaps and completion status, persisting the review report without creating a development change or changing project Specs or implementation
-- AND an unmanaged Git checkout uses HEAD as the scoped change baseline
 
 ### scenario.development.execute-unregistered — Unregistered or private capability refused
 
@@ -209,215 +151,14 @@ See [project root is the entry process's working directory](#req.development.pro
 - AND it does not copy uncommitted primary changes or continue the originating session in the new worktree
 - AND the error carries a complete Framework execution profile P10 prompt with real worktree identity, the submitted task and constraints, and the current preparation and check status
 
-### scenario.development.resume-unbound — Resume a handoff before target selection
-
-- GIVEN the host created a candidate and returned a session handoff before routing or binding an owner
-- WHEN a fresh host in that worktree resumes the development loop with the recorded change identity and original task
-- THEN it validates the worktree identity and preserved intent, restores omitted constraints and focus hints, and performs real coordinator discovery and single-target selection before binding the owner
-- AND a supplied target hint never substitutes for routing authority
-- AND both specify modes and both review modes use this same admission, with one successful route selection before the first development stage
-
-### scenario.development.resume-bound — Restore a bound candidate without rerouting
-
-- GIVEN a candidate has a persisted owner, task, constraints and focus
-- WHEN a fresh host resumes that change
-- THEN it restores omitted target, constraints and focus from the recorded owner and resolves the current complete Module contract without rerouting
-- AND explicit conflicting target, task, constraints or focus returns incompatible_handoff with the conflicting field before any Agent runs, preserving the candidate state
-- AND a missing change returns missing_change, an inconsistent owner returns invalid_worktree_state, and a mismatched change or worktree identity is refused before routing or execution
-- AND trusted internal routes may select separately admitted components without replacing the top-level owner, while a child target differing from its host route is rejected
-- AND existing stage admission, review requirements, file permissions and current-candidate freshness checks still apply
-
-Answering questions and routing:
-
-### scenario.development.answer-question — Direct answer from selected Module contexts
-
-- GIVEN a question with an optional target or focus routing hint
-- WHEN `concorde-main` runs with `action: ask`
-- THEN the host deterministically resolves the explicitly selected Modules' complete Spec contexts, injects each selected Module's original document bodies once into the coordinator, and the coordinator returns a direct answer
-- AND the response contains no authored project file changes
-
-See [routing hints only steer selection](#req.development.routing-hint-not-context) and
-[routing hints never grant context](#req.development.routing-hint-no-grant).
-
-### scenario.development.answer-gap — Missing promise reported as a Spec gap
-
-- GIVEN the coordinator's selected complete Module contexts do not contain a promise the question needs
-- WHEN the coordinator would otherwise have to guess or consult an unselected source
-- THEN the response reports a Spec gap naming the blocked question, the owning Module and the current context identity
-- AND the coordinator does not read implementation files or search code to supply the missing meaning
-
-### scenario.development.discovery-limit — Discovery stops at its declared limit
-
-- GIVEN repeated context expansion has not resolved the question
-- WHEN the coordinator's bounded expansion-step limit is reached
-- THEN the host returns the `context_limit` outcome instead of expanding context further
-
-Developing one change:
-
-### scenario.development.specify-loop — Author and review a Spec independently
-
-- GIVEN a developer supplies a Spec-writing or Spec-revision task and constraints
-- WHEN concorde-specify-loop routes the owning Module and runs the selected Spec stages
-- THEN only owned Spec replacements are accepted and independent reviews cover the complete contract and affected consumers
-- AND successful stages return completed with artifact references, without planning, implementation, code checks, code review requirements or readiness
-- AND specify=false skips authoring while run_reviews=false records a Spec review skip only where no requirement already exists
-- AND a required review with blocking findings, gaps, incomplete coverage or failed execution stops with inspectable progress
-- AND repeating the same intent resumes accepted authoring and current reviews, including when concorde-dev-loop calls specify-loop before continuing development
-
-### scenario.development.dev-loop-ready — A change reaches a ready candidate
-
-- GIVEN a developer supplies one intended change with its task and constraints
-- WHEN `concorde-dev-loop` calls `concorde-specify-loop` for Spec authoring (unless `specify=false`) and Spec review, then runs planning, tasks, implementation, deterministic checks and code review in order
-- THEN every stage completes successfully and the candidate reaches status `ready` with current evidence for every affected Module
-- AND the loop stops there and never itself invokes delivery
-
-### scenario.development.dev-loop-spec-gap — Development waits for a necessary Spec repair
-
-- GIVEN a stage discovers a necessary missing or ambiguous contract
-- WHEN that stage reports a Spec gap
-- THEN the loop stops with status `waiting` and preserves the candidate worktree
-- AND unrelated independent work may continue, and resuming after an explicit Spec repair does not repeat already-accepted authoring for the same task, focus and constraints
-
-### scenario.development.task-history-identities — Task authors receive reserved identities
-
-- GIVEN a target may retain task lists from earlier repair rounds
-- WHEN the Host invokes a fresh task author, including after replanning
-- THEN its typed stage inputs include every retained historical task ID and, for a scope or code-review repair, every ID in the list being replaced
-- AND those reserved IDs constrain identity only and add no software obligations or implementation contents
-- AND returned tasks must be nonempty, internally unique, initially incomplete and disjoint from the reserved IDs
-- AND a collision reports the conflicting IDs without rewriting the result, replacing tasks or discarding history
-
-### scenario.development.task-scope-repair — Recover an implementation phase boundary error
-
-- GIVEN an existing incomplete task list whose acceptance requires later Host actions
-- WHEN a normal dev-loop request binds that list's canonical digest with repair_task_scope
-- THEN a fresh task author receives the admitted plan, prior tasks and typed semantic boundary feedback
-- AND no implementation contents or raw test logs enter that author's context
-- AND accepted replacement tasks start incomplete, preserve software acceptance and use new IDs
-- AND the original list remains in history and implementation precedes validation and required code review
-- AND only current successful evidence reaches ready, while a replay resumes without reauthoring
-- AND stale digests, unresolved gaps and invalid replacements cannot bypass the existing gates
-
-### scenario.development.dev-loop-repair — Bounded automatic repair after blocking code review
-
-- GIVEN a code-owning target's code review returns blocking findings
-- WHEN the loop selects its automatic revision edge from code review back to task authoring
-- THEN task authoring receives the current completed tasks and the blocking `concorde-review-result@1` as `stage_inputs`, and the resulting repair tasks and their implementation are checked and code-reviewed again like any other change
-- AND this repair is bounded by the target's declared `max_repair_iterations` policy
-
-See [code-review repair is the only automatic edge](#req.development.repair-edge-only) and
-[other outcomes stop the graph for a decision](#req.development.non-repair-stops-graph).
-
-### scenario.development.dev-loop-repair-exhausted — Repeated feedback or an exhausted limit stops the loop
-
-- GIVEN a repair attempt reproduces the same blocking-feedback fingerprint as the previous attempt, or the declared repair limit is exhausted
-- WHEN the loop would otherwise select another automatic repair
-- THEN it stops instead of retrying: unchanged feedback records status `waiting` and an exhausted limit records status `limit_exhausted`, and both keep the wire `outcome` `conflicting`
-- AND a human directly changing the Spec or the implementation between invocations resets the recorded repair count instead of continuing a stale attempt
-
-### scenario.development.dev-loop-coordinated — A Module coordinates its own and dependency tasks
-
-- GIVEN a Module task has both local code tasks and separately bound submodule or used-Module tasks
-- WHEN implementation runs
-- THEN each component is specified, planned and implemented from its own complete Module contract and the files its own entries bind, and the coordinator waits for every writer, including its own coordination code, before checking the final candidate
-- AND a repair that changes a file listed by several Modules invalidates the already-recorded evidence of every listing Module, and finalization repeats until every participant is stable
-
-Evolving topology:
-
-### scenario.development.topology-design — Design a candidate registry
-
-- GIVEN a change to identities, composition, dependencies, document ownership and references or file listings
-- WHEN `concorde-main` runs `design-topology`
-- THEN it admits exact registry metadata and the Module kind definition, withholds implementation file contents, and returns a digest-bound candidate registry, local Spec tasks, migration constraints and acceptance conditions
-- AND no project file changes
-
-### scenario.development.topology-accept — Accept a design and author local Specs
-
-- GIVEN a developer accepts a topology design
-- WHEN `concorde-main` runs `accept-topology`
-- THEN it rechecks the complete discovery context, starts a fresh target-local Spec author for each affected Module, and validates their combined output against an in-memory registry and document overlay
-- AND the full authored documents are stored only in a before-digest-bound application artifact, and the public response exposes only its ArtifactRef
-
-### scenario.development.topology-apply — Apply a reviewed artifact
-
-- GIVEN a developer accepts the exact prepared application artifact
-- WHEN `concorde-main` runs `apply-topology`
-- THEN it atomically applies the reviewed registry and document replacements together
-- AND successful application updates the accepted structure and sources in the same transaction
-
-### scenario.development.topology-stale — Stale or conflicting input is rejected
-
-- GIVEN the registry, Protocol or a candidate's shared document bytes changed since the design was produced, or a non-owner proposes a provider document replacement or affected-consumer compatibility remains unresolved
-- WHEN `accept-topology` or `apply-topology` processes that input
-- THEN the host rejects the mutation and leaves the pre-existing project files unchanged
-- AND no target author ever writes a project file directly
-
-See [owner authoring and consumer agreement](#req.development.shared-document-agreement).
-
-Validating a candidate:
-
-### scenario.development.validate-ready — Deterministic checks record readiness
-
-- GIVEN the current candidate
-- WHEN `concorde-validate` runs
-- THEN the host runs deterministic Spec validation and every configured implementation check of every affected Module, and records readiness evidence bound to the exact candidate bytes
-- AND validation never claims semantic completeness
-
-### scenario.development.validate-blocked — A failed or stale check blocks readiness
-
-- GIVEN a configured implementation check fails, is missing, or its previously recorded evidence no longer matches the current candidate bytes
-- WHEN readiness is evaluated
-- THEN the candidate is not recorded ready and the failing or stale check is reported
-
-### scenario.development.validate-check-isolation — Checks cannot write their inputs or host logs
-
-- GIVEN a configured implementation check and the current candidate
-- WHEN validation runs the check
-- THEN project writes, including writes to lifecycle records and logs, are denied by Harness
-- AND the outside host saves private stdout/stderr and records passed, failed or timeout evidence with exit and digest identities
-- AND unavailable enforcement blocks readiness with check_sandbox_unavailable while raw diagnostics stay in the host log
-- AND check input, candidate tree and affected Module freshness checks still reject external changes
-
-Delivering a ready change:
-
-### scenario.development.deliver-branch — Publish an independent delivery branch
-
-- GIVEN a ready change selected by `change_id`, requested from its source or the primary worktree
-- WHEN `concorde-deliver` runs
-- THEN the host verifies participation, candidate evidence and actual integration, then publishes an independent `concorde/delivered/<change_id>` branch and removes the source worktree unless `keep_worktree:true`
-- AND default delivery leaves the primary branch, index and project files unchanged
-
-### scenario.development.deliver-merge-primary — Explicit primary merge
-
-- GIVEN an already delivered receipt and an explicit user-authorized `merge_primary:true` request from the primary worktree's owning session
-- WHEN the host processes that request
-- THEN it verifies current integration against the latest primary commit and merges the delivered branch, recording its own commit, tree and checks separately from staging evidence
-- BUT a generic delivery request without `merge_primary:true` never merges into the primary branch
-
-See [only one agent writes to primary](#req.development.single-primary-writer) and
-[repository lock serializes primary writes](#req.development.primary-writes-serialized).
-
-### scenario.development.deliver-session-rejected — Delivery refused from an unrelated worktree
-
-- GIVEN a session whose worktree is neither the change's selected source nor the primary worktree
-- WHEN it requests delivery or final merging for that change
-- THEN the host refuses it with `delivery_session_required` or `primary_session_required`
-- AND no branch is published or merged
-
-### scenario.development.deliver-conflict — Integration conflict blocks final merge
-
-- GIVEN the candidate's actual integration against the latest primary commit fails its configured checks or conflicts
-- WHEN final merging runs
-- THEN the host blocks the merge with `merge_conflict` or `failed_merge_checks`, preserves the delivered branch, and leaves the primary branch, index and project files unchanged
-
 ## Ontology
 
 This Module's Ontology sets out the programs behind the host adapter, the mechanics it shares with
-other Modules, and the four Modules it depends on directly, together with how they connect.
+other Modules, and the sibling providers and services it depends on directly, together with how they connect.
 
 ### Entities
 
-Two programs realize this Module's own code: the host adapter and the capability declarations that expose it. Two shared programs realize mechanics also listed by other Modules. Four used-Module entities name the direct dependencies this Module relies on. The host adapter lists the `src/concorde/development/` and `tests/concorde/development/` package directories; files shared with another Module stay exact entries here and there. Installed Skills are external instruction artifacts supplied by Distribution and read by the developer's runtime, which submits capability requests to this Module.
+Two programs realize this Module's own code: the host adapter and the capability declarations that expose it. Two shared programs realize mechanics also listed by other Modules. Used-Module entities name the direct dependencies this Module relies on. The host adapter lists the `src/concorde/development/` and `tests/concorde/development/` package directories; files shared with another Module stay exact entries here and there. Installed Skills are external instruction artifacts supplied by Distribution and read by the developer's runtime, which submits capability requests to this Module.
 
 ```concorde-entities
 [
@@ -425,7 +166,7 @@ Two programs realize this Module's own code: the host adapter and the capability
     "id": "entity.development.development-host",
     "title": "Development host",
     "kind": "program",
-    "responsibility": "Realize capability admission and dispatch, the global discovery loop, the development Flow with its bounded repair edge, topology preparation and application, review evidence and candidate readiness.",
+    "responsibility": "Realize shared admission and dispatch together with the existing provider and Flow internals; their semantic contracts are owned by the sibling Modules, and extraction into separate runtime programs remains pending.",
     "files": [
       "src/concorde/development/",
       "tests/concorde/development/",
@@ -437,7 +178,7 @@ Two programs realize this Module's own code: the host adapter and the capability
     "id": "entity.development.development-capabilities",
     "title": "Development capabilities",
     "kind": "program",
-    "responsibility": "Declare the Development Module's capability contracts, exposure and context selection and their host composition; Distribution supplies the Skills that expose public entries.",
+    "responsibility": "Declare the common executable capability inventory, exposure and context selection and their host composition; sibling Modules own behavior; Distribution supplies the Skills that expose public entries.",
     "files": [
       "capabilities/context_solve.py",
       "capabilities/deliver.py",
@@ -456,7 +197,7 @@ Two programs realize this Module's own code: the host adapter and the capability
     "id": "entity.development.worktree-lifecycle",
     "title": "Worktree lifecycle",
     "kind": "shared program",
-    "responsibility": "Realize shared worktree identity, candidate state, session handoff and delivery mechanics for its two Module consumers.",
+    "responsibility": "Realize shared worktree identity, candidate state, session handoff and delivery mechanics for its listing Module consumers.",
     "files": [
       "src/concorde/harness/change_worktree.py",
       "src/concorde/harness/session_handoff.py",
@@ -517,6 +258,76 @@ Two programs realize this Module's own code: the host adapter and the capability
     "title": "Developer runtime",
     "kind": "external actor",
     "responsibility": "The developer's Codex or Claude session that reads installed Skills and submits capability requests to the Development host."
+  },
+  {
+    "id": "entity.development.planning",
+    "title": "Planning",
+    "kind": "used module",
+    "target_id": "module.planning",
+    "responsibility": "Planning assesses whether a selected Module contract supports a task, creates a revision-bound plan and derives implementation acceptance tasks. It serves admitted composing capabilities with separate assessment, plan and task contracts; no development-loop history is an implicit source of software meaning."
+  },
+  {
+    "id": "entity.development.implementation",
+    "title": "Implementation",
+    "kind": "used module",
+    "target_id": "module.implementation",
+    "responsibility": "Implementation fulfills an admitted task list within the selected Module implementation grant and reports exact task completion. It serves composing capabilities that supply current plans and tasks, and distinguishes local code writing from separately admitted component coordination."
+  },
+  {
+    "id": "entity.development.spec-authoring",
+    "title": "Spec Authoring",
+    "kind": "used module",
+    "target_id": "module.spec-authoring",
+    "responsibility": "Spec Authoring proposes complete replacements for the selected Module's owned Spec documents from its complete contract and an explicit task. It serves specification flows and other declared callers; independent review and flow completion belong to their consumers."
+  },
+  {
+    "id": "entity.development.review",
+    "title": "Review",
+    "kind": "used module",
+    "target_id": "module.review",
+    "responsibility": "Review independently evaluates an admitted task against current Module contracts and, in code mode, its separately granted implementation. It serves standalone callers and composing flows with revision-bound coverage, findings and gaps, without repairing or delivering the reviewed work."
+  },
+  {
+    "id": "entity.development.validation",
+    "title": "Validation",
+    "kind": "used module",
+    "target_id": "module.validation",
+    "responsibility": "Validation collects deterministic structural and configured implementation-check evidence for the current candidate and evaluates the applicable readiness gates. It serves explicit validation requests and composing flows; neither a development plan nor dev-loop invocation is universally required."
+  },
+  {
+    "id": "entity.development.delivery",
+    "title": "Delivery",
+    "kind": "used module",
+    "target_id": "module.delivery",
+    "responsibility": "Delivery stages a verified candidate on an independent branch, cleans up its source worktree and separately merges into the primary branch when explicitly authorized. It serves participating outer sessions and consumes current evidence without owning the flow that produced the candidate."
+  },
+  {
+    "id": "entity.development.query-routing",
+    "title": "Query and Routing",
+    "kind": "used module",
+    "target_id": "module.query-routing",
+    "responsibility": "Query and Routing answers questions from explicitly selected complete Module contexts and selects one owning Module for a routed task. It serves the main entry and discovery consumers, preserving caller intent without reading implementation to infer behavior."
+  },
+  {
+    "id": "entity.development.topology",
+    "title": "Topology",
+    "kind": "used module",
+    "target_id": "module.topology",
+    "responsibility": "Topology designs, prepares and atomically applies changes to registered Module structure and owned definitions. It serves developers evolving ownership, references, dependencies and file bindings through the existing accepted design and application boundaries."
+  },
+  {
+    "id": "entity.development.dev-loop",
+    "title": "Development Flow",
+    "kind": "used module",
+    "target_id": "module.dev-loop",
+    "responsibility": "Development Flow composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract."
+  },
+  {
+    "id": "entity.development.specify-loop",
+    "title": "Specification Flow",
+    "kind": "used module",
+    "target_id": "module.specify-loop",
+    "responsibility": "Specification Flow composes routing, Spec Authoring and Review to prepare or review one Module contract independently of implementation. It owns Spec-stage ordering, accepted-authoring reuse and Spec-review completion, and returns before planning or readiness."
   }
 ]
 ```
@@ -529,7 +340,10 @@ contexts; bound context selection consumes an already selected Module without ex
 performs deterministic host work without Agent context selection. Public capabilities have Skills,
 while non-public capabilities require declared in-process composition. Development capabilities is the code inventory of capability contracts and composition. Distribution supplies installed Skills to the external developer runtime, which reads their instructions and submits requests. Development host admits, dispatches, coordinates and completes those requests, and prepares, evolves and finalizes the candidate worktree that carries one change's progress, gaps and evidence.
 
-A candidate owns its own component progress, gaps and evidence, and reviews refer to the exact candidate inputs they assessed. A code defect can select the bounded task/implementation repair edge; a necessary contract gap waits for a Spec revision instead. Finalization includes every Module that lists an affected shared file. Readiness, authorized delivery and primary merging are separate completion states.
+Candidate sequencing, repairs and ready/stop policy belong to
+[Development Flow](../dev-loop/development.md); independent Spec preparation belongs to
+[Specification Flow](../specify-loop/specify-loop.md). Providers are linked in the
+[capability inventory](capabilities.md) and can serve other declared callers under their contracts.
 
 ```mermaid
 flowchart TB
@@ -557,11 +371,31 @@ flowchart TB
     developmentHost -->|verifies build freshness through| distribution
     worktreeLifecycle -.->|also realizes worktree mechanics for| harness
     fileTransactions -.->|also applies accepted replacements for| spec
+    module_planning["Planning"]
+    developmentHost -->|uses| module_planning
+    module_implementation["Implementation"]
+    developmentHost -->|uses| module_implementation
+    module_spec_authoring["Spec Authoring"]
+    developmentHost -->|uses| module_spec_authoring
+    module_review["Review"]
+    developmentHost -->|uses| module_review
+    module_validation["Validation"]
+    developmentHost -->|uses| module_validation
+    module_delivery["Delivery"]
+    developmentHost -->|uses| module_delivery
+    module_query_routing["Query and Routing"]
+    developmentHost -->|uses| module_query_routing
+    module_topology["Topology"]
+    developmentHost -->|uses| module_topology
+    module_dev_loop["Development Flow"]
+    developmentHost -->|uses| module_dev_loop
+    module_specify_loop["Specification Flow"]
+    developmentHost -->|uses| module_specify_loop
 ```
 
 ## Dependencies and composition
 
-Development's sole structural parent is `module.concorde`; it has no submodules of its own. It uses four Modules directly.
+Development's sole structural parent is `module.concorde`; it has no submodules of its own. Its direct uses distinguish shared services, providers and composing flows.
 
 ```concorde-dependencies
 [
@@ -601,6 +435,86 @@ Development's sole structural parent is `module.concorde`; it has no submodules 
     "relied_upon_promises": [
       "[Use canonical Skill/Agent projections and require a successful deterministic build before integration](../distribution/build.md)",
       "[Keep installed Skill sources outside bounded Agent context](../distribution/installation.md)"
+    ]
+  },
+  {
+    "target_id": "module.planning",
+    "responsibility": "Planning assesses whether a selected Module contract supports a task, creates a revision-bound plan and derives implementation acceptance tasks. It serves admitted composing capabilities with separate assessment, plan and task contracts; no development-loop history is an implicit source of software meaning.",
+    "selection_condition": "When the request concerns Planning.",
+    "relied_upon_promises": [
+      "[Planning contract](../planning/assessment.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.implementation",
+    "responsibility": "Implementation fulfills an admitted task list within the selected Module implementation grant and reports exact task completion. It serves composing capabilities that supply current plans and tasks, and distinguishes local code writing from separately admitted component coordination.",
+    "selection_condition": "When the request concerns Implementation.",
+    "relied_upon_promises": [
+      "[Implementation contract](../implementation/implementation.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.spec-authoring",
+    "responsibility": "Spec Authoring proposes complete replacements for the selected Module's owned Spec documents from its complete contract and an explicit task. It serves specification flows and other declared callers; independent review and flow completion belong to their consumers.",
+    "selection_condition": "When the request concerns Spec Authoring.",
+    "relied_upon_promises": [
+      "[Spec Authoring contract](../spec-authoring/authoring.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.review",
+    "responsibility": "Review independently evaluates an admitted task against current Module contracts and, in code mode, its separately granted implementation. It serves standalone callers and composing flows with revision-bound coverage, findings and gaps, without repairing or delivering the reviewed work.",
+    "selection_condition": "When the request concerns Review.",
+    "relied_upon_promises": [
+      "[Review contract](../review/review.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.validation",
+    "responsibility": "Validation collects deterministic structural and configured implementation-check evidence for the current candidate and evaluates the applicable readiness gates. It serves explicit validation requests and composing flows; neither a development plan nor dev-loop invocation is universally required.",
+    "selection_condition": "When the request concerns Validation.",
+    "relied_upon_promises": [
+      "[Validation contract](../validation/validation.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.delivery",
+    "responsibility": "Delivery stages a verified candidate on an independent branch, cleans up its source worktree and separately merges into the primary branch when explicitly authorized. It serves participating outer sessions and consumes current evidence without owning the flow that produced the candidate.",
+    "selection_condition": "When the request concerns Delivery.",
+    "relied_upon_promises": [
+      "[Delivery contract](../delivery/delivery.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.query-routing",
+    "responsibility": "Query and Routing answers questions from explicitly selected complete Module contexts and selects one owning Module for a routed task. It serves the main entry and discovery consumers, preserving caller intent without reading implementation to infer behavior.",
+    "selection_condition": "When the request concerns Query and Routing.",
+    "relied_upon_promises": [
+      "[Query and Routing contract](../query-routing/query-and-routing.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.topology",
+    "responsibility": "Topology designs, prepares and atomically applies changes to registered Module structure and owned definitions. It serves developers evolving ownership, references, dependencies and file bindings through the existing accepted design and application boundaries.",
+    "selection_condition": "When the request concerns Topology.",
+    "relied_upon_promises": [
+      "[Topology contract](../topology/topology.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.dev-loop",
+    "responsibility": "Development Flow composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract.",
+    "selection_condition": "When the request concerns Development Flow.",
+    "relied_upon_promises": [
+      "[Development Flow contract](../dev-loop/development.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.specify-loop",
+    "responsibility": "Specification Flow composes routing, Spec Authoring and Review to prepare or review one Module contract independently of implementation. It owns Spec-stage ordering, accepted-authoring reuse and Spec-review completion, and returns before planning or readiness.",
+    "selection_condition": "When the request concerns Specification Flow.",
+    "relied_upon_promises": [
+      "[Specification Flow contract](../specify-loop/specify-loop.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
     ]
   }
 ]

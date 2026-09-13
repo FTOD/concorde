@@ -1,7 +1,7 @@
 ```concorde-document
 {
   "id": "document.development.topology",
-  "owner": "module.development",
+  "owner": "module.topology",
   "main_visible": true
 }
 ```

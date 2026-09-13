@@ -107,7 +107,7 @@ Concorde 的 implementation 权限可以只授权一个具体文件，而不授�
 - 恢复后必须依次经过 implementation、validation 和所需 review。
 - 已消费请求的重放恢复当前进度，不重复改写历史，也不能抢占正常的 code-review repair 边。
 
-入口与控制流见 [capability_host.py](../../src/concorde/development/capability_host.py)、[Development 恢复约定](../../specs/concorde/development/development.md) 和 [dev-loop 请求说明](../../prompts/workflow-host/dev-loop-flags.md)。这是一条显式恢复入口，不是遇到任何失败都自动重试的新循环。
+入口与控制流见 [capability_host.py](../../src/concorde/development/capability_host.py)、[Development 恢复约定](../../specs/concorde/dev-loop/development.md) 和 [dev-loop 请求说明](../../prompts/workflow-host/dev-loop-flags.md)。这是一条显式恢复入口，不是遇到任何失败都自动重试的新循环。
 
 ### 4.3 任务 ID 保留规则存在，但作者看不到保留集合
 

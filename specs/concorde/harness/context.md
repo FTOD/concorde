@@ -116,7 +116,7 @@ and a boolean `complete`; `concorde-reflection-selection` has `head: nonblank st
 `records: list[{id: str, path, digest: sha256, content: str}]`, with nonblank string fields.
 `concorde-task-scope-feedback` has `tasks_digest: sha256` and `reason: "implementation_boundary"`; only task authoring admits it with prior tasks and the plan. It carries no implementation contents or raw check logs.
 `concorde-task-identity-constraints` has `reserved_task_ids: list[nonblank str]`, unique and possibly
-empty. Only task authoring admits it and requires it alongside the plan. Development supplies all
+empty. Only task authoring admits it and requires it alongside the plan. The common host supplies all
 retained historical IDs and the current list for repair; the IDs reserve identity without adding
 software obligations or code contents. The snapshot digest covers this input like every stage artifact.
 These records are closed objects. A stage input conveys only its declared content, not authority.
@@ -125,7 +125,7 @@ review's target/focus, context/input identities, spec/code mode, status, represe
 findings, gaps, answer, revision and `semantic_completeness: "not_proven"`. Findings have ID,
 blocking/advisory severity, owning target/document, path and nullable line location, contract,
 problem and affected task. Revisions bind Spec/implementation digests and nullable base/head commits.
-This service enforces the declared type and phase; the Development host independently verifies
+This service enforces the declared type and phase; the common host enforces Development Flow policy and independently verifies
 current, target-bound code-review repair evidence and the bounded repair policy before supplying
 it. This addition preserves the existing review-driven repair edge without granting raw code reads.
 
@@ -170,7 +170,7 @@ digest in `.concorde/config.json`. Changed bindings require new contexts.
 Stage inputs must be versioned plan, implementation-task, task-identity-constraints,
 task-scope-feedback, reflection-selection or review-result
 values (the last only accompanies a bounded dev-loop code-review repair round: see
-`concorde-dev-loop` in the Development Module's host boundary). Code bytes
+`concorde-dev-loop` in the Development Flow contract). Code bytes
 are not embedded in a snapshot; implementation and the dedicated read-only code-review phase have
 code references and separate host-issued implementation grants. Spec review has no code references.
 The review host adds a separately typed, target-scoped changes/revision input; ordinary stage_inputs
@@ -256,8 +256,8 @@ until repair and a successful fresh assessment of that step. Pure queries do not
 
 ## Review-result stage-input value
 
-The canonical [review-result record](../development/review-result.md)
-is owned by Development and included by Harness's explicit document reference. Harness validates
+The canonical [review-result record](../review/review-result.md)
+is owned by Review and included by Harness's explicit document reference. Harness validates
 and freezes it only in admitted tasks/implementation repair contexts; Development checks current
 review intent and evidence before providing it. Neither party copies or widens its definition.
 

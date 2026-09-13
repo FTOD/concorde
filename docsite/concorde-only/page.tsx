@@ -16,28 +16,28 @@ const specSteps: Record<string, Step> = {
     detail: 'After routing and worktree admission, decide whether this task needs authoring. An accepted authoring result for the same intent is retained; specify=false also selects the existing Spec.',
     handoff: <>The host selects the next step using the current change record. Each Agent receives a fresh snapshot of the complete Module contract.</>,
     stops: 'Incompatible change identity, invalid saved state or failed admission stops before authoring or review.',
-    spec: '/specs/concorde/development/development#stages-and-outcomes'},
+    spec: '/specs/concorde/specify-loop/specify-loop#composition-state-and-recovery'},
   specify: {title: 'Write or revise Spec', kind: 'Agent invocation', agent: 'spec-engineer / specify',
     input: 'Intended behavior, constraints and complete owned and referenced Module Specs.',
     output: 'Proposed replacements for the Module’s owned Spec documents.',
     detail: 'Write clear purpose, requirements, scenarios, entities and relationships. Referenced documents remain read-only. The host validates replacements and affected contract contexts before applying changes.',
     handoff: <><code>concorde-agent-stage-result@1</code> carries proposed documents. The host applies accepted replacements; Review Spec sees the resulting files in a fresh context.</>,
     stops: 'Missing contract meaning, invalid document structure, foreign document writes or incompatible consumer contracts stop advancement. Accepted progress stays in the candidate.',
-    spec: '/specs/concorde/development/development#stages-and-outcomes'},
+    spec: '/specs/concorde/spec-authoring/authoring'},
   review_spec: {title: 'Review Spec', kind: 'Independent review', agent: 'spec-engineer / spec-review',
     input: 'The complete current Module contract, task and scoped Spec changes.',
     output: 'Revision-bound review coverage, findings, gaps and completion status.',
     detail: 'Review structure and meaning independently: testable promises, consistent scenarios and coherent responsibilities. Affected consumers receive separate reviews in their own contexts. Reviewers do not read implementation code.',
     handoff: <>The host stores <code>concorde-review-result@1</code> artifacts and returns their references. Current valid evidence can be reused; explicit skips remain visible.</>,
     stops: 'Necessary gaps, blocking findings, incomplete coverage and execution failures prevent Spec completion. Advisory findings remain in the result. Repair the contract and resume with fresh context.',
-    spec: '/specs/concorde/development/review-and-gaps'},
+    spec: '/specs/concorde/review/review'},
   summarize: {title: 'Return Spec result', kind: 'Host result', agent: 'No model call',
     input: 'The selected steps’ outcomes, gaps and artifact references.',
     output: 'Spec completion or an attributed blocker, with inspectable evidence.',
     detail: 'Return completed only after the selected Spec steps succeed. A blocked outcome keeps its meaning and progress. This result does not assert that implementation is ready.',
     handoff: <><code>concorde-specify-loop-response@1</code> returns to the caller. Run independently to stop here, or let Dev Loop continue with planning in the same change.</>,
     stops: 'This is the end of the Spec flow. Planning, implementation, code checks and delivery belong to subsequent workflows.',
-    spec: '/specs/concorde/development/module#scenario.development.specify-loop'},
+    spec: '/specs/concorde/specify-loop/module#scenario.development.specify-loop'},
 };
 const steps: Record<string, Step> = {
   specify_loop: {title: 'Specify Loop', kind: 'Composed capability', agent: 'spec-engineer / specify → spec-review',
@@ -46,49 +46,49 @@ const steps: Record<string, Step> = {
     detail: 'Calls concorde-specify-loop, which can also run independently. Its author proposes only owned document replacements, and the host validates them. Independent reviewers assess the complete contract and affected consumers in fresh contexts without reading implementation code.',
     handoff: <><code>concorde-specify-loop-response@1</code> returns <code>completed</code> and artifact references. Dev Loop then enters planning or resumes current downstream work in the same change. Spec completion alone does not mark implementation ready.</>,
     stops: 'Necessary gaps, blocking findings, incomplete coverage or failed execution stop advancement. specify=false skips authoring; run_reviews=false records a Spec skip only if review was not already required. Accepted authoring and current reviews can be reused. There is no automatic Spec-repair edge.',
-    spec: '/specs/concorde/development/development#stages-and-outcomes'},
+    spec: '/specs/concorde/specify-loop/specify-loop'},
   plan: {title: 'Plan', kind: 'Two Agent invocations', agent: 'spec-engineer / context-solve → plan',
     input: 'Complete Specs, intended behavior, constraints and declared implementation file names.',
     output: 'A context-sufficiency assessment, then a nonempty implementation plan.',
     detail: 'First assess whether the available contract can answer the task. Then plan the approach, affected components and software acceptance. Both calls use Specs and file listings; neither reads code to fill in missing requirements.',
     handoff: <>The Agent returns a <code>plan</code> string in <code>concorde-agent-stage-result@1.data</code>. The host saves <code>plan.md</code> and passes <code>concorde-plan-artifact@1</code> with <code>{'{plan}'}</code> to Tasks through <code>stage_inputs</code>.</>,
     stops: 'Missing contract meaning returns spec_incomplete; contradictions or unsupported intent stop planning. Missing required Spec review, stale context, an empty plan or an invalid Agent result blocks acceptance.',
-    spec: '/specs/concorde/development/development#stages-and-outcomes'},
+    spec: '/specs/concorde/planning/plan'},
   tasks: {title: 'Tasks', kind: 'Agent invocation', agent: 'spec-engineer / tasks',
     input: 'Specs, the accepted plan, reserved task IDs and any admitted repair feedback.',
     output: 'Ordered, initially incomplete tasks with an owner, description and acceptance criteria.',
     detail: 'Break the plan into concrete software work. Each task states what its implementation must achieve within the granted files and runtime. Host validation, independent review and delivery remain later gates; they are not prerequisites for marking implementation work complete.',
     handoff: <>Tasks returns a <code>tasks</code> array in <code>concorde-agent-stage-result@1.data</code>. The host supplies Implement with <code>concorde-implementation-task@1</code>: <code>{'{plan, tasks: [{id, target_id, description, acceptance, complete}]}'}</code>. Reserved IDs arrive separately as <code>concorde-task-identity-constraints@1</code>.</>,
     stops: 'No accepted plan, stale intent, missing contract meaning, empty tasks, duplicate/reserved IDs or tasks already marked complete block acceptance. Tasks may target only the current Module, its declared dependencies or direct children. Repair feedback cannot expand that scope.',
-    spec: '/specs/concorde/development/development'},
+    spec: '/specs/concorde/planning/tasks'},
   implement: {title: 'Implement', kind: 'Agent invocation', agent: 'programmer / implementation',
     input: 'Specs, the plan and task list, authorized code contents, and any admitted code-review feedback.',
     output: 'Changes to authorized implementation files and the exact accepted tasks marked complete.',
     detail: 'Write code and tests to meet each task’s acceptance criteria. Spec documents and the registry are outside this write grant. A coordinating Module sends component work through each component’s own context; all writers finish before final shared-candidate checks.',
     handoff: <>The host passes <code>concorde-implementation-task@1</code>; the Agent returns completed <code>tasks</code> in <code>concorde-agent-stage-result@1.data</code>. Code changes stay in worktree files. Validate reads those files and the saved completion/revision state, not a code payload in the next request.</>,
     stops: 'Missing or stale tasks, unauthorized writes, necessary Spec gaps, execution errors, changed task identities or unmet acceptance stop advancement. A test requiring inputs outside the grant is recorded as deferred to Host verification, not as a passing test; an actual implementation defect remains incomplete.',
-    spec: '/specs/concorde/development/development#coordinated-implementation-and-final-consumer-checks'},
+    spec: '/specs/concorde/implementation/implementation'},
   validate: {title: 'Validate', kind: 'Deterministic capability', agent: 'No model call',
     input: 'Current candidate files, Spec declarations and the project’s configured check commands.',
     output: 'Deterministic Spec validation and code-check results bound to the measured revision.',
     detail: 'Check machine-verifiable structure: document ownership, IDs, references, required format, file bindings and shared-contract consistency. Run configured checks such as tests, type checking or builds. Structural success does not prove semantic completeness; Review Spec assesses meaning, and Review Code assesses implementation behavior.',
     handoff: <><code>concorde-validate-response@1</code> has a <code>data.checks</code> array with <code>check_id</code>, <code>target_id</code>, <code>status</code>, <code>exit_code</code>, <code>source_digest</code> and <code>log_digest</code> per record. The host saves evidence; Code Review receives its own Spec/code snapshot and review input. Raw check logs are not fed into Spec-only stages.</>,
     stops: 'Invalid Spec structure, failed check commands or timeouts return failed. Changes during verification produce stale_evidence; unenforceable check permissions block execution. Shared implementation users need current evidence too. This stage has no automatic repair edge.',
-    spec: '/specs/concorde/development/interfaces'},
+    spec: '/specs/concorde/validation/validation'},
   review_code: {title: 'Review Code', kind: 'Independent review', agent: 'programmer / code-review',
     input: 'Complete Specs, authorized implementation files and scoped changes at the reviewed revision.',
     output: 'Behavior findings, review coverage, gaps and revision-bound completion status.',
     detail: 'Compare implementation and tests with the promised scenarios, interface behavior and task acceptance. Look for concrete defects and regressions, including failure paths and affected consumers. The reviewer is read-only; passing tests do not replace this review.',
     handoff: <>The reviewer returns <code>concorde-review-stage-result@1</code>; the host stores and publishes <code>concorde-review-result@1</code>. Local repair sends that exact typed record plus the prior tasks back to Tasks and Implement. Otherwise, Ready checks the saved evidence.</>,
     stops: 'Local blocking code findings without a Spec gap can trigger bounded repair. Spec gaps, incomplete reviews, execution failures or another consumer’s blocking findings stop. Repeated identical feedback waits; exhausting the repair limit stops. Advisory findings do not block readiness.',
-    spec: '/specs/concorde/development/review-and-gaps'},
+    spec: '/specs/concorde/review/review'},
   ready: {title: 'Ready', kind: 'Host checkpoint', agent: 'No model call',
     input: 'Saved task completion, required reviews, configured check results and current candidate digests.',
     output: 'A candidate recorded as ready for a separate delivery request.',
     detail: 'Verify that required evidence is complete and still matches the current task, Specs and code. Ready is an internal host checkpoint, not a separately callable capability. It does not deliver or merge the change.',
     handoff: <>The host updates <code>.concorde/worktree.json</code> and returns <code>concorde-dev-loop-response@1</code> with <code>outcome: ready</code>, check results and review artifact references. A later Deliver request identifies the change by <code>change_id</code>.</>,
     stops: 'Open contract gaps, unfinished tasks, absent or blocking required reviews, failed/missing checks or stale evidence prevent ready. Changing the candidate during completion verification also stops with stale_evidence.',
-    spec: '/specs/concorde/development/module#scenario.development.dev-loop-ready'},
+    spec: '/specs/concorde/dev-loop/module#scenario.development.dev-loop-ready'},
 };
 
 const workerDetails: Record<string, Step> = {
@@ -102,7 +102,7 @@ const workerDetails: Record<string, Step> = {
     detail: 'Check that the declared participants and contract supply the meaning needed to plan the task. This stage cannot expand its context or read implementation code to fill a gap.',
     handoff: <>A sufficient result allows planning to proceed. Missing promises return <code>spec_incomplete</code> with the question and blocked step.</>,
     stops: 'Missing contract meaning, incompatible participant routing or unsupported intent prevents planning.',
-    spec: '/specs/concorde/development/interfaces'},
+    spec: '/specs/concorde/planning/assessment'},
 };
 
 type CapabilityDetail = {title: string; detail: string; exchange: string; stops: string};
@@ -267,7 +267,7 @@ export default function AgentFlows({data}: {data: FlowData}) {
     return () => cancelAnimationFrame(frame);
   }, [selected]);
   const sourceBase = 'https://github.com/FTOD/concorde/blob/main/';
-  const spec = useBaseUrl('/specs/concorde/development/query-and-routing');
+  const spec = useBaseUrl('/specs/concorde/query-routing/query-and-routing');
   return <Layout title="Agent Flows" description="Concorde's actual Agent and LangGraph execution, branches and bounded feedback loops.">
     <main className={styles.page}>
       <aside className={styles.sidebar} aria-label="Flow navigation">
@@ -358,7 +358,7 @@ export default function AgentFlows({data}: {data: FlowData}) {
             <h3>Stops remain visible</h3>
             <p>Spec gaps wait for clarification. Failed checks, execution failures and incompatible feedback stop. Cancellation and limits propagate as errors; they are not extra graph nodes.</p>
             <p>Deferred component checks may stop after implementation, or after Spec review on a validation-only resume.</p>
-            <Link to={'/specs/concorde/development/development#ai-and-human-feedback'}>Read the feedback and recovery contract →</Link>
+            <Link to={'/specs/concorde/dev-loop/development#ai-and-human-feedback'}>Read the feedback and recovery contract →</Link>
           </aside>
         </div>
         <div id="handoffs" className={styles.handoffs}>
@@ -432,7 +432,7 @@ export default function AgentFlows({data}: {data: FlowData}) {
           <code>concorde-main-stage-result@1</code> with routes, gaps or an expansion request. The host admits the selected route’s
           <code>target_id</code>, <code>focus_id</code>, <code>task</code> and <code>constraints</code>, then creates a separate
           <code>concorde-review-stage-context@2</code> for the reviewer. Invalid or contradictory route fields stop admission.</p>
-        <a href={spec}>Routing contract →</a>{' · '}<Link to={'/specs/concorde/development/module#scenario.development.standalone-review'}>Standalone review scenario →</Link>
+        <a href={spec}>Routing contract →</a>{' · '}<Link to={'/specs/concorde/review/module#scenario.development.standalone-review'}>Standalone review scenario →</Link>
       </section>
 
       {entries.filter(entry => entry.kind === 'capability' && data.capability_info[entry.key].public && !['development', 'specify'].includes(entry.id)).map(entry =>

@@ -1,7 +1,7 @@
 ```concorde-document
 {
   "id": "document.development.review-result",
-  "owner": "module.development",
+  "owner": "module.review",
   "main_visible": true
 }
 ```
@@ -38,7 +38,7 @@ unsafe paths and shape mismatches raise `TypedDataError` during typed validation
 and head fields identify revisions; the wire shape itself does not prove their freshness.
 
 The context service validates allowed typed stage-input values and freezes their exact bytes into
-the snapshot. Repair admission additionally belongs to the Development host: it binds the current
+the snapshot. Repair admission additionally belongs to Development Flow policy enforced by the common host: it binds the current
 code review and revision, admits that declared result only to `tasks`/`implementation` repair
 contexts, and removes write authority during review. A structurally valid review result alone
 neither authorizes a repair nor proves review completion, currentness or semantic completeness.
@@ -52,7 +52,7 @@ capture never transfers ownership. The existing version-1 payload shape is retai
 and freshness must use Protocol 5 ownership/reference semantics under a version-2 context wrapper;
 old review evidence cannot be reused across the Protocol binding change.
 
-This record is an output of Development review and an input to Harness repair admission. It has
+This record is an output of Review and an input to Harness repair admission. It has
 no independent mutation effect. Invalid shapes fail typed admission; stale identity or an
 inadmissible repair stops the affected transition without retrying under wider permissions.
 An unchanged valid result is idempotent metadata, not a command to replay a repair. The retained wire shape now uses owner-aware admission and complete context freshness checks.

@@ -1,26 +1,17 @@
 ```concorde-document
 {
   "id": "document.development.delivery",
-  "owner": "module.development",
+  "owner": "module.delivery",
   "main_visible": true
 }
 ```
 # Delivery capability
 
 
-One linked worktree contains the entire in-progress revision for one top-level change. Its
-`.concorde/worktree.json` records ownership, phase/status, target plans and task progress, per-component
-Spec reconciliation and implementation outcomes, gaps and the exact validated tree. Already authored
-component Specs may remain as draft bytes if another component blocks. Recovery resumes this explicit
-state, and global consumer/provider agreement is checked only after the affected authors finish.
-
-The primary worktree retains `.concorde/worktrees.json` with basic information about all live linked
-worktrees, built from Git's worktree list and each linked worktree's own `.concorde/worktree.json`;
-no other file of a linked worktree is read. Primary main cognition sees that inventory; secondary
-main cognition also sees its own candidate identity and status. These are declared lifecycle inputs,
-not hidden reads of another worktree's Specs or code: a candidate's draft Spec edits stay invisible
-to an invocation in the primary worktree until they are delivered. Secondary AGENTS.md/CLAUDE.md
-blocks remind newly opened agents of this scope.
+Delivery consumes host-recorded candidate identity, progress and current validation/review evidence.
+The [common worktree metadata](../development/interfaces.md#worktree-awareness) supplies those
+records; the producer flow owns its ordering and progress policy. A candidate's draft Spec bytes
+are not visible in the primary worktree before delivery.
 
 Standard and fast loops end at ready. Request concorde-deliver with the selected change_id from
 either its source worktree or the primary worktree. A third-worktree or nested session cannot
@@ -66,3 +57,14 @@ Spec documents. Reference-only changes and provider inventory changes invalidate
 identities even when the implementation reverse index is unchanged. Each consumer retains its
 own context and code grant; no delivery check transfers provider ownership or authority. The
 evidence collector binds complete resolutions and separately retained consumer review artifacts.
+
+## Integration verification
+
+Delivery validates its actual integration result in a temporary detached worktree. When that tree
+contains `concorde.json`, it is a Concorde package checkout: the host calls `write_build` on that
+checkout's own merged sources before Spec/package validation and configured checks. Untracked
+build outputs do not alter the deliverable tree. Build or validation failure preserves both
+participants and prevents the primary update; no stale-output gate is disabled or bypassed.
+
+
+The producer flow need not be dev-loop. A directly authored verified candidate is admitted under the same completion, current review, pending-entry confirmation and integration gates. Missing, stale or incomplete evidence rejects delivery; no plan is invented to make evidence appear valid.

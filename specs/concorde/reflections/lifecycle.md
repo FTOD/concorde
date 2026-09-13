@@ -97,3 +97,5 @@ Reflection record selection, status, investigation coordination, approval and di
 `module.reflections`; this Module has no separately registered child Module. When an approved
 resolution becomes ordinary product work, its typed route selects the responsible target named by
 the Reflection.
+
+Approved implementation consumes [Development Flow](../dev-loop/development.md), a sibling provider; it supplies only approved intended behavior, requires current approval and retains ready-only completion without automatic delivery.

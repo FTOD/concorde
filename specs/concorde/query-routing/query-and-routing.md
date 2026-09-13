@@ -1,7 +1,7 @@
 ```concorde-document
 {
   "id": "document.development.query-and-routing",
-  "owner": "module.development",
+  "owner": "module.query-routing",
   "main_visible": true
 }
 ```

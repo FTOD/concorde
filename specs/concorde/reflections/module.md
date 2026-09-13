@@ -129,7 +129,7 @@ fixture directory; the shared file-transaction entry stays exact.
     "title": "Development",
     "kind": "used module",
     "target_id": "module.development",
-    "responsibility": "Runs investigation and approved implementation as separately bound invocations and development loops, and reports their own completion, gaps and evidence without delivering."
+    "responsibility": "Supply common admission, investigation dispatch and explicit gap-history linkage."
   },
   {
     "id": "entity.reflections.spec",
@@ -179,6 +179,13 @@ fixture directory; the shared file-transaction entry stays exact.
     "title": "Human disposition",
     "kind": "concept",
     "responsibility": "The explicit developer decision that resolves or dismisses a record with a resolution_note; implementation completion or a non-reproduced finding alone never supplies it."
+  },
+  {
+    "id": "entity.reflections.dev-loop",
+    "title": "Development Flow",
+    "kind": "used module",
+    "target_id": "module.dev-loop",
+    "responsibility": "Development Flow composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract."
   }
 ]
 ```
@@ -214,24 +221,26 @@ flowchart TB
     triageEngine -->|binds| evidence
     evidence -->|supports| plan
     plan -->|approved intent becomes| task
-    task -->|runs through| development
+    task -->|is admitted through| development
     disposition -->|resolves or dismisses| record
     triageEngine -->|stages accepted changes through| fileTransactions
+    module_dev_loop["Development Flow"]
+    task -->|uses| module_dev_loop
 ```
 
 ## Dependencies and composition
 
-Development and this Module use each other: Development records gaps here, and approved work here
-runs through Development.
+Development supplies common admission and gap history; Development Flow executes approved intended behavior as a fresh task. Investigation remains this Module's separately bound read-only invocation.
 
 ```concorde-dependencies
 [
   {
     "target_id": "module.development",
-    "responsibility": "Run investigation and approved implementation as separately bound invocations and development loops.",
-    "selection_condition": "When turning approved intended behavior into a development or investigation invocation.",
+    "responsibility": "Supply common admission, investigation dispatch and gap-history linkage.",
+    "selection_condition": "When admitting investigation or selecting recorded gaps.",
     "relied_upon_promises": [
-      "[Request fresh owner-bound investigation or development and retain its outcome without delivering](../development/development.md)"
+      "[Preserve invocation scope and typed results](../development/interfaces.md#capability-execution-boundary)",
+      "[Capture only explicit attributed gaps](../development/review-and-gaps.md)"
     ]
   },
   {
@@ -240,6 +249,14 @@ runs through Development.
     "selection_condition": "When admitting a record's owner or a selected local scenario identity.",
     "relied_upon_promises": [
       "[Resolve the record to its unique scenario owner and reject foreign selection](../spec/registry.md#stable-id-spec-context-queries)"
+    ]
+  },
+  {
+    "target_id": "module.dev-loop",
+    "responsibility": "Development Flow composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract.",
+    "selection_condition": "Only after reproduction, no outstanding human intervention and current configured approval for the selected resolution.",
+    "relied_upon_promises": [
+      "[Development Flow contract](../dev-loop/development.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
     ]
   }
 ]

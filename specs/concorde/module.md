@@ -21,7 +21,7 @@ The reflection system retains feedback and persistent gaps attributed to Modules
 supports investigation within their declared boundaries, and routes approved resolutions into
 fresh development tasks while preserving explicit developer control of report disposition.
 
-It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 5.0.0; its complete context is derived from the owned documents and references registered for `module.concorde` in `.concorde/specs.json`. This reading entry is its only owned document. This root Module owns no implementation files of its own; its promises are realized entirely by its six child Modules.
+It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 5.0.0; its complete context is derived from the owned documents and references registered for `module.concorde` in `.concorde/specs.json`. It owns this reading entry and the definition migration ledger. This root Module owns no implementation files of its own; its promises are realized entirely by its sixteen child Modules.
 
 ## Requirements
 
@@ -90,7 +90,7 @@ These scenarios state what a developer request accomplishes at the Framework's s
 ### scenario.concorde.inspect-answer — Answering a Spec-grounded question
 
 - GIVEN a developer asks a Spec-grounded question or requests a Spec or existing code-graph view
-- WHEN the request is routed to Development or Views
+- WHEN the request is routed to Query and Routing or Views
 - THEN the response is grounded in registered Spec documents and declared relationships, or in an existing raw code graph
 - AND answering the question does not mutate any project contract
 
@@ -150,7 +150,7 @@ agent Spec context; it does not acquire authority as a registered Module contrac
 ## Ontology
 
 This root Module's Ontology holds the Developer who supplies intent, the external Spec Protocol
-that Spec pins, and the six child Modules that realize every Requirement and Scenario above; the
+that Spec pins, and the sixteen child Modules that realize every Requirement and Scenario above; the
 Relationships subsection below traces how a request moves between them.
 
 ### Entities
@@ -188,7 +188,7 @@ Relationships subsection below traces how a request moves between them.
     "title": "Development",
     "kind": "submodule",
     "target_id": "module.development",
-    "responsibility": "Provides the capability invocation boundary and the workflows that answer questions, develop one change to a ready candidate, evolve topology, record candidate evidence and deliver an authorized change."
+    "responsibility": "Supply common capability admission, dispatch, typed outcomes and host-owned state mechanics."
   },
   {
     "id": "entity.concorde.reflections",
@@ -210,20 +210,90 @@ Relationships subsection below traces how a request moves between them.
     "kind": "submodule",
     "target_id": "module.views",
     "responsibility": "Publishes registered Module Specs as a navigable documentation site, and opens an existing code graph with the verified installed viewer."
+  },
+  {
+    "id": "entity.concorde.planning",
+    "title": "Planning",
+    "kind": "submodule",
+    "target_id": "module.planning",
+    "responsibility": "Planning assesses whether a selected Module contract supports a task, creates a revision-bound plan and derives implementation acceptance tasks. It serves admitted composing capabilities with separate assessment, plan and task contracts; no development-loop history is an implicit source of software meaning."
+  },
+  {
+    "id": "entity.concorde.implementation",
+    "title": "Implementation",
+    "kind": "submodule",
+    "target_id": "module.implementation",
+    "responsibility": "Implementation fulfills an admitted task list within the selected Module implementation grant and reports exact task completion. It serves composing capabilities that supply current plans and tasks, and distinguishes local code writing from separately admitted component coordination."
+  },
+  {
+    "id": "entity.concorde.spec-authoring",
+    "title": "Spec Authoring",
+    "kind": "submodule",
+    "target_id": "module.spec-authoring",
+    "responsibility": "Spec Authoring proposes complete replacements for the selected Module's owned Spec documents from its complete contract and an explicit task. It serves specification flows and other declared callers; independent review and flow completion belong to their consumers."
+  },
+  {
+    "id": "entity.concorde.review",
+    "title": "Review",
+    "kind": "submodule",
+    "target_id": "module.review",
+    "responsibility": "Review independently evaluates an admitted task against current Module contracts and, in code mode, its separately granted implementation. It serves standalone callers and composing flows with revision-bound coverage, findings and gaps, without repairing or delivering the reviewed work."
+  },
+  {
+    "id": "entity.concorde.validation",
+    "title": "Validation",
+    "kind": "submodule",
+    "target_id": "module.validation",
+    "responsibility": "Validation collects deterministic structural and configured implementation-check evidence for the current candidate and evaluates the applicable readiness gates. It serves explicit validation requests and composing flows; neither a development plan nor dev-loop invocation is universally required."
+  },
+  {
+    "id": "entity.concorde.delivery",
+    "title": "Delivery",
+    "kind": "submodule",
+    "target_id": "module.delivery",
+    "responsibility": "Delivery stages a verified candidate on an independent branch, cleans up its source worktree and separately merges into the primary branch when explicitly authorized. It serves participating outer sessions and consumes current evidence without owning the flow that produced the candidate."
+  },
+  {
+    "id": "entity.concorde.query-routing",
+    "title": "Query and Routing",
+    "kind": "submodule",
+    "target_id": "module.query-routing",
+    "responsibility": "Query and Routing answers questions from explicitly selected complete Module contexts and selects one owning Module for a routed task. It serves the main entry and discovery consumers, preserving caller intent without reading implementation to infer behavior."
+  },
+  {
+    "id": "entity.concorde.topology",
+    "title": "Topology",
+    "kind": "submodule",
+    "target_id": "module.topology",
+    "responsibility": "Topology designs, prepares and atomically applies changes to registered Module structure and owned definitions. It serves developers evolving ownership, references, dependencies and file bindings through the existing accepted design and application boundaries."
+  },
+  {
+    "id": "entity.concorde.dev-loop",
+    "title": "Development Flow",
+    "kind": "submodule",
+    "target_id": "module.dev-loop",
+    "responsibility": "Development Flow composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract."
+  },
+  {
+    "id": "entity.concorde.specify-loop",
+    "title": "Specification Flow",
+    "kind": "submodule",
+    "target_id": "module.specify-loop",
+    "responsibility": "Specification Flow composes routing, Spec Authoring and Review to prepare or review one Module contract independently of implementation. It owns Spec-stage ordering, accepted-authoring reuse and Spec-review completion, and returns before planning or readiness."
   }
 ]
 ```
 
 ### Relationships
 
-Six Modules have this Module as their sole structural parent, and the arrows below are their registered `uses` relationships. **Spec** owns the project's Spec model: the pinned Protocol binding, the registry, structural validation and initialization. **Harness** owns how an Agent is configured and run: the four context kinds it freezes, Agent and Harness definitions, permissions, native execution and the LangGraph control flow. **Development** owns the business workflows: questions, the development loop, topology evolution, candidate evidence and delivery. **Reflections** retains attributed feedback and gaps and hands approved work back to Development, so the two Modules use each other. **Distribution** builds authored projections, installs them and provisions the managed runtime. **Views** publishes registered Specs and opens an existing code graph.
+Sixteen Modules have this Module as their sole structural parent. The diagram shows entry selection and principal responsibility dependencies; each consumer's local contract states all of its registered uses. **Spec** owns the project's Spec model: the pinned Protocol binding, the registry, structural validation and initialization. **Harness** owns how an Agent is configured and run: the four context kinds it freezes, Agent and Harness definitions, permissions, native execution and the LangGraph control flow. **Development** owns common admission and dispatch. Planning, Implementation, Spec Authoring, Review, Validation, Delivery, Query and Routing, and Topology own cohesive provider contracts. Development Flow and Specification Flow compose them as siblings. **Reflections** retains attributed feedback and gaps, uses Development for admission and hands approved work to Development Flow. **Distribution** builds authored projections, installs them and provisions the managed runtime. **Views** publishes registered Specs and opens an existing code graph.
 
 A developer request carries intent and constraints. Project Specs supply promised behavior; a candidate worktree holds proposed changes and revision-bound evidence. A ready candidate ends development; only a separately authorized delivery updates the destination.
 
 ```mermaid
 flowchart TB
     accTitle: Concorde Framework Modules and their dependencies
-    accDescr: The Framework contains six Modules. Development composes Harness, Spec, Reflections and Distribution to turn one task into a ready candidate. Harness freezes context and permissions from Spec and runs Agents with assets built by Distribution. Reflections records feedback and hands approved work back to Development. Views publishes Specs and opens code graphs. The independent Spec Protocol constrains Spec meaning from outside the composition.
+    accDescr: The Framework has sixteen sibling responsibilities. The common Development host admits requests, Specification Flow composes authoring and review, and Development Flow consumes specification preparation, planning, implementation, validation and review. Delivery is separately selected. Harness, Spec and Distribution supply shared execution services. Arrows show responsibility dependencies, not additional public capability entries.
     developer["Developer"]
     protocol["Spec Protocol"]
     spec["Spec"]
@@ -247,6 +317,35 @@ flowchart TB
     distribution -->|uses| spec
     views -->|uses| spec
     views -->|uses| distribution
+    module_planning["Planning"]
+    module_implementation["Implementation"]
+    module_spec_authoring["Spec Authoring"]
+    module_review["Review"]
+    developer -->|selects| module_review
+    module_validation["Validation"]
+    developer -->|selects| module_validation
+    module_delivery["Delivery"]
+    developer -->|selects| module_delivery
+    module_query_routing["Query and Routing"]
+    developer -->|selects| module_query_routing
+    module_topology["Topology"]
+    developer -->|selects| module_topology
+    module_dev_loop["Development Flow"]
+    developer -->|selects| module_dev_loop
+    module_specify_loop["Specification Flow"]
+    developer -->|selects| module_specify_loop
+    module_specify_loop -->|uses| module_spec_authoring
+    module_specify_loop -->|uses| module_review
+    module_specify_loop -->|uses| module_query_routing
+    module_dev_loop -->|uses| module_specify_loop
+    module_dev_loop -->|uses| module_planning
+    module_dev_loop -->|uses| module_implementation
+    module_dev_loop -->|uses| module_validation
+    module_dev_loop -->|uses| module_review
+    module_dev_loop -->|uses| module_query_routing
+    module_topology -->|uses| module_query_routing
+    reflections -->|uses approved intent through| module_dev_loop
+    views -->|inspects execution through| harness
 ```
 
 #### Project diagram convention
@@ -255,7 +354,7 @@ Every Concorde Module MUST describe its principal entities and directed relation
 
 ## Local collaboration agreements
 
-These entries describe the six children registered for this Module from the Framework's own perspective. Each child's complete contract is its own registered collection; these promises are only what the composition relies on.
+These entries describe the sixteen children registered for this Module from the Framework's own perspective. Each child's complete contract is its own registered collection; these promises are only what the composition relies on.
 
 ```concorde-dependencies
 [
@@ -282,11 +381,10 @@ These entries describe the six children registered for this Module from the Fram
   },
   {
     "target_id": "module.development",
-    "responsibility": "Provide the capability invocation boundary and the query, development, topology, validation and delivery workflows.",
-    "selection_condition": "When a developer asks a question, develops a change, evolves topology, checks or delivers a candidate.",
+    "responsibility": "Supply common capability admission, dispatch and host-owned state mechanics.",
+    "selection_condition": "Whenever a capability enters or resumes through the common boundary.",
     "relied_upon_promises": [
-      "[Retain distinct completion and gap outcomes and stop development at ready](development/development.md)",
-      "[Require a separate authorized delivery request](development/delivery.md)"
+      "[Admit typed requests, preserve current worktree binding and distinct outcomes](development/interfaces.md#capability-execution-boundary)"
     ]
   },
   {
@@ -316,6 +414,86 @@ These entries describe the six children registered for this Module from the Fram
       "[Publish one canonical definition with owner and inclusion provenance](views/publication.md#scenario.views.publish-reference-link)",
       "[Keep project contracts unchanged during viewing](views/viewer.md)"
     ]
+  },
+  {
+    "target_id": "module.planning",
+    "responsibility": "Planning assesses whether a selected Module contract supports a task, creates a revision-bound plan and derives implementation acceptance tasks. It serves admitted composing capabilities with separate assessment, plan and task contracts; no development-loop history is an implicit source of software meaning.",
+    "selection_condition": "When the request concerns Planning.",
+    "relied_upon_promises": [
+      "[Planning contract](planning/assessment.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.implementation",
+    "responsibility": "Implementation fulfills an admitted task list within the selected Module implementation grant and reports exact task completion. It serves composing capabilities that supply current plans and tasks, and distinguishes local code writing from separately admitted component coordination.",
+    "selection_condition": "When the request concerns Implementation.",
+    "relied_upon_promises": [
+      "[Implementation contract](implementation/implementation.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.spec-authoring",
+    "responsibility": "Spec Authoring proposes complete replacements for the selected Module's owned Spec documents from its complete contract and an explicit task. It serves specification flows and other declared callers; independent review and flow completion belong to their consumers.",
+    "selection_condition": "When the request concerns Spec Authoring.",
+    "relied_upon_promises": [
+      "[Spec Authoring contract](spec-authoring/authoring.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.review",
+    "responsibility": "Review independently evaluates an admitted task against current Module contracts and, in code mode, its separately granted implementation. It serves standalone callers and composing flows with revision-bound coverage, findings and gaps, without repairing or delivering the reviewed work.",
+    "selection_condition": "When the request concerns Review.",
+    "relied_upon_promises": [
+      "[Review contract](review/review.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.validation",
+    "responsibility": "Validation collects deterministic structural and configured implementation-check evidence for the current candidate and evaluates the applicable readiness gates. It serves explicit validation requests and composing flows; neither a development plan nor dev-loop invocation is universally required.",
+    "selection_condition": "When the request concerns Validation.",
+    "relied_upon_promises": [
+      "[Validation contract](validation/validation.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.delivery",
+    "responsibility": "Delivery stages a verified candidate on an independent branch, cleans up its source worktree and separately merges into the primary branch when explicitly authorized. It serves participating outer sessions and consumes current evidence without owning the flow that produced the candidate.",
+    "selection_condition": "When the request concerns Delivery.",
+    "relied_upon_promises": [
+      "[Delivery contract](delivery/delivery.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.query-routing",
+    "responsibility": "Query and Routing answers questions from explicitly selected complete Module contexts and selects one owning Module for a routed task. It serves the main entry and discovery consumers, preserving caller intent without reading implementation to infer behavior.",
+    "selection_condition": "When the request concerns Query and Routing.",
+    "relied_upon_promises": [
+      "[Query and Routing contract](query-routing/query-and-routing.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.topology",
+    "responsibility": "Topology designs, prepares and atomically applies changes to registered Module structure and owned definitions. It serves developers evolving ownership, references, dependencies and file bindings through the existing accepted design and application boundaries.",
+    "selection_condition": "When the request concerns Topology.",
+    "relied_upon_promises": [
+      "[Topology contract](topology/topology.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.dev-loop",
+    "responsibility": "Development Flow composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract.",
+    "selection_condition": "When the request concerns Development Flow.",
+    "relied_upon_promises": [
+      "[Development Flow contract](dev-loop/development.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
+  },
+  {
+    "target_id": "module.specify-loop",
+    "responsibility": "Specification Flow composes routing, Spec Authoring and Review to prepare or review one Module contract independently of implementation. It owns Spec-stage ordering, accepted-authoring reuse and Spec-review completion, and returns before planning or readiness.",
+    "selection_condition": "When the request concerns Specification Flow.",
+    "relied_upon_promises": [
+      "[Specification Flow contract](specify-loop/specify-loop.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
+    ]
   }
 ]
 ```
@@ -325,6 +503,8 @@ These entries describe the six children registered for this Module from the Fram
 | Intent | Entry and completion |
 | --- | --- |
 | Ask about a Spec or route a task | `concorde-main` takes intent and optional target/focus hints; an answer or attributed limitation completes a query without mutation. |
+| Prepare or review a Spec | `concorde-specify-loop` completes independent Spec preparation; Planning and Implementation are separate downstream choices. |
+| Review a task | `concorde-review` returns independent Spec/code coverage and findings without creating a development change. |
 | Develop a change | `concorde-dev-loop` takes task/constraints and optional authoring/review flags; completion is a ready candidate, with explicit skips where authorized. |
 | Initialize a project | `concorde-init` proposes then applies initial configuration and an honest Module stub; an existing project cannot be overwritten. |
 | Change integration settings | `concorde-configure` applies an explicit supported integration/enforcement configuration to an initialized project. |
@@ -342,4 +522,6 @@ None beyond what each child Module records in its own Unresolved information: th
 
 ## Ownership, context and implementation status
 
-This root owns only its reading entry but explicitly references all six child Modules, so its resolved context includes their owned documents once. Child references do not expand again. Protocol 5/Profile 12/schema 4 is the authored target; runtime support remains incomplete as recorded in each owning Module. This maintenance produces no lifecycle-ready or delivery evidence.
+This root owns its reading entry and migration ledger and explicitly references all sixteen child Modules, so its resolved context includes their owned documents once. Child references do not expand again. Protocol 5/Profile 12/schema 4 is the authored target; runtime support remains incomplete as recorded in each owning Module. This maintenance produces no lifecycle-ready or delivery evidence.
+
+See the [ownership migration ledger](ownership-migration.md) for preserved IDs, transferred definitions and adapter limitations.

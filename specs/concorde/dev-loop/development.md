@@ -1,7 +1,7 @@
 ```concorde-document
 {
   "id": "document.development.development",
-  "owner": "module.development",
+  "owner": "module.dev-loop",
   "main_visible": true
 }
 ```
@@ -13,29 +13,13 @@ with a completed Spec result, retaining blockers and review evidence in the cand
 `concorde-dev-loop` calls that capability, then coordinates context assessment, planning, tasks,
 implementation and checks. The same task and change can continue from specify-loop into dev-loop
 without repeating accepted authoring or current reviews. `specify=false` skips authoring; `run_reviews=false` records review
-skips where no earlier requirement exists. These are configurations of one development lifecycle.
+skips where no earlier requirement exists. The specification flow can complete independently; dev-loop adds its own development lifecycle.
 Its successful output is a ready candidate, not an automatic merge.
 
-Task acceptance describes software behavior and implementation evidence within the programmer's
-granted files and runtime. Host production/scaffold/export validation, independent reviews,
-readiness, commit and delivery remain later responsibilities. Tasks support those checks through
-implementation and tests; they never require the later steps to have finished first. Full software
-acceptance stays in the plan and tasks, and all configured validation and required reviews still run.
+[Planning task acceptance](../planning/tasks.md) and
+[Implementation completion](../implementation/implementation.md) define the provider boundaries.
 
-Every fresh task author receives `concorde-task-identity-constraints@1` with a sorted, unique
-`reserved_task_ids` list: all IDs from that target's retained task history, plus the current list
-when scope or code-review repair replaces it. This input is required even when empty and survives
-replanning through the retained history. It reserves identities without adding historical software
-obligations. The Host rejects a collision with the specific IDs before accepting the new list;
-it never rewrites author output or clears history to admit it.
-
-A listed test does not grant its transitive imports, fixtures or repository configuration to the
-programmer. Tests requiring inputs outside that invocation's grant are repository-level Host
-verification. The programmer records the attempted command and concrete missing inputs, continues
-independent work, and distinguishes this deferral from a passing test and from an implementation
-defect. For acceptance qualified by the granted runtime, deferred repository-level execution does
-not prevent completion of otherwise fulfilled implementation and test obligations. An actual
-defect or missing implementation obligation remains incomplete; Host checks still gate readiness.
+## Explicit task-scope recovery
 
 An explicit `repair_task_scope:{tasks_digest}` request repairs this phase error on an existing
 incomplete task list. The digest is SHA-256 of canonical JSON bytes (sorted keys, compact
@@ -79,7 +63,7 @@ stateDiagram-v2
   [*] --> Specified
   Specified --> SpecReviewed: independent Spec review
   SpecReviewed --> Gap: necessary contract missing
-  Gap --> Specified: explicitly author missing contract
+  Gap --> [*]: stop for explicit Spec repair and a fresh invocation
   SpecReviewed --> Planned: review current and context sufficient
   Planned --> Tasks: plan accepted
   Tasks --> Implemented: acceptance fulfilled
@@ -90,7 +74,8 @@ stateDiagram-v2
   CodeReviewed --> Tasks: code defect needs repair
   Ready --> Delivered: separate delivery verifies and stages a branch
   Delivered --> PrimaryMerged: explicit primary-session merge request
-  Implemented --> Tasks: failure needs implementation work
+  Implemented --> Failed: checks or execution fail
+  Failed --> [*]: stop and preserve candidate
   Delivered --> [*]
   PrimaryMerged --> [*]
 ```
@@ -163,3 +148,72 @@ Once all writers finish, the host performs bounded finalization through each com
 validation and code-review repair loop. A repair that changes shared files invalidates earlier
 consumer evidence; finalization repeats for all participants until their implementation revisions
 are stable. Incompatible contracts or exhausted repair attempts leave the candidate incomplete.
+
+## Candidate lifecycle and review policy
+
+`concorde-dev-loop` calls `concorde-specify-loop` for specify (default `specify=true`; `specify=false` skips Spec authoring
+when the target's current Spec already suffices) and Spec review, then runs plan, tasks, implement, deterministic
+validation and code review, then verifies readiness. It uses the same public contracts as standalone
+capabilities. `run_reviews` defaults to `true`; `run_reviews=false` records an explicit skip for each
+review mode instead of running it, and cannot cancel a review already required for this change. Every
+invocation ends at ready and never invokes deliver.
+It stops on the first non-successful outcome and preserves the change worktree, except that a
+code-owning target's blocking code review first attempts a declared, bounded repair. The only
+automatic revision edge is `review_code -> tasks`: task authoring receives the current completed
+tasks and the blocking `concorde-review-result` as `stage_inputs`, and the resulting repair tasks
+and their implementation are checked and code-reviewed again like any other change. This repair is
+bounded by a declared `max_repair_iterations` policy recorded per target under
+`change["graph"][target_id]["policy"]` in `.concorde/worktree.json`; the same record keeps the
+current `repair_iteration`, the last blocking-feedback fingerprint and an attributed history of
+selected transitions (development.md's "AI and human feedback", G4). Repeated unchanged blocking
+feedback is guarded by code: new records carry the formal `source` value `code-driven` or
+`model-driven`, while retaining their descriptive legacy `trigger` label. A repair selected from
+review findings is model-driven; unchanged-feedback and limit stops are code-driven. Repeated unchanged blocking
+feedback across a repair attempt, or exhausting the declared limit, stops the Flow instead of
+retrying forever: the change `status` becomes `waiting` (a human decision or a Spec/code change is
+needed) or `limit_exhausted` respectively, and the wire `outcome` remains `conflicting`. Elsewhere, a
+Spec gap (`spec_incomplete`) stops the Flow with status `waiting`, a failed deterministic check
+stops it with status `failed`, and another blocking/unsupported outcome stops it with status
+`blocked`. A human directly changing the Spec or the implementation between invocations resets the
+recorded repair count instead of silently continuing a stale repair attempt. Preserving the change
+worktree on a stop and resuming a current plan/tasks/implementation phase on a repeat instead of
+discarding completed component work otherwise remain unchanged.
+Module implementation coordinates independently selected participating component contexts. The host
+records each author before launch and after success or blocking. Already authored draft Spec bytes
+remain in the candidate when a later component blocks. Cross-component validation runs after every
+affected local author finishes; it cannot prevent resuming an incomplete reconciliation. No component
+code changes before this agreement. Component development loops report completion to the same owning change.
+
+
+
+`concorde-specify-loop` (including when called by `concorde-dev-loop`) skips Spec authoring only after a host-accepted authoring result for
+the same target, task, focus and constraints. Standalone review records, including failed or
+unrelated reviews, cannot substitute for authoring. A completed Module still revisits its recorded
+component coordination: stronger review requirements propagate before completed component work is
+reused, and missing or stale component reviews run before readiness.
+
+Standard development requires both reviews for a code-owning target (only Spec review for a Module).
+`run_reviews` defaults to true and applies to both modes; `run_reviews=false` is the explicit opt-out.
+Requirements and the exact review intent are saved per target in the existing worktree state; an
+enabled requirement survives retries with run_reviews=false. Skips have separate records and never
+satisfy a required gate. A standalone review with a different task/focus/constraints remains a run
+artifact and cannot replace another intent's lifecycle-required review. Code review runs after checks
+but before the single ready transition; a failed/incomplete/blocking review cannot be bypassed by
+standalone validation or delivery.
+
+A repeated loop preserves current plans/tasks and completed components. It reuses a review only after
+checking its artifact digest, exact current inputs, successful coverage and absence of blocking
+findings/gaps. Changed Spec invalidates its dependent plan/reviews and rebuilds context; changed code
+invalidates code review/check evidence. Explicitly required reviews also apply to directly authored
+candidates without inventing plans. Review does not edit files, run repair steps or deliver changes.
+
+Common [gap history](../development/review-and-gaps.md) retains attributed blockers and accepts resolution only after current successful output. The flow stops dependent work until those conditions hold.
+
+A change's `status` may also become `cancelled` or `limit_exhausted` after an executor outcome of
+the same name (`execution_cancelled`/`execution_limit`), distinguishing a cancelled or time-limited
+agent process from an ordinary `blocked`/`failed` outcome; the candidate is preserved for repair or
+resumption in every case. A development loop stopping for a necessary Spec gap, or for blocking
+code-review feedback that repeats unchanged across a bounded repair attempt, records status
+`waiting` instead of the generic `blocked`: both name a concrete point where a human decision or a
+Spec/code change is needed before the loop can usefully resume.
+During dev-loop, the initial Module Spec review is local. Component reviews occur in separately coordinated component loops after reconciliation, and all writers finish before final shared-consumer checks.

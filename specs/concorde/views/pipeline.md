@@ -405,3 +405,15 @@ The TypeScript loader admits Profile 12/schema 4 and publishes schema 19 with un
 includedBy provenance. It validates one-level references and canonical definition/binding agreement,
 exposes canonical definition anchors and renders links without transclusion. Manifest identity and
 watched registry/source inputs invalidate publication when ownership or references change.
+
+## Capability contract navigation
+
+Execution explanations link to [Planning](../planning/plan.md), [Tasks](../planning/tasks.md),
+[Implementation](../implementation/implementation.md), [Spec Authoring](../spec-authoring/authoring.md),
+[Review](../review/review.md), [Validation](../validation/validation.md),
+[Delivery](../delivery/delivery.md), [Query and Routing](../query-routing/query-and-routing.md),
+[Topology](../topology/topology.md), [Development Flow](../dev-loop/development.md) and
+[Specification Flow](../specify-loop/specify-loop.md). These are Spec ownership boundaries;
+executable graphs still come only from the current factories under the
+[Harness inspection contract](../harness/module.md#scenario.harness.flow-inspection).
+Moving a definition requires updating retained source links; it creates no invented executable flow.

@@ -5,36 +5,13 @@
   "main_visible": true
 }
 ```
-# AI review feedback and gap handling
+# Attributed gaps and host history
 
 
-`concorde-review` uses separate fresh Spec and code reviewers. Spec review sees the complete owned and directly referenced Specs, task and scoped Spec patches; code review additionally sees only the owning
-target's registered implementation files, the files its declared entries currently bind, and scoped
-code patches. Neither has project write authority.
-Each reviewer resolves a separate Agent definition and Harness under read-only permissions.
-The host records input versions, coverage, concrete findings, gaps and completion. No-findings,
-findings, incomplete, not-run and skipped are distinct, and all conclusions remain task-specific.
-
-The complete collection is the review's information boundary, not an instruction to repair every
-independent capability it describes. Representative tasks derive from the admitted request and its
-constraints, including necessary dependencies, compatibility and affected consumers. A blocking
-finding explains how its contract or behavior defect prevents that task or violates an obligation
-the change must preserve. Unchanged contracts can block dependent work, and changed contracts can
-introduce regressions beyond the named feature. A request to retain existing independent behavior
-does not alone require completing every pre-existing edge-case contract. Concrete independent
-defects remain advisory findings with their scope reasoning and uncertainty; they are not erased
-or represented as complete contracts. A broad audit can make those same contracts task-relevant.
-The reviewer makes this semantic assessment from admitted inputs; the Host neither filters findings
-by changed paths nor rewrites their severity. Required coverage, gap and freshness gates still apply.
-
-Development defaults `run_reviews` to true: Spec review follows authoring and precedes planning;
-code review follows implementation/checks and precedes ready. An explicit `run_reviews=false`
-records each skip. Once required, a review cannot be disabled by a resumed fast loop. Blocking contract gaps or
-behavior findings prevent advancement until the Flow admits a repair or clarification path; advisory
-findings remain available through result artifacts. AI feedback identifies the reviewed revision and
-can select only the transitions allowed by the Flow. It cannot grant human acceptance or wider permissions.
-Module changes review their own Spec before planning, then each affected component's full Spec and
-code in that component's own session. Host aggregation carries only their typed results.
+Review owns [independent review and task relevance](../review/review.md).
+Development Flow owns its [review ordering and repair](../dev-loop/development.md);
+Specification Flow owns [Spec-only completion](../specify-loop/specify-loop.md).
+This document owns common gap retention, provenance and explicit capture semantics.
 
 Any necessary missing/ambiguous contract encountered during explanation, planning, task authoring or
 implementation uses the same gap fields. Queries report gaps; development records and deduplicates

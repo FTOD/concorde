@@ -470,7 +470,7 @@ the most specific entry owns a file.
     "id": "entity.harness.worktree-lifecycle",
     "title": "Worktree lifecycle",
     "kind": "shared program",
-    "responsibility": "Realize shared worktree identity, candidate state, session handoff and delivery mechanics for its two Module consumers.",
+    "responsibility": "Realize shared worktree identity, candidate state, session handoff and delivery mechanics for its listing Module consumers.",
     "files": [
       "src/concorde/harness/change_worktree.py",
       "src/concorde/harness/session_handoff.py",

@@ -1,0 +1,65 @@
+```concorde-document
+{
+  "id": "document.planning.plan",
+  "owner": "module.planning",
+  "main_visible": true
+}
+```
+
+# Planning capability
+
+The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
+[typed handoffs](../development/interfaces.md#stage-handoffs) and
+[gap rules](../development/review-and-gaps.md) apply. Artifact references are host-issued paths
+and exact digests; a valid shape alone does not establish currentness or authority.
+This is a private, bound capability in the [current adapter inventory](../development/capabilities.md).
+Only a declared in-process composition can call it; direct Skill/CLI invocation is rejected.
+A caller supplies the selected Module, task, constraints, focus and current candidate identity
+where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
+file names are visible and implementation contents remain excluded from non-code phases.
+
+`plan` first obtains the separate [assessment](assessment.md). Only a sufficient result admits a
+fresh spec-engineer plan invocation. Its optional concorde-plan-artifact is an explicitly admitted
+prior plan, not a predecessor conversation. The accepted output is a nonempty plan bound to the
+selected contract revision and intent. The host stores the target plan and returns artifact references
+in concorde-plan-response@1; the worker has no direct project writes. No task list, implementation,
+review or readiness is produced by planning.
+
+A coordinating plan identifies local work and exact direct child/used-Module IDs from its local
+dependency declarations. It states their required behavior without pretending to read their code;
+separately selected component work needs each component's complete contract and its own grant.
+Empty or invalid plans are rejected without replacing accepted state. Gaps, conflicting contracts,
+unsupported work, stale context and failed execution stop dependent planning. Relevant Spec or
+intent changes invalidate reuse; a repeated consumer invocation may reuse only current accepted
+artifacts. Planning can be consumed by any declared caller satisfying these preconditions, without
+having to explain its purpose by reference to dev-loop.
+
+## Requirements
+
+### req.planning.plan-rejection-preserves — Rejected plans preserve accepted state
+
+Planning SHALL leave the previously accepted plan unchanged when a returned plan is empty, invalid or bound to stale inputs.
+
+## Scenarios
+
+### scenario.planning.plan-current — Assessment admits a revision-bound plan
+
+- GIVEN a selected Module, task and constraints with sufficient complete contract context
+- WHEN a fresh planner returns a nonempty plan
+- THEN the host persists the accepted plan against that revision and returns its ArtifactRef
+- AND no task list, code changes or ready state is produced
+
+### scenario.planning.plan-empty — An empty result cannot replace a plan
+
+- GIVEN a target has a previously accepted plan and current sufficient assessment admits a fresh planner
+- WHEN that planner returns an empty plan
+- THEN the host rejects the returned plan and preserves the previously accepted plan
+- AND no replacement plan artifact is accepted for dependent task authoring
+
+### scenario.planning.plan-stale — Changed inputs invalidate a returned plan
+
+- GIVEN a previously accepted plan and a fresh planning invocation bound to a selected Spec revision and intent
+- AND relevant admitted inputs change before its result is accepted
+- WHEN the host rechecks the returned nonempty plan against current inputs
+- THEN it rejects stale output without replacing the previously accepted plan
+- AND preserving old bytes does not make the old plan current; reuse requires current admission

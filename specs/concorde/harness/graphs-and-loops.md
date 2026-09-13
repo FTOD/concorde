@@ -113,8 +113,8 @@ downstream inputs.
 ## Concorde Flow responsibilities
 
 The query Flow coordinates explicit context selection, deterministic source injection and direct answers. The topology Flow
-coordinates design, human acceptance and separately bound Spec authors. The development Flow
-coordinates authoring, assessment, planning, implementation and independent review, with explicit
+coordinates design, human acceptance and separately bound Spec authors. Specification Flow independently coordinates authoring and Spec review. Development Flow
+consumes it and the sibling Planning, Implementation, Validation and Review providers, with explicit
 repair or human-clarification loops. Reflection handling may select an investigation or development
 Flow after a human disposition. Delivery remains a separately authorized deterministic capability.
 

@@ -28,8 +28,8 @@ Current public Skill files expose exactly one public Capability through
 
 Distribution owns the Skill sources, shared invocation instructions, rendering and installation.
 An installed Skill is an instruction artifact consumed by the developer's external agent runtime;
-that runtime submits a typed capability request to Development. Development owns admission,
-dispatch and workflow behavior, and records the public Skill-to-capability mapping below as an
+that runtime submits a typed capability request to Development. Development owns common admission and
+dispatch; the sibling providers and Flows own their individual behavior, and records the public Skill-to-capability mapping below as an
 interface agreement. It neither loads Skills into its workers nor owns their distribution assets.
 
 | Capability | Public | Context selection | Deterministic | Skill | Launches | Uses | Behavior |
@@ -127,3 +127,28 @@ Agent identity follows stable capability and context boundaries. Worker, review 
 select the explicit mode declared in the Harness contract; combining Agent definitions does not
 combine capability names, workflow responsibilities, public Skills or callable authority. Each
 phase and target remains a fresh invocation.
+
+## Behavioral ownership and composition limits
+
+| Capability or action | Canonical behavioral owner |
+| --- | --- |
+| context-solve, plan, tasks | [Planning](../planning/module.md) |
+| implement | [Implementation](../implementation/module.md) |
+| specify | [Spec Authoring](../spec-authoring/module.md) |
+| review | [Review](../review/module.md) |
+| validate | [Validation](../validation/module.md) |
+| deliver | [Delivery](../delivery/module.md) |
+| main ask and routing | [Query and Routing](../query-routing/module.md) |
+| main topology actions | [Topology](../topology/module.md) |
+| dev-loop | [Development Flow](../dev-loop/module.md) |
+| specify-loop | [Specification Flow](../specify-loop/module.md) |
+
+The table changes semantic ownership, not the callable inventory. `USES` in a capability declaration
+is the current in-process call graph; registry `uses` expresses Module responsibility dependencies.
+Sharing the main adapter between Query and Routing and Topology adds no main-to-main call.
+Planning and Implementation do not reference the complete dev-loop contract to define their work.
+A new flow may reuse sibling providers only with declared composition, current admitted artifacts,
+phase permissions and an implemented transition policy. This maintenance adds no general flow
+configuration, private launcher or Agent capability grant. Component coordination and review repair
+remain constrained by their existing host adapters; extending those adapters is future implementation
+work, with separate verification and authorization.

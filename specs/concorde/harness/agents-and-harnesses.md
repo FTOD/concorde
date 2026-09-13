@@ -308,7 +308,7 @@ admits those loop interfaces or delegation.
 
 ## Responsibilities and implementation boundaries
 
-The Development host composes graphs and schedules invocations. This Module's execution service
+The common Development host dispatches the declared provider and Flow contracts and schedules invocations. Planning owns plan/task semantics, Implementation owns task fulfillment, and each composing Flow owns its ordering and stopping policy. This Module's execution service
 operates the bound Harness through model integrations and validates completion; its permissions
 service compiles and checks effective boundaries; its context service supplies the admitted context
 kinds; its Agent model resolves definitions and bindings. The Distribution build renders and

@@ -175,35 +175,48 @@ precedence over a containing directory entry.
     "title": "Publication docsite",
     "kind": "program",
     "responsibility": "Realizes registry-driven Markdown publication: materializes one canonical page and inline Mermaid rendering per physical document, derives navigation, binds a candidate to exact source digests and route coverage, and promotes only a complete current candidate while preserving the previous successful build on failure.",
-    "files": ["docsite/"]
+    "files": [
+      "docsite/"
+    ]
   },
   {
     "id": "entity.views.publication-scaffold",
     "title": "Publication scaffold",
     "kind": "program",
     "responsibility": "Realizes exact docsite scaffold proposals and deploys the current publishing template without a standalone graph view for a registered project, without reading code to infer architecture.",
-    "files": ["src/concorde/views/", "tests/concorde/views/"]
+    "files": [
+      "src/concorde/views/",
+      "tests/concorde/views/"
+    ]
   },
   {
     "id": "entity.views.viewer-launcher",
     "title": "Viewer launcher",
     "kind": "program",
     "responsibility": "Realizes the deterministic admission and process-launch boundary that selects the first existing raw graph, verifies the installed runtime and launches the official viewer without generating the graph or installing dependencies.",
-    "files": ["scripts/run-ua-graph-viewer.py", "tests/concorde/views/test_viewer_launcher.py"]
+    "files": [
+      "scripts/run-ua-graph-viewer.py",
+      "tests/concorde/views/test_viewer_launcher.py"
+    ]
   },
   {
     "id": "entity.views.ua-graph-exporter",
     "title": "UA graph exporter",
     "kind": "program",
     "responsibility": "Realizes the deterministic export or overlay of a skeleton Understand Anything graph from the registry's Module identities, relationships, documents and entity file listings, replacing on re-export only the nodes, edges and layers in its declared ownership scope.",
-    "files": ["src/concorde/views/ua_graph.py", "tests/concorde/views/test_ua_graph.py"]
+    "files": [
+      "src/concorde/views/ua_graph.py",
+      "tests/concorde/views/test_ua_graph.py"
+    ]
   },
   {
     "id": "entity.views.file-transactions",
     "title": "File transactions",
     "kind": "shared program",
     "responsibility": "Realizes exact replacement proposals as staged filesystem operations with before-digest checks and original-byte recovery, for every Module that applies an accepted proposal.",
-    "files": ["src/concorde/spec/changes.py"]
+    "files": [
+      "src/concorde/spec/changes.py"
+    ]
   },
   {
     "id": "entity.views.spec",
@@ -296,6 +309,13 @@ precedence over a containing directory entry.
     "title": "Viewer process",
     "kind": "concept",
     "responsibility": "The launched official-viewer child process, run from the project directory with the requested flags, whose exit code (or 130 on interruption) the launcher returns."
+  },
+  {
+    "id": "entity.views.harness",
+    "title": "Harness",
+    "kind": "used module",
+    "target_id": "module.harness",
+    "responsibility": "Supply inspectable executable Flows without invoking nodes."
   }
 ]
 ```
@@ -356,6 +376,8 @@ flowchart TB
     uaGraphCommand -->|is realized by| uaGraphExporter
     spec -->|supplies ownership, references and file bindings to| uaGraphExporter
     uaGraphExporter -->|writes or overlays| codeGraph
+    module_harness["Harness"]
+    publicationDocsite -->|uses| module_harness
 ```
 
 ## Dependencies and composition
@@ -377,6 +399,14 @@ flowchart TB
     "selection_condition": "When launching the viewer.",
     "relied_upon_promises": [
       "[Launch only the exact verified viewer entrypoint and stop on an absent receipt](../distribution/runtime.md)"
+    ]
+  },
+  {
+    "target_id": "module.harness",
+    "responsibility": "Supply inspectable executable Flows without invoking nodes.",
+    "selection_condition": "When compiling Agent execution views without running nodes.",
+    "relied_upon_promises": [
+      "[Harness contract](../harness/graphs-and-loops.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
     ]
   }
 ]

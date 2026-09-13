@@ -88,31 +88,9 @@ the attested outer-sandbox rendering path stays in Permissions for a trusted emb
 admitted configuration selects it. Executor completions must match invocation, policy,
 launch and context identities. No ambient conversation or predecessor transcript is admitted.
 
-Every new task requiring discover context selection first launches `concorde-coordinator` with the
-entry Module.
-Main discovery can
-admit registered complete Module collections on demand; each admission starts a fresh process with a new context identity. Main never reads implementation file contents or code. For capabilities other than
-the `ask` action of `concorde-main`, main must return one owning target; cross-target mutation is
-routed through a Module. The host
-then starts the capability's different bounded worker or composite flow. For questions,
-`concorde-main` answers directly from complete contexts resolved by Python and injected into the
-coordinator. Source pools deduplicate full document bodies, while target
-records retain sole ownership and every inclusion reason. Additional selections restart the coordinator with the
-expanded complete context; no reading worker or synthesis stage intervenes. An optional caller
-target/focus is a routing hint, not a context grant.
-
-`concorde-main` also owns topology evolution. `design-topology` admits exact registry metadata and
-the Module kind definition while withholding implementation file contents and code. It returns a
-digest-bound candidate registry, local Spec tasks, migration constraints and acceptance conditions;
-no project file changes. `accept-topology` is the first developer gate. It rechecks the complete
-discovery context, starts fresh target-local Spec authors and validates their combined output against
-an in-memory registry/document overlay. Full worker documents are stored only in an ignored,
-before-digest-bound application artifact. The public response exposes its ArtifactRef, not its
-contents. `apply-topology` is the second developer gate and atomically applies the exact reviewed
-artifact or leaves/restores the project. A stale registry, Protocol, Spec input, application digest
-or invalid final target state blocks mutation.
-Ownership/reference changes reconcile all old and candidate context consumers. Only the candidate
-owner supplies replacement bytes; each consumer reviews compatibility under its own resolved context.
+Query and route semantics belong to [Query and Routing](../query-routing/query-and-routing.md).
+Topology actions of the same public main entry belong to [Topology](../topology/topology.md).
+These are semantic siblings using the existing shared main adapter; they add no launcher.
 
 No Skill returns context manifests; context resolution is host-internal and
 `describe-policy` mode already previews the exact grants a capability would receive without
@@ -122,57 +100,13 @@ bound Agent and Harness identity (`agent`, `harness`, `agent_binding_digest`, `i
 launch would use without reading its rendered instructions. Complete cognitive snapshots never cross
 the Skill result boundary.
 
-Authoring returns local document replacements; the host alone applies them. An owner may propose a change to its document even when others reference it; acceptance requires
-the affected-consumer checks, while a referencing author cannot replace provider documents. Planning runs a separate
-context assessment first and stores a target plan only for a sufficient context and nonempty result.
-One `.concorde/worktree.json` owns the change, its root task, target records, phase/status, gaps and
-validation identity. Plans and auxiliary files live under `.concorde/work/<target-id>/`. There is no
-new `.concorde/attempts/<change-id>/` lifecycle. Each component keeps progress in the enclosing change.
-Task authoring receives a concorde-plan-artifact and concorde-task-identity-constraints. Implementation receives concorde-implementation-task
-and returns identical tasks marked complete only when acceptance is met. Registry, context and
-configuration are rechecked after each stage. Only implementation code may change in that phase.
-
-`concorde-specify-loop` routes one owning Module, authors or revises its owned Spec documents
-and independently reviews its complete context and affected consumers. It returns the common
-stage response with `completed` after successful Spec stages, preserving artifacts, explicit
-review skips and blockers. It never plans, writes code, runs code checks, requires code review,
-marks ready or delivers. Repeated invocations retain accepted authoring for the same intent and
-reuse only current review evidence. Necessary gaps and blocking reviews stop for Spec repair
-with fresh context; there is no automatic Spec-repair edge. `specify=false` selects review of the
-existing Spec, and `run_reviews=false` records only a Spec review skip where no requirement exists.
-
-`concorde-dev-loop` calls `concorde-specify-loop` for specify (default `specify=true`; `specify=false` skips Spec authoring
-when the target's current Spec already suffices) and Spec review, then runs plan, tasks, implement, deterministic
-validation and code review, then verifies readiness. It uses the same public contracts as standalone
-capabilities. `run_reviews` defaults to `true`; `run_reviews=false` records an explicit skip for each
-review mode instead of running it, and cannot cancel a review already required for this change. Every
-invocation ends at ready and never invokes deliver.
-It stops on the first non-successful outcome and preserves the change worktree, except that a
-code-owning target's blocking code review first attempts a declared, bounded repair. The only
-automatic revision edge is `review_code -> tasks`: task authoring receives the current completed
-tasks and the blocking `concorde-review-result` as `stage_inputs`, and the resulting repair tasks
-and their implementation are checked and code-reviewed again like any other change. This repair is
-bounded by a declared `max_repair_iterations` policy recorded per target under
-`change["graph"][target_id]["policy"]` in `.concorde/worktree.json`; the same record keeps the
-current `repair_iteration`, the last blocking-feedback fingerprint and an attributed history of
-selected transitions (development.md's "AI and human feedback", G4). Repeated unchanged blocking
-feedback is guarded by code: new records carry the formal `source` value `code-driven` or
-`model-driven`, while retaining their descriptive legacy `trigger` label. A repair selected from
-review findings is model-driven; unchanged-feedback and limit stops are code-driven. Repeated unchanged blocking
-feedback across a repair attempt, or exhausting the declared limit, stops the Flow instead of
-retrying forever: the change `status` becomes `waiting` (a human decision or a Spec/code change is
-needed) or `limit_exhausted` respectively, and the wire `outcome` remains `conflicting`. Elsewhere, a
-Spec gap (`spec_incomplete`) stops the Flow with status `waiting`, a failed deterministic check
-stops it with status `failed`, and another blocking/unsupported outcome stops it with status
-`blocked`. A human directly changing the Spec or the implementation between invocations resets the
-recorded repair count instead of silently continuing a stale repair attempt. Preserving the change
-worktree on a stop and resuming a current plan/tasks/implementation phase on a repeat instead of
-discarding completed component work otherwise remain unchanged.
-Module implementation coordinates independently selected participating component contexts. The host
-records each author before launch and after success or blocking. Already authored draft Spec bytes
-remain in the candidate when a later component blocks. Cross-component validation runs after every
-affected local author finishes; it cannot prevent resuming an incomplete reconciliation. No component
-code changes before this agreement. Component development loops report completion to the same owning change.
+Provider contracts are [Spec Authoring](../spec-authoring/authoring.md),
+[Planning](../planning/plan.md), [Tasks](../planning/tasks.md),
+[Implementation](../implementation/implementation.md), [Review](../review/review.md),
+[Validation](../validation/validation.md) and [Delivery](../delivery/delivery.md).
+The [Specification Flow](../specify-loop/specify-loop.md) and
+[Development Flow](../dev-loop/development.md) own ordering and lifecycle policy.
+The host rechecks registry, context and initialized configuration after every stage.
 
 The canonical [context selection agreement](../harness/context.md#contract.context.selection)
 is included through Development's Module reference to Harness.
@@ -200,7 +134,7 @@ Spec before retrying. Agent-supplied mismatched gap provenance is rejected.
 ## Wire contracts
 Every TypedValue is `{type_id, schema_version, data}`; `schema_version` is pinned per type below and
 `data` must satisfy that type's JSON Schema. The invocation envelope wraps every request and
-response; the thirteen capability request/response pairs carry each capability's own task and
+response; the fourteen capability request/response pairs carry each capability's own task and
 result; the remaining types are internal handoffs, review records, topology artifacts, the project
 proposal and the stage-input artifacts that pass between stages inside one capability.
 
@@ -393,18 +327,12 @@ provisioning. Select `module.reflections` for recorded feedback and gaps. The ma
 may use these stable IDs to route a worker but may not expand their Module targets.
 
 ## Worktree awareness
-A directly authored Spec or manual candidate can run explicit validation without inventing a plan
-or an attempt. With no authored target plans, validation runs every configured project check and
-stores root validation evidence against the exact candidate tree. Existing authored plans and tasks
-still require completion; this path cannot bypass unfinished work. Deterministic readiness does not
-claim universal semantic completeness. The primary delivery request accepts the verified candidate.
 
-Delivery validates its actual integration result in a temporary detached worktree. When that tree
-contains `concorde.json`, it is a Concorde package checkout: the host calls `write_build` on that
-checkout's own merged sources before Spec/package validation and configured checks. Untracked
-build outputs do not alter the deliverable tree. Build or validation failure preserves both
-participants and prevents the primary update; no stale-output gate is disabled or bypassed.
-
+One `.concorde/worktree.json` owns a managed change, root intent, target records, phase/status,
+gaps and validation identity. Plans and auxiliary artifacts live under
+`.concorde/work/<target-id>/`; there is no `.concorde/attempts/<change-id>/` lifecycle.
+Components retain progress in the enclosing change. The selected flow determines transitions;
+the common host owns persistence and rejects stale or incompatible state before reuse.
 The primary worktree maintains `.concorde/worktrees.json` from Git's live worktree inventory, including
 unmanaged worktrees, and from each linked worktree's own `.concorde/worktree.json`, the only file of
 another worktree the host reads. Each entry has its path, branch, head, managed/locked status and, when available,
@@ -417,151 +345,18 @@ Every discovery and worker snapshot admits `workspace` lifecycle metadata. Main 
 workspace-status question directly from this metadata; target-behavior answers still use separate
 coordinator. The current workspace identity and status are rechecked after a stage. Other live worktree
 summaries are frozen observations and their progress does not invalidate unrelated main cognition.
-A change's `status` may also become `cancelled` or `limit_exhausted` after an executor outcome of
-the same name (`execution_cancelled`/`execution_limit`), distinguishing a cancelled or time-limited
-agent process from an ordinary `blocked`/`failed` outcome; the candidate is preserved for repair or
-resumption in every case. A development loop stopping for a necessary Spec gap, or for blocking
-code-review feedback that repeats unchanged across a bounded repair attempt, records status
-`waiting` instead of the generic `blocked`: both name a concrete point where a human decision or a
-Spec/code change is needed before the loop can usefully resume.
 
 ## Configured check execution
 
-Only the host admits configured argv, expands an initial `{python}` to its interpreter, and calls
-Harness's `execute_check(project_root, argv, timeout=..., environment=...)`. The supplied environment
-retains the host environment and sets `PYTHONPATH` to the package's `src`; Harness installs it only
-inside the sandbox and directs temporary/cache/report paths to independent external scratch.
-Checks may read project files. The operating system denies creation, modification, movement and
-deletion by the check and its descendants, including transient writes that are later restored.
-The rule covers listed and unlisted files, ignored caches, `.concorde/runs` and lifecycle records.
-
-Harness returns byte `stdout`, byte `stderr`, integer `returncode` and boolean `timed_out` after
-terminating the check's descendants. Development alone writes `stdout + b"\n" + stderr` to
-`.concorde/runs/<invocation_id>/<check_id>.log`. No project log handle or lifecycle write grant enters
-the sandbox. Public evidence contains exactly `check_id`, `target_id`, `status` (`passed`, `failed`
-or `timeout`), `exit_code`, `source_digest` and `log_digest`; raw output remains private. Timeout
-uses exit code -1. Other exit codes retain Harness's shell encoding; zero is passed and nonzero
-is failed. Disposable report files stay outside the project and are removed after execution.
-
-An unavailable backend, unsupported OS, failed sandbox setup or failed isolated launch raises
-Harness's `CheckSandboxError`, carrying private diagnostic streams. The host saves that diagnostic
-log, then raises `SpecError/check_sandbox_unavailable` naming the check and host log path, without
-including raw diagnostics or recording passing evidence. It never runs a less restricted fallback.
-Linux currently requires a system bubblewrap and working namespace/pidfd support; no other OS
-backend is implemented. There is no task/configuration option to disable enforcement. Project cache
-or report writers must migrate to the issued scratch paths, while source-formatting writes belong
-to implementation. Finer read, network and credential policy is outside this interface's scope.
-
-Before and after execution, check freshness covers registered commands and explicit inputs plus
-the selected Module's implementation. The execution-policy identity `project-read-only-v1` also
-participates in the digest, invalidating evidence from the former unrestricted runner. Candidate
-tree and affected-Module revision comparisons remain additional defenses against concurrent
-external changes; they do not supply the write boundary or claim semantic completeness.
+The canonical configured-check and evidence contract is owned by [Validation](../validation/validation.md).
 
 ## Independent review contract
-`concorde-review` is a public Capability with discover context selection requiring task and review_mode=spec|code, with
-optional target/focus routing hints, constraints and current-worktree change_id. A new standalone
-request uses Spec-only coordinator discovery to select one owning Module, then starts a fresh
-read-only reviewer. A composing capability may supply its trusted bound target without repeating
-discovery; a current-change resumption supplies both target_id and change_id. The public launcher
-and Studio admit this capability directly. Review runs in the current worktree without creating
-a development change or requiring a Reflection record. The host may persist reports and existing
-change evidence, but reviewers receive no project write authority.
-Spec mode uses the complete admitted owned and directly referenced Specs, Protocol/kind rules, task and scoped changes to any document included in that context. Code mode uses those
-contracts, the target's exact current registered implementation-file enumeration and scoped code
-changes. Both roles have empty write grants, no network/credentials, fresh sessions, and empty
-predecessor input. Code review does not reuse implement's writable policy.
 
-The host compares the candidate's current bytes, including uncommitted and untracked owned files,
-against this managed change's recorded base_commit; an unmanaged Git checkout uses its current HEAD.
-An unversioned root has null baseline/head and its current granted files are new input. History is
-read only from that repository's Git objects and scoped to the current target grant. No other worktree
-supplies content. Deleted files under a current grant appear as scoped changes; removed or unrelated
-grants never expose their old contents. Full admitted current documents always accompany Spec review,
-even when a focus or patch names only a small portion.
-
-Private `concorde-review-stage-context@2` contains a full context snapshot and a
-`concorde-review-input@1` with review_mode, input_digest, revision and changes. Each change is
-`{path, patch}`; binary changes carry only digest markers. The revision has spec_digest,
-nullable implementation_digest, nullable baseline and nullable head. spec_digest binds the selected
-target descriptor, ownership, explicit references, all inclusion reasons, pinned Protocol and ordered
-complete document byte digests, including referenced provider documents. Code mode additionally
-binds every currently enumerated implementation path/byte digest. input_digest covers these values,
-scoped changes, absolute current worktree/branch, target/focus, task/constraints/change identity,
-initialized configuration, canonical
-reviewer instructions/effects and host review/context/permission/executor runtime bytes. Context ID
-additionally records the actual frozen lifecycle observation. Lifecycle phase changes alone do not
-invalidate an otherwise identical task review; changed relevant input does. Old result artifacts
-remain audit history and cannot pass a current gate.
-
-The reviewer returns `concorde-review-stage-result@1` bound to context_id, input_digest and mode, with
-representative_tasks, findings, gaps, answer and status=no_findings|findings|incomplete. A finding
-has unique id, severity=blocking|advisory, target_id, document (an exact admitted Markdown path),
-contract, location={path,line}, problem and affected_task. line is a positive integer or null.
-Its contract document must be in the complete collection, and its location must be admitted Spec or
-code/change scope. A blocking Spec finding requires a gap with blocked_step=affected_task and
-needed_contract=contract. Gap target/context provenance is verified and filled by the host. Missing
-contracts during code review also use gaps; a concrete code defect can block without a Spec gap.
-Findings and answers contain contract-level descriptions/locations, never raw code, patches or logs.
-
-The host rejects mismatched identities, foreign locations, duplicate IDs/tasks, a clean result with
-findings/gaps, a findings result without evidence, and completed review without representative tasks.
-It rechecks the context, source/input/configuration identities and frozen capsule after execution.
-It publishes `concorde-review-result@1` adding target/focus, revision and
-semantic_completeness=not_proven. Public response `reviews` contains these typed results, and artifacts
-reference saved review reports. Native receipts and failure diagnostics remain separate host records.
-
-| Review state | Skill outcome and progression |
-|---|---|
-| no_findings with nonempty coverage | completed; bounded review succeeded |
-| findings, all advisory and no gaps | completed; findings retained for the consumer |
-| concrete necessary gaps | spec_incomplete; dependent steps pause |
-| blocking code findings without gaps | conflicting; dependent steps pause |
-| incomplete coverage, invalid result or process failure | failed; an incomplete report, never a clean result |
-| describe-policy | described with not_run; no execution or persistence |
-| run_reviews=false | host records skipped; no reviewer runs |
-
-Every mode and target uses a separate session. A Module with recorded component work can request
-cross-target review: the host validates each Module's declared relationship, starts its own reviewer from
-its recorded task and admitted collection, then aggregates only typed results. Spec review also
-assesses the Module itself; code review never gives the Module code. A Module without recorded
-component work returns unsupported for code review. During a development loop, the Module's initial
-Spec review is local; component reviews occur in the coordinated component loops after reconciliation.
+The canonical contract is owned by [Review](../review/review.md).
 
 ## Review gates, gap history and recovery
-`concorde-specify-loop` (including when called by `concorde-dev-loop`) skips Spec authoring only after a host-accepted authoring result for
-the same target, task, focus and constraints. Standalone review records, including failed or
-unrelated reviews, cannot substitute for authoring. A completed Module still revisits its recorded
-component coordination: stronger review requirements propagate before completed component work is
-reused, and missing or stale component reviews run before readiness.
 
-Standard development requires both reviews for a code-owning target (only Spec review for a Module).
-`run_reviews` defaults to true and applies to both modes; `run_reviews=false` is the explicit opt-out.
-Requirements and the exact review intent are saved per target in the existing worktree state; an
-enabled requirement survives retries with run_reviews=false. Skips have separate records and never
-satisfy a required gate. A standalone review with a different task/focus/constraints remains a run
-artifact and cannot replace another intent's lifecycle-required review. Code review runs after checks
-but before the single ready transition; a failed/incomplete/blocking review cannot be bypassed by
-standalone validation or delivery.
-
-A repeated loop preserves current plans/tasks and completed components. It reuses a review only after
-checking its artifact digest, exact current inputs, successful coverage and absence of blocking
-findings/gaps. Changed Spec invalidates its dependent plan/reviews and rebuilds context; changed code
-invalidates code review/check evidence. Explicitly required reviews also apply to directly authored
-candidates without inventing plans. Review does not edit files, run repair steps or deliver changes.
-
-Necessary missing/ambiguous contracts discovered during explanation, assessment, planning, task
-splitting or implementation use the same question/blocked_step/needed_contract gap contract. Queries
-only return them. Development stores gap history with target/task/phase, Spec revision, observed
-contexts and status. Identical reports are deduplicated. Unrelated work does not clear open entries;
-a still-unchanged blocked step remains paused. A successful fresh assessment after a Spec repair
-resolves the affected phase's old gaps while keeping history. For authoring, planning, task creation
-and implementation, successful assessment is committed only after the host accepts the returned
-documents/artifacts/tasks; rejected replacements or malformed results preserve previous blockers.
-Spec authoring may supply the repair
-itself. Independent work may continue without claiming dependent tasks complete. The explicit
-reflections-triage record-gaps action creates or reuses a durable Reflection link; it neither resolves
-the gap nor silently turns a query into authoring, investigation or implementation.
+[Development Flow](../dev-loop/development.md) owns its review gates; [Specification Flow](../specify-loop/specify-loop.md) owns Spec-only completion. Common attributed gap retention is defined in [Gap handling](review-and-gaps.md).
 
 ## Required collaborator interfaces
 
@@ -640,8 +435,8 @@ file.
 
 ## Canonical review-result value
 
-The [review-result interface](review-result.md) is the single definition of the public review
-record. Harness explicitly references that document for repair stage admission. Development
+The [review-result interface](../review/review-result.md) is the single definition of the public review
+record. Harness explicitly references that document for repair stage admission. The Development Flow, through the common host,
 checks task intent, evidence currentness and permitted repair transitions before supplying it.
 
 ## Reference changes and implementation status
@@ -650,7 +445,7 @@ Before review/readiness, compute affected Spec consumers from the union of old a
 one-level contexts. A provider document edit, ownership transfer, changed reference or changed
 provider document inventory invalidates each affected context and dependent plan/review. Changed
 code additionally uses the independent listing reverse index. A reference is never a code grant.
-Review attribution follows the [canonical review-result interface](review-result.md). Development
+Review attribution follows the [canonical review-result interface](../review/review-result.md). Development
 routes a provider repair to its sole owner and retains the consumer's blocked-step evidence;
 included-file read scope never grants authority to write the provider definition.
 
