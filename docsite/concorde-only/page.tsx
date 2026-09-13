@@ -1,13 +1,44 @@
-import React, {useEffect, useId, useRef, useState} from 'react';
+import React, {useEffect, useId, useMemo, useRef, useState} from 'react';
 import Layout from '@theme/Layout';
 import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import type {FlowData, Graph} from './types';
+import {capabilityAnchor, filterNavigation, flowNavigation, selectionFromHash} from './navigation';
 import styles from './style.module.css';
 
 type Step = {title: string; kind: string; agent: string; input: string; output: string;
   detail: string; handoff: React.ReactNode; stops: string; spec: string};
 const development = '/specs/concorde/development/';
+const specSteps: Record<string, Step> = {
+  initialize: {title: 'Select entry', kind: 'Host decision', agent: 'No model call',
+    input: 'The routed Module, task, constraints, flags and saved authoring evidence.',
+    output: 'Enter Specify or proceed directly to Review Spec.',
+    detail: 'After routing and worktree admission, decide whether this task needs authoring. An accepted authoring result for the same intent is retained; specify=false also selects the existing Spec.',
+    handoff: <>The host selects the next step using the current change record. Each Agent receives a fresh snapshot of the complete Module contract.</>,
+    stops: 'Incompatible change identity, invalid saved state or failed admission stops before authoring or review.',
+    spec: '/specs/concorde/development/development#stages-and-outcomes'},
+  specify: {title: 'Write or revise Spec', kind: 'Agent invocation', agent: 'spec-engineer / specify',
+    input: 'Intended behavior, constraints and complete owned and referenced Module Specs.',
+    output: 'Proposed replacements for the Module’s owned Spec documents.',
+    detail: 'Write clear purpose, requirements, scenarios, entities and relationships. Referenced documents remain read-only. The host validates replacements and affected contract contexts before applying changes.',
+    handoff: <><code>concorde-agent-stage-result@1</code> carries proposed documents. The host applies accepted replacements; Review Spec sees the resulting files in a fresh context.</>,
+    stops: 'Missing contract meaning, invalid document structure, foreign document writes or incompatible consumer contracts stop advancement. Accepted progress stays in the candidate.',
+    spec: '/specs/concorde/development/development#stages-and-outcomes'},
+  review_spec: {title: 'Review Spec', kind: 'Independent review', agent: 'spec-engineer / spec-review',
+    input: 'The complete current Module contract, task and scoped Spec changes.',
+    output: 'Revision-bound review coverage, findings, gaps and completion status.',
+    detail: 'Review structure and meaning independently: testable promises, consistent scenarios and coherent responsibilities. Affected consumers receive separate reviews in their own contexts. Reviewers do not read implementation code.',
+    handoff: <>The host stores <code>concorde-review-result@1</code> artifacts and returns their references. Current valid evidence can be reused; explicit skips remain visible.</>,
+    stops: 'Necessary gaps, blocking findings, incomplete coverage and execution failures prevent Spec completion. Advisory findings remain in the result. Repair the contract and resume with fresh context.',
+    spec: '/specs/concorde/development/review-and-gaps'},
+  summarize: {title: 'Return Spec result', kind: 'Host result', agent: 'No model call',
+    input: 'The selected steps’ outcomes, gaps and artifact references.',
+    output: 'Spec completion or an attributed blocker, with inspectable evidence.',
+    detail: 'Return completed only after the selected Spec steps succeed. A blocked outcome keeps its meaning and progress. This result does not assert that implementation is ready.',
+    handoff: <><code>concorde-specify-loop-response@1</code> returns to the caller. Run independently to stop here, or let Dev Loop continue with planning in the same change.</>,
+    stops: 'This is the end of the Spec flow. Planning, implementation, code checks and delivery belong to subsequent workflows.',
+    spec: '/specs/concorde/development/module#scenario.development.specify-loop'},
+};
 const steps: Record<string, Step> = {
   specify_loop: {title: 'Specify Loop', kind: 'Composed capability', agent: 'spec-engineer / specify → spec-review',
     input: 'Intended behavior, constraints, authoring/review flags and the complete Module Specs.',
@@ -15,49 +46,63 @@ const steps: Record<string, Step> = {
     detail: 'Calls concorde-specify-loop, which can also run independently. Its author proposes only owned document replacements, and the host validates them. Independent reviewers assess the complete contract and affected consumers in fresh contexts without reading implementation code.',
     handoff: <><code>concorde-specify-loop-response@1</code> returns <code>completed</code> and artifact references. Dev Loop then enters planning or resumes current downstream work in the same change. Spec completion alone does not mark implementation ready.</>,
     stops: 'Necessary gaps, blocking findings, incomplete coverage or failed execution stop advancement. specify=false skips authoring; run_reviews=false records a Spec skip only if review was not already required. Accepted authoring and current reviews can be reused. There is no automatic Spec-repair edge.',
-    spec: development + 'development'},
-  plan: {title: 'Plan', kind: 'Two Agent stages', agent: 'spec-engineer / context-solve → plan',
+    spec: '/specs/concorde/development/development#stages-and-outcomes'},
+  plan: {title: 'Plan', kind: 'Two Agent invocations', agent: 'spec-engineer / context-solve → plan',
     input: 'Complete Specs, intended behavior, constraints and declared implementation file names.',
     output: 'A context-sufficiency assessment, then a nonempty implementation plan.',
     detail: 'First assess whether the available contract can answer the task. Then plan the approach, affected components and software acceptance. Both calls use Specs and file listings; neither reads code to fill in missing requirements.',
     handoff: <>The Agent returns a <code>plan</code> string in <code>concorde-agent-stage-result@1.data</code>. The host saves <code>plan.md</code> and passes <code>concorde-plan-artifact@1</code> with <code>{'{plan}'}</code> to Tasks through <code>stage_inputs</code>.</>,
     stops: 'Missing contract meaning returns spec_incomplete; contradictions or unsupported intent stop planning. Missing required Spec review, stale context, an empty plan or an invalid Agent result blocks acceptance.',
-    spec: development + 'development#stages-and-outcomes'},
-  tasks: {title: 'Tasks', kind: 'Agent stage', agent: 'spec-engineer / tasks',
+    spec: '/specs/concorde/development/development#stages-and-outcomes'},
+  tasks: {title: 'Tasks', kind: 'Agent invocation', agent: 'spec-engineer / tasks',
     input: 'Specs, the accepted plan, reserved task IDs and any admitted repair feedback.',
     output: 'Ordered, initially incomplete tasks with an owner, description and acceptance criteria.',
     detail: 'Break the plan into concrete software work. Each task states what its implementation must achieve within the granted files and runtime. Host validation, independent review and delivery remain later gates; they are not prerequisites for marking implementation work complete.',
     handoff: <>Tasks returns a <code>tasks</code> array in <code>concorde-agent-stage-result@1.data</code>. The host supplies Implement with <code>concorde-implementation-task@1</code>: <code>{'{plan, tasks: [{id, target_id, description, acceptance, complete}]}'}</code>. Reserved IDs arrive separately as <code>concorde-task-identity-constraints@1</code>.</>,
     stops: 'No accepted plan, stale intent, missing contract meaning, empty tasks, duplicate/reserved IDs or tasks already marked complete block acceptance. Tasks may target only the current Module, its declared dependencies or direct children. Repair feedback cannot expand that scope.',
-    spec: development + 'development'},
-  implement: {title: 'Implement', kind: 'Agent stage', agent: 'programmer / implementation',
+    spec: '/specs/concorde/development/development'},
+  implement: {title: 'Implement', kind: 'Agent invocation', agent: 'programmer / implementation',
     input: 'Specs, the plan and task list, authorized code contents, and any admitted code-review feedback.',
     output: 'Changes to authorized implementation files and the exact accepted tasks marked complete.',
     detail: 'Write code and tests to meet each task’s acceptance criteria. Spec documents and the registry are outside this write grant. A coordinating Module sends component work through each component’s own context; all writers finish before final shared-candidate checks.',
     handoff: <>The host passes <code>concorde-implementation-task@1</code>; the Agent returns completed <code>tasks</code> in <code>concorde-agent-stage-result@1.data</code>. Code changes stay in worktree files. Validate reads those files and the saved completion/revision state, not a code payload in the next request.</>,
     stops: 'Missing or stale tasks, unauthorized writes, necessary Spec gaps, execution errors, changed task identities or unmet acceptance stop advancement. A test requiring inputs outside the grant is recorded as deferred to Host verification, not as a passing test; an actual implementation defect remains incomplete.',
-    spec: development + 'development#coordinated-implementation-and-final-consumer-checks'},
+    spec: '/specs/concorde/development/development#coordinated-implementation-and-final-consumer-checks'},
   validate: {title: 'Validate', kind: 'Deterministic capability', agent: 'No model call',
     input: 'Current candidate files, Spec declarations and the project’s configured check commands.',
     output: 'Deterministic Spec validation and code-check results bound to the measured revision.',
     detail: 'Check machine-verifiable structure: document ownership, IDs, references, required format, file bindings and shared-contract consistency. Run configured checks such as tests, type checking or builds. Structural success does not prove semantic completeness; Review Spec assesses meaning, and Review Code assesses implementation behavior.',
     handoff: <><code>concorde-validate-response@1</code> has a <code>data.checks</code> array with <code>check_id</code>, <code>target_id</code>, <code>status</code>, <code>exit_code</code>, <code>source_digest</code> and <code>log_digest</code> per record. The host saves evidence; Code Review receives its own Spec/code snapshot and review input. Raw check logs are not fed into Spec-only stages.</>,
     stops: 'Invalid Spec structure, failed check commands or timeouts return failed. Changes during verification produce stale_evidence; unenforceable check permissions block execution. Shared implementation users need current evidence too. This stage has no automatic repair edge.',
-    spec: development + 'interfaces'},
+    spec: '/specs/concorde/development/interfaces'},
   review_code: {title: 'Review Code', kind: 'Independent review', agent: 'programmer / code-review',
     input: 'Complete Specs, authorized implementation files and scoped changes at the reviewed revision.',
     output: 'Behavior findings, review coverage, gaps and revision-bound completion status.',
     detail: 'Compare implementation and tests with the promised scenarios, interface behavior and task acceptance. Look for concrete defects and regressions, including failure paths and affected consumers. The reviewer is read-only; passing tests do not replace this review.',
     handoff: <>The reviewer returns <code>concorde-review-stage-result@1</code>; the host stores and publishes <code>concorde-review-result@1</code>. Local repair sends that exact typed record plus the prior tasks back to Tasks and Implement. Otherwise, Ready checks the saved evidence.</>,
     stops: 'Local blocking code findings without a Spec gap can trigger bounded repair. Spec gaps, incomplete reviews, execution failures or another consumer’s blocking findings stop. Repeated identical feedback waits; exhausting the repair limit stops. Advisory findings do not block readiness.',
-    spec: development + 'development#ai-and-human-feedback'},
+    spec: '/specs/concorde/development/review-and-gaps'},
   ready: {title: 'Ready', kind: 'Host checkpoint', agent: 'No model call',
     input: 'Saved task completion, required reviews, configured check results and current candidate digests.',
     output: 'A candidate recorded as ready for a separate delivery request.',
     detail: 'Verify that required evidence is complete and still matches the current task, Specs and code. Ready is an internal host checkpoint, not a separately callable capability. It does not deliver or merge the change.',
     handoff: <>The host updates <code>.concorde/worktree.json</code> and returns <code>concorde-dev-loop-response@1</code> with <code>outcome: ready</code>, check results and review artifact references. A later Deliver request identifies the change by <code>change_id</code>.</>,
     stops: 'Open contract gaps, unfinished tasks, absent or blocking required reviews, failed/missing checks or stale evidence prevent ready. Changing the candidate during completion verification also stops with stale_evidence.',
-    spec: development + 'delivery'},
+    spec: '/specs/concorde/development/module#scenario.development.dev-loop-ready'},
+};
+
+const workerDetails: Record<string, Step> = {
+  'concorde-specify': specSteps.specify,
+  'concorde-plan': steps.plan,
+  'concorde-tasks': steps.tasks,
+  'concorde-implement': steps.implement,
+  'concorde-context-solve': {title: 'Assess context', kind: 'Agent invocation', agent: 'spec-engineer / context-solve',
+    input: 'The complete selected Module contract, task, constraints and participant declarations.',
+    output: 'A sufficiency decision or an attributed contract gap.',
+    detail: 'Check that the declared participants and contract supply the meaning needed to plan the task. This stage cannot expand its context or read implementation code to fill a gap.',
+    handoff: <>A sufficient result allows planning to proceed. Missing promises return <code>spec_incomplete</code> with the question and blocked step.</>,
+    stops: 'Missing contract meaning, incompatible participant routing or unsupported intent prevents planning.',
+    spec: '/specs/concorde/development/interfaces'},
 };
 
 type CapabilityDetail = {title: string; detail: string; exchange: string; stops: string};
@@ -71,9 +116,9 @@ const capabilityDetails: Record<string, CapabilityDetail> = {
     exchange: 'concorde-specify-loop-request@1 → concorde-specify-loop-response@1. Task, constraints and flags enter; Spec completion or blockers and artifact references return. The same change can continue through Dev Loop.',
     stops: 'Spec gaps, blocking findings, incomplete reviews and invalid proposals preserve partial progress. Completion does not mark ready or require code review; a new primary-worktree change requires a fresh candidate session.'},
   'concorde-dev-loop': {title: 'Dev Loop',
-    detail: 'Coordinate Specify through Ready, reusing current evidence and allowing the bounded code-review repair shown above.',
-    exchange: 'concorde-dev-loop-request@1 → concorde-dev-loop-response@1. Task, constraints, flags and optional change_id enter; outcome, gaps, checks and artifact references return. Stage handoffs and candidate files are managed by the host.',
-    stops: 'Any non-advancing stage outcome stops the loop, except admitted local code-review repair. A new primary-worktree change first returns worktree_handoff_required so a fresh session can continue in the candidate.'},
+    detail: 'Call Specify Loop, then coordinate planning through Ready, reusing current evidence and allowing the bounded code-review repair shown above.',
+    exchange: 'concorde-dev-loop-request@1 → concorde-dev-loop-response@1. Task, constraints, flags and optional change_id enter; outcome, gaps, checks and artifact references return. Step handoffs and candidate files are managed by the host.',
+    stops: 'Any non-advancing step outcome stops the loop, except admitted local code-review repair. A new primary-worktree change first returns worktree_handoff_required so a fresh session can continue in the candidate.'},
   'concorde-review': {title: 'Review',
     detail: 'Route an independent, read-only review. Spec mode assesses structure and contract meaning; code mode also checks authorized implementation against those promises.',
     exchange: 'concorde-review-request@1 (task, review_mode: spec|code) → concorde-review-response@1, whose reviews array contains concorde-review-result@1 values. The host binds each review to its input revision.',
@@ -106,14 +151,15 @@ function label(id: string) {
     id.replace(/_/g, ' ');
 }
 
-function Diagram({graph, name, studio = false}: {graph: Graph; name: string; studio?: boolean}) {
+function Diagram({graph, name, studio = false, details = steps, anchorPrefix = 'stage'}:
+  {graph: Graph; name: string; studio?: boolean; details?: Record<string, Step>; anchorPrefix?: string}) {
   const marker = useId().replace(/:/g, '');
   const [readingSize, setReadingSize] = useState(false);
   const canvas = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (canvas.current) canvas.current.scrollLeft = (canvas.current.scrollWidth - canvas.current.clientWidth) / 2;
   }, [graph, readingSize]);
-  const order = studio ? ['__start__', ...graph.nodes.filter(id => id !== '__start__' && id !== '__end__'), '__end__'] : ['__start__', ...Object.keys(steps).filter(n => graph.nodes.includes(n)), '__end__'];
+  const order = studio ? ['__start__', ...graph.nodes.filter(id => id !== '__start__' && id !== '__end__'), '__end__'] : ['__start__', ...Object.keys(details).filter(n => graph.nodes.includes(n)), '__end__'];
   const position = (id: string) => 55 + order.indexOf(id) * 136;
   const height = order.length * 136;
   return <>
@@ -126,7 +172,7 @@ function Diagram({graph, name, studio = false}: {graph: Graph; name: string; stu
       <svg className={readingSize ? styles.readingSize : styles.fit} viewBox={`0 0 720 ${height}`}
         role="img" aria-labelledby={`${marker}-title ${marker}-desc`}>
         <title id={`${marker}-title`}>{name}</title>
-        <desc id={`${marker}-desc`}>Compiled LangGraph nodes and edges. Select a stage for its responsibilities.
+        <desc id={`${marker}-desc`}>Compiled LangGraph nodes and edges. Select a step for its responsibilities.
           The transition list below provides the same topology as text.</desc>
         <defs><marker id={marker} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" /></marker></defs>
@@ -134,7 +180,7 @@ function Diagram({graph, name, studio = false}: {graph: Graph; name: string; stu
           const from = position(edge.source), to = position(edge.target);
           const adjacent = order.indexOf(edge.target) === order.indexOf(edge.source) + 1;
           const repair = edge.source === 'review_code' && edge.target === 'tasks';
-          const stop = edge.target === '__end__' && !adjacent;
+          const stop = (edge.target === '__end__' && !adjacent) || (edge.source === 'specify' && edge.target === 'summarize');
           const d = adjacent ? `M 360 ${from + 37} V ${to - 37}`
             : stop ? `M 515 ${from} H 645 V ${to} H 515`
             : `M 205 ${from} H ${repair ? 65 : 125} V ${to} H 205`;
@@ -149,12 +195,13 @@ function Diagram({graph, name, studio = false}: {graph: Graph; name: string; stu
         {order.map(id => {
           const boundary = id.startsWith('__');
           const y = position(id);
-          const node = <g className={steps[id]?.agent !== 'No model call' && steps[id] ? styles.agentNode : styles.hostNode}>
+          const title = details[id]?.title ?? label(id);
+          const node = <g className={details[id]?.agent !== 'No model call' && details[id] ? styles.agentNode : styles.hostNode}>
+            <title>{id}</title>
             <rect x="205" y={y - 37} width="310" height="74" rx={boundary ? 37 : 12} />
-            <text x="360" y={y - 3} textAnchor="middle" className={styles.nodeLabel}>{label(id)}</text>
-            <text x="360" y={y + 19} textAnchor="middle" className={styles.nodeId}><title>{id}</title>{id.length > 36 ? '…' + id.slice(-35) : id}</text>
+            <text x="360" y={y} textAnchor="middle" dominantBaseline="central" className={styles.nodeLabel}>{title}</text>
           </g>;
-          return steps[id] && !studio ? <a key={id} href={`#stage-${id}`} aria-label={`${label(id)}: responsibilities and Spec`}>{node}</a>
+          return details[id] && !studio ? <a key={id} href={id === 'specify_loop' ? '#specify' : `#${anchorPrefix}-${id}`} aria-label={`${title}: responsibilities and Spec`}>{node}</a>
             : <g key={id}>{node}</g>;
         })}
       </svg>
@@ -167,30 +214,128 @@ function Diagram({graph, name, studio = false}: {graph: Graph; name: string; stu
   </>;
 }
 
+function StepCards({details, anchorPrefix = 'stage'}: {details: Record<string, Step>; anchorPrefix?: string}) {
+  return <div className={styles.stepGrid}>{Object.entries(details).map(([id, step]) =>
+    <article id={`${anchorPrefix}-${id}`} key={id} className={styles.step}>
+      <span className={styles.badge}>{step.kind}</span><h4>{step.title}</h4>
+      <p><code>{step.agent}</code></p>
+      <p>{step.detail}</p>
+      <dl><dt>Receives</dt><dd>{step.input}</dd><dt>Produces</dt><dd>{step.output}</dd>
+        <dt>Format & next step</dt><dd>{step.handoff}</dd></dl>
+      <div className={styles.stopReason}><h5>When it stops</h5><p>{step.stops}</p></div>
+      <Link to={step.spec}>Spec details →</Link>
+    </article>)}</div>;
+}
+
+function CapabilityRelations({name, data}: {name: string; data: FlowData}) {
+  const info = data.capability_info[name];
+  const callers = Object.keys(data.capability_info).filter(key => data.capability_info[key].uses.includes(name));
+  const links = (names: string[]) => names.map((key, index) => <React.Fragment key={key}>
+    {index > 0 && ', '}<a href={`#${capabilityAnchor(key)}`}>{key.replace(/^concorde-/, '')}</a>
+  </React.Fragment>);
+  return <div className={styles.capabilityRelations}>
+    <p>{info.public ? 'Public Skill' : 'Called through composition'} · Context: {info.context_selection} · {info.deterministic ? 'No model calls' : 'May call a model'}</p>
+    {info.uses.length > 0 && <p><strong>Calls:</strong> {links(info.uses)}</p>}
+    {callers.length > 0 && <p><strong>Called by:</strong> {links(callers)}</p>}
+  </div>;
+}
+
 export default function AgentFlows({data}: {data: FlowData}) {
   const [variant, setVariant] = useState(0);
-  const [flowName, setFlowName] = useState('Discovery');
-  const [capability, setCapability] = useState('concorde-dev-loop');
+  const groups = useMemo(() => flowNavigation(data), [data]);
+  const [selected, setSelected] = useState('development');
+  const [query, setQuery] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigation = useRef<HTMLElement>(null);
+  const visibleGroups = filterNavigation(groups, query);
+  const entries = groups.flatMap(group => group.entries);
+  useEffect(() => {
+    const sync = () => setSelected(selectionFromHash(window.location.hash, groups));
+    sync();
+    window.addEventListener('hashchange', sync);
+    return () => window.removeEventListener('hashchange', sync);
+  }, [groups]);
+  useEffect(() => {
+    if (!window.location.hash) return;
+    const frame = requestAnimationFrame(() => {
+      const current = navigation.current?.querySelector<HTMLElement>('[aria-current="page"]');
+      if (current?.offsetParent) current.scrollIntoView({block: 'nearest'});
+      let anchor = selected;
+      try { anchor = decodeURIComponent(window.location.hash.slice(1)); } catch { /* Use the selected flow. */ }
+      (document.getElementById(anchor) ?? document.getElementById(selected))?.scrollIntoView({block: 'start'});
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [selected]);
   const sourceBase = 'https://github.com/FTOD/concorde/blob/main/';
-  const spec = useBaseUrl(development + 'query-and-routing');
+  const spec = useBaseUrl('/specs/concorde/development/query-and-routing');
   return <Layout title="Agent Flows" description="Concorde's actual Agent and LangGraph execution, branches and bounded feedback loops.">
     <main className={styles.page}>
+      <aside className={styles.sidebar} aria-label="Flow navigation">
+        <div className={styles.sidebarHeading}><strong>Agent Flows</strong>
+          <button type="button" className={styles.sidebarToggle} aria-expanded={sidebarOpen}
+            aria-controls="flow-navigation" onClick={() => setSidebarOpen(!sidebarOpen)}>
+            {sidebarOpen ? 'Close flows' : 'Browse flows'}</button>
+        </div>
+        <nav ref={navigation} id="flow-navigation" className={styles.flowNavigation} data-open={sidebarOpen} aria-label="All flows">
+          <label className={styles.searchLabel} htmlFor="flow-search">Find a flow</label>
+          <input id="flow-search" type="search" value={query} placeholder="Search flows…"
+            onChange={event => setQuery(event.target.value)} />
+          {visibleGroups.map(group => <div className={styles.navGroup} key={group.title}>
+            <h2>{group.title}</h2>
+            <ul>{group.entries.map(entry => <li key={entry.id}>
+              <a href={`#${entry.id}`} aria-current={selected === entry.id ? 'page' : undefined}
+                onClick={() => setSidebarOpen(false)}>{entry.title}</a>
+            </li>)}</ul>
+          </div>)}
+          {visibleGroups.length === 0 && <p role="status">No flows match “{query}”.</p>}
+        </nav>
+      </aside>
+      <div className={styles.content}>
       <header className={styles.header}>
         <p className={styles.eyebrow}>CONCORDE INTERNALS</p>
         <h1>Inside the Agent Flows.</h1>
         <p>Follow what each step does, what it passes on, and what makes it stop.
           The diagrams come from current Flow factories, without running Agents.</p>
-        <p>This is custom documentation for Concorde’s own site, outside the reusable Framework docsite template.</p>
-        <nav aria-label="On this page" className={styles.sectionNav}>
-          <a href="#development">Development loop</a><a href="#handoffs">Data handoffs</a><a href="#stages">Stage details</a><a href="#routing">Routing & diagnosis</a>
-          <a href="#studio">Studio Flows</a><a href="#coverage">Implementation coverage</a><a href="#flow-catalog">Flow catalog</a>
-        </nav>
+        <p>Choose a Capability or a shared Flow in the sidebar.</p>
       </header>
 
-      <section id="development" className={styles.section}>
+      <section id="specify" className={styles.section} hidden={selected !== 'specify'}>
+        <div className={styles.sectionHeading}><span className={styles.badge}>INDEPENDENT SPEC FLOW</span>
+          <h2>The specify loop</h2>
+          <CapabilityRelations name="concorde-specify-loop" data={data} />
+          <p>Write or revise a Spec, then review it independently. Run this flow on its own, or call it as the first step of the development loop.</p>
+        </div>
+        <div className={styles.columns}>
+          <div><Diagram graph={data.flows['Spec authoring and review']} name="Specify Loop"
+            details={specSteps} anchorPrefix="spec-stage" /></div>
+          <aside className={styles.notes} aria-label="Specify loop decisions">
+            <h3>One contract, fresh contexts</h3>
+            <p>The coordinator first selects the owning Module. After admission, the author and independent reviewers each receive a fresh, complete Spec context. Implementation code is outside their input.</p>
+            <h3>Choose where to enter</h3>
+            <p><code>specify=false</code> skips authoring. Accepted authoring for the same task can also be retained. Both paths enter Review Spec, which reuses valid evidence or runs the required review.</p>
+            <h3>Review controls</h3>
+            <p><code>run_reviews=false</code> records a Spec review skip only when no earlier requirement exists. It does not change code-review requirements.</p>
+            <h3>Repair and resume</h3>
+            <p>Gaps, blocking findings or incomplete reviews return a blocker with saved progress. Repair the contract and resume with fresh context. There is no automatic Spec-repair edge.</p>
+            <div className={styles.callout}><h3>Completed Spec → continue development</h3>
+              <p>Successful Spec steps return <code>completed</code>. Standalone execution ends here.</p>
+              <p>Dev Loop calls this same capability, then proceeds to planning or resumes current downstream work in the same change. Implementation reaches <code>ready</code> after its own checks and review.</p>
+              <a href="#development">Follow the development loop →</a>
+            </div>
+          </aside>
+        </div>
+        <h3>Spec step responsibilities & handoffs</h3>
+        <StepCards details={specSteps} anchorPrefix="spec-stage" />
+        <details className={styles.transitions} id="specify-studio"><summary>Full Specify Loop invocation</summary>
+          <Diagram graph={data.capabilities['concorde-specify-loop']} name="Specify Loop invocation" studio />
+        </details>
+      </section>
+
+      <section id="development" className={styles.section} hidden={selected !== 'development'}>
         <div className={styles.sectionHeading}><span className={styles.badge}>EXECUTABLE FLOW</span>
           <h2>The development loop</h2>
-          <p><code>Invocation.loop → build_loop_flow</code>. Nodes call scoped capabilities; their internal Agent calls are described alongside the graph.</p>
+          <CapabilityRelations name="concorde-dev-loop" data={data} />
+          <p>Start with <a href="#specify">Specify Loop</a>, then plan, implement and verify the change. Select its node to explore the Spec steps.</p>
         </div>
         <div className={styles.controls}><label htmlFor="flow-variant">Entry & scope</label>
           <select id="flow-variant" value={variant} onChange={e => setVariant(Number(e.target.value))}>
@@ -213,13 +358,13 @@ export default function AgentFlows({data}: {data: FlowData}) {
             <h3>Stops remain visible</h3>
             <p>Spec gaps wait for clarification. Failed checks, execution failures and incompatible feedback stop. Cancellation and limits propagate as errors; they are not extra graph nodes.</p>
             <p>Deferred component checks may stop after implementation, or after Spec review on a validation-only resume.</p>
-            <Link to={development + 'development#ai-and-human-feedback'}>Read the feedback and recovery contract →</Link>
+            <Link to={'/specs/concorde/development/development#ai-and-human-feedback'}>Read the feedback and recovery contract →</Link>
           </aside>
         </div>
         <div id="handoffs" className={styles.handoffs}>
           <h3>How information moves</h3>
           <p>The host calls each capability with a named JSON request and receives a named JSON response.
-            It checks the result, saves accepted artifacts and creates the next stage’s inputs.
+            It checks the result, saves accepted artifacts and creates the next step’s inputs.
             An arrow does not mean one Agent receives another Agent’s conversation.</p>
           <ol className={styles.sequence}>
             <li><strong>Capability call → response</strong><span>Public calls use <code>concorde-capability-invocation@3</code> with
@@ -244,7 +389,7 @@ export default function AgentFlows({data}: {data: FlowData}) {
             <p>This illustrative value is one entry in <code>snapshot.data.stage_inputs</code>.
               The request that calls Tasks separately identifies the task, Module and change.</p>
             <pre><code>{JSON.stringify({type_id: 'concorde-plan-artifact', schema_version: 1,
-              data: {plan: 'Show each stage’s responsibility, handoff format and stop conditions.'}}, null, 2)}</code></pre>
+              data: {plan: 'Show each step’s responsibility, handoff format and stop conditions.'}}, null, 2)}</code></pre>
             <p>Tasks also receives <code>concorde-task-identity-constraints@1</code> containing reserved IDs.
               The repair path adds the prior tasks and the verified <code>concorde-review-result@1</code>.
               Ordinary Plan → Tasks handoff carries no code or review transcript.</p>
@@ -259,25 +404,19 @@ export default function AgentFlows({data}: {data: FlowData}) {
               <dt><code>failed</code></dt><dd>Execution or deterministic checks failed. The worktree is preserved; this outcome does not automatically re-enter implementation.</dd>
             </dl>
             <p>These are capability <code>output.data.outcome</code> values. The outer result has its own <code>status</code> and
-              <code>errors</code>; malformed inputs, permission problems and stale artifacts can stop admission before any stage runs.
+              <code>errors</code>; malformed inputs, permission problems and stale artifacts can stop admission before any step runs.
               Cancellation and execution limits have dedicated error codes.</p>
           </div>
         </div>
-        <h3 id="stages" className={styles.anchor}>Stage responsibilities & handoffs</h3>
+        <h3 id="stages" className={styles.anchor}>Step responsibilities & handoffs</h3>
         <p>Names in the graph match the cards below. Each card separates the work itself from its data handoff and stopping rules.</p>
-        <div className={styles.stageGrid}>{Object.entries(steps).map(([id, step]) =>
-          <article id={`stage-${id}`} key={id} className={styles.stage}>
-            <span className={styles.badge}>{step.kind}</span><h4>{step.title}</h4>
-            <p><code>{step.agent}</code></p>
-            <p>{step.detail}</p>
-            <dl><dt>Receives</dt><dd>{step.input}</dd><dt>Produces</dt><dd>{step.output}</dd>
-              <dt>Format & next step</dt><dd>{step.handoff}</dd></dl>
-            <div className={styles.stopReason}><h5>When it stops</h5><p>{step.stops}</p></div>
-            <Link to={step.spec}>Spec details →</Link>
-          </article>)}</div>
+        <StepCards details={steps} />
+        <details className={styles.transitions} id="studio"><summary>Full Dev Loop invocation</summary>
+          <Diagram graph={data.capabilities['concorde-dev-loop']} name="Dev Loop invocation" studio />
+        </details>
       </section>
 
-      <section id="routing" className={styles.section}>
+      <section id="routing" className={styles.section} hidden={selected !== 'routing'}>
         <span className={styles.badge}>EXECUTABLE DISCOVERY FLOW</span>
         <h2>Routing a read-only diagnosis</h2>
         <p><code>Discovery Flow → owner admission → review Flow</code>. The coordinator selects responsibility; it has no implementation contents.</p>
@@ -293,50 +432,56 @@ export default function AgentFlows({data}: {data: FlowData}) {
           <code>concorde-main-stage-result@1</code> with routes, gaps or an expansion request. The host admits the selected route’s
           <code>target_id</code>, <code>focus_id</code>, <code>task</code> and <code>constraints</code>, then creates a separate
           <code>concorde-review-stage-context@2</code> for the reviewer. Invalid or contradictory route fields stop admission.</p>
-        <a href={spec}>Routing contract →</a>{' · '}<Link to={development + 'module#scenario.development.standalone-review'}>Standalone review scenario →</Link>
+        <a href={spec}>Routing contract →</a>{' · '}<Link to={'/specs/concorde/development/module#scenario.development.standalone-review'}>Standalone review scenario →</Link>
       </section>
 
-      <section id="studio" className={styles.section}>
-        <span className={styles.badge}>COMPOSED EXECUTION FLOW</span><h2>The Studio entry Flow</h2>
-        <p><code>build_studio_flow</code> exposes the same admission, dispatch and composed Flows used by local calls. Expand the transitions to inspect the selected capability.</p>
-        <div className={styles.controls}><label htmlFor="flow-capability">Public capability</label>
-          <select id="flow-capability" value={capability} onChange={e => setCapability(e.target.value)}>
-            {Object.keys(data.studio).map(name => <option key={name}>{name}</option>)}
-          </select></div>
-        <div className={styles.columns}><div><Diagram graph={data.studio[capability]} name={`${capability} Studio Flow`} studio /></div>
-          <aside className={styles.notes}><h3>Input → result</h3>
-            <p>A typed invocation and optional expected workspace enter validation. Invalid input goes directly to End with a failure result.</p>
-            <p>The Flow rechecks admission and the workspace on replay. The final state contains the typed result, permission policies and streamed stage / Agent events.</p>
-            <p>Internal Flow nodes are inspectable, but do not become public capability entries. Host objects stay outside checkpoints. Atomic lifecycle operations remain deterministic nodes.</p>
-            <h3>{capabilityDetails[capability].title}</h3>
-            <p>{capabilityDetails[capability].detail}</p>
-            <h4>Information & format</h4><p className={styles.exchange}>{capabilityDetails[capability].exchange}</p>
-            <div className={styles.stopReason}><h4>When it stops</h4><p>{capabilityDetails[capability].stops}</p></div>
-            <Link to="/specs/concorde/harness/module#entity.harness.studio">Studio Spec →</Link></aside></div>
-        <div className={styles.callout}><h3>Shared admission checks</h3>
-          <p>Unknown capabilities, malformed typed data, incompatible versions, configuration mismatches and invalid workspace
-            bindings stop before execution. The typed result reports the specific error code.</p>
-          <p>Top-level <strong>Main, Dev Loop, Review and Reflections</strong> reject a stale generated build in both execution
-            and policy-preview mode. Deterministic lifecycle capabilities <strong>Init, Configure, Validate and Deliver</strong>
-            are exempt from that entry check because they launch no Agents. Loading an Agent independently checks build freshness.
-            The exception does not waive Protocol, input, permission or evidence validation.</p>
-          <Link to={development + 'interfaces'}>Capability admission and error contracts →</Link>
-        </div>
-      </section>
+      {entries.filter(entry => entry.kind === 'capability' && data.capability_info[entry.key].public && !['development', 'specify'].includes(entry.id)).map(entry =>
+        <section id={entry.id} key={entry.id} className={styles.section} hidden={selected !== entry.id}>
+          {selected === entry.id && <>
+            <span className={styles.badge}>CAPABILITY</span><h2>{capabilityDetails[entry.key].title}</h2>
+            <CapabilityRelations name={entry.key} data={data} />
+            <p>{capabilityDetails[entry.key].detail}</p>
+            <div className={styles.columns}>
+              <div><Diagram graph={data.capabilities[entry.key]} name={`${entry.title} invocation`} studio /></div>
+              <aside className={styles.notes}>
+                <h3>Input → result</h3><p>{capabilityDetails[entry.key].exchange}</p>
+                <h3>When it stops</h3><p>{capabilityDetails[entry.key].stops}</p>
+                <h3>Admission and execution</h3>
+                <p>The host validates the typed request, binds the workspace and admits context before executing the selected flow. The result preserves permission policies and stage events.</p>
+                <Link to={development + 'interfaces'}>Capability contracts →</Link>
+              </aside>
+            </div>
+          </>}
+        </section>)}
 
-      <section id="flow-catalog" className={styles.section}>
-        <span className={styles.badge}>EXECUTABLE FLOW FACTORIES</span><h2>Inspect every Flow family</h2>
-        <p>These are compiled runtime definitions. Branches select admitted outcomes; repeated work remains bounded by each Flow's domain limits.</p>
-        <div className={styles.controls}><label htmlFor="flow-family">Flow family</label>
-          <select id="flow-family" value={flowName} onChange={e => setFlowName(e.target.value)}>
-            {Object.keys(data.flows).map(name => <option key={name}>{name}</option>)}
-          </select></div>
-        <Diagram graph={data.flows[flowName]} name={flowName} studio />
-      </section>
+      {entries.filter(entry => entry.kind === 'capability' && !data.capability_info[entry.key].public).map(entry =>
+        <section id={entry.id} key={entry.id} className={styles.section} hidden={selected !== entry.id}>
+          {selected === entry.id && <>
+            <span className={styles.badge}>CAPABILITY</span><h2>{entry.title}</h2>
+            <CapabilityRelations name={entry.key} data={data} />
+            <p>{workerDetails[entry.key].detail}</p>
+            <p>This Capability receives its Module from its caller and is available through declared composition. It has no public Skill.</p>
+            <Diagram graph={data.capabilities[entry.key]} name={`${entry.title} capability`} studio />
+            <StepCards details={{[entry.key]: workerDetails[entry.key]}} anchorPrefix="internal-stage" />
+            {entry.key === 'concorde-specify'
+              ? <p>Called by <a href="#specify">specify-loop</a>, which also performs independent Spec review.</p>
+              : <p>Explore the enclosing <a href="#development">development loop</a>.</p>}
+          </>}
+        </section>)}
 
-      <section id="coverage" className={styles.section}>
+      {entries.filter(entry => entry.kind === 'flow').map(entry =>
+        <section id={entry.id} key={entry.id} className={styles.section} hidden={selected !== entry.id}>
+          {selected === entry.id && <>
+            <span className={styles.badge}>SHARED FLOW</span><h2>{entry.title}</h2>
+            <p>Inspect the current executable flow. Conditional transitions choose admitted outcomes; repeated work follows the flow’s declared limits.</p>
+            <Diagram graph={data.flows[entry.key]} name={entry.title} studio />
+            <Link to="/specs/concorde/harness/graphs-and-loops">Flow and Loop contracts →</Link>
+          </>}
+        </section>)}
+
+      <section id="coverage" className={styles.section} hidden={selected !== 'coverage'}>
         <h2>What is implemented?</h2>
-        <p>Public entries execute LangGraph Flows for admission and capability dispatch. Query, topology, planning,
+        <p>Public entries execute LangGraph Flows for admission and capability dispatch. Query, topology, Spec authoring and review, planning,
           development and reflection Flows are composed into those entries. Component coordination, batch work and
           recursive Agent decisions also use executable Flow factories shown in the catalog.</p>
         <p>The <Link to="/specs/concorde/harness/graphs-and-loops">Flow and Loop contracts</Link> define the terminology and boundaries.
@@ -349,6 +494,7 @@ export default function AgentFlows({data}: {data: FlowData}) {
             <a href={sourceBase + source.path}>{source.path}</a><code>sha256:{source.digest}</code>
           </li>)}</ul></details>
       </section>
+      </div>
     </main>
   </Layout>;
 }

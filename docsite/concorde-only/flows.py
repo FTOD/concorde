@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT))
 from concorde.development.loop_flow import build_loop_flow
 from concorde.development.specify_flow import build_specify_flow
 from concorde.harness.studio import build_studio_flow
-from concorde.spec.contracts import SKILL_NAMES
+from concorde.spec.contracts import capability_modules
 from capabilities.dev_loop import FLOW
 
 
@@ -22,6 +22,7 @@ def inspect_flow(flow):
 
 
 def export():
+    modules = capability_modules()
     loops = []
     for specify, entry, code, label in (
         (True, 'plan', True, 'New change'),
@@ -61,9 +62,16 @@ def export():
     paths = sorted(set(factory_sources) | {
         'src/concorde/development/capability_host.py', 'src/concorde/development/review.py',
         'src/concorde/harness/agent_runtime.py', 'src/concorde/reflections/scoped_triage.py',
-        'capabilities/dev_loop.py', 'docsite/concorde-only/flows.py'})
-    return {'loops': loops, 'flows': flows, 'factory_sources': factory_sources, 'studio': {name: inspect_flow(build_studio_flow(name, ROOT, ROOT))
-            for name in SKILL_NAMES}, 'policy': FLOW,
+        'docsite/concorde-only/flows.py'} | {
+            Path(module.__file__).relative_to(ROOT).as_posix() for module in modules.values()})
+    capabilities = {name: inspect_flow(build_studio_flow(name, ROOT, ROOT) if module.PUBLIC else
+        build_capability_flow(lambda node: lambda state: {}, name=name)) for name, module in modules.items()}
+    metadata = {name: {'public': module.PUBLIC, 'context_selection': module.CONTEXT_SELECTION,
+                      'deterministic': module.DETERMINISTIC,
+                      'uses': ['concorde-' + child.replace('_', '-') for child in module.USES]}
+                for name, module in modules.items()}
+    return {'loops': loops, 'flows': flows, 'capabilities': capabilities, 'capability_info': metadata,
+            'factory_sources': factory_sources, 'policy': FLOW,
             'sources': [{'path': path, 'digest': hashlib.sha256((ROOT / path).read_bytes()).hexdigest()}
                         for path in paths]}
 

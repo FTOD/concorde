@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 import unittest
 
-from concorde.spec.contracts import SKILL_NAMES
+from concorde.spec.contracts import SKILL_NAMES, CAPABILITY_NAMES
 from concorde.spec.verification import verifies
 from concorde.views.docsite_template import template_files
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -22,14 +22,22 @@ class AgentFlowTests(unittest.TestCase):
 
     @verifies('scenario.views.agent-flows')
     def test_all_public_entries_and_executable_flow_factories_are_accounted_for(self):
-        self.assertEqual(set(SKILL_NAMES), set(self.data['studio']))
-        for capability, graph in self.data['studio'].items():
+        self.assertEqual(set(CAPABILITY_NAMES), set(self.data['capabilities']))
+        self.assertEqual(set(CAPABILITY_NAMES), set(self.data['capability_info']))
+        public = {name for name, info in self.data['capability_info'].items() if info['public']}
+        self.assertEqual(set(SKILL_NAMES), public)
+        for capability, graph in self.data['capabilities'].items():
+            if capability not in public:
+                self.assertIn('execute:prepare_target', graph['nodes'])
+                self.assertTrue(all(edge['source'] in graph['nodes'] and edge['target'] in graph['nodes']
+                                    for edge in graph['edges']))
+                continue
             nodes = set(graph['nodes'])
             self.assertTrue({'__start__', '__end__', 'validate_invocation',
                 capability + ':admit_request', capability + ':bind_workspace',
                 capability + ':execute:select_capability', capability + ':finalize'} <= nodes)
             self.assertTrue(all(edge['source'] in nodes and edge['target'] in nodes for edge in graph['edges']))
-        main = self.data['studio']['concorde-main']['nodes']
+        main = self.data['capabilities']['concorde-main']['nodes']
         self.assertTrue(any(node.endswith(':discover:expand_context') for node in main))
         self.assertTrue(any(node.endswith(':author_module') for node in main))
         self.assertFalse(any(node.endswith(':deliver') for node in main))
@@ -48,7 +56,9 @@ class AgentFlowTests(unittest.TestCase):
     def test_variants_expose_repair_stops_resume_and_missing_code_review(self):
         page = (REPOSITORY_ROOT / 'docsite/concorde-only/page.tsx').read_text()
         explained = set(re.findall(r'^  (\w+): \{title:', page, re.MULTILINE))
-        self.assertEqual(set(self.data['loops'][0]['nodes']) - {'__start__', '__end__'}, explained)
+        self.assertEqual((set(self.data['loops'][0]['nodes'])
+                          | set(self.data['flows']['Spec authoring and review']['nodes']))
+                         - {'__start__', '__end__'}, explained)
         for graph in self.data['loops']:
             edges = {(e['source'], e['target']) for e in graph['edges']}
             self.assertIn(('ready', '__end__'), edges)
