@@ -1,4 +1,4 @@
-.page {--flow-accent: var(--ifm-color-primary); max-width: 1240px; margin: auto; padding: 2.5rem 2rem 5rem;}
+.page {--flow-accent: var(--ifm-color-primary); width: 100%; min-width: 0; max-width: 1240px; margin: auto; padding: 2.5rem 2rem 5rem;}
 :global([data-theme='dark']) .page {--flow-accent: #aaa7ff;}
 .page a {color: var(--flow-accent);}
 .header {max-width: 920px; margin-bottom: 1.5rem;}
@@ -40,8 +40,24 @@
 .stage {padding: 1.5rem; border: 1px solid var(--ifm-color-emphasis-200); border-radius: 10px; scroll-margin-top: 5rem;}
 .stage h4 {font-size: 1.18rem; margin: .45rem 0 .8rem;}
 .stage p, .stage dl {font-size: .9rem;}
+.stage, .notes, .handoffs {overflow-wrap: anywhere;}
+.stage code, .handoffs code, .notes code {white-space: normal;}
 .stage dt {font-weight: 650; color: var(--ifm-color-emphasis-700);}
 .stage dd {margin: 0 0 .7rem;}
+.handoffs {margin: 2rem 0; padding: 1.5rem; background: var(--ifm-background-surface-color); border: 1px solid var(--ifm-color-emphasis-200); border-radius: 12px; scroll-margin-top: 5rem;}
+.anchor {scroll-margin-top: 5rem;}
+.wireExample {margin: 1.25rem 0;}
+.wireExample summary {font-weight: 600; cursor: pointer;}
+.wireExample p:first-of-type {margin-top: 1rem;}
+.wireExample pre {font-size: .82rem; overflow-x: auto;}
+.wireExample pre code {white-space: pre;}
+.stopLegend {margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--ifm-color-emphasis-200);}
+.stopLegend dl {display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: 1rem; font-size: .9rem;}
+.stopLegend dd {margin: 0 0 .7rem;}
+.stopReason {margin: 1rem 0; padding: .9rem 1rem; border-left: 3px solid var(--flow-accent); background: var(--ifm-color-emphasis-100); border-radius: 0 6px 6px 0;}
+.stopReason :is(h4,h5) {font-size: .9rem; margin: 0 0 .5rem;}
+.stopReason p {margin-bottom: 0;}
+.exchange {overflow-wrap: anywhere;}
 .sequence {padding-left: 1.6rem; max-width: 900px;}
 .sequence li {padding: .5rem 0 .8rem .6rem;}
 .sequence strong, .sequence span {display: block;}
@@ -55,4 +71,7 @@
   .canvas {max-height: 70vh;}
   .section h2 {font-size: 1.65rem;}
   .diagramTools {flex-wrap: wrap;}
+  .handoffs {padding: 1rem;}
+  .stopLegend dl {grid-template-columns: minmax(0, 1fr);}
+  .stopLegend dt {margin-bottom: .25rem;}
 }

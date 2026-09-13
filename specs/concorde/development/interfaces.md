@@ -42,8 +42,14 @@ stdout is `concorde-capability-result@3` with capability_id, invocation_id, mode
 succeeded|blocked|failed|described, workspace (null or host-supplied worktree metadata), output
 (typed response or null) and errors [{code,field,message}]. Exit 0 means succeeded/described; 3 means
 blocked/failed. Describe-policy does not launch agents or mutate project state; policy descriptions
-go to stderr. Before any launch or policy description the host verifies the build manifest and
-refuses a stale build with `stale_build`.
+go to stderr. Before executing or describing a top-level non-lifecycle capability, the host
+verifies the build manifest and refuses a stale build with `stale_build`. The deterministic
+lifecycle capabilities `concorde-init`, `concorde-configure`, `concorde-validate` and
+`concorde-deliver` are exempt from this entry check because they launch no Agents and consume no
+generated Agent instructions. Loading an Agent independently verifies build freshness before
+trusting its generated binding. The lifecycle exception does not waive Protocol, input,
+permission, validation or delivery-evidence checks; see the canonical
+[build admission scenario](../distribution/build.md#scenario.distribution.build-stale-blocks-execution).
 
 The invocation's project root is the working directory of that entry process, exactly as resolved
 and without searching parent directories. The registry, Spec collections, lifecycle state and listed

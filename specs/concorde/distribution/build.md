@@ -57,8 +57,13 @@ a Skill does not execute its Capability or add it to a Concorde Agent's Harness.
 ### scenario.distribution.build-stale-blocks-execution — A stale build fails closed
 
 - GIVEN a recorded source has changed since the last build
-- WHEN any ordinary capability invocation other than a lifecycle capability is attempted
+- WHEN a top-level non-lifecycle capability is invoked in execute or describe-policy mode
 - THEN verify_fresh raises a `stale_build` BuildError and the invocation does not proceed with stale instructions
+
+The deterministic lifecycle capabilities `concorde-init`, `concorde-configure`,
+`concorde-validate` and `concorde-deliver` are exempt from this entry check: they launch no Agents
+and consume no generated Agent instructions. Loading an Agent still verifies freshness
+independently. This exception does not waive Protocol, input, permission or evidence checks.
 
 ### scenario.distribution.load-agent — load_agent returns one Agent's current admitted binding
 

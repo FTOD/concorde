@@ -78,10 +78,13 @@ containing the sources; never point one worktree's build at another worktree's o
 Outputs under `generated/`, `.claude/skills/concorde-*` and `.agents/skills/concorde-*` are
 untracked build output, not authoring sources: never directly create, edit, delete, or rename
 them. Make the change in `prompts/`, `skills/` or `capabilities/` and rebuild. The host refuses to
-run any capability on a stale build (error code `stale_build`), verified against
-`generated/build-manifest.json`. A freshly created worktree must be built once before an agent can
-load Concorde Skills; the host builds the worktrees it creates for candidate changes, and any other
-fresh worktree has no Concorde Skills until it is built.
+execute or describe a top-level non-lifecycle capability on a stale build (error code
+`stale_build`), verified against `generated/build-manifest.json`. Deterministic lifecycle
+capabilities (`concorde-init`, `concorde-configure`, `concorde-validate`, `concorde-deliver`) are
+exempt from that entry check; loading an Agent independently verifies freshness. This exception
+does not waive Protocol, input, permission or evidence checks. A freshly created worktree must be
+built once before an agent can load Concorde Skills; the host builds the worktrees it creates for
+candidate changes, and any other fresh worktree has no Concorde Skills until it is built.
 
 Do not invoke a project-local `concorde-*` Skill to govern a task that changes its own `prompts/`,
 `skills/`, `capabilities/`, or generated Skill surface. If such a Skill body is already loaded as
