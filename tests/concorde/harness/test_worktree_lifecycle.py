@@ -177,7 +177,15 @@ class WorktreeLifecycleTests(unittest.TestCase):
 
     @verifies("scenario.development.worktree-handoff")
     def test_primary_mutation_creates_handoff_without_running_an_agent(self):
-        result = self.call_capability(self.primary, "concorde-dev-loop", self.task)
+        self.assert_primary_handoff("concorde-dev-loop")
+
+    @verifies("scenario.development.worktree-handoff", "scenario.development.specify-loop")
+    def test_specify_loop_handoff_stops_at_spec_completion(self):
+        result = self.assert_primary_handoff("concorde-specify-loop")
+        self.assertIn("return completed before planning", result["errors"][0]["message"])
+
+    def assert_primary_handoff(self, capability):
+        result = self.call_capability(self.primary, capability, self.task)
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("worktree_handoff_required", result["errors"][0]["code"])
         self.assertEqual([], self.last_double.calls)
@@ -197,6 +205,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         finally:
             git(self.primary, "worktree", "remove", "--force", str(created))
             created.parent.rmdir()
+        return result
 
     @verifies("scenario.development.resume-unbound", "scenario.harness.change-owner")
     def test_public_handoff_resumes_unbound_candidate_with_fresh_host(self):

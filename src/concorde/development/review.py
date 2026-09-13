@@ -463,12 +463,12 @@ def current(run, mode: str, *, required: bool = False) -> dict | None:
     return value
 
 
-def require_reviews(run, enabled: bool) -> None:
+def require_reviews(run, enabled: bool, *, modes=None) -> None:
     state = read_change(run.repository.root, required=True)
     state.setdefault("review_intents", {})[run.target.id] = {"task": run.task["task"],
         "focus_id": run.task.get("focus_id"), "constraints": run.task.get("constraints", [])}
     requirements = state.setdefault("review_requirements", {}).setdefault(run.target.id, {})
-    for mode in ("spec", "code") if run.target.files else ("spec",):
+    for mode in modes if modes is not None else (("spec", "code") if run.target.files else ("spec",)):
         # A resumed fast loop cannot silently downgrade previously required review.
         requirements[mode] = bool(enabled or requirements.get(mode))
     save_change(run.repository.root, state)

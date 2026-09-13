@@ -1430,8 +1430,7 @@ class Invocation:
                 # Keep the graph's own baseline in sync with every real (admitted) authoring, so
                 # the next loop() invocation's reset check only fires for an out-of-band (human)
                 # Spec edit, mirroring how implement() tracks last_implementation_digest. This
-                # covers both the dev-loop's own "specify" node (which reaches here through the
-                # same "concorde-specify" child dispatch) and a standalone concorde-specify call
+                # covers specify-loop's authoring, whether called by dev-loop or independently
                 # for a target that already has a graph record from an earlier dev-loop run.
                 change["graph"][self.target.id]["spec_digest"] = revision
             save_change(self.repository.root, change)
@@ -2079,7 +2078,8 @@ class Invocation:
     def loop_nodes(self):
         from .review import current, require_reviews, skip
         from langgraph.graph import END
-        from .loop_flow import build_loop_flow, loop_successors
+        from .loop_flow import loop_successors
+        from .specify_flow import has_authored_spec as authored_for_task
         specify = self.task.get("specify", True)
         run_reviews = self.task.get("run_reviews", True)
         require_reviews(self, run_reviews)
@@ -2095,11 +2095,7 @@ class Invocation:
         blocked_phases = {item["phase"] for item in change.get("gap_history", [])
             if item["status"] == "open" and item["target_id"] == self.target.id
             and item["task"] == self.task["task"]}
-        authored = change.get("authored_specs", {}).get(self.target.id, {})
-        has_authored_spec = bool(authored and "specify" not in blocked_phases
-            and all(authored.get(key) == value for key, value in {
-            "task": self.task["task"], "focus_id": self.task.get("focus_id"),
-            "constraints": self.task.get("constraints", [])}.items()))
+        has_authored_spec = authored_for_task(change, self.target.id, self.task)
         if specify and has_authored_spec:
             stages.remove("specify")
         if ((not specify or has_authored_spec) and existing and existing.get("plan")
@@ -2227,11 +2223,13 @@ class Invocation:
                     elif not self.host.coordinated:
                         progress(self.repository.root, phase=mode + "-review", status="active", invalidate=True)
                 if data is None:
-                    child_capability = "concorde-" + name
+                    child_capability = "concorde-" + name.replace("_", "-")
                     if is_review:
                         child_capability = "concorde-review"
                     payload = {"target_id": self.target.id, "task": self.task["task"],
                                "constraints": self.task.get("constraints", [])}
+                    if name == "specify_loop":
+                        payload.update(specify=specify, run_reviews=run_reviews)
                     if name == "tasks" and scope_repair and not any(
                             item.get("tasks_digest") == scope_repair["tasks_digest"]
                             for item in target_state(self.repository.root, self.target.id,
@@ -2261,11 +2259,11 @@ class Invocation:
                     self.work_directory = f"{WORK_PATH}/{self.target.id}" if self.change_id else None
                     self.last_context = data["context_id"] or self.last_context
                     self.completed.extend(data["completed_capabilities"])
-                    if is_review or name == "implement":
+                    if is_review or name in {"implement", "specify_loop"}:
                         review_artifacts.extend(item for item in data["artifacts"] if item["id"].startswith("review."))
                     self.repository = SpecRepository(self.host.project_root, self.host.package_root)
                 if (self.host.defer_component_checks and data["outcome"] in {"completed", "ready"}
-                        and (name == "implement" or name == "review_spec" and entry == "validate")):
+                        and (name == "implement" or name == "specify_loop" and entry == "validate")):
                     record_transition(self.repository.root, self.target.id, iteration=current_iteration(),
                         **{"from": name, "to": "END"}, trigger="deterministic", outcome="completed",
                         source="code-driven", artifact=None, input_digest=None, finding_ids=[], status="active")
@@ -2297,7 +2295,7 @@ class Invocation:
                 return result
             return observed
         def initialize(state):
-            return {"output": {"_route": "specify" if include_specify else "review_spec"}}
+            return {"output": {"_route": "specify_loop"}}
 
         def summarize(state):
             if state.get("result"):
@@ -2314,7 +2312,7 @@ class Invocation:
             answer = result["answer"] + (" Review coverage: " + "; ".join(coverage) + "." if coverage else "")
             return {"output": self.response(result["outcome"], answer, gaps=result["gaps"], checks=result["checks"], artifacts=artifacts)}
 
-        names = ("specify", "review_spec", "plan", "tasks", "implement", "validate", "review_code", "ready")
+        names = ("specify_loop", "plan", "tasks", "implement", "validate", "review_code", "ready")
         return {"initialize": initialize, "summarize": summarize,
                 **{name: execute(name) for name in names}}
 
@@ -2389,7 +2387,7 @@ def _dispatch_nodes(capability, configuration, task, host):
                 and task.get("target_id") != host.routed_target):
             raise SpecError("child target differs from the host's discovery route", "incompatible_handoff")
         if capability in DISCOVERY_CAPABILITIES:
-            if host.routed_target is None and (task.get("change_id") or capability == "concorde-dev-loop"):
+            if host.routed_target is None and (task.get("change_id") or capability in {"concorde-dev-loop", "concorde-specify-loop"}):
                 change = read_change(host.project_root)
                 if change is not None:
                     task = resume_owner(change, task)
@@ -2429,6 +2427,7 @@ def _dispatch_nodes(capability, configuration, task, host):
                 "concorde-reflections-triage": "triage", "concorde-specify": "specify",
                 "concorde-plan": "plan", "concorde-tasks": "tasks", "concorde-implement": "implement",
                 "concorde-validate": "validate", "concorde-dev-loop": "development_loop",
+                "concorde-specify-loop": "specify_loop",
             }.get(capability, "context_solve"))
         return {"route": route}
 
@@ -2442,6 +2441,13 @@ def _dispatch_nodes(capability, configuration, task, host):
                 stages.append("concorde-implement")
             if task.get("specify", True):
                 stages.insert(0, "concorde-specify")
+        if capability == "concorde-specify-loop":
+            if task.get("specify", True):
+                run.stage("concorde-specify")
+            if task.get("run_reviews", True):
+                from .review import review
+                review(run, "spec")
+            return run.response("described")
         for stage in stages:
             if stage == "concorde-context-solve" and describe_reviews:
                 from .review import review
@@ -2505,6 +2511,9 @@ def _dispatch_nodes(capability, configuration, task, host):
                 subflows[name] = _project_nodes(capability, configuration, task, host)
             elif name == "plan":
                 subflows[name] = run.plan_nodes()
+            elif name == "specify_loop":
+                from .specify_flow import specify_nodes
+                subflows[name] = specify_nodes(run)
             elif name == "development_loop":
                 subflows[name] = run.loop_nodes()
             elif name == "triage":
@@ -2601,8 +2610,11 @@ def capability_flow_nodes(capability, configuration, runtime_input, *, host_cont
                             "storage": "create_worktree used a temporary directory; preserve it until completion"}],
                 next_steps=f"Resume {capability} with change_id {workspace.get('change_id')} in the initial "
                            "directory after policy verification. The host must resolve fresh bounded contexts.",
-                completion="Complete the accepted task and its required checks; development loops stop at ready. "
-                           "Delivery requires the user's separate request from a participating worktree session.")
+                completion=("Complete Spec authoring and required Spec review, then return completed before planning "
+                            "or implementation. The same change can continue through concorde-dev-loop."
+                            if capability == "concorde-specify-loop" else
+                            "Complete the accepted task and its required checks; development loops stop at ready. "
+                            "Delivery requires the user's separate request from a participating worktree session."))
             raise SpecError("Change worktree prepared at " + workspace["path"]
                 + ". The outer agent must initiate the P10 handoff to a fresh session in that worktree.\n\n"
                 + prompt, "worktree_handoff_required")

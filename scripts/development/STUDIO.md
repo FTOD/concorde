@@ -18,7 +18,7 @@ uv run --locked --group studio langgraph dev --config generated/langgraph.json -
 ```
 
 Open <https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024> and select an assistant.
-`generated/langgraph.json` (build output; run the build before starting Studio) registers all eight
+`generated/langgraph.json` (build output; run the build before starting Studio) registers all nine
 Flows, one per Skill, derived from `skills/`. The five non-public capabilities run through their
 composing Skill and remain visible in stage/process events; non-public capabilities have no
 executable entry, and Studio does not restore one. API health
@@ -204,7 +204,7 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests/concorde -t . -p '
 ```
 
 The opt-in integration suite starts a real Agent Server on an available local port, exercises all
-eight assistants, capability admission, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
+nine assistants, capability admission, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
 and rejection paths, then stops the server. It uses temporary consumer projects and deterministic
 model process responses through the real executor/admission pipeline; it does not require online
 model calls or mutate this checkout's primary-worktree registry.

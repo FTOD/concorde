@@ -1,5 +1,5 @@
-"""Development loop: route one change, then specify, review, plan, task, implement,
-validate and review code to a ready candidate.
+"""Development loop: route one change, compose specify-loop for Spec preparation,
+then plan, task, implement, validate and review code to a ready candidate.
 
 ``specify=false`` skips Spec authoring (the former fast loop); ``run_reviews=false`` records an
 explicit skip for each review mode instead of running it. A review requirement already recorded
@@ -21,7 +21,7 @@ PUBLIC = True
 CONTEXT_SELECTION = "discover"
 DETERMINISTIC = False
 AGENTS = (coordinator.AGENT,)
-USES = ("specify", "review", "plan", "tasks", "implement", "validate")
+USES = ("specify_loop", "review", "plan", "tasks", "implement", "validate")
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 
 # The only automatic revision edge (review_code -> tasks) is bounded by this declared policy

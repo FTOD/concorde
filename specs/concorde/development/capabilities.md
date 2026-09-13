@@ -35,7 +35,8 @@ interface agreement. It neither loads Skills into its workers nor owns their dis
 | Capability | Public | Context selection | Deterministic | Skill | Launches | Uses | Behavior |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | main | `true` | `discover` | `false` | concorde-main | coordinator, spec-engineer | — | Answer directly from complete injected Spec contexts, or design, prepare and atomically apply an explicitly accepted topology |
-| dev-loop | `true` | `discover` | `false` | concorde-dev-loop | coordinator | specify, review, plan, tasks, implement, validate | Route one change, then specify unless `specify=false`, review the Spec, plan, task, implement, validate and review code to ready; `run_reviews=false` records explicit skips and cannot cancel a recorded requirement |
+| dev-loop | `true` | `discover` | `false` | concorde-dev-loop | coordinator | specify-loop, review, plan, tasks, implement, validate | Route one change, call specify-loop, then plan, task, implement, validate and review code to ready; `run_reviews=false` records explicit skips and cannot cancel a recorded requirement |
+| specify-loop | `true` | `discover` | `false` | concorde-specify-loop | coordinator | specify, review | Route one change, author or revise its Spec unless `specify=false`, independently review it, and return completed before planning or implementation; `run_reviews=false` records a Spec-only skip without cancelling an existing requirement |
 | reflections-triage | `true` | `bound` | `false` | concorde-reflections-triage | programmer | dev-loop | Report status, capture recorded gaps, investigate read-only, implement through the development loop, merge or close owned reflections |
 | init | `true` | `none` | `true` | concorde-init | — | — | Propose and apply explicit project initialization with a pinned Protocol |
 | configure | `true` | `none` | `true` | concorde-configure | — | — | Apply the initialized integration and enforcement configuration |
@@ -74,7 +75,7 @@ Each Python module MUST declare these independent properties:
 
 Public exposure does not imply discovery: reflections-triage is public and consumes a bound
 Module. Conversely, being composed does not require private exposure: dev-loop calls the public
-review capability as well as non-public worker capabilities. The host rejects undeclared composition with
+specify-loop, which calls specify and review. The host rejects undeclared composition with
 `undeclared_capability` and preserves every participant's own invocation constraints.
 
 The former CLASS declaration is removed. Existing wire identities and event fields containing
@@ -84,6 +85,7 @@ their identities when their titles or terminology change.
 ```concorde-capabilities
 [
   {"id": "main", "public": true, "context_selection": "discover", "deterministic": false, "skill": "concorde-main"},
+  {"id": "specify-loop", "public": true, "context_selection": "discover", "deterministic": false, "skill": "concorde-specify-loop"},
   {"id": "dev-loop", "public": true, "context_selection": "discover", "deterministic": false, "skill": "concorde-dev-loop"},
   {"id": "reflections-triage", "public": true, "context_selection": "bound", "deterministic": false, "skill": "concorde-reflections-triage"},
   {"id": "init", "public": true, "context_selection": "none", "deterministic": true, "skill": "concorde-init"},

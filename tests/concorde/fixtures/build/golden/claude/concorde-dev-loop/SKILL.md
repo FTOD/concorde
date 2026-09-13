@@ -1,6 +1,6 @@
 ---
 name: concorde-dev-loop
-description: "Development loop: route one change, then specify, review the Spec, plan, task, implement, validate and review code to a ready candidate; specify=false skips authoring and run_reviews=false records explicit review skips."
+description: "Development loop: route one change, call specify-loop, then plan, task, implement, validate and review code to a ready candidate; specify=false skips authoring and run_reviews=false records explicit review skips."
 argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
@@ -60,7 +60,8 @@ change_id when the candidate is ready. Delivery creates an independent branch an
 candidate worktree by default. Only an explicit user request permits a separate final merge by
 the primary worktree's sole writing agent; other agents must use linked worktrees.
 
-When enabled, the loop requires independent Spec review after authoring and before planning, then
+The loop calls `concorde-specify-loop` for Spec authoring and review before planning. When enabled,
+it requires independent Spec review after authoring and before planning, then
 read-only code review after implementation/checks and before ready. A skipped review is recorded
 explicitly rather than run. A review already required for this change cannot be disabled by a
 later request. Required review failure, incomplete coverage and blocking findings stop advancement;

@@ -59,7 +59,7 @@ class AgentFlowTests(unittest.TestCase):
             else:
                 self.assertIn(('review_code', 'tasks'), edges)
             if graph['label'] == 'Resume validation':
-                self.assertIn(('review_spec', 'validate'), edges)
+                self.assertIn(('specify_loop', 'validate'), edges)
                 self.assertIn('tasks', graph['nodes'])  # retained for repair
             if graph['label'] == 'Skip authoring':
                 self.assertNotIn('specify', graph['nodes'])

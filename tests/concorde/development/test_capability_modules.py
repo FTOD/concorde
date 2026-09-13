@@ -79,7 +79,8 @@ class CapabilityModuleContractTests(unittest.TestCase):
     def test_uses_matches_the_declared_composition(self):
         expected = {
             "main": (),
-            "dev_loop": ("specify", "review", "plan", "tasks", "implement", "validate"),
+            "specify_loop": ("specify", "review"),
+            "dev_loop": ("specify_loop", "review", "plan", "tasks", "implement", "validate"),
             "reflections_triage": ("dev_loop",),
             "init": (),
             "configure": (),
@@ -140,7 +141,7 @@ class CapabilityModuleContractTests(unittest.TestCase):
             self.assertTrue(callable(module.run))
 
     def test_discovery_preserves_the_existing_routing_boundary(self):
-        self.assertEqual(set(DISCOVERY_CAPABILITIES), {"concorde-main", "concorde-dev-loop", "concorde-review"})
+        self.assertEqual(set(DISCOVERY_CAPABILITIES), {"concorde-main", "concorde-dev-loop", "concorde-specify-loop", "concorde-review"})
         self.assertEqual("bound", _modules()["reflections_triage"].CONTEXT_SELECTION)
         self.assertTrue(_modules()["reflections_triage"].PUBLIC)
 
@@ -191,7 +192,7 @@ class InProcessCompositionTests(unittest.TestCase):
         from concorde.development.capability_host import resolve_child_capability
 
         modules = _modules()
-        for child in ("specify", "review", "plan", "tasks", "implement", "validate"):
+        for child in ("specify_loop", "review", "plan", "tasks", "implement", "validate"):
             resolved = resolve_child_capability("concorde-dev-loop", modules[child].EXTERNAL_NAME)
             self.assertIs(resolved, modules[child])
         resolved = resolve_child_capability("concorde-reflections-triage", "concorde-dev-loop")

@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'src'))
 sys.path.insert(0, str(ROOT))
 from concorde.development.loop_flow import build_loop_flow
+from concorde.development.specify_flow import build_specify_flow
 from concorde.harness.studio import build_studio_flow
 from concorde.spec.contracts import SKILL_NAMES
 from capabilities.dev_loop import FLOW
@@ -46,7 +47,7 @@ def export():
     factories = {
         'Discovery': build_discovery_flow, 'Query and topology design': build_query_flow,
         'Topology preparation': build_topology_flow, 'Topology application': build_topology_apply_flow,
-        'Planning': build_plan_flow, 'Initialization and configuration': build_project_flow,
+        'Spec authoring and review': build_specify_flow, 'Planning': build_plan_flow, 'Initialization and configuration': build_project_flow,
         'Component coordination': build_coordination_flow, 'Shared candidate stabilization': build_stabilization_flow,
         'Reflection triage': build_triage_flow, 'Recursive Agent decisions': build_agent_flow,
         'Capability admission': build_capability_flow, 'Capability dispatch': build_dispatch_flow,

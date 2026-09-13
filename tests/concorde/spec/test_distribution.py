@@ -19,7 +19,7 @@ from .support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
 class DistributionTests(unittest.TestCase):
     def test_catalog_roles_and_exported_schemas_are_executable_package_contracts(self):
         self.assertEqual([],validate_package(PACKAGE))
-        self.assertEqual(13,len(CAPABILITY_NAMES));self.assertEqual(3,len(INTERNAL_SKILLS))
+        self.assertEqual(14,len(CAPABILITY_NAMES));self.assertEqual(3,len(INTERNAL_SKILLS))
         self.assertIn('concorde-main',CAPABILITY_NAMES);self.assertNotIn('concorde-ask',CAPABILITY_NAMES)
         self.assertIn('concorde-coordinator',INTERNAL_SKILLS);self.assertNotIn('concorde-main',INTERNAL_SKILLS)
         for role in INTERNAL_SKILLS:
@@ -77,15 +77,22 @@ helper.project(root)
 from concorde.development.capability_service import CapabilityHost,run_capability
 import concorde.development.capability_host as actual_host
 model=helper.ModelProcessDouble();host=CapabilityHost(root,framework,executor=model.executor,allow_primary_worktree=True)
+spec_result=run_capability('concorde-specify-loop',None,typed('concorde-specify-loop-request',{'target_id':'service.transfer','task':'Implement transfer'}),host_context=host)
+spec_stages=[c['stage'] for c in model.calls]
 result=run_capability('concorde-dev-loop',None,typed('concorde-dev-loop-request',{'target_id':'service.transfer','task':'Implement transfer'}),host_context=host)
 before=len(model.calls)
 ask=run_capability('concorde-main',None,typed('concorde-main-request',{'task':'Explain transfer'}),host_context=host)
-print(json.dumps({'result':result,'ask':ask,'module_source':actual_host.__file__,
+print(json.dumps({'result':result,'spec_result':spec_result,'spec_stages':spec_stages,'ask':ask,'module_source':actual_host.__file__,
   'stages':[c['stage'] for c in model.calls[:before]],'ask_stages':[c['stage'] for c in model.calls[before:]]}))
 ''')
                 completed=subprocess.run([sys.executable,str(driver),str(PACKAGE/'tests/concorde/spec/support.py'),integration],cwd=root,capture_output=True,text=True,env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1'})
                 self.assertEqual(0,completed.returncode,completed.stderr);value=json.loads(completed.stdout)
                 self.assertIn('.concorde/framework/src',value['module_source']);self.assertEqual('succeeded',value['result']['status'],value)
+                self.assertEqual('succeeded',value['spec_result']['status'],value)
+                self.assertEqual('completed',value['spec_result']['output']['data']['outcome'])
+                self.assertEqual(['specify','spec-review'],value['spec_stages'][-2:])
+                self.assertNotIn('plan',value['spec_stages'])
+                self.assertEqual(1,value['stages'].count('specify'))
                 self.assertEqual('ready',value['result']['output']['data']['outcome']);self.assertEqual('passed',value['result']['output']['data']['checks'][0]['status'])
                 self.assertEqual('succeeded',value['ask']['status'],value);self.assertEqual(['route','route'],value['ask_stages'])
     def test_completion_from_previous_invocation_cannot_be_replayed(self):

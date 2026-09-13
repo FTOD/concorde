@@ -103,9 +103,9 @@ changing project behavior.
 
 The distributable manifest is `concorde.json` schema_version 3, Concorde 5.0.0, Architecture
 Profile 12, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 3 Agents with 12
-explicit modes and 13 Capabilities: 8 are public through Skills and 5 are available through declared
+explicit modes and 14 Capabilities: 9 are public through Skills and 5 are available through declared
 composition. It also declares package roots including `prompts`/`capabilities`/`protocol`, and 5
-templates. Codex `.agents/skills` and Claude `.claude/skills` expose the same 8 Skills; canonical
+templates. Codex `.agents/skills` and Claude `.claude/skills` expose the same 9 Skills; canonical
 Agent definitions and non-public Capabilities remain private. Every Skill sends a typed `invocation@3` to
 `scripts/run-capability.py` and does not inspect project context.
 

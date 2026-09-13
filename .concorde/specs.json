@@ -190,6 +190,7 @@
         "capabilities/plan.py",
         "capabilities/review.py",
         "capabilities/specify.py",
+        "capabilities/specify_loop.py",
         "capabilities/tasks.py",
         "capabilities/validate.py",
         "src/concorde/development/",

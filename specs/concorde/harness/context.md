@@ -280,7 +280,7 @@ includes non-main documents in full, never follows dependencies or hyperlinks im
 substitutes an answer or summary for an original source.
 
 Inputs require a nonempty, duplicate-free ordered tuple of Module IDs, a nonblank task,
-capability concorde-main, concorde-dev-loop, concorde-review, phase route, and action route, ask or
+capability concorde-main, concorde-dev-loop, concorde-specify-loop or concorde-review, phase route, and action route, ask or
 design-topology. A focus hint requires a target hint and must belong to that Module. Unsupported
 phases/actions, invalid selections, unavailable required files and inconsistent membership reject
 resolution; no partial context is returned. Hints do not themselves add a Module's documents.

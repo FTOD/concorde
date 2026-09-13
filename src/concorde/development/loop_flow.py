@@ -7,13 +7,13 @@ from typing import TypedDict
 
 
 def loop_successors(*, include_specify: bool, entry: str, has_code: bool) -> dict[str, str]:
-    nodes = (["specify"] if include_specify else []) + [
-        "review_spec", "plan", "tasks", "implement", "validate"]
+    # Retain the factory argument for callers of loop_graph; the child now selects authoring.
+    nodes = ["specify_loop", "plan", "tasks", "implement", "validate"]
     if has_code:
         nodes.append("review_code")
     nodes.append("ready")
     successors = dict(zip(nodes, nodes[1:]))
-    successors["review_spec"] = entry
+    successors["specify_loop"] = entry
     return successors
 
 
@@ -36,12 +36,12 @@ def build_loop_flow(node_factory, *, include_specify: bool = True, entry: str = 
         flow.add_edge(START, "initialize")
         flow.add_conditional_edges("initialize",
             lambda state: END if state.get("result") else state["output"]["_route"],
-            ["specify", "review_spec", END])
+            ["specify_loop", END])
     else:
-        flow.add_edge(START, "specify" if include_specify else "review_spec")
+        flow.add_edge(START, "specify_loop")
     for name, destination in successors.items():
         destinations = {destination: destination, END: "summarize" if dynamic else END}
-        if dynamic and name == "review_spec":
+        if dynamic and name == "specify_loop":
             destinations.update({node: node for node in ("tasks", "implement", "validate")})
         if dynamic and name == "validate":
             destinations["ready"] = "ready"

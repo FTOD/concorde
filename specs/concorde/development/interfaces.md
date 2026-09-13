@@ -132,8 +132,17 @@ Task authoring receives a concorde-plan-artifact and concorde-task-identity-cons
 and returns identical tasks marked complete only when acceptance is met. Registry, context and
 configuration are rechecked after each stage. Only implementation code may change in that phase.
 
-`concorde-dev-loop` executes specify (default `specify=true`; `specify=false` skips Spec authoring
-when the target's current Spec already suffices), Spec review, plan, tasks, implement, deterministic
+`concorde-specify-loop` routes one owning Module, authors or revises its owned Spec documents
+and independently reviews its complete context and affected consumers. It returns the common
+stage response with `completed` after successful Spec stages, preserving artifacts, explicit
+review skips and blockers. It never plans, writes code, runs code checks, requires code review,
+marks ready or delivers. Repeated invocations retain accepted authoring for the same intent and
+reuse only current review evidence. Necessary gaps and blocking reviews stop for Spec repair
+with fresh context; there is no automatic Spec-repair edge. `specify=false` selects review of the
+existing Spec, and `run_reviews=false` records only a Spec review skip where no requirement exists.
+
+`concorde-dev-loop` calls `concorde-specify-loop` for specify (default `specify=true`; `specify=false` skips Spec authoring
+when the target's current Spec already suffices) and Spec review, then runs plan, tasks, implement, deterministic
 validation and code review, then verifies readiness. It uses the same public contracts as standalone
 capabilities. `run_reviews` defaults to `true`; `run_reviews=false` records an explicit skip for each
 review mode instead of running it, and cannot cancel a review already required for this change. Every
@@ -206,7 +215,7 @@ proposal and the stage-input artifacts that pass between stages inside one capab
 ### Capability requests and responses
 
 Common request task fields (named once, not repeated per row): `target_id` (required for every
-bound Module request; an optional routing hint for `main`, `dev-loop` and `review`), `task`,
+bound Module request; an optional routing hint for `main`, `dev-loop`, `specify-loop` and `review`), `task`,
 `focus_id` (a candidate scenario ID), `constraints`, `change_id`. Common response fields (present in every capability response
 except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, `context_id`,
 `outcome`, `answer`, `artifacts`, `gaps`, `checks`, `completed_capabilities`.
@@ -214,6 +223,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | Type | Carried by | Promise |
 | --- | --- | --- |
 | `concorde-main-request@1` / `concorde-main-response@1` | main | Every request field is optional at the wire level. Request adds `action` (ask\|design-topology\|accept-topology\|apply-topology, default ask), `topology_proposal` (a `concorde-topology-proposal@1` TypedValue, required for accept-topology) and `application` (an ArtifactRef, required for apply-topology). Response adds `entry_target`, `discovered_targets`, `routes`, nullable `topology_proposal`/`application`, `files` and `workspace`. |
+| `concorde-specify-loop-request@1` / `concorde-specify-loop-response@1` | specify-loop | Only `task` is required. Optional target/focus hints, constraints, change_id, `specify` and `run_reviews` (both default true). The common response reports Spec completion or blockers with artifact references; it never reports implementation readiness. |
 | `concorde-dev-loop-request@1` / `concorde-dev-loop-response@1` | dev-loop | Only `task` is required. Request adds optional `repair_task_scope:{tasks_digest: sha256}` for exact incomplete-list phase recovery, `specify` (default true; false skips Spec authoring) and `run_reviews` (default true; false records an explicit per-mode skip). Response is the common shape only. |
 | `concorde-reflections-triage-request@1` / `concorde-reflections-triage-response@1` | reflections-triage | Requires `target_id`, `action` (status\|record-gaps\|investigate\|implement\|merge\|close) and `reflection_ids` (a unique array, possibly empty); `task` is optional here, unlike other capabilities, because status and record-gaps need none. Adds optional `gap_ids`. Response adds `reflections` and `gap_records`. |
 | `concorde-init-request@1` / `concorde-init-response@1` | init | Requires only `action` (propose\|apply); adds optional `name`, `target_id`, `configuration` and `proposal` (a `concorde-project-proposal@1` TypedValue). Response replaces the common shape with `status` (proposed\|applied), a nullable `proposal` and `files`. |
@@ -519,7 +529,7 @@ component work returns unsupported for code review. During a development loop, t
 Spec review is local; component reviews occur in the coordinated component loops after reconciliation.
 
 ## Review gates, gap history and recovery
-`concorde-dev-loop` resumption skips Spec authoring only after a host-accepted authoring result for
+`concorde-specify-loop` (including when called by `concorde-dev-loop`) skips Spec authoring only after a host-accepted authoring result for
 the same target, task, focus and constraints. Standalone review records, including failed or
 unrelated reviews, cannot substitute for authoring. A completed Module still revisits its recorded
 component coordination: stronger review requirements propagate before completed component work is

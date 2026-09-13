@@ -21,6 +21,7 @@ FRAMEWORK_ROOT = Path(__file__).resolve().parent.parent
 SKILL_NAMES = (
     "concorde-main",
     "concorde-dev-loop",
+    "concorde-specify-loop",
     "concorde-reflections-triage",
     "concorde-review",
     "concorde-init",

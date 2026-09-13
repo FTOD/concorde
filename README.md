@@ -320,18 +320,19 @@ Read the [Protocol](protocol/README.md), start from the
 | You want to… | Use |
 | :--- | :--- |
 | Ask about the system or design its topology | `concorde-main` |
+| Write or revise a Spec and review it before implementation | `concorde-specify-loop` |
 | Take a change through specification, implementation and checks | `concorde-dev-loop` |
 | Review a Spec or diagnose code in a fresh read-only invocation | `concorde-review` |
 | Track feedback and Spec gaps, investigate problems and act on approved resolutions | `concorde-reflections-triage` |
 | Initialize or configure a project | `concorde-init` · `concorde-configure` |
 | Validate a candidate or deliver a verified change | `concorde-validate` · `concorde-deliver` |
 
-These eight public Skills expose selected Capabilities. Other Capabilities are composed by the host. See the [capability registry](specs/concorde/development/capabilities.md)
+These nine public Skills expose selected Capabilities. Other Capabilities are composed by the host. See the [capability registry](specs/concorde/development/capabilities.md)
 for the full interface.
 
 ## Agents, capabilities and executable entry points
 
-Concorde currently defines **3 Agents with 12 task modes, 13 capabilities, 8 public Skills and
+Concorde currently defines **3 Agents with 12 task modes, 14 capabilities, 9 public Skills and
 3 Harnesses**. Capabilities orchestrate execution; Agents perform the steps that need model
 judgment. Public Skills provide instructions for invoking those capabilities from the developer's
 agent client.
@@ -352,7 +353,8 @@ invocation receives fresh, explicitly bounded context and permissions.
 | Capability | Behavior | Public Skill |
 | :--- | :--- | :--- |
 | `main` | Answer questions, route requests, and design and apply accepted topology changes. | `concorde-main` |
-| `dev-loop` | Route a change through specification, planning, implementation, validation and review to a ready candidate. | `concorde-dev-loop` |
+| `specify-loop` | Route a change, author or revise its Spec, and independently review it before implementation. | `concorde-specify-loop` |
+| `dev-loop` | Call specify-loop, then plan, implement, validate and review code to a ready candidate. | `concorde-dev-loop` |
 | `review` | Run a standalone Spec or code review, including source diagnosis. | `concorde-review` |
 | `reflections-triage` | Inspect feedback, capture gaps, investigate, implement resolutions and manage owned records. | `concorde-reflections-triage` |
 | `init` | Propose and apply project initialization with a pinned Protocol. | `concorde-init` |
@@ -365,7 +367,7 @@ invocation receives fresh, explicitly bounded context and permissions.
 | `tasks` | Derive acceptance tasks from the accepted plan. | — |
 | `implement` | Implement component tasks or coordinate participating components. | — |
 
-Four Capabilities make no model calls; the other nine may call a model. The eight public Skills
+Four Capabilities make no model calls; the other ten may call a model. The nine public Skills
 each expose one Capability. The five non-public Capabilities have no standalone
 launcher and are reachable only through declared host composition. Current Agents have no admitted
 Capability references of their own; the host composes the workflows.
@@ -396,9 +398,9 @@ scripts under `.concorde/framework/`; Studio and development setup are documente
 
 | Entry point | Available operations |
 | :--- | :--- |
-| `python3 scripts/run-capability.py <skill> < invocation.json` | Invoke one of the eight public capabilities using a typed JSON request, in `execute` or `describe-policy` mode. |
+| `python3 scripts/run-capability.py <skill> < invocation.json` | Invoke one of the nine public capabilities using a typed JSON request, in `execute` or `describe-policy` mode. |
 | `python3 scripts/concorde.py <command>` | `validate`, `build`, `docsite`, `ua-graph`, `protocol-manifest`. |
-| [LangGraph Studio](scripts/development/STUDIO.md) | Start, observe and debug the same eight public workflows through the shared CapabilityHost. |
+| [LangGraph Studio](scripts/development/STUDIO.md) | Start, observe and debug the same nine public workflows through the shared CapabilityHost. |
 | `python3 scripts/install-concorde.py` | Preview or apply installation into a project. |
 | `python3 scripts/reflections_queue.py` | Query and maintain the reflection queue. |
 | `python3 scripts/run-ua-graph-viewer.py` | Launch the code graph viewer. |

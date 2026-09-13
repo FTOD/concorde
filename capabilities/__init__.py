@@ -26,6 +26,7 @@ from __future__ import annotations
 CAPABILITIES = (
     "main",
     "dev_loop",
+    "specify_loop",
     "reflections_triage",
     "init",
     "configure",

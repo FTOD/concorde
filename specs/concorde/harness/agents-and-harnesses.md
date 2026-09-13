@@ -195,7 +195,8 @@ currently admits a Capability reference, so every current capability context is 
     "harness": "discovery-capsule",
     "capabilities": [
       "dev-loop",
-      "main"
+      "main",
+      "specify-loop"
     ],
     "modes": [
       "ask",

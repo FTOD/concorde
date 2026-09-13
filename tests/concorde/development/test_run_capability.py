@@ -14,6 +14,7 @@ LAUNCHER = REPOSITORY_ROOT / "scripts/run-capability.py"
 PUBLIC_SKILLS = (
     "concorde-main",
     "concorde-dev-loop",
+    "concorde-specify-loop",
     "concorde-reflections-triage",
     "concorde-review",
     "concorde-init",

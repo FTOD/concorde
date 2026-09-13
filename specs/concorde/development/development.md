@@ -8,8 +8,11 @@
 # Development Agent Flow and revision loops
 
 A developer supplies intended behavior and constraints for one top-level candidate change.
-`concorde-dev-loop` coordinates Spec authoring, review, context assessment, planning, tasks,
-implementation and checks. `specify=false` skips authoring; `run_reviews=false` records review
+`concorde-specify-loop` independently routes, authors or revises, and reviews the Spec. It ends
+with a completed Spec result, retaining blockers and review evidence in the candidate worktree.
+`concorde-dev-loop` calls that capability, then coordinates context assessment, planning, tasks,
+implementation and checks. The same task and change can continue from specify-loop into dev-loop
+without repeating accepted authoring or current reviews. `specify=false` skips authoring; `run_reviews=false` records review
 skips where no earlier requirement exists. These are configurations of one development lifecycle.
 Its successful output is a ready candidate, not an automatic merge.
 
@@ -66,6 +69,8 @@ explicit recovery still fail their original stale-context checks.
 
 With reviews enabled, the development loop follows these transitions. Explicit skips retain
 their own evidence states; delivery is a separately invoked capability after Ready.
+Specified and SpecReviewed belong to the independently callable specify-loop. Its successful
+return lets the caller stop with the Spec or lets dev-loop proceed to Planned.
 
 ```mermaid
 stateDiagram-v2

@@ -57,7 +57,7 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 
 ## Install and initialize
 
-The installer distributes a deterministic build's output — eight Skills exposing selected entries from thirteen
+The installer distributes a deterministic build's output — nine Skills exposing selected entries from fourteen
 Capabilities, three common Agent instruction sets and twelve explicit mode projections (from
 `agents/<name>/spec.md` and `agents/<name>/modes/`), and five Markdown templates — to Codex or Claude.
 Check `python3 scripts/install-concorde.py --help` for installation
@@ -121,7 +121,13 @@ deterministic host work without Agent context selection. `PUBLIC` independently 
 Capability has a Skill. For example, reflections-triage is public and uses a bound Module, while
 specify is non-public and runs only through declared composition.
 
-`concorde-dev-loop` takes optional `specify` and `run_reviews` flags. `specify=false` skips Spec authoring; `run_reviews=false` records explicit review skips without cancelling a review already required for the change.
+`concorde-specify-loop` routes a task, authors or revises its Spec and independently reviews it,
+then returns completed. `concorde-dev-loop` calls that Capability before planning, tasks,
+implementation, checks and code review. Both accept `specify` and `run_reviews` flags: the former
+can skip authoring; the latter records explicit review skips without cancelling a review already
+required for the change. The Spec loop affects only Spec review, while development also requires
+code review for code-owning targets. Accepted Spec work can continue into development in the same
+change without repeating current evidence.
 
 `concorde-review` accepts a `task` and `review_mode: "spec"` or `"code"`, with optional target/focus
 routing hints. It selects the owning Module and starts a fresh read-only reviewer in the current
@@ -347,7 +353,7 @@ implementation mode may write granted code; reviews and investigations remain re
 phase and target gets a fresh invocation and context identity, so a reviewer never inherits the
 author's conversation, artifacts or write authority merely because they share an Agent definition.
 
-The thirteen Capability names and eight public Skills remain distinct. Their required boolean
+The fourteen Capability names and nine public Skills remain distinct. Their required boolean
 DETERMINISTIC metadata means no supported model-call path when true, including Host routing and
 transitive USES. Only init, configure, validate and deliver are true. USES is Host composition; all
 three Agents and their modes still have empty callable capability context.

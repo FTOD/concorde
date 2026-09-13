@@ -10,7 +10,7 @@
 
 ## Purpose
 
-Development provides the capability invocation boundary and the deterministic host adapter that Concorde's own tooling runs on: capability admission and dispatch, the coordinator that answers questions and evolves project topology, the development Flow that carries one intended change from an authored Spec to a ready candidate, deterministic validation, and delivery. It serves developers and their external agent runtimes submitting requests through installed `concorde-*` Skills, and every other Concorde capability that composes through this same boundary. Its promises end at a ready, delivered or primary-merged candidate; it relies on Harness to run every Agent invocation and isolate configured checks, Spec to resolve and validate project Specs, Reflections to retain gap history, and Distribution to own, build, install and verify instruction projections, including Skills.
+Development provides the capability invocation boundary and the deterministic host adapter that Concorde's own tooling runs on: capability admission and dispatch, the coordinator that answers questions and evolves project topology, the standalone Spec authoring and review Flow, the development Flow that carries one intended change from an authored Spec to a ready candidate, deterministic validation, and delivery. It serves developers and their external agent runtimes submitting requests through installed `concorde-*` Skills, and every other Concorde capability that composes through this same boundary. Its promises end at a ready, delivered or primary-merged candidate; it relies on Harness to run every Agent invocation and isolate configured checks, Spec to resolve and validate project Specs, Reflections to retain gap history, and Distribution to own, build, install and verify instruction projections, including Skills.
 
 ## Requirements
 
@@ -18,9 +18,17 @@ Development provides the capability invocation boundary and the deterministic ho
 
 A Capability with discover context selection SHALL use its coordinator to discover complete Module Spec contexts.
 
-### req.development.stage-no-reselect — Stage capabilities never reselect their context
+### req.development.specify-loop-composition — Spec preparation has one reusable entry
 
-A stage capability SHALL NOT reselect or expand the frozen context its composing capability gave it.
+The development Flow SHALL compose concorde-specify-loop for its Spec authoring and review stages.
+
+### req.development.specify-loop-boundary — Spec completion is independently available
+
+Concorde-specify-loop SHALL complete Spec preparation independently of implementation readiness.
+
+### req.development.stage-no-reselect — Bound capabilities preserve their context
+
+A Capability with bound context selection SHALL NOT reselect or expand the frozen context its composing capability gave it.
 
 ### req.development.langgraph-control-flow — Orchestration executes as a LangGraph Flow
 
@@ -246,10 +254,20 @@ See [routing hints only steer selection](#req.development.routing-hint-not-conte
 
 Developing one change:
 
+### scenario.development.specify-loop — Author and review a Spec independently
+
+- GIVEN a developer supplies a Spec-writing or Spec-revision task and constraints
+- WHEN concorde-specify-loop routes the owning Module and runs the selected Spec stages
+- THEN only owned Spec replacements are accepted and independent reviews cover the complete contract and affected consumers
+- AND successful stages return completed with artifact references, without planning, implementation, code checks, code review requirements or readiness
+- AND specify=false skips authoring while run_reviews=false records a Spec review skip only where no requirement already exists
+- AND a required review with blocking findings, gaps, incomplete coverage or failed execution stops with inspectable progress
+- AND repeating the same intent resumes accepted authoring and current reviews, including when concorde-dev-loop calls specify-loop before continuing development
+
 ### scenario.development.dev-loop-ready — A change reaches a ready candidate
 
 - GIVEN a developer supplies one intended change with its task and constraints
-- WHEN `concorde-dev-loop` runs Spec authoring (unless `specify=false`), Spec review, planning, tasks, implementation, deterministic checks and code review in order
+- WHEN `concorde-dev-loop` calls `concorde-specify-loop` for Spec authoring (unless `specify=false`) and Spec review, then runs planning, tasks, implementation, deterministic checks and code review in order
 - THEN every stage completes successfully and the candidate reaches status `ready` with current evidence for every affected Module
 - AND the loop stops there and never itself invokes delivery
 
@@ -429,6 +447,7 @@ Two programs realize this Module's own code: the host adapter and the capability
       "capabilities/plan.py",
       "capabilities/review.py",
       "capabilities/specify.py",
+      "capabilities/specify_loop.py",
       "capabilities/tasks.py",
       "capabilities/validate.py"
     ]
