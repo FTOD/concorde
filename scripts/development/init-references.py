@@ -62,6 +62,7 @@ def initialize(entry: dict[str, str]) -> None:
     module_dir = ROOT / ".git" / "modules" / path
     if module_dir.exists():
         raise SystemExit(f"{module_dir} already exists; remove it or finish the checkout by hand")
+    module_dir.parent.mkdir(parents=True, exist_ok=True)
     git("submodule", "init", "--", path)
     git("clone", "--quiet", "--filter=blob:none", "--no-checkout", "--separate-git-dir", str(module_dir),
         url, str(ROOT / path))
