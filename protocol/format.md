@@ -95,10 +95,13 @@ MUST agree with the sole registration under `documents`. `main_visible` is a boo
 
 ## Module reference declarations
 
-Each Module registration MUST contain `references`, an array (possibly empty) of closed objects with
-exactly `kind` and `id`. `kind` is `module` or `document`; `id` is a stable registered ID of that
-kind. Paths, fragments and display names are not reference identities. Reference pairs must be
-unique, must not select self or an owned document, and must resolve. References to a Module and one
+Each Module registration MUST contain `references`, an array (possibly empty) of closed objects.
+A context reference has exactly `kind` and `id`: `kind` is `module` or `document` and `id` is a
+stable registered ID of that kind; paths, fragments and display names are not reference
+identities. An external reference has exactly `kind`, which is `external`, and `path`: a
+project-relative exact file or directory prefix with a trailing slash that MUST exist, MUST NOT be
+or contain a registered Spec document and MUST NOT overlap the Module's `files` entries. Reference
+entries must be unique, must not select self or an owned document, and must resolve. References to a Module and one
 of its documents may overlap; inclusion is deduplicated and all provenance retained. `documents`
 remains the nonempty list of solely owned document paths. Tools may choose their registry encoding,
 but MUST preserve these declarations and the one-level resolution meaning.
@@ -197,10 +200,6 @@ any of the optional fields `files`, `pending` and `target_id`:
 - `pending`: an array of distinct entries, each also present in `files`, declared but not yet
   created.
 - `target_id`: the ID of a child or used Module the entity stands for; not combined with `files`.
-- `documentation`: a nonempty array of distinct project-relative entries, exact files or directory
-  prefixes with a trailing slash, holding the reference documentation of an external capability the
-  entity uses. Each entry MUST exist, MUST NOT be or contain a registered Spec document and MUST NOT
-  overlap the Module's `files` entries; documentation is never pending.
 
 Spec management gives a complete example. A listed entry MUST NOT be a registered Spec document, a
 generated output or a project-control record, and a directory prefix MUST NOT contain a registered

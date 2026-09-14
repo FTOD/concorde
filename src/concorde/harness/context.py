@@ -7,15 +7,13 @@ from typing import Any
 from .agent_model import Mode, validate_mode_artifacts
 
 from ..spec.typed_data import canonical
-from ..spec.repository import SpecError, SpecRepository, digest, is_directory_entry, most_specific, read_file
+from ..spec.repository import (REFERENCE_SKIPPED_SUFFIXES, SpecError, SpecRepository, digest, entry_base,
+                               expand_entry, is_directory_entry, most_specific, read_file)
 
 
 PHASES = frozenset({"ask", "specify", "plan", "tasks", "implementation", "spec-review", "code-review",
                     "validate", "deliver", "context-solve"})
 CODE_PHASES = frozenset({"implementation", "code-review"})
-# Phases that receive the declared reference documentation as read-only contents (capability
-# context); every other phase sees only the declared entries.
-DOCUMENTATION_PHASES = frozenset({"plan", "tasks", "implementation", "code-review"})
 DISCOVERY_PHASES = frozenset({"route"})
 DISCOVERY_KINDS = frozenset({"module"})
 PROTOCOL_PATHS = ("generated/protocol/principles.md", "generated/protocol/kinds/module.md")
@@ -111,23 +109,31 @@ def _implementation_artifacts(repository: SpecRepository, target) -> list[dict]:
             for path in repository.implementation_files(target)]
 
 
-def _documentation_entries(repository: SpecRepository, target) -> list[dict]:
-    """The Module's declared reference-documentation entries; declarations only, never contents."""
-    try:
-        entities = repository.entity_documentation(target)
-    except SpecError:
-        entities = {}
-    return [{"path": entry, "entity_id": entity.id, "directory": is_directory_entry(entry)}
-            for entry, entity in entities.items()]
+def _external_references(repository: SpecRepository, target) -> list[dict]:
+    """The Module's external references with one tree digest each; bytes are granted, never embedded."""
+    missing = repository.missing_external_references(target)
+    if missing:
+        raise SpecError(f"external reference is not checked out: {', '.join(missing)}", "invalid_reference", target.id)
+    return repository.external_reference_records(target)
 
 
-def _documentation_artifacts(repository: SpecRepository, target) -> list[dict]:
-    """Digests of the existing documentation files; their bytes are granted, never embedded."""
-    try:
-        files = repository.documentation_files(target)
-    except SpecError:
-        files = ()
-    return [{"id": path, "path": path, "digest": digest(read_file(repository.root, path))} for path in files]
+def reference_grants(records: list[dict]) -> tuple[str, ...]:
+    """The read-only authority roots for a snapshot's external references."""
+    return tuple(dict.fromkeys(entry_base(item["path"]) for item in records))
+
+
+def materialize_references(repository: SpecRepository, destination: Path, records: list[dict]) -> None:
+    """Copy a snapshot's external references into a capsule at their project-relative paths.
+
+    Only the readable files that the entry digest covers are copied, so a capsule receives the
+    same bytes the snapshot identifies and none of the excluded media.
+    """
+    from ..spec.typed_data import checked_path
+    for item in records:
+        for path in expand_entry(repository.root, item["path"], skipped_suffixes=REFERENCE_SKIPPED_SUFFIXES):
+            copy = checked_path(destination, path)
+            copy.parent.mkdir(parents=True, exist_ok=True)
+            copy.write_bytes(read_file(repository.root, path))
 
 
 def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = "ask",
@@ -168,10 +174,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
         "implementation_entries": _implementation_entries(repository, target),
         "implementation_files": _implementation_files(repository, target),
         "implementation_artifacts": _implementation_artifacts(repository, target) if phase in CODE_PHASES else [],
-        "documentation_entries": _documentation_entries(repository, target),
-        "documentation_artifacts": (_documentation_artifacts(repository, target)
-                                    if phase in DOCUMENTATION_PHASES and (mode is None
-                                        or "documentation" in mode.constraints.effects.reads) else []),
+        "external_references": _external_references(repository, target),
         "workspace": workspace if workspace is not None else workspace_context(repository.root)}
     return ContextSnapshot(canonical({**manifest, "context_id": digest(manifest)}))
 
@@ -262,7 +265,7 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
     owned = tuple(path for path in target["documents"] if path in repository.document_targets)
     descriptor = SpecTarget(target["id"], "module", target["title"], owned, target["parent"],
         tuple(target["uses"]), tuple(target["files"]), tuple(target["checks"]),
-        tuple((r["kind"], r["id"]) for r in target["references"]))
+        tuple((r["kind"], r["path"] if r["kind"] == "external" else r["id"]) for r in target["references"]))
     selection = candidate_repository or repository
     paths = selection._context_paths(descriptor)
     sources = []
@@ -328,10 +331,8 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, ch
     if check_implementation and value["phase"] in CODE_PHASES:
         if _implementation_artifacts(current, target) != value["implementation_artifacts"]:
             raise SpecError("implementation input membership or bytes changed", "stale_context")
-    if _documentation_entries(current, target) != value["documentation_entries"]:
-        raise SpecError("declared documentation entries changed", "stale_context")
-    if value["documentation_artifacts"] and _documentation_artifacts(current, target) != value["documentation_artifacts"]:
-        raise SpecError("documentation membership or bytes changed", "stale_context")
+    if _external_references(current, target) != value["external_references"]:
+        raise SpecError("external references or their bytes changed", "stale_context")
 
 
 @_stale_on_resolution_error

@@ -68,10 +68,9 @@ component the local `concorde-dependencies` declarations actually identify.
 
 Consume the exact supplied `concorde-agent-stage-context@2` snapshot: the target's
 `concorde-context-snapshot@3`, with `spec_resolution` with complete owned and directly referenced sources, original owners and inclusion reasons, the declared
-`implementation_entries` and the `implementation_files` they bind, the declared `documentation_entries` with their
-read-only `documentation_artifacts` (reference documentation of the external capabilities the Module's
-entities use, granted at the same project-relative paths, the only admitted source of third-party API
-facts), the task and phase, and `stage_inputs` carrying the accepted
+`implementation_entries` and the `implementation_files` they bind, the declared `external_references` (the vendored
+documentation and source of the external capabilities the Module relies on, granted read-only at the same
+project-relative paths, the only admitted source of third-party API facts), the task and phase, and `stage_inputs` carrying the accepted
 `concorde-plan-artifact` and `concorde-task-identity-constraints`, plus (for a repair round) a `concorde-implementation-task` and a
 `concorde-review-result`. This role runs only inside a host-bound capability invocation. A revised
 task list after a rejected proposal arrives as a fresh invocation with a fresh snapshot.

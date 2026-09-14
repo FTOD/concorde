@@ -52,14 +52,17 @@ The Module registration also declares `references`, a distinct list of typed sta
   "documents": ["checkout/module.md", "checkout/scenarios.md"],
   "references": [
     {"kind": "module", "id": "module.inventory"},
-    {"kind": "document", "id": "document.delivery-terms"}
+    {"kind": "document", "id": "document.delivery-terms"},
+    {"kind": "external", "path": "reference/payment-sdk/"}
   ]
 }
 ```
 
 This is a partial registration example, not a second context list. A Module reference includes all
 documents owned by that Module; a document reference includes just that file. It does not include
-the referenced Module's own references. A reference MUST resolve to its declared kind; duplicate
+the referenced Module's own references. An external reference names vendored material the Module
+reads but does not own, such as the documentation and source of a library pinned at a known
+revision; it never enters the Spec context and is resolved separately as reference material. A reference MUST resolve to its declared kind; duplicate
 reference pairs and references to the selecting Module or its own documents are invalid. Overlapping
 Module/document references are allowed and produce one copy with all inclusion reasons. Cycles
 between Modules' references are permitted because resolution never recurses.
@@ -113,7 +116,8 @@ An inventory MUST distinguish these relationships:
   entity file declarations, entry for entry.
 - **Document ownership:** a Module's `documents` identify the documents it alone owns.
 - **Context inclusion:** a Module's `references` identify other Modules or registered documents
-  to include once, without following their references. These do not imply any other relationship.
+  to include once, without following their references, and the external material the Module may
+  read. These do not imply any other relationship.
 
 All references MUST resolve to the appropriate kind of entity. File paths and display titles MUST
 NOT be used to infer undeclared parentage, dependencies or file ownership.
@@ -187,13 +191,6 @@ documents. Each entry identifies one entity:
     "kind": "used module",
     "target_id": "module.warehouse",
     "responsibility": "Reports physical stock counts that the ledger reconciles against."
-  },
-  {
-    "id": "entity.inventory.message-broker",
-    "title": "Message broker client",
-    "kind": "external library",
-    "responsibility": "Delivers reservation events; the ledger uses its publish and acknowledge calls.",
-    "documentation": ["docs/vendor/broker-client-2.4/"]
   }
 ]
 ```
@@ -203,16 +200,13 @@ within the Module. `kind` is free text. `responsibility` states what the entity 
 `files` lists the entries that realize the entity, each an exact file or a directory prefix with a
 trailing slash; `pending` names the subset of those entries that are declared but not yet created.
 `target_id` identifies a child or used Module the entity stands for; such an entity lists no files,
-because those files belong to that Module. `documentation` lists the vendored reference
-documentation of an external capability the entity uses, as exact files or directory prefixes; the
-entries must exist, are never Spec documents and never overlap the Module's `files`. An entity
-without `files`, `documentation` and `target_id` is a concept, record, interface or actor.
+because those files belong to that Module. An entity without `files` and without `target_id` is a
+concept, record, interface or actor; an external library the Module builds on is such an entity,
+and its vendored material is declared as an external reference of the Module, not on the entity.
 
 Within one Module each entry appears under one entity, and a file covered by several entries of the
 Module belongs to the most specific one. The union of a Module's entity entries is its
 implementation file listing and MUST equal the inventory's `files` for that Module, entry for entry.
-The union of its entities' `documentation` entries is the Module's reference documentation; it is
-derived from the entity declarations alone and has no inventory field.
 Every child and every used Module MUST be represented by an entity with the corresponding
 `target_id`, and every `target_id` MUST name a child or used Module. Listing a file grants nothing
 by itself; a development tool decides which phases may read or change listed files.

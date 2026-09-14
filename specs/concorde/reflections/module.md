@@ -191,10 +191,7 @@ fixture directory; the shared file-transaction entry stays exact.
     "id": "entity.reflections.langgraph",
     "title": "LangGraph",
     "kind": "external library",
-    "responsibility": "Executes the triage Flow as a LangGraph StateGraph. The vendored reference documentation is the admitted source of LangGraph API facts for the phases that plan, task, write or review this Module's code.",
-    "documentation": [
-      "docs/vendor/langgraph/"
-    ]
+    "responsibility": "Executes the triage Flow as a LangGraph StateGraph. Its documentation and source are this Module's external references, the admitted source of LangGraph facts for the phases that plan, task, write or review this Module's code."
   }
 ]
 ```

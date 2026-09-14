@@ -18,7 +18,7 @@ implementation context; this Module realizes those definitions and adds the two 
 | --- | --- | --- |
 | Spec context | The selected Module's complete resolved Markdown context, exactly the Protocol's `Context(M)`; a scenario focus changes the question, not the membership. | Every Module-bound invocation. |
 | Implementation context | The Protocol's `ImplementationContext(M)`: the listing entries the selected Module's own entities declare, exact files and directory prefixes alike, and the files those entries currently bind. Every phase can see the declared entries and bound file names with their owning entity and pending status; only code-writing and code-review phases receive file contents, in their declared subsets. | Entries and file names: every phase. File contents: code-writing and code-review phases only. |
-| Capability context | The contracts of the Capabilities and Tools the invocation may use, as admitted by its Harness and constraints, together with the Module's Protocol-defined reference documentation: the vendored documentation of the external capabilities its entities declare with `documentation` entries. Descriptions given to the model and bindings accepted by the executor resolve to the same contracts. | Declared documentation entries: every phase. Documentation contents, read-only: plan, tasks, implementation and code-review phases. Capability and Tool contracts: none admitted by any current Agent. |
+| Capability context | The contracts of the Capabilities and Tools the invocation may use, as admitted by its Harness and constraints, together with the Module's Protocol-defined external references: the vendored documentation and source it declares with `references` of kind `external`, one tree digest per entry. Descriptions given to the model and bindings accepted by the executor resolve to the same contracts. | Reference entries and digests: every phase. Reference contents, read-only: the modes that declare the `references` effect (plan, tasks, implementation, code-review). Capability and Tool contracts: none admitted by any current Agent. |
 | Task context | The task and constraints, the stage artifacts admitted for this phase, such as a plan, implementation tasks, a review result or a reflection selection, and the frozen workspace lifecycle metadata. | Every invocation; stage artifacts are optional. |
 
 A kind may be empty for a phase, but the frozen closure is never empty. Agent instructions, the
@@ -28,8 +28,8 @@ a public Capability. The snapshot identity covers every admitted byte of every k
 
 ## Context snapshot resolution
 
-`resolve_context` freezes one Module's Spec context with its task context, its reference
-documentation, and, for code phases, its implementation context, into a private
+`resolve_context` freezes one Module's Spec context with its task context, its external
+references, and, for code phases, its implementation context, into a private
 `concorde-context-snapshot@3`. `resolve_discovery_context`
 freezes several explicitly selected complete Spec contexts for the global coordinator.
 `recheck_context` and `recheck_discovery_context` reject reuse after any admitted input changed.
@@ -98,17 +98,15 @@ new dictionary and `.id` returns its `context_id`. The dictionary is the data of
   entries and not the expanded names are the declaration, a code writer may create a file below a
   listed directory; a recheck that verifies implementation inputs still rejects a changed file set
   for every other phase.
-- `documentation_entries: list[{path: str, entity_id: str, directory: bool}]`, present for every
-  phase: the reference-documentation entries the selected Module's own entities declare, in
-  declaration order, with the declaring entity and whether the entry is a directory prefix.
-- `documentation_artifacts: list[{id: str, path, digest: sha256}]`: the current content digest of
-  each existing documentation file those entries bind, present only for the `plan`, `tasks`,
-  `implementation` and `code-review` phases and only when the selected mode declares the
-  `documentation` read effect; otherwise empty. Documentation bytes are never embedded. The host
-  grants exactly these files read-only: in a project workspace at their paths, in a capsule as
-  byte-identical copies at the same project-relative paths. A recheck rejects a changed
-  declaration set for every phase and changed documentation bytes for the phases that admitted
-  contents. An installed dependency's sources and the network remain outside every grant.
+- `external_references: list[{path: str, directory: bool, digest: sha256}]`, present for every
+  phase: the selected Module's `references` of kind `external` in declaration order, each with one
+  digest over the paths and bytes of its readable files (the ordinary directory exclusions plus
+  media and archive suffixes). Reference bytes are never embedded and never listed per file. A
+  missing entry fails resolution with `invalid_reference`. A mode that declares the `references`
+  effect is granted exactly those entries' base paths read-only: in a project workspace at their
+  paths, in a capsule as byte-identical copies of the same readable files at the same
+  project-relative paths. A recheck rejects any change to the entries or their digests. An installed
+  dependency's sources and the network remain outside every grant.
 - `stage_inputs: list[TypedValue]`, `implementation_artifacts: list[{id: str, path, digest: sha256}]`
   and `workspace`, the lifecycle record described below. `implementation_artifacts` is populated
   only for the `implementation` and `code-review` phases, with the current content digest of each
@@ -171,8 +169,8 @@ The context identity covers all inputs apart from its own identity field. The wi
 contains the distributed principles bundle and Module kind definition. This bundle includes
 both Concorde Spec Protocol requirements and the Framework execution profile; the field name does
 not classify all runtime rules as Spec organization rules.
-Concorde Spec Protocol 5.1.0 defines the Spec context, implementation context and reference
-documentation this service resolves. The distributed rule bundle also includes the separately authored Framework execution
+Concorde Spec Protocol 5.1.0 defines the Spec context, implementation context and external
+references this service resolves. The distributed rule bundle also includes the separately authored Framework execution
 profile, including P10 handoffs. The resolver verifies the build is
 fresh, then admits Protocol assets rendered into `generated/protocol/` from the exact project-bound
 manifest, without discovering root AGENTS.md/CLAUDE.md. The installed root entry serves

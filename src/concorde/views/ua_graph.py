@@ -179,6 +179,8 @@ def _build_elements(repository: SpecRepository, *,
     for target in targets:
         repository.spec_files(target.id)  # Reject invalid declarations before producing a graph.
         for kind, identity in target.references:
+            if kind == "external":
+                continue  # vendored material is granted to agents, not a node of the Spec graph
             destination = f"module:{identity}" if kind == "module" else doc_node_ids[document_index[identity]]
             edges.append(_edge(f"module:{target.id}", destination, "references", 0.6, kind))
 

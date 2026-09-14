@@ -43,6 +43,12 @@ ANCHOR_PREFIXES = ("scenario.", "req.", "entity.", "contract.")
 CONTROL_PREFIXES = (".concorde/", ".git/", ".agents/", ".claude/", ".codex/", "generated/")
 SKIPPED_DIRECTORIES = frozenset({"node_modules", "__pycache__", ".venv", "build", "dist"})
 SKIPPED_SUFFIXES = (".pyc", ".log")
+# External reference material (Protocol 5.1 ``references`` of kind ``external``) is expanded and
+# digested as text: media and archives are excluded by suffix so a vendored documentation or
+# source tree costs its readable bytes, not its images.
+REFERENCE_SKIPPED_SUFFIXES = (*SKIPPED_SUFFIXES, ".gif", ".png", ".jpg", ".jpeg", ".webp", ".svg", ".mp4",
+                              ".webm", ".ico", ".woff", ".woff2", ".ttf", ".otf", ".pdf", ".zip", ".gz",
+                              ".tar", ".tgz", ".bz2", ".xz", ".7z", ".jar", ".whl", ".so", ".dylib", ".dll")
 STEP_ORDER = {"GIVEN": 0, "WHEN": 1, "THEN": 2}
 
 
@@ -130,7 +136,7 @@ def entry_exists(root: Path, entry: str) -> bool:
     return candidate.is_dir() if is_directory_entry(entry) else candidate.is_file()
 
 
-def expand_entry(root: Path, entry: str) -> list[str]:
+def expand_entry(root: Path, entry: str, *, skipped_suffixes: tuple[str, ...] = SKIPPED_SUFFIXES) -> list[str]:
     """Existing regular files bound by one entry, skipping excluded directories and files."""
     if not is_directory_entry(entry):
         return [entry] if checked_path(root, entry).is_file() else []
@@ -142,7 +148,7 @@ def expand_entry(root: Path, entry: str) -> list[str]:
         names[:] = sorted(name for name in names if name not in SKIPPED_DIRECTORIES
                           and not name.startswith(".") and not (Path(current) / name).is_symlink())
         for name in sorted(files):
-            if name.startswith(".") or name.endswith(SKIPPED_SUFFIXES):
+            if name.startswith(".") or name.endswith(skipped_suffixes):
                 continue
             candidate = Path(current) / name
             if candidate.is_symlink() or not candidate.is_file():
@@ -254,9 +260,6 @@ class SpecEntity:
     target_id: str | None
     owner: str
     document: str
-    # Reference documentation of an external capability the entity uses (Protocol 5.1): listing
-    # entries of vendored, version-pinned material, never implementation files of this Module.
-    documentation: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -306,6 +309,7 @@ class SpecRepository:
         self.document_targets: dict[str, list[str]] = {}
         self._document_cache: dict[str, SpecDocument] = {}
         self._definition_cache: dict[str, ModuleDefinitions] = {}
+        self._reference_digest_cache: dict[str, str] = {}
         self._load_registry()
         self.entry_target = self.registry["entry_target"]
         if self.entry_target not in self.targets:
@@ -366,22 +370,41 @@ class SpecRepository:
                 raise SpecError("references must be an explicit array", "invalid_reference", target_id)
             pairs = []
             for reference in references:
-                if (not isinstance(reference, dict) or set(reference) != {"kind", "id"}
+                if isinstance(reference, dict) and reference.get("kind") == "external":
+                    # Protocol 5.1: vendored material the Module reads but does not own, a
+                    # project-relative file or directory prefix, granted as files and never injected.
+                    if set(reference) != {"kind", "path"}:
+                        raise SpecError("external reference requires kind and path", "invalid_reference", target_id)
+                    check_entry(reference["path"])
+                    pair = ("external", reference["path"])
+                elif (not isinstance(reference, dict) or set(reference) != {"kind", "id"}
                         or not isinstance(reference["kind"], str)
                         or reference["kind"] not in {"module", "document"}):
-                    raise SpecError("reference requires kind module|document and id", "invalid_reference", target_id)
-                pair = (reference["kind"], identifier(reference["id"]))
+                    raise SpecError("reference requires kind module|document and id, or kind external and path",
+                                    "invalid_reference", target_id)
+                else:
+                    pair = (reference["kind"], identifier(reference["id"]))
                 if pair in pairs or pair == ("module", target_id):
                     raise SpecError("duplicate or self reference", "invalid_reference", target_id)
                 pairs.append(pair)
             files = strings(raw["files"], "files")
             if list(files) != sorted(files):
                 raise SpecError(f"target {target_id} files must be sorted")
+            for kind, entry in pairs:
+                if kind == "external" and any(covers(listed, entry_base(entry)) or covers(entry, listed)
+                                              or listed == entry for listed in files):
+                    raise SpecError(f"external reference overlaps the implementation files of {target_id}: {entry}",
+                                    "invalid_reference", target_id)
             self.targets[target_id] = SpecTarget(target_id, raw["kind"], raw["title"], documents,
                 raw["parent"], strings(raw["uses"], "uses"), files, strings(raw["checks"], "checks"), tuple(pairs))
         for target in self.targets.values():
             if self.document_targets[target.primary_document] != [target.id]:
                 raise SpecError(f"Module reading entry must belong only to its Module: {target.primary_document}")
+            for kind, entry in target.references:
+                if kind == "external" and (entry in self.document_targets or (is_directory_entry(entry) and any(
+                        covers(entry, document) for document in self.document_targets))):
+                    raise SpecError(f"external reference cannot be or contain a project Spec document: {entry}",
+                                    "invalid_reference", target.id)
             parent = target.parent
             seen = {target.id}
             while parent is not None:
@@ -527,6 +550,8 @@ class SpecRepository:
         index = self._document_index()
         paths = {path: [{"kind": "owned", "id": target.id}] for path in target.documents}
         for kind, identity in target.references:
+            if kind == "external":
+                continue  # granted as files by the development tool, never included in Spec context
             if kind == "module":
                 if identity not in self.targets or identity == target.id:
                     raise SpecError(f"unknown or self Module reference: {identity}", "invalid_reference", target.id)
@@ -557,7 +582,8 @@ class SpecRepository:
                             "reasons": reasons})
         return SpecResolution(canonical({"query_id": entity_id, "query_kind": kind,
             "module_id": target.id, "documents": list(target.documents),
-            "references": [{"kind": k, "id": i} for k, i in target.references], "sources": sources}))
+            "references": [{"kind": "external", "path": i} if k == "external" else {"kind": k, "id": i}
+                           for k, i in target.references], "sources": sources}))
 
     def context_users(self, document_id: str) -> tuple[str, ...]:
         index = self._document_index()
@@ -720,7 +746,6 @@ class SpecRepository:
             entities.extend(document_entities)
         titles: dict[str, str] = {}
         files: dict[str, str] = {}
-        documentation: dict[str, str] = {}
         related = {child.id for child in self.children(target)} | set(target.uses)
         represented: dict[str, str] = {}
         for entity in entities:
@@ -731,15 +756,6 @@ class SpecRepository:
                 if path in files:
                     raise SpecError(f"file is listed by two entities of {target.id}: {path} ({files[path]}, {entity.id})")
                 files[path] = entity.id
-            for entry in entity.documentation:
-                if entry in documentation:
-                    raise SpecError(f"documentation is listed by two entities of {target.id}: {entry} ({documentation[entry]}, {entity.id})")
-                documentation[entry] = entity.id
-                if entry in self.document_targets or (is_directory_entry(entry) and any(
-                        covers(entry, document) for document in self.document_targets)):
-                    raise SpecError(f"documentation entry cannot be or contain a project Spec document: {entry}")
-                if any(covers(listed, entry_base(entry)) or covers(entry, listed) for listed in target.files):
-                    raise SpecError(f"documentation entry overlaps the implementation files of {target.id}: {entry}")
             if entity.target_id is not None:
                 if entity.target_id not in related:
                     raise SpecError(f"entity {entity.id} names {entity.target_id}, which is not a child or used Module of {target.id}")
@@ -780,26 +796,33 @@ class SpecRepository:
         """Declared listing entries of the Module's entities, keyed by entry (exact file or directory)."""
         return {entry: entity for entity in self.entities(target) for entry in entity.files}
 
-    def entity_documentation(self, target: SpecTarget) -> dict[str, SpecEntity]:
-        """Declared reference-documentation entries of the Module's entities, keyed by entry."""
-        return {entry: entity for entity in self.entities(target) for entry in entity.documentation}
+    def external_references(self, target: SpecTarget) -> tuple[str, ...]:
+        """The Module's ``external`` references in declaration order: exact files or directory prefixes."""
+        return tuple(value for kind, value in target.references if kind == "external")
 
-    def documentation_entries(self, target: SpecTarget) -> tuple[str, ...]:
-        """The declared documentation entries in declaration order, exact files and directory prefixes."""
-        return tuple(self.entity_documentation(target))
+    def external_reference_paths(self, target: SpecTarget) -> tuple[str, ...]:
+        """External reference authority roots without trailing slashes, for read-only permissions."""
+        return tuple(dict.fromkeys(entry_base(entry) for entry in self.external_references(target)))
 
-    def documentation_paths(self, target: SpecTarget) -> tuple[str, ...]:
-        """Documentation authority roots without trailing slashes, for read-only permissions."""
-        return tuple(dict.fromkeys(entry_base(entry) for entry in self.documentation_entries(target)))
+    def external_reference_files(self, entry: str) -> tuple[str, ...]:
+        """Existing readable files below one external reference entry, media and archives excluded."""
+        return tuple(expand_entry(self.root, entry, skipped_suffixes=REFERENCE_SKIPPED_SUFFIXES))
 
-    def documentation_files(self, target: SpecTarget) -> tuple[str, ...]:
-        """Existing regular files the Module's documentation entries bind, directory prefixes expanded."""
-        return tuple(sorted({path for entry in self.documentation_entries(target)
-                             for path in expand_entry(self.root, entry)}))
+    def external_reference_digest(self, entry: str) -> str:
+        """One digest per entry over its readable files' paths and bytes; cached per repository."""
+        if entry not in self._reference_digest_cache:
+            self._reference_digest_cache[entry] = digest([
+                (path, digest(read_file(self.root, path))) for path in self.external_reference_files(entry)])
+        return self._reference_digest_cache[entry]
 
-    def missing_documentation(self, target: SpecTarget) -> tuple[str, ...]:
-        """Documentation entries whose file or directory does not exist; documentation is never pending."""
-        return tuple(entry for entry in self.documentation_entries(target) if not entry_exists(self.root, entry))
+    def external_reference_records(self, target: SpecTarget) -> list[dict]:
+        """The snapshot form of the Module's external references: entry, kind and tree digest."""
+        return [{"path": entry, "directory": is_directory_entry(entry),
+                 "digest": self.external_reference_digest(entry)} for entry in self.external_references(target)]
+
+    def missing_external_references(self, target: SpecTarget) -> tuple[str, ...]:
+        """External reference entries whose file or directory does not exist; references are never pending."""
+        return tuple(entry for entry in self.external_references(target) if not entry_exists(self.root, entry))
 
     def entity_for_path(self, target: SpecTarget, path: str) -> SpecEntity | None:
         """The entity whose most specific entry covers a concrete file path, if any."""
@@ -982,15 +1005,14 @@ def _parse_definitions(document: SpecDocument, owner: str) -> tuple[list[Scenari
 def _parse_entities(document: SpecDocument, owner: str) -> list[SpecEntity]:
     entities: list[SpecEntity] = []
     required = {"id", "title", "kind", "responsibility"}
-    optional = {"files", "pending", "target_id", "documentation"}
+    optional = {"files", "pending", "target_id"}
     for match in ENTITIES_BLOCK.finditer(document.body):
         values = decode(match.group(1))
         if not isinstance(values, list) or not values:
             raise SpecError(f"concorde-entities must be a nonempty JSON array: {document.path}")
         for value in values:
             if not isinstance(value, dict) or not required <= set(value) or set(value) - required - optional:
-                raise SpecError("entity requires id/title/kind/responsibility and only files/pending/target_id/"
-                                f"documentation: {document.path}")
+                raise SpecError(f"entity requires id/title/kind/responsibility and only files/pending/target_id: {document.path}")
             entity_id = identifier(value["id"])
             for key in ("title", "kind", "responsibility"):
                 if not isinstance(value[key], str) or not value[key].strip():
@@ -1006,13 +1028,7 @@ def _parse_entities(document: SpecDocument, owner: str) -> list[SpecEntity]:
                 target_id = identifier(value["target_id"])
                 if files:
                     raise SpecError(f"entity {entity_id} stands for {target_id} and cannot list files: {document.path}")
-            documentation = (strings(value["documentation"], f"entity {entity_id} documentation", nonempty=True)
-                             if "documentation" in value else ())
-            for entry in documentation:
-                check_entry(entry)
-                if any(covers(entry, other) or covers(other, entry) or entry == other for other in files):
-                    raise SpecError(f"entity {entity_id} documentation entry {entry} overlaps its implementation files: {document.path}")
             entities.append(SpecEntity(entity_id, value["title"].strip(), value["kind"].strip(),
                                        value["responsibility"].strip(), files, pending, target_id,
-                                       owner, document.path, documentation))
+                                       owner, document.path))
     return entities

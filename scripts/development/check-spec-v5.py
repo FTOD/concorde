@@ -74,7 +74,7 @@ def resolve(targets, docs, module_id):
     by_id = {d.document_id: path for path, d in docs.items()}
     for path in target["documents"]:
         reasons[path].add(("owned", module_id))
-    refs = target["references"]
+    refs = [r for r in target["references"] if r["kind"] != "external"]
     require(len({(r["kind"], r["id"]) for r in refs}) == len(refs), "duplicate reference")
     for ref in refs:
         require(set(ref) == {"kind", "id"}, "reference fields")

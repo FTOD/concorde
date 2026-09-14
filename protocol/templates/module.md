@@ -77,8 +77,7 @@ promises. No lists, tables or code.]
     "id": "entity.[module].[library]",
     "title": "[External capability title]",
     "kind": "external library",
-    "responsibility": "[What this Module relies on it for.]",
-    "documentation": ["[project-relative/vendored/docs/directory/]"]
+    "responsibility": "[What this Module relies on it for; its vendored material is an external reference of the Module.]"
   },
   {
     "id": "entity.[module].[collaborator]",

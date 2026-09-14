@@ -19,7 +19,7 @@ class PermissionPolicyError(ValueError):
 
 
 # Read roles a policy map may omit, meaning the invocation declares no such paths.
-OPTIONAL_ROLES = frozenset({"documentation"})
+OPTIONAL_ROLES = frozenset({"references"})
 
 
 @dataclass(frozen=True)
@@ -316,8 +316,8 @@ def compile_policy(
     if not set(writes).issubset(reads):
         raise PermissionPolicyError("binding write roles must also be selected read roles")
     required_roles = tuple(dict.fromkeys((*reads, *writes)))
-    # ``documentation`` is the one role whose absence from the map means "none declared": a mode
-    # may read reference documentation, but a Module need not declare any. Every other selected
+    # ``references`` is the one role whose absence from the map means "none declared": a mode
+    # may read external references, but a Module need not declare any. Every other selected
     # role must be supplied explicitly.
     missing = [role for role in required_roles if role not in role_paths and role not in OPTIONAL_ROLES]
     if missing:

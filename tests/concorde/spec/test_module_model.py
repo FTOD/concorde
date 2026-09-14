@@ -628,70 +628,71 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual(["module.b"], [target.id for target in code_review_peers(run)])
         self.assertEqual(["module.a", "module.b"], seen)
 
-    def declare_documentation(self, module="module.a", entries=("docs/vendor/lib/",)):
-        entities, save = self.entity_block(f"specs/{module.split('.')[-1]}/module.md")
-        entities.append({"id": f"entity.{module.split('.')[-1]}.lib", "title": "Lib", "kind": "external library",
-                         "responsibility": "The library the adapter builds on.", "documentation": list(entries)})
-        save(entities)
-        path = f"specs/{module.split('.')[-1]}/module.md"
-        text = (self.root / path).read_text()
-        text = text.replace('    adapter["Adapter"]', '    adapter["Adapter"]\n    lib["Lib"]\n    adapter -->|builds on| lib')
-        (self.root / path).write_text(text)
+    def declare_reference(self, module="module.a", entries=("reference/lib/",)):
+        """Register vendored material as external references of ``module`` in the registry."""
+        target = next(t for t in self.registry["targets"] if t["id"] == module)
+        target["references"] = [r for r in target["references"] if r.get("kind") != "external"] + [
+            {"kind": "external", "path": entry} for entry in entries]
+        self.save_registry()
 
-    @verifies("scenario.spec.documentation-entry")
-    def test_documentation_entries_are_reference_material_not_implementation_files(self):
-        self.write("docs/vendor/lib/README.md", "# lib 1.0\n\nAPI reference.\n")
-        self.write("docs/vendor/lib/api.md", "## connect(url)\n")
-        self.write("docs/vendor/lib/.hidden.md", "ignored\n")
-        self.declare_documentation()
+    @verifies("scenario.spec.external-reference")
+    def test_external_references_are_read_material_not_context_or_implementation(self):
+        self.write("reference/lib/README.md", "# lib 1.0\n\nAPI reference.\n")
+        self.write("reference/lib/api.md", "## connect(url)\n")
+        self.write("reference/lib/.hidden.md", "ignored\n")
+        self.write("reference/lib/logo.png", "binary")
+        self.declare_reference()
         repository = self.repository()
         a = repository.select("module.a")
-        self.assertEqual(("docs/vendor/lib/",), repository.documentation_entries(a))
-        self.assertEqual(("docs/vendor/lib",), repository.documentation_paths(a))
-        self.assertEqual(("docs/vendor/lib/README.md", "docs/vendor/lib/api.md"), repository.documentation_files(a))
+        self.assertEqual(("reference/lib/",), repository.external_references(a))
+        self.assertEqual(("reference/lib",), repository.external_reference_paths(a))
+        self.assertEqual(("reference/lib/README.md", "reference/lib/api.md"), repository.external_reference_files("reference/lib/"))
         self.assertEqual(("source/a.py", "source/shared.py"), repository.implementation_files(a))
-        self.assertEqual((), repository.missing_documentation(a))
-        self.assertEqual(["entity.a.lib"], [e.id for e in repository.entity_documentation(a).values()])
+        self.assertEqual((), repository.missing_external_references(a))
+        records = repository.external_reference_records(a)
+        self.assertEqual([{"path": "reference/lib/", "directory": True, "digest": repository.external_reference_digest("reference/lib/")}], records)
+        # The Spec context never includes reference material, and the digest follows readable bytes only.
+        self.assertEqual(["specs/a/details.md", "specs/a/module.md"],
+                         [source["path"] for source in repository.spec_context("module.a").value["sources"]])
+        self.assertEqual([{"kind": "external", "path": "reference/lib/"}], repository.spec_context("module.a").value["references"])
+        self.write("reference/lib/logo.png", "other binary")
+        self.assertEqual(records, self.repository().external_reference_records(a))
+        self.write("reference/lib/api.md", "## connect(url, timeout)\n")
+        self.assertNotEqual(records, self.repository().external_reference_records(a))
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("success", report.status, report)
-        # The reverse file index knows nothing about documentation: it is not a listed file.
-        self.assertEqual((), repository.listing_users("docs/vendor/lib/api.md"))
+        self.assertEqual((), repository.listing_users("reference/lib/api.md"))
 
-    @verifies("scenario.spec.documentation-entry")
-    def test_missing_documentation_is_an_error_and_never_pending(self):
-        self.declare_documentation(entries=("docs/vendor/lib/",))
+    @verifies("scenario.spec.external-reference")
+    def test_missing_external_reference_is_an_error_and_never_pending(self):
+        self.declare_reference(entries=("reference/lib/",))
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("invalid", report.status)
-        rules = {finding.rule_id for finding in report.findings}
-        self.assertIn("CONCORDE-ENTITY-007", rules)
-        self.assertEqual(("docs/vendor/lib/",), self.repository().missing_documentation(self.repository().select("module.a")))
+        self.assertIn("CONCORDE-REFERENCE-001", {finding.rule_id for finding in report.findings})
+        repository = self.repository()
+        self.assertEqual(("reference/lib/",), repository.missing_external_references(repository.select("module.a")))
+        with self.assertRaises(SpecError) as raised:
+            resolve_context(repository, "module.a", phase="plan", task="Adapt")
+        self.assertEqual("invalid_reference", raised.exception.code)
 
-    @verifies("scenario.spec.documentation-entry")
-    def test_documentation_cannot_be_a_spec_document_or_overlap_own_files(self):
-        self.write("docs/vendor/lib/api.md", "api\n")
+    @verifies("scenario.spec.external-reference")
+    def test_external_reference_cannot_be_a_spec_document_overlap_own_files_or_repeat(self):
+        self.write("reference/lib/api.md", "api\n")
         for entries, message in ((("specs/b/module.md",), "Spec document"),
                                  (("specs/",), "Spec document"),
                                  (("source/shared.py",), "overlaps"),
-                                 (("source/",), "overlaps")):
+                                 (("source/",), "overlaps"),
+                                 (("reference/lib/", "reference/lib/"), "duplicate")):
             with self.subTest(entries=entries):
                 fixture = ModuleImplementationTests()
                 fixture.setUp()
                 try:
-                    fixture.declare_documentation(entries=entries)
+                    fixture.declare_reference(entries=entries)
                     with self.assertRaises(SpecError) as raised:
-                        fixture.repository().entities(fixture.repository().select("module.a"))
+                        fixture.repository()
                     self.assertIn(message, str(raised.exception))
                 finally:
                     fixture.doCleanups()
-        # Two entities of one Module cannot both declare the same documentation.
-        self.declare_documentation()
-        entities, save = self.entity_block("specs/a/module.md")
-        entities.append({"id": "entity.a.lib2", "title": "Lib again", "kind": "external library",
-                         "responsibility": "Duplicate.", "documentation": ["docs/vendor/lib/"]})
-        save(entities)
-        with self.assertRaises(SpecError) as raised:
-            self.repository().entities(self.repository().select("module.a"))
-        self.assertIn("two entities", str(raised.exception))
 
     def test_code_writer_cannot_author_spec_documents(self):
         from concorde.development.capability_host import CapabilityHost, run_capability

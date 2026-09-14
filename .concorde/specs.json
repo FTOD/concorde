@@ -3,6 +3,98 @@
     {
       "argv": [
         "{python}",
+        "scripts/development/run-tests.py",
+        "-j",
+        "4",
+        "--filter",
+        "tests.concorde.harness.test_scoped_protocol",
+        "--filter",
+        "tests.concorde.development.test_review",
+        "--filter",
+        "tests.concorde.development.test_check_execution",
+        "--filter",
+        "tests.concorde.harness.test_worktree_lifecycle"
+      ],
+      "id": "check.development.runtime",
+      "inputs": [
+        "scripts/development/run-tests.py",
+        "src",
+        "protocol",
+        "tests/concorde/harness",
+        "tests/concorde/development"
+      ],
+      "target_id": "module.development",
+      "timeout_seconds": 180
+    },
+    {
+      "id": "check.harness.reference-versions",
+      "target_id": "module.harness",
+      "argv": [
+        "{python}",
+        "scripts/development/check-reference-versions.py"
+      ],
+      "timeout_seconds": 60,
+      "inputs": [
+        "reference/langgraph/libs/langgraph/pyproject.toml",
+        "uv.lock"
+      ]
+    },
+    {
+      "argv": [
+        "{python}",
+        "-m",
+        "unittest",
+        "tests.concorde.harness.test_scoped_protocol",
+        "tests.concorde.harness.test_boundaries",
+        "tests.concorde.harness.test_agent_binding",
+        "tests.concorde.harness.test_check_executor"
+      ],
+      "id": "check.harness.runtime",
+      "inputs": [
+        "src",
+        "protocol",
+        "tests/concorde/harness"
+      ],
+      "target_id": "module.harness",
+      "timeout_seconds": 180
+    },
+    {
+      "argv": [
+        "{python}",
+        "-m",
+        "unittest",
+        "tests.concorde.spec.test_module_model",
+        "tests.concorde.spec.test_module_architecture"
+      ],
+      "id": "check.spec.model",
+      "inputs": [
+        "src",
+        "protocol",
+        "tests/concorde/spec"
+      ],
+      "target_id": "module.spec",
+      "timeout_seconds": 120
+    },
+    {
+      "argv": [
+        "{python}",
+        "scripts/development/check-docsite-types.py"
+      ],
+      "id": "check.views.publication-types",
+      "inputs": [
+        "docsite/tsconfig.json",
+        "docsite/plugins/scoped-content",
+        "docsite/src",
+        "docsite/package.json",
+        "docsite/package-lock.json",
+        "scripts/development/check-docsite-types.py"
+      ],
+      "target_id": "module.views",
+      "timeout_seconds": 120
+    },
+    {
+      "argv": [
+        "{python}",
         "docsite/tests/repository/run-checks.py"
       ],
       "id": "check.views.repository-regressions",
@@ -42,85 +134,6 @@
       ],
       "target_id": "module.views",
       "timeout_seconds": 600
-    },
-    {
-      "argv": [
-        "{python}",
-        "-m",
-        "unittest",
-        "tests.concorde.spec.test_module_model",
-        "tests.concorde.spec.test_module_architecture"
-      ],
-      "id": "check.spec.model",
-      "inputs": [
-        "src",
-        "protocol",
-        "tests/concorde/spec"
-      ],
-      "target_id": "module.spec",
-      "timeout_seconds": 120
-    },
-    {
-      "argv": [
-        "{python}",
-        "-m",
-        "unittest",
-        "tests.concorde.harness.test_scoped_protocol",
-        "tests.concorde.harness.test_boundaries",
-        "tests.concorde.harness.test_agent_binding",
-        "tests.concorde.harness.test_check_executor"
-      ],
-      "id": "check.harness.runtime",
-      "inputs": [
-        "src",
-        "protocol",
-        "tests/concorde/harness"
-      ],
-      "target_id": "module.harness",
-      "timeout_seconds": 180
-    },
-    {
-      "argv": [
-        "{python}",
-        "scripts/development/run-tests.py",
-        "-j",
-        "4",
-        "--filter",
-        "tests.concorde.harness.test_scoped_protocol",
-        "--filter",
-        "tests.concorde.development.test_review",
-        "--filter",
-        "tests.concorde.development.test_check_execution",
-        "--filter",
-        "tests.concorde.harness.test_worktree_lifecycle"
-      ],
-      "id": "check.development.runtime",
-      "inputs": [
-        "scripts/development/run-tests.py",
-        "src",
-        "protocol",
-        "tests/concorde/harness",
-        "tests/concorde/development"
-      ],
-      "target_id": "module.development",
-      "timeout_seconds": 180
-    },
-    {
-      "argv": [
-        "{python}",
-        "scripts/development/check-docsite-types.py"
-      ],
-      "id": "check.views.publication-types",
-      "inputs": [
-        "docsite/tsconfig.json",
-        "docsite/plugins/scoped-content",
-        "docsite/src",
-        "docsite/package.json",
-        "docsite/package-lock.json",
-        "scripts/development/check-docsite-types.py"
-      ],
-      "target_id": "module.views",
-      "timeout_seconds": 120
     },
     {
       "argv": [
@@ -281,6 +294,7 @@
     },
     {
       "checks": [
+        "check.harness.reference-versions",
         "check.harness.runtime"
       ],
       "documents": [
@@ -297,6 +311,7 @@
       "files": [
         "agents/",
         "scripts/development/STUDIO.md",
+        "scripts/development/check-reference-versions.py",
         "scripts/development/studio.py",
         "src/concorde/harness/",
         "src/concorde/harness/agent_executor.py",
@@ -360,6 +375,14 @@
         {
           "kind": "document",
           "id": "document.review.review"
+        },
+        {
+          "kind": "external",
+          "path": "reference/langchain-docs/"
+        },
+        {
+          "kind": "external",
+          "path": "reference/langgraph/"
         }
       ],
       "title": "Harness",
@@ -464,6 +487,14 @@
         {
           "id": "module.specify-loop",
           "kind": "module"
+        },
+        {
+          "kind": "external",
+          "path": "reference/langchain-docs/"
+        },
+        {
+          "kind": "external",
+          "path": "reference/langgraph/"
         }
       ],
       "title": "Development",
@@ -559,6 +590,14 @@
         {
           "kind": "module",
           "id": "module.specify-loop"
+        },
+        {
+          "kind": "external",
+          "path": "reference/langchain-docs/"
+        },
+        {
+          "kind": "external",
+          "path": "reference/langgraph/"
         }
       ],
       "title": "Reflections",
@@ -587,7 +626,7 @@
         "scripts/concorde.py",
         "scripts/concorde.sh",
         "scripts/development/check-docsite-types.py",
-        "scripts/development/render-dependency-docs.py",
+        "scripts/development/init-references.py",
         "scripts/development/run-tests.py",
         "scripts/install-concorde.py",
         "scripts/requirements.lock",

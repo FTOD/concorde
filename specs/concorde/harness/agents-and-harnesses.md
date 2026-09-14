@@ -187,8 +187,8 @@ also supports `concorde-agent-loop-context`/`concorde-agent-loop-step` for expli
 graphs; those
 interfaces require the canonical Agent constraint and host graph/grant checks. No registered Agent
 currently admits a Capability reference; a current capability context holds only the selected
-Module's declared reference documentation, read by the plan, tasks, implementation and code-review
-modes through the `documentation` effect.
+Module's declared external references, read by the plan, tasks, implementation and code-review
+modes through the `references` effect.
 
 ```concorde-agents
 [
@@ -258,8 +258,8 @@ selects a mode explicitly before freezing instructions and compiling permissions
 independently checks that selection before any model process starts. Unknown modes, mismatched
 phase/action or context/result pairs, unadmitted or missing required artifacts, incompatible
 result fields and wider authority are rejected. Agent capability context and every current mode's
-capability context hold no Capability or Tool contract, only the declared reference documentation
-where the mode reads it; the callers listed above and their transitive `USES` are Host
+capability context hold no Capability or Tool contract, only the declared external references
+where the mode reads them; the callers listed above and their transitive `USES` are Host
 composition only.
 
 All ordinary bounded modes receive one complete Module Spec, declared implementation entries and

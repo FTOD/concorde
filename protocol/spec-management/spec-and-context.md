@@ -97,26 +97,28 @@ Module-bound task may receive without a new explicit selection. The development 
 which phases receive which subset and the applicable permissions; a Spec query never includes file
 contents implicitly.
 
-## Reference documentation
+## External references
 
-**Reference documentation** is the Protocol term for the external knowledge a Module declares it
-relies on: the vendored documentation of libraries, services or tools bound by its entities'
-`documentation` entries. Let `D(E)` be the files bound by entity `E`'s documentation entries under
-the same expansion and exclusion rule as `F(E)`. Then:
+**External references** are the Protocol term for the external knowledge a Module declares it
+relies on: the vendored documentation and source of libraries, services or tools named by its
+`references` of kind `external`. Let `X(M)` be those entries and `files(x)` the readable regular
+files below entry `x` under the tool's explicit exclusion rule, which MAY additionally exclude media
+and archives. Then:
 
 ```text
-Documentation(M) = union over E in entities(M) of D(E)
-Documentation(scenario S) = Documentation(owner(S))
+References(M) = union over x in X(M) of files(x)
+References(scenario S) = References(owner(S))
 ```
 
-Reference documentation is disjoint from `Context(M)` and from `ImplementationContext(M)`: it is
-neither a promise of the Module nor a file that realizes it, and a change to it changes no
-contract. Like implementation context it is determined from the entity declarations alone, its file
-names are visible wherever those declarations are, and its contents are a separate grant that a
-tool MAY give phase by phase, read-only. A tool MUST NOT substitute an undeclared network fetch or
-an installed dependency's sources for the declared documentation, and MUST NOT add documentation
-outside it without a new explicit declaration. Documentation that does not cover a needed fact is
-reported as a gap in the ordinary way, not repaired by wider reading.
+External references are disjoint from `Context(M)` and from `ImplementationContext(M)`: they are
+neither promises of the Module nor files that realize it, and a change to them changes no contract.
+The resolver identifies each entry by one digest over its readable files rather than listing them,
+because such material is large and read on demand. Its entry names are visible wherever the
+registration is, and its contents are a separate grant that a tool MAY give phase by phase,
+read-only. A tool MUST NOT substitute an undeclared network fetch or an installed dependency's
+sources for the declared references, and MUST NOT grant material outside them without a new
+explicit declaration. A reference that does not cover a needed fact is reported as a gap in the
+ordinary way, not repaired by wider reading.
 
 ## Completeness and gaps
 

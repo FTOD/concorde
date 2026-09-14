@@ -642,24 +642,46 @@ This complete schema is the invocation's input field. It does not grant project 
                   "references": {
                     "type": "array",
                     "items": {
-                      "type": "object",
-                      "properties": {
-                        "kind": {
-                          "enum": [
-                            "module",
-                            "document"
-                          ]
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "enum": [
+                                "module",
+                                "document"
+                              ]
+                            },
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "id"
+                          ],
+                          "additionalProperties": false
                         },
-                        "id": {
-                          "type": "string",
-                          "minLength": 1
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "external"
+                            },
+                            "path": {
+                              "type": "string",
+                              "minLength": 1,
+                              "pattern": "^[^/](?:[^/]*/)*[^/]*$"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "path"
+                          ],
+                          "additionalProperties": false
                         }
-                      },
-                      "required": [
-                        "kind",
-                        "id"
-                      ],
-                      "additionalProperties": false
+                      ]
                     },
                     "uniqueItems": true
                   },

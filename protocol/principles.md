@@ -81,14 +81,6 @@ The files a Module lists, together with their pending status, form that Module's
 context**; Spec management defines how it is resolved and keeps it separate from the Module's Spec
 context.
 
-An entity MAY additionally bind **reference documentation**: project-relative files or directory
-prefixes holding the documentation of an external capability the entity uses, such as a library,
-a service or a tool, vendored into the project at a known version. Reference documentation is
-neither a Spec document nor an implementation file: it describes something the Module relies on
-and cannot change, it supplies no promise the Spec omits, and it is never pending. The union of
-what a Module's entities bind this way is the Module's **reference documentation**; a tool that
-gives an agent knowledge of external capabilities takes that knowledge from these declarations
-rather than from an undeclared network or dependency installation.
 
 ### P3. A Module resolves a complete contract context
 
@@ -97,10 +89,16 @@ exactly one local `module.md` reading entry. Every physical Spec document MUST h
 owning Module. Ownership of a requirement, scenario, entity or interface definition follows its
 defining document and remains unchanged when another Module reads it.
 
-Each Module MUST independently declare `references` in its registration record. A reference selects
-either another Module's entire owned document collection or one registered document by stable
-identity. References determine context inclusion, not ownership, composition, dependency,
-implementation file binding or permission. Only the selected Module's references are expanded, once:
+Each Module MUST independently declare `references` in its registration record: what the Module
+reads but does not own. A reference selects either another Module's entire owned document
+collection or one registered document by stable identity, or it names **external** reference
+material: a project-relative file or directory prefix holding vendored documentation or source of
+a library, service or tool the Module relies on, pinned at a known revision. References determine
+context inclusion, not ownership, composition, dependency, implementation file binding or
+permission. An external reference is never included in the Spec context and supplies no promise
+the Spec omits: it is neither a Spec document nor an implementation file, it is never pending,
+and a tool that gives an agent knowledge of external capabilities takes that knowledge from these
+declarations rather than from an undeclared network or dependency installation. Only the selected Module's references are expanded, once:
 referenced Modules' references and Markdown links MUST NOT be followed. The complete context is the
 deduplicated union of full owned and directly referenced documents.
 

@@ -182,14 +182,15 @@ See [the non-empty closure bound](#req.harness.context-closure-nonempty) and
 rule: see [names for every phase](#req.harness.context-file-names-every-phase) and
 [contents for code phases only](#req.harness.context-contents-code-phases-only).
 
-#### scenario.harness.documentation-context — Grant declared reference documentation to the phases that need it
+#### scenario.harness.external-references — Grant a Module's external references to the modes that read them
 
-- GIVEN a Module whose entity declares `documentation` entries for an external capability, such as a vendored library API reference
-- WHEN the host resolves a context for the plan, tasks, implementation or code-review phase under a mode that reads documentation
-- THEN the snapshot names the declared entries and carries the digest of every existing documentation file, and the launch grants exactly those files read-only, copied byte for byte into the capsule when the phase runs in one
-- AND a Spec-only phase such as specify, spec-review or context-solve receives the entry names but no contents and no grant
-- AND a documentation file that changes after resolution makes the admitted snapshot stale for the phases that received contents
-- BUT no phase receives network access or an installed dependency's sources in place of the declared documentation, and a mode that does not declare the documentation effect cannot admit or be granted documentation contents
+- GIVEN a Module whose registration declares `references` of kind `external`, such as the vendored documentation and source of a library it builds on
+- WHEN the host resolves a context for any phase
+- THEN the snapshot lists each external reference with one digest over its readable files, and a launch under a mode that declares the `references` effect grants exactly those entries read-only, copied as the same readable files into the capsule when the mode runs in one
+- AND a mode without that effect, such as specify, spec-review or context-solve, sees the entries but receives no grant
+- AND a change to an entry's readable bytes makes every admitted snapshot of the Module stale, while a missing entry fails resolution
+- AND a host-created candidate worktree receives the primary worktree's reference checkouts without network access
+- BUT no phase receives network access or an installed dependency's sources in place of the declared references, and media and archives below an entry are neither digested nor copied
 
 #### scenario.harness.agent-node — Run an Agent as a LangGraph node typed by its Mode
 
@@ -422,6 +423,7 @@ the most specific entry owns a file.
     "kind": "program",
     "responsibility": "Realize the four context kinds of the Harness Module as immutable canonical snapshots: single-Module resolution for bounded stages, global discovery assembly for the coordinator, topology-author context and the rechecks that reject drift.",
     "files": [
+      "scripts/development/check-reference-versions.py",
       "src/concorde/harness/context.py",
       "tests/concorde/harness/test_boundaries.py",
       "tests/concorde/harness/test_scoped_protocol.py"
@@ -541,10 +543,7 @@ the most specific entry owns a file.
     "id": "entity.harness.langgraph",
     "title": "LangGraph",
     "kind": "external library",
-    "responsibility": "Runs Concorde's Flows: every capability's control flow is a LangGraph StateGraph, so Flow factories, node functions and Studio adapters build on its graph, state, channel and runtime API. The vendored reference documentation is generated from the pinned package and is the admitted source of LangGraph API facts for planning, task authoring, implementation and code review.",
-    "documentation": [
-      "docs/vendor/langgraph/"
-    ]
+    "responsibility": "Runs Concorde's Flows: every capability's control flow is a LangGraph StateGraph, so Flow factories, node functions and Studio adapters build on its graph, state, channel and runtime API. Its complete documentation (reference/langchain-docs) and source at the installed version (reference/langgraph) are this Module's external references, the admitted source of LangGraph facts for planning, task authoring, implementation and code review."
   }
 ]
 ```
@@ -555,7 +554,7 @@ Each invocation is the unit of work this Module executes. Its Spec context is th
 Module's complete one-level owned/reference context; its implementation context is the Protocol-defined set of
 files the Module's own entities bind — every phase sees their names, only programmer implementation,
 code-review and investigation modes see authorized contents; its capability context is the admitted Capability and Tool
-contracts together with the Module's declared reference documentation, whose contents reach the
+contracts together with the Module's declared external references, whose readable files reach the
 plan, tasks, implementation and code-review modes read-only; its task context is the task, constraints, stage artifacts and lifecycle metadata. The
 frozen closure is never empty and its identity covers every admitted byte.
 
@@ -634,7 +633,7 @@ relied-upon behavior from this Module's perspective without importing another Mo
 
 ## Unresolved information
 
-- Capability context carries only the Module's declared reference documentation today: no
+- Capability context carries only the Module's declared external references today: no
   registered Agent admits a Capability or Tool reference, so those contracts are not yet snapshot
   fields. Materializing them in the snapshot record, with their identities in the context digest,
   is pending implementation work that must not widen any existing grant.

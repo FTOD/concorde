@@ -138,7 +138,7 @@ directory prefixes; the capability providers retain their own executable contrac
       "scripts/concorde.py",
       "scripts/concorde.sh",
       "scripts/development/check-docsite-types.py",
-      "scripts/development/render-dependency-docs.py",
+      "scripts/development/init-references.py",
       "scripts/development/run-tests.py",
       "scripts/install-concorde.py",
       "scripts/requirements.lock",

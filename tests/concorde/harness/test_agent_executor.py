@@ -654,8 +654,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
             "implementation_files": [{"path": "app/fixture.py", "entity_id": "entity.fixture.code",
                                       "pending": False}],
             "implementation_artifacts": [],
-            "documentation_entries": [],
-            "documentation_artifacts": [],
+            "external_references": [],
             "workspace": {
                 "kind": "unversioned", "current_worktree": "/fixture/project", "current_branch": None,
                 "primary_worktree": None, "primary_branch": None, "change_id": None, "phase": None,

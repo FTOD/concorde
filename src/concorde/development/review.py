@@ -24,7 +24,7 @@ from ..harness.permissions import (EnforcementReceipt, CapabilityExecutionResult
     build_launch_specification, compile_policy, render_claude_configuration, render_codex_configuration)
 from ..spec.contracts import REVIEW_STAGES
 from ..distribution.build import load_role_prompt
-from ..harness.context import resolve_context, recheck_context
+from ..harness.context import materialize_references, recheck_context, reference_grants, resolve_context
 from ..harness.usage import record_usage
 from ..spec.repository import SpecError, SpecRepository, bound_by, digest, read_file
 
@@ -223,14 +223,11 @@ def review(run, mode: str) -> dict:
             roles = ({"spec-context": (relative,),
                       "implementation": tuple(run.repository.implementation_files(run.target))}
                      if project_workspace else {"spec-context": (relative,)})
-            if "documentation" in prompt.effects.reads:
-                documentation = tuple(item["path"] for item in snapshot.value["documentation_artifacts"])
+            if "references" in prompt.effects.reads:
+                records = snapshot.value["external_references"]
                 if not project_workspace and run.host.mode != "describe-policy":
-                    for path in documentation:
-                        copy = checked_path(project, path)
-                        copy.parent.mkdir(parents=True, exist_ok=True)
-                        copy.write_bytes(read_file(run.repository.root, path))
-                roles["documentation"] = documentation
+                    materialize_references(run.repository, project, records)
+                roles["references"] = reference_grants(records)
             binding = PolicyBinding("concorde-review", phase, 0, role, role, write_roles=())
             try:
                 policy = compile_policy(prompt.effects, binding, roles,

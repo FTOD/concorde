@@ -152,8 +152,6 @@ def validate_mode_input(agent: Agent, mode_name: str, value: dict, *, phase: str
     validate_mode_artifacts(mode, snapshot.get("stage_inputs", []))
     if "implementation" not in mode.constraints.effects.reads and snapshot.get("implementation_artifacts"):
         raise ValueError("mode cannot admit implementation contents")
-    if "documentation" not in mode.constraints.effects.reads and snapshot.get("documentation_artifacts"):
-        raise ValueError("mode cannot admit documentation contents")
     if mode.name.endswith("-review") and data["review"]["data"]["review_mode"] != mode.name.split("-")[0]:
         raise ValueError("review input does not match mode")
     if mode.name == "spec-review" and any(change["path"] not in [source["path"] for source in snapshot["spec_resolution"]["sources"]]
@@ -207,12 +205,12 @@ def validate_mode_policy(mode: Mode, value: dict, policy, receipt: dict) -> None
             raise ValueError("read-only mode grant exceeds the frozen implementation files")
         if path not in entries + names and not any(path.startswith(directory) for directory in directories):
             raise ValueError("implementation grant is outside the selected Module")
-    documentation = {item["path"] for item in snapshot.get("documentation_artifacts", [])}
-    for path in role_paths.get("documentation", ()):
-        if "documentation" not in mode.constraints.effects.reads:
-            raise ValueError("mode cannot grant documentation reads")
-        if path not in documentation:
-            raise ValueError("documentation grant exceeds the frozen documentation files")
+    references = {item["path"].rstrip("/") for item in snapshot.get("external_references", [])}
+    for path in role_paths.get("references", ()):
+        if "references" not in mode.constraints.effects.reads:
+            raise ValueError("mode cannot grant external reference reads")
+        if path not in references:
+            raise ValueError("reference grant exceeds the snapshot's external references")
     bound = PolicyBinding(policy.capability, policy.stage, policy.occurrence, policy.role, policy.agent)
     ceiling = compile_policy(mode.constraints.effects, bound, role_paths)
     verify_effective_subset(ceiling, policy)

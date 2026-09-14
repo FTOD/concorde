@@ -6,15 +6,15 @@
   "assets": [
     {
       "path": "generated/protocol/kinds/module.md",
-      "digest": "sha256:6527be520122a8bcee2aa551b398c04c2ab8993d2f50ffe96d669c692f9455a5"
+      "digest": "sha256:59cc977fc251a26575f8a7f9fe505caca46acf8a1c64f3ce9fe10cfe7783d76c"
     },
     {
       "path": "generated/protocol/principles.md",
-      "digest": "sha256:86e080af3f0c6f6eff73271aa165811983a482fe15c10352525b121289d1cc66"
+      "digest": "sha256:53eeeea0c72cae08d02f53760ff5c8626d1de64d100804d7d2895d22fb062495"
     },
     {
       "path": "generated/protocol/schemas.json",
-      "digest": "sha256:d23c592f5cf6f21d3bd54ac70345bec300d2dca274cfd7cd6d56255c37a471ed"
+      "digest": "sha256:b52b36596f4b4a4655be3a5791cc277cb6800e917384daec0511b614ee89ad96"
     }
   ]
 }

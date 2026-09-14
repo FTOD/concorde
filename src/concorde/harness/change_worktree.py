@@ -320,6 +320,34 @@ def ensure_change(root: Path, *, task: dict | None = None, change_id: str | None
     return state
 
 
+def submodule_paths(root: Path) -> tuple[str, ...]:
+    """The submodule paths declared by ``.gitmodules``, in declaration order."""
+    if not (root / ".gitmodules").is_file():
+        return ()
+    listing = git(root, "config", "-f", ".gitmodules", "--get-regexp", r"^submodule\..*\.path$", check=False)
+    return tuple(line.split(None, 1)[1] for line in listing.stdout.splitlines() if " " in line)
+
+
+def replicate_reference_checkouts(source_root: Path, destination_root: Path) -> None:
+    """Give a new linked worktree the primary's vendored reference checkouts without the network.
+
+    A linked worktree starts with every submodule path empty. The external references a Module
+    declares must exist in every candidate worktree, so the readable files of each submodule
+    checkout are copied from the primary (its git link, dot-entries, excluded directories and
+    media stay behind). Git ignores files below an uninitialized gitlink, so the copy never
+    enters the candidate's index or delivery.
+    """
+    from ..spec.repository import REFERENCE_SKIPPED_SUFFIXES, expand_entry
+    for relative in submodule_paths(source_root):
+        source = source_root / relative
+        if not source.is_dir():
+            continue
+        for path in expand_entry(source_root, relative.rstrip("/") + "/", skipped_suffixes=REFERENCE_SKIPPED_SUFFIXES):
+            copy = destination_root / path
+            copy.parent.mkdir(parents=True, exist_ok=True)
+            copy.write_bytes((source_root / path).read_bytes())
+
+
 def create_worktree(root: Path, task: dict, *, package_root: Path | None = None) -> dict:
     primary, current = workspace_identity(root)
     if primary is None or current["path"] != primary["path"] or not primary["branch"]:
@@ -328,6 +356,7 @@ def create_worktree(root: Path, task: dict, *, package_root: Path | None = None)
     branch = "concorde/" + change_id.removeprefix("change.")
     directory = Path(tempfile.mkdtemp(prefix="concorde-worktree-")) / "project"
     git(root, "worktree", "add", "-b", branch, str(directory), current["head"])
+    replicate_reference_checkouts(root, directory)
     state = ensure_change(directory, task=task, change_id=change_id)
     if package_root is not None and package_root.resolve() == root.resolve():
         # Self-hosted Concorde: the new linked worktree is also its own package root, and

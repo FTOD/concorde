@@ -7,7 +7,7 @@ import matter from 'gray-matter';
 export type Kind = 'module';
 export interface Target {
   id: string; kind: Kind; title: string; documents: string[];
-  references: {kind: "module" | "document"; id: string}[];
+  references: ({kind: "module" | "document"; id: string} | {kind: "external"; path: string})[];
   parent: string | null; uses: string[]; files: string[]; checks: string[];
 }
 export interface Page {
@@ -235,14 +235,26 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     requireThat(Array.isArray(t.references), `Explicit references required: ${t.id}`);
     const seen = new Set<string>();
     for (const ref of t.references) {
+      if (ref && (ref as {kind?: unknown}).kind === 'external') {
+        // Protocol 5.1: vendored material the Module reads but does not own. It is granted to
+        // agents as files and never enters the published Spec context.
+        const external = ref as {kind: 'external'; path?: unknown};
+        requireThat(Object.keys(external).sort().join(',') === 'kind,path' && typeof external.path === 'string' &&
+          external.path.length > 0 && !external.path.startsWith('/') && !external.path.split('/').includes('..'),
+          `Invalid external reference: ${t.id}`);
+        const externalKey = `external:${external.path}`;
+        requireThat(!seen.has(externalKey), `Duplicate reference: ${externalKey}`); seen.add(externalKey);
+        continue;
+      }
       requireThat(ref && Object.keys(ref).sort().join(',') === 'id,kind' &&
-        ['module', 'document'].includes(ref.kind) && typeof ref.id === 'string' && ids.test(ref.id), `Invalid reference: ${t.id}`);
-      const key = `${ref.kind}:${ref.id}`;
+        ['module', 'document'].includes(ref.kind) && typeof (ref as {id?: unknown}).id === 'string' && ids.test((ref as {id: string}).id), `Invalid reference: ${t.id}`);
+      const key = `${ref.kind}:${(ref as {id: string}).id}`;
       requireThat(!seen.has(key), `Duplicate reference: ${key}`); seen.add(key);
-      const paths = ref.kind === 'module' ? byId.get(ref.id)?.documents :
-        (byDocumentId.has(ref.id) ? [byDocumentId.get(ref.id)!] : undefined);
-      requireThat(paths && !(ref.kind === 'module' ? ref.id === t.id : t.documents.includes(paths[0])), `Unknown or self reference: ${key}`);
-      for (const path of paths) context.set(path, [...(context.get(path) ?? []), {...ref}]);
+      const contextRef = ref as {kind: 'module' | 'document'; id: string};
+      const paths = contextRef.kind === 'module' ? byId.get(contextRef.id)?.documents :
+        (byDocumentId.has(contextRef.id) ? [byDocumentId.get(contextRef.id)!] : undefined);
+      requireThat(paths && !(contextRef.kind === 'module' ? contextRef.id === t.id : t.documents.includes(paths[0])), `Unknown or self reference: ${key}`);
+      for (const path of paths) context.set(path, [...(context.get(path) ?? []), {...contextRef}]);
     }
     for (const reasons of context.values()) reasons.sort((a,b) => (a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     contexts.set(t.id, context);

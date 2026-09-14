@@ -1,0 +1,11 @@
+[submodule "reference/langchain-docs"]
+	path = reference/langchain-docs
+	url = https://github.com/langchain-ai/docs.git
+	shallow = true
+	concorde-sparse = /* !*.gif !*.png !*.jpg !*.jpeg !*.webp !*.mp4 !*.webm !*.ico !*.woff !*.woff2 !*.ttf !*.otf !*.pdf !*.zip
+[submodule "reference/langgraph"]
+	path = reference/langgraph
+	url = https://github.com/langchain-ai/langgraph.git
+	shallow = true
+	concorde-sparse = /* !*.gif !*.png !*.jpg !*.jpeg !*.webp !*.mp4 !*.webm !*.ico !*.woff !*.woff2 !*.ttf !*.otf !*.pdf !*.zip
+	branch = 1.2.11

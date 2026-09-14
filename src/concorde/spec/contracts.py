@@ -20,7 +20,9 @@ CHECK = obj({"id": STRING, "target_id": STRING, "argv": {**array(STRING), "minIt
              "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600},
              "inputs": array(PATH, unique=True)}, ("inputs",))
 LISTING_ENTRY = {**STRING, "pattern": r"^[^/](?:[^/]*/)*[^/]*$"}
-REFERENCE = obj({"kind": {"enum": ["module", "document"]}, "id": STRING})
+REFERENCE = {"anyOf": [obj({"kind": {"enum": ["module", "document"]}, "id": STRING}),
+                       obj({"kind": {"const": "external"}, "path": LISTING_ENTRY})]}
+EXTERNAL_REFERENCE = obj({"path": LISTING_ENTRY, "directory": {"type": "boolean"}, "digest": DIGEST})
 TARGET_DESCRIPTOR = obj({"id": STRING, "kind": {"const": "module"},
     "title": STRING, "documents": {**array(PATH, unique=True), "minItems": 1},
     "references": array(REFERENCE, unique=True), "parent": NULLABLE_ID, "uses": array(STRING, unique=True),
@@ -28,7 +30,6 @@ TARGET_DESCRIPTOR = obj({"id": STRING, "kind": {"const": "module"},
 IMPLEMENTATION_FILE = obj({"path": PATH, "entity_id": NULLABLE_ID, "pending": {"type": "boolean"}})
 IMPLEMENTATION_ENTRY = obj({"path": LISTING_ENTRY, "entity_id": NULLABLE_ID, "pending": {"type": "boolean"},
                             "directory": {"type": "boolean"}})
-DOCUMENTATION_ENTRY = obj({"path": LISTING_ENTRY, "entity_id": STRING, "directory": {"type": "boolean"}})
 REGISTRY = obj({"schema_version": {"const": 4}, "project_id": STRING,
     "entry_target": STRING, "targets": {**array(TARGET_DESCRIPTOR), "minItems": 1},
     "checks": array(CHECK)})
@@ -197,11 +198,10 @@ def schemas() -> dict:
         "implementation_entries": array(IMPLEMENTATION_ENTRY),
         "implementation_files": array(IMPLEMENTATION_FILE),
         "implementation_artifacts": array(ARTIFACT),
-        # Capability context (Protocol 5.1): the reference documentation the Module's entities
-        # declare for external capabilities. Names for every phase; contents, as read-only
-        # artifacts, only for planning, task authoring, implementation and code review.
-        "documentation_entries": array(DOCUMENTATION_ENTRY),
-        "documentation_artifacts": array(ARTIFACT),
+        # Capability context (Protocol 5.1): the Module's external references, vendored material it
+        # reads but does not own, one tree digest per entry. Every phase sees the entries; modes
+        # that declare the ``references`` effect are granted the directories read-only.
+        "external_references": array(EXTERNAL_REFERENCE),
         "workspace": WORKSPACE_CONTEXT})
     result["concorde-agent-stage-context"] = obj({"snapshot": typed_schema("concorde-context-snapshot"),
         "change_id": NULLABLE_ID, "expected_artifacts": array(PATH)})

@@ -35,7 +35,7 @@ from ..harness.change_worktree import (STATE_PATH, WORK_PATH, bind_owner, create
     save_change, save_target_state, snapshot_tree, target_state, work_path, workspace_context, resume_owner,
     workspace_identity)
 from ..spec.repository import SpecRepository, SpecError, digest, read_file, identifier
-from ..harness.context import (DiscoveryContext, resolve_context,
+from ..harness.context import (DiscoveryContext, materialize_references, reference_grants, resolve_context,
     recheck_context, resolve_discovery_context,
     recheck_discovery_context, resolve_topology_author_context,
     recheck_topology_author_context)
@@ -981,7 +981,7 @@ def _topology_nodes(configuration, proposal, host):
                 for reference in candidate_targets[target_id]["references"]:
                     if reference["kind"] == "module":
                         selected.add(reference["id"])
-                    elif reference["id"] in document_ids:
+                    elif reference["kind"] == "document" and reference["id"] in document_ids:
                         selected.update(candidate_references.get(document_ids[reference["id"]], []))
                 return selected
             ready = next((key for key in pending_authors if not providers(key) & pending_authors.keys()),
@@ -1312,16 +1312,13 @@ class Invocation:
                       "implementation": (self.repository.implementation_files(self.target) if readonly
                                          else self.repository.implementation_paths(self.target))}
                      if project_workspace else {"spec-context": (relative,)})
-            if "documentation" in prompt.effects.reads:
-                # Capability context: the declared reference documentation, read-only. A capsule
-                # receives byte-identical copies at the same project-relative paths.
-                documentation = tuple(item["path"] for item in snapshot.value["documentation_artifacts"])
+            if "references" in prompt.effects.reads:
+                # Capability context: the Module's external references, read-only. A capsule
+                # receives byte-identical copies of their readable files at the same paths.
+                records = snapshot.value["external_references"]
                 if not project_workspace and self.host.mode != "describe-policy":
-                    for path in documentation:
-                        copy = checked_path(capsule, path)
-                        copy.parent.mkdir(parents=True, exist_ok=True)
-                        copy.write_bytes(read_file(self.repository.root, path))
-                roles["documentation"] = documentation
+                    materialize_references(self.repository, capsule, records)
+                roles["references"] = reference_grants(records)
             write_roles = ("implementation",) if implementation and mode == "implementation" and not readonly else ()
             try:
                 policy = compile_policy(prompt.effects,

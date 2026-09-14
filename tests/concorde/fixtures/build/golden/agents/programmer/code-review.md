@@ -50,8 +50,8 @@ completeness claims.
 
 Consume the exact supplied `concorde-review-stage-context@2`: a complete `concorde-context-snapshot@3`
 (Target Spec, Shared Specs, the granted `implementation_artifacts` for the reviewed target, and the
-declared `documentation_artifacts`, the read-only reference documentation of the external capabilities
-the Module's entities use, which is the admitted source for judging third-party API use)
+declared `external_references`, the read-only vendored documentation and source of the external
+capabilities the Module relies on, which is the admitted source for judging third-party API use)
 plus the host-produced `concorde-review-input@1` naming the review mode and scoped changes. Never
 load another target, repository guidance, prior conversations, or another Skill. This role runs
 only inside a host-bound capability invocation; every review starts a fresh session for its mode

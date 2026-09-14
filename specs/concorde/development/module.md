@@ -333,10 +333,7 @@ Two programs realize this Module's own code: the host adapter and the capability
     "id": "entity.development.langgraph",
     "title": "LangGraph",
     "kind": "external library",
-    "responsibility": "Executes every capability's orchestration as a LangGraph StateGraph: the dispatch, target, discovery, plan, loop, specify, coordination and topology Flow factories build on its graph, state and conditional-edge API. The vendored reference documentation is the admitted source of LangGraph API facts for the phases that plan, task, write or review this Module's code.",
-    "documentation": [
-      "docs/vendor/langgraph/"
-    ]
+    "responsibility": "Executes every capability's orchestration as a LangGraph StateGraph: the dispatch, target, discovery, plan, loop, specify, coordination and topology Flow factories build on its graph, state and Command API. Its documentation and source are this Module's external references, the admitted source of LangGraph facts for the phases that plan, task, write or review this Module's code."
   }
 ]
 ```

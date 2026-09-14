@@ -32,11 +32,11 @@ Consume the exact supplied `concorde-agent-stage-context@2` snapshot: the target
 `implementation_entries` (exact files and directory prefixes, their entity and pending status) and
 the `implementation_files` those entries bind (paths, their entity and pending status, never
 contents), the task and phase, and any `stage_inputs` (for example a prior `concorde-plan-artifact` under revision).
-`documentation_entries` and `documentation_artifacts` name the reference documentation the
-Module's entities declare for the external capabilities they use (libraries, services, tools);
-those files are granted read-only at the same project-relative paths and are the only admitted
-source of third-party API facts. Consult them before relying on memory of a library, and report a
-gap when the declared documentation does not cover a fact the plan needs.
+`external_references` names the vendored documentation and source of the external capabilities the
+Module relies on (libraries, services, tools), each with one digest; those directories are granted
+read-only at the same project-relative paths and are the only admitted source of third-party API
+facts. Search them before relying on memory of a library, and report a gap when the declared
+references do not cover a fact the plan needs.
 This role runs only inside a host-bound capability invocation. A requested re-plan arrives as a
 fresh invocation with a fresh snapshot.
 
