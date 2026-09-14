@@ -192,7 +192,9 @@ unrelated reviews, cannot substitute for authoring. A completed Module still rev
 component coordination: stronger review requirements propagate before completed component work is
 reused, and missing or stale component reviews run before readiness.
 
-Standard development requires both reviews for a code-owning target (only Spec review for a Module).
+Standard development requires both reviews for a Module whose entities list implementation files,
+regardless of recorded component work; a Module whose entities list no implementation files requires
+only Spec review, and its recorded components carry their own code reviews.
 `run_reviews` defaults to true and applies to both modes; `run_reviews=false` is the explicit opt-out.
 Requirements and the exact review intent are saved per target in the existing worktree state; an
 enabled requirement survives retries with run_reviews=false. Skips have separate records and never

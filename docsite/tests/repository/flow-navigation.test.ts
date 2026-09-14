@@ -5,7 +5,7 @@ import {filterNavigation, flowNavigation, selectionFromHash} from '../../concord
 import type {FlowData} from '../../concorde-only/types';
 
 const root = resolve(__dirname, '../../..');
-const data: FlowData = JSON.parse(execFileSync(resolve(root, '.venv/bin/python'),
+const data: FlowData = JSON.parse(execFileSync(process.env.CONCORDE_PYTHON || 'python3',
   [resolve(root, 'docsite/concorde-only/flows.py')], {encoding: 'utf8'}));
 const groups = flowNavigation(data);
 const entries = groups.flatMap(group => group.entries);

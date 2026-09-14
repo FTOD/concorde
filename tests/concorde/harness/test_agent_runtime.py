@@ -127,6 +127,170 @@ class AgentRuntimeTests(unittest.TestCase):
         self.assertNotEqual(first['binding_digest'], decision['binding_digest'])
 
     @verifies("scenario.harness.recursive-reject")
+    def test_interruption_during_result_validation_overrides_success_and_rejection(self):
+        from concorde.harness import agent_runtime
+        for outcome in (None, "cancelled", "limit_exhausted"):
+            for reject in (False, True):
+                with self.subTest(outcome=outcome, reject=reject):
+                    cancelled, now = [False], [0.0]
+                    validate = agent_runtime.validate_typed
+                    def interrupt(value, type_id):
+                        result = validate(value, type_id)
+                        if type_id == "concorde-agent-answer":
+                            if outcome == "cancelled":
+                                cancelled[0] = True
+                            elif outcome == "limit_exhausted":
+                                now[0] = 2.0
+                            if reject:
+                                raise ValueError("controlled validation rejection")
+                        return result
+                    with patch.object(agent_runtime, "validate_typed", side_effect=interrupt), \
+                            patch.object(agent_runtime, "monotonic", side_effect=lambda: now[0]):
+                        run = self.invoke([self.definition("A", lambda frame: self.done())],
+                            limits=AgentLimits(timeout_seconds=1), cancelled=lambda: cancelled[0])
+                    expected = outcome or ("rejected" if reject else "completed")
+                    self.assertEqual(expected, run.result.outcome)
+                    self.assertEqual({"event": "return", **run.result.wire()}, run.events[-1])
+                    if expected != "completed":
+                        self.assertIsNone(run.result.value_json)
+                        self.assertFalse(any(e["event"] == "decision" for e in run.events))
+                    else:
+                        self.assertEqual("done", decode(run.result.value_json)["data"]["answer"])
+                    self.assertEqual(["A"], [e["agent_id"] for e in run.events if e["event"] == "admit"])
+
+    @verifies("scenario.harness.recursive-reject")
+    def test_interruption_at_terminal_or_delegation_boundary_prevents_next_effect(self):
+        from concorde.harness import agent_flow, agent_runtime
+        build_flow = agent_flow.build_agent_flow
+        for boundary in ("complete", "reject", "delegate"):
+            outcomes = ("cancelled", "limit_exhausted") if boundary == "delegate" else (None, "cancelled", "limit_exhausted")
+            for outcome in outcomes:
+                with self.subTest(boundary=boundary, outcome=outcome):
+                    cancelled, now, decisions = [False], [0.0], []
+                    def build(factory):
+                        def node(name):
+                            execute = factory(name)
+                            if name != ("complete" if boundary == "reject" else boundary):
+                                return execute
+                            def interrupted(state):
+                                if outcome == "cancelled":
+                                    cancelled[0] = True
+                                elif outcome == "limit_exhausted":
+                                    now[0] = 2.0
+                                return execute(state)
+                            return interrupted
+                        return build_flow(node)
+                    def parent(frame):
+                        decisions.append(frame.agent_id)
+                        return (AgentStep("code-driven", "complete", outcome="rejected") if boundary == "reject" else
+                                self.done() if boundary == "complete" else
+                                AgentStep("code-driven", "delegate", "B", self.task()))
+                    def child(frame):
+                        self.fail("a stopped parent must not execute its child")
+                    with patch.object(agent_flow, "build_agent_flow", side_effect=build), \
+                            patch.object(agent_runtime, "monotonic", side_effect=lambda: now[0]):
+                        run = self.invoke([self.definition("A", parent, ["B"]),
+                                           self.definition("B", child)],
+                            limits=AgentLimits(timeout_seconds=1), cancelled=lambda: cancelled[0])
+                    expected = outcome or ("rejected" if boundary == "reject" else "completed")
+                    self.assertEqual(expected, run.result.outcome)
+                    if expected == "completed":
+                        self.assertEqual("done", decode(run.result.value_json)["data"]["answer"])
+                    else:
+                        self.assertIsNone(run.result.value_json)
+                    self.assertEqual({"event": "return", **run.result.wire()}, run.events[-1])
+                    self.assertEqual(["A"], decisions)
+                    self.assertEqual(["A"], [e["agent_id"] for e in run.events if e["event"] == "admit"])
+                    self.assertEqual(expected, run.events[-1]["outcome"])
+
+    @verifies("scenario.harness.recursive-reject", "scenario.harness.recursive-delegate")
+    def test_late_child_interruption_propagates_without_parent_continuation(self):
+        from concorde.harness import agent_flow, agent_runtime
+        build_flow = agent_flow.build_agent_flow
+        validate = agent_runtime.validate_typed
+        for boundary in ("validation", "complete"):
+            for outcome in ("cancelled", "limit_exhausted"):
+                for reject in (False, True):
+                    with self.subTest(boundary=boundary, outcome=outcome, reject=reject):
+                        cancelled, now, calls = [False], [0.0], []
+                        def stop():
+                            if outcome == "cancelled":
+                                cancelled[0] = True
+                            else:
+                                now[0] = 2.0
+                        def validate_result(value, type_id):
+                            result = validate(value, type_id)
+                            if boundary == "validation" and type_id == "concorde-agent-answer":
+                                stop()
+                                if reject:
+                                    raise ValueError("controlled child rejection")
+                            return result
+                        def build(factory):
+                            def node(name):
+                                execute = factory(name)
+                                def invoke(state):
+                                    if boundary == "complete" and name == "complete":
+                                        stop()
+                                    return execute(state)
+                                return invoke
+                            return build_flow(node)
+                        def parent(frame):
+                            calls.append(frame.agent_id)
+                            self.assertFalse(frame.feedback, "interrupted child must stop its parent")
+                            return AgentStep("code-driven", "delegate", "B", self.task())
+                        def child(frame):
+                            calls.append(frame.agent_id)
+                            if boundary == "complete" and reject:
+                                return AgentStep("code-driven", "complete", outcome="rejected")
+                            return self.done()
+                        with patch.object(agent_runtime, "validate_typed", side_effect=validate_result), \
+                                patch.object(agent_runtime, "monotonic", side_effect=lambda: now[0]), \
+                                patch.object(agent_flow, "build_agent_flow", side_effect=build):
+                            run = self.invoke([self.definition("A", parent, ["B"]),
+                                               self.definition("B", child)],
+                                limits=AgentLimits(timeout_seconds=1), cancelled=lambda: cancelled[0])
+                        self.assertEqual(["A", "B"], calls)
+                        self.assertEqual(outcome, run.result.outcome)
+                        returns = [e for e in run.events if e["event"] == "return"]
+                        self.assertEqual(["B", "A"], [e["agent_id"] for e in returns])
+                        self.assertTrue(all(e["outcome"] == outcome and e["value_json"] is None
+                                            for e in returns))
+                        self.assertEqual(returns[1]["invocation_id"], returns[0]["parent_id"])
+                        self.assertEqual(["delegate"] + (["complete"] if boundary == "complete" else []),
+                                         [e["action"] for e in run.events if e["event"] == "decision"])
+
+    @verifies("scenario.harness.recursive-reject")
+    def test_interruption_during_terminal_serialization_discards_the_value(self):
+        from concorde.harness import agent_flow, agent_runtime
+        build_flow, canonical_value = agent_flow.build_agent_flow, agent_runtime.canonical
+        for outcome in ("cancelled", "limit_exhausted"):
+            with self.subTest(outcome=outcome):
+                accepting, cancelled, now = [False], [False], [0.0]
+                def build(factory):
+                    def node(name):
+                        execute = factory(name)
+                        def invoke(state):
+                            accepting[0] = name == "complete"
+                            return execute(state)
+                        return invoke
+                    return build_flow(node)
+                def serialize(value):
+                    result = canonical_value(value)
+                    if accepting[0]:
+                        cancelled[0] = outcome == "cancelled"
+                        now[0] = 2.0 if outcome == "limit_exhausted" else 0.0
+                    return result
+                with patch.object(agent_flow, "build_agent_flow", side_effect=build), \
+                        patch.object(agent_runtime, "canonical", side_effect=serialize), \
+                        patch.object(agent_runtime, "monotonic", side_effect=lambda: now[0]):
+                    run = self.invoke([self.definition("A", lambda frame: self.done())],
+                        limits=AgentLimits(timeout_seconds=1), cancelled=lambda: cancelled[0])
+                self.assertEqual(outcome, run.result.outcome)
+                self.assertIsNone(run.result.value_json)
+                self.assertIsNone(run.result.details_json)
+                self.assertEqual({"event": "return", **run.result.wire()}, run.events[-1])
+
+    @verifies("scenario.harness.recursive-reject")
     def test_unregistered_harness_is_rejected(self):
         definition = self.definition('A', lambda frame: self.fail('must not execute'))
         with self.assertRaises(ValueError):

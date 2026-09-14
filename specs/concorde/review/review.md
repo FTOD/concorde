@@ -74,17 +74,39 @@ reference saved review reports. Native receipts and failure diagnostics remain s
 | describe-policy | described with not_run; no execution or persistence |
 | run_reviews=false | host records skipped; no reviewer runs |
 
-Every mode and target uses a separate session. A Module with recorded component work can request
+The table maps review reports to the Review response's domain `outcome`. An interrupted
+reviewer still produces an `incomplete` review report and a `failed` Review domain outcome.
+The trusted host separately preserves the `cancelled` or `limit_exhausted` execution
+classification supplied by [Harness](../harness/execution.md#local-loop-policy-and-outcomes)
+for the enclosing Flow, persisted candidate lifecycle and final events, following the
+[Development boundary](../development/interfaces.md#capability-execution-boundary).
+Ordinary reviewer failures remain `failed`.
+
+These execution/lifecycle classifications are not additional values of the published
+review-status or common capability-envelope status fields; their existing layouts and values
+remain unchanged. An interrupted review never satisfies completion, permits dependent work
+to advance or selects an automatic retry.
+
+Every mode and target uses a separate session. A Module whose entities list implementation files
+receives its own local code review of those files and the scoped code changes, whether or not it
+has recorded component work. A Module with recorded component work additionally requests
 cross-target review: the host validates each Module's declared relationship, starts its own reviewer from
-its recorded task and admitted collection, then aggregates only typed results. Spec review also
-assesses the Module itself; code review never gives the Module code. A Module without recorded
-component work returns unsupported for code review. The consumer selects local or recorded-component review only after the required component admission; this provider does not choose development-stage ordering.
+its recorded task and admitted collection, then aggregates only typed results; a component's code
+never enters the aggregating Module's reviewer. Spec review always assesses the Module itself. A
+Module whose entities list no implementation files is reviewed in code mode only through its
+recorded components and returns unsupported when it has none. The consumer selects local or recorded-component review only after the required component admission; this provider does not choose development-stage ordering.
 
 ## Scope and feedback relevance
 
 `concorde-review` uses separate fresh Spec and code reviewers. Spec review sees the complete owned and directly referenced Specs, task and scoped Spec patches; code review additionally sees only the owning
 target's registered implementation files, the files its declared entries currently bind, and scoped
 code patches. Neither has project write authority.
+A file listed by several Modules is reviewed once per listing Module, each from that Module's own
+contract. Verification declarations in the reviewed files are judged only for scenarios present
+in the reviewing Module's admitted context: a test that declares such a scenario without
+exercising its steps is a defect, while a declaration naming a scenario outside that context is
+assessed by the owning Module's review and is neither a defect nor a gap for the reviewing Module.
+A Module never gains a reference to a consumer's documents merely so its reviewer can read them.
 Each reviewer resolves a separate Agent definition and Harness under read-only permissions.
 The host records input versions, coverage, concrete findings, gaps and completion. No-findings,
 findings, incomplete, not-run and skipped are distinct, and all conclusions remain task-specific.

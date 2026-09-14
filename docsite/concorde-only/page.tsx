@@ -82,10 +82,10 @@ const steps: Record<string, Step> = {
     handoff: <>The reviewer returns <code>concorde-review-stage-result@1</code>; the host stores and publishes <code>concorde-review-result@1</code>. Local repair sends that exact typed record plus the prior tasks back to Tasks and Implement. Otherwise, Ready checks the saved evidence.</>,
     stops: 'Local blocking code findings without a Spec gap can trigger bounded repair. Spec gaps, incomplete reviews, execution failures or another consumer’s blocking findings stop. Repeated identical feedback waits; exhausting the repair limit stops. Advisory findings do not block readiness.',
     spec: '/specs/concorde/review/review'},
-  ready: {title: 'Ready', kind: 'Host checkpoint', agent: 'No model call',
+  ready: {title: 'Ready', kind: 'Host readiness decision', agent: 'No model call',
     input: 'Saved task completion, required reviews, configured check results and current candidate digests.',
     output: 'A candidate recorded as ready for a separate delivery request.',
-    detail: 'Verify that required evidence is complete and still matches the current task, Specs and code. Ready is an internal host checkpoint, not a separately callable capability. It does not deliver or merge the change.',
+    detail: 'Verify that required evidence is complete and still matches the current task, Specs and code. Ready is an internal host readiness decision, not a separately callable capability. It does not deliver or merge the change.',
     handoff: <>The host updates <code>.concorde/worktree.json</code> and returns <code>concorde-dev-loop-response@1</code> with <code>outcome: ready</code>, check results and review artifact references. A later Deliver request identifies the change by <code>change_id</code>.</>,
     stops: 'Open contract gaps, unfinished tasks, absent or blocking required reviews, failed/missing checks or stale evidence prevent ready. Changing the candidate during completion verification also stops with stale_evidence.',
     spec: '/specs/concorde/dev-loop/module#scenario.development.dev-loop-ready'},
@@ -316,7 +316,7 @@ export default function AgentFlows({data}: {data: FlowData}) {
             <h3>Review controls</h3>
             <p><code>run_reviews=false</code> records a Spec review skip only when no earlier requirement exists. It does not change code-review requirements.</p>
             <h3>Repair and resume</h3>
-            <p>Gaps, blocking findings or incomplete reviews return a blocker with saved progress. Repair the contract and resume with fresh context. There is no automatic Spec-repair edge.</p>
+            <p>Gaps, blocking findings or incomplete reviews stop with saved progress. An interrupted reviewer produces an incomplete review report and a failed Review domain outcome; the enclosing flow preserves cancelled or limit_exhausted as the execution and candidate lifecycle classification. No interruption completes Spec preparation or selects an automatic retry. Resume through admission with current inputs; a contract gap needs explicit repair. There is no automatic Spec-repair edge.</p>
             <div className={styles.callout}><h3>Completed Spec → continue development</h3>
               <p>Successful Spec steps return <code>completed</code>. Standalone execution ends here.</p>
               <p>Dev Loop calls this same capability, then proceeds to planning or resumes current downstream work in the same change. Implementation reaches <code>ready</code> after its own checks and review.</p>
@@ -352,11 +352,11 @@ export default function AgentFlows({data}: {data: FlowData}) {
               <p>Default: at most <strong>{data.policy.max_repair_iterations} repair iterations</strong>. The candidate keeps its persisted policy. Repeated feedback waits; an exhausted limit stops.</p>
             </div>
             <h3>Resume is re-admission</h3>
-            <p>Current plan, task and code evidence determine the entry. Nodes skipped by a resume remain declared so a later repair can re-enter tasks.</p>
+            <p>Current plan, task and code evidence determine the entry. Nodes skipped by a resume remain declared so a later repair can re-enter tasks. Internal Flows are stateless: resume re-enters the public admission boundary using host-saved candidate evidence, not an internal LangGraph checkpoint.</p>
             <h3>Review controls</h3>
             <p><code>run_reviews=false</code> records explicit skips inside review nodes. Current valid reviews can be reused. A Module without implementation bindings omits the code-review node.</p>
             <h3>Stops remain visible</h3>
-            <p>Spec gaps wait for clarification. Failed checks, execution failures and incompatible feedback stop. Cancellation and limits propagate as errors; they are not extra graph nodes.</p>
+            <p>Spec gaps wait for clarification. Failed checks, execution failures and incompatible feedback stop. Interrupted reviewers retain incomplete review reports and failed Review domain outcomes, while cancellation and limits propagate with distinct execution errors and candidate lifecycle classifications. They never select code-review repair or permit dependent work to advance; they are not extra graph nodes.</p>
             <p>Deferred component checks may stop after implementation, or after Spec review on a validation-only resume.</p>
             <Link to={'/specs/concorde/dev-loop/development#ai-and-human-feedback'}>Read the feedback and recovery contract →</Link>
           </aside>

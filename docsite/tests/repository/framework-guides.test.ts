@@ -14,11 +14,15 @@ describe('Explicit Concorde self specification',()=>{
   const r=loadScopedRegistry(root);
   const host=r.pages.filter(p=>p.owner==='module.development').map(p=>p.content).join('\n');
   expect(host).toContain('concorde-context-solve-request');expect(host).toContain('concorde-capability-invocation');
-  const domain=r.pages.find(p=>p.primaryOf==='module.development')!;
-  expect(domain.content).toContain('Module Spec');
+  const hostEntry=r.pages.find(p=>p.primaryOf==='module.development')!;
+  expect(hostEntry.content).toContain('scenario.development.execute-capability');
+  const specFlow=r.pages.find(p=>p.primaryOf==='module.specify-loop')!;
+  expect(specFlow.content).toContain('scenario.development.specify-loop');
   for(const module of r.targets.filter(t=>t.kind==='module')) {
    expect(module.documents.some(path=>path.endsWith('/architecture.md')||path.endsWith('/developer-experience.md'))).toBe(false);
-   expect(r.pages.find(p=>p.primaryOf===module.id)!.content).toContain('## Ontology');
+   const entry=r.pages.find(p=>p.primaryOf===module.id)!.content;
+   for(const section of ['Purpose','Requirements','Scenarios','Ontology'])
+    expect(entry).toContain(`## ${section}`);
   }
  });
 });

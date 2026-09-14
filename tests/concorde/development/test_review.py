@@ -18,6 +18,262 @@ from tests.concorde.spec.support import CONFIGURATION, PACKAGE, ModelProcessDoub
 
 
 class ReviewTests(unittest.TestCase):
+    @verifies("scenario.development.flow-execution")
+    def test_interrupted_review_reports_status_persistence_failure(self):
+        from concorde.harness.agent_executor import CapabilityExecutionError
+
+        ensure_change(self.root, task=self.task, allow_primary=True)
+        before = read_change(self.root)
+        double = self.double()
+        execute = double.executor
+
+        def interrupted(launch):
+            if launch.stage == "spec-review":
+                raise CapabilityExecutionError("controlled interruption", outcome="cancelled")
+            return execute(launch)
+
+        double.executor = interrupted
+        with patch("concorde.development.review.progress", side_effect=OSError("cannot save")):
+            result = self.review("spec", double=double)
+        # The failed Review result and its incomplete report survive the lost status write,
+        # which is reported beside them rather than replacing them.
+        self.assertEqual("failed", result["status"], result)
+        self.assertEqual("concorde-review-response", result["output"]["type_id"])
+        data = result["output"]["data"]
+        self.assertEqual("failed", data["outcome"])
+        self.assertEqual(["incomplete"], [review["data"]["status"] for review in data["reviews"]])
+        self.assertIn("execution_cancelled", data["reviews"][0]["data"]["answer"])
+        self.assertTrue(data["artifacts"])
+        execution = json.loads((self.root / data["artifacts"][0]["path"]).with_suffix(".execution.json").read_text())
+        self.assertEqual("execution_cancelled", execution["failure"]["code"])
+        self.assertIn("cannot save", execution["failure"]["persistence"])
+        self.assertIn("state_persistence_failed", [item["code"] for item in result["errors"]])
+        self.assertIn("execution_cancelled", [item["code"] for item in result["errors"]])
+        self.assertEqual(before["status"], read_change(self.root)["status"])
+
+    @verifies("scenario.development.flow-execution")
+    def test_fresh_review_reconciles_removed_members_and_restores_required_currentness(self):
+        from concorde.development.review import require_reviews, verify_required
+        from concorde.harness.agent_executor import CapabilityExecutionError
+        from concorde.spec.initialize import empty_target
+        from concorde.spec.repository import SpecError
+        from tests.concorde.spec.support import module_document
+        for mode in ("code", "spec"):
+            with self.subTest(mode=mode):
+                fixture = ReviewTests()
+                fixture.setUp()
+                try:
+                    path = fixture.root / '.concorde/specs.json'
+                    registry = json.loads(path.read_text())
+                    for name in ('first', 'second'):
+                        target_id = 'module.' + name
+                        document = 'specs/' + name + '/module.md'
+                        peer = empty_target(target_id, 'module', name, [document])
+                        peer['files'] = ['app/transfer.py']
+                        if mode == 'spec':
+                            peer['references'] = [{'kind': 'module', 'id': 'service.transfer'}]
+                        registry['targets'].append(peer)
+                        file = fixture.root / document
+                        file.parent.mkdir()
+                        file.write_text(module_document('document.' + name, target_id, name,
+                            'Observe the shared transfer calculation.',
+                            '### scenario.' + name + '.read — Read the result\n\n'
+                            '- GIVEN a valid transfer\n- WHEN its result is read\n- THEN the remaining balance is returned\n',
+                            ('The shared calculation supplies the result.', [{
+                                'id': 'entity.' + name + '.shared', 'title': 'Shared calculation',
+                                'kind': 'function', 'responsibility': 'Compute the remaining balance.',
+                                'files': ['app/transfer.py']}]), '',
+                            'flowchart TB\n    shared["Shared calculation"]'))
+                    path.write_text(json.dumps(registry))
+                    planned = fixture.call_capability('concorde-plan')
+                    self.assertEqual('succeeded', planned['status'], planned)
+                    require_reviews(fixture.invocation(), True, modes=[mode])
+                    first = fixture.review(mode)
+                    self.assertEqual('succeeded', first['status'], first)
+                    verify_required(fixture.invocation())
+                    field = 'shared_spec_reviews' if mode == 'spec' else 'shared_implementation_reviews'
+                    original = read_change(fixture.root)[field]['service.transfer']
+                    self.assertEqual({'module.first', 'module.second'}, set(original))
+                    artifacts = {r['artifact']['path']: (fixture.root / r['artifact']['path']).read_bytes()
+                                 for r in original.values()}
+                    # Change real fixture membership, first leaving one peer and then none.
+                    # Spec removal removes the Module identity; live old-impact consumers
+                    # must continue to be required when only a reference is removed.
+                    for removed, remaining in (('first', {'module.second'}), ('second', set())):
+                        registry = json.loads(path.read_text())
+                        peer = next(t for t in registry['targets'] if t['id'] == 'module.' + removed)
+                        document = fixture.root / peer['documents'][0]
+                        if mode == 'spec':
+                            registry['targets'].remove(peer)
+                            document.unlink()
+                        else:
+                            peer['files'] = []
+                            document.write_text(document.read_text().replace(
+                                ',\n    "files": [\n      "app/transfer.py"\n    ]', ''))
+                        path.write_text(json.dumps(registry))
+                        with self.assertRaises(SpecError):
+                            verify_required(fixture.invocation())
+                        before = read_change(fixture.root)[field]['service.transfer']
+                        double = fixture.double()
+                        execute = double.executor
+                        def interrupt(launch):
+                            if launch.stage == mode + '-review':
+                                raise CapabilityExecutionError('controlled stop', outcome='cancelled')
+                            return execute(launch)
+                        double.executor = interrupt
+                        stopped = fixture.review(mode, double=double)
+                        self.assertEqual('failed', stopped['status'], stopped)
+                        retained = read_change(fixture.root)[field]['service.transfer']
+                        self.assertEqual(remaining, set(retained))
+                        for key in remaining:
+                            self.assertEqual(before[key], retained[key])
+                        with self.assertRaises(SpecError):
+                            verify_required(fixture.invocation())
+                        fresh = fixture.review(mode)
+                        self.assertEqual('succeeded', fresh['status'], fresh)
+                        verify_required(fixture.invocation())
+                        self.assertEqual(remaining, set(read_change(fixture.root)[field]['service.transfer']))
+                        self.assertTrue(all((fixture.root / p).read_bytes() == data for p, data in artifacts.items()))
+                finally:
+                    fixture.doCleanups()
+
+    @verifies("scenario.development.flow-execution")
+    def test_scope_scheduler_change_invalidates_accepted_review(self):
+        from concorde.development import review
+        from concorde.spec.repository import SpecError
+        ensure_change(self.root, task=self.task, allow_primary=True)
+        schedulers = (
+            "src/concorde/development/review.py",
+            "src/concorde/development/coordination_flow.py",
+            "src/concorde/development/loop_flow.py",
+            "src/concorde/development/specify_flow.py",
+        )
+        for mode in ("spec", "code"):
+            result = self.review(mode)
+            self.assertEqual("succeeded", result["status"], result)
+            run = self.invocation()
+            # This consumer binds application code, not the Framework scheduler.
+            self.assertTrue(set(schedulers).isdisjoint(
+                run.repository.implementation_files(run.target)))
+            before, _ = inputs(run, mode)
+            accepted = current(run, mode, required=True)
+            self.assertIsNotNone(accepted)
+            original = review.read_file
+            for scheduler in schedulers:
+                with self.subTest(mode=mode, scheduler=scheduler):
+                    def changed(root, path):
+                        data = original(root, path)
+                        return (data + b"\n# scheduling revision\n"
+                                if root == run.host.package_root and path == scheduler else data)
+                    # Vary one runtime source's observed bytes without changing the
+                    # package, its generated binding, or the consumer's sources.
+                    with patch.object(review, "read_file", side_effect=changed):
+                        after, _ = inputs(run, mode)
+                        self.assertNotEqual(before["input_digest"], after["input_digest"])
+                        self.assertEqual(before["revision"], after["revision"])
+                        self.assertEqual(before["changes"], after["changes"])
+                        self.assertIsNone(current(run, mode))
+                        with self.assertRaises(SpecError) as failure:
+                            current(run, mode, required=True)
+                        self.assertEqual("review_required", failure.exception.code)
+                    # Rejection preserves the accepted artifact; identical inputs
+                    # remain eligible for reuse after each independent variation.
+                    self.assertEqual(before, inputs(run, mode)[0])
+                    self.assertEqual(accepted, current(run, mode, required=True))
+
+    @verifies("scenario.development.flow-execution")
+    def test_reviewer_interruptions_survive_enclosing_flows_and_final_events(self):
+        from concorde.harness.agent_executor import CapabilityExecutionError
+        for capability, review_stage in (("concorde-specify-loop", "spec-review"),
+                                         ("concorde-dev-loop", "spec-review"),
+                                         ("concorde-dev-loop", "code-review")):
+            for outcome in ("cancelled", "limit_exhausted", "failed"):
+                with self.subTest(capability=capability, review_stage=review_stage, outcome=outcome):
+                    fixture = ReviewTests()
+                    fixture.setUp()
+                    try:
+                        unrelated = fixture.root / "unrelated-note.txt"
+                        unrelated.write_text("Preserve this local edit.\n")
+                        double = fixture.double()
+                        execute = double.executor
+                        stages, events, prior = [], [], {}
+                        candidate_bytes, review_outputs = {}, []
+                        from concorde.development import review as review_module
+                        original_review = review_module.review
+                        def capture_review(*args, **kwargs):
+                            output = original_review(*args, **kwargs)
+                            review_outputs.append(output["data"])
+                            return output
+                        def interrupted(launch):
+                            stages.append(launch.stage)
+                            if launch.stage == review_stage:
+                                prior.update(read_change(fixture.root))
+                                for relative in ("app/transfer.py", "specs/transfer/module.md"):
+                                    candidate_bytes[relative] = (fixture.root / relative).read_bytes()
+                                raise CapabilityExecutionError("controlled reviewer failure", outcome=outcome)
+                            return execute(launch)
+                        double.executor = interrupted
+                        def observe(host, event, **details):
+                            events.append({"event": event, **details})
+                        with patch.object(CapabilityHost, "observe", observe), \
+                             patch.object(review_module, "review", side_effect=capture_review):
+                            result = fixture.call_capability(capability,
+                                {**fixture.task, "specify": False, "run_reviews": True}, double=double)
+                        self.assertEqual("failed", result["status"], result)
+                        self.assertEqual("failed", result["output"]["data"]["outcome"])
+                        state = read_change(fixture.root)
+                        self.assertEqual(outcome, state["status"])
+                        self.assertEqual("failed", review_outputs[-1]["outcome"])
+                        self.assertEqual("incomplete", review_outputs[-1]["reviews"][0]["data"]["status"])
+                        for relative, before_bytes in candidate_bytes.items():
+                            self.assertEqual(before_bytes, (fixture.root / relative).read_bytes())
+                        self.assertEqual(prior["targets"], state["targets"])
+                        self.assertEqual(prior.get("authored_specs"), state.get("authored_specs"))
+                        self.assertEqual(prior.get("gap_history"), state.get("gap_history"))
+                        self.assertEqual("Preserve this local edit.\n", unrelated.read_text())
+                        self.assertEqual(prior["review_requirements"], state["review_requirements"])
+                        if outcome != "failed":
+                            self.assertEqual("execution_cancelled" if outcome == "cancelled" else "execution_limit",
+                                             result["errors"][0]["code"])
+                        self.assertEqual(review_stage, stages[-1])
+                        flow_stages = [event["stage"] for event in events
+                                       if event["event"] == "stage_started"]
+                        stopping_stage = "review_spec" if review_stage == "spec-review" else "review_code"
+                        self.assertEqual(stopping_stage, flow_stages[-1])
+                        if review_stage == "spec-review":
+                            self.assertFalse(set(stages) & {"plan", "tasks", "implementation", "code-review"})
+                        else:
+                            self.assertEqual(1, stages.count("tasks"))
+                            self.assertEqual(1, stages.count("implementation"))
+                            self.assertTrue(all(t["complete"] for t in state["targets"]
+                                                [fixture.task["target_id"]]["tasks"]))
+                        reviews = state["reviews"][fixture.task["target_id"]]
+                        self.assertEqual("incomplete", reviews[review_stage.split("-")[0]]["status"])
+                        report = json.loads((fixture.root / reviews[review_stage.split("-")[0]]
+                                             ["artifact"]["path"]).read_text())["data"]
+                        self.assertEqual("incomplete", report["status"])
+                        self.assertEqual([], report["findings"])
+                        self.assertIn("execution_cancelled" if outcome == "cancelled" else
+                                      "execution_limit" if outcome == "limit_exhausted" else "execution_failed",
+                                      report["answer"])
+                        self.assertFalse(any(event.get("stage") == "ready" for event in events))
+                        self.assertTrue(result["output"]["data"]["artifacts"])
+                        finished = [event for event in events if event["event"] == "capability_finished"
+                                    and event["capability"] == capability]
+                        self.assertEqual(outcome, finished[-1]["status"])
+                        review_finished = [event for event in events
+                                           if event["event"] == "capability_finished"
+                                           and event["capability"] == "concorde-review"]
+                        self.assertTrue(review_finished)
+                        self.assertEqual(outcome, review_finished[-1]["status"])
+                        if capability == "concorde-dev-loop":
+                            graph = state["graph"][fixture.task["target_id"]]
+                            self.assertEqual(0, graph["repair_iteration"])
+                            self.assertEqual(outcome, graph["transitions"][-1]["status"])
+                            self.assertEqual("END", graph["transitions"][-1]["to"])
+                    finally:
+                        fixture.doCleanups()
+
     @verifies("scenario.development.task-scope-repair", "scenario.development.dev-loop-coordinated",
               "scenario.development.dev-loop-spec-gap")
     def test_nested_scope_repair_requires_resolved_gap_from_recorded_component_intent(self):
@@ -1269,8 +1525,15 @@ class RepairLoopTests(unittest.TestCase):
     def test_blocking_then_clean_repairs_once_and_reaches_ready(self):
         counter = [0]
         reviews = {"count": 0}
+        checked_rounds = []
         def callback(stage, snapshot, data, cwd):
             if stage == "code-review":
+                candidate = read_change(self.root)
+                target = candidate["targets"]["service.transfer"]
+                self.assertTrue(target["checks"])
+                self.assertTrue(all(check["status"] == "passed" for check in target["checks"]))
+                self.assertTrue(all(task["complete"] for task in target["tasks"]))
+                checked_rounds.append([task["id"] for task in target["tasks"]])
                 reviews["count"] += 1
                 if reviews["count"] == 1:
                     data.update(status="findings", findings=[self.finding()], gaps=[])
@@ -1297,7 +1560,18 @@ class RepairLoopTests(unittest.TestCase):
         self.assertEqual(2, len(implement_calls))
         repair_implement_types = {item["type_id"] for item in implement_calls[1]["snapshot"]["stage_inputs"]}
         self.assertIn("concorde-review-result", repair_implement_types)
+        feedback = next(item for item in second_inputs if item["type_id"] == "concorde-review-result")
+        self.assertEqual("code", feedback["data"]["review_mode"])
+        self.assertEqual("findings", feedback["data"]["status"])
+        self.assertEqual([self.finding()], feedback["data"]["findings"])
+        self.assertEqual(feedback, next(item for item in implement_calls[1]["snapshot"]["stage_inputs"]
+                                      if item["type_id"] == "concorde-review-result"))
+        self.assertEqual([["task.transfer"], ["task.transfer.repair.2"]], checked_rounds)
+        self.assertEqual(["tasks", "implementation", "code-review"] * 2,
+                         [stage for stage in stages if stage in {"tasks", "implementation", "code-review"}])
         state = read_change(self.root)
+        self.assertEqual(1, state["graph"]["service.transfer"]["repair_iteration"])
+        self.assertEqual(2, state["graph"]["service.transfer"]["policy"]["max_repair_iterations"])
         transitions = state["graph"]["service.transfer"]["transitions"]
         repairs = [t for t in transitions if t["trigger"] == "ai-review" and t["to"] == "tasks"]
         self.assertEqual(1, len(repairs))
@@ -1306,10 +1580,29 @@ class RepairLoopTests(unittest.TestCase):
         self.assertIsNotNone(repairs[0]["artifact"])
         self.assertEqual(1, len(state["targets"]["service.transfer"]["task_history"]))
 
+    def _assert_stopped_repair_progress(self, state, rounds):
+        target = state["targets"]["service.transfer"]
+        self.assertTrue(target["plan"])
+        self.assertTrue(all(task["complete"] for task in target["tasks"]))
+        self.assertEqual(rounds, len(target["task_history"]))
+        self.assertEqual(rounds + 1, [call["stage"] for call in self.model.calls].count("tasks"))
+        final = state["graph"]["service.transfer"]["transitions"][-1]
+        self.assertEqual(("review_code", "END", "code-driven", "conflicting", state["status"]),
+                         (final["from"], final["to"], final["source"], final["outcome"], final["status"]))
+        self.assertEqual(self.last_review_progress["plan"], target["plan"])
+        self.assertEqual(self.last_review_progress["tasks"], target["tasks"])
+        self.assertEqual(self.last_review_progress["task_history"], target["task_history"])
+        self.assertEqual(self.last_review_bytes, (self.root / "app/transfer.py").read_bytes())
+
+    def _capture_review_progress(self):
+        self.last_review_progress = read_change(self.root)["targets"]["service.transfer"]
+        self.last_review_bytes = (self.root / "app/transfer.py").read_bytes()
+
     def _reach_unchanged_feedback_waiting(self):
         counter = [0]
         def callback(stage, snapshot, data, cwd):
             if stage == "code-review":
+                self._capture_review_progress()
                 data.update(status="findings", findings=[self.finding()], gaps=[])
             if stage == "tasks":
                 counter[0] += 1
@@ -1322,7 +1615,9 @@ class RepairLoopTests(unittest.TestCase):
     def test_unchanged_blocking_feedback_stops_waiting_after_one_repair(self):
         result = self._reach_unchanged_feedback_waiting()
         self.assertEqual("conflicting", result["output"]["data"]["outcome"])
-        self.assertEqual("waiting", read_change(self.root)["status"])
+        state = read_change(self.root)
+        self.assertEqual("waiting", state["status"])
+        self._assert_stopped_repair_progress(state, rounds=1)
         stages = [c["stage"] for c in self.model.calls]
         self.assertEqual(2, stages.count("implementation"))
         self.assertEqual(2, stages.count("code-review"))
@@ -1334,6 +1629,7 @@ class RepairLoopTests(unittest.TestCase):
         def callback(stage, snapshot, data, cwd):
             if stage == "code-review":
                 review_counter[0] += 1
+                self._capture_review_progress()
                 data.update(status="findings", gaps=[], findings=[self.finding(
                     problem=f"Distinct defect variant {review_counter[0]}.",
                     finding_id=f"defect-{review_counter[0]}")])
@@ -1345,6 +1641,7 @@ class RepairLoopTests(unittest.TestCase):
         self.assertEqual("conflicting", result["output"]["data"]["outcome"])
         state = read_change(self.root)
         self.assertEqual("limit_exhausted", state["status"])
+        self._assert_stopped_repair_progress(state, rounds=2)
         stages = [c["stage"] for c in self.model.calls]
         self.assertEqual(3, stages.count("implementation"))
         self.assertEqual(3, stages.count("code-review"))
@@ -1406,11 +1703,31 @@ class RepairLoopTests(unittest.TestCase):
         self.assertEqual(1, before["graph"]["service.transfer"]["repair_iteration"])
         code = self.root / "app/transfer.py"
         code.write_text(code.read_text() + "\n# a human edited this directly\n")
-        result = self.call_capability("concorde-dev-loop")
+        review_count = [0]
+        def callback(stage, snapshot, data, cwd):
+            if stage == "code-review":
+                review_count[0] += 1
+                candidate = read_change(self.root)
+                if review_count[0] == 1:
+                    # The same feedback must be eligible again only after admission resets
+                    # the old count and fingerprint for the intervening implementation edit.
+                    self.assertEqual(0, candidate["graph"]["service.transfer"]["repair_iteration"])
+                    self.assertEqual(before["targets"]["service.transfer"]["task_history"],
+                                     candidate["targets"]["service.transfer"]["task_history"])
+                    data.update(status="findings", findings=[self.finding()], gaps=[])
+            if stage == "tasks":
+                self.repair_tasks([3], snapshot, data)
+        result = self.call_capability("concorde-dev-loop", callback=callback)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"])
-        record = read_change(self.root)["graph"]["service.transfer"]
-        self.assertEqual(0, record["repair_iteration"])
+        stages = [call["stage"] for call in self.model.calls]
+        self.assertNotIn("plan", stages)
+        self.assertEqual(1, stages.count("tasks"))
+        self.assertEqual(2, stages.count("code-review"))
+        state = read_change(self.root)
+        record = state["graph"]["service.transfer"]
+        self.assertEqual(1, record["repair_iteration"])
+        self.assertEqual(2, len(state["targets"]["service.transfer"]["task_history"]))
         human_transitions = [t for t in record["transitions"] if t["trigger"] == "human"]
         self.assertEqual(1, len(human_transitions))
         self.assertEqual("implementation_changed", human_transitions[0]["outcome"])

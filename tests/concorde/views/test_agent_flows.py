@@ -28,7 +28,8 @@ class AgentFlowTests(unittest.TestCase):
         self.assertEqual(set(SKILL_NAMES), public)
         for capability, graph in self.data['capabilities'].items():
             if capability not in public:
-                self.assertIn('execute:prepare_target', graph['nodes'])
+                self.assertIn('execute:prepare_target:initialize_target', graph['nodes'])
+                self.assertFalse(any(node.endswith(':discover:decide') for node in graph['nodes']))
                 self.assertTrue(all(edge['source'] in graph['nodes'] and edge['target'] in graph['nodes']
                                     for edge in graph['edges']))
                 continue
@@ -41,6 +42,11 @@ class AgentFlowTests(unittest.TestCase):
         self.assertTrue(any(node.endswith(':discover:expand_context') for node in main))
         self.assertTrue(any(node.endswith(':author_module') for node in main))
         self.assertFalse(any(node.endswith(':deliver') for node in main))
+        for capability in ('concorde-review', 'concorde-dev-loop', 'concorde-specify-loop'):
+            self.assertIn(capability + ':execute:prepare_target:discover:expand_context',
+                          self.data['capabilities'][capability]['nodes'])
+        self.assertIn('Target admission and discovery', self.data['flows'])
+        self.assertNotIn('discover', self.data['flows']['Bound target admission']['nodes'])
         # A newly introduced actual graph factory must be explicitly covered by the page.
         factories = []
         for path in (REPOSITORY_ROOT / 'src/concorde').rglob('*.py'):

@@ -35,8 +35,10 @@ contracts; report concrete behavior defects.
 Read the full admitted document collection, not only the changed lines, and compare the granted
 target implementation files against those contracts. Identify concrete behavior defects, the
 affected task, owning target, contract document and location. A test that declares a scenario
-with `verifies` but does not exercise that scenario's steps is a defect; a scenario named by a
-task's acceptance that no changed test declares is a finding against that task.
+of this admitted context with `verifies` but does not exercise that scenario's steps is a defect;
+a scenario named by a task's acceptance that no changed test declares is a finding against that
+task. A declaration that names a scenario outside the admitted context belongs to that scenario's
+owning Module and is judged by that Module's own review; it is neither a defect nor a gap here.
 
 ## Goals
 
@@ -66,7 +68,11 @@ without raw source, patches or logs.
 `no_findings` requires actual coverage of nonempty `representative_tasks` with no findings or
 gaps. `findings` means a completed review with concrete findings or gaps. Use `incomplete` and
 explain why when the review cannot complete; never treat failure or skipped coverage as
-`no_findings`. Neither successful status proves universal semantic completeness.
+`no_findings`. Neither successful status proves universal semantic completeness. When the scoped
+changes touch none of the granted files, the representative task is preserving this Module's own
+contract against its granted implementation; complete that review with `no_findings` or
+`findings`. Implementation, Flow factories or declarations outside the grant belong to their
+owning Modules' reviews and are never by themselves a reason for `incomplete`.
 
 ## Missing information, failure and human decisions
 

@@ -3,6 +3,12 @@ from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
+from ..spec.contracts import DISCOVERY_CAPABILITIES, MAIN_CAPABILITY
+
+# Target admission composes a discovery child for every discovering capability except main, which
+# discovers through its own query nodes and never enters target admission.
+TARGET_DISCOVERY_CAPABILITIES = frozenset(DISCOVERY_CAPABILITIES - {MAIN_CAPABILITY})
+
 
 class DispatchState(TypedDict, total=False):
     route: str
@@ -11,6 +17,7 @@ class DispatchState(TypedDict, total=False):
 
 
 SUBFLOW_NODES = {
+    "prepare_target": ("initialize_target", "decide", "expand_context", "bind_routes", "finish", "bind_target"),
     "answer": ("decide", "expand_context", "bind_routes", "finish", "respond"),
     "design_topology": ("decide", "expand_context", "bind_routes", "finish", "respond"),
     "prepare_topology": ("prepare_authors", "author_module", "validate_candidate", "review_contexts", "persist_application"),
@@ -24,7 +31,7 @@ SUBFLOW_NODES = {
                          "review_code", "ready", "summarize"),
 }
 
-DISPATCH_NODES = ("select_capability", "prepare_target", "deliver", "project", "answer", "design_topology",
+DISPATCH_NODES = ("select_capability", "deliver", "project", "answer", "design_topology",
                   "prepare_topology", "apply_topology", "review", "describe_policy", "triage", "specify",
                   "plan", "tasks", "implement", "validate", "development_loop", "specify_loop", "context_solve",
                   *(name + "/" + node for name, nodes in SUBFLOW_NODES.items() for node in nodes))
@@ -38,12 +45,15 @@ def build_dispatch_flow(node_factory, *, capability=None):
     from .project_flow import build_project_flow
     from .loop_flow import build_loop_flow
     from .specify_flow import build_specify_flow
+    from .target_flow import build_target_flow
     from ..reflections.triage_flow import build_triage_flow
     factories = {"answer": build_query_flow, "design_topology": build_query_flow,
                  "prepare_topology": build_topology_flow, "apply_topology": build_topology_apply_flow,
                  "plan": build_plan_flow, "project": build_project_flow, "triage": build_triage_flow,
                  "development_loop": lambda nodes: build_loop_flow(nodes, dynamic=True),
-                 "specify_loop": build_specify_flow}
+                 "specify_loop": build_specify_flow,
+                 "prepare_target": lambda nodes: build_target_flow(
+                     nodes, discover=capability is None or capability in TARGET_DISCOVERY_CAPABILITIES)}
     flow = StateGraph(DispatchState)
     leaves = ("deliver", "project", "answer", "design_topology", "prepare_topology", "apply_topology",
               "review", "describe_policy", "triage", "specify", "plan", "tasks", "implement",

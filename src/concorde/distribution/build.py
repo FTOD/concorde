@@ -13,6 +13,11 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import importlib
+import importlib.abc
+import importlib.util
+import sys
+import uuid
 import json
 import tempfile
 from dataclasses import dataclass
@@ -22,7 +27,6 @@ from typing import TYPE_CHECKING, Literal
 from ..spec.frontmatter import FrontMatterError, parse_document
 from ..spec.contracts import SKILL_NAMES
 from ..harness.effects import EffectDeclaration
-from ..spec.typed_data import json_schema
 from .prompt_resolver import (
     PromptResolverError,
     find_unreachable_prompts,
@@ -188,18 +192,22 @@ def render_skill(project_root: Path, name: str, integration: str, *, framework_p
     unresolved = [token for token in ("{SCRIPT}", "{FRAMEWORK}", "{CAPABILITY}") if token in body]
     if unresolved:
         raise BuildError(f"skill {name} contains unresolved package tokens: {unresolved}")
+    schemas, schema_sources, _ = _root_schemas(project_root)
+    request_type = f"{name}-request"
+    if request_type not in schemas:
+        raise BuildError(f"skill {name} has no exported request schema {request_type!r} in the named root's contracts")
     body = (
         body.rstrip("\n")
         + "\n\n## Input TypedValue schema\n\n"
         + SCHEMA_INTRO
         + "\n```json\n"
-        + json.dumps(json_schema(f"{name}-request"), indent=2)
+        + json.dumps(schemas[f"{name}-request"], indent=2)
         + "\n```\n"
     )
     frontmatter = _skill_frontmatter(name, str(metadata["description"]), integration, str(metadata["capability"]), entrypoint)
     content = (frontmatter + body.lstrip()).encode("utf-8")
     target = f"{INTEGRATION_ROOTS[integration]}/{name}/SKILL.md"
-    return BuildOutput(path=target, content=content, sources=(*resolved.sources, SKILL_SOURCES[name]))
+    return BuildOutput(path=target, content=content, sources=tuple(sorted(set((*resolved.sources, SKILL_SOURCES[name], *schema_sources)))))
 
 
 def render_langgraph(project_root: Path) -> BuildOutput:
@@ -234,21 +242,88 @@ def render_protocol_kind(project_root: Path, kind: str) -> BuildOutput:
     return BuildOutput(path=f"generated/protocol/kinds/{kind}.md", content=content, sources=resolved.sources)
 
 
-def render_protocol_schemas(project_root: Path) -> BuildOutput:
-    """Export the ``json_schema`` of every identity in ``contracts.exported_types()``.
+def _root_schemas(project_root: Path) -> tuple[dict, tuple[str, ...], tuple[str, ...]]:
+    """Evaluate schema sources in a private namespace, without stale module/pyc caches.
 
-    Replaces the former developer-run ``scripts/sync-protocol-assets.py``. This has no recorded
-    ``sources``: the exported schemas are derived from Python contracts across ``capabilities/``
-    and ``src/concorde/spec/``, not from a fixed file set, so freshness here is verified by value
-    (``package_validation._validate_contracts``), the same way it always was.
+    Returns the rendered schemas, the root-local source files they depend on, and the root's
+    exported identity sequence exactly as declared, so callers can judge uniqueness before the
+    schema dictionary collapses any duplicate.
     """
+    source_root = project_root / "src/concorde"
+    if not (source_root / "spec").is_dir():
+        # A root without any schema source tree, such as a prompt-only fixture, renders the
+        # running package's schemas and binds no root-local schema source.
+        from ..spec.contracts import exported_types
+        from ..spec.typed_data import json_schema
+        identities = tuple(exported_types())
+        return {name: json_schema(name) for name in identities}, (), identities
+    for required in ("contracts.py", "typed_data.py"):
+        if not (source_root / "spec" / required).is_file():
+            # A populated schema tree missing its entry modules is a broken root, never a
+            # reason to fall back to another package's schemas.
+            raise BuildError(f"incomplete schema source tree: src/concorde/spec/{required} is missing")
+    namespace = "_concorde_build_" + uuid.uuid4().hex
+    sources: set[str] = set()
 
-    from ..spec.contracts import exported_types
+    class Sources(importlib.abc.MetaPathFinder, importlib.abc.Loader):
+        def find_spec(self, fullname, path=None, target=None):
+            if fullname != namespace and not fullname.startswith(namespace + "."):
+                return None
+            parts = fullname.split(".")[1:]
+            location = source_root.joinpath(*parts)
+            if location.is_dir():
+                return importlib.util.spec_from_loader(fullname, self, is_package=True)
+            if location.with_suffix(".py").is_file():
+                return importlib.util.spec_from_loader(fullname, self)
+            return None
 
-    names = list(exported_types())
-    payload = {name: json_schema(name) for name in names}
+        def create_module(self, spec):
+            return None
+
+        def exec_module(self, module):
+            location = source_root.joinpath(*module.__name__.split(".")[1:])
+            if location.is_dir():
+                module.__path__ = [str(location)]
+                # Namespace containers avoid unrelated package initialization.
+                return
+            location = location.with_suffix(".py")
+            relative = location.relative_to(project_root).as_posix()
+            sources.add(relative)
+            module.__file__ = str(location)
+            try:
+                exec(compile(location.read_bytes(), str(location), "exec"), module.__dict__)
+            except BuildError:
+                raise
+            except Exception as error:
+                raise BuildError(f"cannot evaluate schema source {relative}: {error}") from error
+
+    finder = Sources()
+    sys.meta_path.insert(0, finder)
+    try:
+        try:
+            contracts = importlib.import_module(namespace + ".spec.contracts")
+            provider = importlib.import_module(namespace + ".spec.typed_data")
+            identities = tuple(contracts.exported_types())
+            payload = {name: provider.json_schema(name) for name in identities}
+        except BuildError:
+            raise
+        except Exception as error:
+            # Every failure of the root's own schema sources stays inside the declared
+            # BuildError boundary instead of escaping as an undeclared exception.
+            raise BuildError(f"cannot evaluate schema sources under {source_root}: {error}") from error
+        return payload, tuple(sorted(sources)), identities
+    finally:
+        sys.meta_path.remove(finder)
+        for name in tuple(sys.modules):
+            if name == namespace or name.startswith(namespace + "."):
+                del sys.modules[name]
+
+
+def render_protocol_schemas(project_root: Path) -> BuildOutput:
+    """Export schemas from the named root and bind every loaded source to the output."""
+    payload, sources, _ = _root_schemas(project_root)
     content = (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
-    return BuildOutput(path="generated/protocol/schemas.json", content=content, sources=())
+    return BuildOutput(path="generated/protocol/schemas.json", content=content, sources=sources)
 
 
 def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
@@ -260,6 +335,7 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
         all_sources.update(path.relative_to(project_root).as_posix()
             for path in (project_root / directory).rglob("*.py") if path.is_file())
     for relative in ("src/concorde/spec/contracts.py", "src/concorde/spec/contract_shapes.py",
+                     "src/concorde/spec/wire_shapes.py",
                      "src/concorde/harness/agent_model.py"):
         if (project_root / relative).is_file():
             all_sources.add(relative)

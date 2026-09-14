@@ -18,7 +18,6 @@ from . import build
 from ..harness.agent_model import Agent
 from .build import BuildError, check_build, verify_fresh
 from ..harness.harness import HARNESSES
-from ..spec.typed_data import json_schema
 from .prompt_resolver import (
     PromptResolverError,
     find_unreachable_prompts,
@@ -523,7 +522,17 @@ def _validate_agents(root: Path) -> list[Finding]:
 
 def _validate_contracts(root: Path) -> list[Finding]:
     findings: list[Finding] = []
-    names = list(exported_types())
+    # Expect exactly what the build renders for this root: its own schema sources, evaluated
+    # afresh, so a root-local helper change never disagrees with a correctly rebuilt export.
+    from .build import BuildError, _root_schemas
+    try:
+        expected, _, names = _root_schemas(root)
+    except BuildError as error:
+        findings.append(_finding("CONCORDE-CONTRACT-SCHEMA-001", "generated/protocol/schemas.json",
+            f"cannot evaluate this root's schema sources: {error}",
+            "Repair the schema sources under src/concorde/spec, then run `python -m concorde build`."))
+        return findings
+    names = list(names)
     if len(names) != len(set(names)):
         duplicates = sorted({name for name in names if names.count(name) > 1})
         findings.append(_finding("CONCORDE-CONTRACT-UNIQUE-001", "src/concorde/spec/contracts.py",
@@ -537,7 +546,6 @@ def _validate_contracts(root: Path) -> list[Finding]:
             f"cannot read rendered schema export: {error}",
             "Run `python -m concorde build` to render generated/protocol/schemas.json."))
         return findings
-    expected = {name: json_schema(name) for name in names}
     if documented != expected:
         findings.append(_finding("CONCORDE-CONTRACT-SCHEMA-001", "generated/protocol/schemas.json",
             "rendered generated/protocol/schemas.json differs from the executable exported contracts.",

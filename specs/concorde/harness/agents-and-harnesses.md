@@ -196,6 +196,7 @@ currently admits a Capability reference, so every current capability context is 
     "capabilities": [
       "dev-loop",
       "main",
+      "review",
       "specify-loop"
     ],
     "modes": [

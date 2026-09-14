@@ -26,10 +26,19 @@ class FlowTests(TestCase):
     def test_inspection_never_resolves_a_context_or_runs_an_agent(self):
         fixture = self.fixture()
         with patch('concorde.development.capability_host.SpecRepository') as repository:
-            flow = fixture.graph('concorde-main')
-            drawing = flow.get_graph(xray=True)
+            drawings = {}
+            for capability in studio_fixtures.EXPECTED_PUBLIC:
+                with self.subTest(capability=capability):
+                    flow = fixture.graph(capability)
+                    drawing = flow.get_graph(xray=True)
+                    self.assertEqual(drawing.to_json(), flow.get_graph(xray=True).to_json())
+                    independent = fixture.graph(capability)
+                    self.assertIsNot(flow, independent)
+                    self.assertEqual(drawing.to_json(), independent.get_graph(xray=True).to_json())
+                    drawings[capability] = drawing
             repository.assert_not_called()
         self.assertEqual([], fixture.double.calls)
+        drawing = drawings['concorde-main']
         self.assertTrue(any(name.endswith(':discover:decide') for name in drawing.nodes))
         self.assertTrue(any(name.endswith(':apply_atomically') for name in drawing.nodes))
         self.assertFalse(any(name.endswith(':development_loop') for name in drawing.nodes))
@@ -129,3 +138,40 @@ class FlowTests(TestCase):
             after, _ = review.inputs(run, 'code')
         self.assertNotEqual(before['input_digest'], after['input_digest'])
         self.assertEqual(before['revision'], after['revision'])
+
+
+    @verifies("scenario.harness.flow-inspection")
+    def test_batch_inspection_matches_executed_nodes_and_stop_edges(self):
+        from concorde.harness import batch_flow
+        build = batch_flow.build_batch_flow
+        for item_node in ("review_module", "coordinate_component"):
+            for stop_at in (None, 1):
+                with self.subTest(item_node=item_node, stop_at=stop_at):
+                    visited, operations, drawings = [], [], []
+                    def instrument(factory, **options):
+                        def node(name):
+                            execute = factory(name)
+                            def record(state):
+                                visited.append(name)
+                                return execute(state)
+                            return record
+                        flow = build(node, **options)
+                        first = flow.get_graph().to_json()
+                        self.assertEqual(first, flow.get_graph().to_json())
+                        self.assertEqual([], visited)
+                        self.assertEqual([], operations)
+                        self.assertIs(flow.checkpointer, False)
+                        drawings.append(first)
+                        return flow
+                    def operation(item):
+                        operations.append(item)
+                        return {"outcome": "blocked"} if item == stop_at else None
+                    with patch.object(batch_flow, "build_batch_flow", side_effect=instrument):
+                        result = batch_flow.run_batch_flow(range(3), operation,
+                            name="inspection_batch", item_node=item_node)
+                    drawing = drawings[0]
+                    edges = {(edge["source"], edge["target"]) for edge in drawing["edges"]}
+                    path = ["__start__", *visited, "__end__"]
+                    self.assertTrue(all(edge in edges for edge in zip(path, path[1:])))
+                    self.assertEqual([0, 1, 2] if stop_at is None else [0, 1], operations)
+                    self.assertEqual(None if stop_at is None else {"outcome": "blocked"}, result)

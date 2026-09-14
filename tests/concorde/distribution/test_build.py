@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import re
 import shutil
+import json
+import ast
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
@@ -142,6 +145,8 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
         shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
+        shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", self.root / "src/concorde/spec",
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
 
     @verifies("scenario.distribution.build-check", "scenario.distribution.build-write")
     def test_check_fails_before_build_and_passes_after(self):
@@ -239,6 +244,8 @@ class BuildFreshnessTests(unittest.TestCase):
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
         shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
+        shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", self.root / "src/concorde/spec",
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
 
     @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_verify_fresh_fails_closed_with_no_manifest(self):
@@ -314,6 +321,84 @@ class BuildFreshnessTests(unittest.TestCase):
         self.assertEqual(prompt.name, "concorde-coordinator")
 
 
+class WireHelperBuildTests(unittest.TestCase):
+    @verifies("scenario.distribution.build-render", "scenario.distribution.build-write",
+              "scenario.distribution.build-check", "scenario.distribution.build-stale-blocks-execution")
+    def test_wire_helper_change_invalidates_and_rebuilds_actual_schema_outputs(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            for directory in ("prompts", "protocol", "skills", "agents", "capabilities"):
+                shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
+            shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", root / "src/concorde/spec",
+                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            # This isolated render fixture does not accept a consumer Protocol binding.
+            (root / "protocol/manifest.json").unlink()
+
+            def contents():
+                return {p.relative_to(root).as_posix(): p.read_bytes()
+                        for p in root.rglob("*") if p.is_file()}
+
+            def invoke_model_backed_capability():
+                # The fixture is this invocation's package root: a top-level model-backed
+                # capability verifies the fixture build before admitting anything else.
+                from concorde.development.capability_host import CapabilityHost, run_capability
+                from concorde.spec.typed_data import typed
+                def launched(launch):
+                    raise AssertionError("an Agent launched on a stale build")
+                host = CapabilityHost(root, root, mode="describe-policy", executor=launched)
+                return run_capability("concorde-review", None, typed("concorde-review-request", {
+                    "target_id": "module.fixture", "task": "Review", "review_mode": "spec"}),
+                    host_context=host)
+
+            with (patch("subprocess.Popen", side_effect=AssertionError("build process I/O")),
+                  patch("socket.socket", side_effect=AssertionError("build network I/O"))):
+                first = write_build(root)
+                verify_fresh(root)
+                self.assertEqual((True, ()), check_build(root))
+                self.assertEqual(first, build(root))
+                admitted = invoke_model_backed_capability()
+                self.assertNotEqual("stale_build", (admitted["errors"] or [{}])[0].get("code"), admitted)
+                helper = root / "src/concorde/spec/wire_shapes.py"
+                before = contents()
+
+                class DescribeStrings(ast.NodeTransformer):
+                    def visit_Dict(self, node):
+                        self.generic_visit(node)
+                        if any(isinstance(k, ast.Constant) and k.value == "type"
+                               and isinstance(v, ast.Constant) and v.value == "string"
+                               for k, v in zip(node.keys, node.values)):
+                            node.keys.append(ast.Constant("description"))
+                            node.values.append(ast.Constant("Fixture helper schema change"))
+                        return node
+
+                changed = DescribeStrings().visit(ast.parse(helper.read_text()))
+                helper.write_text(ast.unparse(ast.fix_missing_locations(changed)) + "\n")
+                self.assertEqual({"src/concorde/spec/wire_shapes.py"},
+                                 {p for p, data in contents().items() if before.get(p) != data})
+                with self.assertRaises(BuildError) as failure:
+                    verify_fresh(root)
+                self.assertEqual("stale_build", failure.exception.code)
+                before_invocation = contents()
+                refused = invoke_model_backed_capability()
+                self.assertEqual("blocked", refused["status"], refused)
+                self.assertEqual("stale_build", refused["errors"][0]["code"], refused)
+                self.assertIsNone(refused["output"])
+                self.assertEqual(before_invocation, contents())
+                before_check = contents()
+                current, differences = check_build(root)
+                self.assertFalse(current)
+                self.assertIn("generated/protocol/schemas.json", differences)
+                self.assertEqual(before_check, contents())
+                rebuilt = write_build(root)
+                schema_path = "generated/protocol/schemas.json"
+                schema = (root / schema_path).read_bytes()
+                self.assertNotEqual(before[schema_path], schema)
+                self.assertIn("Fixture helper schema change", schema.decode())
+                verify_fresh(root)
+                self.assertEqual((True, ()), check_build(root))
+                self.assertEqual(rebuilt, build(root))
+
+
 class BuildErrorTests(unittest.TestCase):
     def test_unbound_variable_in_a_skill_source_fails_the_build(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -326,6 +411,64 @@ class BuildErrorTests(unittest.TestCase):
             main.write_text(main.read_text(encoding="utf-8") + "\nUnbound {SOMETHING}.\n", encoding="utf-8")
             with self.assertRaises(BuildError):
                 build(root, "all")
+
+    def test_broken_schema_helper_fails_the_build_with_build_error(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for directory in ("prompts", "protocol", "skills", "agents", "capabilities"):
+                shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
+            shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", root / "src/concorde/spec",
+                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            (root / "protocol/manifest.json").unlink()
+            helper = root / "src/concorde/spec/wire_shapes.py"
+            helper.write_text(helper.read_text(encoding="utf-8") + "\nSTRING = {\n", encoding="utf-8")
+            for surface in (build, check_build, write_build):
+                with self.subTest(surface=surface.__name__), self.assertRaises(BuildError) as failure:
+                    surface(root)
+                self.assertEqual("invalid_build", failure.exception.code)
+                self.assertIn("wire_shapes.py", str(failure.exception))
+            self.assertFalse((root / "generated").exists())
+
+    def test_incomplete_schema_source_tree_fails_closed_while_a_source_free_root_falls_back(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for directory in ("prompts", "protocol", "skills", "agents", "capabilities"):
+                shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
+            shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", root / "src/concorde/spec",
+                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            (root / "protocol/manifest.json").unlink()
+            (root / "src/concorde/spec/contracts.py").unlink()
+            with self.assertRaises(BuildError) as failure:
+                build(root)
+            self.assertEqual("invalid_build", failure.exception.code)
+            self.assertIn("contracts.py", str(failure.exception))
+            self.assertFalse((root / "generated").exists())
+            shutil.rmtree(root / "src")
+            rendered = build(root)
+            schemas = next(o for o in rendered.outputs if o.path == "generated/protocol/schemas.json")
+            self.assertEqual((), schemas.sources)
+            self.assertFalse(any(s.startswith("src/concorde/spec/") for o in rendered.outputs for s in o.sources))
+
+    def test_root_inventory_missing_a_skill_request_schema_fails_the_build_with_build_error(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for directory in ("prompts", "protocol", "skills", "agents", "capabilities"):
+                shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
+            shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", root / "src/concorde/spec",
+                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            (root / "protocol/manifest.json").unlink()
+            contracts = root / "src/concorde/spec/contracts.py"
+            contracts.write_text(contracts.read_text(encoding="utf-8") + (
+                "\n_ORIGINAL_EXPORTED_TYPES = exported_types\n"
+                "def exported_types():\n"
+                "    return tuple(n for n in _ORIGINAL_EXPORTED_TYPES() if n != 'concorde-main-request')\n"),
+                encoding="utf-8")
+            for surface in (build, check_build, write_build):
+                with self.subTest(surface=surface.__name__), self.assertRaises(BuildError) as failure:
+                    surface(root)
+                self.assertEqual("invalid_build", failure.exception.code)
+                self.assertIn("concorde-main-request", str(failure.exception))
+            self.assertFalse((root / "generated").exists())
 
 
 if __name__ == "__main__":

@@ -29,4 +29,6 @@ def build_package_copy(root: Path, integration: str = "all"):
     shutil.copytree(REPOSITORY_ROOT / "protocol", root / "protocol", dirs_exist_ok=True)
     shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills", dirs_exist_ok=True)
     shutil.copytree(REPOSITORY_ROOT / "agents", root / "agents", dirs_exist_ok=True)
+    shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", root / "src/concorde/spec",
+                    dirs_exist_ok=True, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     return write_build(root, integration)

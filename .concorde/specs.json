@@ -348,6 +348,18 @@
         {
           "id": "document.development.review-result",
           "kind": "document"
+        },
+        {
+          "id": "module.development",
+          "kind": "module"
+        },
+        {
+          "id": "module.specify-loop",
+          "kind": "module"
+        },
+        {
+          "kind": "document",
+          "id": "document.review.review"
         }
       ],
       "title": "Harness",
@@ -810,6 +822,10 @@
         {
           "kind": "document",
           "id": "document.reflections.interfaces"
+        },
+        {
+          "kind": "document",
+          "id": "document.review.review"
         }
       ],
       "title": "Implementation",
@@ -1150,6 +1166,10 @@
         {
           "kind": "document",
           "id": "document.reflections.interfaces"
+        },
+        {
+          "kind": "document",
+          "id": "document.review.review"
         }
       ],
       "title": "Topology",

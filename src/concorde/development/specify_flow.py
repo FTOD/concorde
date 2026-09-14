@@ -37,7 +37,7 @@ def has_authored_spec(change, target_id, task):
 
 def specify_nodes(run):
     from .capability_host import invoke_capability
-    from .review import current, require_reviews, skip, spec_consumers
+    from .review import current_spec_scope, require_reviews, skip
     from ..harness.change_worktree import read_change, progress, record_transition
     from ..spec.repository import SpecRepository, SpecError
     from ..spec.typed_data import typed, canonical
@@ -75,10 +75,9 @@ def specify_nodes(run):
                 skip(run, "spec")
                 reference = read_change(run.repository.root, required=True)["reviews"][run.target.id]["spec"]["artifact"]
                 data = run.response(answer="Spec review explicitly skipped.", artifacts=[reference])["data"]
-            elif current(run, "spec") is not None and not spec_consumers(run):
-                reference = change["reviews"][run.target.id]["spec"]["artifact"]
-                data = run.response(answer="Current Spec review retained.",
-                                    artifacts=[reference])["data"]
+            elif (references := current_spec_scope(run)) is not None:
+                data = run.response(answer="Current owner and consumer Spec reviews retained.",
+                                    artifacts=references)["data"]
             elif not run.host.coordinated:
                 progress(run.repository.root, phase="spec-review", status="active", invalidate=True)
         if data is None:
@@ -109,6 +108,8 @@ def specify_nodes(run):
         if data["outcome"] not in {"completed", "ready"}:
             status = ("waiting" if data["outcome"] == "spec_incomplete" else
                       "failed" if data["outcome"] == "failed" else "blocked")
+            if run.host.lifecycle.get("status") in {"cancelled", "limit_exhausted"}:
+                status = run.host.lifecycle["status"]
             run.host.lifecycle["status"] = status
             record = read_change(run.repository.root, required=True).get("graph", {}).get(run.target.id)
             if record is not None:

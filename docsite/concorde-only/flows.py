@@ -37,6 +37,7 @@ def export():
     from concorde.development.capability_flow import build_capability_flow
     from concorde.development.dispatch_flow import build_dispatch_flow
     from concorde.development.discovery_flow import build_discovery_flow
+    from concorde.development.target_flow import build_target_flow
     from concorde.development.query_flow import build_query_flow
     from concorde.development.topology_flow import build_topology_flow, build_topology_apply_flow
     from concorde.development.plan_flow import build_plan_flow
@@ -46,7 +47,9 @@ def export():
     from concorde.harness.batch_flow import build_batch_flow
     from concorde.reflections.triage_flow import build_triage_flow
     factories = {
-        'Discovery': build_discovery_flow, 'Query and topology design': build_query_flow,
+        'Discovery': build_discovery_flow, 'Target admission and discovery': build_target_flow,
+        'Bound target admission': lambda nodes: build_target_flow(nodes, discover=False),
+        'Query and topology design': build_query_flow,
         'Topology preparation': build_topology_flow, 'Topology application': build_topology_apply_flow,
         'Spec authoring and review': build_specify_flow, 'Planning': build_plan_flow, 'Initialization and configuration': build_project_flow,
         'Component coordination': build_coordination_flow, 'Shared candidate stabilization': build_stabilization_flow,

@@ -223,9 +223,13 @@ class _Tree:
         invocation_id = str(uuid4())
 
         def finish(outcome, value=None, error=None, details=None):
+            value_json = canonical(value) if value is not None else None
+            details_json = canonical(details) if details is not None else None
+            stop = stopped()
+            if stop:
+                outcome, error, value_json, details_json = stop, stop, None, None
             result = AgentResult(invocation_id, parent_id, agent_id, outcome,
-                canonical(value) if value is not None else None, error,
-                canonical(details) if details is not None else None)
+                value_json, error, details_json)
             self.events.append({"event": "return", **result.wire()})
             return {"result": result}
 
@@ -338,6 +342,9 @@ class _Tree:
                 frame = AgentFrame(invocation_id, parent_id, agent_id, input_json, context_json,
                     instructions, tuple(feedback), canonical(children),
                     canonical(json_schema(definition.result_type)), deadline - monotonic(), deadline, native_binding)
+                stop = stopped()
+                if stop:
+                    return finish(stop, error=stop)
                 self.decisions += 1
                 try:
                     step = definition.decide(frame)
@@ -363,6 +370,9 @@ class _Tree:
             return {}
 
         def validate_step(state):
+            stop = stopped()
+            if stop:
+                return finish(stop, error=stop)
             try:
                 if not isinstance(step, AgentStep):
                     raise ValueError("not an AgentStep")
@@ -384,11 +394,17 @@ class _Tree:
                     self.interruption(step, snapshot)
             except Exception:
                 return finish("rejected", error="invalid_step")
+            stop = stopped()
+            if stop:
+                return finish(stop, error=stop)
             self.events.append({"event": "decision", "invocation_id": invocation_id,
                 "source": step.source, "action": step.action, "child_agent": step.agent_id})
             return {"action": step.action}
 
         def delegate(state):
+            stop = stopped()
+            if stop:
+                return finish(stop, error=stop)
             if step.agent_id not in definition.delegates or step.agent_id not in effective.agents:
                 if self.calls >= limits.max_calls:
                     return finish("limit_exhausted", error="call_limit")

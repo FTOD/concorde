@@ -13,7 +13,8 @@ from uuid import uuid4
 from concorde.spec.contracts import load_capability_inventory
 from concorde.development.capability_host import json_main
 from concorde.harness.studio_client import run_in_studio, _NoRedirect
-from concorde.spec.repository import SpecError
+from concorde.spec.repository import SpecError, SpecRepository
+from concorde.spec.verification import verifies
 from tests.concorde.harness.test_studio import invocation
 from tests.concorde.spec.support import PACKAGE
 
@@ -104,3 +105,42 @@ class StudioClientTests(unittest.TestCase):
                 with self.assertRaises(SpecError) as error:
                     run_in_studio("http://localhost:2024", self.value, Path.cwd(), PACKAGE)
                 self.assertEqual("incompatible_handoff", error.exception.code)
+
+
+    # Transport responses are doubles; the submitted request also enters the real Flow.
+    @verifies("scenario.harness.flow-inspection")
+    def test_documented_harness_target_is_admitted_and_forwarded_unchanged(self):
+        from concorde.development.capability_host import validate_invocation
+        target = SpecRepository(PACKAGE, PACKAGE).select("module.harness")
+        guide = (PACKAGE / "scripts/development/STUDIO.md").read_text()
+        value = json.loads(guide.split("<<'JSON'\n", 1)[1].split("\nJSON", 1)[0])
+        self.assertEqual({"target_id": target.id, "task": "Explain Concorde's Harness"},
+                         value["input"]["data"])
+        validate_invocation(value, "concorde-main")
+        result = {**self.result, "capability_id": "concorde-main",
+                  "mode": "describe-policy", "status": "described"}
+        opener, calls = self.opener(iter([
+            {"thread_id": self.thread}, {"run_id": self.run, "status": "success"},
+            {"values": {"result": result, "policies": [], "events": []}}]))
+        with patch("concorde.harness.studio_client.build_opener", return_value=opener), \
+                contextlib.redirect_stderr(io.StringIO()):
+            actual = run_in_studio("http://localhost:2024", value, PACKAGE, PACKAGE)
+        self.assertEqual(result, actual["result"])
+        submitted = json.loads(calls[1].data)["input"]
+        self.assertEqual(value, submitted["invocation"])
+        self.assertEqual({"project_root": str(PACKAGE), "package_root": str(PACKAGE)},
+                         submitted["expected_workspace"])
+        from concorde.harness.studio import build_studio_flow
+        executor = Mock(side_effect=AssertionError("policy preview must not launch an Agent"))
+        flow = build_studio_flow("concorde-main", PACKAGE, PACKAGE, executor=executor)
+        preview = flow.invoke(submitted)
+        self.assertEqual("described", preview["result"]["status"], preview)
+        self.assertTrue(preview["policies"])
+        for field in ("project_root", "package_root"):
+            wrong = {**submitted, "expected_workspace": {
+                **submitted["expected_workspace"], field: "/another-workspace"}}
+            rejected = flow.invoke(wrong)
+            self.assertEqual("workspace_mismatch", rejected["result"]["errors"][0]["code"])
+            self.assertEqual([], rejected["events"])
+            self.assertEqual([], rejected["policies"])
+        executor.assert_not_called()

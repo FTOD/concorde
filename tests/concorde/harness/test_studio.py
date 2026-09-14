@@ -15,6 +15,32 @@ from concorde.spec.verification import verifies
 from tests.concorde.spec.support import CONFIGURATION, PACKAGE, ModelProcessDouble, project
 
 
+EXPECTED_PUBLIC = (
+    "concorde-main", "concorde-dev-loop", "concorde-specify-loop",
+    "concorde-reflections-triage", "concorde-init", "concorde-configure",
+    "concorde-validate", "concorde-deliver", "concorde-review",
+)
+
+
+def assert_public_inventory(case, names):
+    names = list(names)
+    case.assertEqual(9, len(names))
+    case.assertEqual(len(names), len(set(names)))
+    case.assertEqual(set(EXPECTED_PUBLIC), set(names))
+
+
+class PublicInventoryTests(unittest.TestCase):
+    # This tests the assertion helper itself, without inspecting an executable Flow.
+    def test_inventory_assertion_rejects_missing_extra_and_duplicate_entries(self):
+        assert_public_inventory(self, EXPECTED_PUBLIC)
+        for names in (EXPECTED_PUBLIC[:-1], EXPECTED_PUBLIC + ("concorde-plan",),
+                      EXPECTED_PUBLIC + (EXPECTED_PUBLIC[0],),
+                      EXPECTED_PUBLIC[:-1] + (EXPECTED_PUBLIC[0],),
+                      EXPECTED_PUBLIC[:-1] + ("concorde-plan",)):
+            with self.subTest(names=names), self.assertRaises(AssertionError):
+                assert_public_inventory(self, names)
+
+
 def invocation(capability="concorde-reflections-triage", mode="execute", data=None):
     return {"type_id": "concorde-capability-invocation", "schema_version": 3,
             "capability_id": capability, "mode": mode, "configuration": None,
@@ -43,26 +69,54 @@ class StudioTests(unittest.TestCase):
         return build_studio_graph(capability, self.root, PACKAGE,
                                   executor=executor or self.double.executor)
 
-    def test_inventory_and_all_entries_execute_the_shared_boundary(self):
+    # Every supplied request is invalid, so this does not verify capability execution.
+    @verifies("scenario.harness.flow-inspection")
+    def test_inventory_and_all_entries_reject_invalid_input_at_the_shared_boundary(self):
         manifest = json.loads((PACKAGE / "generated/langgraph.json").read_text())
-        self.assertEqual(set(SKILL_NAMES), set(manifest["graphs"]))
-        self.assertEqual(9, len(manifest["graphs"]))
-        for capability in SKILL_NAMES:
+        assert_public_inventory(self, SKILL_NAMES)
+        assert_public_inventory(self, manifest["graphs"])
+        for capability in EXPECTED_PUBLIC:
             with self.subTest(capability=capability):
                 value = invocation(capability, data={"unrecognized": True})
-                actual = self.graph(capability).invoke({"invocation": value})
+                graph = self.graph(capability)
+                self.assertIn("invocation", graph.get_input_jsonschema()["properties"])
+                actual = graph.invoke({"invocation": value})
                 expected = run_capability(capability, None, value["input"],
                                          host_context=CapabilityHost(self.root, PACKAGE))
                 self.assertEqual(stable(expected), stable(actual["result"]))
                 self.assertEqual("blocked", actual["result"]["status"])
         self.assertEqual([], self.double.calls)
 
+    @verifies("scenario.harness.flow-inspection")
+    def test_every_public_entry_enforces_envelope_configuration_and_workspace(self):
+        for capability in EXPECTED_PUBLIC:
+            graph = self.graph(capability)
+            value = invocation(capability)
+            cases = [
+                ({"invocation": {**value, "schema_version": 2}}, "unsupported_version", []),
+                ({"invocation": {**value, "configuration": {"integration": "codex"}}},
+                 "unknown_type", ["capability_started", "capability_finished"]),
+                ({"invocation": value, "expected_workspace": {
+                    "project_root": "/other", "package_root": str(PACKAGE)}}, "workspace_mismatch", []),
+            ]
+            # Configuration is admitted by the real Host after the envelope check.
+            for supplied, error_code, events in cases:
+                with self.subTest(capability=capability, supplied=supplied):
+                    result = graph.invoke(supplied)
+                    self.assertEqual("blocked", result["result"]["status"])
+                    self.assertIsNone(result["result"]["output"])
+                    self.assertEqual(error_code, result["result"]["errors"][0]["code"])
+                    self.assertEqual(events, [event["event"] for event in result["events"]])
+        self.assertEqual([], self.double.calls)
+
+    @verifies("scenario.development.execute-capability")
     def test_real_context_execution_matches_local_json(self):
         value = invocation()
         actual = self.graph().invoke({"invocation": value})
         expected = run_capability(value["capability_id"], None, value["input"],
                                  host_context=CapabilityHost(self.root, PACKAGE))
         self.assertEqual("succeeded", actual["result"]["status"], actual)
+        self.assertEqual(value["capability_id"] + "-response", actual["result"]["output"]["type_id"])
         self.assertEqual(stable(expected), stable(actual["result"]))
         self.assertEqual(["capability_started", "capability_finished"],
                          [event["event"] for event in actual["events"]])
@@ -159,7 +213,7 @@ class StudioTests(unittest.TestCase):
             self.root, PACKAGE, observer=Mock(side_effect=RuntimeError("disconnected"))))
         self.assertEqual("succeeded", result["status"])
 
-    @verifies("scenario.harness.recursive-delegate")
+    @verifies("scenario.development.flow-execution")
     def test_loop_emits_child_operations_and_deterministic_phases(self):
         from tests.concorde.harness.test_worktree_lifecycle import WorktreeLifecycleTests
         fixture = WorktreeLifecycleTests()

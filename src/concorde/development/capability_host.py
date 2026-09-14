@@ -558,7 +558,10 @@ class MainInvocation:
         return "\n".join(source["content"] for source in value["documents"])
 
     def select_one(self) -> tuple[dict | None, dict | None]:
-        routes, decision = self.discover_routes()
+        return self.select_discovered(*self.discover_routes())
+
+    def select_discovered(self, routes, decision) -> tuple[dict | None, dict | None]:
+        """Admit the result of this invocation's executed discovery subflow."""
         if decision is not None:
             outcome = "described" if self.host.mode == "describe-policy" else decision["outcome"]
             return None, self.capability_response(outcome, decision["answer"], gaps=decision["gaps"])
@@ -2151,6 +2154,8 @@ class Invocation:
             """A non-advancing, non-repairable outcome: record it and end the Graph for a human."""
             status = ("waiting" if outcome == "spec_incomplete" else
                       "failed" if outcome == "failed" else "blocked")
+            if self.host.lifecycle.get("status") in {"cancelled", "limit_exhausted"}:
+                status = self.host.lifecycle["status"]
             self.host.lifecycle["status"] = status
             trigger = ("ai-review" if name in {"review_spec", "review_code"} else
                       "deterministic" if name == "validate" else "ai-assessment")
@@ -2367,6 +2372,8 @@ def _dispatch(capability, configuration, task, host):
 def _dispatch_nodes(capability, configuration, task, host):
     from langgraph.graph import END
     run = None
+    target_discovery = None
+    target_discovery_nodes = {}
 
     def select_capability(state):
         if capability == "concorde-deliver":
@@ -2380,9 +2387,8 @@ def _dispatch_nodes(capability, configuration, task, host):
             route = "prepare_target"
         return {"route": route}
 
-    def prepare_target(state):
-        nonlocal task, host, run
-        main_completed: tuple[str, ...] = ()
+    def initialize_target(state):
+        nonlocal task, host, target_discovery, target_discovery_nodes
         if (capability in DISCOVERY_CAPABILITIES and host.routed_target is not None
                 and task.get("target_id") != host.routed_target):
             raise SpecError("child target differs from the host's discovery route", "incompatible_handoff")
@@ -2402,18 +2408,26 @@ def _dispatch_nodes(capability, configuration, task, host):
                                             "invalid_worktree_state") from error
                         host = replace(host, routed_target=change["target_id"])
             if host.routed_target is None:
-                main = MainInvocation(capability, configuration, task, host)
-                route, blocked = main.select_one()
-                if blocked is not None:
-                    return {"output": blocked, "route": END}
-                task = {**task, "target_id": route["target_id"], "task": route["task"],
-                        "constraints": route["constraints"]}
-                if route["focus_id"] is not None:
-                    task["focus_id"] = route["focus_id"]
-                else:
-                    task.pop("focus_id", None)
-                host = replace(host, routed_target=route["target_id"])
-                main_completed = tuple(main.completed)
+                target_discovery = MainInvocation(capability, configuration, task, host)
+                target_discovery_nodes = target_discovery.discovery_nodes()
+                return {"route": "discover", "occurrence": 0, "routes": [], "decision": None}
+        return {"route": "bind_target"}
+
+    def bind_target(state):
+        nonlocal task, host, run
+        main_completed: tuple[str, ...] = ()
+        if target_discovery is not None:
+            route, blocked = target_discovery.select_discovered(state["routes"], state["decision"])
+            if blocked is not None:
+                return {"output": blocked, "route": END}
+            task = {**task, "target_id": route["target_id"], "task": route["task"],
+                    "constraints": route["constraints"]}
+            if route["focus_id"] is not None:
+                task["focus_id"] = route["focus_id"]
+            else:
+                task.pop("focus_id", None)
+            host = replace(host, routed_target=route["target_id"])
+            main_completed = tuple(target_discovery.completed)
         readonly = capability in {"concorde-main", "concorde-context-solve", "concorde-review"}
         readonly = readonly or (capability == "concorde-reflections-triage" and task["action"] == "status")
         if (host.mode == "execute" and not readonly
@@ -2430,6 +2444,10 @@ def _dispatch_nodes(capability, configuration, task, host):
                 "concorde-specify-loop": "specify_loop",
             }.get(capability, "context_solve"))
         return {"route": route}
+
+    target_nodes = {"initialize_target": initialize_target, "bind_target": bind_target,
+                   **{name: (lambda state, name=name: target_discovery_nodes[name](state))
+                      for name in ("decide", "expand_context", "bind_routes", "finish")}}
 
     def describe_policy():
         stages = [capability] if capability in CAPABILITY_AGENT_MODES else []
@@ -2498,7 +2516,9 @@ def _dispatch_nodes(capability, configuration, task, host):
 
     def subflow(name, child, state):
         if name not in subflows:
-            if name in {"answer", "design_topology"}:
+            if name == "prepare_target":
+                subflows[name] = target_nodes
+            elif name in {"answer", "design_topology"}:
                 main = MainInvocation(capability, configuration, task, host)
                 response = main.answer_response if name == "answer" else main.topology_response
                 subflows[name] = {**main.discovery_nodes(),
@@ -2522,7 +2542,7 @@ def _dispatch_nodes(capability, configuration, task, host):
         return subflows[name][child](state)
 
     from .dispatch_flow import SUBFLOW_NODES
-    return {"select_capability": select_capability, "prepare_target": prepare_target, **nodes,
+    return {"select_capability": select_capability, **nodes,
             **{name + "/" + child: (lambda state, name=name, child=child: subflow(name, child, state))
                for name, children in SUBFLOW_NODES.items() for child in children}}
 
@@ -2690,6 +2710,16 @@ def capability_flow_nodes(capability, configuration, runtime_input, *, host_cont
 
     def finalize(state):
         nonlocal record_progress
+        execution_error = host.lifecycle.get("execution_error")
+        if execution_error and not result["errors"]:
+            # Preserve the failed Review domain output and its incomplete report while
+            # reporting the executor interruption through the existing envelope field.
+            result["errors"] = [{"code": execution_error, "field": "",
+                                 "message": "Reviewer execution was interrupted."}]
+        persistence_error = host.lifecycle.get("persistence_error")
+        if persistence_error and not any(error["code"] == "state_persistence_failed" for error in result["errors"]):
+            # A lost status write is reported beside the retained typed output, never instead of it.
+            result["errors"].append({"code": "state_persistence_failed", "field": "", "message": persistence_error})
         if any(error["code"] in {"incompatible_handoff", "workspace_mismatch", "invalid_worktree_state"}
                for error in result["errors"]):
             record_progress = False
@@ -2704,7 +2734,9 @@ def capability_flow_nodes(capability, configuration, runtime_input, *, host_cont
                 result["errors"].append({"code": "state_persistence_failed", "field": "", "message": str(error)})
         host_context.evidence.extend(host.evidence)
         host.observe("capability_finished", capability=capability, invocation_id=host.invocation_id,
-                     depth=host.depth, status=result["status"])
+                     depth=host.depth, status=(host.lifecycle["status"]
+                        if host.lifecycle.get("status") in {"cancelled", "limit_exhausted"}
+                        else result["status"]))
         return {"result": result}
 
     from .dispatch_flow import DISPATCH_NODES

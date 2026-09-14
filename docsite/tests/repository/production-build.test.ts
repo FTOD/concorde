@@ -34,8 +34,11 @@ it('scenario.views.publish-candidate: publishes the current exact registry and v
 it('scenario.views.agent-flows: publishes executable flows with keyboard navigation and source fingerprints',async()=>{
  const html=await readFile(resolve(output,'agent-flows.html'),'utf8');
  expect(html).toContain('The development loop');
- expect(html).toContain('The Studio entry Flow');
- expect(html).toContain('Inspect every Flow family');
+ expect(html).toContain('Full Dev Loop invocation');
+ expect(html).toContain('aria-label="All flows"');
+ expect(html).toContain('href="#specify"');
+ expect(html).toContain('href="#capability-concorde-review"');
+ expect(html).toContain('href="#flow-discovery"');
  expect(html).not.toContain('Dedicated query and topology LangGraph factories are not implemented');
  expect(html).toContain('loop_flow.py');
  expect(html).toContain('sha256:');

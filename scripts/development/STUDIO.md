@@ -55,7 +55,7 @@ Select `concorde-main`, create a new thread, and enter this complete input in Gr
     "input": {
       "type_id": "concorde-main-request",
       "schema_version": 1,
-      "data": {"task": "Explain Concorde's workflow host", "target_id": "module.development"}
+      "data": {"task": "Explain Concorde's Harness", "target_id": "module.harness"}
     }
   }
 }
@@ -106,7 +106,7 @@ Keep using the same JSON invocation on stdin, without the Studio `invocation` wr
 
 ```bash
 python3 scripts/run-capability.py concorde-main <<'JSON'
-{"type_id":"concorde-capability-invocation","schema_version":3,"capability_id":"concorde-main","mode":"describe-policy","configuration":null,"input":{"type_id":"concorde-main-request","schema_version":1,"data":{"task":"Explain Concorde's workflow host","target_id":"module.workflows"}}}
+{"type_id":"concorde-capability-invocation","schema_version":3,"capability_id":"concorde-main","mode":"describe-policy","configuration":null,"input":{"type_id":"concorde-main-request","schema_version":1,"data":{"task":"Explain Concorde's Harness","target_id":"module.harness"}}}
 JSON
 ```
 
@@ -208,3 +208,37 @@ nine assistants, capability admission, direct execution, SSE events, CLI/Skill-l
 and rejection paths, then stops the server. It uses temporary consumer projects and deterministic
 model process responses through the real executor/admission pipeline; it does not require online
 model calls or mutate this checkout's primary-worktree registry.
+The standalone Specification Flow test also invalidates accepted review evidence in its temporary
+candidate and supplies failed, incomplete and blocking model responses. Disabling review must still
+preserve the recorded requirement and stop Spec completion. These are real server runs with model
+process doubles, not evidence of model review quality. The forwarding-example test parses the JSON
+above, exercises describe-policy through the bound Studio Flow, and rejects either mismatched root.
+
+
+### Bounded inspection surfaces
+
+`src/concorde/harness/studio.py:build_studio_flow` attaches the executable
+`build_capability_flow` instance at the public capability node through
+`expose_stateless_subflow`; `get_graph(xray=True)` expands that instance without executing it.
+The capability name and project/package roots are startup bindings. Request input cannot select
+another workspace. The attached capability factory and its discovery/review/component scheduling
+are supplied by Development.
+
+`src/concorde/harness/batch_flow.py:build_batch_flow` is a separately inspectable sequential
+batch surface. Its host-selected `name` and `item_node` identify a variant; both the next-item and
+stop branches are visible. `run_batch_flow` uses this same factory, with an immutable item tuple
+and a host callback held outside checkpoint state. Inspection does not call that callback.
+The batch factory alone does not establish which Development review or component paths use it.
+Those call sites must be inspected under Development's implementation grant when auditing fresh
+review discovery, dev-loop discovery, scoped reviews and component coordination.
+
+For fresh review and dev-loop discovery, the local inspection entry is the corresponding public
+Studio Flow, expanded with `xray=True`. Its capability selects the attached Development factory;
+the admitted task, target/focus hints and current candidate state select execution scope through
+the Host. Harness's attachment does not independently define those discovery branches.
+For scoped review and component coordination, the local batch factory exposes selection,
+item execution, continuation and early stop. The host supplies the item sequence, callback and
+variant name; inspecting a `review_module` or `coordinate_component` variant verifies that batch
+topology, not the foreign caller's choice of participants. Verification of those call sites and
+their public expansion remains a Development check. No omitted Harness topology is established
+merely by an opaque imported callback, and these inspection APIs grant no access to its source.
