@@ -5,12 +5,12 @@ from concorde.harness.harness import IMPLEMENTATION_WORKSPACE
 
 MODES = (
     Mode('implementation', "agents/programmer/modes/implementation.md",
-        Constraints(EffectDeclaration(('spec-context', 'implementation'), ('implementation',), False, "none"),
+        Constraints(EffectDeclaration(('spec-context', 'implementation', 'documentation'), ('implementation',), False, "none"),
                     contexts=('concorde-agent-stage-context',), results=('concorde-agent-stage-result',)),
         phase='implementation', action=None, stage_inputs=('concorde-implementation-task', 'concorde-review-result'), required_inputs=('concorde-implementation-task',),
         output_fields=('tasks',), outcomes=()),
     Mode('code-review', "agents/programmer/modes/code-review.md",
-        Constraints(EffectDeclaration(('spec-context', 'implementation'), (), False, "none"),
+        Constraints(EffectDeclaration(('spec-context', 'implementation', 'documentation'), (), False, "none"),
                     contexts=('concorde-review-stage-context',), results=('concorde-review-stage-result',)),
         phase='code-review', action=None, stage_inputs=(), required_inputs=(),
         output_fields=(), outcomes=()),
@@ -23,7 +23,7 @@ MODES = (
 
 AGENT = Agent(
     name='programmer', spec="agents/programmer/spec.md", harness=IMPLEMENTATION_WORKSPACE,
-    constraints=Constraints(EffectDeclaration(('spec-context', 'implementation'), ('implementation',), False, "none"),
+    constraints=Constraints(EffectDeclaration(('spec-context', 'implementation', 'documentation'), ('implementation',), False, "none"),
         contexts=('concorde-agent-stage-context', 'concorde-review-stage-context'), results=('concorde-agent-stage-result', 'concorde-review-stage-result')),
     modes=MODES,
 )

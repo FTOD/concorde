@@ -16,6 +16,17 @@ new Python factories use Flow and `build_*_flow`; LangGraph API names such as `S
 `get_graph()` and the `graphs` configuration key keep their library spelling. Existing stable
 Spec identities, import aliases and persisted `graph` records remain compatible.
 
+A Flow's state is a typed LangGraph state schema: the development and specification Flows carry
+the last stage's typed response in `output`, a terminal failure envelope in `result` and the
+accumulated artifact references in `artifacts` under a reducer, and each stage node selects its own
+transition by returning a `Command` whose `goto` names a declared destination. No node smuggles
+routing or evidence through untyped fields. Every model-backed node executes its Agent through an
+`AgentNode`: a one-node `StateGraph` whose input schema is generated from the selected Mode's
+admitted context type and whose output schema is generated from the Mode's result type, so the
+Mode contract is the graph state, and the native launch with its evidence checks stays a
+host-private launcher outside that state. The same `AgentNode` factory is exposed for inspection
+inside the Flows that run it.
+
 A Flow's compiled nodes and edges are the authority for execution views. Inspection compiles the
 same factories used by execution without invoking nodes, reading project contexts or launching
 Agents. Branches, repeated Agent decisions, delegation, feedback and stage handoffs belong in Flow

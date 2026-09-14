@@ -1,26 +1,32 @@
-"""Standalone Spec authoring/review flow, also composed by the development loop."""
+"""Standalone Spec authoring/review flow, also composed by the development loop.
+
+The Flow's state is typed like the development Flow's: ``output`` holds the last stage's typed
+response data, ``result`` a terminal failure envelope, and ``artifacts`` accumulates every
+stage's artifact references through a reducer. Each stage returns a ``Command`` naming the
+node it hands over to.
+"""
 from dataclasses import replace
-from typing import TypedDict
+from typing import Annotated, TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Command
+
+from .loop_flow import merge_artifacts
+
+
+class SpecifyState(TypedDict, total=False):
+    output: dict
+    result: dict
+    artifacts: Annotated[list[dict], merge_artifacts]
 
 
 def build_specify_flow(node_factory):
-    class State(TypedDict, total=False):
-        output: dict
-        result: dict
-
-    flow = StateGraph(State)
-    for name in ("initialize", "specify", "review_spec", "summarize"):
-        flow.add_node(name, node_factory(name))
+    flow = StateGraph(SpecifyState)
+    flow.add_node("initialize", node_factory("initialize"), destinations=("specify", "review_spec", END))
+    flow.add_node("specify", node_factory("specify"), destinations=("review_spec", "summarize", END))
+    flow.add_node("review_spec", node_factory("review_spec"), destinations=("summarize", END))
+    flow.add_node("summarize", node_factory("summarize"))
     flow.add_edge(START, "initialize")
-    flow.add_conditional_edges("initialize",
-                               lambda state: END if state.get("result") else state["output"]["_route"],
-                               ["specify", "review_spec", END])
-    flow.add_conditional_edges("specify",
-                               lambda state: END if state.get("result") else state["output"]["_route"],
-                               {"review_spec": "review_spec", END: "summarize"})
-    flow.add_edge("review_spec", "summarize")
     flow.add_edge("summarize", END)
     return flow.compile(name="specify_flow", checkpointer=False)
 
@@ -43,30 +49,29 @@ def specify_nodes(run):
     from ..spec.typed_data import typed, canonical
 
     require_reviews(run, run.task.get("run_reviews", True), modes=("spec",))
-    artifacts = []
 
     def initialize(state):
         change = read_change(run.repository.root, required=True)
         author = run.task.get("specify", True) and not has_authored_spec(change, run.target.id, run.task)
-        return {"output": {"_route": "specify" if author else "review_spec"}}
+        return Command(goto="specify" if author else "review_spec")
 
     def execute(name):
         def node(state):
             run.host.observe("stage_started", capability=run.capability, stage=name,
                              invocation_id=run.host.invocation_id, iteration=0, trigger="deterministic")
             try:
-                result = perform(name)
+                command = perform(name)
             except Exception:
                 run.host.observe("stage_failed", capability=run.capability, stage=name,
                                  invocation_id=run.host.invocation_id)
                 raise
             run.host.observe("stage_finished", capability=run.capability, stage=name,
-                             invocation_id=run.host.invocation_id, outcome=result["output"]["outcome"],
+                             invocation_id=run.host.invocation_id, outcome=command.update["output"]["outcome"],
                              iteration=0, trigger="ai-review" if name == "review_spec" else "deterministic")
-            return result
+            return command
         return node
 
-    def perform(name):
+    def perform(name) -> Command:
         run.repository = SpecRepository(run.host.project_root, run.host.package_root)
         data = None
         if name == "review_spec":
@@ -103,8 +108,7 @@ def specify_nodes(run):
             run.last_context = data["context_id"] or run.last_context
             run.completed.extend(data["completed_capabilities"])
             run.repository = SpecRepository(run.host.project_root, run.host.package_root)
-        artifacts.extend(data["artifacts"])
-        route = "review_spec" if name == "specify" and data["outcome"] == "completed" else END
+        route = "review_spec" if name == "specify" and data["outcome"] == "completed" else "summarize"
         if data["outcome"] not in {"completed", "ready"}:
             status = ("waiting" if data["outcome"] == "spec_incomplete" else
                       "failed" if data["outcome"] == "failed" else "blocked")
@@ -117,15 +121,14 @@ def specify_nodes(run):
                     **{"from": name, "to": "END"}, trigger="ai-review" if name == "review_spec" else "ai-assessment",
                     outcome=data["outcome"], source="code-driven" if data["outcome"] == "failed" else "model-driven",
                     artifact=None, input_digest=None, finding_ids=[], status=status)
-        return {"output": {**data, "_route": route}}
+        return Command(goto=route, update={"output": data, "artifacts": list(data["artifacts"])})
 
     def summarize(state):
         if state.get("result"):
             return {}
         data = state["output"]
-        references = list({item["id"]: item for item in artifacts}.values())
         return {"output": run.response(data["outcome"], data["answer"], gaps=data["gaps"],
-                                        checks=data["checks"], artifacts=references)}
+                                        checks=data["checks"], artifacts=list(state.get("artifacts", [])))}
 
     return {"initialize": initialize, "specify": execute("specify"),
             "review_spec": execute("review_spec"), "summarize": summarize}

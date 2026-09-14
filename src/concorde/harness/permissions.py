@@ -18,6 +18,10 @@ class PermissionPolicyError(ValueError):
     """A requested or effective agent policy would widen declared authority."""
 
 
+# Read roles a policy map may omit, meaning the invocation declares no such paths.
+OPTIONAL_ROLES = frozenset({"documentation"})
+
+
 @dataclass(frozen=True)
 class PolicyBinding:
     capability: str
@@ -80,6 +84,8 @@ class CodexLaunchConfiguration:
     runtime_bootstrap: tuple[RuntimeBootstrapFile, ...]
     runtime_bootstrap_digest: str
     digest: str
+    model: str | None = None
+    reasoning_effort: str | None = None
 
 
 @dataclass(frozen=True)
@@ -100,6 +106,8 @@ class ClaudeLaunchConfiguration:
     runtime_bootstrap: tuple[RuntimeBootstrapFile, ...]
     runtime_bootstrap_digest: str
     digest: str
+    model: str | None = None
+    reasoning_effort: str | None = None
 
 
 NativeLaunchConfiguration = CodexLaunchConfiguration | ClaudeLaunchConfiguration
@@ -172,11 +180,38 @@ class CapabilityCompletion:
 
 
 @dataclass(frozen=True)
+class ExecutionUsage:
+    """Token and time consumption of one native Agent process, as the client reported it.
+
+    Usage is diagnostic evidence about cost. It is recorded beside the receipt, never inside it:
+    the receipt binds the launch and its policy, and a usage figure changes neither.
+    ``None`` means the client did not report that figure.
+    """
+
+    integration: str
+    model: str | None = None
+    input_tokens: int | None = None
+    cached_input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
+    cost_usd: float | None = None
+    turns: int | None = None
+    duration_ms: int | None = None
+    wall_seconds: float | None = None
+    prompt_bytes: int | None = None
+    context_bytes: int | None = None
+
+    def wire(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
 class CapabilityExecutionResult:
     output: str
     receipt: EnforcementReceipt
     completion: CapabilityCompletion
     domain_output: dict[str, Any] | None = None
+    usage: ExecutionUsage | None = None
 
 
 _CREDENTIAL_DENIES = (
@@ -281,11 +316,14 @@ def compile_policy(
     if not set(writes).issubset(reads):
         raise PermissionPolicyError("binding write roles must also be selected read roles")
     required_roles = tuple(dict.fromkeys((*reads, *writes)))
-    missing = [role for role in required_roles if role not in role_paths]
+    # ``documentation`` is the one role whose absence from the map means "none declared": a mode
+    # may read reference documentation, but a Module need not declare any. Every other selected
+    # role must be supplied explicitly.
+    missing = [role for role in required_roles if role not in role_paths and role not in OPTIONAL_ROLES]
     if missing:
         raise PermissionPolicyError(f"unknown path role in permission context: {missing}")
-    read_paths = _paths([path for role in reads for path in role_paths[role]])
-    write_paths = _paths([path for role in writes for path in role_paths[role]])
+    read_paths = _paths([path for role in reads for path in role_paths.get(role, ())])
+    write_paths = _paths([path for role in writes for path in role_paths.get(role, ())])
     for writable in write_paths:
         if not any(_under(writable, readable) or _under(readable, writable) for readable in read_paths):
             raise PermissionPolicyError(f"write path is not covered by readable authority: {writable}")
@@ -374,12 +412,24 @@ def _toml_value(value: Any) -> str:
     )
 
 
+def _model_arguments(model: str | None, reasoning_effort: str | None) -> tuple[str, ...]:
+    """Codex ``-c`` overrides for the project-configured model; the user config is ignored."""
+    arguments: tuple[str, ...] = ()
+    if model is not None:
+        arguments += ("-c", f"model={_toml_value(model)}")
+    if reasoning_effort is not None:
+        arguments += ("-c", f"model_reasoning_effort={_toml_value(reasoning_effort)}")
+    return arguments
+
+
 def _codex_argv(
     profile: str,
     profile_configuration: Mapping[str, Any],
     network: bool,
     *,
     executable: str = "codex",
+    model: str | None = None,
+    reasoning_effort: str | None = None,
 ) -> tuple[str, ...]:
     return (
         executable,
@@ -402,6 +452,7 @@ def _codex_argv(
         f"features.network_proxy={_toml_value(network)}",
         "-c", "features.multi_agent=false",
         "-c", "features.multi_agent_v2=false",
+        *_model_arguments(model, reasoning_effort),
         "-",
     )
 
@@ -411,6 +462,8 @@ def render_codex_configuration(
     *,
     native_enforcement: bool,
     outer_sandbox: str | None = None,
+    model: str | None = None,
+    reasoning_effort: str | None = None,
 ) -> CodexLaunchConfiguration:
     if not native_enforcement and not outer_sandbox:
         raise PermissionPolicyError(
@@ -437,11 +490,14 @@ def render_codex_configuration(
         "project_doc_max_bytes": 0,
         "permissions": {profile: profile_configuration},
         "features": {"network_proxy": policy.network_enabled, "multi_agent": False, "multi_agent_v2": False},
+        **({"model": model} if model is not None else {}),
+        **({"model_reasoning_effort": reasoning_effort} if reasoning_effort is not None else {}),
     }
     argv = (
-        _codex_argv(profile, profile_configuration, policy.network_enabled)
+        _codex_argv(profile, profile_configuration, policy.network_enabled,
+                    model=model, reasoning_effort=reasoning_effort)
         if native_enforcement
-        else ("codex", "--ask-for-approval", "never", "exec", "--ephemeral", "--ignore-user-config", "--strict-config", "-c", "project_doc_max_bytes=0", "-c", "features.multi_agent=false", "-c", "features.multi_agent_v2=false", "-")
+        else ("codex", "--ask-for-approval", "never", "exec", "--ephemeral", "--ignore-user-config", "--strict-config", "-c", "project_doc_max_bytes=0", "-c", "features.multi_agent=false", "-c", "features.multi_agent_v2=false", *_model_arguments(model, reasoning_effort), "-")
     )
     bootstrap: tuple[RuntimeBootstrapFile, ...] = ()
     bootstrap_digest = runtime_bootstrap_digest(bootstrap)
@@ -455,6 +511,8 @@ def render_codex_configuration(
         "outer_sandbox": outer_sandbox,
         "runtime_bootstrap": [],
         "runtime_bootstrap_digest": bootstrap_digest,
+        "model": model,
+        "reasoning_effort": reasoning_effort,
     }
     return CodexLaunchConfiguration(
         integration="codex",
@@ -475,6 +533,8 @@ def render_codex_configuration(
         runtime_bootstrap=bootstrap,
         runtime_bootstrap_digest=bootstrap_digest,
         digest=_digest(payload),
+        model=model,
+        reasoning_effort=reasoning_effort,
     )
 
 
@@ -519,6 +579,8 @@ def finalize_codex_configuration(
         profile_configuration,
         configuration.network_enabled,
         executable=runtime_bootstrap[0].path,
+        model=configuration.model,
+        reasoning_effort=configuration.reasoning_effort,
     )
     if len(runtime_bootstrap) == 2:
         # Pin shell lookup as well as the read-only mount. Login startup files and
@@ -544,6 +606,8 @@ def finalize_codex_configuration(
         "outer_sandbox": configuration.outer_sandbox,
         "runtime_bootstrap": [asdict(item) for item in runtime_bootstrap],
         "runtime_bootstrap_digest": bootstrap_digest,
+        "model": configuration.model,
+        "reasoning_effort": configuration.reasoning_effort,
     }
     return replace(
         configuration,
@@ -602,6 +666,8 @@ def render_claude_configuration(
     *,
     native_enforcement: bool,
     outer_sandbox: str | None = None,
+    model: str | None = None,
+    reasoning_effort: str | None = None,
 ) -> ClaudeLaunchConfiguration:
     if not native_enforcement and not outer_sandbox:
         raise PermissionPolicyError(
@@ -655,6 +721,8 @@ def render_claude_configuration(
         "dontAsk",
         "--settings",
         settings_json,
+        # Claude Code exposes no per-launch reasoning-effort flag; only the model is selected.
+        *(("--model", model) if model is not None else ()),
     )
     bootstrap: tuple[RuntimeBootstrapFile, ...] = ()
     bootstrap_digest = runtime_bootstrap_digest(bootstrap)
@@ -667,6 +735,8 @@ def render_claude_configuration(
         "outer_sandbox": outer_sandbox,
         "runtime_bootstrap": [],
         "runtime_bootstrap_digest": bootstrap_digest,
+        "model": model,
+        "reasoning_effort": reasoning_effort,
     }
     return ClaudeLaunchConfiguration(
         integration="claude",
@@ -685,6 +755,8 @@ def render_claude_configuration(
         runtime_bootstrap=bootstrap,
         runtime_bootstrap_digest=bootstrap_digest,
         digest=_digest(payload),
+        model=model,
+        reasoning_effort=reasoning_effort,
     )
 
 

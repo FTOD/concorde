@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 5.0.0 defines Module Specs and their organization. These requirements apply
+Concorde Spec Protocol 5.1.0 defines Module Specs and their organization. These requirements apply
 to project specifications, including the specifications of software that implements this Protocol.
 They do not require the Protocol text to describe itself as a Module.
 
@@ -80,6 +80,15 @@ a scenario without a declared test remains a promise the Module makes.
 The files a Module lists, together with their pending status, form that Module's **implementation
 context**; Spec management defines how it is resolved and keeps it separate from the Module's Spec
 context.
+
+An entity MAY additionally bind **reference documentation**: project-relative files or directory
+prefixes holding the documentation of an external capability the entity uses, such as a library,
+a service or a tool, vendored into the project at a known version. Reference documentation is
+neither a Spec document nor an implementation file: it describes something the Module relies on
+and cannot change, it supplies no promise the Spec omits, and it is never pending. The union of
+what a Module's entities bind this way is the Module's **reference documentation**; a tool that
+gives an agent knowledge of external capabilities takes that knowledge from these declarations
+rather than from an undeclared network or dependency installation.
 
 ### P3. A Module resolves a complete contract context
 

@@ -32,6 +32,10 @@ incompatible intent or worktree identity is rejected before a worker starts.
 
 Spec Authoring produces owned replacements; Review produces independent current coverage for the
 complete contract and affected consumers. No author transcript or artifacts become reviewer input.
+The affected-consumer compatibility reviews that admit a candidate before it is applied are
+recorded under the consumer's review intent; because the applied bytes equal the reviewed bytes,
+the review stage rechecks and reuses that evidence instead of reviewing the same consumer context
+twice, and reviews only the owner and any consumer whose evidence is missing or stale.
 An already accepted authoring result is reused only for the same intent; unrelated standalone
 review never stands for authoring. Changed relevant inputs invalidate review. Spec review requirements
 are sticky: run_reviews=false records skipped only when no requirement already exists. Skipped,

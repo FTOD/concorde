@@ -268,8 +268,8 @@ def audit(base=None):
                     require(value in identities and identities[value][1] == target["id"], f"lost/transferred stable ID: {value}")
                     stable += 1
     manifest = decode((ROOT / "protocol/manifest.json").read_text())
-    require(manifest["version"] == "5.0.0" and manifest["source_profile"] == 12, "manifest version")
-    require(config["protocol"] == {"version": "5.0.0", "digest": digest((ROOT / "protocol/manifest.json").read_bytes())}, "manifest binding")
+    require(manifest["version"] == "5.1.0" and manifest["source_profile"] == 12, "manifest version")
+    require(config["protocol"] == {"version": "5.1.0", "digest": digest((ROOT / "protocol/manifest.json").read_bytes())}, "manifest binding")
     for asset in manifest["assets"]:
         require(asset["digest"] == digest(safe(asset["path"]).read_bytes()), f"asset digest: {asset['path']}")
     return {"status": "passed", "modules": len(targets), "documents": len(docs),

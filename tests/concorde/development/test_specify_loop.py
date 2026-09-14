@@ -51,6 +51,39 @@ class SpecifyLoopTests(unittest.TestCase):
         self.assertEqual('succeeded', fresh['status'], fresh)
         self.assertCountEqual(['service.transfer', 'scope.bank'], self.spec_review_targets())
 
+    @verifies('scenario.development.specify-loop')
+    def test_candidate_consumer_reviews_are_reused_by_the_review_stage(self):
+        self.add_spec_consumer()
+        task = {**self.task, 'specify': True, 'run_reviews': True}
+        original = (self.root / 'specs/transfer/module.md').read_text()
+
+        def author(stage, snapshot, data, cwd):
+            if stage == 'specify':
+                data['documents'] = [{'path': 'specs/transfer/module.md',
+                                      'content': original + '\nTransfer rounds every amount to cents.\n'}]
+        first = self.call_capability('concorde-specify-loop', task, callback=author)
+        self.assertEqual('succeeded', first['status'], first)
+        # The consumer was reviewed once against the candidate bytes before they were applied; the
+        # review stage then reviewed only the owner and reused that consumer evidence.
+        self.assertEqual(['scope.bank', 'service.transfer'], self.spec_review_targets())
+        state = read_change(self.root)
+        record = state['shared_spec_reviews']['service.transfer']['scope.bank']
+        self.assertEqual("Review this Module's reliance on the changed canonical Spec. " + self.task['task'],
+                         record['task'])
+        artifacts = {ref['id']: ref for ref in first['output']['data']['artifacts']}
+        self.assertEqual(record['artifact'], artifacts['review.scope.bank.spec'])
+        self.assertEqual({'service.transfer', 'scope.bank'},
+                         {value['data']['target_id'] for value in
+                          [json.loads((self.root / ref['path']).read_text()) for ref in artifacts.values()
+                           if ref['id'].startswith('review.')]})
+        second = self.call_capability('concorde-specify-loop', task, callback=author)
+        self.assertEqual('succeeded', second['status'], second)
+        self.assertEqual([], self.spec_review_targets())
+        # An explicit standalone review never reuses flow evidence.
+        fresh = self.call_capability('concorde-review', {**self.task, 'review_mode': 'spec'})
+        self.assertEqual('succeeded', fresh['status'], fresh)
+        self.assertCountEqual(['service.transfer', 'scope.bank'], self.spec_review_targets())
+
     @verifies('scenario.development.specify-loop', 'scenario.development.dev-loop-ready')
     def test_current_spec_scope_continues_into_development_before_code_review_exists(self):
         self.add_spec_consumer()

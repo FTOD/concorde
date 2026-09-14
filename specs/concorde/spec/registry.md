@@ -82,6 +82,11 @@ SpecRepository.entities(target: SpecTarget) -> tuple[SpecEntity, ...]
 SpecRepository.scenarios(target: SpecTarget) -> tuple[Scenario, ...]
 SpecRepository.entity_files(target: SpecTarget) -> dict[str, SpecEntity]
 SpecRepository.entity_for_path(target: SpecTarget, path: str) -> SpecEntity | None
+SpecRepository.entity_documentation(target: SpecTarget) -> dict[str, SpecEntity]
+SpecRepository.documentation_entries(target: SpecTarget) -> tuple[str, ...]
+SpecRepository.documentation_paths(target: SpecTarget) -> tuple[str, ...]
+SpecRepository.documentation_files(target: SpecTarget) -> tuple[str, ...]
+SpecRepository.missing_documentation(target: SpecTarget) -> tuple[str, ...]
 SpecRepository.implementation_entries(target: SpecTarget) -> tuple[str, ...]
 SpecRepository.implementation_paths(target: SpecTarget) -> tuple[str, ...]
 SpecRepository.implementation_files(target: SpecTarget) -> tuple[str, ...]
@@ -107,6 +112,12 @@ entries whose file or directory does not exist yet. `entity_files` is keyed by d
 `listing_users` and `affected_modules` resolve a path or entry through the reverse index, in which a
 directory prefix covers every path below it, and `covering_modules` answers the same question for one
 Module's whole listing, so a peer that binds a file inside a listed directory is found as well.
+The documentation queries mirror the listing queries for an entity's `documentation` entries, the
+Protocol's reference documentation: `entity_documentation` is keyed by declared entry,
+`documentation_entries` and `documentation_paths` return the declarations and their base paths,
+`documentation_files` expands them with the same exclusion rule, and `missing_documentation` names
+entries that do not exist; admission rejects a documentation entry that is or contains a Spec
+document, that overlaps the Module's own files, or that two entities of one Module both declare.
 
 No call above writes project files. Host candidate overlays stay in memory. A repository is a snapshot-oriented reader with document caching; reconstruct it after source changes. Selection returns the full target descriptor even with a scenario focus. Ownership and references are explicit; context expands references once. Paths, links and entity file listings do not add files.
 
@@ -181,6 +192,6 @@ reverse index. Ownership or reference edits compare both old and candidate users
 resulting file set is unchanged. A Module reference tracks additions/removals to the provider's
 owned documents; changes only to the provider's references do not expand the consumer.
 
-The runtime implements these resolution and binding interfaces under Protocol 5.0.0/Profile 12/
+The runtime implements these resolution and binding interfaces under Protocol 5.1.0/Profile 12/
 schema 4. Older profiles and membership-based declarations fail admission. Owned-definition and
 implementation queries remain separate from the explicit context resolver.

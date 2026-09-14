@@ -20,7 +20,7 @@ from .schema import ContractError, admit, validate
 
 
 PROFILE_VERSION = 12
-PROTOCOL_VERSION = "5.0.0"
+PROTOCOL_VERSION = "5.1.0"
 REGISTRY_SCHEMA = 4
 KINDS = frozenset({"module"})
 SPEC_KINDS = frozenset({"module"})
@@ -254,6 +254,9 @@ class SpecEntity:
     target_id: str | None
     owner: str
     document: str
+    # Reference documentation of an external capability the entity uses (Protocol 5.1): listing
+    # entries of vendored, version-pinned material, never implementation files of this Module.
+    documentation: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -717,6 +720,7 @@ class SpecRepository:
             entities.extend(document_entities)
         titles: dict[str, str] = {}
         files: dict[str, str] = {}
+        documentation: dict[str, str] = {}
         related = {child.id for child in self.children(target)} | set(target.uses)
         represented: dict[str, str] = {}
         for entity in entities:
@@ -727,6 +731,15 @@ class SpecRepository:
                 if path in files:
                     raise SpecError(f"file is listed by two entities of {target.id}: {path} ({files[path]}, {entity.id})")
                 files[path] = entity.id
+            for entry in entity.documentation:
+                if entry in documentation:
+                    raise SpecError(f"documentation is listed by two entities of {target.id}: {entry} ({documentation[entry]}, {entity.id})")
+                documentation[entry] = entity.id
+                if entry in self.document_targets or (is_directory_entry(entry) and any(
+                        covers(entry, document) for document in self.document_targets)):
+                    raise SpecError(f"documentation entry cannot be or contain a project Spec document: {entry}")
+                if any(covers(listed, entry_base(entry)) or covers(entry, listed) for listed in target.files):
+                    raise SpecError(f"documentation entry overlaps the implementation files of {target.id}: {entry}")
             if entity.target_id is not None:
                 if entity.target_id not in related:
                     raise SpecError(f"entity {entity.id} names {entity.target_id}, which is not a child or used Module of {target.id}")
@@ -766,6 +779,27 @@ class SpecRepository:
     def entity_files(self, target: SpecTarget) -> dict[str, SpecEntity]:
         """Declared listing entries of the Module's entities, keyed by entry (exact file or directory)."""
         return {entry: entity for entity in self.entities(target) for entry in entity.files}
+
+    def entity_documentation(self, target: SpecTarget) -> dict[str, SpecEntity]:
+        """Declared reference-documentation entries of the Module's entities, keyed by entry."""
+        return {entry: entity for entity in self.entities(target) for entry in entity.documentation}
+
+    def documentation_entries(self, target: SpecTarget) -> tuple[str, ...]:
+        """The declared documentation entries in declaration order, exact files and directory prefixes."""
+        return tuple(self.entity_documentation(target))
+
+    def documentation_paths(self, target: SpecTarget) -> tuple[str, ...]:
+        """Documentation authority roots without trailing slashes, for read-only permissions."""
+        return tuple(dict.fromkeys(entry_base(entry) for entry in self.documentation_entries(target)))
+
+    def documentation_files(self, target: SpecTarget) -> tuple[str, ...]:
+        """Existing regular files the Module's documentation entries bind, directory prefixes expanded."""
+        return tuple(sorted({path for entry in self.documentation_entries(target)
+                             for path in expand_entry(self.root, entry)}))
+
+    def missing_documentation(self, target: SpecTarget) -> tuple[str, ...]:
+        """Documentation entries whose file or directory does not exist; documentation is never pending."""
+        return tuple(entry for entry in self.documentation_entries(target) if not entry_exists(self.root, entry))
 
     def entity_for_path(self, target: SpecTarget, path: str) -> SpecEntity | None:
         """The entity whose most specific entry covers a concrete file path, if any."""
@@ -948,14 +982,15 @@ def _parse_definitions(document: SpecDocument, owner: str) -> tuple[list[Scenari
 def _parse_entities(document: SpecDocument, owner: str) -> list[SpecEntity]:
     entities: list[SpecEntity] = []
     required = {"id", "title", "kind", "responsibility"}
-    optional = {"files", "pending", "target_id"}
+    optional = {"files", "pending", "target_id", "documentation"}
     for match in ENTITIES_BLOCK.finditer(document.body):
         values = decode(match.group(1))
         if not isinstance(values, list) or not values:
             raise SpecError(f"concorde-entities must be a nonempty JSON array: {document.path}")
         for value in values:
             if not isinstance(value, dict) or not required <= set(value) or set(value) - required - optional:
-                raise SpecError(f"entity requires id/title/kind/responsibility and only files/pending/target_id: {document.path}")
+                raise SpecError("entity requires id/title/kind/responsibility and only files/pending/target_id/"
+                                f"documentation: {document.path}")
             entity_id = identifier(value["id"])
             for key in ("title", "kind", "responsibility"):
                 if not isinstance(value[key], str) or not value[key].strip():
@@ -971,7 +1006,13 @@ def _parse_entities(document: SpecDocument, owner: str) -> list[SpecEntity]:
                 target_id = identifier(value["target_id"])
                 if files:
                     raise SpecError(f"entity {entity_id} stands for {target_id} and cannot list files: {document.path}")
+            documentation = (strings(value["documentation"], f"entity {entity_id} documentation", nonempty=True)
+                             if "documentation" in value else ())
+            for entry in documentation:
+                check_entry(entry)
+                if any(covers(entry, other) or covers(other, entry) or entry == other for other in files):
+                    raise SpecError(f"entity {entity_id} documentation entry {entry} overlaps its implementation files: {document.path}")
             entities.append(SpecEntity(entity_id, value["title"].strip(), value["kind"].strip(),
                                        value["responsibility"].strip(), files, pending, target_id,
-                                       owner, document.path))
+                                       owner, document.path, documentation))
     return entities

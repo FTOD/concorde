@@ -197,6 +197,10 @@ any of the optional fields `files`, `pending` and `target_id`:
 - `pending`: an array of distinct entries, each also present in `files`, declared but not yet
   created.
 - `target_id`: the ID of a child or used Module the entity stands for; not combined with `files`.
+- `documentation`: a nonempty array of distinct project-relative entries, exact files or directory
+  prefixes with a trailing slash, holding the reference documentation of an external capability the
+  entity uses. Each entry MUST exist, MUST NOT be or contain a registered Spec document and MUST NOT
+  overlap the Module's `files` entries; documentation is never pending.
 
 Spec management gives a complete example. A listed entry MUST NOT be a registered Spec document, a
 generated output or a project-control record, and a directory prefix MUST NOT contain a registered

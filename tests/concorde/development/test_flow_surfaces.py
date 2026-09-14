@@ -204,6 +204,7 @@ class FlowSurfaceTests(TestCase):
                 return SimpleNamespace(target=repository.select(task['target_id']))
             with patch.object(review, 'read_change', return_value=None), \
                  patch.object(review, 'spec_consumers', return_value=set()), \
+                 patch.object(review, 'code_review_peers', return_value=tuple(peers)), \
                  patch.object(review, 'review', side_effect=reviewed), \
                  patch('concorde.development.capability_host.Invocation', side_effect=child), \
                  patch.object(batch_flow, 'build_batch_flow', side_effect=self.instrument(

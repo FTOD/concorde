@@ -23,8 +23,13 @@ named `node_modules`, `__pycache__`, `.venv`, `build` or `dist`, directories and
 start with a dot, and `.pyc` and `.log` files. Every phase may see the declared entries and the
 resulting file names, because the entity declarations are part of the Spec context; only
 code-writing and code-review phases receive file contents, in their declared subsets. Its
-**capability context** is the set of admitted Capability and Tool contracts the invocation may use.
-Its **task context** is the task, constraints, admitted stage artifacts and lifecycle metadata. A
+**capability context** is the set of admitted Capability and Tool contracts the invocation may use
+together with the Module's Protocol-defined reference documentation: the vendored documentation of
+the external capabilities its entities declare. Every phase sees those declared entries; planning,
+task authoring, code-writing and code-review phases receive the documentation contents read-only,
+copied byte for byte into a capsule when the phase has no project workspace. No phase receives an
+undeclared network or an installed dependency's sources in their place. Its **task context** is the
+task, constraints, admitted stage artifacts and lifecycle metadata. A
 kind may be empty for a phase, but the frozen closure is never empty. Planner and task-author inputs
 contain no file contents. A global coordinator may reason across explicitly selected complete Module
 Spec contexts for questions, routing and topology design. The host deterministically resolves their
@@ -36,7 +41,8 @@ input, not permission to inspect implementation. Coordinator discovery never loa
 files.
 
 Spec authors, assessors, planners and task authors use only the selected Module's complete
-project-Spec collection. They MUST NOT read source code to supply missing Module meaning. Only the
+project-Spec collection and, for planners and task authors, its declared reference documentation.
+They MUST NOT read source code to supply missing Module meaning. Only the
 code-writing phase receives the complete implementation context; code review receives its separately
 declared read-only subset. Agent instructions, the Protocol rule bundle and Skills are not context:
 instructions belong to the Agent definition, and a Skill is the installed projection of a public

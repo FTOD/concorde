@@ -74,6 +74,13 @@ promises. No lists, tables or code.]
     "pending": ["[a declared entry that does not exist yet, or omit this field]"]
   },
   {
+    "id": "entity.[module].[library]",
+    "title": "[External capability title]",
+    "kind": "external library",
+    "responsibility": "[What this Module relies on it for.]",
+    "documentation": ["[project-relative/vendored/docs/directory/]"]
+  },
+  {
     "id": "entity.[module].[collaborator]",
     "title": "[Collaborator title]",
     "kind": "used module",

@@ -115,7 +115,7 @@ separate registered type identities. Fresh snapshots accompany every handoff. De
 carry identities and digests, never non-visible Module collections, code or logs into main or
 unrelated cognition.
 
-Reviewers use `concorde-review-stage-context@2` containing a full `concorde-context-snapshot@2`
+Reviewers use `concorde-review-stage-context@2` containing a full `concorde-context-snapshot@3`
 and host-produced `concorde-review-input@1`; they return `concorde-review-stage-result@1`. The host
 publishes `concorde-review-result@1` with target/focus/revision identity and
 `semantic_completeness=not_proven`. Spec and code modes use different fresh roles, with no writes in

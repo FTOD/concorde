@@ -186,6 +186,15 @@ fixture directory; the shared file-transaction entry stays exact.
     "kind": "used module",
     "target_id": "module.dev-loop",
     "responsibility": "Development Flow composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract."
+  },
+  {
+    "id": "entity.reflections.langgraph",
+    "title": "LangGraph",
+    "kind": "external library",
+    "responsibility": "Executes the triage Flow as a LangGraph StateGraph. The vendored reference documentation is the admitted source of LangGraph API facts for the phases that plan, task, write or review this Module's code.",
+    "documentation": [
+      "docs/vendor/langgraph/"
+    ]
   }
 ]
 ```
@@ -226,6 +235,8 @@ flowchart TB
     triageEngine -->|stages accepted changes through| fileTransactions
     module_dev_loop["Development Flow"]
     task -->|uses| module_dev_loop
+    langgraph["LangGraph"]
+    triageEngine -->|runs the triage Flow with| langgraph
 ```
 
 ## Dependencies and composition

@@ -157,7 +157,7 @@ failures are failed, with no successful output.
 ## Protocol 5 initialization
 
 New registries use schema 4 with explicit empty `references` on the initial Module; the stub's
-document metadata names its single `owner`. Initialization pins Protocol 5.0.0/Profile 12 and
+document metadata names its single `owner`. Initialization pins Protocol 5.1.0/Profile 12 and
 the exact current manifest digest. A draft identifies missing behavior without inventing external
 definitions. Existing projects require an explicit atomic ownership/reference/metadata migration;
 an installer must not silently relabel old shared memberships or interpret them as references.

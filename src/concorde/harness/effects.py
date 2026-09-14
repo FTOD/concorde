@@ -18,6 +18,9 @@ PATH_ROLES = frozenset(
         "discovery-context",
         "spec-context",
         "implementation",
+        # Reference documentation of external capabilities declared by the Module's entities
+        # (capability context); read-only, never written.
+        "documentation",
         "selected-feature",
         "module-architecture",
         "module-ancestry",

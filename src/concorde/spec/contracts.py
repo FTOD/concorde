@@ -28,6 +28,7 @@ TARGET_DESCRIPTOR = obj({"id": STRING, "kind": {"const": "module"},
 IMPLEMENTATION_FILE = obj({"path": PATH, "entity_id": NULLABLE_ID, "pending": {"type": "boolean"}})
 IMPLEMENTATION_ENTRY = obj({"path": LISTING_ENTRY, "entity_id": NULLABLE_ID, "pending": {"type": "boolean"},
                             "directory": {"type": "boolean"}})
+DOCUMENTATION_ENTRY = obj({"path": LISTING_ENTRY, "entity_id": STRING, "directory": {"type": "boolean"}})
 REGISTRY = obj({"schema_version": {"const": 4}, "project_id": STRING,
     "entry_target": STRING, "targets": {**array(TARGET_DESCRIPTOR), "minItems": 1},
     "checks": array(CHECK)})
@@ -186,7 +187,7 @@ def schemas() -> dict:
         "reason": {"const": "implementation_boundary"}})
     result["concorde-reflection-selection"] = obj({"head": STRING, "records": array(obj({"id":STRING,"path":PATH,"digest":DIGEST,"content":STRING}))})
     stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-task-identity-constraints","concorde-implementation-task","concorde-task-scope-feedback","concorde-reflection-selection","concorde-review-result")]}
-    result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 2},
+    result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 3},
         "target_id": STRING, "kind": {"const": "module"}, "focus_id": NULLABLE_ID,
         "phase": STRING, "task": STRING, "constraints": array(STRING),
         "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
@@ -196,6 +197,11 @@ def schemas() -> dict:
         "implementation_entries": array(IMPLEMENTATION_ENTRY),
         "implementation_files": array(IMPLEMENTATION_FILE),
         "implementation_artifacts": array(ARTIFACT),
+        # Capability context (Protocol 5.1): the reference documentation the Module's entities
+        # declare for external capabilities. Names for every phase; contents, as read-only
+        # artifacts, only for planning, task authoring, implementation and code review.
+        "documentation_entries": array(DOCUMENTATION_ENTRY),
+        "documentation_artifacts": array(ARTIFACT),
         "workspace": WORKSPACE_CONTEXT})
     result["concorde-agent-stage-context"] = obj({"snapshot": typed_schema("concorde-context-snapshot"),
         "change_id": NULLABLE_ID, "expected_artifacts": array(PATH)})

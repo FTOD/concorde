@@ -328,6 +328,15 @@ Two programs realize this Module's own code: the host adapter and the capability
     "kind": "used module",
     "target_id": "module.specify-loop",
     "responsibility": "Specification Flow composes routing, Spec Authoring and Review to prepare or review one Module contract independently of implementation. It owns Spec-stage ordering, accepted-authoring reuse and Spec-review completion, and returns before planning or readiness."
+  },
+  {
+    "id": "entity.development.langgraph",
+    "title": "LangGraph",
+    "kind": "external library",
+    "responsibility": "Executes every capability's orchestration as a LangGraph StateGraph: the dispatch, target, discovery, plan, loop, specify, coordination and topology Flow factories build on its graph, state and conditional-edge API. The vendored reference documentation is the admitted source of LangGraph API facts for the phases that plan, task, write or review this Module's code.",
+    "documentation": [
+      "docs/vendor/langgraph/"
+    ]
   }
 ]
 ```
@@ -391,6 +400,8 @@ flowchart TB
     developmentHost -->|uses| module_dev_loop
     module_specify_loop["Specification Flow"]
     developmentHost -->|uses| module_specify_loop
+    langgraph["LangGraph"]
+    developmentHost -->|executes orchestration as Flows built with| langgraph
 ```
 
 ## Dependencies and composition

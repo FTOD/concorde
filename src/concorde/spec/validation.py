@@ -309,6 +309,13 @@ def definition_findings(repository: SpecRepository, target_id: str | None = None
                 findings.append(Finding("CONCORDE-ENTITY-005", "warning", entity.document,
                     f"entity {entity.id} still marks {entry} pending although the {kind} exists",
                     "Delivery confirms created files and removes the marker.", subject_id=entity.id))
+        for entry, entity in sorted(repository.entity_documentation(target).items()):
+            if not entry_exists(repository.root, entry):
+                kind = "directory" if is_directory_entry(entry) else "file"
+                findings.append(Finding("CONCORDE-ENTITY-007", "error", entity.document,
+                    f"entity {entity.id} declares documentation {entry}, a {kind} that does not exist",
+                    f"Vendor the {kind} into the project or remove the documentation entry; documentation is never pending.",
+                    subject_id=entity.id))
         findings.extend(architecture_findings(repository, target, definitions.entities))
     return tuple(findings)
 

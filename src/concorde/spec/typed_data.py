@@ -56,7 +56,12 @@ CAPABILITY_CONTRACTS: dict[str, tuple[str, str]] = {}
 
 DATA_SCHEMAS = {
     "concorde-capability-configuration": obj({"integration": {"enum": ["codex", "claude"]},
-                                            "enforcement": {"enum": ["native"]}}),
+                                            "enforcement": {"enum": ["native"]},
+                                            # Project-configured model selection for every Agent
+                                            # launch; absent means the client's own default.
+                                            "model": STRING,
+                                            "reasoning_effort": {"enum": ["minimal", "low", "medium", "high"]}},
+                                           ("model", "reasoning_effort")),
     "concorde-reflection-investigation-result": obj({
         "findings": array(obj({
             "reflection_id": REFLECTION_ID, "verified_commit": COMMIT,

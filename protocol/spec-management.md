@@ -187,6 +187,13 @@ documents. Each entry identifies one entity:
     "kind": "used module",
     "target_id": "module.warehouse",
     "responsibility": "Reports physical stock counts that the ledger reconciles against."
+  },
+  {
+    "id": "entity.inventory.message-broker",
+    "title": "Message broker client",
+    "kind": "external library",
+    "responsibility": "Delivers reservation events; the ledger uses its publish and acknowledge calls.",
+    "documentation": ["docs/vendor/broker-client-2.4/"]
   }
 ]
 ```
@@ -196,12 +203,16 @@ within the Module. `kind` is free text. `responsibility` states what the entity 
 `files` lists the entries that realize the entity, each an exact file or a directory prefix with a
 trailing slash; `pending` names the subset of those entries that are declared but not yet created.
 `target_id` identifies a child or used Module the entity stands for; such an entity lists no files,
-because those files belong to that Module. An entity without `files` and without `target_id` is a
-concept, record, interface or actor.
+because those files belong to that Module. `documentation` lists the vendored reference
+documentation of an external capability the entity uses, as exact files or directory prefixes; the
+entries must exist, are never Spec documents and never overlap the Module's `files`. An entity
+without `files`, `documentation` and `target_id` is a concept, record, interface or actor.
 
 Within one Module each entry appears under one entity, and a file covered by several entries of the
 Module belongs to the most specific one. The union of a Module's entity entries is its
 implementation file listing and MUST equal the inventory's `files` for that Module, entry for entry.
+The union of its entities' `documentation` entries is the Module's reference documentation; it is
+derived from the entity declarations alone and has no inventory field.
 Every child and every used Module MUST be represented by an entity with the corresponding
 `target_id`, and every `target_id` MUST name a child or used Module. Listing a file grants nothing
 by itself; a development tool decides which phases may read or change listed files.

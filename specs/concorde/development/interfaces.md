@@ -144,7 +144,7 @@ proposal and the stage-input artifacts that pass between stages inside one capab
 | --- | --- | --- |
 | `concorde-capability-invocation@3` | Every request, on stdin | `{type_id, schema_version: 3, capability_id, mode: execute\|describe-policy, configuration, input}`. `capability_id` must name a Skill; a non-public or unknown name is refused with `unknown_capability`. `configuration` is a `concorde-capability-configuration@1` TypedValue or null (falls back to the initialized project settings); `input` is the named capability's own request TypedValue. Any other `schema_version` is refused with `unsupported_version`. |
 | `concorde-capability-result@3` | Every response, on stdout | `{type_id, schema_version: 3, capability_id, invocation_id, mode, status: succeeded\|blocked\|failed\|described, workspace, output, errors: [{code,field,message}]}`. `output` is the named capability's own response TypedValue or null; `workspace` is null or host-supplied worktree metadata. Exit code 0 means `succeeded`/`described`; 3 means `blocked`/`failed`. |
-| `concorde-capability-configuration@1` | The invocation's `configuration` field, and `concorde-configure-request@1`/`-response@1` | `{integration: codex\|claude, enforcement: native}`; `outer` is not admitted while the distributed launchers supply no sandbox attestation. Stored at initialization under `.concorde/config.json`'s `capability_configuration` key; an invocation or child stage whose configuration differs from that stored snapshot stops with `configuration_mismatch`. |
+| `concorde-capability-configuration@1` | The invocation's `configuration` field, and `concorde-configure-request@1`/`-response@1` | `{integration: codex\|claude, enforcement: native, model?, reasoning_effort?: minimal\|low\|medium\|high}`; `model` and `reasoning_effort` select the model every Agent launch runs on (Claude receives only the model) and an absent field keeps the client default; `outer` is not admitted while the distributed launchers supply no sandbox attestation. Stored at initialization under `.concorde/config.json`'s `capability_configuration` key; an invocation or child stage whose configuration differs from that stored snapshot stops with `configuration_mismatch`. |
 
 ### Capability requests and responses
 
@@ -175,13 +175,13 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-context-snapshot@2` | Every bound worker invocation's frozen input | [Canonical snapshot](../harness/context.md#context-snapshot-resolution); preserve its resolution provenance and reject stale inputs. |
+| `concorde-context-snapshot@3` | Every bound worker invocation's frozen input | [Canonical snapshot](../harness/context.md#context-snapshot-resolution); preserve its resolution provenance and reject stale inputs. |
 | `concorde-agent-task@1` | Host or admitted parent to Agent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
 | `concorde-agent-answer@1` | Generic Agent to parent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
 | `concorde-agent-interruption@1` | Agent to parent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
 | `concorde-agent-loop-context@1` | Host to fresh native decision | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
 | `concorde-agent-loop-step@1` | Native decision to host | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
-| `concorde-agent-stage-context@2` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@2, change_id, expected_artifacts}`. |
+| `concorde-agent-stage-context@2` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@3, change_id, expected_artifacts}`. |
 | `concorde-agent-stage-result@1` | Worker to host, the completion | `{context_id, outcome, answer, gaps, documents, plan, tasks, reflection_findings?}`; `documents`/`plan`/`tasks`/`reflection_findings` are populated only by the phase that produces them. A mismatched `context_id` is rejected as `incompatible_handoff`. |
 
 ### Review types
@@ -189,7 +189,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | Type | Carried by | Promise |
 | --- | --- | --- |
 | `concorde-review-input@1` | Host-produced, inside the review stage context | `{review_mode, input_digest, revision, changes: [{path,patch}]}`; binds the exact Spec/code revision under review. |
-| `concorde-review-stage-context@2` | Host to reviewer, the launch | `{snapshot: concorde-context-snapshot@2, review: concorde-review-input@1}`. |
+| `concorde-review-stage-context@2` | Host to reviewer, the launch | `{snapshot: concorde-context-snapshot@3, review: concorde-review-input@1}`. |
 | `concorde-review-stage-result@1` | Reviewer to host, the completion | `{context_id, input_digest, review_mode, status: no_findings\|findings\|incomplete, representative_tasks, findings, gaps, answer}`. |
 | `concorde-review-result@1` | Published in `concorde-review-response@1.reviews` | The stage result plus `target_id`, `focus_id`, `revision`, a nullable `context_id`, `status` extended with skipped\|not_run, and `semantic_completeness: "not_proven"`. |
 

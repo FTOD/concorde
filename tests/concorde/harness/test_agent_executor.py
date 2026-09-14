@@ -630,7 +630,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
 
         snapshot_data = {
             "context_id": "sha256:" + "3" * 64,
-            "schema_version": 2,
+            "schema_version": 3,
             "target_id": "service.fixture",
             "kind": "module",
             "focus_id": None,
@@ -654,6 +654,8 @@ class AgentBindingPreflightTests(unittest.TestCase):
             "implementation_files": [{"path": "app/fixture.py", "entity_id": "entity.fixture.code",
                                       "pending": False}],
             "implementation_artifacts": [],
+            "documentation_entries": [],
+            "documentation_artifacts": [],
             "workspace": {
                 "kind": "unversioned", "current_worktree": "/fixture/project", "current_branch": None,
                 "primary_worktree": None, "primary_branch": None, "change_id": None, "phase": None,
@@ -663,7 +665,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
         runtime_value = {
             "type_id": "concorde-agent-stage-context", "schema_version": 2,
             "data": {
-                "snapshot": {"type_id": "concorde-context-snapshot", "schema_version": 2, "data": snapshot_data},
+                "snapshot": {"type_id": "concorde-context-snapshot", "schema_version": 3, "data": snapshot_data},
                 "change_id": None, "expected_artifacts": [],
             },
         }

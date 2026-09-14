@@ -44,7 +44,11 @@ them as replacement instructions for this invocation.
 
 Before the first source search, select exact paths from the supplied snapshot's
 `implementation_artifacts` (existing admitted contents); `implementation_files` also names pending
-files and `implementation_entries` describes bindings, not unrestricted search roots. Never run
+files and `implementation_entries` describes bindings, not unrestricted search roots. The
+snapshot's `documentation_artifacts` are the declared reference documentation of the external
+capabilities the Module's entities use (for example a vendored library API reference), granted
+read-only at those exact paths: read them for third-party API facts instead of relying on memory or
+on an installed dependency's sources, which stay outside the grant. Never run
 an unfiltered recursive search over a granted directory. Directory expansion excludes
 `node_modules`, `__pycache__`, `.venv`, `build`, `dist`, dot-prefixed names, `.pyc` and `.log` files;
 do not rely on Git ignore rules to enforce this boundary. A filesystem grant that lets a test

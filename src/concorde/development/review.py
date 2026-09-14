@@ -25,6 +25,7 @@ from ..harness.permissions import (EnforcementReceipt, CapabilityExecutionResult
 from ..spec.contracts import REVIEW_STAGES
 from ..distribution.build import load_role_prompt
 from ..harness.context import resolve_context, recheck_context
+from ..harness.usage import record_usage
 from ..spec.repository import SpecError, SpecRepository, bound_by, digest, read_file
 
 
@@ -191,6 +192,7 @@ def _validate(run, snapshot, info, data):
 
 def review(run, mode: str) -> dict:
     """Run exactly one reviewer; no prior review, transcript or code crosses modes."""
+    from .capability_host import model_selection
     info, prompt = inputs(run, mode)
     phase, role = REVIEW_STAGES[mode]
     snapshot = resolve_context(run.repository, run.target.id, phase=phase, task=run.task["task"],
@@ -221,6 +223,14 @@ def review(run, mode: str) -> dict:
             roles = ({"spec-context": (relative,),
                       "implementation": tuple(run.repository.implementation_files(run.target))}
                      if project_workspace else {"spec-context": (relative,)})
+            if "documentation" in prompt.effects.reads:
+                documentation = tuple(item["path"] for item in snapshot.value["documentation_artifacts"])
+                if not project_workspace and run.host.mode != "describe-policy":
+                    for path in documentation:
+                        copy = checked_path(project, path)
+                        copy.parent.mkdir(parents=True, exist_ok=True)
+                        copy.write_bytes(read_file(run.repository.root, path))
+                roles["documentation"] = documentation
             binding = PolicyBinding("concorde-review", phase, 0, role, role, write_roles=())
             try:
                 policy = compile_policy(prompt.effects, binding, roles,
@@ -232,7 +242,7 @@ def review(run, mode: str) -> dict:
             integration = run.configuration["data"]["integration"]
             renderer = render_codex_configuration if integration == "codex" else render_claude_configuration
             native = renderer(policy, native_enforcement=run.configuration["data"]["enforcement"] == "native",
-                              outer_sandbox=run.host.outer_sandbox)
+                              outer_sandbox=run.host.outer_sandbox, **model_selection(run.configuration))
             invocation_id = str(uuid.uuid4())
             receipt = {"schema_version": 15, "target_id": run.target.id, "phase": phase,
                 "context_id": snapshot.id, "source_digest": snapshot.id, "input_digest": info["input_digest"],
@@ -255,17 +265,27 @@ def review(run, mode: str) -> dict:
             if run.host.mode == "describe-policy":
                 return run.response("described", reviews=[_empty(run, info, "not_run", "Policy described; review not run.")])
             from ..harness.agent_executor import AgentProcessExecutor
-            result = (run.host.executor or AgentProcessExecutor())(launch)
-            if not isinstance(result, CapabilityExecutionResult):
-                raise SpecError("review executor omitted native completion evidence", "invalid_completion")
-            if (result.receipt.requested_launch_digest != launch.digest
-                    or result.receipt.policy_digest != policy.digest or result.receipt.status != "success"
-                    or result.completion.invocation_id != invocation_id
-                    or result.completion.workspace_digest != snapshot.id
-                    or result.receipt.agent_binding_digest != prompt.binding.digest):
-                raise SpecError("review evidence is not bound to this launch", "invalid_completion")
-            validate_mode_output(agent_definition(prompt.binding.agent), prompt.binding.mode, result.completion.domain_output)
-            data = validate_typed(result.completion.domain_output, "concorde-review-stage-result")["data"]
+            from ..harness.agent_node import AgentNode
+
+            def launch_reviewer(context):
+                nonlocal result
+                result = (run.host.executor or AgentProcessExecutor())(launch)
+                if not isinstance(result, CapabilityExecutionResult):
+                    raise SpecError("review executor omitted native completion evidence", "invalid_completion")
+                record_usage(run.host, capability="concorde-review", stage=phase, target_id=run.target.id,
+                             agent=external_agent_name(prompt.binding.agent), mode=prompt.binding.mode,
+                             launch=launch, result=result, change_id=run.change_id)
+                if (result.receipt.requested_launch_digest != launch.digest
+                        or result.receipt.policy_digest != policy.digest or result.receipt.status != "success"
+                        or result.completion.invocation_id != invocation_id
+                        or result.completion.workspace_digest != snapshot.id
+                        or result.receipt.agent_binding_digest != prompt.binding.digest):
+                    raise SpecError("review evidence is not bound to this launch", "invalid_completion")
+                validate_mode_output(agent_definition(prompt.binding.agent), prompt.binding.mode, result.completion.domain_output)
+                return validate_typed(result.completion.domain_output, "concorde-review-stage-result")["data"]
+
+            data = AgentNode.select(agent_definition(prompt.binding.agent), prompt.binding.mode).invoke(
+                value, launch_reviewer)
             _validate(run, snapshot, info, data)
             recheck_context(run.repository, snapshot)
             if inputs(run, mode)[0] != info or load_configuration(run.repository.root) != run.configuration:
@@ -351,10 +371,36 @@ def spec_consumers(run) -> set[str]:
     return selected & run.repository.targets.keys() - {run.target.id}
 
 
+def consumer_intent(task: str) -> str:
+    """The one review intent a Spec consumer is asked under, before and after the change applies."""
+    return "Review this Module's reliance on the changed canonical Spec. " + task
+
+
 def consumer_task(run, target_id):
-    return {"target_id": target_id,
-        "task": "Review this Module's reliance on the changed canonical Spec. " + run.task["task"],
+    return {"target_id": target_id, "task": consumer_intent(run.task["task"]),
         "constraints": run.task.get("constraints", []), "change_id": run.change_id}
+
+
+def changed_implementation_paths(run) -> list[str] | None:
+    """The target's bound files that differ from the candidate base, or None when history is unknown."""
+    change = read_change(run.repository.root)
+    _, current = workspace_identity(run.repository.root)
+    baseline = change.get("base_commit") if change else (current["head"] if current else None)
+    if not baseline:
+        return None
+    return [item["path"] for item in _changes(run.repository, run.target, "code", baseline)]
+
+
+def code_review_peers(run) -> tuple:
+    """Modules whose entries cover a file of this target that actually changed in the candidate.
+
+    P6 requires checks for every listing Module of a changed shared file, not of every shared
+    file. Without a known base revision every covering Module is a peer.
+    """
+    changed = changed_implementation_paths(run)
+    peers = (run.repository.covering_modules(run.target) if changed is None
+             else run.repository.affected_modules(changed))
+    return tuple(target for target in peers if target.id != run.target.id and target.files)
 
 
 def _spec_scope_tasks(run, state, peers, *, include_components):
@@ -377,15 +423,17 @@ def review_scope(run, mode: str) -> dict:
     else:
         work = (change or {}).get("targets", {}).get(run.target.id, {})
         components = dict(work.get("coordination", {}))
-        for target in run.repository.covering_modules(run.target):
-            if target.id != run.target.id:
-                components.setdefault(target.id, {"task":
-                    "Check this Module's own contract against the shared implementation change. " + run.task["task"]})
+        for target in code_review_peers(run):
+            components.setdefault(target.id, {"task":
+                "Check this Module's own contract against the shared implementation change. " + run.task["task"]})
     outputs = []
     from .capability_host import invoke_capability
-    affected_ids = {target.id for target in run.repository.covering_modules(run.target)}
+    affected_ids = {target.id for target in code_review_peers(run)}
     allowed = {run.target.id, *run.target.uses, *affected_ids, *spec_consumers(run),
+               *(target.id for target in run.repository.covering_modules(run.target)),
                *(child.id for child in run.repository.children(run.target))}
+    retained = ((change or {}).get("shared_spec_reviews", {}).get(run.target.id, {}) if mode == "spec"
+                else (change or {}).get("shared_implementation_reviews", {}).get(run.target.id, {}))
     def review_module(item):
         if item is None:
             if not components or mode == "spec" or run.target.files:
@@ -409,6 +457,17 @@ def review_scope(run, mode: str) -> dict:
         # Call a single target reviewer directly: recursive impact expansion would review A/B forever.
         from .capability_host import Invocation
         child = Invocation("concorde-review", run.configuration, task, child_host)
+        previous = retained.get(target_id)
+        # Only a flow-composed continuation (track_gaps) reuses evidence; an explicit standalone
+        # review is always fresh for the owner and every consumer.
+        if (previous is not None and run.host.mode == "execute" and run.host.track_gaps
+                and previous.get("task") == task["task"] and previous.get("constraints") == task["constraints"]):
+            value = _current_artifact(child, mode, previous.get("artifact"))
+            if value is not None:
+                # Same consumer, same intent, same admitted input: the revision-bound review stands.
+                outputs.append(child.response("completed", "Current " + mode + " review retained for "
+                    + target_id + ".", artifacts=[previous["artifact"]], reviews=[value])["data"])
+                return None
         result = review(child, mode)
         run.host.evidence.extend(child_host.evidence)
         outputs.append(result["data"])
@@ -547,6 +606,47 @@ def current_spec_scope(run) -> list[dict] | None:
     return [state["reviews"][run.target.id]["spec"]["artifact"], *consumers]
 
 
+def _code_peer_artifacts(run, state: dict) -> list[dict] | None:
+    """Current code reviews of every peer that shares a changed file, each under its own intent."""
+    from .capability_host import Invocation
+    peers = code_review_peers(run)
+    records = state.get("shared_implementation_reviews", {}).get(run.target.id, {})
+    if set(records) != {target.id for target in peers}:
+        return None
+    references = []
+    for target in peers:
+        record = records[target.id]
+        task = {"target_id": target.id, "task": record["task"],
+                "constraints": record["constraints"], "change_id": run.change_id}
+        reviewer = Invocation("concorde-review", run.configuration, task,
+            replace(run.host, routed_target=target.id, coordinated=True))
+        try:
+            verify_artifacts(run.repository.root, record["artifact"])
+            value = validate_typed(json.loads(read_file(run.repository.root,
+                record["artifact"]["path"]).decode()), "concorde-review-result")["data"]
+            valid = (value["target_id"] == target.id and value["review_mode"] == "code"
+                and value["input_digest"] == inputs(reviewer, "code")[0]["input_digest"]
+                and value["status"] in {"no_findings", "findings"} and not value["gaps"]
+                and not any(item["severity"] == "blocking" for item in value["findings"]))
+        except (ValueError, OSError, KeyError):
+            valid = False
+        if not valid:
+            return None
+        references.append(record["artifact"])
+    return references
+
+
+def current_code_scope(run) -> list[dict] | None:
+    """The owner's current code review plus every changed-file peer's, or None if any is stale."""
+    if current(run, "code") is None:
+        return None
+    state = read_change(run.repository.root, required=True)
+    peers = _code_peer_artifacts(run, state)
+    if peers is None:
+        return None
+    return [state["reviews"][run.target.id]["code"]["artifact"], *peers]
+
+
 def require_reviews(run, enabled: bool, *, modes=None) -> None:
     state = read_change(run.repository.root, required=True)
     state.setdefault("review_intents", {})[run.target.id] = {"task": run.task["task"],
@@ -571,30 +671,9 @@ def verify_required(run) -> None:
         if state.get("review_requirements", {}).get(run.target.id, {}).get("code"):
             # Each consumer review keeps its own intent and Module context. It is not replaced
             # by another consumer's current review or a later unrelated review of the same Module.
-            from .capability_host import Invocation
-            peers = [target for target in run.repository.covering_modules(run.target)
-                     if target.id != run.target.id]
-            records = state.get("shared_implementation_reviews", {}).get(run.target.id, {})
-            if set(records) != {target.id for target in peers}:
-                raise SpecError("required shared implementation consumer reviews are missing", "review_required")
-            for target in peers:
-                record = records[target.id]
-                task = {"target_id": target.id, "task": record["task"],
-                        "constraints": record["constraints"], "change_id": run.change_id}
-                reviewer = Invocation("concorde-review", run.configuration, task,
-                    replace(run.host, routed_target=target.id, coordinated=True))
-                try:
-                    verify_artifacts(run.repository.root, record["artifact"])
-                    value = validate_typed(json.loads(read_file(run.repository.root,
-                        record["artifact"]["path"]).decode()), "concorde-review-result")["data"]
-                    valid = (value["target_id"] == target.id and value["review_mode"] == "code"
-                        and value["input_digest"] == inputs(reviewer, "code")[0]["input_digest"]
-                        and value["status"] in {"no_findings", "findings"} and not value["gaps"]
-                        and not any(item["severity"] == "blocking" for item in value["findings"]))
-                except (ValueError, OSError, KeyError):
-                    valid = False
-                if not valid:
-                    raise SpecError(f"shared implementation review is failed or stale for {target.id}", "review_required")
+            if _code_peer_artifacts(run, state) is None:
+                raise SpecError("required shared implementation consumer reviews are missing, failed or stale",
+                                "review_required")
     else:
         # Directly authored candidates have no invented target plans. Their
         # explicitly required reviews still apply to every selected target.

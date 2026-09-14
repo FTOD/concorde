@@ -101,8 +101,13 @@ recorded components and returns unsupported when it has none. The consumer selec
 `concorde-review` uses separate fresh Spec and code reviewers. Spec review sees the complete owned and directly referenced Specs, task and scoped Spec patches; code review additionally sees only the owning
 target's registered implementation files, the files its declared entries currently bind, and scoped
 code patches. Neither has project write authority.
-A file listed by several Modules is reviewed once per listing Module, each from that Module's own
-contract. Verification declarations in the reviewed files are judged only for scenarios present
+A changed file listed by several Modules is reviewed once per listing Module, each from that
+Module's own contract: the host selects the peers of a code review from the files of the reviewed
+Module that differ from the candidate base, so a shared file the candidate did not touch adds no
+peer review, and without a known base revision every covering Module is a peer. A flow-composed
+continuation reuses a consumer's revision-bound review when its intent, constraints and admitted
+input are unchanged, including the consumer reviews that admitted a Spec candidate before its bytes
+were applied; an explicit standalone review is always fresh for the owner and every consumer. Verification declarations in the reviewed files are judged only for scenarios present
 in the reviewing Module's admitted context: a test that declares such a scenario without
 exercising its steps is a defect, while a declaration naming a scenario outside that context is
 assessed by the owning Module's review and is neither a defect nor a gap for the reviewing Module.

@@ -13,6 +13,9 @@ from ..spec.repository import SpecError, SpecRepository, digest, is_directory_en
 PHASES = frozenset({"ask", "specify", "plan", "tasks", "implementation", "spec-review", "code-review",
                     "validate", "deliver", "context-solve"})
 CODE_PHASES = frozenset({"implementation", "code-review"})
+# Phases that receive the declared reference documentation as read-only contents (capability
+# context); every other phase sees only the declared entries.
+DOCUMENTATION_PHASES = frozenset({"plan", "tasks", "implementation", "code-review"})
 DISCOVERY_PHASES = frozenset({"route"})
 DISCOVERY_KINDS = frozenset({"module"})
 PROTOCOL_PATHS = ("generated/protocol/principles.md", "generated/protocol/kinds/module.md")
@@ -108,6 +111,25 @@ def _implementation_artifacts(repository: SpecRepository, target) -> list[dict]:
             for path in repository.implementation_files(target)]
 
 
+def _documentation_entries(repository: SpecRepository, target) -> list[dict]:
+    """The Module's declared reference-documentation entries; declarations only, never contents."""
+    try:
+        entities = repository.entity_documentation(target)
+    except SpecError:
+        entities = {}
+    return [{"path": entry, "entity_id": entity.id, "directory": is_directory_entry(entry)}
+            for entry, entity in entities.items()]
+
+
+def _documentation_artifacts(repository: SpecRepository, target) -> list[dict]:
+    """Digests of the existing documentation files; their bytes are granted, never embedded."""
+    try:
+        files = repository.documentation_files(target)
+    except SpecError:
+        files = ()
+    return [{"id": path, "path": path, "digest": digest(read_file(repository.root, path))} for path in files]
+
+
 def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = "ask",
                     task: str = "Understand this Spec", focus_id: str | None = None,
                     constraints: tuple[str, ...] = (), instructions: str = "",
@@ -138,7 +160,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
     resolution = repository.spec_context(focus_id or target.id).value
     # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
     from .change_worktree import workspace_context
-    manifest = {"schema_version": 2, "target_id": target.id, "kind": target.kind,
+    manifest = {"schema_version": 3, "target_id": target.id, "kind": target.kind,
         "focus_id": focus_id, "phase": phase, "task": task, "constraints": list(constraints),
         "protocol_binding": repository.config["protocol"], "protocol": _protocol(repository),
         "spec_resolution": resolution, "instructions": instructions,
@@ -146,6 +168,10 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
         "implementation_entries": _implementation_entries(repository, target),
         "implementation_files": _implementation_files(repository, target),
         "implementation_artifacts": _implementation_artifacts(repository, target) if phase in CODE_PHASES else [],
+        "documentation_entries": _documentation_entries(repository, target),
+        "documentation_artifacts": (_documentation_artifacts(repository, target)
+                                    if phase in DOCUMENTATION_PHASES and (mode is None
+                                        or "documentation" in mode.constraints.effects.reads) else []),
         "workspace": workspace if workspace is not None else workspace_context(repository.root)}
     return ContextSnapshot(canonical({**manifest, "context_id": digest(manifest)}))
 
@@ -302,6 +328,10 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, ch
     if check_implementation and value["phase"] in CODE_PHASES:
         if _implementation_artifacts(current, target) != value["implementation_artifacts"]:
             raise SpecError("implementation input membership or bytes changed", "stale_context")
+    if _documentation_entries(current, target) != value["documentation_entries"]:
+        raise SpecError("declared documentation entries changed", "stale_context")
+    if value["documentation_artifacts"] and _documentation_artifacts(current, target) != value["documentation_artifacts"]:
+        raise SpecError("documentation membership or bytes changed", "stale_context")
 
 
 @_stale_on_resolution_error

@@ -15,12 +15,12 @@ MODES = (
         phase='context-solve', action=None, stage_inputs=(), required_inputs=(),
         output_fields=(), outcomes=('sufficient', 'spec_incomplete', 'unsupported', 'conflicting')),
     Mode('plan', "agents/spec_engineer/modes/plan.md",
-        Constraints(EffectDeclaration(('spec-context',), (), False, "none"),
+        Constraints(EffectDeclaration(('spec-context', 'documentation'), (), False, "none"),
                     contexts=('concorde-agent-stage-context',), results=('concorde-agent-stage-result',)),
         phase='plan', action=None, stage_inputs=('concorde-plan-artifact',), required_inputs=(),
         output_fields=('plan',), outcomes=()),
     Mode('tasks', "agents/spec_engineer/modes/tasks.md",
-        Constraints(EffectDeclaration(('spec-context',), (), False, "none"),
+        Constraints(EffectDeclaration(('spec-context', 'documentation'), (), False, "none"),
                     contexts=('concorde-agent-stage-context',), results=('concorde-agent-stage-result',)),
         phase='tasks', action=None, stage_inputs=('concorde-plan-artifact', 'concorde-task-identity-constraints', 'concorde-implementation-task', 'concorde-review-result', 'concorde-task-scope-feedback'), required_inputs=('concorde-plan-artifact', 'concorde-task-identity-constraints'),
         output_fields=('tasks',), outcomes=()),
@@ -38,7 +38,7 @@ MODES = (
 
 AGENT = Agent(
     name='spec_engineer', spec="agents/spec_engineer/spec.md", harness=SPEC_CAPSULE,
-    constraints=Constraints(EffectDeclaration(('spec-context',), (), False, "none"),
+    constraints=Constraints(EffectDeclaration(('spec-context', 'documentation'), (), False, "none"),
         contexts=('concorde-agent-stage-context', 'concorde-review-stage-context', 'concorde-topology-author-context'), results=('concorde-agent-stage-result', 'concorde-review-stage-result', 'concorde-topology-author-result')),
     modes=MODES,
 )

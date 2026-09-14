@@ -8,7 +8,7 @@
 
 # Harness
 
-`module.harness` follows Spec Protocol 5.0.0. Its sole structural parent is `module.concorde`. The
+`module.harness` follows Spec Protocol 5.1.0. Its sole structural parent is `module.concorde`. The
 complete contract is the Markdown collection explicitly registered in `.concorde/specs.json`; links
 and entity file listings do not expand it. This reading entry introduces the collection; the
 registered companion documents explain [Agents and Harnesses](agents-and-harnesses.md), [Agent
@@ -182,6 +182,24 @@ See [the non-empty closure bound](#req.harness.context-closure-nonempty) and
 rule: see [names for every phase](#req.harness.context-file-names-every-phase) and
 [contents for code phases only](#req.harness.context-contents-code-phases-only).
 
+#### scenario.harness.documentation-context — Grant declared reference documentation to the phases that need it
+
+- GIVEN a Module whose entity declares `documentation` entries for an external capability, such as a vendored library API reference
+- WHEN the host resolves a context for the plan, tasks, implementation or code-review phase under a mode that reads documentation
+- THEN the snapshot names the declared entries and carries the digest of every existing documentation file, and the launch grants exactly those files read-only, copied byte for byte into the capsule when the phase runs in one
+- AND a Spec-only phase such as specify, spec-review or context-solve receives the entry names but no contents and no grant
+- AND a documentation file that changes after resolution makes the admitted snapshot stale for the phases that received contents
+- BUT no phase receives network access or an installed dependency's sources in place of the declared documentation, and a mode that does not declare the documentation effect cannot admit or be granted documentation contents
+
+#### scenario.harness.agent-node — Run an Agent as a LangGraph node typed by its Mode
+
+- GIVEN a canonical Agent definition and one of its explicit Modes
+- WHEN the host binds them as an AgentNode and executes an invocation through its compiled Flow
+- THEN the node's input schema is exactly the top-level fields of the Mode's admitted context type and its output schema exactly those of the Mode's result type
+- AND the node revalidates the admitted context before the launch and the returned data against the result type after it, so the launcher can neither admit an unexpected context nor return an unexpected result
+- AND the same factory compiled without a launcher is inspectable inside the Flows that run it and starts no process
+- BUT the native launch, its receipt checks and usage recording stay in the host's launcher, outside the graph's public state
+
 #### scenario.harness.context-invalid-input — Reject an unsupported phase or a blank task
 
 - GIVEN an unsupported phase value or a blank task string
@@ -314,6 +332,23 @@ exit-code-is-not-completion bound](#req.harness.execute-exit-insufficient).
 - WHEN AgentProcessExecutor is called
 - THEN it raises CapabilityExecutionError with outcome failed, cancelled, limit_exhausted or invalid_completion respectively
 - AND the caller stops the affected transition rather than retrying automatically
+
+#### scenario.harness.usage-accounting — Record what every Agent launch consumed, per step
+
+- GIVEN a native Agent process completed and its client reported token usage in its JSON output
+- WHEN the host accepts the CapabilityExecutionResult of a stage, review, discovery or topology-author launch
+- THEN the result carries an ExecutionUsage record with the reported input, cached and output tokens, turns, cost and duration where the client supplied them, plus the host-measured wall time and the prompt and context sizes
+- AND the host appends one JSON line labelled with the capability, stage, target, Agent, mode, change and launch identity to `.concorde/runs/<root invocation>/usage.jsonl`, where the root invocation is the top-level capability invocation of the whole Flow run
+- AND the host observer receives the same record as an `agent_usage` event, and the `usage` Tool and the executable boundary summarize those lines per step, stage, target and Agent
+- BUT a figure the client did not report is recorded as unknown rather than zero, and a persistence failure never fails the launch or changes any receipt
+
+#### scenario.harness.project-configured-model — Launch every Agent on the project-configured model
+
+- GIVEN `.concorde/config.json` capability configuration names a `model` and a `reasoning_effort`
+- WHEN the host renders a Codex or Claude launch configuration for any Agent
+- THEN the rendered argv selects that model, and for Codex also that reasoning effort, overriding the client's user configuration, which workers ignore
+- AND the selection is part of the native configuration digest bound into the launch receipt
+- BUT an absent field keeps the client's own default, and Claude receives only the model because its command line exposes no effort setting
 
 #### scenario.harness.recursive-delegate — Run an explicitly assembled recursive Agent graph
 
@@ -501,6 +536,15 @@ the most specific entry owns a file.
     "kind": "used module",
     "target_id": "module.distribution",
     "responsibility": "Build authored projections, install and configure owned integrations, provision the managed runtime and keep a source checkout's own projections bound to the worktree that built them."
+  },
+  {
+    "id": "entity.harness.langgraph",
+    "title": "LangGraph",
+    "kind": "external library",
+    "responsibility": "Runs Concorde's Flows: every capability's control flow is a LangGraph StateGraph, so Flow factories, node functions and Studio adapters build on its graph, state, channel and runtime API. The vendored reference documentation is generated from the pinned package and is the admitted source of LangGraph API facts for planning, task authoring, implementation and code review.",
+    "documentation": [
+      "docs/vendor/langgraph/"
+    ]
   }
 ]
 ```
@@ -511,7 +555,8 @@ Each invocation is the unit of work this Module executes. Its Spec context is th
 Module's complete one-level owned/reference context; its implementation context is the Protocol-defined set of
 files the Module's own entities bind — every phase sees their names, only programmer implementation,
 code-review and investigation modes see authorized contents; its capability context is the admitted Capability and Tool
-contracts; its task context is the task, constraints, stage artifacts and lifecycle metadata. The
+contracts together with the Module's declared reference documentation, whose contents reach the
+plan, tasks, implementation and code-review modes read-only; its task context is the task, constraints, stage artifacts and lifecycle metadata. The
 frozen closure is never empty and its identity covers every admitted byte.
 
 An Agent definition binds common responsibilities, one of three registered Harnesses, an authority
@@ -556,6 +601,9 @@ flowchart TB
     execution -->|validates typed completions and schemas through| typedValues
     studio -->|starts or observes the same capability host as| execution
     execution -->|starts each Agent process under the enforcement of| native
+    langgraph["LangGraph"]
+    execution -->|schedules Agent Flows and Studio graphs with| langgraph
+    context -->|supplies the declared reference documentation of| langgraph
 ```
 
 ## Local collaboration agreements
@@ -586,11 +634,10 @@ relied-upon behavior from this Module's perspective without importing another Mo
 
 ## Unresolved information
 
-- Capability context is not yet a snapshot field: no registered Agent currently admits a Capability
-  reference, so a resolved context's frozen closure carries only Spec, implementation and task
-  context. Materializing admitted Capability and Tool contracts in the snapshot record, with their
-  identities in the context digest, is pending implementation work that must not widen any existing
-  grant.
+- Capability context carries only the Module's declared reference documentation today: no
+  registered Agent admits a Capability or Tool reference, so those contracts are not yet snapshot
+  fields. Materializing them in the snapshot record, with their identities in the context digest,
+  is pending implementation work that must not widen any existing grant.
 - The Claude boundary has no physical probe. The Codex boundary is exercised by a real
   `codex sandbox` probe, but the Claude scenario checks only the rendered launch; that an Agent
   under restricted mode cannot reach files outside its grant rests on Claude Code's documented

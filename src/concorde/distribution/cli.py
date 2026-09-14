@@ -47,11 +47,27 @@ def create_parser() -> argparse.ArgumentParser:
     protocol_manifest.add_argument("--write", action="store_true")
     protocol_manifest.add_argument("--bind-project", action="store_true")
     protocol_manifest.add_argument("--format", choices=["json"], default="json")
+
+    usage = subparsers.add_parser("usage")
+    usage.add_argument("--run", help="root invocation id of one capability run; default: every recorded run")
+    usage.add_argument("--format", choices=["json"], default="json")
     return parser
 
 
 def dispatch(arguments: argparse.Namespace) -> ToolResult:
     root = Path(arguments.project_root)
+    if arguments.tool == "usage":
+        from ..harness.usage import read_usage, summarize_usage
+
+        records = read_usage(root, arguments.run)
+        if arguments.run and not records:
+            return ToolResult("usage", ".", "invalid", findings=(Finding(
+                "CONCORDE-USAGE-001", "error", f".concorde/runs/{arguments.run}/usage.jsonl",
+                "no usage records exist for this run",
+                "Pass the root invocation id printed by the capability result, or omit --run."),))
+        return ToolResult("usage", ".", "success",
+                          result={"runs": sorted({r.get("root_invocation_id") for r in records if r.get("root_invocation_id")}),
+                                  "records": len(records), **summarize_usage(records)})
     if arguments.tool == "docsite":
         from ..views.docsite_scaffold import apply_docsite, propose_docsite
 
@@ -196,7 +212,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         tool = arguments.tool if arguments is not None else (argv[0] if argv else "validate")
         payload = envelope(
             tool
-            if tool in {"validate", "docsite", "build", "protocol-manifest", "ua-graph"}
+            if tool in {"validate", "docsite", "build", "protocol-manifest", "ua-graph", "usage"}
             else "validate",
             ".",
             "failed",

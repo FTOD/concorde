@@ -23,6 +23,7 @@ from .configuration import load_configuration
 from ..harness.agent_model import (ModeContractError, agent_definition, binding_json,
     external_agent_name, mode_definition, validate_mode_output)
 from ..harness.agent_executor import CapabilityExecutionError
+from ..harness.usage import record_usage, read_usage, summarize_usage
 from ..harness.check_executor import CHECK_POLICY, CheckSandboxError, execute_check
 from ..harness.permissions import (PolicyBinding, PermissionPolicyError, compile_policy, render_codex_configuration,
     render_claude_configuration, build_launch_specification, CapabilityExecutionResult)
@@ -61,6 +62,9 @@ class CapabilityHost:
     finalize_components: bool = False
     depth: int = 0
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    # The top-level capability invocation's identity, inherited by every nested invocation so one
+    # Flow run keeps one usage record under .concorde/runs/<root_invocation_id>/.
+    root_invocation_id: str | None = None
     descriptions: list[dict] = field(default_factory=list)
     evidence: list[Any] = field(default_factory=list)
     lifecycle: dict = field(default_factory=dict)
@@ -97,6 +101,12 @@ class CapabilityHost:
 
 def _capability_key(capability: str) -> str:
     return capability[len("concorde-"):].replace("-", "_")
+
+
+def model_selection(configuration: dict) -> dict:
+    """The project-configured model for every Agent launch; absent keys keep the client default."""
+    data = configuration["data"]
+    return {"model": data.get("model"), "reasoning_effort": data.get("reasoning_effort")}
 
 
 def resolve_child_capability(parent_capability: str, child_capability: str):
@@ -355,6 +365,7 @@ class MainInvocation:
                 policy,
                 native_enforcement=self.configuration["data"]["enforcement"] == "native",
                 outer_sandbox=self.host.outer_sandbox,
+                **model_selection(self.configuration),
             )
             receipt = {
                 "schema_version": 15,
@@ -411,18 +422,29 @@ class MainInvocation:
                 return {"context_id": snapshot.id, "outcome": "described", "answer": "",
                         "expand_targets": [], "routes": [], "gaps": []}
             from ..harness.agent_executor import AgentProcessExecutor
+            from ..harness.agent_node import AgentNode
             executor = self.host.executor or AgentProcessExecutor()
-            result = executor(launch)
-            if not isinstance(result, CapabilityExecutionResult):
-                raise SpecError("main executor omitted native completion evidence", "invalid_completion")
-            evidence = result.receipt
-            if (evidence.requested_launch_digest != launch.digest or evidence.policy_digest != policy.digest
-                    or evidence.status != "success" or result.completion.invocation_id != invocation_id
-                    or result.completion.workspace_digest != snapshot.id
-                    or evidence.agent_binding_digest != prompt.binding.digest):
-                raise SpecError("main completion evidence is not bound to this invocation", "invalid_completion")
-            validate_mode_output(agent_definition(prompt.binding.agent), prompt.binding.mode, result.completion.domain_output)
-            data = validate_typed(result.completion.domain_output, "concorde-main-stage-result")["data"]
+            result = None
+
+            def launch_coordinator(context):
+                nonlocal result
+                result = executor(launch)
+                if not isinstance(result, CapabilityExecutionResult):
+                    raise SpecError("main executor omitted native completion evidence", "invalid_completion")
+                record_usage(self.host, capability=self.capability, stage=phase, target_id=self.entry.id,
+                             agent=external_agent_name(prompt.binding.agent), mode=prompt.binding.mode,
+                             launch=launch, result=result)
+                evidence = result.receipt
+                if (evidence.requested_launch_digest != launch.digest or evidence.policy_digest != policy.digest
+                        or evidence.status != "success" or result.completion.invocation_id != invocation_id
+                        or result.completion.workspace_digest != snapshot.id
+                        or evidence.agent_binding_digest != prompt.binding.digest):
+                    raise SpecError("main completion evidence is not bound to this invocation", "invalid_completion")
+                validate_mode_output(agent_definition(prompt.binding.agent), prompt.binding.mode, result.completion.domain_output)
+                return validate_typed(result.completion.domain_output, "concorde-main-stage-result")["data"]
+
+            data = AgentNode.select(agent_definition(prompt.binding.agent), prompt.binding.mode).invoke(
+                value, launch_coordinator)
             self._validate_result(snapshot, phase, data)
             if read_file(self.repository.root, self.repository.registry_path) != before_registry:
                 raise SpecError("registry changed during main discovery", "stale_context")
@@ -779,7 +801,7 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
         renderer = render_codex_configuration if integration == "codex" else render_claude_configuration
         native = renderer(policy,
             native_enforcement=configuration["data"]["enforcement"] == "native",
-            outer_sandbox=host.outer_sandbox)
+            outer_sandbox=host.outer_sandbox, **model_selection(configuration))
         receipt = {"schema_version": 15, "target_id": target["id"], "phase": "topology-author",
             "context_id": snapshot.id, "source_digest": snapshot.id,
             "registry_digest": digest(before_registry), "role_paths": {"spec-context": ["context.json"]}}
@@ -804,18 +826,28 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
             return {"context_id": snapshot.id, "target_id": target["id"], "outcome": "completed",
                     "answer": "", "gaps": [], "documents": []}
         from ..harness.agent_executor import AgentProcessExecutor
+        from ..harness.agent_node import AgentNode
         executor = host.executor or AgentProcessExecutor()
-        result = executor(launch)
-        if not isinstance(result, CapabilityExecutionResult):
-            raise SpecError("topology author omitted native completion evidence", "invalid_completion")
-        evidence = result.receipt
-        if (evidence.requested_launch_digest != launch.digest or evidence.policy_digest != policy.digest
-                or evidence.status != "success" or result.completion.invocation_id != invocation_id
-                or result.completion.workspace_digest != snapshot.id
-                or evidence.agent_binding_digest != prompt.binding.digest):
-            raise SpecError("topology author evidence is not bound to this invocation", "invalid_completion")
-        validate_mode_output(agent_definition(prompt.binding.agent), prompt.binding.mode, result.completion.domain_output)
-        data = validate_typed(result.completion.domain_output, "concorde-topology-author-result")["data"]
+        result = None
+
+        def launch_author(context):
+            nonlocal result
+            result = executor(launch)
+            if not isinstance(result, CapabilityExecutionResult):
+                raise SpecError("topology author omitted native completion evidence", "invalid_completion")
+            record_usage(host, capability=MAIN_CAPABILITY, stage="topology-author", target_id=target["id"],
+                         agent=external_agent_name(prompt.binding.agent), mode=prompt.binding.mode,
+                         launch=launch, result=result)
+            evidence = result.receipt
+            if (evidence.requested_launch_digest != launch.digest or evidence.policy_digest != policy.digest
+                    or evidence.status != "success" or result.completion.invocation_id != invocation_id
+                    or result.completion.workspace_digest != snapshot.id
+                    or evidence.agent_binding_digest != prompt.binding.digest):
+                raise SpecError("topology author evidence is not bound to this invocation", "invalid_completion")
+            validate_mode_output(agent_definition(prompt.binding.agent), prompt.binding.mode, result.completion.domain_output)
+            return validate_typed(result.completion.domain_output, "concorde-topology-author-result")["data"]
+
+        data = AgentNode.select(agent_definition(prompt.binding.agent), prompt.binding.mode).invoke(runtime, launch_author)
         if data["context_id"] != snapshot.id or data["target_id"] != target["id"]:
             raise SpecError("topology author returned a different target/context", "incompatible_handoff")
         if (data["outcome"] == "spec_incomplete") != bool(data["gaps"]):
@@ -860,18 +892,36 @@ def _main_topology_response(action: str, repository: SpecRepository, proposal: d
         "workspace": workspace_context(repository.root)})
 
 
-def _review_candidate_contexts(repository, candidate, configuration, host, intent, constraints, completed):
-    """Review changed complete contexts before any proposed source bytes are applied."""
-    from .review import review
+def _review_candidate_contexts(repository, candidate, configuration, host, intent, constraints, completed,
+                               records: dict | None = None, change_id: str | None = None,
+                               owner_id: str | None = None, focus_id: str | None = None):
+    """Review changed complete contexts before any proposed source bytes are applied.
+
+    Each completed review is collected in ``records`` under the exact intent the later Spec-review
+    stage uses for that context: the owner (``owner_id``) under the authoring task itself and every
+    consumer under the consumer intent. Once the candidate bytes are applied they equal the reviewed
+    bytes, so the stage can recheck and reuse this revision-bound evidence instead of reviewing the
+    identical context a second time.
+    """
+    from .review import consumer_intent, review
     def review_context(target_id):
         if target_id not in candidate.targets:
             return None
+        owner = target_id == owner_id
         task = {"target_id": target_id, "review_mode": "spec",
-                "task": "Check compatibility of this Module's complete candidate context. " + intent,
-                "constraints": constraints}
+                "task": intent if owner else consumer_intent(intent), "constraints": constraints,
+                **({"focus_id": focus_id} if owner and focus_id else {}),
+                **({"change_id": change_id} if change_id else {})}
         reviewer = Invocation("concorde-review", configuration, task,
             replace(host, coordinated=True, track_gaps=False), candidate_repository=candidate)
         result = review(reviewer, "spec")["data"]
+        if records is not None and result["outcome"] == "completed" and result["reviews"]:
+            reference = next((ref for ref in result["artifacts"] if ref["id"] == f"review.{target_id}.spec"), None)
+            evidence = result["reviews"][0]["data"]
+            if reference is not None:
+                records[target_id] = {"artifact": reference, "task": task["task"], "constraints": list(constraints),
+                                      "focus_id": task.get("focus_id"), "input_digest": evidence["input_digest"],
+                                      "status": evidence["status"]}
         if result["gaps"] or result["outcome"] == "completed":
             from ..harness.change_worktree import record_task_gaps
             evidence = result["reviews"][0]["data"] if result["reviews"] else None
@@ -1262,6 +1312,16 @@ class Invocation:
                       "implementation": (self.repository.implementation_files(self.target) if readonly
                                          else self.repository.implementation_paths(self.target))}
                      if project_workspace else {"spec-context": (relative,)})
+            if "documentation" in prompt.effects.reads:
+                # Capability context: the declared reference documentation, read-only. A capsule
+                # receives byte-identical copies at the same project-relative paths.
+                documentation = tuple(item["path"] for item in snapshot.value["documentation_artifacts"])
+                if not project_workspace and self.host.mode != "describe-policy":
+                    for path in documentation:
+                        copy = checked_path(capsule, path)
+                        copy.parent.mkdir(parents=True, exist_ok=True)
+                        copy.write_bytes(read_file(self.repository.root, path))
+                roles["documentation"] = documentation
             write_roles = ("implementation",) if implementation and mode == "implementation" and not readonly else ()
             try:
                 policy = compile_policy(prompt.effects,
@@ -1272,7 +1332,7 @@ class Invocation:
             integration = self.configuration["data"]["integration"]
             renderer = render_codex_configuration if integration == "codex" else render_claude_configuration
             native = renderer(policy, native_enforcement=self.configuration["data"]["enforcement"] == "native",
-                              outer_sandbox=self.host.outer_sandbox)
+                              outer_sandbox=self.host.outer_sandbox, **model_selection(self.configuration))
             receipt = {"schema_version": 15, "target_id": self.target.id, "phase": phase,
                 "context_id": snapshot.id, "source_digest": snapshot.id,
                 "registry_digest": digest(before_registry), "role_paths": {k: list(v) for k, v in roles.items()}}
@@ -1297,18 +1357,30 @@ class Invocation:
                 runtime_input_json=canonical(value), capability_configuration_json=canonical(self.configuration),
                 invocation_id=invocation_id, agent_binding_json=binding_json(prompt.binding))
             from ..harness.agent_executor import AgentProcessExecutor
+            from ..harness.agent_node import AgentNode
             executor = self.host.executor or AgentProcessExecutor()
-            result = executor(launch)
-            if not isinstance(result, CapabilityExecutionResult):
-                raise SpecError("executor omitted native completion evidence", "invalid_completion")
-            evidence = result.receipt
-            if (evidence.requested_launch_digest != launch.digest or evidence.policy_digest != policy.digest
-                    or evidence.status != "success" or result.completion.invocation_id != invocation_id
-                    or result.completion.workspace_digest != snapshot.id
-                    or evidence.agent_binding_digest != prompt.binding.digest):
-                raise SpecError("completion evidence is not bound to this invocation", "invalid_completion")
-            validate_mode_output(agent_definition(prompt.binding.agent), prompt.binding.mode, result.completion.domain_output)
-            data = validate_typed(result.completion.domain_output, "concorde-agent-stage-result")["data"]
+            result = None
+
+            def launch_agent(context):
+                # The AgentNode's typed state carries the admitted context in and the validated
+                # result out; the native launch and its evidence checks stay host-private.
+                nonlocal result
+                result = executor(launch)
+                if not isinstance(result, CapabilityExecutionResult):
+                    raise SpecError("executor omitted native completion evidence", "invalid_completion")
+                record_usage(self.host, capability=capability, stage=phase, target_id=self.target.id,
+                             agent=external_agent_name(prompt.binding.agent), mode=prompt.binding.mode,
+                             launch=launch, result=result, change_id=self.change_id)
+                evidence = result.receipt
+                if (evidence.requested_launch_digest != launch.digest or evidence.policy_digest != policy.digest
+                        or evidence.status != "success" or result.completion.invocation_id != invocation_id
+                        or result.completion.workspace_digest != snapshot.id
+                        or evidence.agent_binding_digest != prompt.binding.digest):
+                    raise SpecError("completion evidence is not bound to this invocation", "invalid_completion")
+                validate_mode_output(agent_definition(prompt.binding.agent), prompt.binding.mode, result.completion.domain_output)
+                return validate_typed(result.completion.domain_output, "concorde-agent-stage-result")["data"]
+
+            data = AgentNode.select(agent_definition(prompt.binding.agent), prompt.binding.mode).invoke(value, launch_agent)
             if data["context_id"] != snapshot.id:
                 raise SpecError("agent returned a different context identity", "incompatible_handoff")
             if (data["outcome"] == "spec_incomplete") != bool(data["gaps"]):
@@ -1403,9 +1475,12 @@ class Invocation:
             if changes:
                 candidate = SpecRepository(self.repository.root, self.host.package_root,
                     document_overrides={item["path"]: item["content"].encode() for item in changes})
+                consumer_records: dict = {}
                 if set(self.repository.affected_contexts(candidate)) - {self.target.id}:
                     failure = _review_candidate_contexts(self.repository, candidate, self.configuration,
-                        self.host, self.task["task"], self.task.get("constraints", []), self.completed)
+                        self.host, self.task["task"], self.task.get("constraints", []), self.completed,
+                        records=consumer_records, change_id=self.change_id, owner_id=self.target.id,
+                        focus_id=self.task.get("focus_id"))
                     if failure is not None:
                         return self.response(failure["outcome"], failure["answer"], gaps=failure["gaps"],
                                              artifacts=failure["artifacts"])
@@ -1413,6 +1488,23 @@ class Invocation:
                     raise SpecError("registry changed during canonical document review", "stale_context")
                 apply_files(self.repository.root, changes, set(self.target.documents), verify=verify)
                 self.repository = SpecRepository(self.host.project_root, self.host.package_root)
+                if consumer_records and self.host.mode == "execute":
+                    # The applied bytes equal the reviewed candidate bytes, so these reviews stay
+                    # revision-bound; the Spec-review stage rechecks each one before reuse.
+                    state = read_change(self.repository.root)
+                    if state is not None:
+                        owner_record = consumer_records.pop(self.target.id, None)
+                        intent = {"task": self.task["task"], "focus_id": self.task.get("focus_id"),
+                                  "constraints": self.task.get("constraints", [])}
+                        if owner_record is not None and state.get("review_intents", {}).get(self.target.id) == intent:
+                            state.setdefault("reviews", {}).setdefault(self.target.id, {})["spec"] = {
+                                "artifact": owner_record["artifact"], "input_digest": owner_record["input_digest"],
+                                "status": owner_record["status"], **intent}
+                        shared = state.setdefault("shared_spec_reviews", {}).setdefault(self.target.id, {})
+                        shared.update({key: {"artifact": value["artifact"], "task": value["task"],
+                                             "constraints": value["constraints"]}
+                                       for key, value in consumer_records.items()})
+                        save_change(self.repository.root, state)
         self.record_gaps("specify", [])
         change = read_change(self.repository.root)
         if change is not None:
@@ -2075,13 +2167,14 @@ class Invocation:
         ``graph`` in ``.concorde/worktree.json`` (development.md's "AI and human feedback").
         """
         from .loop_flow import build_loop_flow
-        return build_loop_flow(self.loop_nodes().__getitem__, dynamic=True).invoke({"output": {}},
-            {"recursion_limit": 100000})["output"]
+        return build_loop_flow(self.loop_nodes().__getitem__, dynamic=True).invoke(
+            {"output": {}, "artifacts": []}, {"recursion_limit": 100000})["output"]
 
     def loop_nodes(self):
-        from .review import current, require_reviews, skip
+        from .review import current, current_code_scope, require_reviews, skip
         from langgraph.graph import END
-        from .loop_flow import loop_successors
+        from langgraph.types import Command
+        from .loop_flow import loop_successors, stage_command
         from .specify_flow import has_authored_spec as authored_for_task
         specify = self.task.get("specify", True)
         run_reviews = self.task.get("run_reviews", True)
@@ -2143,8 +2236,6 @@ class Invocation:
         entry = stages[1] if include_specify else stages[0]
         topology = dict(include_specify=include_specify, entry=entry, has_code=bool(self.target.files))
         successor = loop_successors(**topology)
-
-        review_artifacts = []
 
         def current_iteration() -> int:
             record = read_change(self.repository.root, required=True).get("graph", {}).get(self.target.id, {})
@@ -2211,9 +2302,10 @@ class Invocation:
             def node(state):
                 self.repository = SpecRepository(self.host.project_root, self.host.package_root)
                 if name == "ready":
-                    return {"output": self.mark_ready()["data"]}
+                    return Command(goto="summarize", update={"output": self.mark_ready()["data"]})
                 is_review = name.startswith("review_")
                 data = None
+                review_artifacts: list[dict] = []
                 if is_review:
                     mode = name.removeprefix("review_")
                     enabled = read_change(self.repository.root, required=True)["review_requirements"][self.target.id][mode]
@@ -2222,7 +2314,7 @@ class Invocation:
                         reference = read_change(self.repository.root, required=True)["reviews"][self.target.id][mode]["artifact"]
                         review_artifacts.append(reference)
                         data = self.response(answer=f"{mode} review explicitly skipped.", artifacts=[reference])["data"]
-                    elif current(self, mode) is not None and (mode != "code" or len(_implementation_users(self.repository, self.target)) == 1):
+                    elif current(self, mode) is not None and (mode != "code" or current_code_scope(self) is not None):
                         review_artifacts.append(read_change(self.repository.root, required=True)["reviews"][self.target.id][mode]["artifact"])
                         data = self.response(answer=f"Current {mode} review retained.")["data"]
                     elif not self.host.coordinated:
@@ -2281,32 +2373,32 @@ class Invocation:
                     route = route_review_code(data)
                 else:
                     route = stop(name, data["outcome"])
-                return {"output": {**data, "_route": route}}
+                return stage_command(route, output=data, artifacts=review_artifacts)
             def observed(state):
                 iteration = current_iteration()
                 self.host.observe("stage_started", capability=self.capability, stage=name,
                                   invocation_id=self.host.invocation_id, iteration=iteration,
                                   trigger="ai-review" if name == "tasks" and iteration else "deterministic")
                 try:
-                    result = node(state)
+                    command = node(state)
                 except Exception:
                     self.host.observe("stage_failed", capability=self.capability, stage=name,
                                       invocation_id=self.host.invocation_id)
                     raise
                 self.host.observe("stage_finished", capability=self.capability, stage=name,
                                   invocation_id=self.host.invocation_id,
-                                  outcome=result["output"].get("outcome"), iteration=current_iteration(),
+                                  outcome=command.update["output"].get("outcome"), iteration=current_iteration(),
                                   trigger="ai-review" if name == "review_code" else "deterministic")
-                return result
+                return command
             return observed
         def initialize(state):
-            return {"output": {"_route": "specify_loop"}}
+            return Command(goto="specify_loop")
 
         def summarize(state):
             if state.get("result"):
                 return {}
             result = state["output"]
-            artifacts = list({item["id"]: item for item in [*review_artifacts, *result["artifacts"]]}.values())
+            artifacts = list({item["id"]: item for item in [*state.get("artifacts", []), *result["artifacts"]]}.values())
             coverage = []
             for reference in artifacts:
                 if reference["id"].startswith("review."):
@@ -2565,12 +2657,15 @@ def finish_failed_capability_flow(nodes, error):
 
 def capability_flow_nodes(capability, configuration, runtime_input, *, host_context):
     """Fresh trusted node bindings; neither host authority nor callbacks enter the public input."""
+    from langgraph.graph import END
+    from langgraph.types import Command
     # A depth-1 (top-level) invocation never inherits a lifecycle status a prior invocation on
     # this same host object left behind; nested calls still share the one dict by reference so a
     # child's cancelled/limit_exhausted outcome keeps propagating to its enclosing loop.
     lifecycle = {} if host_context.depth == 0 else host_context.lifecycle
-    host = replace(host_context, invocation_id=str(uuid.uuid4()), evidence=[], depth=host_context.depth + 1,
-                  lifecycle=lifecycle)
+    invocation_id = str(uuid.uuid4())
+    host = replace(host_context, invocation_id=invocation_id, evidence=[], depth=host_context.depth + 1,
+                  lifecycle=lifecycle, root_invocation_id=host_context.root_invocation_id or invocation_id)
     record_progress = False
     task = None
     mutation = False
@@ -2669,9 +2764,10 @@ def capability_flow_nodes(capability, configuration, runtime_input, *, host_cont
         if dispatch_nodes is None:
             dispatch_nodes = _dispatch_nodes(capability, configuration, task, host)
         updates = dispatch_nodes[name](state)
-        if (isinstance(updates.get("output"), dict)
-                and updates["output"].get("type_id") == CAPABILITY_CONTRACTS[capability][1]):
-            accept_output(updates["output"])
+        payload = (updates.update or {}) if isinstance(updates, Command) else updates
+        if (isinstance(payload.get("output"), dict)
+                and payload["output"].get("type_id") == CAPABILITY_CONTRACTS[capability][1]):
+            accept_output(payload["output"])
         return updates
 
     def guarded(operation, *, accepts_state=False):
@@ -2695,6 +2791,12 @@ def capability_flow_nodes(capability, configuration, runtime_input, *, host_cont
                 result["errors"] = [{"code": error.code, "field": "", "message": str(error)}]
             except Exception as error:
                 result.update(status="failed", errors=[{"code": "execution_failed", "field": "", "message": str(error)}])
+            if isinstance(updates, Command):
+                # A node that selects its own transition keeps it unless the guard recorded an
+                # error, which ends the Flow with the typed failure envelope in state.
+                if result["errors"]:
+                    return Command(goto=END, update={**(updates.update or {}), "result": result})
+                return Command(goto=updates.goto, update={**(updates.update or {}), "result": None})
             return {**updates, "result": result if result["errors"] else None,
                     **({"route": "__end__"} if result["errors"] else {})}
         return node
@@ -2797,5 +2899,11 @@ def json_main(package_root: Path, capability: str, runner) -> int:
         result = invocation_failure(capability, error)
     if host and host.descriptions:
         print(canonical({"policies": host.descriptions}), file=sys.stderr)
+    if host is not None and result.get("invocation_id"):
+        records = read_usage(host.project_root, result["invocation_id"])
+        if records:
+            summary = summarize_usage(records)
+            print(canonical({"usage": {"root_invocation_id": result["invocation_id"],
+                "total": summary["total"], "by_step": summary["by_step"]}}), file=sys.stderr)
     print(canonical(result))
     return 0 if result["status"] in {"succeeded", "described"} else 3

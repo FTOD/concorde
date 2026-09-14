@@ -216,6 +216,14 @@ The declared listings MUST make it possible to determine which files realize a M
 Modules list a file. Reverse lookups are derived from those declarations, not additional ownership
 relationships.
 
+An entity that stands for an external capability, such as a library the Module builds on, MAY bind
+`documentation`: the vendored reference material of that capability, as exact files or directory
+prefixes. Such entries are reference documentation, not implementation files: they do not realize
+the Module, they MUST exist, they MUST NOT be Spec documents and they MUST NOT overlap the Module's
+own file listing. Several Modules MAY declare the same documentation. Which phases may read its
+contents is a development tool's decision; the declaration itself only records what the Module
+relies on.
+
 ## Scenario verification
 
 Tests are implementation files bound by entities like any other file. The Spec never lists tests: a

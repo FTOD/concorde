@@ -283,8 +283,10 @@ file bytes, registry digest or document digests changed during execution with `s
 ### Codex
 
 Native Codex runs `codex exec --ephemeral --ignore-user-config --strict-config` with
-`approval_policy = "never"`, `project_doc_max_bytes = 0`, `multi_agent` disabled and a named
-permission profile passed on the command line: `:root` denied, the `:minimal` system paths
+`approval_policy = "never"`, `project_doc_max_bytes = 0`, `multi_agent` disabled, the
+project-configured `model` and `model_reasoning_effort` passed as `-c` overrides when the
+capability configuration names them (the ignored user configuration cannot supply a model), and a
+named permission profile passed on the command line: `:root` denied, the `:minimal` system paths
 readable and, under the workspace root, exactly the policy's read, write and deny paths. Codex's
 own sandbox applies that profile to every command the model runs, and on Linux it is an
 operating-system boundary. The host verifies it physically: the permission tests run a probe
@@ -352,6 +354,30 @@ attestation, so no configuration value selects that path.
 - THEN the argument vector carries `-p`, `--restricted`, `--no-session-persistence` and `--permission-mode dontAsk` and no `--tools`
 - AND the settings allow only the policy's read paths for `Read` and its write paths for `Edit` and `Write`, with `Agent` and `Task` denied and `WebFetch` and `WebSearch` denied without network
 - AND the sandbox block is enabled, fails if unavailable and permits no unsandboxed command
+
+## Usage accounting
+
+Both native clients report what a process consumed in the same JSON output that carries the
+completion envelope: Codex on its `turn.completed` event (`input_tokens`, `cached_input_tokens`,
+`output_tokens`, with every completed item counted as one turn) and Claude Code in its result
+object (`usage`, `total_cost_usd`, `num_turns`, `duration_ms`, `modelUsage`). The executor parses
+those figures into an `ExecutionUsage` record on the `CapabilityExecutionResult`, beside the
+receipt and never inside it: `integration`, `model` (reported, else the configured model),
+`input_tokens`, `cached_input_tokens`, `output_tokens`, `total_tokens`, `cost_usd`, `turns`,
+`duration_ms`, host-measured `wall_seconds`, and the `prompt_bytes` and `context_bytes` the host
+handed the process. A figure the client did not report is `None`, never zero.
+
+The host records one line per launch through `record_usage` in `.concorde/runs/<root invocation
+id>/usage.jsonl`, labelled with `capability`, `stage`, `target_id`, `agent`, `mode`, `change_id`,
+the launching host's `invocation_id` and `depth`, the launch's own `invocation_id` and
+`context_id`, and the usage record. The root invocation id is the top-level capability
+invocation's identity, inherited by every nested capability invocation (`CapabilityHost.
+root_invocation_id`), so one Flow run keeps one file. The same record reaches the host observer
+as an `agent_usage` event. `read_usage` and `summarize_usage` aggregate the lines per step
+(capability, stage and target), stage, target, Agent and run; the `concorde usage` Tool and the
+executable boundary's stderr summary use them. Usage is diagnostic evidence about cost: it gates
+nothing, and a failure to persist it never fails the launch. See
+[usage accounting](module.md#scenario.harness.usage-accounting).
 
 ## Local loop policy and outcomes
 
@@ -450,7 +476,7 @@ Each invocation's deadline is also bounded by its canonical Agent/Harness timeou
 ancestor deadline. Descendants and continuations cannot extend those deadlines.
 
 The resolver receives `(node: RuntimeAgent, validated_input: dict, effective_grant: AgentGrant)`
-and returns a complete typed `concorde-context-snapshot@2`. Its target must be admitted, its phase
+and returns a complete typed `concorde-context-snapshot@3`. Its target must be admitted, its phase
 must be `ask`, its context ID must match its bytes and implementation artifacts must be empty.
 For `concorde-agent-task`, the task target must also match the snapshot. The host uses the existing
 context service to resolve the complete collection; task text and paths are not authority.

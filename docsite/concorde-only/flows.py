@@ -44,6 +44,8 @@ def export():
     from concorde.development.project_flow import build_project_flow
     from concorde.development.coordination_flow import build_coordination_flow, build_stabilization_flow
     from concorde.harness.agent_flow import build_agent_flow
+    from concorde.harness.agent_model import agent_definition
+    from concorde.harness.agent_node import AgentNode
     from concorde.harness.batch_flow import build_batch_flow
     from concorde.reflections.triage_flow import build_triage_flow
     factories = {
@@ -54,13 +56,15 @@ def export():
         'Spec authoring and review': build_specify_flow, 'Planning': build_plan_flow, 'Initialization and configuration': build_project_flow,
         'Component coordination': build_coordination_flow, 'Shared candidate stabilization': build_stabilization_flow,
         'Reflection triage': build_triage_flow, 'Recursive Agent decisions': build_agent_flow,
+        # One Agent invocation as a node typed by its Mode; every model-backed stage runs one.
+        'Agent invocation node': lambda nodes: AgentNode.select(agent_definition('spec_engineer'), 'plan').flow(),
         'Capability admission': build_capability_flow, 'Capability dispatch': build_dispatch_flow,
         'Sequential work items': lambda nodes: build_batch_flow(nodes, name='batch_flow', item_node='execute_item'),
     }
     flows = {name: inspect_flow(factory(lambda node: lambda state: {})) for name, factory in factories.items()}
     import inspect
     factory_sources = sorted({Path(inspect.getsourcefile(factory)).relative_to(ROOT).as_posix()
-        for factory in [*factories.values(), build_batch_flow, build_loop_flow, build_studio_flow]
+        for factory in [*factories.values(), build_batch_flow, build_loop_flow, build_studio_flow, AgentNode.flow]
         if factory.__name__ != '<lambda>'})
     paths = sorted(set(factory_sources) | {
         'src/concorde/development/capability_host.py', 'src/concorde/development/review.py',

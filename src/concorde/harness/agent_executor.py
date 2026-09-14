@@ -11,6 +11,7 @@ import stat
 import subprocess
 import tempfile
 from collections.abc import Callable, Mapping
+from time import monotonic
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -21,6 +22,7 @@ from .permissions import (
     CapabilityCompletion,
     CompletionGate,
     EnforcementReceipt,
+    ExecutionUsage,
     LaunchSpecification,
     CapabilityExecutionResult,
     RuntimeBootstrapFile,
@@ -388,9 +390,19 @@ def _json_object(value: Any, label: str) -> dict[str, Any]:
     return value
 
 
-def _codex_envelope(stdout: str) -> dict[str, Any]:
+def _integer(value: Any) -> int | None:
+    return value if type(value) is int and value >= 0 else None
+
+
+def _codex_envelope(stdout: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    """The final agent message as the completion envelope, plus the client's reported usage.
+
+    Codex JSONL reports token usage on its ``turn.completed`` event; every completed item counts
+    as one turn of the native tool loop. The figures are diagnostics and never gate the result.
+    """
     final_message: str | None = None
     completed = False
+    usage: dict[str, Any] = {"turns": 0}
     for line_number, line in enumerate(stdout.splitlines(), start=1):
         if not line.strip():
             continue
@@ -403,38 +415,65 @@ def _codex_envelope(stdout: str) -> dict[str, Any]:
             raise ValueError(f"Codex lifecycle reported {event_type}")
         if event_type == "turn.completed":
             completed = True
+            reported = event.get("usage")
+            if isinstance(reported, dict):
+                usage.update(
+                    input_tokens=_integer(reported.get("input_tokens")),
+                    cached_input_tokens=_integer(reported.get("cached_input_tokens")),
+                    output_tokens=_integer(reported.get("output_tokens")),
+                )
         item = event.get("item")
-        if event_type == "item.completed" and isinstance(item, dict) and item.get("type") == "agent_message":
-            text = item.get("text")
-            if isinstance(text, str):
-                final_message = text
+        if event_type == "item.completed" and isinstance(item, dict):
+            usage["turns"] += 1
+            if item.get("type") == "agent_message":
+                text = item.get("text")
+                if isinstance(text, str):
+                    final_message = text
     if not completed:
         raise ValueError("Codex JSONL omitted turn.completed")
     if final_message is None:
         raise ValueError("Codex JSONL omitted a final agent message")
     try:
-        return _json_object(json.loads(final_message), "Codex completion envelope")
+        return _json_object(json.loads(final_message), "Codex completion envelope"), usage
     except json.JSONDecodeError as error:
         raise ValueError(f"Codex final message is not JSON: {error}") from error
 
 
-def _claude_envelope(stdout: str) -> dict[str, Any]:
+def _claude_envelope(stdout: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    """The structured completion envelope, plus the usage Claude Code's JSON result reports."""
     try:
         result = _json_object(json.loads(stdout), "Claude JSON output")
     except json.JSONDecodeError as error:
         raise ValueError(f"invalid Claude JSON output: {error}") from error
     if result.get("is_error") is True or result.get("subtype") in {"error", "failed"}:
         raise ValueError("Claude lifecycle reported failure")
+    usage: dict[str, Any] = {}
+    reported = result.get("usage")
+    if isinstance(reported, dict):
+        cached = [_integer(reported.get(key)) for key in ("cache_read_input_tokens", "cache_creation_input_tokens")]
+        usage.update(
+            input_tokens=_integer(reported.get("input_tokens")),
+            cached_input_tokens=sum(item for item in cached if item is not None) if any(item is not None for item in cached) else None,
+            output_tokens=_integer(reported.get("output_tokens")),
+        )
+    cost = result.get("total_cost_usd")
+    if type(cost) in (int, float) and cost >= 0:
+        usage["cost_usd"] = float(cost)
+    usage["turns"] = _integer(result.get("num_turns"))
+    usage["duration_ms"] = _integer(result.get("duration_ms"))
+    models = result.get("modelUsage")
+    if isinstance(models, dict) and models:
+        usage["model"] = ",".join(sorted(str(name) for name in models))
     structured = result.get("structured_output")
     if isinstance(structured, dict):
-        return structured
+        return structured, usage
     raw = result.get("result")
     if isinstance(raw, str):
         try:
-            return _json_object(json.loads(raw), "Claude completion envelope")
+            return _json_object(json.loads(raw), "Claude completion envelope"), usage
         except json.JSONDecodeError as error:
             raise ValueError(f"Claude result is not structured JSON: {error}") from error
-    return result
+    return result, usage
 
 
 def _validate_completion(payload: dict[str, Any], specification: LaunchSpecification) -> CapabilityCompletion:
@@ -530,9 +569,32 @@ def _validate_completion(payload: dict[str, Any], specification: LaunchSpecifica
     )
 
 
-def _completion(stdout: str, specification: LaunchSpecification) -> CapabilityCompletion:
-    payload = _codex_envelope(stdout) if specification.integration == "codex" else _claude_envelope(stdout)
-    return _validate_completion(payload, specification)
+def _completion(stdout: str, specification: LaunchSpecification) -> tuple[CapabilityCompletion, dict[str, Any]]:
+    payload, usage = (_codex_envelope(stdout) if specification.integration == "codex"
+                      else _claude_envelope(stdout))
+    return _validate_completion(payload, specification), usage
+
+
+def _execution_usage(specification: LaunchSpecification, reported: dict[str, Any],
+                     prompt: str, wall_seconds: float) -> ExecutionUsage:
+    """Combine client-reported figures with what the host itself can measure."""
+    tokens = [reported.get(key) for key in ("input_tokens", "output_tokens")]
+    total = sum(item for item in tokens if item is not None) if any(item is not None for item in tokens) else None
+    return ExecutionUsage(
+        integration=specification.integration,
+        model=reported.get("model") or getattr(specification.native_configuration, "model", None),
+        input_tokens=reported.get("input_tokens"),
+        cached_input_tokens=reported.get("cached_input_tokens"),
+        output_tokens=reported.get("output_tokens"),
+        total_tokens=total,
+        cost_usd=reported.get("cost_usd"),
+        turns=reported.get("turns"),
+        duration_ms=reported.get("duration_ms"),
+        wall_seconds=round(wall_seconds, 3),
+        prompt_bytes=len(prompt.encode("utf-8")),
+        context_bytes=(len(specification.runtime_input_json.encode("utf-8"))
+                       if specification.runtime_input_json is not None else None),
+    )
 
 
 def _prompt(specification: LaunchSpecification) -> str:
@@ -860,6 +922,7 @@ class AgentProcessExecutor:
                 # never from the already adapted native rules.
                 if finalize_launch_specification(specification, config.runtime_bootstrap).digest != finalized.digest:
                     raise CapabilityExecutionError("native filesystem inputs changed after preflight")
+                started = monotonic()
                 completed = self.runner(
                     tuple(argv),
                     cwd=finalized.project_root,
@@ -867,6 +930,7 @@ class AgentProcessExecutor:
                     input_text=prompt,
                     timeout=timeout,
                 )
+                wall_seconds = monotonic() - started
         except subprocess.TimeoutExpired as error:
             raise CapabilityExecutionError(
                 f"{finalized.integration} process exceeded the Harness loop limit of {timeout}s",
@@ -888,7 +952,7 @@ class AgentProcessExecutor:
                 failed_receipt,
             )
         try:
-            completion = _completion((completed.stdout or "").strip(), finalized)
+            completion, reported_usage = _completion((completed.stdout or "").strip(), finalized)
         except ValueError as error:
             limitations = f"invalid capability completion: {error}"
             raise CapabilityExecutionError(
@@ -907,4 +971,5 @@ class AgentProcessExecutor:
             output=completion.output,
             receipt=success_receipt,
             completion=completion,
+            usage=_execution_usage(finalized, reported_usage, prompt, wall_seconds),
         )

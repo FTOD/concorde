@@ -174,7 +174,7 @@ DISCOVERY_CAPSULE = harness(
 SPEC_CAPSULE = harness(
     name="spec-capsule",
     workspace="capsule",
-    effects=EffectDeclaration(("spec-context",), (), False, "none"),
+    effects=EffectDeclaration(("spec-context", "documentation"), (), False, "none"),
     contexts=(
         "concorde-agent-task",
         "concorde-agent-loop-context",
@@ -195,7 +195,7 @@ SPEC_CAPSULE = harness(
 IMPLEMENTATION_WORKSPACE = harness(
     name="implementation-workspace",
     workspace="project",
-    effects=EffectDeclaration(("spec-context", "implementation"), ("implementation",), False, "none"),
+    effects=EffectDeclaration(("spec-context", "implementation", "documentation"), ("implementation",), False, "none"),
     contexts=("concorde-agent-stage-context", "concorde-review-stage-context"),
     results=("concorde-agent-stage-result", "concorde-review-stage-result"),
     loop=LoopPolicy(3600),

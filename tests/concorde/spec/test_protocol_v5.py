@@ -222,9 +222,11 @@ class ProtocolFiveTests(unittest.TestCase):
 
     def test_old_wire_payloads_are_not_reinterpreted(self):
         value = typed('concorde-context-snapshot', resolve_context(self.repository(), 'scope.bank').value)
-        self.assertEqual(2, value['schema_version'])
-        value['schema_version'] = 1
-        with self.assertRaises(TypedDataError): validate_typed(value)
+        self.assertEqual(3, value['schema_version'])
+        self.assertEqual(3, value['data']['schema_version'])
+        for old in (1, 2):
+            stale = {**value, 'schema_version': old}
+            with self.assertRaises(TypedDataError): validate_typed(stale)
 
     def test_reviewer_attributes_foreign_definition_to_owner_and_gap_to_consumer(self):
         self.reference('service.transfer', 'module', 'module.ledger')

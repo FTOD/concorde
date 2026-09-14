@@ -67,6 +67,14 @@ The registered companion documents [registry](registry.md), [values](values.md),
 - AND the reverse index reports every Module whose entries cover the file, so a change to it can be assessed against each of their contracts
 - BUT within one Module the file belongs to exactly one of its entities, the one whose most specific entry covers it
 
+### scenario.spec.documentation-entry — An entity declares the documentation of an external capability
+
+- GIVEN an entity whose `documentation` entries name vendored reference material of a library, service or tool the Module uses
+- WHEN the repository is admitted and the Module's reference documentation is resolved
+- THEN the entries are neither Spec documents nor implementation files of the Module, the files they bind are expanded with the ordinary exclusion rule, and validation reports an entry that does not exist as an error
+- AND several Modules may declare the same documentation
+- BUT an entry that is or contains a registered Spec document, that overlaps the Module's own file listing, or that two entities of one Module both declare is rejected, and documentation is never pending
+
 ### scenario.spec.directory-entry — A directory prefix binds a whole directory
 
 - GIVEN an entity whose listing entry ends with `/` and names a directory this Module alone owns
@@ -165,7 +173,7 @@ the exact entries they realize, and the most specific entry decides which entity
     "id": "entity.spec.protocol-text",
     "title": "Protocol text",
     "kind": "authored standard",
-    "responsibility": "Authors the independent Spec Protocol 5.0.0 chapters and templates: principles, Module specifications, Spec management, Spec and Context, Required format, and the Module and Scenario templates.",
+    "responsibility": "Authors the independent Spec Protocol 5.1.0 chapters and templates: principles, Module specifications, Spec management, Spec and Context, Required format, and the Module and Scenario templates.",
     "files": [
       "protocol/"
     ]

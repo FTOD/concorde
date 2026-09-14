@@ -105,6 +105,18 @@ This complete schema is the invocation's input field. It does not grant project 
           "enum": [
             "native"
           ]
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reasoning_effort": {
+          "enum": [
+            "minimal",
+            "low",
+            "medium",
+            "high"
+          ]
         }
       },
       "required": [

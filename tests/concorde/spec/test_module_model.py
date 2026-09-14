@@ -594,6 +594,105 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual("conflicting", result["outcome"])
         self.assertEqual({"module.a", "module.b"}, {value["data"]["target_id"] for value in result["reviews"]})
 
+    @verifies("scenario.spec.shared-file")
+    def test_code_review_peers_are_only_the_listing_modules_of_changed_files(self):
+        import subprocess
+        from concorde.development.capability_host import CapabilityHost
+        from concorde.development.review import code_review_peers, review_scope
+        from concorde.harness.change_worktree import ensure_change
+        from tests.concorde.spec.support import ModelProcessDouble
+        for args in [("init", "-q"), ("add", "--", "source", "specs"),
+                     ("-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-q", "-m", "base")]:
+            subprocess.run(("git", *args), cwd=self.root, capture_output=True, check=True)
+        task = {"target_id": "module.a", "task": "Adapt the private value", "review_mode": "code"}
+        ensure_change(self.root, task=task, allow_primary=True)
+        seen = []
+        double = ModelProcessDouble(lambda stage, snapshot, result, cwd:
+                                    seen.append(snapshot["target_id"]) if stage == "code-review" else None)
+        self.addCleanup(double.runtime_directory.cleanup)
+
+        def scope():
+            host = CapabilityHost(self.root, PACKAGE, executor=double.executor, allow_primary_worktree=True)
+            run = Invocation("concorde-review", self.configuration, task, host)
+            return run, review_scope(run, "code")["data"]
+        # Only module.a's private file changed: the shared file's other listing Module is no peer.
+        self.write("source/a.py", "def adapt(value):\n    return value + 1\n")
+        run, result = scope()
+        self.assertEqual([], [target.id for target in code_review_peers(run)])
+        self.assertEqual(["module.a"], seen)
+        self.assertEqual("completed", result["outcome"])
+        # Changing the shared file makes every listing Module a peer again.
+        self.write("source/shared.py", "def value():\n    return 43\n")
+        seen.clear()
+        run, result = scope()
+        self.assertEqual(["module.b"], [target.id for target in code_review_peers(run)])
+        self.assertEqual(["module.a", "module.b"], seen)
+
+    def declare_documentation(self, module="module.a", entries=("docs/vendor/lib/",)):
+        entities, save = self.entity_block(f"specs/{module.split('.')[-1]}/module.md")
+        entities.append({"id": f"entity.{module.split('.')[-1]}.lib", "title": "Lib", "kind": "external library",
+                         "responsibility": "The library the adapter builds on.", "documentation": list(entries)})
+        save(entities)
+        path = f"specs/{module.split('.')[-1]}/module.md"
+        text = (self.root / path).read_text()
+        text = text.replace('    adapter["Adapter"]', '    adapter["Adapter"]\n    lib["Lib"]\n    adapter -->|builds on| lib')
+        (self.root / path).write_text(text)
+
+    @verifies("scenario.spec.documentation-entry")
+    def test_documentation_entries_are_reference_material_not_implementation_files(self):
+        self.write("docs/vendor/lib/README.md", "# lib 1.0\n\nAPI reference.\n")
+        self.write("docs/vendor/lib/api.md", "## connect(url)\n")
+        self.write("docs/vendor/lib/.hidden.md", "ignored\n")
+        self.declare_documentation()
+        repository = self.repository()
+        a = repository.select("module.a")
+        self.assertEqual(("docs/vendor/lib/",), repository.documentation_entries(a))
+        self.assertEqual(("docs/vendor/lib",), repository.documentation_paths(a))
+        self.assertEqual(("docs/vendor/lib/README.md", "docs/vendor/lib/api.md"), repository.documentation_files(a))
+        self.assertEqual(("source/a.py", "source/shared.py"), repository.implementation_files(a))
+        self.assertEqual((), repository.missing_documentation(a))
+        self.assertEqual(["entity.a.lib"], [e.id for e in repository.entity_documentation(a).values()])
+        report = validate_repository(self.root, package_root=PACKAGE)
+        self.assertEqual("success", report.status, report)
+        # The reverse file index knows nothing about documentation: it is not a listed file.
+        self.assertEqual((), repository.listing_users("docs/vendor/lib/api.md"))
+
+    @verifies("scenario.spec.documentation-entry")
+    def test_missing_documentation_is_an_error_and_never_pending(self):
+        self.declare_documentation(entries=("docs/vendor/lib/",))
+        report = validate_repository(self.root, package_root=PACKAGE)
+        self.assertEqual("invalid", report.status)
+        rules = {finding.rule_id for finding in report.findings}
+        self.assertIn("CONCORDE-ENTITY-007", rules)
+        self.assertEqual(("docs/vendor/lib/",), self.repository().missing_documentation(self.repository().select("module.a")))
+
+    @verifies("scenario.spec.documentation-entry")
+    def test_documentation_cannot_be_a_spec_document_or_overlap_own_files(self):
+        self.write("docs/vendor/lib/api.md", "api\n")
+        for entries, message in ((("specs/b/module.md",), "Spec document"),
+                                 (("specs/",), "Spec document"),
+                                 (("source/shared.py",), "overlaps"),
+                                 (("source/",), "overlaps")):
+            with self.subTest(entries=entries):
+                fixture = ModuleImplementationTests()
+                fixture.setUp()
+                try:
+                    fixture.declare_documentation(entries=entries)
+                    with self.assertRaises(SpecError) as raised:
+                        fixture.repository().entities(fixture.repository().select("module.a"))
+                    self.assertIn(message, str(raised.exception))
+                finally:
+                    fixture.doCleanups()
+        # Two entities of one Module cannot both declare the same documentation.
+        self.declare_documentation()
+        entities, save = self.entity_block("specs/a/module.md")
+        entities.append({"id": "entity.a.lib2", "title": "Lib again", "kind": "external library",
+                         "responsibility": "Duplicate.", "documentation": ["docs/vendor/lib/"]})
+        save(entities)
+        with self.assertRaises(SpecError) as raised:
+            self.repository().entities(self.repository().select("module.a"))
+        self.assertIn("two entities", str(raised.exception))
+
     def test_code_writer_cannot_author_spec_documents(self):
         from concorde.development.capability_host import CapabilityHost, run_capability
         from concorde.spec.typed_data import typed
