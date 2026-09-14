@@ -48,38 +48,83 @@ as complete. Existing component contract gaps must be resolved before rebinding,
 component routing is rejected without replacing the list. Ordinary intent changes outside this
 explicit recovery still fail their original stale-context checks.
 
-## Stages and outcomes
+## Development Flow (`development_flow`)
 
+The development Flow is the LangGraph Flow `concorde-dev-loop` executes after target admission.
+It follows the [Flow Spec convention](../harness/graphs-and-loops.md): nodes execute, edges
+route, node labels state the state read and written, and the diagram is kept equal to the
+compiled Flow by the configured Flow Spec check. Specified and SpecReviewed belong to the
+independently callable specification Flow, which the `specify_loop` node composes; delivery is a
+separately invoked capability after `ready`.
 
-With reviews enabled, the development loop follows these transitions. Explicit skips retain
-their own evidence states; delivery is a separately invoked capability after Ready.
-Specified and SpecReviewed belong to the independently callable specify-loop. Its successful
-return lets the caller stop with the Spec or lets dev-loop proceed to Planned.
+State: `output` (the last stage's typed response data, including its outcome), `artifacts`
+(review and stage artifact references accumulated across stages under a merge reducer), `result`
+(a terminal failure envelope when a guard caught an error), `route`. The candidate record in
+`.concorde/worktree.json` carries the durable state every stage reads and advances: the bound
+owner and intent, the plan, the task list and history, the implementation digest, check evidence,
+review requirements and results, gap history and the per-target graph record with its repair
+iteration and last feedback fingerprint. Each stage returns a `Command` naming the next node; a
+stop routes to `summarize`, and only `review_code` may select the automatic repair edge back to
+`tasks`, bounded by the declared `max_repair_iterations` and the unchanged-feedback rule.
+
+| Node | Executes | in | out |
+| --- | --- | --- | --- |
+| `initialize` | Deterministic: records the graph policy and enters the Flow. | task, candidate | route |
+| `specify_loop` | The specification Flow: Spec authoring (unless `specify=false` or already accepted) and independent Spec review with consumer reuse. Its result also selects where a resumed candidate re-enters. | task, Spec context, candidate | Spec, Spec review evidence, entry stage |
+| `plan` | The planning Flow: context assessment, then one spec-engineer `plan` invocation. | Spec, task | plan |
+| `tasks` | One spec-engineer `tasks` invocation with the plan, reserved task ids and, in a repair round, the blocking review result. | plan, reserved ids, review result | tasks |
+| `implement` | One programmer `implementation` invocation, or component coordination for a composite. | tasks, implementation files, Spec | completed tasks, changed files |
+| `validate` | Deterministic: Spec validation and configured checks for the owner and every Module sharing a changed file. | candidate | checks, readiness gate |
+| `review_code` | Independent code review of the owner and every changed-file peer, each from its own contract, reusing current evidence. | Spec, changed files, tasks | code review results |
+| `ready` | Deterministic: verifies current evidence for every affected Module and marks the candidate ready. | evidence, reviews | ready candidate |
+| `summarize` | Deterministic: the capability response with review coverage and every artifact reference. | output, artifacts | response |
 
 ```mermaid
-stateDiagram-v2
-  accTitle: Development, repair and separately authorized delivery
-  accDescr: Development reaches Ready after current checks and configured reviews. Contract gaps wait for a Spec revision and code defects select bounded repair. Separate delivery stages a branch; merging it into the primary branch requires another explicit request.
-  [*] --> Specified
-  Specified --> SpecReviewed: independent Spec review
-  SpecReviewed --> Gap: necessary contract missing
-  Gap --> [*]: stop for explicit Spec repair and a fresh invocation
-  SpecReviewed --> Planned: review current and context sufficient
-  Planned --> Tasks: plan accepted
-  Tasks --> Implemented: acceptance fulfilled
-  Tasks --> Gap: necessary contract missing
-  Implemented --> Checked: checks pass on current bytes
-  Checked --> CodeReviewed: independent code review
-  CodeReviewed --> Ready: required evidence current and no blockers
-  CodeReviewed --> Tasks: code defect needs repair
-  Ready --> Delivered: separate delivery verifies and stages a branch
-  Delivered --> PrimaryMerged: explicit primary-session merge request
-  Implemented --> Failed: checks or execution fail
-  Failed --> [*]: stop and preserve candidate
-  Delivered --> [*]
-  PrimaryMerged --> [*]
+flowchart TB
+    %% flow: development_flow
+    accTitle: Development Flow
+    accDescr: After initialization the specification Flow runs, then planning, tasks, implementation, validation, code review and readiness in order; a resumed candidate re-enters at the stage its current evidence permits; blocking code review routes back to tasks within the repair budget; every other non-advancing outcome stops at summarize, and a guard-caught error ends the Flow.
+    __start__["start"]
+    initialize["initialize<br/>in: task, candidate<br/>out: route"]
+    specify_loop["specify_loop<br/>in: task, Spec context, candidate<br/>out: Spec, Spec review evidence, entry stage"]
+    plan["plan<br/>in: Spec, task<br/>out: plan"]
+    tasks["tasks<br/>in: plan, reserved ids, review result<br/>out: tasks"]
+    implement["implement<br/>in: tasks, implementation files, Spec<br/>out: completed tasks, changed files"]
+    validate["validate<br/>in: candidate<br/>out: checks, readiness gate"]
+    review_code["review_code<br/>in: Spec, changed files, tasks<br/>out: code review results"]
+    ready["ready<br/>in: evidence, reviews<br/>out: ready candidate"]
+    summarize["summarize<br/>in: output, artifacts<br/>out: response"]
+    __end__["end"]
+    __start__ --> initialize
+    initialize -->|admitted| specify_loop
+    initialize -->|error| __end__
+    specify_loop -->|Spec complete, no current plan| plan
+    specify_loop -->|current plan, resume at tasks| tasks
+    specify_loop -->|current tasks, resume at implementation| implement
+    specify_loop -->|implementation current, resume at validation| validate
+    specify_loop -->|Spec gap, blocked or failed| summarize
+    specify_loop -->|error| __end__
+    plan -->|plan accepted| tasks
+    plan -->|gap, conflict or failure| summarize
+    plan -->|error| __end__
+    tasks -->|tasks accepted| implement
+    tasks -->|gap or failure| summarize
+    tasks -->|error| __end__
+    implement -->|every task complete| validate
+    implement -->|gap, blocked or failed| summarize
+    implement -->|error| __end__
+    validate -->|checks pass, Module lists code| review_code
+    validate -->|checks pass, no code to review| ready
+    validate -->|checks failed| summarize
+    validate -->|error| __end__
+    review_code -->|no blocking findings| ready
+    review_code -->|blocking findings, feedback changed, repairs left| tasks
+    review_code -->|unchanged feedback, limit exhausted, gap or failure| summarize
+    review_code -->|error| __end__
+    ready -->|candidate ready| summarize
+    ready -->|error| __end__
+    summarize --> __end__
 ```
-
 
 ## AI and human feedback
 

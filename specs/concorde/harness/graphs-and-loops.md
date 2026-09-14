@@ -121,6 +121,33 @@ relevant Agent Specs, Harness configurations, capability contracts, project inpu
 change. Raw logs and native transcripts remain diagnostics unless explicitly admitted as typed
 downstream inputs.
 
+## Flow Specs
+
+Every executable Flow is specified with LangGraph's own three concepts, and nothing else stands
+in for them: a **node** is one executing step, an **edge** is one routing decision, and **state**
+is what a node reads and writes. A Flow Spec is one section of the owning Module's documents and
+has three parts:
+
+1. **State**: the typed channels the Flow carries between nodes and the candidate or lifecycle
+   records its nodes read and write.
+2. **Nodes**: a table naming each node exactly as the compiled Flow names it, what it executes
+   (a deterministic host step, or an Agent invocation naming the Agent and Mode), and the state
+   it reads (`in`) and writes (`out`).
+3. **Edges**: a Mermaid flowchart bound to the compiled Flow by the comment `%% flow: <name>`,
+   where `<name>` is the Flow's compiled graph name in the Flow catalog. Its node identifiers are
+   the compiled node names, `__start__` and `__end__` included; every node label states the node
+   name, then `in:` and `out:`; every edge leaving a node with several successors is labeled with
+   the condition that selects it, and an edge leaving a node with one successor carries no label.
+
+The Flow Spec check (`scripts/development/check-flow-specs.py`, the configured
+`check.development.flow-specs`) compiles every catalog Flow with inert nodes and reports each
+diagram whose nodes, edges, routing labels or state labels disagree with the compiled topology,
+and every compiled Flow without a diagram. A diagram that passes proves the Spec and the
+executed topology agree; it proves nothing about whether the routing conditions are right, which
+the scenarios and tests of the owning Module cover. The Relationships diagram of a Module's
+reading entry remains the entity diagram the Protocol defines; Flow Specs live in other sections
+or documents.
+
 ## Concorde Flow responsibilities
 
 The query Flow coordinates explicit context selection, deterministic source injection and direct answers. The topology Flow

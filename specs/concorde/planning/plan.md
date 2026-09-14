@@ -34,6 +34,35 @@ intent changes invalidate reuse; a repeated consumer invocation may reuse only c
 artifacts. Planning can be consumed by any declared caller satisfying these preconditions, without
 having to explain its purpose by reference to dev-loop.
 
+## Planning Flow (`plan_flow`)
+
+State: `route`, `output` (the planning response), `result`; the candidate record receives the
+accepted plan, its Spec digest and intent.
+
+| Node | Executes | in | out |
+| --- | --- | --- | --- |
+| `assess_context` | The deterministic dependency-declaration check, then one spec-engineer `context-solve` invocation. | Spec context, task | sufficiency or gaps |
+| `author_plan` | One spec-engineer `plan` invocation with an optional prior plan artifact. | Spec context, task, prior plan | plan |
+| `persist_plan` | Deterministic: a nonempty plan replaces the target's plan and clears dependent tasks and coordination. | plan, candidate | plan artifact, target record |
+
+```mermaid
+flowchart TB
+    %% flow: plan_flow
+    accTitle: Planning Flow
+    accDescr: Context assessment admits planning only when the contract is sufficient; a returned plan is persisted; a gap, conflict, failure or policy preview ends the Flow.
+    __start__["start"]
+    assess_context["assess_context<br/>in: Spec context, task<br/>out: sufficiency or gaps"]
+    author_plan["author_plan<br/>in: Spec context, task, prior plan<br/>out: plan"]
+    persist_plan["persist_plan<br/>in: plan, candidate<br/>out: plan artifact, target record"]
+    __end__["end"]
+    __start__ --> assess_context
+    assess_context -->|sufficient| author_plan
+    assess_context -->|gap, conflict, unsupported or failed| __end__
+    author_plan -->|plan returned| persist_plan
+    author_plan -->|gap or failure, or policy described| __end__
+    persist_plan --> __end__
+```
+
 ## Requirements
 
 ### req.planning.plan-rejection-preserves — Rejected plans preserve accepted state

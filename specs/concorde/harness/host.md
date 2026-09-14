@@ -35,6 +35,64 @@ which do. The recursive delegation tree below is composed from the same Flows. T
 the Studio surface; no capability runs its control flow outside them. Flow structure alone proves
 nothing about semantics: transitions, limits and evidence still follow G1–G4.
 
+## Agent invocation node (`agent_node`)
+
+Every model-backed node of every Flow executes its Agent through an `AgentNode`: a one-node Flow
+whose input schema is the selected Mode's admitted context type and whose output schema is the
+Mode's result type. The catalog compiles the spec-engineer `plan` binding as its representative;
+the node name is the Agent's name.
+
+State: the Mode's context fields in (for a stage context: `snapshot`, `change_id`,
+`expected_artifacts`) and the Mode's result fields out (`context_id`, `outcome`, `answer`, `gaps`,
+`documents`, `plan`, `tasks`, `reflection_findings`).
+
+| Node | Executes | in | out |
+| --- | --- | --- | --- |
+| `spec_engineer` | One native Agent process under the host launcher, which performs the launch, receipt checks and usage recording outside the graph state. | admitted context | validated result data |
+
+```mermaid
+flowchart TB
+    %% flow: agent_node
+    accTitle: Agent invocation node
+    accDescr: One Agent invocation: the admitted typed context enters, the launcher runs the native process, and the validated typed result leaves.
+    __start__["start"]
+    spec_engineer["spec_engineer<br/>in: admitted context<br/>out: validated result data"]
+    __end__["end"]
+    __start__ --> spec_engineer
+    spec_engineer --> __end__
+```
+
+## Sequential work items Flow (`batch_flow`)
+
+Independently admitted work items (consumer reviews, component Specs, component implementations,
+participant finalization) run one at a time through this Flow; the item node is named per use
+(`review_module`, `author_module`, `develop_module`, `finalize_module`; the catalog compiles it as
+`execute_item`).
+
+State: `index` (the next item), `output` (the first non-None item result, which stops the Flow),
+`stop`.
+
+| Node | Executes | in | out |
+| --- | --- | --- | --- |
+| `select_item` | Deterministic: stops when no item remains. | index, items | stop |
+| `execute_item` | The item operation; a non-None result stops the Flow. | item | output, index, stop |
+
+```mermaid
+flowchart TB
+    %% flow: batch_flow
+    accTitle: Sequential work items Flow
+    accDescr: Items are selected and executed one at a time until none remain or an item returns a stopping result.
+    __start__["start"]
+    select_item["select_item<br/>in: index, items<br/>out: stop"]
+    execute_item["execute_item<br/>in: item<br/>out: output, index, stop"]
+    __end__["end"]
+    __start__ --> select_item
+    select_item -->|items remain| execute_item
+    select_item -->|no item left| __end__
+    execute_item -->|item returned None| select_item
+    execute_item -->|item returned a result| __end__
+```
+
 ## Recursive Agent invocation
 
 The trusted Python host offers `CapabilityHost.invoke_agent(runtime, agent_id, input, grant)`. It
@@ -53,6 +111,45 @@ Python modules or construct arbitrary Harnesses from task fields. Trusted Python
 RuntimeAgent nodes and an explicit complete-context resolver under the execution provider's
 admission contract. No built-in question-reading factory is provided. The normal main question
 flow directly injects resolved Spec contexts into the coordinator.
+
+### Recursive decision Flow (`agent_flow`)
+
+State: `result` (the typed `AgentResult` once the invocation ends), `action` (`delegate` or
+`complete` from the validated step); the runtime tree carries the shared call, decision, depth
+and time counters and the feedback list of child results.
+
+| Node | Executes | in | out |
+| --- | --- | --- | --- |
+| `admit` | Deterministic: grant, limits, typed input, current definition and complete read-only context are admitted. | agent id, input, grant | admitted frame |
+| `decide` | One native Agent decision over the frame with its feedback. | admitted frame, feedback | step |
+| `validate_step` | Deterministic: the step is a typed delegation or a typed completion or interruption. | step | action |
+| `delegate` | The child invocation (this same Flow, one level deeper) whose result becomes feedback. | step, grant | feedback |
+| `complete` | Deterministic: the completion or interruption becomes the result. | step | result |
+
+```mermaid
+flowchart TB
+    %% flow: agent_flow
+    accTitle: Recursive decision Flow
+    accDescr: An admitted invocation decides, validates the step, delegates to a child and decides again with its feedback, or completes; rejection, limits, cancellation and invalid steps end the Flow with a typed result.
+    __start__["start"]
+    admit["admit<br/>in: agent id, input, grant<br/>out: admitted frame"]
+    decide["decide<br/>in: admitted frame, feedback<br/>out: step"]
+    validate_step["validate_step<br/>in: step<br/>out: action"]
+    delegate["delegate<br/>in: step, grant<br/>out: feedback"]
+    complete["complete<br/>in: step<br/>out: result"]
+    __end__["end"]
+    __start__ --> admit
+    admit -->|admitted| decide
+    admit -->|rejected or limit| __end__
+    decide -->|step returned| validate_step
+    decide -->|failed, stale or limit| __end__
+    validate_step -->|delegate| delegate
+    validate_step -->|complete or interrupt| complete
+    validate_step -->|invalid step| __end__
+    delegate -->|child returned| decide
+    delegate -->|cancelled or limit| __end__
+    complete --> __end__
+```
 
 `AgentGrant(targets: frozenset[str], agents: frozenset[str])` identifies the permitted project
 targets and the tree's Agent allowlist. The root ID must be admitted. Every child must satisfy its

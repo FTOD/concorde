@@ -39,3 +39,63 @@ reported with its owning Module and current context identity rather than causing
 unbounded context expansion. The loop records its configured limits and returns an explicit limit
 outcome if additional discovery cannot be admitted. Human clarification creates a revised task or
 context and starts fresh invocations under the Flow and Loop contract.
+
+## Discovery Flow (`discovery_flow`)
+
+State: `occurrence` (the bounded number of discovery decisions so far), `decision` (the
+coordinator's last typed result), `routes` (the bound single-target routes), `route`, `result`.
+The admitted Module collection grows only through `expand_context`.
+
+| Node | Executes | in | out |
+| --- | --- | --- | --- |
+| `decide` | One coordinator invocation (`route`, `ask` or `design-topology` mode) over the admitted complete Module contexts; the decision limit is the number of Modules. | admitted Module contexts, task | decision |
+| `expand_context` | Deterministic: admits the requested Modules named in the admitted Specs and counts the occurrence. | decision, registry | admitted Module contexts, occurrence |
+| `bind_routes` | Deterministic: validates each route's target and focus and binds the original task and constraints to it. | decision, task | routes |
+| `finish` | Deterministic: records completion for an answer, gap, unsupported or conflicting outcome, or the policy preview. | decision | routes (empty) |
+
+```mermaid
+flowchart TB
+    %% flow: discovery_flow
+    accTitle: Discovery Flow
+    accDescr: The coordinator decides over the admitted contexts; a request for more Modules admits them and decides again; a routing decision binds routes; every other outcome finishes.
+    __start__["start"]
+    decide["decide<br/>in: admitted Module contexts, task<br/>out: decision"]
+    expand_context["expand_context<br/>in: decision, registry<br/>out: admitted Module contexts, occurrence"]
+    bind_routes["bind_routes<br/>in: decision, task<br/>out: routes"]
+    finish["finish<br/>in: decision<br/>out: routes empty"]
+    __end__["end"]
+    __start__ --> decide
+    decide -->|expand: more Modules requested| expand_context
+    decide -->|routed| bind_routes
+    decide -->|answered, gap, unsupported, conflicting or described| finish
+    decide -->|limit or error| __end__
+    expand_context -->|contexts admitted| decide
+    expand_context -->|error| __end__
+    bind_routes --> __end__
+    finish --> __end__
+```
+
+## Query Flow (`query_flow`)
+
+State: the discovery state above plus `output` (the main response). `concorde-main` runs this
+Flow for `ask` and `design-topology`.
+
+| Node | Executes | in | out |
+| --- | --- | --- | --- |
+| `discover` | The discovery Flow as a subflow. | question or design task, entry Module context | decision |
+| `respond` | Deterministic: the answer, gap, unsupported or conflicting response, or the typed topology design, from the last decision. | decision | main response |
+
+```mermaid
+flowchart TB
+    %% flow: query_flow
+    accTitle: Query Flow
+    accDescr: Discovery runs to completion and its last decision becomes the main response; an error ends the Flow.
+    __start__["start"]
+    discover["discover<br/>in: question or design task, entry Module context<br/>out: decision"]
+    respond["respond<br/>in: decision<br/>out: main response"]
+    __end__["end"]
+    __start__ --> discover
+    discover -->|discovery finished| respond
+    discover -->|error| __end__
+    respond --> __end__
+```

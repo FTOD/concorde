@@ -43,27 +43,41 @@ failed, incomplete and successful evidence remain distinct. The flow returns com
 common response and ArtifactRefs; it never requires code review, runs implementation checks or marks
 ready. Dev-loop may consume that completed result without repeating accepted current Spec work.
 
+## Specification Flow (`specify_flow`)
+
+State: `output` (the last stage's typed response data), `artifacts` (every stage's artifact
+references under a merge reducer), `result`. The candidate record carries the accepted authoring
+(task, focus, constraints, Spec digest), the review requirements and intents, the owner's and
+each consumer's review evidence and the gap history.
+
+| Node | Executes | in | out |
+| --- | --- | --- | --- |
+| `initialize` | Deterministic: authoring is needed unless `specify=false` or the same intent was already accepted without an open gap. | task, candidate | route |
+| `specify` | Spec Authoring: one spec-engineer `specify` invocation; the owner's and every affected consumer's candidate reviews admit the replacements before they are applied and are recorded for reuse. | task, Spec context | replaced Spec documents, candidate review evidence |
+| `review_spec` | Independent Spec review of the owner and every consumer whose evidence is missing or stale; an explicit skip or fully current evidence is recorded instead. | task, Spec, review evidence | Spec review results |
+| `summarize` | Deterministic: the capability response with every artifact reference. | output, artifacts | response |
+
 ```mermaid
 flowchart TB
-    accTitle: Independent specification preparation
-    accDescr: Routing binds one owner. Accepted authoring or an explicit skip selects independent review or an admissible recorded skip. Every blocker stops with preserved progress; completion ends before planning.
-    route["Bind owner and intent"]
-    author["Spec Authoring"]
-    decision["Select required review or admissible skip"]
-    review["Independent Spec Review"]
-    skip["Record admissible Spec review skip"]
-    complete["Completed Spec preparation"]
-    stop["Stop with preserved progress"]
-    route -->|authoring needed| author
-    route -->|authoring accepted or explicitly skipped| decision
-    author -->|accepted replacements| decision
-    decision -->|review enabled or already required| review
-    decision -->|review disabled and not required| skip
-    skip -->|skip recorded| complete
-    review -->|current successful coverage| complete
-    route -->|admission fails| stop
-    author -->|gap or invalid output| stop
-    review -->|gap, blocking finding, incomplete or failed| stop
+    %% flow: specify_flow
+    accTitle: Specification Flow
+    accDescr: Initialization selects authoring or goes straight to review; accepted authoring is followed by independent review; every stop routes to summarize and a guard-caught error ends the Flow.
+    __start__["start"]
+    initialize["initialize<br/>in: task, candidate<br/>out: route"]
+    specify["specify<br/>in: task, Spec context<br/>out: replaced Spec documents, candidate review evidence"]
+    review_spec["review_spec<br/>in: task, Spec, review evidence<br/>out: Spec review results"]
+    summarize["summarize<br/>in: output, artifacts<br/>out: response"]
+    __end__["end"]
+    __start__ --> initialize
+    initialize -->|authoring needed| specify
+    initialize -->|specify=false or authoring accepted| review_spec
+    initialize -->|error| __end__
+    specify -->|replacements applied| review_spec
+    specify -->|gap, blocked or failed| summarize
+    specify -->|error| __end__
+    review_spec -->|reviewed, retained, skipped or stopped| summarize
+    review_spec -->|error| __end__
+    summarize --> __end__
 ```
 
 There is no automatic Spec-repair edge. A necessary gap waits for explicit repair and fresh inputs;

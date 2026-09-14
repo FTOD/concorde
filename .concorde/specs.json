@@ -1,6 +1,22 @@
 {
   "checks": [
     {
+      "id": "check.development.flow-specs",
+      "target_id": "module.development",
+      "argv": [
+        "{python}",
+        "scripts/development/check-flow-specs.py"
+      ],
+      "timeout_seconds": 120,
+      "inputs": [
+        "scripts/development/check-flow-specs.py",
+        "src/concorde/development",
+        "src/concorde/harness",
+        "src/concorde/reflections",
+        "specs/concorde"
+      ]
+    },
+    {
       "argv": [
         "{python}",
         "scripts/development/run-tests.py",
@@ -393,13 +409,15 @@
     },
     {
       "checks": [
+        "check.development.flow-specs",
         "check.development.runtime"
       ],
       "documents": [
         "specs/concorde/development/module.md",
         "specs/concorde/development/interfaces.md",
         "specs/concorde/development/capabilities.md",
-        "specs/concorde/development/review-and-gaps.md"
+        "specs/concorde/development/review-and-gaps.md",
+        "specs/concorde/development/flows.md"
       ],
       "files": [
         "capabilities/context_solve.py",
@@ -413,6 +431,7 @@
         "capabilities/specify_loop.py",
         "capabilities/tasks.py",
         "capabilities/validate.py",
+        "scripts/development/check-flow-specs.py",
         "src/concorde/development/",
         "src/concorde/harness/change_worktree.py",
         "src/concorde/harness/session_handoff.py",

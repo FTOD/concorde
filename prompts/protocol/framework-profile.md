@@ -153,6 +153,13 @@ directories (`src/concorde/<module>/`, `tests/concorde/<module>/`) and the direc
 are listed as directory prefixes on the entity that owns that directory's core responsibility, and a
 file shared by several Modules is listed exactly by each of them under its own entity.
 
+Every executable Flow has a Flow Spec in its owning Module's documents written with LangGraph's
+concepts: a State part, a Nodes table (node name, what executes, `in` and `out` state) and a
+Mermaid flowchart bound to the compiled Flow by `%% flow: <name>` whose node identifiers are the
+compiled node names including `__start__` and `__end__`, whose node labels state `in:` and
+`out:`, and whose edges carry their routing condition as a label exactly when the source node has
+several successors. The configured Flow Spec check keeps every diagram equal to its compiled Flow.
+
 A Python test declares the scenarios it verifies with the `verifies` decorator from
 `concorde.spec.verification`, for example `@verifies("scenario.harness.context-freeze")` on the test
 function or method; a test may name several scenarios, and the declaration is read by parsing, not

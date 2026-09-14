@@ -22,6 +22,65 @@ LangGraph nodes and transitions. Each selected resolution advances through a bou
 a blocked child prevents dependent work. Deterministic status and disposition operations remain
 leaf nodes, and the Flow preserves the existing evidence, ownership and approval requirements.
 
+## Triage Flow (`triage_flow`)
+
+State: `route`, `index` (the resolution being implemented), `output`, `result`. The reflection
+queue records and the candidate's target record carry the durable state.
+
+| Node | Executes | in | out |
+| --- | --- | --- | --- |
+| `select_records` | Deterministic: the action selects its operation; selected records must belong to the bound Module or its scenarios. | action, reflection ids, queue | route, selected records |
+| `record_gaps` | Deterministic: promotes selected open gaps of the current change into pending records. | gap history, gap ids | new records |
+| `status` | Deterministic: typed queue metadata for the Module. | queue | status response |
+| `remove_records` | Deterministic: close or merge disposition removes eligible records. | selected records, disposition | removed records |
+| `prepare_investigation` | Deterministic: binds the selected records and HEAD; a Module without code is unsupported. | selected records, HEAD | bound evidence |
+| `investigate` | One programmer `investigation` invocation over the bound evidence, read-only. | bound evidence, Spec context, implementation files | findings |
+| `persist_findings` | Deterministic: writes the investigation result into the records; an implement action requires one consistent route. | findings, records | investigation plans |
+| `implement_resolution` | One development Flow per finding in this candidate. | investigation plan, candidate | component implementation |
+| `validate_candidate` | Deterministic validation of the candidate after every resolution. | candidate | checks |
+| `finish` | Deterministic: the investigation response. | records | response |
+
+```mermaid
+flowchart TB
+    %% flow: triage_flow
+    accTitle: Triage Flow
+    accDescr: The action selects gap capture, status, disposition or investigation; investigation persists findings and, for an implement action, runs one development Flow per finding before validating the candidate.
+    __start__["start"]
+    select_records["select_records<br/>in: action, reflection ids, queue<br/>out: route, selected records"]
+    record_gaps["record_gaps<br/>in: gap history, gap ids<br/>out: new records"]
+    status["status<br/>in: queue<br/>out: status response"]
+    remove_records["remove_records<br/>in: selected records, disposition<br/>out: removed records"]
+    prepare_investigation["prepare_investigation<br/>in: selected records, HEAD<br/>out: bound evidence"]
+    investigate["investigate<br/>in: bound evidence, Spec context, implementation files<br/>out: findings"]
+    persist_findings["persist_findings<br/>in: findings, records<br/>out: investigation plans"]
+    implement_resolution["implement_resolution<br/>in: investigation plan, candidate<br/>out: component implementation"]
+    validate_candidate["validate_candidate<br/>in: candidate<br/>out: checks"]
+    finish["finish<br/>in: records<br/>out: response"]
+    __end__["end"]
+    __start__ --> select_records
+    select_records -->|record-gaps| record_gaps
+    select_records -->|status| status
+    select_records -->|close or merge| remove_records
+    select_records -->|investigate or implement| prepare_investigation
+    select_records -->|error| __end__
+    record_gaps --> __end__
+    status --> __end__
+    remove_records --> __end__
+    prepare_investigation -->|Module lists code| investigate
+    prepare_investigation -->|unsupported| __end__
+    investigate -->|findings returned| persist_findings
+    investigate -->|gap or failure| __end__
+    persist_findings -->|implement with findings| implement_resolution
+    persist_findings -->|implement without findings| validate_candidate
+    persist_findings -->|investigate only| finish
+    persist_findings -->|error| __end__
+    implement_resolution -->|findings remain| implement_resolution
+    implement_resolution -->|every resolution implemented| validate_candidate
+    implement_resolution -->|child blocked| __end__
+    validate_candidate --> __end__
+    finish --> __end__
+```
+
 ## Investigation
 
 ### scenario.reflections.investigate-reproduces — Investigation binds evidence and writes a plan

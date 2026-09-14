@@ -67,6 +67,14 @@ composition.
 
 ## Scenarios
 
+### scenario.development.flow-specs — Every Flow Spec equals its compiled Flow
+
+- GIVEN the Flow catalog compiles every executable Flow with inert nodes
+- WHEN the Flow Spec check reads every Mermaid flowchart bound with `%% flow: <name>` in the registered Spec documents
+- THEN each bound diagram's node identifiers are exactly the compiled nodes including start and end, its edges are exactly the compiled edges, each edge leaving a node with several successors carries its routing condition and each edge leaving a node with one successor carries none, and every executing node's label states its in and out state
+- AND every compiled Flow has exactly one bound diagram and every bound name is a compiled Flow
+- BUT a passing check proves only that the Spec and the executed topology agree, not that the routing is right
+
 ### scenario.development.flow-execution — Execute the inspected Flow
 
 - GIVEN an admitted capability request through a local or Studio entry
@@ -168,6 +176,7 @@ Two programs realize this Module's own code: the host adapter and the capability
     "kind": "program",
     "responsibility": "Realize shared admission and dispatch together with the existing provider and Flow internals; their semantic contracts are owned by the sibling Modules, and extraction into separate runtime programs remains pending.",
     "files": [
+      "scripts/development/check-flow-specs.py",
       "src/concorde/development/",
       "tests/concorde/development/",
       "tests/concorde/harness/test_flows.py",
