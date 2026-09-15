@@ -324,6 +324,7 @@
       ],
       "files": [
         "agents/",
+        "pi/",
         "scripts/development/STUDIO.md",
         "scripts/development/check-reference-versions.py",
         "scripts/development/studio.py",
@@ -334,6 +335,8 @@
         "src/concorde/harness/context.py",
         "src/concorde/harness/native_agent.py",
         "src/concorde/harness/permissions.py",
+        "src/concorde/harness/pi_rpc.py",
+        "src/concorde/harness/pi_worker.py",
         "src/concorde/harness/session_handoff.py",
         "src/concorde/harness/studio.py",
         "src/concorde/harness/studio_client.py",
@@ -353,6 +356,7 @@
         "tests/concorde/harness/test_boundaries.py",
         "tests/concorde/harness/test_change_worktree.py",
         "tests/concorde/harness/test_permissions.py",
+        "tests/concorde/harness/test_pi_worker.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_session_handoff.py",
         "tests/concorde/harness/test_studio.py",
@@ -360,7 +364,9 @@
         "tests/concorde/harness/test_studio_server.py",
         "tests/concorde/harness/test_worktree_boundary.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
-        "tests/concorde/spec/test_typed_data.py"
+        "tests/concorde/spec/test_typed_data.py",
+        "tests/concorde/support/fake_openai_provider.py",
+        "tests/concorde/support/fake_pi_rpc.py"
       ],
       "id": "module.harness",
       "kind": "module",

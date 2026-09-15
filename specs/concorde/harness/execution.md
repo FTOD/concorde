@@ -359,6 +359,133 @@ attestation, so no configuration value selects that path.
 - AND the settings allow only the policy's read paths for `Read` and its write paths for `Edit` and `Write`, with `Agent` and `Task` denied and `WebFetch` and `WebSearch` denied without network
 - AND the sandbox block is enabled, fails if unavailable and permits no unsandboxed command
 
+## Pi worker runtime
+
+A Pi worker is one Pi coding agent process run in RPC mode for one bounded task. Pi calls the
+worker's model through its own providers and executes its built-in tools; LangGraph stays the
+orchestration around it. `PiWorkerRuntime` launches one `WorkerLaunch` and returns a
+`WorkerResult` or raises `WorkerExecutionError`:
+
+```python
+WorkerLaunch(worker: str, workspace: str, system_prompt: str, message: str,
+             result_schema: Mapping[str, Any], tools: tuple[str, ...],
+             read_paths: tuple[str, ...] = (), write_paths: tuple[str, ...] = (),
+             children: tuple[ChildAgent, ...] = (), child_tools: tuple[str, ...] = (),
+             model: str | None = None, thinking: str | None = None, timeout_seconds: float = 1800)
+ChildAgent(name: str, definition: str)
+PiWorkerRuntime(package_root: Path, pi_executable: str | None = None,
+                environment: Mapping[str, str] | None = None, credentials_dir: Path | None = None,
+                popen=subprocess.Popen)
+PiWorkerRuntime.__call__(launch: WorkerLaunch, *, checks: Callable[[], Any] | None = None) -> WorkerResult
+WorkerResult(value: dict[str, Any], run: PiRun, usage: dict[str, Any])
+WorkerExecutionError(message: str, outcome: "failed"|"cancelled"|"limit_exhausted"|"invalid_completion",
+                     run: PiRun | None = None)
+run_prompt(argv, *, cwd: str, env: Mapping[str, str], message: str, timeout: float, popen=subprocess.Popen) -> PiRun
+```
+
+Paths in a launch are relative to its absolute workspace, which is the process's working
+directory. `model` is Pi's `provider/id` and `thinking` one of Pi's levels (`off` through `max`).
+The tools are Pi's built-ins (`read`, `grep`, `find`, `ls`, `edit`, `write`, `bash`) and three
+Concorde tools: `submit_result`, which every worker has; `run_checks`, which requires the host
+check service; and `subagent`, which a worker has exactly when it declares children. Edit and
+write require a write grant, and child tools are built-ins or `run_checks`. An inconsistent launch
+is refused before any process starts.
+
+### Launch
+
+Each launch gets a private run directory that is removed afterwards. Its `agent/` directory is
+Pi's configuration directory for the process (`PI_CODING_AGENT_DIR`): Concorde's own settings
+(project trust never, install telemetry off, pi-subagents builtin agents disabled), the developer's
+Pi credentials (`auth.json` and custom-provider `models.json`, copied from the developer's Pi
+directory), the declared child definitions under `agents/` and the pi-subagents configuration
+under `extensions/subagent/config.json`. Beside it lie `policy.json`, which the Concorde worker
+extension enforces, `system-prompt.md`, which it installs as the worker's complete system prompt,
+`tmp/`, the process's temporary directory, and, for a worker with `run_checks`, the host check
+service's socket. The developer's own Pi settings, sessions, agents, extensions and skills are
+never read.
+
+The process runs `pi --mode rpc --no-session --no-context-files --no-skills --no-prompt-templates
+--no-themes --no-extensions -e pi/extensions/concorde-worker.ts [-e pi-subagents] --no-approve
+--offline --tools <tools> [--model <model>] [--thinking <level>]`, with pi-subagents loaded only
+for a worker with children. Its environment is the host allowlist, the provider credential
+variables Pi documents, `PI_OFFLINE`, `PI_SKIP_VERSION_CHECK`, `PI_TELEMETRY=0`, the run
+directory's `TMPDIR` and the policy location. The host sends one `prompt` command carrying the
+worker's message, reads records split on line feed only until `agent_settled`, answers every
+extension dialog as cancelled, reads the session statistics and closes the process.
+
+The result is the `details` of the worker's single successful `submit_result` call. That tool's
+parameters are the launch's result schema, so the model sees its output contract as a tool, and it
+ends the run. No submission or a second one is `invalid_completion`; a missed deadline kills the
+process and is `limit_exhausted`; a host interrupt is `cancelled`; a process that exits or breaks
+the protocol before settling is `failed`. None of them retries. The caller validates the value
+against its own typed contract. Usage comes from Pi's session statistics: input, cached input and
+output tokens, cost, assistant turns and the host-measured wall time.
+
+### Tool gate
+
+The Concorde worker extension gates every tool call before it executes: a tool outside the
+granted list is refused; `read`, `grep`, `find` and `ls` must target a path whose canonical form,
+symlinks resolved, lies under a read or write grant, and a search without a path targets the
+workspace itself; `edit` and `write` must target a path under a write grant; each `bash` command
+first unsets the provider credential variables. A refused call returns an error result naming the
+policy, and the model continues. The gate runs inside the Pi process, so it is a policy boundary,
+not an operating-system sandbox: a shell command is not confined by it. Running the whole Pi
+process inside an operating-system sandbox that mounts only the granted paths is the planned
+stronger boundary.
+
+### One-level delegation
+
+A worker with children loads pi-subagents, pinned in `pi/package.json` and installed with `npm ci
+--prefix pi`. Its configuration allows one level of delegation, runs children in the foreground in
+fresh contexts, and disables pi-subagents' background runs, missions, schedules and inter-session
+channels. On session start the Concorde extension registers two things with pi-subagents for the
+worker's session: a capability ceiling naming exactly the declared children and the child tools,
+and itself as a required child extension, so every child session loads the same gate. In a child
+session the gate uses the child tool list, refuses `subagent` and `submit_result`, and does not
+replace the child's system prompt. A child is a lightweight pi-subagents Markdown definition: what
+it does inside the worker is not a Concorde contract, and only the worker's submitted result
+leaves the process.
+
+### Host check service
+
+For a worker granted `run_checks`, the host serves one Unix socket in the run directory. The tool
+sends `{"tool": "run_checks"}` and returns the host's JSON reply, or an `error` field when the host
+callback fails; the host runs the configured checks under its own read-only executor.
+
+### scenario.harness.pi-rpc-client — Read one Pi RPC run to settlement
+
+- GIVEN a process speaking Pi's RPC protocol
+- WHEN the host runs one prompt through run_prompt
+- THEN records are split on line feed only, so U+2028 and U+2029 inside a JSON string stay inside it, and a trailing carriage return is dropped
+- AND every extension dialog is answered as cancelled, every tool result is collected, and the session statistics are read after agent_settled
+- BUT a process that closes its output before settling raises PiRpcError, and a run past its deadline is killed and raises PiRpcTimeout
+
+### scenario.harness.pi-worker-launch — Launch a Pi worker and admit its single result
+
+- GIVEN a consistent worker launch with a workspace, grants, tools, a system prompt, a message, a result schema and a Pi model
+- WHEN PiWorkerRuntime runs it
+- THEN Pi starts in RPC mode with ambient discovery disabled, the host-rendered system prompt as the complete system prompt and submit_result advertised with exactly the launch's result schema
+- AND the returned value is the details of the single successful submit_result call, with usage from Pi's session statistics
+- AND a run_checks call is answered by the host's check callback
+- BUT a run without a submission fails with invalid_completion, a run past its deadline fails with limit_exhausted, and an inconsistent launch is refused before any process starts
+
+### scenario.harness.pi-worker-gate — Refuse tool calls outside the worker's grant
+
+- GIVEN a running Pi worker with read and write grants and a tool list
+- WHEN its model reads, searches or writes a path outside the grants, or calls a tool it was not granted
+- THEN the Concorde worker extension refuses the call with an error result naming the policy and the file is neither read nor changed
+- AND calls inside the grants execute normally
+- AND a bash command runs with the provider credential variables unset
+
+### scenario.harness.pi-worker-delegation — Delegate one level to declared children under the same gate
+
+- GIVEN a Pi worker that declares a child agent and child tools
+- WHEN its model delegates a task to that child
+- THEN pi-subagents runs the child as a foreground session that loads the Concorde worker extension and has exactly the child tools
+- AND the gate refuses the child's calls outside the worker's grants, and the child cannot delegate or submit a result
+- AND delegation to an agent the worker did not declare is refused
+- BUT only the worker's own submitted result leaves the process
+
 ## Usage accounting
 
 Both native clients report what a process consumed in the same JSON output that carries the

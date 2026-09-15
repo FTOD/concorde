@@ -1,0 +1,9 @@
+{
+  "name": "concorde-pi-runtime",
+  "private": true,
+  "type": "module",
+  "description": "The Pi extensions every Concorde worker loads: the Concorde worker extension and the pinned pi-subagents delegation extension.",
+  "dependencies": {
+    "pi-subagents": "0.68.0"
+  }
+}

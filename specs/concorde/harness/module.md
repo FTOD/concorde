@@ -558,6 +558,32 @@ the most specific entry owns a file.
     "responsibility": "The Codex or Claude Code client selected by project configuration. Its own permission profile, or its restricted mode and permission engine, enforces the rendered default-deny boundary around every Agent process; the client runs as the developer's user and is not itself sandboxed."
   },
   {
+    "id": "entity.harness.pi-worker-runtime",
+    "title": "Pi worker runtime",
+    "kind": "program",
+    "responsibility": "Launch one worker as a Pi process in RPC mode inside a private run directory, gate its tool calls and its children's through the Concorde worker extension, bound delegation to one level through pi-subagents, answer run_checks on the host and admit the worker's single structured result.",
+    "files": [
+      "pi/",
+      "src/concorde/harness/pi_rpc.py",
+      "src/concorde/harness/pi_worker.py",
+      "tests/concorde/harness/test_pi_worker.py",
+      "tests/concorde/support/fake_openai_provider.py",
+      "tests/concorde/support/fake_pi_rpc.py"
+    ]
+  },
+  {
+    "id": "entity.harness.pi",
+    "title": "Pi",
+    "kind": "external actor",
+    "responsibility": "The Pi coding agent run in RPC mode: it calls a worker's model through its own providers and executes its built-in tools under the Concorde worker extension's gate. It has no sandbox of its own."
+  },
+  {
+    "id": "entity.harness.pi-subagents",
+    "title": "pi-subagents",
+    "kind": "external library",
+    "responsibility": "The pinned Pi extension that runs a worker's declared children as foreground sessions, honoring the capability ceiling and the required child extension the Concorde worker extension registers."
+  },
+  {
     "id": "entity.harness.spec",
     "title": "Spec",
     "kind": "used module",
@@ -605,7 +631,7 @@ permissions, and process exit alone never establishes completion.
 ```mermaid
 flowchart TB
     accTitle: Harness entities and relationships
-    accDescr: The Agent and Harness model defines the canonical Agent, Mode, Harness and AgentBinding records that Agent definitions bind and that Agent execution runs directly. Agent definitions resolve a verified binding for Agent execution and render instructions through Distribution. Permissions compiles the effective policy that Agent execution enforces, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Agent execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Agent execution admits. Studio starts or observes the same capability host as Agent execution. Agent execution starts each Agent process under the enforcement of the Native integration, for which Permissions renders a default-deny launch configuration.
+    accDescr: The Agent and Harness model defines the canonical Agent, Mode, Harness and AgentBinding records that Agent definitions bind and that Agent execution runs directly. Agent definitions resolve a verified binding for Agent execution and render instructions through Distribution. Permissions compiles the effective policy that Agent execution enforces, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Agent execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Agent execution admits. Studio starts or observes the same capability host as Agent execution. Agent execution starts each Agent process under the enforcement of the Native integration, for which Permissions renders a default-deny launch configuration. The Pi worker runtime receives the host environment allowlist from the Agent and Harness model, runs each worker in RPC mode on Pi and bounds its delegation to one level with pi-subagents.
     agentModel["Agent and Harness model"]
     agentDefs["Agent definitions"]
     permissions["Permissions"]
@@ -635,6 +661,12 @@ flowchart TB
     langgraph["LangGraph"]
     execution -->|schedules Agent Flows and Studio graphs with| langgraph
     context -->|supplies the declared reference documentation of| langgraph
+    piRuntime["Pi worker runtime"]
+    pi["Pi"]
+    piSubagents["pi-subagents"]
+    agentModel -->|supplies the host environment allowlist to| piRuntime
+    piRuntime -->|runs each worker in RPC mode on| pi
+    piRuntime -->|bounds delegation to one level with| piSubagents
 ```
 
 ## Local collaboration agreements
