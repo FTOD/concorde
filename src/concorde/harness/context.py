@@ -163,6 +163,7 @@ def context_documents(repository: SpecRepository, value: dict, *,
     place, and this verification proves they still hold the frozen bytes. A candidate repository
     supplies the bytes of documents it overrides, as topology authoring does.
     """
+    (candidate_repository or repository).validate_source_records(_index_documents(value))
     expected = {item["path"]: item["digest"] for item in (*value["protocol"], *_index_documents(value))}
     result: dict[str, bytes] = {}
     for path, expected_digest in expected.items():
@@ -170,11 +171,8 @@ def context_documents(repository: SpecRepository, value: dict, *,
             raw = repository.protocol_assets[path]
         else:
             source = (candidate_repository if candidate_repository is not None
-                      and path in candidate_repository.document_overrides else repository)
-            source.document(path)
-            raw = source.document_overrides.get(path)
-            if raw is None:
-                raw = read_file(source.root, path)
+                      and candidate_repository.source_is_overridden(path) else repository)
+            raw = source.source_bytes(path)
         if digest(raw) != expected_digest:
             raise SpecError(f"granted context file changed: {path}", "stale_context")
         result[path] = raw
@@ -325,12 +323,10 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
     paths = selection._context_paths(descriptor)
     sources = []
     for path, reasons in paths.items():
-        source_repository = selection if path in selection.document_overrides else repository
+        source_repository = selection if selection.source_is_overridden(path) else repository
         if path not in source_repository.document_targets and path in target["documents"]:
             continue
-        document = source_repository.document(path)
-        sources.append({"document_id": document.document_id, "path": path, "owner": document.owner,
-            "digest": document.digest, "main_visible": document.main_visible, "reasons": reasons})
+        sources.extend(source_repository.source_records(path, reasons))
     # The reading entry comes from the accepted descriptor: a new Module's module.md may not exist yet.
     reading_entry = next(path for path in target["documents"] if Path(path).name == "module.md")
     resolution = {"query_id": target["id"], "query_kind": "module", "module_id": target["id"],
@@ -360,8 +356,9 @@ def _stale_on_resolution_error(check):
         try:
             return check(*args, **kwargs)
         except (ValueError, OSError) as error:
-            if isinstance(error, SpecError) and error.code == "stale_context":
-                raise
+            if isinstance(error, SpecError):
+                if error.code == "stale_context":
+                    raise
             raise SpecError(f"admitted context selection changed: {error}", "stale_context") from error
     return checked
 

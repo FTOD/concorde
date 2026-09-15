@@ -21,7 +21,7 @@ from ..harness.agent_model import ContractError, agent_definition
 from ..harness.worker_executor import CapabilityExecutionError, WorkerOutcome
 from ..harness.permissions import PermissionPolicyError, PolicyBinding, compile_policy
 from ..spec.contracts import REVIEW_STAGES
-from ..distribution.build import load_agent
+from ..distribution.build import SkillPrompt, load_agent
 from ..harness.context import (context_documents, materialize_documents, materialize_references,
                                recheck_context, reference_grants, resolve_context)
 from ..harness.usage import record_usage
@@ -47,8 +47,8 @@ def _changes(repository, target, mode, baseline) -> list[dict]:
                 previous[path] = oid
     changes = []
     for path in sorted(current | previous.keys()):
-        after = ((repository.document_overrides[path] if path in repository.document_overrides
-                  else read_file(repository.root, path)) if path in current else b"")
+        after = ((repository.source_bytes(path) if mode == "spec" else read_file(repository.root, path))
+                 if path in current else b"")
         oid = previous.get(path)
         if oid and path in current:
             git_digest = hashlib.new("sha1" if len(oid) == 40 else "sha256",
@@ -69,7 +69,7 @@ def _changes(repository, target, mode, baseline) -> list[dict]:
     return changes
 
 
-def inputs(run, mode: str) -> tuple[dict, object]:
+def inputs(run, mode: str) -> tuple[dict, SkillPrompt]:
     from .capability_host import _target_revision, _implementation_digest
     repository = (run.repository if getattr(run, "candidate_review", False) else
                   SpecRepository(run.repository.root, run.host.package_root))
@@ -80,6 +80,8 @@ def inputs(run, mode: str) -> tuple[dict, object]:
         raise SpecError("code review requires a Module whose entities list implementation files", "unsupported_target")
     phase, role = REVIEW_STAGES[mode]
     prompt = load_agent(run.host.package_root, role)
+    if prompt.binding is None or prompt.effects is None:
+        raise SpecError("review requires a bound Agent with explicit effects", "permission_denied")
     change = read_change(repository.root)
     _, current = workspace_identity(repository.root)
     head = current["head"] if current else None
@@ -194,6 +196,8 @@ def review(run, mode: str) -> dict:
     from .capability_host import (_check_service, _protocol_documents, _run_worker, _worker_description,
                                   _worker_invocation)
     info, prompt = inputs(run, mode)
+    if prompt.binding is None or prompt.effects is None:
+        raise SpecError("review requires a bound Agent with explicit effects", "permission_denied")
     phase, role = REVIEW_STAGES[mode]
     agent = agent_definition(prompt.binding.agent)
     snapshot = resolve_context(run.repository, run.target.id, phase=phase, task=run.task["task"],
@@ -224,7 +228,7 @@ def review(run, mode: str) -> dict:
             granted = context_documents(run.repository, snapshot.value)
             if not project_workspace and run.host.mode != "describe-policy":
                 materialize_documents(project, granted)
-            roles = {"spec-context": (relative, *sorted(granted))}
+            roles: dict[str, tuple[str, ...]] = {"spec-context": (relative, *sorted(granted))}
             if project_workspace:
                 roles["implementation"] = tuple(run.repository.implementation_files(run.target))
             if "references" in prompt.effects.reads:
@@ -261,6 +265,8 @@ def review(run, mode: str) -> dict:
                 return data
 
             data = AgentNode(agent).invoke(value, launch_reviewer)
+            if result is None:
+                raise SpecError("review returned without a worker execution result", "invalid_completion")
             _validate(run, snapshot, info, data)
             recheck_context(run.repository, snapshot)
             if inputs(run, mode)[0] != info or load_configuration(run.repository.root) != run.configuration:

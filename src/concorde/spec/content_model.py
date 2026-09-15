@@ -217,6 +217,49 @@ def reading_problems(text: str, *, primary: bool) -> tuple[str, ...]:
     return tuple(problems)
 
 
+def json_declarations(text: str, language: str, path: str) -> tuple[Any, ...]:
+    """Decode only actual outer declarations; nested example fences are opaque."""
+    declarations = []
+    payload: list[str] | None = None
+    for _, kind, line in walk_lines(text):
+        if kind == "fence-open":
+            name = re.sub(r"^ {0,3}(?:`{3,}|~{3,})\s*", "", line).strip()
+            payload = [] if name == language else None
+        elif kind == "fenced" and payload is not None:
+            payload.append(line)
+        elif kind == "fence-close" and payload is not None:
+            declarations.append(decode("\n".join(payload)))
+            payload = None
+    if payload is not None:
+        raise ContentModelError(path, f"unclosed {language} declaration")
+    return tuple(declarations)
+
+
+def metadata_identity(path: str, raw: bytes, *, expected_owner: str) -> tuple[str, str]:
+    """Read identity from metadata alone, without admitting an unselected reading body.
+
+    Full declaration and readable-meaning validation happens on unit admission. This bounded
+    index step checks only the closed envelope, explicit array fields and document ownership.
+    """
+    try:
+        value = decode(raw.decode("utf-8"))
+    except (ValueError, UnicodeError) as error:
+        raise ContentModelError(path, f"invalid metadata UTF-8 or JSON: {error}") from error
+    _object(value, {"schema_version", "document", "entities", "dependencies", "bindings"}, set(), path)
+    if type(value["schema_version"]) is not int or value["schema_version"] != METADATA_VERSION:
+        raise ContentModelError(path, "unsupported document metadata version")
+    document = _object(value["document"], {"id", "owner"}, set(), path)
+    document_id = _identity(document["id"], path)
+    owner = _identity(document["owner"], path)
+    if owner != expected_owner:
+        raise ContentModelError(path, "document owner differs from registration")
+    if document_id == owner:
+        raise ContentModelError(path, "document identity collides with Module identity")
+    for name in ("entities", "dependencies", "bindings"):
+        _array(value[name], path)
+    return document_id, owner
+
+
 def admit_document_unit(reading_path: str, reading: bytes, metadata: bytes, *,
                         expected_owner: str, primary: bool = False) -> DocumentUnit:
     """Admit an explicitly supplied pair without reading any file or following any link.
@@ -240,16 +283,7 @@ def admit_document_unit(reading_path: str, reading: bytes, metadata: bytes, *,
     problems = reading_problems(text, primary=primary)
     if problems:
         raise ContentModelError(reading_path, "; ".join(problems))
-    _object(value, {"schema_version", "document", "entities", "dependencies", "bindings"}, set(), sidecar)
-    if type(value["schema_version"]) is not int or value["schema_version"] != METADATA_VERSION:
-        raise ContentModelError(sidecar, "unsupported document metadata version")
-    document = _object(value["document"], {"id", "owner"}, set(), sidecar)
-    document_id = _identity(document["id"], sidecar)
-    owner = _identity(document["owner"], sidecar)
-    if owner != expected_owner:
-        raise ContentModelError(sidecar, "document owner differs from registration")
-    if document_id == owner:
-        raise ContentModelError(sidecar, "document identity collides with Module identity")
+    document_id, owner = metadata_identity(sidecar, metadata, expected_owner=expected_owner)
     unit = DocumentUnit(document_id, owner, SourceMember(reading_path, "reading", reading),
                         SourceMember(sidecar, "metadata", metadata), reading_meanings(text, reading_path))
     entity_ids: set[str] = set()

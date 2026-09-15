@@ -13,6 +13,7 @@ import tempfile
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Literal, overload
 
 from ..spec.typed_data import canonical, checked_path, decode
 from ..spec.changes import apply_files, file_change
@@ -119,6 +120,18 @@ def _exclude_control_files(root: Path) -> None:
                          + "# Concorde local worktree control state\n" + "\n".join(missing) + "\n")
 
 
+@overload
+def read_change(root: Path, *, required: Literal[True]) -> dict: ...
+
+
+@overload
+def read_change(root: Path, *, required: Literal[False] = False) -> dict | None: ...
+
+
+@overload
+def read_change(root: Path, *, required: bool) -> dict | None: ...
+
+
 def read_change(root: Path, *, required: bool = False) -> dict | None:
     path = checked_path(root, STATE_PATH)
     if not path.exists():
@@ -162,7 +175,7 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
     except ValueError as error:
         raise SpecError(f"worktree owner state is invalid: {error}", "invalid_worktree_state") from error
     primary, current = workspace_identity(root)
-    if current is not None and (state.get("branch") != current["branch"]
+    if current is not None and (primary is None or state.get("branch") != current["branch"]
             or state.get("primary_worktree") != primary["path"]):
         raise SpecError("worktree state belongs to a different branch or primary worktree",
                         "workspace_mismatch")
@@ -283,10 +296,10 @@ def ensure_change(root: Path, *, task: dict | None = None, change_id: str | None
         raise SpecError("legacy attempt state is not supported; remove it explicitly before adopting this worktree",
                         "legacy_attempt")
     primary, current = workspace_identity(root)
-    secondary = current is not None and current["path"] != primary["path"]
+    secondary = current is not None and primary is not None and current["path"] != primary["path"]
     if not secondary and not allow_primary:
         raise SpecError("a change requires its own linked worktree", "workspace_mismatch")
-    if secondary and not current["branch"]:
+    if secondary and current is not None and not current["branch"]:
         raise SpecError("a change worktree requires an attached branch", "detached_worktree")
     if current is not None:
         tracked = git_value(root, "ls-files", "--", STATE_PATH, REGISTRY_PATH, WORK_PATH, DELIVERIES_PATH)
@@ -350,7 +363,7 @@ def replicate_reference_checkouts(source_root: Path, destination_root: Path) -> 
 
 def create_worktree(root: Path, task: dict, *, package_root: Path | None = None) -> dict:
     primary, current = workspace_identity(root)
-    if primary is None or current["path"] != primary["path"] or not primary["branch"]:
+    if primary is None or current is None or current["path"] != primary["path"] or not primary["branch"]:
         raise SpecError("create a change from the primary worktree's attached branch", "workspace_mismatch")
     change_id = "change." + str(uuid.uuid4())
     branch = "concorde/" + change_id.removeprefix("change.")
@@ -566,7 +579,7 @@ def workspace_context(root: Path, *, persist: bool = False) -> dict:
                     if state else {})
     return {
         "kind": "unversioned" if current is None else
-                "primary" if current["path"] == primary["path"] else "change",
+                "primary" if primary is not None and current["path"] == primary["path"] else "change",
         "current_worktree": str(root.resolve()),
         "current_branch": current["branch"] if current else None,
         "primary_worktree": inventory["primary_worktree"],

@@ -173,11 +173,37 @@ participant-meaning strings. Its result deliberately remains `ready_to_apply: fa
 without any scope/collaboration prose. Those explanations have now been supplied from their
 existing contracts, without changing requirement/scenario IDs or weakening behavior.
 
-The next implementation boundary is **complete document-unit context admission**, not website
-reordering: replace the repository's inline declaration reads; carry both exact source members
-through resolution records, wire schemas, discovery, capsules, grants, stale checks, owner-only
-proposals, review changes, topology overlays and pending confirmation. Only after those consumers
-agree should initialization and active source registration switch to the new profile.
+The **complete document-unit context backend** is now implemented in
+`src/concorde/spec/content_repository.py`. It admits schema-5 registration explicitly, indexes
+identity from metadata without reading unselected human bodies, resolves one-level references into
+complete source pairs and validates cross-document identities, entity/file unions, provider sets,
+scoped diagrams, canonical contracts and participant bindings. Each resolution binds the selected
+registration and has a closed, versioned source-record shape with `reading`/`metadata` roles and no
+presentation flag. A source-role mismatch, incomplete pair or inconsistent pair provenance rejects.
+
+The active repository now exposes `source_records`, `source_bytes`, `source_is_overridden` and
+`validate_source_records`. The existing capsule materializer, topology source assembly and review
+diff extraction use those operations instead of assuming that every source is a Markdown document.
+A metadata-only overlay selects the candidate for the entire unit, so topology author contexts do
+not accidentally take the old owner or old metadata from the unchanged reading file's base. Tests exercise these
+real helpers with the new backend, including policy compilation that keeps both source members
+read-only, discovery-pool deduplication and review findings located in metadata while naming the
+canonical reading document and its original owner.
+
+`src/concorde/spec/content_changes.py` validates owned replacements as one complete overlay before
+using the existing rollback-safe transaction. Referenced metadata is not writable, stale baselines
+reject, and ordinary authoring cannot transfer document identity/ownership. Topology overlays can
+register complete new pairs or transfer an existing unit's owner without changing its identity;
+affected-context calculation includes all changed owners/consumers. Pending confirmation changes
+only metadata, preserves still-missing declarations and invalidates dependent context identities.
+
+This backend is **not yet constructed by public capability admission**. It deliberately has no
+installed Protocol binding or launch configuration, and does not select formats by inspecting a
+project's files. The active host still uses Protocol 6 / Profile 13 and its existing worker wire
+envelopes. The next activation boundary is to converge the backend with that bound repository,
+update/version the worker snapshot, discovery and topology envelopes, and adapt lifecycle dispatch,
+initialization and all fixtures together with the Protocol/Spec/docsite source migration. There
+must be no permanently supported dual-format runtime or silent acceptance of an old project.
 
 Migration notes still requiring explicit resolution include:
 
@@ -197,3 +223,20 @@ language server initially cached missing imports for newly created files; restar
 refreshing analysis resolved them without inline suppressions or import-path workarounds.
 These checks establish the foundation and current-profile regression status, not new-profile
 runtime support, completed semantic rewriting or visual review of a new site.
+
+### Context-backend stage evidence
+
+The complete checkout now passes new-backend structural admission as an in-memory schema-5 overlay:
+17 Modules, 56 document units and 112 exact source members. No migrated member is written to the
+project. This regression is part of the 26 new backend tests rather than only a manual experiment.
+The entire Python suite passed with 824 tests, zero failures/errors and 10 Studio-server skips.
+The 168 docsite tests, docsite typechecking/source validation/production build, Framework
+build/freshness checks and Flow Spec validation also passed. Active LSP checks of all eight
+changed/new Python files found no diagnostics.
+Existing optional-return annotation gaps in review/worktree state were corrected without ignores;
+review explicitly rejects an unbound Agent or absent execution result.
+
+The ten pre-existing uncommitted Spec whitespace edits observed at this stage's start were left
+untouched and are not part of its implementation commit. Test evidence concerns the checked working
+tree, including those preserved edits. Public-profile activation and a new docsite layout remain
+unimplemented, not inferred from these backend and current-profile regression results.

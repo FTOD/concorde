@@ -592,15 +592,36 @@ class SpecRepository:
         target, _ = self._query(entity_id)
         return tuple(self._context_paths(target))
 
+    def source_bytes(self, path: str) -> bytes:
+        """Current bytes of a registered source, including an explicit candidate override."""
+        self.document(path)
+        return self.document_overrides[path] if path in self.document_overrides else read_file(self.root, path)
+
+    def source_is_overridden(self, path: str) -> bool:
+        """Whether candidate source admission must use the overlay rather than the base."""
+        return path in self.document_overrides
+
+    def source_records(self, path: str, reasons: list[dict]) -> list[dict]:
+        """Source members of one document; the active profile still has one Markdown member."""
+        document = self.document(path)
+        return [{"document_id": document.document_id, "path": path, "owner": document.owner,
+                 "digest": document.digest, "main_visible": document.main_visible, "reasons": reasons}]
+
+    def validate_source_records(self, records: list[dict]) -> None:
+        seen = set()
+        for record in records:
+            path = record["path"]
+            if path in seen:
+                raise SpecError("duplicate context source", "invalid_context")
+            document = self.document(path)
+            if record.get("document_id") != document.document_id or record.get("owner") != document.owner:
+                raise SpecError("context source identity or ownership changed", "stale_context")
+            seen.add(path)
+
     def spec_context(self, entity_id: str) -> SpecResolution:
         target, kind = self._query(entity_id)
-        sources = []
-        for path, reasons in self._context_paths(target).items():
-            document = self.document(path)
-            # An index record: identity, owner, digest and provenance. The bytes are granted, not embedded.
-            sources.append({"document_id": document.document_id, "path": path,
-                            "owner": document.owner, "digest": document.digest,
-                            "main_visible": document.main_visible, "reasons": reasons})
+        sources = [record for path, reasons in self._context_paths(target).items()
+                   for record in self.source_records(path, reasons)]
         return SpecResolution(canonical({"query_id": entity_id, "query_kind": kind,
             "module_id": target.id, "reading_entry": target.primary_document,
             "documents": list(target.documents),
