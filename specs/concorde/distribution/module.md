@@ -8,9 +8,9 @@
 
 # Distribution
 
-Build authored projections, install and configure owned integrations, provision the managed runtime and keep a source checkout's own projections bound to the worktree that built them.
+## Usage & Contract
 
-## Purpose
+### Purpose
 
 Distribution turns authored Framework sources into the deterministic outputs a project actually
 runs: rendered Agent instructions and Skills, an installed and configured integration, and a
@@ -23,34 +23,51 @@ with its providing Module. Distribution's installation promises stop at owned, r
 output: it never edits project-owned Specs or configuration, and it
 never decides what those Specs should say.
 
-## Requirements
+### Usage
 
-### req.distribution.no-silent-protocol-rewrite — No silent Protocol rebinding
+Use Distribution to build this checkout, install or update Concorde in a consumer project, change
+an initialized project's worker configuration, or provision the pinned runtime. Run
+`python3 scripts/concorde.py build` after authored instruction or contract changes; use
+`build --check` to check freshness without writing. Builds stay with their source worktree.
+Installation previews owned changes by default and applies them only with explicit acceptance;
+local modifications to receipt-owned output conflict rather than being silently adopted.
+
+Installation deploys Framework assets and the Protocol copy, not project business Specs or a
+registry. Initialize those separately. An update does not accept a new Protocol binding for you:
+review and explicitly rebind it after any required project migration. Use `concorde-configure` for
+worker model, thinking, timeout and overrides. Runtime provisioning needs a reviewed current plan;
+launching a viewer or worker does not implicitly provision it. See [installation](installation.md),
+[build](build.md) and [runtime](runtime.md). The existing runtime-rebuild preservation gap below
+means a failed rebuild must not be assumed to have recovered the prior environment.
+
+### Requirements
+
+#### req.distribution.no-silent-protocol-rewrite — No silent Protocol rebinding
 
 Install or update SHALL NOT silently rewrite a consumer's Protocol binding.
 
-### req.distribution.explicit-binding-decision — Changed Protocol assets need explicit acceptance
+#### req.distribution.explicit-binding-decision — Changed Protocol assets need explicit acceptance
 
 A package with changed Protocol assets SHALL require the consumer's explicit binding decision
 before execution.
 
-### req.distribution.build-idempotent — Build output is deterministic and idempotent
+#### req.distribution.build-idempotent — Build output is deterministic and idempotent
 
 `build` and `build --check` SHALL be idempotent and byte-identical across repeated runs.
 
-### req.distribution.build-no-io — Build performs no network or process I/O
+#### req.distribution.build-no-io — Build performs no network or process I/O
 
 `build` and `build --check` SHALL perform no network or process I/O.
 
-### req.distribution.one-worktree-build — Build stays within its own worktree
+#### req.distribution.one-worktree-build — Build stays within its own worktree
 
 Every build invocation SHALL operate only on the worktree containing its named sources.
 
-### req.distribution.no-cross-worktree-build — No cross-worktree build output
+#### req.distribution.no-cross-worktree-build — No cross-worktree build output
 
 Build SHALL NOT point one worktree's build at another worktree's outputs.
 
-### req.distribution.checkout-skills-user-invoked — Source-checkout Skills wait for the developer
+#### req.distribution.checkout-skills-user-invoked — Source-checkout Skills wait for the developer
 
 Build SHALL render the source checkout's own Claude Skill projections as user-invocable only,
 hidden from model-initiated invocation.
@@ -59,48 +76,57 @@ Developing the Concorde checkout is direct developer-authorized maintenance by d
 flow runs on the checkout only when the developer explicitly asks for it. The installed consumer
 projection is unaffected and stays model-invocable.
 
-### req.distribution.root-block-ownership — Root rule ownership is block-scoped
+#### req.distribution.root-block-ownership — Root rule ownership is block-scoped
 
 A root rule entry SHALL be owned only within its exact bounded block, including its separator.
 
-### req.distribution.no-surrounding-text-rewrite — Surrounding user text stays untouched
+#### req.distribution.no-surrounding-text-rewrite — Surrounding user text stays untouched
 
 Installation SHALL NOT hash or replace user text surrounding an owned root block.
 
-### req.distribution.rollback-on-failure — Installation rolls back atomically on failure
+#### req.distribution.rollback-on-failure — Installation rolls back atomically on failure
 
 A runtime or setup failure during installation SHALL roll back root bytes, modes and the receipt
 together with the other installation outputs.
 
-### req.distribution.guard-inspects-text — Guard decides from the submitted command text
+#### req.distribution.guard-inspects-text — Guard decides from the submitted command text
 
 The worktree guard SHALL decide from the submitted command text, including global git options such
 as `-C` and `--git-dir=`.
 
-### req.distribution.guard-not-agent-reliant — Guard does not rely on agent memory
+#### req.distribution.guard-not-agent-reliant — Guard does not rely on agent memory
 
 The worktree guard SHALL NOT depend on an agent remembering the policy.
 
-### req.distribution.guard-checkout-only — Guard protects only this checkout's sessions
+#### req.distribution.guard-checkout-only — Guard protects only this checkout's sessions
 
 The worktree guard SHALL protect only developer sessions of this source checkout.
 
-### req.distribution.guard-not-in-consumer-projects — Guard is excluded from consumer projects
+#### req.distribution.guard-not-in-consumer-projects — Guard is excluded from consumer projects
 
 The worktree guard SHALL NOT be installed into consumer projects.
 
-## Scenarios
+### Scenarios
 
 Scenario definitions for installing, configuring and guarding this source checkout's own worktrees
 are registered in [installation](installation.md). Scenario definitions for rendering and
 freshness-checking projections are registered in [build](build.md). Scenario definitions for
 provisioning the managed Python and viewer runtime are registered in [runtime](runtime.md).
 
-## Ontology
+## Architecture & Realization
 
-Distribution's Ontology separates the three programs that do the work — Build, Installation and
-Managed runtime — from the interfaces that expose them and the records that carry state between
-them, then relates all of it in the diagram below.
+### Design
+
+Build resolves authored sources into byte-traceable projections and a freshness manifest.
+Installation consumes those projections and a receipt-scoped proposal; managed provisioning
+supplies separately verified runtime identity. Distinct records keep a fresh build from being
+mistaken for an accepted installation, and keep installation ownership from reaching user Specs.
+[Build realization](build.md#architecture--realization) explains source accounting; the entity
+bindings below separate instruction sources from the capabilities they expose.
+
+The checkout-only worktree guard preserves session/Skill ownership and is not installed into
+consumer projects. Failed installation restores owned state, while the separately recorded runtime
+rebuild gap remains an unfulfilled preservation obligation rather than a claimed implementation.
 
 ### Entities
 
@@ -343,7 +369,8 @@ flowchart TB
     guard -->|refuses native worktree creation in| session
 ```
 
-## Dependencies and composition
+
+### Dependencies and composition
 
 ```concorde-dependencies
 [
@@ -358,7 +385,8 @@ flowchart TB
 ]
 ```
 
-## Unresolved information
+
+### Unresolved information
 
 Managed runtime's replacement design intends to preserve the previous valid runtime until a rebuild
 is verified and to restore it after a failed rebuild, but the current provisioning implementation
@@ -368,6 +396,7 @@ by code, and callers must not infer recovery from the absence of success metadat
 Project initialization and Protocol-binding decisions belong to `module.spec`'s `concorde-init`
 capability, not to this Module; installation never creates the registry or a Module stub itself.
 
-## Ownership, context and implementation status
 
-Runtime admission, initialization, installation inventory and package Spec/wire alignment support Protocol 5/Profile 12. Build success proves output freshness only. Project updates must preserve explicit owner/reference choices and never silently migrate consumers.
+### Ownership, context and implementation status
+
+Runtime admission, initialization, installation inventory and package Spec/wire alignment support Protocol 6/Profile 13. Build success proves output freshness only. Project updates must preserve explicit owner/reference choices and never silently migrate consumers.

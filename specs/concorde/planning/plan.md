@@ -8,6 +8,8 @@
 
 # Planning capability
 
+## Usage & Contract
+
 The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/review-and-gaps.md) apply. Artifact references are host-issued paths
@@ -34,7 +36,40 @@ intent changes invalidate reuse; a repeated consumer invocation may reuse only c
 artifacts. Planning can be consumed by any declared caller satisfying these preconditions, without
 having to explain its purpose by reference to dev-loop.
 
-## Planning Flow (`plan_flow`)
+### Requirements
+
+#### req.planning.plan-rejection-preserves — Rejected plans preserve accepted state
+
+Planning SHALL leave the previously accepted plan unchanged when a returned plan is empty, invalid or bound to stale inputs.
+
+
+### Scenarios
+
+#### scenario.planning.plan-current — Assessment admits a revision-bound plan
+
+- GIVEN a selected Module, task and constraints with sufficient complete contract context
+- WHEN a fresh planner returns a nonempty plan
+- THEN the host persists the accepted plan against that revision and returns its ArtifactRef
+- AND no task list, code changes or ready state is produced
+
+#### scenario.planning.plan-empty — An empty result cannot replace a plan
+
+- GIVEN a target has a previously accepted plan and current sufficient assessment admits a fresh planner
+- WHEN that planner returns an empty plan
+- THEN the host rejects the returned plan and preserves the previously accepted plan
+- AND no replacement plan artifact is accepted for dependent task authoring
+
+#### scenario.planning.plan-stale — Changed inputs invalidate a returned plan
+
+- GIVEN a previously accepted plan and a fresh planning invocation bound to a selected Spec revision and intent
+- AND relevant admitted inputs change before its result is accepted
+- WHEN the host rechecks the returned nonempty plan against current inputs
+- THEN it rejects stale output without replacing the previously accepted plan
+- AND preserving old bytes does not make the old plan current; reuse requires current admission
+
+## Architecture & Realization
+
+### Planning Flow (`plan_flow`)
 
 State: `route`, `output` (the planning response), `result`; the candidate record receives the
 accepted plan, its Spec digest and intent.
@@ -62,33 +97,3 @@ flowchart TB
     author_plan -->|gap or failure, or policy described| __end__
     persist_plan --> __end__
 ```
-
-## Requirements
-
-### req.planning.plan-rejection-preserves — Rejected plans preserve accepted state
-
-Planning SHALL leave the previously accepted plan unchanged when a returned plan is empty, invalid or bound to stale inputs.
-
-## Scenarios
-
-### scenario.planning.plan-current — Assessment admits a revision-bound plan
-
-- GIVEN a selected Module, task and constraints with sufficient complete contract context
-- WHEN a fresh planner returns a nonempty plan
-- THEN the host persists the accepted plan against that revision and returns its ArtifactRef
-- AND no task list, code changes or ready state is produced
-
-### scenario.planning.plan-empty — An empty result cannot replace a plan
-
-- GIVEN a target has a previously accepted plan and current sufficient assessment admits a fresh planner
-- WHEN that planner returns an empty plan
-- THEN the host rejects the returned plan and preserves the previously accepted plan
-- AND no replacement plan artifact is accepted for dependent task authoring
-
-### scenario.planning.plan-stale — Changed inputs invalidate a returned plan
-
-- GIVEN a previously accepted plan and a fresh planning invocation bound to a selected Spec revision and intent
-- AND relevant admitted inputs change before its result is accepted
-- WHEN the host rechecks the returned nonempty plan against current inputs
-- THEN it rejects stale output without replacing the previously accepted plan
-- AND preserving old bytes does not make the old plan current; reuse requires current admission

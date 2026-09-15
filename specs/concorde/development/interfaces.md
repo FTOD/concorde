@@ -7,17 +7,9 @@
 ```
 # Development host boundary
 
-## Required orchestration model
-The registered companion documents of the Harness Module define the Agent model (A1–A5) and the
-Agent Flow and Loop model (G1–G4) this host composes. The Harness resolves worker definitions, their
-`spec.md` sources, profiles and child definitions into a reproducible `AgentBinding` that every
-worker invocation carries, and its executor verifies that binding before any process starts. This
-Module MUST coordinate declared Flow transitions and bounded loops with attributed AI feedback and
-explicit human decisions, and every capability Flow is a LangGraph graph whose nodes are
-deterministic steps or worker invocations. The policy `role` and `agent` fields are the bound
-worker's external name.
+## Usage & Contract
 
-## Capability execution boundary
+### Capability execution boundary
 A Capability provides usable or composable functionality under the Agent and Harness contract.
 The existing host adapter implements each registered entry as a Python module declaring launched
 Agents, effects, composed entries and typed request/response contracts. In this adapter, rendered
@@ -131,14 +123,15 @@ Each reported Spec gap carries host-bound target_id and context_id provenance. A
 retains that provenance when a component stage is blocked, so callers can author the correct local
 Spec before retrying. Agent-supplied mismatched gap provenance is rejected.
 
-## Wire contracts
+
+### Wire contracts
 Every TypedValue is `{type_id, schema_version, data}`; `schema_version` is pinned per type below and
 `data` must satisfy that type's JSON Schema. The invocation envelope wraps every request and
 response; the fourteen capability request/response pairs carry each capability's own task and
 result; the remaining types are internal handoffs, review records, topology artifacts, the project
 proposal and the stage-input artifacts that pass between stages inside one capability.
 
-### Invocation envelope
+#### Invocation envelope
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
@@ -146,7 +139,7 @@ proposal and the stage-input artifacts that pass between stages inside one capab
 | `concorde-capability-result@3` | Every response, on stdout | `{type_id, schema_version: 3, capability_id, invocation_id, mode, status: succeeded\|blocked\|failed\|described, workspace, output, errors: [{code,field,message}]}`. `output` is the named capability's own response TypedValue or null; `workspace` is null or host-supplied worktree metadata. Exit code 0 means `succeeded`/`described`; 3 means `blocked`/`failed`. |
 | `concorde-capability-configuration@1` | The invocation's `configuration` field, and `concorde-configure-request@1`/`-response@1` | `{model?, thinking?: off\|minimal\|low\|medium\|high\|xhigh\|max, timeout_seconds?, workers?: {<worker> or <worker>/<child>: {model?, thinking?, timeout_seconds?}}}`; `model` is Pi's `provider/id`. The top-level values are the project default; a worker entry overrides them for one worker and a child entry for one worker child, which inherits its worker's entry (see [the worker selection scenario](../harness/module.md#scenario.harness.worker-selection)). An absent model or thinking level keeps Pi's default and an absent timeout the worker profile's. A key naming no worker or worker child, a timeout on a child, a nonpositive timeout or a model without a provider is rejected. Stored at initialization under `.concorde/config.json`'s `capability_configuration` key; an invocation or child stage whose configuration differs from that stored snapshot stops with `configuration_mismatch`. |
 
-### Capability requests and responses
+#### Capability requests and responses
 
 Common request task fields (named once, not repeated per row): `target_id` (required for every
 bound Module request; an optional routing hint for `main`, `dev-loop`, `specify-loop` and `review`), `task`,
@@ -171,7 +164,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | `concorde-tasks-request@1` / `concorde-tasks-response@1` | tasks (stage) | Requires `target_id` and `task`. Response is the common shape only. |
 | `concorde-implement-request@1` / `concorde-implement-response@1` | implement (stage) | Requires `target_id` and `task`. Response is the common shape only. |
 
-### Stage handoffs
+#### Stage handoffs
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
@@ -179,7 +172,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | `concorde-agent-stage-context@2` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@4, change_id, expected_artifacts}`. |
 | `concorde-agent-stage-result@1` | Worker to host, the completion | `{context_id, outcome, answer, gaps, documents, plan, tasks, reflection_findings?}`; `documents`/`plan`/`tasks`/`reflection_findings` are populated only by the phase that produces them. A mismatched `context_id` is rejected as `incompatible_handoff`. |
 
-### Review types
+#### Review types
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
@@ -188,7 +181,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | `concorde-review-stage-result@1` | Reviewer to host, the completion | `{context_id, input_digest, review_mode, status: no_findings\|findings\|incomplete, representative_tasks, findings, gaps, answer}`. |
 | `concorde-review-result@1` | Published in `concorde-review-response@1.reviews` | The stage result plus `target_id`, `focus_id`, `revision`, a nullable `context_id`, `status` extended with skipped\|not_run, and `semantic_completeness: "not_proven"`. |
 
-### Topology types
+#### Topology types
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
@@ -216,13 +209,13 @@ Old reading-worker results and the synthesis phase are not accepted; clients mus
 build-bound schemas and instructions. Existing Protocol bindings remain pinned until explicitly
 updated; a mismatched package/context is rejected instead of reinterpreted.
 
-### Project proposal
+#### Project proposal
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
 | `concorde-project-proposal@1` | `concorde-init-request@1.proposal` and `-response@1.proposal` | `{action: "initialize", base_digest (nullable), files: [{path, before_digest (nullable), content}]}`. |
 
-### Stage-input artifacts
+#### Stage-input artifacts
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
@@ -315,14 +308,16 @@ context forms; package/schema alignment checks verify those identities.
 | `worktree_handoff_required` | A mutating request in the primary worktree needs a new agent session opened in the linked worktree the host just prepared. |
 | `execution_failed` | The host caught an exception outside the named Spec/typed-data/build error vocabulary. |
 
-## Main routing view
+
+### Main routing view
 Select `module.harness` for context resolution, permission compilation, typed-value admission,
 worker binding and Pi worker execution. Select `module.spec` for registry selection, structural
 validation and initialization. Select `module.distribution` for build, installation and runtime
 provisioning. Select `module.reflections` for recorded feedback and gaps. The main router may use
 these stable IDs to route a worker but may not expand their Module targets.
 
-## Worktree awareness
+
+### Worktree awareness
 
 One `.concorde/worktree.json` owns a managed change, root intent, target records, phase/status,
 gaps and validation identity. Plans and auxiliary artifacts live under
@@ -342,19 +337,42 @@ workspace-status question directly from this metadata; target-behavior answers s
 answerer invocation. The current workspace identity and status are rechecked after a stage. Other live worktree
 summaries are frozen observations and their progress does not invalidate unrelated main cognition.
 
-## Configured check execution
+
+### Configured check execution
 
 The canonical configured-check and evidence contract is owned by [Validation](../validation/validation.md).
 
-## Independent review contract
+
+### Independent review contract
 
 The canonical contract is owned by [Review](../review/review.md).
 
-## Review gates, gap history and recovery
+
+### Review gates, gap history and recovery
 
 [Development Flow](../dev-loop/development.md) owns its review gates; [Specification Flow](../specify-loop/specify-loop.md) owns Spec-only completion. Common attributed gap retention is defined in [Gap handling](review-and-gaps.md).
 
-## Required collaborator interfaces
+
+### Canonical review-result value
+
+The [review-result interface](../review/review-result.md) is the single definition of the public review
+record. Harness explicitly references that document for repair stage admission. The Development Flow, through the common host,
+checks task intent, evidence currentness and permitted repair transitions before supplying it.
+
+## Architecture & Realization
+
+### Required orchestration model
+The registered companion documents of the Harness Module define the Agent model (A1–A5) and the
+Agent Flow and Loop model (G1–G4) this host composes. The Harness resolves worker definitions, their
+`spec.md` sources, profiles and child definitions into a reproducible `AgentBinding` that every
+worker invocation carries, and its executor verifies that binding before any process starts. This
+Module MUST coordinate declared Flow transitions and bounded loops with attributed AI feedback and
+explicit human decisions, and every capability Flow is a LangGraph graph whose nodes are
+deterministic steps or worker invocations. The policy `role` and `agent` fields are the bound
+worker's external name.
+
+
+### Required collaborator interfaces
 
 Canonical interfaces are supplied by the Module references in Development's registration. These
 links state local uses and obligations; providers own the definitions, schemas and error semantics.
@@ -374,7 +392,7 @@ Configuration loading remains Development-owned: `load_configuration(project_roo
 returns the initialized configuration TypedValue. Ordinary invocations and child stages must equal
 that snapshot; mismatch stops the transition without fallback or expanded authority.
 
-### File transactions
+#### File transactions
 
 - File transactions (this Module's own `entity.development.file-transactions`, also listed by Spec, Reflections and Views): `file_change(root: Path, path: str, content: str) ->
   {path,before_digest,content}` captures current bytes (null digest for new files).
@@ -383,13 +401,14 @@ that snapshot; mismatch stops the transition without fallback or expanded author
   writes, optionally calls the zero-argument verifier, and restores written bytes on failure.
   Stale or foreign proposals raise SpecError; no partial transaction is reported successful.
 
-### Gap capture
+#### Gap capture
 
 The [Reflection interface](../reflections/interfaces.md) owns status/record-gaps semantics.
 Development passes host-bound gap provenance, retains history and treats capture as a link to
 feedback, never as resolution or approval to implement.
 
-## Diagrams as part of registered documents
+
+### Diagrams as part of registered documents
 Relationships diagrams in this project are inline Mermaid flowchart fences inside a registered
 Markdown document, with `accTitle` and `accDescr` accessible text stated beside the fence. A
 Module's main diagram, in its `module.md` Relationships subsection, describes its principal entities
@@ -409,7 +428,8 @@ replacements. A prepared application binds the complete accepted document set an
 before-digest. Syntax and publication failures remain distinct from an incomplete or contradictory
 behavioral contract. Publication renders the same Mermaid source as part of the Markdown page.
 
-## Reusable implementation context and evidence
+
+### Reusable implementation context and evidence
 Each Module's entities carry its file bindings directly in its own Spec, as exact files or as
 directory prefixes that bind every regular file below them; the registry's `files` field mirrors
 their union entry for entry, and together they determine the Module's implementation context. A
@@ -429,13 +449,8 @@ with their own intent; later source, Spec or membership changes invalidate those
 consumer's completion never establishes compatibility for every Module that lists the same shared
 file.
 
-## Canonical review-result value
 
-The [review-result interface](../review/review-result.md) is the single definition of the public review
-record. Harness explicitly references that document for repair stage admission. The Development Flow, through the common host,
-checks task intent, evidence currentness and permitted repair transitions before supplying it.
-
-## Reference changes and implementation status
+### Reference changes and implementation status
 
 Before review/readiness, compute affected Spec consumers from the union of old and candidate
 one-level contexts. A provider document edit, ownership transfer, changed reference or changed

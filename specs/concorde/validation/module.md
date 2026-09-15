@@ -8,44 +8,60 @@
 
 # Validation
 
-## Purpose
+## Usage & Contract
+
+### Purpose
 
 Validation collects deterministic structural and configured implementation-check evidence for the current candidate and evaluates the applicable readiness gates. It serves explicit validation requests and composing flows; neither a development plan nor dev-loop invocation is universally required.
 
-## Requirements
+### Usage
 
-### req.development.check-isolation — Configured checks use enforced read-only execution
+Run `concorde-validate` for the current admitted candidate with target_id and task; optionally
+choose whether to run configured checks. This deterministic capability launches no Agent. It
+returns structural and configured-check evidence tied to current bytes and evaluates existing
+readiness requirements. A directly authored candidate needs no invented plan or attempt; existing
+authored tasks and required reviews still apply.
 
-Validation SHALL execute configured checks through Harness's OS-enforced project-read-only executor.
+Omitting checks does not satisfy a gate whose evidence is missing or stale. Failed checks,
+incomplete tasks or required reviews block ready while preserving the candidate. Repeating
+validation evaluates current inputs; prior passing results are not permanent. Checks can read
+project files but must write temporary output only to issued external scratch. Unsupported check
+isolation fails closed with private diagnostics, not a less restricted fallback. Validation
+neither repairs defects nor delivers a change, and structural success or scenario coverage does
+not prove semantics. See [validation](validation.md) for results and operational prerequisites.
 
-## Scenarios
+### Requirements
 
-### scenario.development.validate-ready — Deterministic checks record readiness
+
+The consumer guarantees are stated by the scenarios below and their detailed contract.
+### Scenarios
+
+#### scenario.development.validate-ready — Deterministic checks record readiness
 
 - GIVEN the current candidate
 - WHEN `concorde-validate` runs
 - THEN the host runs deterministic Spec validation and every configured implementation check of every affected Module, and records readiness evidence bound to the exact candidate bytes
 - AND validation never claims semantic completeness
 
-### scenario.development.validate-blocked — A failed or stale check blocks readiness
+#### scenario.development.validate-blocked — A failed or stale check blocks readiness
 
 - GIVEN a configured implementation check fails, is missing, or its previously recorded evidence no longer matches the current candidate bytes
 - WHEN readiness is evaluated
 - THEN the candidate is not recorded ready and the failing or stale check is reported
 
-### scenario.development.validate-check-isolation — Checks cannot write their inputs or host logs
+## Architecture & Realization
 
-- GIVEN a configured implementation check and the current candidate
-- WHEN validation runs the check
-- THEN project writes, including writes to lifecycle records and logs, are denied by Harness
-- AND the outside host saves private stdout/stderr and records passed, failed or timeout evidence with exit and digest identities
-- AND unavailable enforcement blocks readiness with check_sandbox_unavailable while raw diagnostics stay in the host log
-- AND check input, candidate tree and affected Module freshness checks still reject external changes
+### Design
 
+Validation resolves affected Spec consumers and changed-file users before collecting evidence.
+The host admits configured commands and delegates execution to Harness's OS-enforced read-only
+executor; only the outside host persists logs and digest-bound results. [Check execution](validation.md#configured-check-execution)
+describes scratch, private diagnostics and concurrent-change rechecks.
 
-The detailed contract is [Current deterministic evidence](validation.md).
-
-## Ontology
+Readiness combines current structural/check evidence with existing task completion and required
+reviews, without inventing a plan for a manual candidate. Unavailable isolation fails closed.
+This separation keeps a command's success from granting writes, proving semantics or bypassing a
+previously required review.
 
 ### Entities
 
@@ -119,7 +135,30 @@ flowchart TB
     e0 -->|evaluates current gates for| domain_readiness
 ```
 
-## Dependencies and composition
+
+### Internal constraints
+
+#### req.development.check-isolation — Configured checks use enforced read-only execution
+
+Validation SHALL execute configured checks through Harness's OS-enforced project-read-only executor.
+
+
+### Internal verification scenarios
+
+#### scenario.development.validate-check-isolation — Checks cannot write their inputs or host logs
+
+- GIVEN a configured implementation check and the current candidate
+- WHEN validation runs the check
+- THEN project writes, including writes to lifecycle records and logs, are denied by Harness
+- AND the outside host saves private stdout/stderr and records passed, failed or timeout evidence with exit and digest identities
+- AND unavailable enforcement blocks readiness with check_sandbox_unavailable while raw diagnostics stay in the host log
+- AND check input, candidate tree and affected Module freshness checks still reject external changes
+
+
+The detailed contract is [Current deterministic evidence](validation.md).
+
+
+### Dependencies and composition
 
 ```concorde-dependencies
 [
@@ -151,7 +190,8 @@ flowchart TB
 ]
 ```
 
-## Realization and reuse limits
+
+### Realization and reuse limits
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,

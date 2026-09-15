@@ -7,6 +7,8 @@
 ```
 # Agent Flows, Agent Loops and feedback
 
+## Usage & Contract
+
 Agent orchestration coordinates Agent invocations, Capability calls and control decisions toward
 a declared goal. A Flow describes the structure of that coordination; a Loop describes feedback
 driven execution. They are related concepts, not interchangeable names.
@@ -44,7 +46,7 @@ must not present hand-authored topology as executed code. Runtime-only host obje
 are not public inputs or durable checkpoint values. Stateless internal Flows are inspectable but
 do not promise internal checkpoint resume; replay re-enters admission through the public boundary.
 
-## Dispatch terminology
+### Dispatch terminology
 
 **Code-driven** dispatch uses explicit code rules to choose the next action, target Agent and
 continue/stop condition. **Model-driven** dispatch uses a model's task and feedback assessment to
@@ -54,7 +56,8 @@ separate, explicit inputs. Code-driven control does not guarantee reproducible o
 models, tools and external state may still vary. Determinism is a property to document where it
 applies, not the primary classification of Agents or dispatch.
 
-## G1. Agent Flow
+
+### G1. Agent Flow
 
 An Agent Flow MUST declare its participating Agent definitions, Capability calls, control nodes,
 state and result contracts, and directed transitions. Transitions MUST identify their trigger and
@@ -70,7 +73,8 @@ Agent does not grant access to that Agent's complete private context.
 A Flow MAY be exposed as a Capability with a complete external contract. Invoking that Capability
 does not expose its internal Agents or grant authority to call arbitrary internal nodes.
 
-## G2. Agent Loop
+
+### G2. Agent Loop
 
 An Agent Loop MUST define how execution moves through decision, action, observation and feedback,
 and how those observations affect the next action. It MUST define completion, revision, waiting,
@@ -88,7 +92,8 @@ Unchanged blocking feedback MUST not cause endless retries. Stale task, context,
 identity requires re-admission before execution continues. Completion of an inner loop does not
 automatically complete the enclosing Flow or authorize delivery.
 
-## G3. AI and human feedback
+
+### G3. AI and human feedback
 
 Feedback MUST identify its source, subject, relevant task or result revision, finding or decision,
 and the transition it can affect. AI feedback and human decisions MUST remain distinguishable.
@@ -108,7 +113,8 @@ Tool or broader context is not an automatic permission grant. Every transition M
 applicable task, context and authority checks. A graph receiving no answer to a required decision
 remains waiting; elapsed time is not acceptance.
 
-## G4. State, recovery and evidence
+
+### G4. State, recovery and evidence
 
 Execution evidence MUST identify the Flow and loop policy, participating Agent invocations,
 admitted feedback and selected transitions. It MUST distinguish completed, waiting, blocked,
@@ -125,7 +131,8 @@ relevant Agent Specs, Harness configurations, capability contracts, project inpu
 change. Raw logs and native transcripts remain diagnostics unless explicitly admitted as typed
 downstream inputs.
 
-## Flow Specs
+
+### Flow Specs
 
 Every executable Flow is specified with LangGraph's own three concepts, and nothing else stands
 in for them: a **node** is one executing step, an **edge** is one routing decision, and **state**
@@ -154,7 +161,9 @@ routing conditions are right, which the scenarios and tests of the owning Module
 reading entry remains the entity diagram the Protocol defines; Flow Specs live in other sections
 or documents.
 
-## Concorde Flow responsibilities
+## Architecture & Realization
+
+### Concorde Flow responsibilities
 
 The query Flow coordinates explicit context selection, deterministic source indexing and grant, and direct answers. The topology Flow
 coordinates design, human acceptance and separately bound Spec authors. Specification Flow independently coordinates authoring and Spec review. Development Flow

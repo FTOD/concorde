@@ -13,7 +13,7 @@ def _stage_context():
     snapshot = {
         "context_id": "sha256:" + "3" * 64, "schema_version": 4, "target_id": "service.fixture",
         "kind": "module", "focus_id": None, "phase": "plan", "task": "Plan", "constraints": [],
-        "protocol_binding": {"version": "5.5.0", "digest": "sha256:" + "4" * 64}, "protocol": [],
+        "protocol_binding": {"version": "6.0.0", "digest": "sha256:" + "4" * 64}, "protocol": [],
         "spec_resolution": {"query_id": "service.fixture", "query_kind": "module", "module_id": "service.fixture",
                             "reading_entry": "specs/fixture.md", "documents": ["specs/fixture.md"],
                             "references": [], "sources": []},

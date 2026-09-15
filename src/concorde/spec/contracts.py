@@ -1,4 +1,4 @@
-"""Profile 12 capability registry and versioned JSON contracts.
+"""Profile 13 capability registry and versioned JSON contracts.
 
 Public capabilities are each paired with exactly one Skill; non-public capabilities require
 declared composition. Internal Skills describe only one host-bound agent role. Per-capability

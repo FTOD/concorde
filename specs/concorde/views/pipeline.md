@@ -7,7 +7,9 @@
 ```
 # Publication pipeline
 
-The public API is TypeScript and Docusaurus plugin hooks. Profile 12 publication reads an explicit
+## Usage & Contract
+
+The public API is TypeScript and Docusaurus plugin hooks. Profile 13 publication reads an explicit
 project registry, creates derived documentation, validates a built candidate, and promotes only a
 successfully checked candidate. It exposes no agent tool or read proxy. Consumers do not need a
 Python API or a provider Spec to invoke the functions and interpret the values defined here.
@@ -15,9 +17,9 @@ Publication has no Module/Scenario graph view or architecture-graph output. Its 
 Module navigation still use declared relationships; inline authored Mermaid diagrams remain part
 of ordinary document rendering.
 
-## Concorde-only Agent execution publication
+### Concorde-only Agent execution publication
 
-### scenario.views.agent-flows — Inspect actual Agent and LangGraph execution
+#### scenario.views.agent-flows — Inspect actual Agent and LangGraph execution
 
 - GIVEN Concorde's source checkout with the development Python environment and its own docsite extension
 - WHEN the site is built and the reader opens the top-level Agent Flows tab at `/agent-flows`
@@ -39,31 +41,33 @@ the result through Docusaurus `createData` and registers its own route. Use the 
 or set `CONCORDE_PYTHON` to the development interpreter when building a source copy. The ordinary
 publication registry and consumer build contract remain independent of this extension.
 
-## Loading, materializing and building
 
-### scenario.views.load-registry — Loading the registry validates identities and memberships
+### Loading, materializing and building
 
-- GIVEN `.concorde/config.json` with `profile_version: 12` and a safe relative registry path
+#### scenario.views.load-registry — Loading the registry validates identities and memberships
+
+- GIVEN `.concorde/config.json` with `profile_version: 13` and a safe relative registry path
 - WHEN `loadScopedRegistry` runs
 - THEN it returns a model whose Module IDs are unique, whose Module parents are acyclic and whose entry target exists and is a Module
 - AND malformed identities, ownership, references or contract bindings throw before any file is written
 - AND it returns no graph-specific node or edge projection
 
-### scenario.views.materialize — Materializing writes disposable staged content and its identity record
+#### scenario.views.materialize — Materializing writes disposable staged content and its identity record
 
 - GIVEN a loaded registry model
 - WHEN `materializeScoped` runs
-- THEN it replaces the disposable generated content and static directories, writes each page under `content/specs/<stagedPath>` with a `## Files` section listing that page's owning Module's exact registered files when it is a Module's primary page, and writes the sidebar projection
+- THEN it replaces the disposable generated content and static directories, writes each page under `content/specs/<stagedPath>` with a `### Files` section listing that page's owning Module's exact registered files when it is a Module's primary page, and writes the sidebar projection
 - AND only after every asset and the sidebar succeed does it write the materialization identity record
 - AND a failed write can leave partial derived assets that a fresh materialization replaces on retry
 
-The appended `## Files` section is a reading convenience only; the complete file inventory remains
+The appended `### Files` subsection remains inside Architecture & Realization, after the authored
+internal content. It is a reading convenience only; the complete file inventory remains
 the registered `concorde-entities` blocks in the Module's own Spec. The leading `concorde-document`
 block is stripped from rendered content; a Spec metadata disclosure component presents that
 identity, its references and its visibility instead, without changing the authored source or its
 digest.
 
-### scenario.views.id-anchors — Materializing injects scenario, requirement and entity anchors
+#### scenario.views.id-anchors — Materializing injects scenario, requirement and entity anchors
 
 - GIVEN a loaded registry model whose documents define scenario and requirement headings and `concorde-entities` blocks
 - WHEN `materializeScoped` runs
@@ -71,14 +75,14 @@ digest.
 - AND it inserts an HTML anchor `<a id="entity.x"></a>` immediately before every entity's `concorde-entities` block
 - AND a `path#id` link to that scenario, requirement or entity resolves on the published site
 
-### scenario.views.build-site — buildSite runs the full prepare/build/validate/promote path
+#### scenario.views.build-site — buildSite runs the full prepare/build/validate/promote path
 
 - GIVEN installed Node/Docusaurus dependencies and a loaded registry model
 - WHEN `buildSite` runs
 - THEN it clears the candidate, prepares sources, runs Docusaurus, validates the built artifacts and only then promotes the candidate
 - AND a spawn error, nonzero exit or failed validation rejects without promoting
 
-### scenario.views.validate-candidate-mismatch — Validation rejects a stale or incomplete candidate
+#### scenario.views.validate-candidate-mismatch — Validation rejects a stale or incomplete candidate
 
 - GIVEN a build-manifest artifact whose schema version, source digest, page inventory or redirect stub coverage does not exactly match the current model, or a retained internal navigation link whose destination or requested anchor is absent from the candidate
 - WHEN `validateScopedBuild` runs
@@ -93,7 +97,8 @@ and [req.views.no-contract-context-expansion](module.md#req.views.no-contract-co
 The absence of a standalone graph is specified by
 [req.views.no-docsite-graph-view](module.md#req.views.no-docsite-graph-view).
 
-## Interface signatures
+
+### Interface signatures
 
 ```typescript
 // plugins/scoped-content/model.ts
@@ -119,12 +124,12 @@ promoteCandidate(candidate: string, destination: string, backup: string): Promis
 `root` is a project-root filesystem path. `safeRead` requires a regular file and returns UTF-8
 text; invalid paths throw `Error`, and OS read errors retain their Node error code. `hash` returns
 `sha256:` followed by 64 lowercase hexadecimal digits. `requireScoped` returns normally only for
-`profile_version === 12`; a missing configuration, a different profile, and a malformed JSON,
+`profile_version === 13`; a missing configuration, a different profile, and a malformed JSON,
 unsafe path or read error each throw an `Error` naming the reason. Every entry point of this public
-build contract calls it first: publication accepts Profile 12 projects only, and no other profile
+build contract calls it first: publication accepts Profile 13 projects only, and no other profile
 has a compatibility rendering path.
 
-`loadScopedRegistry` reads `.concorde/config.json`, which must contain `profile_version: 12` and a
+`loadScopedRegistry` reads `.concorde/config.json`, which must contain `profile_version: 13` and a
 safe relative `registry` path. The registry is
 `{schema_version: 4, project_id: string, entry_target: string, targets: Module[], checks: unknown[]}`
 with project metadata retained in its source bytes. Each Target has all the fields below. Its IDs
@@ -138,7 +143,8 @@ retain their owner and only the explicit one-level resolution supplies validatio
 The loader never follows links or interface bindings as context edges. Removing graph presentation
 does not remove ownership, reference or agreement validation responsibilities.
 
-## Public model types
+
+### Public model types
 
 ```typescript
 type Kind = 'module';
@@ -162,7 +168,7 @@ interface ScopedRegistry {
 Publication model schema 19 replaces shared membership fields with sole owner and explicit inclusion
 provenance. It retains the absence of the former graph `edges` projection and `Edge` type.
 `Target.parent` and `Target.uses` remain registry metadata for navigation, provenance and validation.
-This change does not change registry schema 4, Profile 12 or any UA graph format.
+This change does not change registry schema 4, Profile 13 or any UA graph format.
 
 A file may be listed by several Modules, unlike a document: schema 4 has no single implementation
 owner, so a shared file's reverse lookup is a plain list of listing Modules rather than one
@@ -194,7 +200,8 @@ Markdown digest includes every Mermaid fence and source declaration. Inline diag
 additional source or route record. This is a byte/version identity, not a semantic-completeness
 claim.
 
-## Project introduction
+
+### Project introduction
 
 Site identity schema 1 optionally carries the `homepage` presentation object described in
 [publication](publication.md#scenario.views.publish-homepage). The content plugin passes the
@@ -203,7 +210,8 @@ option is absent, the root preserves its redirect to the registered entry Module
 is a human navigation surface outside registered Spec membership and `sourceDigest`; the
 registered-page manifest retains its registry-derived meaning.
 
-## Project-owned custom documentation
+
+### Project-owned custom documentation
 
 The generic template defaults to the Module Specs tab and registry-parent sidebar. Optional
 `customDocs` collections and `custom-docs/index.ts` supply independent project documentation
@@ -214,7 +222,38 @@ Protocol collection and Agent Flows extension through these same entry points. T
 `protocolDocs` option fails with migration guidance; unregistered instruction/wire projections
 are no longer read or published. Inline Mermaid remains supported in registered and custom docs.
 
-## Materialization and required build collaborators
+
+### Mermaid rendering and source compatibility
+
+The Markdown renderer consumes the literal body of each `mermaid` fence, supports the project's
+flowchart, entity-relationship and state-diagram syntax, and produces an accessible diagram within
+the containing page. `accTitle` and `accDescr` remain available to assistive technology. A diagram
+must fit the reading column or allow inspection without hiding content. Renderer directives may not
+fetch external source files or execute arbitrary page script. Render failures identify the owning
+source document and prevent publication of a candidate that silently drops a diagram.
+
+Source edits use ordinary document versioning: changing an edge, label, title or description
+changes the containing document digest and invalidates source-dependent build evidence. A shared
+Markdown document still publishes once and retains its sole owner and all explicit inclusion reasons. Dependency links and
+diagram nodes do not add target contexts or undeclared registry relationships. Rendering support
+still requires ordinary site dependencies to be installed; initialization does not fetch them.
+
+
+### Capability contract navigation
+
+Execution explanations link to [Planning](../planning/plan.md), [Tasks](../planning/tasks.md),
+[Implementation](../implementation/implementation.md), [Spec Authoring](../spec-authoring/authoring.md),
+[Review](../review/review.md), [Validation](../validation/validation.md),
+[Delivery](../delivery/delivery.md), [Query and Routing](../query-routing/query-and-routing.md),
+[Topology](../topology/topology.md), [Development Flow](../dev-loop/development.md) and
+[Specification Flow](../specify-loop/specify-loop.md). These are Spec ownership boundaries;
+executable graphs still come only from the current factories under the
+[Harness inspection contract](../harness/module.md#scenario.harness.flow-inspection).
+Moving a definition requires updating retained source links; it creates no invented executable flow.
+
+## Architecture & Realization
+
+### Materialization and required build collaborators
 
 The materialization identity is the UTF-8 JSON file
 `docsite/.generated/scoped-materialization.json`, relative to the project root, containing
@@ -238,7 +277,7 @@ navigation to the sole owner's canonical page and never create extra sidebar doc
 A Module category links directly to its `module.md` through a Docusaurus category `link` of type
 `doc`. Its child items contain only additional registered documents and child Modules, never a
 second entry for `module.md`. A Module with no child items is a direct document link. The Module
-page displays its complete authored content, including Ontology and other overview sections,
+page displays its complete authored content, including Usage & Contract and Architecture & Realization,
 with section navigation. Mermaid diagrams render exactly where their fences occur in the authored
 Markdown; the renderer does not inject or duplicate an overview before or after the article.
 Document titles and labels use the filename without `.md`, except Module entry pages, which use
@@ -288,9 +327,10 @@ verification artifacts. After the build manifest, it writes one legacy redirect 
 base-URL-prefixed `<meta http-equiv="refresh">` and `<link rel="canonical">` to the document's
 canonical page, plus a visible link, mirroring the default root redirect. Following an alias with
 a fragment preserves that fragment at the canonical destination. These are the complete
-collaborator promises this Profile 12 path relies on.
+collaborator promises this Profile 13 path relies on.
 
-## Build artifacts, validation and promotion
+
+### Build artifacts, validation and promotion
 
 Successful plugin post-build writes this JSON verification artifact in `outDir`:
 
@@ -352,7 +392,7 @@ rollback can still require operator recovery. The helper itself does not validat
 must not be called on unchecked or stale output.
 
 ```typescript
-requireScoped(projectRoot);       // throws unless the project declares profile_version 12
+requireScoped(projectRoot);       // throws unless the project declares profile_version 13
 const registry = loadScopedRegistry(projectRoot);
 await materializeScoped(registry); // stage derived assets; not yet a published build
 await buildSite();                // integrated prepare/build/validate/promotion path
@@ -362,12 +402,16 @@ Repeated loading of unchanged inputs preserves identities. Repeated successful b
 derived output. No returned model, manifest or successful deterministic check proves that the Spec
 supports every possible future task; independent Spec review and actual task gaps remain separate.
 
-## Module main-document validation
 
-Profile 12 publication requires one local `module.md` for every Module, and requires its Purpose,
-Requirements, Scenarios and Ontology headings to appear, by exact text and outside code fences, in
-that order, with Ontology's Entities and Relationships subsections each present in that order;
-other headings may interleave. `main_visible` is presentation metadata and does not trim a
+### Module main-document validation
+
+Profile 13 publication requires one local `module.md` per Module with the exact level-2 parts
+Usage & Contract followed by Architecture & Realization. The first contains direct level-3
+Purpose, Usage, Requirements and Scenarios subsections; the second contains Design, Entities and
+Relationships, each required once and in order. Purpose, Usage and Design require explanatory prose.
+Companion documents place content under one or both parts without duplicating the full entry layout.
+Wrong levels, duplicate/misordered parts or required subsections, and sections escaping the parts
+are errors. These checks do not decide whether usage or design prose is semantically sufficient. `main_visible` is presentation metadata and does not trim a
 Module's context. Module composition, dependency declarations and required-interface contracts
 remain independently checked against the registry without producing a graph projection. These
 checks establish structure, not universal semantic completeness.
@@ -384,36 +428,10 @@ uses `.docusaurus`. A production build preserves an active preview's generated m
 so development-only debug routes cannot overwrite the production module graph. Here, Docusaurus's
 module graph refers to its internal build machinery, not a published graph view.
 
-## Mermaid rendering and source compatibility
 
-The Markdown renderer consumes the literal body of each `mermaid` fence, supports the project's
-flowchart, entity-relationship and state-diagram syntax, and produces an accessible diagram within
-the containing page. `accTitle` and `accDescr` remain available to assistive technology. A diagram
-must fit the reading column or allow inspection without hiding content. Renderer directives may not
-fetch external source files or execute arbitrary page script. Render failures identify the owning
-source document and prevent publication of a candidate that silently drops a diagram.
+### Publication compatibility status
 
-Source edits use ordinary document versioning: changing an edge, label, title or description
-changes the containing document digest and invalidates source-dependent build evidence. A shared
-Markdown document still publishes once and retains its sole owner and all explicit inclusion reasons. Dependency links and
-diagram nodes do not add target contexts or undeclared registry relationships. Rendering support
-still requires ordinary site dependencies to be installed; initialization does not fetch them.
-
-## Protocol 5 publication migration status
-
-The TypeScript loader admits Profile 12/schema 4 and publishes schema 19 with unique owner and
+The TypeScript loader admits Profile 13/schema 4 and publishes schema 19 with unique owner and
 includedBy provenance. It validates one-level references and canonical definition/binding agreement,
 exposes canonical definition anchors and renders links without transclusion. Manifest identity and
 watched registry/source inputs invalidate publication when ownership or references change.
-
-## Capability contract navigation
-
-Execution explanations link to [Planning](../planning/plan.md), [Tasks](../planning/tasks.md),
-[Implementation](../implementation/implementation.md), [Spec Authoring](../spec-authoring/authoring.md),
-[Review](../review/review.md), [Validation](../validation/validation.md),
-[Delivery](../delivery/delivery.md), [Query and Routing](../query-routing/query-and-routing.md),
-[Topology](../topology/topology.md), [Development Flow](../dev-loop/development.md) and
-[Specification Flow](../specify-loop/specify-loop.md). These are Spec ownership boundaries;
-executable graphs still come only from the current factories under the
-[Harness inspection contract](../harness/module.md#scenario.harness.flow-inspection).
-Moving a definition requires updating retained source links; it creates no invented executable flow.

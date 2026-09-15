@@ -7,6 +7,8 @@
 ```
 # Capability registry
 
+## Usage & Contract
+
 A **Capability** is functionality available for Agent use or composition, with declared inputs,
 results, effects and usage conditions. A Harness makes selected capabilities available by explicit
 reference. A Tool is a callable operation interface; a Skill supplies instructions and methods.
@@ -17,7 +19,7 @@ composition and authority contract.
 **Operation** name is retired; it does not identify a separate layer, registry or contract kind.
 Lowercase *operation* still describes an ordinary action, such as a filesystem or Git operation.
 
-## Current host adapter
+### Current host adapter
 The following inventory describes the existing Python host adapter. Each entry is implemented by a
 module under `capabilities/`, declaring launched Agents, effects, composed entries and typed requests
 and responses. The Python module is an implementation of functionality, not the definition of the
@@ -53,7 +55,8 @@ Request and response types are `concorde-<capability>-request@1` and
 `concorde-<capability>-response@1`; their promise-level meaning is defined in the [Development host
 boundary](interfaces.md).
 
-## Capability properties
+
+### Capability properties
 
 Every entry is a Capability. A Flow organizes capability calls, Agent invocations, branches and
 loops. A Skill exposes a selected Capability to the developer's external agent runtime. The size
@@ -129,7 +132,9 @@ launch the exact worker its task contract declares; reusing one worker across se
 combine capability names, workflow responsibilities, public Skills or callable authority. Each
 phase and target remains a fresh invocation.
 
-## Behavioral ownership and composition limits
+## Architecture & Realization
+
+### Behavioral ownership and composition limits
 
 | Capability or action | Canonical behavioral owner |
 | --- | --- |

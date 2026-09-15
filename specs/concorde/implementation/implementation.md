@@ -8,6 +8,8 @@
 
 # Implementation capability
 
+## Usage & Contract
+
 The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/review-and-gaps.md) apply. Artifact references are host-issued paths
@@ -41,7 +43,33 @@ not prevent completion of otherwise fulfilled implementation and test obligation
 defect or missing implementation obligation remains incomplete; Host checks still gate readiness.
 
 
-## Component coordination and current adapter limit
+### Scenarios
+
+#### scenario.implementation.missing-tasks — Implementation has no authored tasks
+
+- GIVEN an admitted selected target with no authored task list
+- WHEN its declared composing caller requests implementation
+- THEN the host rejects the request with missing_tasks before launching the programmer
+- AND it does not invent tasks or grant implementation writes for that request
+
+#### scenario.implementation.incomplete-output — The result does not complete every task
+
+- GIVEN a programmer invocation with a current accepted plan and nonempty task list
+- WHEN its result omits an admitted task or leaves an admitted task incomplete
+- THEN the host reports incomplete_tasks instead of accepting full implementation completion
+- AND authorized code changes remain inspectable in the candidate without establishing readiness
+
+#### scenario.implementation.failed-execution — Recover after partial authorized edits
+
+- GIVEN an implementation invocation has made authorized code edits in its selected Module's grant
+- WHEN execution fails before a matching successful completion is accepted
+- THEN the failure neither establishes task completion nor implies rollback of those code edits
+- AND the host preserves the candidate and progress for inspection and recovery
+- AND a subsequent attempt re-admits current task artifacts and context in a fresh invocation without wider permissions
+
+## Architecture & Realization
+
+### Component coordination and current adapter limit
 
 A selected Module may contain local code tasks and tasks for its direct children or used Modules.
 Local tasks retain their original plan and identity; they do not recursively invoke a new loop for
@@ -57,27 +85,3 @@ handoffs; no arbitrary scheduler input or additional callable entry is introduce
 task contract is independently reusable under current host admission. Missing contracts stop the
 dependent task; an actual implementation defect remains incomplete; cancellation and limits retain
 their separate execution outcomes.
-
-## Scenarios
-
-### scenario.implementation.missing-tasks — Implementation has no authored tasks
-
-- GIVEN an admitted selected target with no authored task list
-- WHEN its declared composing caller requests implementation
-- THEN the host rejects the request with missing_tasks before launching the programmer
-- AND it does not invent tasks or grant implementation writes for that request
-
-### scenario.implementation.incomplete-output — The result does not complete every task
-
-- GIVEN a programmer invocation with a current accepted plan and nonempty task list
-- WHEN its result omits an admitted task or leaves an admitted task incomplete
-- THEN the host reports incomplete_tasks instead of accepting full implementation completion
-- AND authorized code changes remain inspectable in the candidate without establishing readiness
-
-### scenario.implementation.failed-execution — Recover after partial authorized edits
-
-- GIVEN an implementation invocation has made authorized code edits in its selected Module's grant
-- WHEN execution fails before a matching successful completion is accepted
-- THEN the failure neither establishes task completion nor implies rollback of those code edits
-- AND the host preserves the candidate and progress for inspection and recovery
-- AND a subsequent attempt re-admits current task artifacts and context in a fresh invocation without wider permissions

@@ -3,6 +3,10 @@
 Module is the core unit of Spec context resolution. Ownership determines definitions; registered
 Module references determine additional reading. Implementation context is resolved separately.
 Neither context inclusion nor inventory metadata grants write, command or network authority.
+Usage & Contract and Architecture & Realization are reading parts of the same Module Spec, not
+new query kinds or grants. A Module-bound implementation task still receives its complete selected
+Spec context. A consumer can reference an independently registered interface document when that
+supplies its needed provider contract; a section heading never causes implicit excerpting.
 
 ## Queryable entities
 

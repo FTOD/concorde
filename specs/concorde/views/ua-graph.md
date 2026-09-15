@@ -7,6 +7,8 @@
 ```
 # UA graph exporter
 
+## Usage & Contract
+
 This deterministic Tool exports or overlays a skeleton Understand Anything knowledge graph from the
 project's explicit Spec registry. It is a developer tool, not an agent Capability or a new Skill,
 and it launches no model cognition.
@@ -29,7 +31,7 @@ graph for node reuse and the unlisted-file layer defined below. The target file 
 in the installed manifest's ordered `graph_paths`, defaulting to `.ua/knowledge-graph.json` when
 neither exists yet.
 
-## Local serialized graph contract
+### Local serialized graph contract
 
 The UA graph export command admits the JSON schema below. It uses JSON Schema `type`,
 `properties`, `required`, `items` and `minLength`; unspecified properties are admitted and
@@ -220,9 +222,10 @@ are retained; normalization of absent layers/tour occurs once. Check compares th
 UTF-8 bytes, including formatting, against the existing file; a missing file is drift and is not
 created by `--check`.
 
-## Exporting a skeleton
 
-### scenario.views.ua-graph-skeleton — Exporting derives a skeleton graph when none exists
+### Exporting a skeleton
+
+#### scenario.views.ua-graph-skeleton — Exporting derives a skeleton graph when none exists
 
 - GIVEN a project with an explicit Spec registry and no existing raw UA graph at either manifest
   path
@@ -234,7 +237,8 @@ created by `--check`.
   files for which that Module is the first registered lister together with the documents that
   Module solely owns, and no `layer:unlisted`
 
-## Overlaying an existing graph
+
+### Overlaying an existing graph
 
 Exporter ownership is determined by the selectors in the following scenario, not by a record of
 which tool originally created each element. The `concorde-ua-graph` tag, the named layer namespace,
@@ -243,7 +247,7 @@ for Concorde's overlay. An admitted graph may contain elements created by anothe
 scope; those elements are replaced too. Preservation applies to elements outside this scope. This
 defines the existing independent export behavior and adds no docsite graph functionality.
 
-### scenario.views.ua-graph-overlay — Re-exporting overlays and replaces only Concorde's own elements
+#### scenario.views.ua-graph-overlay — Re-exporting overlays and replaces only Concorde's own elements
 
 - GIVEN an existing raw UA graph, produced by the real Understand Anything tool or by a prior export
 - WHEN `ua-graph` runs
@@ -266,9 +270,10 @@ defines the existing independent export behavior and adds no docsite graph funct
   layers, in both fresh export and overlay, and never joins `layer:unlisted`
 - AND running the export again against its own prior output produces byte-identical output
 
-## Files shared by several Modules
 
-### scenario.views.ua-graph-shared-file — A shared file gets one layer and a related edge to the rest
+### Files shared by several Modules
+
+#### scenario.views.ua-graph-shared-file — A shared file gets one layer and a related edge to the rest
 
 - GIVEN one implementation file that several Modules' entities list
 - WHEN `ua-graph` runs
@@ -278,9 +283,10 @@ defines the existing independent export behavior and adds no docsite graph funct
 - AND every other listing Module gets one additional `related` edge from that file's node naming
   it as also listed by that Module
 
-## Checking freshness
 
-### scenario.views.ua-graph-check — `--check` reports drift from the current registry without writing
+### Checking freshness
+
+#### scenario.views.ua-graph-check — `--check` reports drift from the current registry without writing
 
 - GIVEN a previously exported or overlaid graph and a registry that has since changed
 - WHEN `ua-graph --check` runs
@@ -288,9 +294,10 @@ defines the existing independent export behavior and adds no docsite graph funct
 - AND a match returns success and a difference returns an `invalid` finding, in both cases without
   writing
 
-## Rejecting an unsupported existing graph
 
-### scenario.views.ua-graph-invalid-input — A malformed existing graph is rejected without writing
+### Rejecting an unsupported existing graph
+
+#### scenario.views.ua-graph-invalid-input — A malformed existing graph is rejected without writing
 
 - GIVEN an existing file at the target path that is not a JSON object, is reached through a
   symlink, is a directory, lacks a string `version`, an object `project`, or array `nodes` and

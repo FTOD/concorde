@@ -8,41 +8,58 @@
 
 # Topology
 
-## Purpose
+## Usage & Contract
+
+### Purpose
 
 Topology designs, prepares and atomically applies changes to registered Module structure and owned definitions. It serves developers evolving ownership, references, dependencies and file bindings through the existing accepted design and application boundaries.
 
-## Requirements
+### Usage
 
-### req.development.shared-document-agreement — Shared changes require owner authoring and consumer agreement
+Use the topology actions of `concorde-main` when Module ownership, references, composition,
+dependencies or file bindings must change together. Supply intended behavior and constraints to
+design-topology. Review the proposed registry before accept-topology prepares owned Specs and
+compatibility evidence; review that exact prepared application before apply-topology changes files.
+The two acceptances concern different artifacts and neither can be inferred from elapsed time.
+
+Authors receive their own candidate contexts and may replace only candidate-owned documents.
+A shared definition is authored once; affected consumers are reviewed independently. Rejected,
+stale or conflicting input leaves the pre-application project unchanged rather than partially
+changing ownership. New Modules need usable external contracts and internal designs, not merely
+new directories. The existing main adapter supplies these actions without adding a new callable
+flow entry. See [topology](topology.md) for preparation, application and recovery.
+
+### Requirements
+
+#### req.development.shared-document-agreement — Shared changes require owner authoring and consumer agreement
 
 A referenced document change SHALL be applied only from its sole owner's proposal after compatibility
 review in every affected consumer's resolved context.
 
-## Scenarios
+### Scenarios
 
-### scenario.development.topology-design — Design a candidate registry
+#### scenario.development.topology-design — Design a candidate registry
 
 - GIVEN a change to identities, composition, dependencies, document ownership and references or file listings
 - WHEN `concorde-main` runs `design-topology`
 - THEN it admits exact registry metadata and the Module kind definition, withholds implementation file contents, and returns a digest-bound candidate registry, local Spec tasks, migration constraints and acceptance conditions
 - AND no project file changes
 
-### scenario.development.topology-accept — Accept a design and author local Specs
+#### scenario.development.topology-accept — Accept a design and author local Specs
 
 - GIVEN a developer accepts a topology design
 - WHEN `concorde-main` runs `accept-topology`
 - THEN it rechecks the complete discovery context, starts a fresh target-local Spec author for each affected Module, and validates their combined output against an in-memory registry and document overlay
 - AND the full authored documents are stored only in a before-digest-bound application artifact, and the public response exposes only its ArtifactRef
 
-### scenario.development.topology-apply — Apply a reviewed artifact
+#### scenario.development.topology-apply — Apply a reviewed artifact
 
 - GIVEN a developer accepts the exact prepared application artifact
 - WHEN `concorde-main` runs `apply-topology`
 - THEN it atomically applies the reviewed registry and document replacements together
 - AND successful application updates the accepted structure and sources in the same transaction
 
-### scenario.development.topology-stale — Stale or conflicting input is rejected
+#### scenario.development.topology-stale — Stale or conflicting input is rejected
 
 - GIVEN the registry, Protocol or a candidate's shared document bytes changed since the design was produced, or a non-owner proposes a provider document replacement or affected-consumer compatibility remains unresolved
 - WHEN `accept-topology` or `apply-topology` processes that input
@@ -54,7 +71,20 @@ See [owner authoring and consumer agreement](#req.development.shared-document-ag
 
 The detailed contract is [Accepted atomic topology](topology.md).
 
-## Ontology
+## Architecture & Realization
+
+### Design
+
+Preparation orders candidate authors so providers precede consumers, validates the complete
+overlay and obtains independent affected-context reviews before persisting an exact application.
+Application then rechecks the accepted artifact, registry/Protocol identity and every before-digest
+before one transaction. [Topology Flows](topology.md#architecture--realization) expose those distinct
+boundaries and stop conditions.
+
+Each candidate definition has one author/owner. Comparing old and candidate contexts captures
+consumers affected by reference or ownership changes even when the path set is unchanged. Keeping
+prepared bytes separate from accepted effects supports the external two-acceptance and no-partial-
+application promises; it does not add arbitrary flow configuration or provider write grants.
 
 ### Entities
 
@@ -126,7 +156,8 @@ flowchart TB
     e0 -->|prepares exact accepted replacements in| domain_application
 ```
 
-## Dependencies and composition
+
+### Dependencies and composition
 
 ```concorde-dependencies
 [
@@ -166,7 +197,8 @@ flowchart TB
 ]
 ```
 
-## Realization and reuse limits
+
+### Realization and reuse limits
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,

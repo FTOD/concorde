@@ -1,7 +1,8 @@
-"""Protocol 4: Module-level requirement sections, ID anchors in links and test-declared scenarios."""
+"""Protocol 6: reader parts, normative definitions, identity and test-declared scenarios."""
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -24,9 +25,12 @@ DIAGRAM = ('flowchart TB\n    accTitle: Shop\n    accDescr: The tests exercise t
 
 def reading_entry(requirements, scenarios, extra=""):
     declaration = {"id": "document.shop", "owner": "module.shop", "main_visible": True}
-    return ("```concorde-document\n" + json.dumps(declaration) + "\n```\n\n# Shop\n\n## Purpose\n\n"
-            "Shop sells things.\n\n## Requirements\n\n" + requirements + "\n\n## Scenarios\n\n" + scenarios
-            + "\n\n## Ontology\n\n### Entities\n\n```concorde-entities\n" + json.dumps(ENTITIES)
+    requirements = re.sub(r'(?m)^(#{2,4}) ', r'#\1 ', requirements)
+    scenarios = re.sub(r'(?m)^(#{2,4}) ', r'#\1 ', scenarios)
+    return ("```concorde-document\n" + json.dumps(declaration) + "\n```\n\n# Shop\n\n## Usage & Contract\n\n### Purpose\n\n"
+            "Shop sells things.\n\n### Usage\n\nSubmit a valid cart to create an order; retries return that order.\n\n"
+            "### Requirements\n\n" + requirements + "\n\n### Scenarios\n\n" + scenarios
+            + "\n\n## Architecture & Realization\n\n### Design\n\nThe cart holds lines and its tests exercise checkout.\n\n### Entities\n\n```concorde-entities\n" + json.dumps(ENTITIES)
             + "\n```\n\n### Relationships\n\n```mermaid\n" + DIAGRAM + "\n```\n" + extra)
 
 
@@ -44,7 +48,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         configuration = {"type_id": "concorde-capability-configuration", "schema_version": 1,
                          "data": {"model": "openai-codex/gpt-6-astra", "thinking": "medium"}}
-        self.write(".concorde/config.json", json.dumps({"profile_version": 12, "registry": ".concorde/specs.json",
+        self.write(".concorde/config.json", json.dumps({"profile_version": 13, "registry": ".concorde/specs.json",
             "protocol": protocol_binding(PACKAGE), "capability_configuration": configuration}))
         write_protocol_copy(self.root, PACKAGE)
         self.write(".concorde/specs.json", json.dumps({"schema_version": 4, "project_id": "project.shop",
@@ -58,7 +62,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         self.write("specs/shop/module.md", reading_entry(REQUIREMENT, SCENARIO))
         self.write("specs/shop/notes.md", "```concorde-document\n" + json.dumps(
             {"id": "document.shop.notes", "owner": "module.shop", "main_visible": False})
-            + "\n```\n\n# Notes\n\nSee [checkout](module.md#scenario.shop.submit) and [the cart](module.md#entity.shop.cart).\n")
+            + "\n```\n\n# Notes\n\n## Usage & Contract\n\nSee [checkout](module.md#scenario.shop.submit) and [the cart](module.md#entity.shop.cart).\n")
 
     def write(self, path, content):
         destination = self.root / path
@@ -109,12 +113,12 @@ class RequirementsAndVerificationTests(unittest.TestCase):
             SpecRepository(self.root, PACKAGE).scenarios(SpecRepository(self.root, PACKAGE).select("module.shop"))
 
     @verifies("scenario.spec.validate-structural-errors")
-    def test_the_reading_entry_needs_requirements_and_an_ontology_with_both_subsections(self):
+    def test_the_reading_entry_needs_both_parts_and_their_required_subsections(self):
         text = (self.root / "specs/shop/module.md").read_text()
         cases = {
-            "## Requirements": "Purpose, Requirements, Scenarios and Ontology",
-            "### Entities": "Entities and Relationships",
-            "### Relationships": "Entities and Relationships",
+            "### Requirements": "Purpose, Usage, Requirements, Scenarios",
+            "### Entities": "Design, Entities, Relationships",
+            "### Relationships": "Design, Entities, Relationships",
         }
         for heading, expected in cases.items():
             with self.subTest(heading=heading):
@@ -124,17 +128,87 @@ class RequirementsAndVerificationTests(unittest.TestCase):
                 self.assertTrue(any(expected in f.message for f in report.findings), [f.message for f in report.findings])
         self.write("specs/shop/module.md", text.replace("### Relationships", "## Relationships"))
         report = self.validate()
-        self.assertTrue(any("below the Ontology heading" in f.message for f in report.findings))
+        self.assertTrue(any("direct level-3 subsections" in f.message for f in report.findings))
         self.write("specs/shop/module.md", text.replace("### Entities", "### Relationships").replace(
             "### Relationships\n\n```mermaid", "### Entities\n\n```mermaid"))
         report = self.validate()
         self.assertIn(("CONCORDE-MODULE-001", "error"), self.rules(report))
 
+    @verifies("scenario.spec.reader-parts-invalid")
+    def test_reading_parts_reject_legacy_duplicates_wrong_nesting_and_empty_explanations(self):
+        text = reading_entry(REQUIREMENT, SCENARIO)
+        cases = [
+            text.replace("## Usage & Contract", "## Functional specification"),
+            text.replace("## Architecture & Realization", "## Ontology"),
+            text.replace("## Usage & Contract", "### Usage & Contract"),
+            text + "\n## Usage & Contract\n\nDuplicate.\n",
+            text.replace("### Entities", "### Entities\n\n### Entities"),
+            text.replace("### Usage", "#### Usage"),
+            text.replace("### Design", "#### Design"),
+            text.replace("### Purpose", "### Purpose\n\n#### Nested title"),
+            text.replace("Submit a valid cart to create an order; retries return that order.", ""),
+            text.replace("The cart holds lines and its tests exercise checkout.", ""),
+            text.replace("### Usage", "~~~~markdown\n### Usage\n~~~~"),
+            text.replace("### Usage", "### Usage\n\n```concorde-entities\n[]\n```"),
+            re.sub(r"(```mermaid\n[\s\S]*?\n```)", r"~~~~markdown\n\1\n~~~~", text),
+            text + "\n## Escaped design\n\nOutside both parts.\n",
+        ]
+        for index, invalid in enumerate(cases):
+            with self.subTest(case=index):
+                self.write("specs/shop/module.md", invalid)
+                self.assertIn(("CONCORDE-MODULE-001", "error"), self.rules(self.validate()))
+
+    @verifies("scenario.spec.reader-parts")
+    def test_closed_atx_headings_and_no_final_newline_are_valid(self):
+        text = reading_entry(REQUIREMENT, SCENARIO).replace("### Purpose\n", "### Purpose ###\n").rstrip()
+        self.write("specs/shop/module.md", text)
+        self.assertEqual("success", self.validate().status)
+
+    @verifies("scenario.spec.reader-parts", "scenario.spec.reader-parts-invalid")
+    def test_companions_cover_either_or_both_parts_without_repeating_the_entry(self):
+        metadata = "```concorde-document\n" + json.dumps(
+            {"id": "document.shop.notes", "owner": "module.shop", "main_visible": False}) + "\n```\n\n# Notes\n\n"
+        for parts in ("## Usage & Contract\n\nConsumer notes.",
+                      "## Architecture & Realization\n\nInternal notes.",
+                      "## Usage & Contract\n\nConsumer notes.\n\n## Architecture & Realization\n\nInternal notes."):
+            with self.subTest(parts=parts):
+                self.write("specs/shop/notes.md", metadata + parts)
+                self.assertEqual("success", self.validate().status)
+        for parts in ("Unclassified content.", "### Usage & Contract\n\nWrong level.",
+                      "## Architecture & Realization\n\nInternal.\n\n## Usage & Contract\n\nReversed.",
+                      "## Usage & Contract\n\nConsumer.\n\n## Outside\n\nInternal."):
+            with self.subTest(parts=parts):
+                self.write("specs/shop/notes.md", metadata + parts)
+                self.assertIn(("CONCORDE-MODULE-001", "error"), self.rules(self.validate()))
+
+    @verifies("scenario.spec.internal-contract-context")
+    def test_internal_definitions_keep_owner_full_context_and_verification_identity(self):
+        internal = ("\n### Internal constraints and verification\n\n"
+                    "#### req.shop.lock — Serialize order persistence\n\n"
+                    "Shop SHALL hold its lock during order persistence.\n\n"
+                    "#### scenario.shop.lock — Persistence holds the lock\n\n"
+                    "- GIVEN a valid order\n- WHEN persistence writes it\n- THEN the lock is held\n")
+        self.write("specs/shop/module.md", reading_entry(REQUIREMENT, SCENARIO, internal))
+        self.write("tests/shop/test_lock.py", "from concorde.spec.verification import verifies\n"
+                   "@verifies('scenario.shop.lock')\ndef test_lock():\n    pass\n")
+        repository = SpecRepository(self.root, PACKAGE)
+        target = repository.select("module.shop")
+        self.assertEqual({"req.shop.single-order", "req.shop.lock"}, {r.id for r in repository.requirements(target)})
+        scenario = next(s for s in repository.scenarios(target) if s.id == "scenario.shop.lock")
+        self.assertEqual("module.shop", scenario.owner)
+        resolution = repository.spec_context(scenario.id)
+        self.assertEqual(repository.spec_files(target.id), repository.spec_files(scenario.id))
+        self.assertEqual(2, len(resolution.sources))
+        self.assertEqual(1, len(repository.scenario_verifications(target)[scenario.id]))
+        self.assertEqual("success", self.validate().status)
+        self.assertIn("## Usage & Contract", repository.document("specs/shop/module.md").body)
+        self.assertIn("## Architecture & Realization", repository.document("specs/shop/module.md").body)
+
     @verifies("scenario.spec.link-anchors")
     def test_links_with_id_fragments_must_reach_the_defining_document(self):
         self.write("specs/shop/notes.md", "```concorde-document\n" + json.dumps(
             {"id": "document.shop.notes", "owner": "module.shop", "main_visible": False})
-            + "\n```\n\n# Notes\n\n[wrong document](#scenario.shop.submit) and [unknown](module.md#req.shop.missing)\n"
+            + "\n```\n\n# Notes\n\n## Usage & Contract\n\n[wrong document](#scenario.shop.submit) and [unknown](module.md#req.shop.missing)\n"
               "and [plain heading](module.md#purpose).\n")
         report = self.validate()
         messages = [f.message for f in report.findings if f.rule_id == "CONCORDE-LINK-001"]
@@ -187,8 +261,8 @@ class RequirementsAndVerificationTests(unittest.TestCase):
                      "responsibility": "Exercise the shop from outside.", "files": ["tests/other/"]}]
         self.write("specs/other/module.md", "```concorde-document\n" + json.dumps(
             {"id": "document.other", "owner": "module.other", "main_visible": True})
-            + "\n```\n\n# Other\n\n## Purpose\n\nOther.\n\n## Requirements\n\nNone.\n\n## Scenarios\n\nNone.\n\n"
-              "## Ontology\n\n### Entities\n\n```concorde-entities\n" + json.dumps(entities)
+            + "\n```\n\n# Other\n\n## Usage & Contract\n\n### Purpose\n\nOther.\n\n### Usage\n\nExercise the shop.\n\n### Requirements\n\nNone.\n\n### Scenarios\n\nNone.\n\n"
+              "## Architecture & Realization\n\n### Design\n\nTests exercise the shop boundary.\n\n### Entities\n\n```concorde-entities\n" + json.dumps(entities)
             + "\n```\n\n### Relationships\n\n```mermaid\nflowchart TB\n    tests[\"Other tests\"]\n```\n")
         self.write("specs/shop/module.md", reading_entry(REQUIREMENT, SCENARIO).replace(
             json.dumps(ENTITIES), json.dumps(ENTITIES[:1])).replace('    tests["Shop tests"]\n    tests -->|exercise| cart', ''))

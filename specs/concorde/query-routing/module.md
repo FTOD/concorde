@@ -8,27 +8,43 @@
 
 # Query and Routing
 
-## Purpose
+## Usage & Contract
+
+### Purpose
 
 Query and Routing answers questions from explicitly selected complete Module contexts and selects one owning Module for a routed task. It serves the main entry and discovery consumers, preserving caller intent without reading implementation to infer behavior.
 
-## Requirements
+### Usage
 
-### req.development.global-discovery — Discovery workers discover complete Module contexts
+Use `concorde-main` to ask a Spec-grounded question; composing discovery callers can request one
+owning Module route for an unchanged task and constraints. Target/focus hints guide selection but
+supply no additional reading authority. Discovery begins with the entry Module's complete context
+and explicitly selects additional complete contexts only when needed. It does not inspect code to
+invent missing behavior. Topology actions sharing the main entry have their own provider contract.
+
+An answer includes limitations; a route retains the caller's task rather than rewriting it.
+Missing necessary promises produce attributed gaps, contradictions and prohibitions remain
+distinct, and exhausted discovery returns an explicit limit outcome. Queries author no files and
+create no candidate. Human clarification requires fresh admitted input, not unbounded expansion.
+See [query and routing](query-and-routing.md) for exact selection and outcome behavior.
+
+### Requirements
+
+#### req.development.global-discovery — Discovery workers discover complete Module contexts
 
 A Capability with discover context selection SHALL use a discovery-phase worker to discover complete Module Spec contexts.
 
-### req.development.routing-hint-not-context — Routing hints only steer selection
+#### req.development.routing-hint-not-context — Routing hints only steer selection
 
 A target or focus hint SHALL only steer selection.
 
-### req.development.routing-hint-no-grant — Routing hints never grant context
+#### req.development.routing-hint-no-grant — Routing hints never grant context
 
 A target or focus hint SHALL NOT itself grant context or replace explicit resolution.
 
-## Scenarios
+### Scenarios
 
-### scenario.development.answer-question — Direct answer from selected Module contexts
+#### scenario.development.answer-question — Direct answer from selected Module contexts
 
 - GIVEN a question with an optional target or focus routing hint
 - WHEN `concorde-main` runs with `action: ask`
@@ -38,14 +54,14 @@ A target or focus hint SHALL NOT itself grant context or replace explicit resolu
 See [routing hints only steer selection](#req.development.routing-hint-not-context) and
 [routing hints never grant context](#req.development.routing-hint-no-grant).
 
-### scenario.development.answer-gap — Missing promise reported as a Spec gap
+#### scenario.development.answer-gap — Missing promise reported as a Spec gap
 
 - GIVEN the answerer's selected complete Module contexts do not contain a promise the question needs
 - WHEN the answerer would otherwise have to guess or consult an unselected source
 - THEN the response reports a Spec gap naming the blocked question, the owning Module and the current context identity
 - AND the answerer does not read implementation files or search code to supply the missing meaning
 
-### scenario.development.discovery-limit — Discovery stops at its declared limit
+#### scenario.development.discovery-limit — Discovery stops at its declared limit
 
 - GIVEN repeated context expansion has not resolved the question
 - WHEN a discovery worker's bounded expansion-step limit is reached
@@ -54,7 +70,19 @@ See [routing hints only steer selection](#req.development.routing-hint-not-conte
 
 The detailed contract is [Complete-context question and route](query-and-routing.md).
 
-## Ontology
+## Architecture & Realization
+
+### Design
+
+The [discovery Flow](query-and-routing.md#discovery-flow-discovery_flow) alternates a fresh
+discovery decision with deterministic admission of explicitly selected complete contexts. A router
+returns identities; the host binds the original task and constraints rather than trusting rewritten
+intent. An answerer can complete directly from the indexed/granted originals without reader-worker
+summaries or a synthesis stage.
+
+The [query Flow](query-and-routing.md#query-flow-query_flow) returns the last admitted decision.
+Expansion limits and stop edges bound missing-context reasoning. Provider references expand once;
+links and implementation files never become implicit discovery routes.
 
 ### Entities
 
@@ -118,7 +146,8 @@ flowchart TB
     e0 -->|expands only explicitly admitted| domain_selection
 ```
 
-## Dependencies and composition
+
+### Dependencies and composition
 
 ```concorde-dependencies
 [
@@ -149,7 +178,8 @@ flowchart TB
 ]
 ```
 
-## Realization and reuse limits
+
+### Realization and reuse limits
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,

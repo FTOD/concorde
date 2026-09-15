@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 5.5.0 defines Module Specs and their organization. These requirements apply
+Concorde Spec Protocol 6.0.0 defines Module Specs and their organization. These requirements apply
 to project specifications, including the specifications of software that implements this Protocol.
 They do not require the Protocol text to describe itself as a Module.
 
@@ -10,7 +10,7 @@ They do not require the Protocol text to describe itself as a Module.
 a recommendation that may be departed from for an explained reason. **MAY** states an allowed
 choice. Examples illustrate the rules; their names, paths and subject matter are not prescribed.
 
-### P1. A Module describes a cohesive software responsibility in four parts
+### P1. A Module describes one responsibility for its consumers and its implementers
 
 A **Module** is a cohesive software responsibility. It is a unit of specification, not a unit of
 implementation: a Module need not correspond to a package, directory, process, service or other
@@ -19,25 +19,43 @@ or supplied entirely by its children. The Module's boundary is established by it
 requirements, scenarios and entities; its file bindings record where that responsibility is realized
 and do not define it.
 
-A Module's Spec MUST contain four parts:
+A Module's Spec MUST contain two reader-oriented parts:
 
-1. **Purpose**: a concise plain-prose statement of what the Module is for and for whom.
-2. **Requirements**: what the Module as a whole must guarantee. Each requirement is one SHALL
-   statement with its own stable identity; it expresses exactly one behavior and can be judged
-   true or false against the Module.
-3. **Scenarios**: the concrete situations in which the Module is used and how it must react, each
-   written as a sequence of GIVEN, WHEN and THEN steps. A scenario is the unit that tests verify.
-4. **Ontology**: the things that exist in the Module's world and how they relate. Its
-   **entities** may be submodules, programs, files, records, concepts, interfaces at the Module
-   boundary or external actors. Its **relationships** are directed edges between entities, each
-   with a free-text label, which SHOULD be a verb such as "uses", "downloads", "saves" or "loads".
+1. **Usage & Contract** explains how to use the Module and what a consumer can rely on. It MUST
+   explain its purpose, intended consumers and scope, when to use it, the concepts needed to use
+   it, prerequisites and entry points, inputs, results, effects, errors and applicable repeat,
+   cancellation and compatibility behavior. Start with coherent usage prose, not a catalog of
+   formal statements that the reader must assemble into instructions. Requirements and concrete
+   scenarios make the promises precise; they do not replace the usage explanation.
+2. **Architecture & Realization** explains how the Module fulfills those promises. It MUST
+   explain the design, responsibility decomposition, collaborations, relevant control/data flow
+   and state, internal invariants and constraints, and realization through entity file bindings
+   or children. Explain significant design choices and how they support the external guarantees;
+   an entity inventory and a diagram alone are not an architecture explanation. This part is
+   normative where it prescribes a constraint, not merely commentary on current source code.
 
-Purpose, requirements and scenarios form the Module's **functional spec**: they state what the
-Module promises. The Ontology forms its **architecture spec**: it states how the Module is built.
-The word ontology is used in its plain sense, the Module's account of what exists in its domain and
-how those things stand to one another. It asks for no formal ontology language, and it is not
-limited to business concepts: a program or a file the Module consists of belongs to its Ontology as
-much as a business record or an external actor does.
+The dividing question is whether a fact is needed to use or depend on the Module, or to implement
+and maintain it. A consumer may be a person, another Module or external software; "external" is
+relative to this Module, not a requirement for a public API, command or physical package. A logical
+or composite responsibility MUST NOT invent an executable interface just to populate a template.
+Internal security or concurrency constraints remain binding, while their consumer-visible effects
+belong in Usage & Contract. A missing or inapplicable behavior MUST be stated honestly rather than
+invented. A Spec describes intended design, not proof that its realization already conforms.
+
+Purpose, requirements, scenarios, entities and relationships remain information elements within
+these two parts, not competing top-level reading structures. A **requirement** is one decidable
+SHALL statement with its own stable identity, expressing one Module-wide obligation. A **scenario**
+is a concrete sequence of GIVEN, WHEN and THEN steps and is the unit tests verify. Requirements
+and scenarios MAY specify internal constraints in Architecture & Realization as well as external
+behavior in Usage & Contract. Define each obligation once in the appropriate part and link to it
+from its realization or verification discussion; neither part may silently redefine the other.
+
+**Entities** are the things in the Module's world: submodules, programs, files, records, concepts,
+boundary interfaces or external actors. **Relationships** are directed edges between entities with
+free-text labels, which SHOULD be verbs such as "uses", "saves" or "loads". The internal entity
+inventory records identities and implementation bindings; explain consumer-facing concepts and
+interface meaning in the external part without making a second canonical definition. Ontology
+may be a useful modeling technique, but is not the name or the entirety of the architecture part.
 
 Requirements and scenarios differ in granularity and in owner. A requirement is a coarse promise
 about the Module and belongs to the Module alone. A scenario is one specific, testable situation;
@@ -104,8 +122,9 @@ deduplicated union of full owned and directly referenced documents. That context
 visibility scope: a tool makes all of it available and nothing outside it, and how the tool delivers
 it is the tool's choice rather than part of this Protocol.
 
-That resolved context MUST explain the selected Module's purpose, requirements, scenarios, entities
-and relationships without undeclared reading or source code supplying missing meaning. For each
+That resolved context MUST explain both reader-oriented parts: the selected Module's purpose,
+correct use and guarantees, and the design that realizes them, with requirements, scenarios,
+entities and relationships, without undeclared reading or source code supplying missing meaning. For each
 dependency and child the local contract states responsibility, selection conditions, which canonical
 guarantees it relies on and its own obligations or reactions. It SHOULD link to included provider
 definitions instead of copying them. Shared interfaces MAY be ordinary documents owned by one Module
@@ -126,8 +145,8 @@ honest draft identifies unresolved meaning and does not claim completeness for i
 ### P4. Conformance concerns both meaning and structure
 
 A claim of conformance MUST identify the Protocol version it applies to. Stable identity, unique
-document ownership, explicit one-level references, consistent relationship declarations, the four
-mandatory parts, one statement per requirement and consistent file listings are structural
+document ownership, explicit one-level references, consistent relationship declarations, the two
+mandatory reader-oriented parts, one statement per requirement and consistent file listings are structural
 requirements. Complete and mutually consistent requirements, scenarios and relationships, and
 requirements that can each be judged true or false, are semantic requirements.
 
@@ -188,7 +207,10 @@ ownership.
 Every Module registers a nonempty `documents` collection with exactly one local `module.md` reading
 entry. Registering a physical document establishes its sole owner. Multiple ownership, unregistered
 documents and aliases of a physical file are invalid. Reading order and visibility are presentation
-attributes; all selected files are included in full.
+attributes; all selected files are included in full. Usage & Contract and Architecture & Realization
+organize reading inside those documents, not ownership or context membership. Consumers SHOULD
+cite provider boundary guarantees rather than incidental realization details. An explicit document
+reference may select a separate interface document, but no part heading implicitly trims a file.
 
 The Module registration also declares `references`, a distinct list of typed stable identities:
 
@@ -396,7 +418,7 @@ without transcluding it into consumer pages.
 ## Relationship diagrams
 
 A Module's relationships are authored as Mermaid flowchart fences inside its registered Markdown
-documents. The fences in the Relationships subsection of the reading entry's Ontology are the
+documents. The fences in the Relationships subsection of the reading entry's Architecture & Realization part are the
 authoritative relationship model: their nodes MUST be exactly the owning Module's entity titles,
 excluding included foreign entities and every edge MUST carry a label. Further diagrams in other
 registered documents MAY illustrate behavior or detail. An inline fence is part of its containing
@@ -428,6 +450,10 @@ inventory.
 Module is the core unit of Spec context resolution. Ownership determines definitions; registered
 Module references determine additional reading. Implementation context is resolved separately.
 Neither context inclusion nor inventory metadata grants write, command or network authority.
+Usage & Contract and Architecture & Realization are reading parts of the same Module Spec, not
+new query kinds or grants. A Module-bound implementation task still receives its complete selected
+Spec context. A consumer can reference an independently registered interface document when that
+supplies its needed provider contract; a section heading never causes implicit excerpting.
 
 ## Queryable entities
 
@@ -582,7 +608,7 @@ entities, including its local collaborator entities, not every included provider
 
 This chapter defines the mandatory representation of project Spec documents. The information model
 determines what a Spec must explain; these format rules determine how its identity, ownership,
-references, four mandatory parts and structured declarations are expressed. Templates provide
+references, two reader-oriented parts and structured declarations are expressed. Templates provide
 starting layouts for satisfying both. The Protocol chapters and template examples are not themselves
 project Specs.
 
@@ -611,35 +637,60 @@ A Module MUST register exactly one local `module.md` reading entry and its compl
 collection. Fenced code blocks are opaque: headings, list items and declarations inside a fence are
 not interpreted by the rules below.
 
-## The four mandatory sections
+## The two reader-oriented parts
 
-The `module.md` reading entry MUST contain these four ATX headings, at level 1, 2 or 3, with exactly
-this text, outside code fences and in this order:
+The `module.md` reading entry MUST contain these two level-2 ATX headings, exactly once each,
+outside code fences and in this order:
+
+```text
+Usage & Contract
+Architecture & Realization
+```
+
+All substantive content belongs under one of these parts. Document metadata, a level-1 title and
+brief reading navigation MAY precede them. A section extends to the next heading of the same or a
+higher level. The part names are fixed syntax; other prose and optional headings may use the
+project's language.
+
+Usage & Contract MUST contain these direct level-3 subsections, exactly once each and in order:
 
 ```text
 Purpose
+Usage
 Requirements
 Scenarios
-Ontology
 ```
 
-Each section extends to the next heading of the same or a higher level. The **Purpose** section MUST
-contain nonempty prose only: no headings, list items, tables or fenced blocks. The **Requirements**
-section introduces the Module's requirements and the **Scenarios** section its scenarios; their
-definitions MAY appear there or in other single-owner documents of the collection.
+Purpose MUST contain nonempty plain prose only, without nested headings, lists, tables or fences.
+Usage MUST contain a nonempty prose explanation of how and when to use this responsibility, not
+just links or formal definitions. It MAY also contain examples, tables and task-oriented headings.
+Requirements and Scenarios introduce external guarantees and their concrete cases; their canonical
+definitions MAY be here or in registered companion documents. If none are known, state the gap
+explicitly; an initialized stub does not invent business behavior.
 
-The **Ontology** section MUST contain two ATX subsections, each exactly once and in this order, at a
-level deeper than the Ontology heading:
+Architecture & Realization MUST contain these direct level-3 subsections, exactly once each and
+in order:
 
 ```text
+Design
 Entities
 Relationships
 ```
 
-The **Entities** subsection MUST contain at least one `concorde-entities` block. The
-**Relationships** subsection MUST contain at least one Mermaid flowchart fence that satisfies the
-diagram rules below. Other prose and titles may use the project's language, and further sections MAY
-follow.
+Design MUST contain nonempty prose explaining how the Module realizes its promises, or explicitly
+identifying the design facts still unknown. Entities MUST contain at least one `concorde-entities`
+block. Relationships MUST contain at least one Mermaid flowchart fence satisfying the diagram rules
+below. Additional internal requirements, verification scenarios, dependency declarations, rationale
+and realization limits MAY occupy further subsections of this part. An internal requirement is still
+a Module-owned requirement, not a new definition kind.
+
+A registered companion document MUST put its substantive content under one or both of the same
+level-2 part headings, once each and in the same order when both appear. It need not repeat the
+reading entry's required subsections or invent content for a part it does not cover. A mixed topic
+separates consumer behavior from implementation explanation within that document. Splitting a
+collection into exactly two physical files is neither required nor implied. Definitions keep their
+stable IDs and single owner when moved; update links and explicit references when paths change.
+Reading-part boundaries do not filter context, alter permissions or create another Spec kind.
 
 ## Identifier spelling
 
@@ -766,7 +817,7 @@ headings as the renderer defines and are not interpreted.
 ## Entity declarations
 
 A Module declares its entities in `concorde-entities` fenced JSON blocks located in its single-owner
-documents; the reading entry's Entities subsection holds at least one. Each block is a nonempty JSON
+documents under Architecture & Realization; the reading entry's Entities subsection holds at least one. Each block is a nonempty JSON
 array whose entries have exactly the required fields `id`, `title`, `kind` and `responsibility`, and
 any of the optional fields `files`, `pending` and `target_id`:
 
@@ -789,7 +840,7 @@ inventory `files`. Every child and used Module MUST have exactly one entity with
 
 ## Relationship diagrams
 
-The reading entry's Relationships subsection contains one or more Mermaid fences (` ```mermaid `)
+The reading entry's Architecture & Realization / Relationships subsection contains one or more Mermaid fences (` ```mermaid `)
 whose first line begins with `flowchart` or `graph`. Together their node labels MUST be exactly
 the Module's own entity titles, excluding definitions in referenced foreign documents, and every edge MUST carry a label. A node's label is the text inside
 its shape delimiters; when the label spans several lines with `<br/>`, the first line is the
@@ -853,8 +904,8 @@ Templates section. Square-bracket placeholders stand for facts the author must s
 instructions, sample IDs and sample paths are not adopted project facts.
 
 Authors MAY rearrange optional sections or split requirements, scenarios and entities across
-registered single-owner documents while preserving the mandatory syntax, the four mandatory sections
-of the reading entry and the complete information contract. A Scenario fragment is inserted into its
+registered single-owner documents while preserving the mandatory syntax, the two reader-oriented parts
+and their required reading-entry subsections and the complete information contract. A Scenario fragment is inserted into its
 owning Module collection; it does not create another Spec kind. If saved as a separate document, it
 needs its own document declaration and explicit ownership registration.
 
@@ -868,7 +919,7 @@ rendering engine and execution workflow remain separately defined implementation
 ## Concorde Framework execution profile
 
 This profile applies the independent Spec Protocol to Concorde's runtime. Framework configuration
-uses `profile_version: 12` for the four-part Module model and registry schema 4 for its JSON
+uses `profile_version: 13` for the two-part reader-oriented Module model and registry schema 4 for its JSON
 storage. `.concorde/config.json` declares `profile_version`, `registry`, `protocol` and
 `capability_configuration`. Its `protocol` binding identifies the accepted version and exact
 manifest digest. These configuration and storage versions are Framework compatibility identifiers,
@@ -1021,9 +1072,13 @@ handoff solely because it updates the Framework's own instructions.
 
 ### Framework authoring and publication conventions
 
-Every Concorde Module's `module.md` carries the four mandatory parts in order: Purpose,
-Requirements, Scenarios and Ontology, and its Ontology holds the Entities and Relationships
-subsections. A requirement is a heading section `req.<module>.<name> — Title` whose first paragraph
+Every Concorde Module's `module.md` starts with Usage & Contract (Purpose, Usage, Requirements,
+Scenarios) and follows with Architecture & Realization (Design, Entities, Relationships), using the
+Protocol's level-2 parts and level-3 subsections. Companion documents put their content in one or
+both parts without repeating the whole entry layout. Usage prose explains correct use before formal
+guarantees; Design explains how responsibilities, flow, state and constraints fulfill those guarantees.
+Internal requirements and verification scenarios stay in the architecture part, with stable IDs and
+one canonical definition. Reading parts do not filter full-file context or widen permissions. A requirement is a heading section `req.<module>.<name> — Title` whose first paragraph
 is one SHALL sentence about the Module; a scenario section holds steps only, and whatever one
 situation must additionally guarantee is written into its steps or prose rather than attached as a
 requirement. The Relationships subsection holds an inline Mermaid flowchart with English `accTitle`

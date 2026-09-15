@@ -7,27 +7,31 @@
 ```
 # Registry values and selection
 
-## Framework configuration and storage versions
+## Usage & Contract
 
-`Profile 12` is the Framework's project-configuration compatibility version for the four-part Module model (Purpose, Requirements, Scenarios, Ontology). It is distinct from Spec Protocol 5.5.0 and from registry schema 4, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
+### Framework configuration and storage versions
 
-The Framework reads `.concorde/config.json` with exactly `profile_version: 12`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest, whose bundle the project carries under `.concorde/protocol/`) and `capability_configuration` (the typed Pi worker model selection: an optional default `model`, `thinking` level and `timeout_seconds`, and optional `workers` overrides per worker or per worker child). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
+`Profile 13` is the Framework's project-configuration compatibility version for the two-part Module model (Usage & Contract and Architecture & Realization). It is distinct from Spec Protocol 6.0.0 and from registry schema 4, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
+
+The Framework reads `.concorde/config.json` with exactly `profile_version: 13`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest, whose bundle the project carries under `.concorde/protocol/`) and `capability_configuration` (the typed Pi worker model selection: an optional default `model`, `thinking` level and `timeout_seconds`, and optional `workers` overrides per worker or per worker child). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
 
 Registry schema 4 stores exactly `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. `targets` holds Module descriptors; there is no separate Implementation Spec collection, because every entity file binding is declared inside its owning Module's own documents. The separate check records configure executable verification; they are Framework execution metadata. Their serialized shape does not replace the Protocol's meaning of identity, membership, composition, dependency, entity or file binding.
 
-## Scenarios
 
-### scenario.spec.reject-unsupported-profile — Rejecting an unsupported configuration profile
+### Scenarios
 
-- GIVEN a project configuration whose profile_version is not 12, or whose Protocol binding does not match the Protocol copy the installer placed under `.concorde/protocol/`, or whose copy differs from the installed package's Protocol
+#### scenario.spec.reject-unsupported-profile — Rejecting an unsupported configuration profile
+
+- GIVEN a project configuration whose profile_version is not 13, or whose Protocol binding does not match the Protocol copy the installer placed under `.concorde/protocol/`, or whose copy differs from the installed package's Protocol
 - WHEN the repository is constructed
 - THEN construction fails with unsupported_profile or protocol_mismatch
-- BUT a matching Profile 12 configuration with a current Protocol binding admits normally
+- BUT a matching Profile 13 configuration with a current Protocol binding admits normally
 
-## Selection and returned values
+
+### Selection and returned values
 
 SpecRepository(project_root, package_root=None, *, registry_bytes=None, document_overrides=None)
-admits Profile 12 and registry schema 4. The optional bytes and document overrides form an in-memory
+admits Profile 13 and registry schema 4. The optional bytes and document overrides form an in-memory
 candidate; they never authorize ambient agent reads. Construction rejects malformed identities,
 unknown parents/uses/references, composition cycles, duplicate file owners within one Module and non-sibling shared
 providers.
@@ -61,7 +65,8 @@ Failures raise SpecError with code and field; typed path/JSON failures retain th
 contract. No lookup writes files, changes authority, silently retries a different path or reads
 source to invent missing Module meaning.
 
-## Task authoring transport values
+
+### Task authoring transport values
 
 The Typed values interface admits the following existing version-1 records in the closed envelope
 `{type_id, schema_version: 1, data}`. Their data objects are closed as well; all fields below are
@@ -80,7 +85,7 @@ complete, or that a caller may admit the value to a phase. Those contextual chec
 calling Host and the receiving Agent's mode. Neither value can complete tasks, waive validation or
 review, modify lifecycle state or widen file, network or credential authority by itself.
 
-### scenario.spec.task-control-values — Admit bounded task metadata without granting authority
+#### scenario.spec.task-control-values — Admit bounded task metadata without granting authority
 
 - GIVEN a task-scope-feedback or task-identity-constraints value using the shapes above
 - WHEN the Typed values interface validates it

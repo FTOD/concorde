@@ -8,19 +8,36 @@
 
 # Review
 
-## Purpose
+## Usage & Contract
+
+### Purpose
 
 Review independently evaluates an admitted task against current Module contracts and, in code mode, its separately granted implementation. It serves standalone callers and composing flows with revision-bound coverage, findings and gaps, without repairing or delivering the reviewed work.
 
-## Requirements
+### Usage
 
-### req.review.admitted-contract — Bind independent findings to current review inputs
+Request `concorde-review` with a task and `review_mode=spec|code`. Optional target/focus hints help
+the router select one owner; an existing-change resumption supplies its bound target and change ID.
+A standalone review runs in the current worktree without creating a development change. Spec mode
+assesses both reader-oriented parts of the admitted contract; code mode additionally compares the
+authorized implementation with that contract. Neither reviewer can repair files.
+
+Read the typed [review result](review-result.md), including representative coverage, findings,
+gaps and exact revision. No findings is a bounded conclusion, not universal proof; skipped,
+not-run and incomplete are distinct from success. Missing necessary contracts pause dependent work,
+while independent defects can remain advisory. Explicit standalone review is fresh; a composing
+Flow can reuse only current evidence for the same intent. Failure, cancellation and invalid output
+cannot masquerade as clean review. See [review](review.md) for selection, scope and outcome rules.
+
+### Requirements
+
+#### req.review.admitted-contract — Bind independent findings to current review inputs
 
 Review SHALL return independent findings bound to its exact admitted task and current input revision.
 
-## Scenarios
+### Scenarios
 
-### scenario.development.standalone-review — Public review without a development change
+#### scenario.development.standalone-review — Public review without a development change
 
 - GIVEN an initialized project without a managed development change or selected Reflection record
 - AND a task with review_mode spec or code and optional target/focus routing hints
@@ -32,7 +49,18 @@ Review SHALL return independent findings bound to its exact admitted task and cu
 
 The detailed contract is [Independent current review](review.md).
 
-## Ontology
+## Architecture & Realization
+
+### Design
+
+The host constructs a digest-bound review input from current admitted sources and scoped changes,
+then launches a fresh Spec or code reviewer under a read-only grant. Result admission checks
+identity, coverage, locations and gap/finding consistency before retaining a typed report. Peer
+reviews run separately and aggregate only results, not provider code or private conversation.
+
+These mechanisms support [review scope and freshness](review.md), including exact-intent reuse by
+composing flows and fresh standalone review. A report remains evidence about one task and revision;
+its wire representation does not authorize a repair or override lifecycle gates.
 
 ### Entities
 
@@ -114,7 +142,8 @@ flowchart TB
     e0 -->|publishes coverage and findings as| domain_result
 ```
 
-## Dependencies and composition
+
+### Dependencies and composition
 
 ```concorde-dependencies
 [
@@ -153,7 +182,8 @@ flowchart TB
 ]
 ```
 
-## Realization and reuse limits
+
+### Realization and reuse limits
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,

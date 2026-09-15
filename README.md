@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
-  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-5.5.0-6264e8" alt="Spec Protocol 5.5.0" /></a>
+  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-6.0.0-6264e8" alt="Spec Protocol 6.0.0" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/agents-Codex_%C2%B7_Claude-273449" alt="Integrations: Codex and Claude" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
 </p>
@@ -145,8 +145,8 @@ to the selected root instruction file. It preserves user content outside its own
 Use concorde-init to initialize this project. Propose the setup for my review.
 ```
 
-Apply the reviewed proposal, then define the root Module's Purpose, Requirements, Scenarios and
-Ontology. Initialization creates an honest stub; unresolved behavior still needs to be specified.
+Apply the reviewed proposal, then write the root Module's Usage & Contract and Architecture &
+Realization. Initialization creates an honest stub; unresolved behavior still needs to be specified.
 Commit the installed framework and root guidance so candidate worktrees inherit them.
 
 **4. Explore and evolve your project.**
@@ -295,14 +295,14 @@ See the [Studio guide](scripts/development/STUDIO.md) for debugging, results and
 
 ## The contract at the center
 
-Concorde's independent **Spec Protocol 5.5.0** defines one specification category: a **Module Spec**.
+Concorde's independent **Spec Protocol 6.0.0** defines one specification category: a **Module Spec**.
 A Module describes a cohesive software responsibility; its implementation may span packages,
 services or shared files. Each Spec document has one owning Module. A Module's explicit
 `references` includes other Module-owned documents or one registered document, expanded once;
 Markdown links remain navigation. Shared interfaces have one definition and local participant bindings.
 
 The repository's Specs, runtime admission, context serialization and publication support
-Protocol 5/Profile 12/registry schema 4. Resolved contexts retain unique owners, one-level reference
+Protocol 6/Profile 13/registry schema 4. Resolved contexts retain unique owners, one-level reference
 provenance and exact byte digests without granting provider implementation access; see
 [Spec context queries](specs/concorde/spec/registry.md#stable-id-spec-context-queries).
 Runtime and publication tests verify these boundaries separately from the rule build.
@@ -314,10 +314,14 @@ environment (`.venv`, or `CONCORDE_PYTHON` for a source copy) and `npm --prefix 
 
 | Part | The question it answers |
 | :--- | :--- |
-| **Purpose** | What is this Module for, and who uses it? |
-| **Requirements** | What must it guarantee? Each requirement is one decidable `SHALL` statement. |
-| **Scenarios** | What happens in a concrete situation? Testable `GIVEN` / `WHEN` / `THEN` steps. |
-| **Ontology** | What exists, how does it relate, and which files realize it? Entities and labeled relationships. |
+| **Usage & Contract** | Who should use this responsibility, when and how? Explains concepts, prerequisites, entry points, results, effects and failure behavior, with precise requirements and scenarios. |
+| **Architecture & Realization** | How does the design fulfill those promises? Explains responsibilities, state, flow, dependencies, internal constraints, entities, relationships and file bindings. |
+
+The first part is usable documentation and the canonical consumer contract, not a summary to keep
+in sync with another authority. The second is intended design, not a transcript of current code.
+Requirements and scenarios can express internal obligations too; each definition appears once with
+its stable ID. A logical Module need not invent a public API. Companion documents use one or both
+parts, while explicit references still include complete files without filtering by reading part.
 
 Tests declare the scenarios they verify. Concorde derives coverage from those declarations;
 structural validation and declared coverage provide evidence, without proving semantic completeness.

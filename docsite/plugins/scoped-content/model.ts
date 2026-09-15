@@ -40,42 +40,89 @@ export function primaryDocument(target: Target): string {
 }
 function prose(source: string): string {
   let fence: string | undefined;
-  return source.split('\n').filter(line => {
+  return source.split('\n').map(line => {
     const match = /^ {0,3}(`{3,}|~{3,})/.exec(line);
     if (match) {
       if (!fence) fence = match[1];
       else if (match[1][0] === fence[0] && match[1].length >= fence.length && !line.slice(match[0].length).trim()) fence = undefined;
-      return false;
+      return ' '.repeat(line.length);
     }
-    return !fence;
+    return fence ? ' '.repeat(line.length) : line;
   }).join('\n');
 }
 /** Every ATX heading outside fences, in document order, with its level and exact text. */
-function headingList(content: string): {level: number; text: string}[] {
-  return [...prose(content).matchAll(/^(#{1,6})[ \t]+(.+?)[ \t]*$/gm)].map(m => ({level: m[1].length, text: m[2]}));
+function headingList(content: string): {level: number; text: string; start: number; body: number}[] {
+  return [...prose(content).matchAll(/^(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$/gm)]
+    .map(m => ({level: m[1].length, text: m[2].trim(), start: m.index!, body: m.index! + m[0].length}));
 }
-/** Each required heading (level 1-3) MUST appear, by exact text, strictly after the previous one;
- * other headings may interleave, and further sections MAY follow the last one. */
-function requireOrderedHeadings(content: string, required: string[], subject: string): void {
-  const found = headingList(content).filter(h => h.level <= 3).map(h => h.text); let cursor = -1;
-  for (const heading of required) {
-    const index = found.indexOf(heading, cursor + 1);
-    requireThat(index > cursor, `Module Spec requires ${required.join(', ')} headings in order: ${subject}`);
-    cursor = index;
+/** Closed top-level fences only; nested example markers are opaque. Offsets are string offsets. */
+function fenceRanges(content: string): {language: string; start: number; end: number}[] {
+  const result: {language: string; start: number; end: number}[] = [];
+  let open: {marker: string; language: string; start: number} | undefined;
+  let offset = 0;
+  for (const line of content.split('\n')) {
+    const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    if (marker) {
+      if (!open) open = {marker: marker[1], language: marker[2].trim(), start: offset};
+      else if (marker[1][0] === open.marker[0] && marker[1].length >= open.marker.length && !marker[2].trim()) {
+        result.push({language: open.language, start: open.start, end: offset + line.length});
+        open = undefined;
+      }
+    }
+    offset += line.length + 1;
   }
+  return result;
 }
-/** The Ontology section (level 1-3) MUST hold the Entities and Relationships subsections, each
- * exactly once, in that order and deeper than the Ontology heading. */
-function requireOntologySubsections(content: string, subject: string): void {
+/** Reading parts organize the complete source, never ownership, context inclusion or grants. */
+function requireReadingParts(content: string, subject: string, primary: boolean): void {
+  const names = ['Usage & Contract', 'Architecture & Realization'];
   const all = headingList(content);
-  const index = all.findIndex(h => h.text === 'Ontology' && h.level <= 3);
-  requireThat(index >= 0, `Module Spec requires an Ontology section: ${subject}`);
-  const inside: string[] = [];
-  for (const h of all.slice(index + 1)) {
-    if (h.level <= all[index].level) break;
-    if (h.text === 'Entities' || h.text === 'Relationships') inside.push(h.text);
+  const parts = all.filter(h => names.includes(h.text));
+  const expected = primary ? names : names.filter(name => parts.some(h => h.text === name));
+  requireThat(parts.length && parts.every(h => h.level === 2) &&
+    parts.map(h => h.text).join(',') === expected.join(','),
+    `Spec requires unique level-2 Usage & Contract, Architecture & Realization parts in order: ${subject}`);
+  const first = all.findIndex(h => names.includes(h.text));
+  requireThat(all.every((h, index) => index < first ? h.level === 1 : h.level > 2 || names.includes(h.text)),
+    `Substantive sections must be nested inside a reader-oriented part: ${subject}`);
+  const sectionEnd = (section: typeof all[number]) =>
+    all.find(h => h.start > section.start && h.level <= section.level)?.start ?? content.length;
+  const architecture = parts.find(h => h.text === names[1]);
+  const fences = fenceRanges(content);
+  for (const fence of fences.filter(f => f.language === 'concorde-entities')) {
+    requireThat(architecture && fence.start > architecture.start && fence.end <= sectionEnd(architecture),
+      `Entity declarations belong in Architecture & Realization: ${subject}`);
   }
-  requireThat(inside.join(',') === 'Entities,Relationships', `Ontology requires Entities, Relationships subsections in order: ${subject}`);
+  if (!primary) return;
+  for (const [part, required] of [
+    [names[0], ['Purpose', 'Usage', 'Requirements', 'Scenarios']],
+    [names[1], ['Design', 'Entities', 'Relationships']],
+  ] as [string, string[]][]) {
+    const start = all.findIndex(h => h.text === part);
+    const end = all.findIndex((h, i) => i > start && h.level <= 2);
+    const inside = all.slice(start + 1, end < 0 ? undefined : end).filter(h => required.includes(h.text));
+    requireThat(inside.every(h => h.level === 3) && inside.map(h => h.text).join(',') === required.join(','),
+      `${part} requires ${required.join(', ')} exactly once as direct level-3 subsections in order: ${subject}`);
+  }
+  const text = prose(content);
+  const subsection = (name: string, part: string) => {
+    const parent = parts.find(h => h.text === part)!;
+    return all.find(h => h.text === name && h.level === 3 && h.start > parent.start && h.start < sectionEnd(parent))!;
+  };
+  for (const name of ['Purpose', 'Usage', 'Design']) {
+    const section = subsection(name, name === 'Design' ? names[1] : names[0]);
+    const body = text.slice(section.body, sectionEnd(section));
+    requireThat(body.split('\n').some(line => line.trim() && !/^\s*(?:#|\||[-*+] |\d+[.)] )/.test(line)),
+      `${name} requires explanatory prose: ${subject}`);
+    if (name === 'Purpose') requireThat(!/^\s*(?:#|\||[-*+] |\d+[.)] )/m.test(body) &&
+      !/^ {0,3}(?:`{3,}|~{3,})/m.test(content.slice(section.body, sectionEnd(section))),
+      `Purpose requires plain prose without headings, fences, lists or tables: ${subject}`);
+  }
+  for (const [name, language] of [['Entities', 'concorde-entities'], ['Relationships', 'mermaid']]) {
+    const section = subsection(name, names[1]);
+    requireThat(fences.some(f => f.language === language && f.start > section.start && f.end <= sectionEnd(section)),
+      `${name} requires a ${language} fence: ${subject}`);
+  }
 }
 const DEFINITION_HEADING = /^(#{2,5})([ \t]+)((?:scenario|req)\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)([ \t]+[—–-][ \t]+.+?)[ \t]*$/;
 /** Scenario and requirement headings carry their ID as an explicit anchor, and every entity ID
@@ -115,7 +162,7 @@ export function safeRead(root: string, path: string): string {
   requireThat(lstatSync(current).isFile(), `Source is not a regular file: ${path}`);
   return new TextDecoder('utf-8', {fatal: true, ignoreBOM: true}).decode(readFileSync(current));
 }
-/** The adapter publishes Profile 12 projects only; anything else is an explicit error. */
+/** The adapter publishes Profile 13 projects only; anything else is an explicit error. */
 export function requireScoped(root: string): void {
   let profile: unknown;
   try {profile = JSON.parse(safeRead(root, '.concorde/config.json')).profile_version;}
@@ -125,7 +172,7 @@ export function requireScoped(root: string): void {
     }
     throw error;
   }
-  if (profile !== 12) throw new Error(`Profile 12 is required to publish this project; .concorde/config.json declares profile_version ${String(profile)}.`);
+  if (profile !== 13) throw new Error(`Profile 13 is required to publish this project; .concorde/config.json declares profile_version ${String(profile)}.`);
 }
 interface DocumentContext {id: string; owner: string; main_visible: boolean}
 function documentContext(source: string, path: string, expected: string[]): DocumentContext {
@@ -141,7 +188,7 @@ function documentContext(source: string, path: string, expected: string[]): Docu
 }
 export function loadScopedRegistry(root: string): ScopedRegistry {
   const configText = safeRead(root, '.concorde/config.json'); const config = JSON.parse(configText);
-  requireThat(config.profile_version === 12, 'Profile 12 configuration required');
+  requireThat(config.profile_version === 13, 'Profile 13 configuration required');
   const registryText = safeRead(root, config.registry); const registry = JSON.parse(registryText);
   requireThat(Object.keys(registry).sort().join(',') === 'checks,entry_target,project_id,schema_version,targets', 'Invalid registry fields');
   requireThat(registry.schema_version === 4 && Array.isArray(registry.targets) && registry.targets.length, 'Module registry schema 4 required');
@@ -202,8 +249,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
   }
   for (const t of targets) {
     requireThat(documentTargets.get(primaryDocument(t))!.length === 1, `Module reading entry must be local: ${t.id}`);
-    requireOrderedHeadings(cache.get(primaryDocument(t))!.content, ['Purpose', 'Requirements', 'Scenarios', 'Ontology'], t.id);
-    requireOntologySubsections(cache.get(primaryDocument(t))!.content, t.id);
+    for (const path of t.documents) requireReadingParts(cache.get(path)!.content, path, path === primaryDocument(t));
     const seen = new Set([t.id]); let cursor = t.parent;
     while (cursor !== null) {
       const parent = byId.get(cursor); requireThat(parent?.kind === 'module', `Unknown Module parent: ${cursor}`);

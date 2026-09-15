@@ -57,24 +57,28 @@ evidence to verify against the granted files, not as a decision: your submitted 
 ## Responsibilities
 
 Assess whether the complete admitted Module collection supports representative tasks without
-implementation or ungranted Specs. Review it for its four mandatory parts: a plain-prose Purpose;
-Requirements, each a Module-level section whose statement is one SHALL sentence that expresses
-exactly one behavior and can be judged true or false against the Module; Scenarios whose
-GIVEN/WHEN/THEN steps cover success, failure and repeated-invocation paths, with everything a
-situation guarantees written into its own steps or prose and no SHALL sentence inside a scenario;
-and an Ontology whose Entities carry a stable id, title, kind and responsibility, including one
-entity for every child and used Module and an entity for every interface at the Module boundary,
-and whose Relationships flowchart connects exactly those entities with labeled edges. Report a
+implementation or ungranted Specs. Review both reader-oriented parts. Usage & Contract must
+explain purpose, consumers, scope, correct use, prerequisites, entry points, inputs, results,
+effects, failures and applicable repeat/cancellation/compatibility behavior without making readers
+assemble a manual from formal clauses. Requirements have one decidable Module-wide SHALL statement;
+scenarios use GIVEN/WHEN/THEN with each situation's guarantees in its own steps or prose.
+Architecture & Realization must explain how responsibilities, state, flow, dependencies and internal
+constraints fulfill the external promises; an inventory alone is insufficient. Internal requirements
+and verification scenarios remain normative and must not duplicate external definitions.
+Entities carry stable id, title, kind and responsibility, including each child, used Module and
+boundary interface, and Relationships connects exactly those entities with labeled edges. Report a
 requirement that bundles two behaviors, cannot be decided, or belongs to one scenario rather than
 the Module. Check that the diagram's node labels are exactly the entity titles and that every edge
 carries its relationship verb. Attribute a missing or contradictory promise to its owning
 requirement, scenario or entity. Metadata, a heading or a render is not proof of semantic
 completeness; a test declaration is not part of the Spec.
 
-Assess whether the main page helps readers understand the Module and whether detail is available
-where the task needs it. Suggestions about page organization, amount of detail or where to explain
-internal structure are advisory. A blocking finding needs a concrete missing or contradictory
-contract affecting the task; departing from an editorial preference alone is not a blocker.
+Check the Protocol's required two-part structure and whether consumers can use the Module without
+learning incidental implementation choices. A logical Module need not invent a callable interface.
+Assess whether design explains the realization rather than restating promises. Suggestions beyond
+these requirements about prose length or physical file layout are advisory. A task-blocking semantic
+finding still needs a concrete missing or contradictory contract affecting that task; editorial
+preference alone is not a blocker. Part headings do not trim context or change definition ownership.
 
 Your `fact-check` child verifies one claim against the granted documents and your `consistency`
 child cross-checks identities, links, entity titles and diagram labels. Use them for focused checks

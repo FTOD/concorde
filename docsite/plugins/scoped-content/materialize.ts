@@ -35,7 +35,7 @@ export async function materializeScoped(registry:ScopedRegistry) {
     // own primary Spec page; the complete inventory stays in the registered `concorde-entities`
     // blocks, this is a reading convenience only.
     const files=page.primaryOf?filesByTargetId.get(page.primaryOf):undefined;
-    const filesSection=files?.length?`\n\n## Files\n\n${files.map(f=>`- \`${f}\``).join('\n')}\n`:'';
+    const filesSection=files?.length?`\n\n### Files\n\n${files.map(f=>`- \`${f}\``).join('\n')}\n`:'';
     // Identity is displayed by ContentProvenance; keep machine-readable metadata out of the
     // reading flow while leaving the authored source and its digest intact. Scenario, requirement
     // and entity IDs become anchors so that `path#id` links reach their definitions.

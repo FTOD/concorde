@@ -46,7 +46,7 @@ class ModuleArchitectureTests(unittest.TestCase):
         topic = "specs/bank/routing.md"
         (self.root / topic).write_text('```concorde-document\n' + json.dumps({
             "id": "document.bank.routing", "owner": "scope.bank", "main_visible": True,
-        }) + '\n```\n\n# Routing\nRead the registered banking responsibilities.\n')
+        }) + '\n```\n\n# Routing\n\n## Usage & Contract\n\nRead the registered banking responsibilities.\n')
         self.registry["targets"][0]["documents"].insert(0, topic)
         self.save()
         repository = SpecRepository(self.root)

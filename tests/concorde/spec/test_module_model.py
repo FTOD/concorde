@@ -1,4 +1,4 @@
-"""Behavioral regression tests for the four-part Module model, without model calls."""
+"""Behavioral regression tests for the two-part Module model, without model calls."""
 from __future__ import annotations
 
 import json
@@ -24,17 +24,20 @@ PACKAGE = Path(__file__).resolve().parents[3]
 
 def reading_entry(target_id, title, purpose, scenario, entities, diagram, dependencies=None,
                   requirements="No Module-level requirement is stated."):
-    """One valid four-part reading entry for the small composition fixture."""
+    """One valid two-part reading entry for the small composition fixture."""
     declaration = {"id": "document." + target_id, "owner": target_id, "main_visible": True}
+    requirements = re.sub(r'(?m)^(#{2,4}) ', r'#\1 ', requirements)
+    scenario = re.sub(r'(?m)^(#{2,4}) ', r'#\1 ', scenario)
     text = ("```concorde-document\n" + json.dumps(declaration, indent=2) + "\n```\n\n"
-        f"# {title}\n\n## Purpose\n\n{purpose}\n\n## Requirements\n\n{requirements}\n\n"
-        f"## Scenarios\n\n{scenario}\n"
-        "\n## Ontology\n\nThe Module's world is small.\n\n### Entities\n\nEvery entity below is declared locally.\n\n"
+        f"# {title}\n\n## Usage & Contract\n\n### Purpose\n\n{purpose}\n\n"
+        "### Usage\n\nRequest the declared value; the scenarios define the returned result.\n\n"
+        f"### Requirements\n\n{requirements}\n\n### Scenarios\n\n{scenario}\n"
+        "\n## Architecture & Realization\n\n### Design\n\nThe local entities cooperate to produce the promised value.\n\n### Entities\n\nEvery entity below is declared locally.\n\n"
         "```concorde-entities\n" + json.dumps(entities, indent=2) + "\n```\n"
         f"\n### Relationships\n\nThe declared entities relate as the diagram states.\n\n"
         "```mermaid\n" + diagram + "\n```\n")
     if dependencies:
-        text += ("\n## Collaborators\n\nEach collaborator is described locally.\n\n"
+        text += ("\n### Collaborators\n\nEach collaborator is described locally.\n\n"
                  "```concorde-dependencies\n" + json.dumps(dependencies, indent=2) + "\n```\n")
     return text
 
@@ -46,7 +49,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.configuration = {"type_id": "concorde-capability-configuration", "schema_version": 1,
                               "data": {"model": "openai-codex/gpt-6-astra", "thinking": "medium"}}
-        self.write(".concorde/config.json", json.dumps({"profile_version": 12,
+        self.write(".concorde/config.json", json.dumps({"profile_version": 13,
             "registry": ".concorde/specs.json", "protocol": protocol_binding(PACKAGE),
             "capability_configuration": self.configuration}))
         write_protocol_copy(self.root, PACKAGE)
@@ -83,7 +86,7 @@ class ModuleImplementationTests(unittest.TestCase):
                          "A SHALL NOT change the shared value.\n"))
         self.write("specs/a/details.md", "```concorde-document\n" + json.dumps(
             {"id": "document.a.details", "owner": "module.a", "main_visible": True}, indent=2)
-            + "\n```\n\n# Local details\n\nA_OWN_ADDITIONAL_CONTRACT: the adapted integer is never negative.\n")
+            + "\n```\n\n# Local details\n\n## Usage & Contract\n\nA_OWN_ADDITIONAL_CONTRACT: the adapted integer is never negative.\n")
         self.write("specs/b/module.md", reading_entry("module.b", "b",
             "B_PRIVATE_SPEC: B reads the shared integer and promises exactly 42.",
             "### scenario.b.value — B reports the shared value\n\n"
@@ -126,7 +129,7 @@ class ModuleImplementationTests(unittest.TestCase):
             path, prefix + "```concorde-entities\n" + json.dumps(value, indent=2) + "\n```" + suffix))
 
     @verifies("scenario.spec.validate-success")
-    def test_the_fixture_is_a_valid_four_part_project(self):
+    def test_the_fixture_is_a_valid_two_part_project(self):
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("success", report.status, [f.message for f in report.findings])
 

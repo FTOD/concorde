@@ -7,6 +7,8 @@
 ```
 # Build
 
+## Usage & Contract
+
 `build(project_root, integration="all", *, framework_prefix="")` renders Agent instructions,
 integration-specific Skill files (Codex `.agents/skills` and Claude `.claude/skills`),
 `generated/langgraph.json`, the rule assets (`generated/protocol/principles.md`, its kind
@@ -21,7 +23,7 @@ The build no longer emits the docsite-only `generated/docs/instructions.json` or
 `generated/docs/wire.json`; normal owned-output cleanup retires old copies. This does not remove
 runtime Agent instructions, exported schema APIs or `generated/protocol/schemas.json`.
 
-## Rendering and freshness
+### Rendering and freshness
 
 A **Skill** is an instruction artifact for the developer's external agent runtime. Distribution
 owns its authored source under `skills/`, shared invocation instructions under
@@ -33,14 +35,14 @@ carries no worktree identity: it binds to the worktree in which the developer's 
 it, and Development derives the project root from that working directory. Building or installing
 a Skill does not execute its Capability or add it to a Concorde Agent's Harness. Capability behavior remains with its providing Module.
 
-### scenario.distribution.build-render — Build renders deterministic projections from authored sources
+#### scenario.distribution.build-render — Build renders deterministic projections from authored sources
 
 - GIVEN the current `prompts/`, `skills/`, `capabilities/`, `agents/` and Protocol chapter sources
 - WHEN build runs for a selected integration
 - THEN it renders Agent instructions, Skill files, the Studio graph configuration, Protocol assets and runtime schemas deterministically
 - AND repeated renders of unchanged inputs are byte-identical and perform no network or process I/O
 
-### scenario.distribution.build-checkout-skills-user-invoked — The source checkout's Skills wait for the developer's explicit request
+#### scenario.distribution.build-checkout-skills-user-invoked — The source checkout's Skills wait for the developer's explicit request
 
 - GIVEN a build without a framework prefix, whose Skill launcher is the checkout's own `scripts/run-capability.py`
 - WHEN build renders the Claude Skill projections
@@ -58,21 +60,21 @@ the same Skills through a framework prefix and keeps model-initiated invocation,
 Skills are the intended everyday entry points. Codex has no equivalent front-matter switch; the
 checkout's root instructions state the rule for that runtime.
 
-### scenario.distribution.build-write — write_build records source and output digests in the manifest
+#### scenario.distribution.build-write — write_build records source and output digests in the manifest
 
 - GIVEN a completed render
 - WHEN write_build runs
 - THEN it writes the rendered outputs plus `generated/build-manifest.json` recording every recorded source path's sha256
 - AND it removes retired outputs only within its declared owned subtrees (`generated/agents`, `generated/protocol` and `generated/docs`), preserving other generators' assets
 
-### scenario.distribution.build-check — check_build reports staleness without writing
+#### scenario.distribution.build-check — check_build reports staleness without writing
 
 - GIVEN the currently committed generated outputs
 - WHEN check_build runs
 - THEN it renders into a temporary directory and reports every stale or drifted output
 - AND it writes nothing to the worktree
 
-### scenario.distribution.build-stale-blocks-execution — A stale build fails closed
+#### scenario.distribution.build-stale-blocks-execution — A stale build fails closed
 
 - GIVEN a recorded source has changed since the last build
 - WHEN a top-level model-backed capability is invoked in execute or describe-policy mode
@@ -83,7 +85,7 @@ The deterministic capabilities `concorde-init`, `concorde-configure`,
 and consume no generated Agent instructions. Loading an Agent still verifies freshness
 independently. This exception does not waive Protocol, input, permission or evidence checks.
 
-### scenario.distribution.load-agent — load_agent returns one Agent's current admitted binding
+#### scenario.distribution.load-agent — load_agent returns one Agent's current admitted binding
 
 - GIVEN a named Agent and a fresh build
 - WHEN load_agent is called
@@ -103,7 +105,7 @@ no audience front matter. The build records included chapter bytes in source ide
 invalidate runtime outputs. Modules refer to their own entity file listings rather than owning file
 prefixes themselves.
 
-### scenario.distribution.capability-determinism — Capability metadata accounts for model calls
+#### scenario.distribution.capability-determinism — Capability metadata accounts for model calls
 
 - GIVEN capability modules declaring public exposure, context selection, Agents, host routing and acyclic `USES` composition
 - WHEN package validation checks their metadata
@@ -119,7 +121,8 @@ with `CONCORDE-CAPABILITY-DETERMINISTIC-001`, and Spec metadata drift with
 `CONCORDE-SPEC-CAPABILITIES-001`. Unknown or cyclic composition remains a composition error;
 validation cannot certify its determinism.
 
-## Interface signatures
+
+### Interface signatures
 
 These signatures identify public call shapes; bodies and private helpers are outside this Spec.
 
@@ -169,7 +172,8 @@ transition. Repeating an unchanged read is side-effect free. Mutations require c
 preconditions and explicit caller-owned paths. Local contract facts above remain authoritative
 without reading the parent or collaborating Specs.
 
-## Returned records and compatibility
+
+### Returned records and compatibility
 
 `BuildOutput` is a frozen record `{path: str, content: bytes, sources: tuple[str, ...]}`: path is
 an exact output location, content is the complete rendered byte sequence, and sources names the
@@ -202,6 +206,19 @@ repair projections, never edit generated output as a new source. Public aliases 
 inputs, records and failure semantics; unsupported integration or asset identities require explicit
 repair.
 
+### Protocol and runtime support are separate
+
+The package supports Protocol 6.0.0 with source_profile 13. Its tracked manifest binds the exact
+generated rule and versioned schema bytes; project configuration binds the exact manifest bytes.
+Context payloads and wrappers export version 2. Build freshness establishes projection integrity;
+structural validation, configured checks and review evidence remain separate. Updates to exported
+schemas require a rebuild and explicit manifest rebinding in the same worktree. Consumer package
+updates preserve the existing binding until explicitly accepted.
+
+## Architecture & Realization
+
+### Projection identity
+
 Agent builds publish twelve independent worker projections and no separate common one. Each
 rendered `generated/agents/<name>.md` concatenates the shared common worker rules
 (`prompts/workers/common.md`) and that worker's own role Spec source; the manifest records both
@@ -213,12 +230,3 @@ Agent instruction file membership must equal the declared worker inventory. Agen
 role Spec bodies, child definitions and available capability/wire sources are recorded build
 inputs; changing them makes verify_fresh reject the old build even when the shared common
 instruction body is unchanged.
-
-## Protocol and runtime support are separate
-
-The package supports Protocol 5.5.0 with source_profile 12. Its tracked manifest binds the exact
-generated rule and versioned schema bytes; project configuration binds the exact manifest bytes.
-Context payloads and wrappers export version 2. Build freshness establishes projection integrity;
-structural validation, configured checks and review evidence remain separate. Updates to exported
-schemas require a rebuild and explicit manifest rebinding in the same worktree. Consumer package
-updates preserve the existing binding until explicitly accepted.

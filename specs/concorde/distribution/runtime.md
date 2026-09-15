@@ -7,26 +7,28 @@
 ```
 # Managed runtime
 
+## Usage & Contract
+
 A caller supplies package/project roots and a reviewed runtime plan; this Module does not select
 business requirements or agent context.
 
-## Planning and provisioning
+### Planning and provisioning
 
-### scenario.distribution.runtime-plan — Planning compares existing state without changing it
+#### scenario.distribution.runtime-plan — Planning compares existing state without changing it
 
 - GIVEN a target directory, the loaded runtime specification and its current receipt
 - WHEN plan_runtime runs
 - THEN it returns one action of create, unchanged, rebuild or conflict with the compared path, role and digest
 - AND planning performs no file replacement or package acquisition, though it may run local offline health probes
 
-### scenario.distribution.runtime-provision — Provisioning stages and verifies the reviewed action
+#### scenario.distribution.runtime-provision — Provisioning stages and verifies the reviewed action
 
 - GIVEN a current reviewed plan_runtime action that is not conflict
 - WHEN provision_runtime runs
 - THEN it stages the locked Python interpreter, the official viewer and the pinned Pi worker extensions, verifies their identity, and records the resulting receipt
 - AND an unchanged verified runtime may be reused, though even `unchanged` rechecks health and may refresh the marker
 
-### scenario.distribution.runtime-provision-failure — Failed acquisition or verification does not replace a valid runtime
+#### scenario.distribution.runtime-provision-failure — Failed acquisition or verification does not replace a valid runtime
 
 - GIVEN a provisioning attempt that fails acquisition or verification
 - WHEN provision_runtime returns that failure
@@ -34,7 +36,8 @@ business requirements or agent context.
 - AND a create destination that appears after planning is rejected rather than adopted
 - AND the returned result carries no successful runtime metadata, so a caller cannot infer recovery from its absence
 
-## Interface signatures
+
+### Interface signatures
 
 These signatures identify public call shapes; bodies and private helpers are outside this Spec.
 
@@ -47,7 +50,8 @@ plan_runtime(target: Path, spec: ManagedRuntimeSpec, receipt: Mapping[str, Any])
 provision_runtime(target: Path, framework: Path, spec: ManagedRuntimeSpec, action: Mapping[str, str], *, bootstrap_python: str | None=None) -> dict[str, Any]
 ```
 
-## Values and completion
+
+### Values and completion
 
 `ManagedRuntimeSpec` is a frozen record with string fields `venv`, `requirements`, `launcher`,
 `python`, `requirements_sha256`, `runtime_sha256`, `langgraph_version` and `concorde_version`, a
@@ -82,7 +86,8 @@ Skill inventory. The Pi worker extensions are installed with `npm ci` from the p
 into `share/concorde/pi` inside the runtime, where a worker with children loads pi-subagents; a
 changed Pi lock plans a rebuild.
 
-## Effects, failures and retries
+
+### Effects, failures and retries
 
 Provisioning may create the environment, acquire the locked dependencies, viewer and Pi worker extensions, run verification
 processes and write the owned receipt. Malformed requirements, ownership conflicts, unsupported

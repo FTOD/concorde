@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 5.5.0 defines Module Specs and their organization. These requirements apply
+Concorde Spec Protocol 6.0.0 defines Module Specs and their organization. These requirements apply
 to project specifications, including the specifications of software that implements this Protocol.
 They do not require the Protocol text to describe itself as a Module.
 
@@ -10,7 +10,7 @@ They do not require the Protocol text to describe itself as a Module.
 a recommendation that may be departed from for an explained reason. **MAY** states an allowed
 choice. Examples illustrate the rules; their names, paths and subject matter are not prescribed.
 
-### P1. A Module describes a cohesive software responsibility in four parts
+### P1. A Module describes one responsibility for its consumers and its implementers
 
 A **Module** is a cohesive software responsibility. It is a unit of specification, not a unit of
 implementation: a Module need not correspond to a package, directory, process, service or other
@@ -19,25 +19,43 @@ or supplied entirely by its children. The Module's boundary is established by it
 requirements, scenarios and entities; its file bindings record where that responsibility is realized
 and do not define it.
 
-A Module's Spec MUST contain four parts:
+A Module's Spec MUST contain two reader-oriented parts:
 
-1. **Purpose**: a concise plain-prose statement of what the Module is for and for whom.
-2. **Requirements**: what the Module as a whole must guarantee. Each requirement is one SHALL
-   statement with its own stable identity; it expresses exactly one behavior and can be judged
-   true or false against the Module.
-3. **Scenarios**: the concrete situations in which the Module is used and how it must react, each
-   written as a sequence of GIVEN, WHEN and THEN steps. A scenario is the unit that tests verify.
-4. **Ontology**: the things that exist in the Module's world and how they relate. Its
-   **entities** may be submodules, programs, files, records, concepts, interfaces at the Module
-   boundary or external actors. Its **relationships** are directed edges between entities, each
-   with a free-text label, which SHOULD be a verb such as "uses", "downloads", "saves" or "loads".
+1. **Usage & Contract** explains how to use the Module and what a consumer can rely on. It MUST
+   explain its purpose, intended consumers and scope, when to use it, the concepts needed to use
+   it, prerequisites and entry points, inputs, results, effects, errors and applicable repeat,
+   cancellation and compatibility behavior. Start with coherent usage prose, not a catalog of
+   formal statements that the reader must assemble into instructions. Requirements and concrete
+   scenarios make the promises precise; they do not replace the usage explanation.
+2. **Architecture & Realization** explains how the Module fulfills those promises. It MUST
+   explain the design, responsibility decomposition, collaborations, relevant control/data flow
+   and state, internal invariants and constraints, and realization through entity file bindings
+   or children. Explain significant design choices and how they support the external guarantees;
+   an entity inventory and a diagram alone are not an architecture explanation. This part is
+   normative where it prescribes a constraint, not merely commentary on current source code.
 
-Purpose, requirements and scenarios form the Module's **functional spec**: they state what the
-Module promises. The Ontology forms its **architecture spec**: it states how the Module is built.
-The word ontology is used in its plain sense, the Module's account of what exists in its domain and
-how those things stand to one another. It asks for no formal ontology language, and it is not
-limited to business concepts: a program or a file the Module consists of belongs to its Ontology as
-much as a business record or an external actor does.
+The dividing question is whether a fact is needed to use or depend on the Module, or to implement
+and maintain it. A consumer may be a person, another Module or external software; "external" is
+relative to this Module, not a requirement for a public API, command or physical package. A logical
+or composite responsibility MUST NOT invent an executable interface just to populate a template.
+Internal security or concurrency constraints remain binding, while their consumer-visible effects
+belong in Usage & Contract. A missing or inapplicable behavior MUST be stated honestly rather than
+invented. A Spec describes intended design, not proof that its realization already conforms.
+
+Purpose, requirements, scenarios, entities and relationships remain information elements within
+these two parts, not competing top-level reading structures. A **requirement** is one decidable
+SHALL statement with its own stable identity, expressing one Module-wide obligation. A **scenario**
+is a concrete sequence of GIVEN, WHEN and THEN steps and is the unit tests verify. Requirements
+and scenarios MAY specify internal constraints in Architecture & Realization as well as external
+behavior in Usage & Contract. Define each obligation once in the appropriate part and link to it
+from its realization or verification discussion; neither part may silently redefine the other.
+
+**Entities** are the things in the Module's world: submodules, programs, files, records, concepts,
+boundary interfaces or external actors. **Relationships** are directed edges between entities with
+free-text labels, which SHOULD be verbs such as "uses", "saves" or "loads". The internal entity
+inventory records identities and implementation bindings; explain consumer-facing concepts and
+interface meaning in the external part without making a second canonical definition. Ontology
+may be a useful modeling technique, but is not the name or the entirety of the architecture part.
 
 Requirements and scenarios differ in granularity and in owner. A requirement is a coarse promise
 about the Module and belongs to the Module alone. A scenario is one specific, testable situation;
@@ -104,8 +122,9 @@ deduplicated union of full owned and directly referenced documents. That context
 visibility scope: a tool makes all of it available and nothing outside it, and how the tool delivers
 it is the tool's choice rather than part of this Protocol.
 
-That resolved context MUST explain the selected Module's purpose, requirements, scenarios, entities
-and relationships without undeclared reading or source code supplying missing meaning. For each
+That resolved context MUST explain both reader-oriented parts: the selected Module's purpose,
+correct use and guarantees, and the design that realizes them, with requirements, scenarios,
+entities and relationships, without undeclared reading or source code supplying missing meaning. For each
 dependency and child the local contract states responsibility, selection conditions, which canonical
 guarantees it relies on and its own obligations or reactions. It SHOULD link to included provider
 definitions instead of copying them. Shared interfaces MAY be ordinary documents owned by one Module
@@ -126,8 +145,8 @@ honest draft identifies unresolved meaning and does not claim completeness for i
 ### P4. Conformance concerns both meaning and structure
 
 A claim of conformance MUST identify the Protocol version it applies to. Stable identity, unique
-document ownership, explicit one-level references, consistent relationship declarations, the four
-mandatory parts, one statement per requirement and consistent file listings are structural
+document ownership, explicit one-level references, consistent relationship declarations, the two
+mandatory reader-oriented parts, one statement per requirement and consistent file listings are structural
 requirements. Complete and mutually consistent requirements, scenarios and relationships, and
 requirements that can each be judged true or false, are semantic requirements.
 

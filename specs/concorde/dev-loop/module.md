@@ -8,33 +8,47 @@
 
 # Development Flow
 
-## Purpose
+## Usage & Contract
+
+### Purpose
 
 Development Flow composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract.
 
-## Requirements
+### Usage
 
-### req.development.specify-loop-composition — Spec preparation has one reusable entry
+Choose `concorde-dev-loop` for one intended change through specification, planning, task authoring,
+implementation, validation and code review. Supply task and constraints; optional target/focus
+hints help initial routing. New primary-worktree mutations return a committed-base worktree
+handoff and require a fresh owning session there. Resume with the recorded change identity and
+compatible intent; a bound candidate does not reroute to another owner.
 
-The development Flow SHALL compose concorde-specify-loop for its Spec authoring and review stages.
+Both `specify` and `run_reviews` default true. `specify=false` skips authoring, not missing-contract
+gates; `run_reviews=false` records explicit skips but cannot cancel reviews already required.
+Success is a ready candidate, never automatic delivery. Necessary Spec gaps, failed checks and
+execution failures preserve progress and stop dependent work. Blocking code review has one bounded
+repair path; unchanged feedback or exhausted budget stops it. Explicit task-scope recovery is a
+separate digest-bound action. See [development and recovery](development.md), including coordination
+and the completion policy, before resuming partial work.
 
-### req.development.explicit-skip-sticky — Review skips cannot cancel required reviews
+### Requirements
+
+#### req.development.explicit-skip-sticky — Review skips cannot cancel required reviews
 
 A `run_reviews=false` retry SHALL NOT cancel a Spec or code review already required for this change
 by an earlier enabled invocation.
 
-### req.development.repair-edge-only — Code-review repair is the only automatic edge
+#### req.development.repair-edge-only — Code-review repair is the only automatic edge
 
 `review_code -> tasks` SHALL be the development Flow's only automatic revision edge.
 
-### req.development.non-repair-stops-graph — Other outcomes stop the graph for a decision
+#### req.development.non-repair-stops-graph — Other outcomes stop the graph for a decision
 
 Every other non-successful outcome SHALL stop the graph for a human decision or an explicit Spec or
 code change.
 
-## Scenarios
+### Scenarios
 
-### scenario.development.resume-unbound — Resume a handoff before target selection
+#### scenario.development.resume-unbound — Resume a handoff before target selection
 
 - GIVEN the host created a candidate and returned a session handoff before routing or binding an owner
 - WHEN a fresh host in that worktree resumes the development loop with the recorded change identity and original task
@@ -42,7 +56,7 @@ code change.
 - AND a supplied target hint never substitutes for routing authority
 - AND both specify modes and both review modes use this same admission, with one successful route selection before the first development stage
 
-### scenario.development.resume-bound — Restore a bound candidate without rerouting
+#### scenario.development.resume-bound — Restore a bound candidate without rerouting
 
 - GIVEN a candidate has a persisted owner, task, constraints and focus
 - WHEN a fresh host resumes that change
@@ -53,21 +67,21 @@ code change.
 - AND existing stage admission, review requirements, file permissions and current-candidate freshness checks still apply
 
 
-### scenario.development.dev-loop-ready — A change reaches a ready candidate
+#### scenario.development.dev-loop-ready — A change reaches a ready candidate
 
 - GIVEN a developer supplies one intended change with its task and constraints
 - WHEN `concorde-dev-loop` calls `concorde-specify-loop` for Spec authoring (unless `specify=false`) and Spec review, then runs planning, tasks, implementation, deterministic checks and code review in order
 - THEN every stage completes successfully and the candidate reaches status `ready` with current evidence for every affected Module
 - AND the loop stops there and never itself invokes delivery
 
-### scenario.development.dev-loop-spec-gap — Development waits for a necessary Spec repair
+#### scenario.development.dev-loop-spec-gap — Development waits for a necessary Spec repair
 
 - GIVEN a stage discovers a necessary missing or ambiguous contract
 - WHEN that stage reports a Spec gap
 - THEN the loop stops with status `waiting` and preserves the candidate worktree
 - AND unrelated independent work may continue, and resuming after an explicit Spec repair does not repeat already-accepted authoring for the same task, focus and constraints
 
-### scenario.development.task-scope-repair — Recover an implementation phase boundary error
+#### scenario.development.task-scope-repair — Recover an implementation phase boundary error
 
 - GIVEN an existing incomplete task list whose acceptance requires later Host actions
 - WHEN a normal dev-loop request binds that list's canonical digest with repair_task_scope
@@ -78,7 +92,7 @@ code change.
 - AND only current successful evidence reaches ready, while a replay resumes without reauthoring
 - AND stale digests, unresolved gaps and invalid replacements cannot bypass the existing gates
 
-### scenario.development.dev-loop-repair — Bounded automatic repair after blocking code review
+#### scenario.development.dev-loop-repair — Bounded automatic repair after blocking code review
 
 - GIVEN a code-owning target's code review returns blocking findings
 - WHEN the loop selects its automatic revision edge from code review back to task authoring
@@ -88,14 +102,14 @@ code change.
 See [code-review repair is the only automatic edge](#req.development.repair-edge-only) and
 [other outcomes stop the graph for a decision](#req.development.non-repair-stops-graph).
 
-### scenario.development.dev-loop-repair-exhausted — Repeated feedback or an exhausted limit stops the loop
+#### scenario.development.dev-loop-repair-exhausted — Repeated feedback or an exhausted limit stops the loop
 
 - GIVEN a repair attempt reproduces the same blocking-feedback fingerprint as the previous attempt, or the declared repair limit is exhausted
 - WHEN the loop would otherwise select another automatic repair
 - THEN it stops instead of retrying: unchanged feedback records status `waiting` and an exhausted limit records status `limit_exhausted`, and both keep the wire `outcome` `conflicting`
 - AND a human directly changing the Spec or the implementation between invocations resets the recorded repair count instead of continuing a stale attempt
 
-### scenario.development.dev-loop-coordinated — A Module coordinates its own and dependency tasks
+#### scenario.development.dev-loop-coordinated — A Module coordinates its own and dependency tasks
 
 - GIVEN a Module task has both local code tasks and separately bound submodule or used-Module tasks
 - WHEN implementation runs
@@ -105,7 +119,20 @@ See [code-review repair is the only automatic edge](#req.development.repair-edge
 
 The detailed contract is [Ready-only bounded development](development.md).
 
-## Ontology
+## Architecture & Realization
+
+### Design
+
+The [development Flow](development.md#development-flow-development_flow) composes sibling providers
+through explicit state and routing edges. Specification preparation owns its author/reviewer work;
+plan and task artifacts feed implementation, checks precede code review, and current evidence gates
+the single ready transition. Durable candidate state records intent, progress, repair policy and
+feedback identity so resume can choose the first stage whose inputs need renewal.
+
+Only blocking code review can select the automatic tasks/implementation repair edge. Component
+writers retain separate contexts; finalization waits for all writers, then repeats current
+consumer checks while shared implementations change. Those internal scheduling rules fulfill the
+ready-only, bounded-repair and evidence-preservation promises without importing private transcripts.
 
 ### Entities
 
@@ -233,7 +260,15 @@ flowchart TB
     e0 -->|selects bounded transitions under| domain_repair
 ```
 
-## Dependencies and composition
+
+### Internal constraints
+
+#### req.development.specify-loop-composition — Spec preparation has one reusable entry
+
+The development Flow SHALL compose concorde-specify-loop for its Spec authoring and review stages.
+
+
+### Dependencies and composition
 
 ```concorde-dependencies
 [
@@ -313,7 +348,8 @@ flowchart TB
 ]
 ```
 
-## Realization and reuse limits
+
+### Realization and reuse limits
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,

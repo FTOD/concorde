@@ -8,15 +8,9 @@
 
 # Harness
 
-`module.harness` follows Spec Protocol 5.5.0. Its sole structural parent is `module.concorde`. The
-complete contract is the Markdown collection explicitly registered in `.concorde/specs.json`; links
-and entity file listings do not expand it. This reading entry introduces the collection; the
-registered companion documents explain [Agents and Harnesses](agents-and-harnesses.md), [Agent
-Graphs and Loops](graphs-and-loops.md), [context](context.md), [permissions](permissions.md),
-[execution](execution.md), [host](host.md), [runtime values](runtime-values.md) and [typed
-values](typed-values.md). Their content remains authoritative regardless of navigation visibility.
+## Usage & Contract
 
-## Purpose
+### Purpose
 
 The Harness configures and runs every worker invocation in Concorde: it freezes the four context
 kinds an invocation may see, binds a worker's authored role Spec and Python profile into a
@@ -29,33 +23,50 @@ Protocol assets. It also supplies the host's OS-enforced read-only executor for 
 deterministic checks; it does not itself decide project topology, author Specs or implement business
 capabilities.
 
-## Requirements
+### Usage
+
+Use Harness from trusted host code when a capability needs one bounded worker invocation, an
+inspectable Flow or a deterministic read-only check. Select the worker and task, resolve current
+context and binding, compile a grant no wider than declared effects, and execute the host-built
+invocation. The result is a validated typed outcome with invocation identity and usage, not the
+worker's conversation. Worker authors use [Agents and Harnesses](agents-and-harnesses.md) and
+[runtime values](runtime-values.md) to define compatible profiles and task contracts.
+
+A context snapshot identifies the files a worker may read; it grants complete owned and explicitly
+referenced Specs, not just the requested scenario or the external reading part. Code access is
+separately phase-bound. `describe-policy` previews grants without launching a worker. Treat stale
+context, invalid completion, cancellation and time limits as distinct stopping outcomes; no failure
+authorizes a wider retry. Checks have OS-enforced read-only project access. The worker tool gate is
+not an OS sandbox and does not confine granted shell commands, so callers must not assume that
+stronger protection. See [execution and its limits](execution.md) before admitting work.
+
+### Requirements
 
 These are the Module-wide promises the Harness makes regardless of which scenario triggers them,
 grouped by the same subsystem as the Scenarios below.
 
-### Context freezing
+#### Context freezing
 
-#### req.harness.context-closure-nonempty — Non-empty frozen context closure
+##### req.harness.context-closure-nonempty — Non-empty frozen context closure
 
 The frozen context closure SHALL never be empty even when one kind is empty for the phase.
 
-#### req.harness.context-focus-no-trim — Scenario focus never trims context
+##### req.harness.context-focus-no-trim — Scenario focus never trims context
 
 A scenario focus SHALL change only the question resolve_context answers, never the selected
 Module's Spec context membership.
 
-#### req.harness.context-file-names-every-phase — File names visible to every phase
+##### req.harness.context-file-names-every-phase — File names visible to every phase
 
 Every phase SHALL see the names, owning entity and pending status of the selected Module's
 entity-bound files.
 
-#### req.harness.context-contents-code-phases-only — File contents limited to code phases
+##### req.harness.context-contents-code-phases-only — File contents limited to code phases
 
 Only the implementation and code-review phases SHALL also receive the contents of the selected
 Module's entity-bound files.
 
-#### req.harness.context-index-and-grant — Spec context is indexed and granted, never embedded
+##### req.harness.context-index-and-grant — Spec context is indexed and granted, never embedded
 
 Every launch SHALL deliver the selected Module's Spec context and the Protocol rule bundle as an
 index of the included files plus a read-only grant of exactly those files rather than as document
@@ -69,61 +80,61 @@ this index and grant is the Framework's chosen delivery. Task context stays inli
 typed changes carry diffs of the reviewed Module's own files, which add no path to the grant and
 replace no granted file. See [Spec context grant](context.md#spec-context-grant).
 
-#### req.harness.context-recheck — Recheck rejects reuse after changes
+##### req.harness.context-recheck — Recheck rejects reuse after changes
 
 recheck_context and recheck_discovery_context SHALL reject reuse whenever any admitted input has
 changed since resolution.
 
-#### req.harness.context-discovery-no-recurse — Discovery never expands via relationships
+##### req.harness.context-discovery-no-recurse — Discovery never expands via relationships
 
 resolve_discovery_context SHALL NOT follow a dependency or hyperlink to add another Module's
 documents to the discovery context.
 
-### Agent and Harness binding
+#### Agent and Harness binding
 
-#### req.harness.profile-within-contract — A profile never exceeds its contract
+##### req.harness.profile-within-contract — A profile never exceeds its contract
 
 A worker profile SHALL never grant a tool that its contract's effects and workspace kind do not
 admit.
 
-### Permission compilation
+#### Permission compilation
 
-#### req.harness.permission-no-widen — Effective permissions stay within both grants
+##### req.harness.permission-no-widen — Effective permissions stay within both grants
 
 Effective permissions SHALL be a subset of both the worker contract's declared effects and the
 host's invocation grant.
 
-#### req.harness.permission-write-scope — Write authority limited to code-writing invocations
+##### req.harness.permission-write-scope — Write authority limited to code-writing invocations
 
 Only a code-writing invocation SHALL receive write authority, and only for the files the selected
 Module's own entities list.
 
-#### req.harness.permission-no-spec-write — No write authority over Spec or registry
+##### req.harness.permission-no-spec-write — No write authority over Spec or registry
 
 A code-writing invocation SHALL NOT gain authority to write Spec documents, entity declarations or
 the registry.
 
-#### req.harness.permission-no-retry — No retry with a wider grant
+##### req.harness.permission-no-retry — No retry with a wider grant
 
 No permission failure SHALL be retried with a wider grant.
 
-### Worker execution
+#### Worker execution
 
-#### req.harness.check-project-read-only — Checks cannot mutate project files
+##### req.harness.check-project-read-only — Checks cannot mutate project files
 
 The configured-check executor SHALL enforce project filesystem read-only access in the operating
 system for the check and every descendant throughout execution.
 
-#### req.harness.check-fail-closed — Unavailable check isolation fails closed
+##### req.harness.check-fail-closed — Unavailable check isolation fails closed
 
 The configured-check executor SHALL refuse execution when its read-only boundary cannot be enforced.
 
-#### req.harness.check-scratch — Checks receive independent external scratch space
+##### req.harness.check-scratch — Checks receive independent external scratch space
 
 Every configured check SHALL receive a fresh host-managed writable temporary directory outside the
 project, removed after its process tree has terminated.
 
-#### req.harness.worker-gate — Every tool call is gated by the compiled grant
+##### req.harness.worker-gate — Every tool call is gated by the compiled grant
 
 Every tool call of a worker and of its children SHALL be checked against the invocation's compiled
 grant before it executes.
@@ -131,50 +142,50 @@ grant before it executes.
 The gate is a policy boundary inside the Pi process, not an operating-system sandbox; see
 [execution](execution.md#tool-gate).
 
-#### req.harness.worker-selection — Each worker runs on its own configured selection
+##### req.harness.worker-selection — Each worker runs on its own configured selection
 
 Every worker launch SHALL use the model, thinking level and timeout resolved for that worker, and for
 each of its children, from the project capability configuration.
 
-#### req.harness.capsule-closed — A capsule grants only its own snapshot
+##### req.harness.capsule-closed — A capsule grants only its own snapshot
 
 A capsule worker SHALL be granted read access only to its own snapshot and the copies that snapshot
 indexes.
 
-#### req.harness.process-inputs-closed — Worker processes receive only closed inputs
+##### req.harness.process-inputs-closed — Worker processes receive only closed inputs
 
 A worker process SHALL receive only the allowlisted environment, its host-built Pi configuration,
 its system prompt and its single typed context message.
 
-#### req.harness.execute-no-retry — No automatic retry after execution failure
+##### req.harness.execute-no-retry — No automatic retry after execution failure
 
 No execution failure SHALL trigger an automatic retry with the same or wider permissions.
 
-#### req.harness.execute-exit-insufficient — Settling alone is not completion
+##### req.harness.execute-exit-insufficient — Settling alone is not completion
 
 A worker that settles without exactly one valid submitted result SHALL NOT be treated as completed.
 
-#### req.harness.delegation-one-level — Delegation stops at declared children
+##### req.harness.delegation-one-level — Delegation stops at declared children
 
 A worker SHALL delegate only to the children its own profile declares, never beyond one level.
 
-#### req.harness.worker-single-result — Only the submitted result leaves the worker
+##### req.harness.worker-single-result — Only the submitted result leaves the worker
 
 Only a worker's single submitted result SHALL leave its process as Concorde data.
 
-### Typed value validation
+#### Typed value validation
 
-#### req.harness.typed-canonical — Canonical encoding digests identically
+##### req.harness.typed-canonical — Canonical encoding digests identically
 
 canonical(value) SHALL produce sorted-key, compact, ASCII-escaped JSON with no trailing newline,
 so identical values always digest identically.
 
-## Scenarios
+### Scenarios
 
 These scenarios state the success, failure and repeated-invocation promises realized in full by
 the registered companion documents.
 
-### scenario.harness.flow-inspection — Inspect execution without acquiring authority
+#### scenario.harness.flow-inspection — Inspect execution without acquiring authority
 
 - GIVEN the executable Flow factories and host-bound public Studio entries
 - WHEN a viewer compiles them and requests their LangGraph nodes and edges
@@ -183,12 +194,12 @@ the registered companion documents.
 - AND the public checkpoint contains only JSON input and output while internal host objects and callbacks remain ephemeral
 - AND replay of the public capability revalidates the input and expected workspace before any effects
 
-### Context freezing
+#### Context freezing
 
 Realized by `resolve_context`, `resolve_discovery_context` and their rechecks; see
 [context](context.md).
 
-#### scenario.harness.context-freeze — Freeze one Module's context for a bounded phase
+##### scenario.harness.context-freeze — Freeze one Module's context for a bounded phase
 
 - GIVEN a fresh, successfully admitted Spec repository and a registered Module target_id
 - AND a phase, a task, and optional focus_id, constraints, instructions, stage_inputs and workspace
@@ -204,7 +215,7 @@ See [the non-empty closure bound](#req.harness.context-closure-nonempty),
 rule: see [names for every phase](#req.harness.context-file-names-every-phase) and
 [contents for code phases only](#req.harness.context-contents-code-phases-only).
 
-#### scenario.harness.external-references — Grant a Module's external references to the workers that read them
+##### scenario.harness.external-references — Grant a Module's external references to the workers that read them
 
 - GIVEN a Module whose registration declares `references` of kind `external`, such as the vendored documentation and source of a library it builds on
 - WHEN the host resolves a context for any phase
@@ -214,7 +225,7 @@ rule: see [names for every phase](#req.harness.context-file-names-every-phase) a
 - AND a host-created candidate worktree receives the primary worktree's reference checkouts without network access
 - BUT no phase receives network access or an installed dependency's sources in place of the declared references, and media and archives below an entry are neither digested nor copied
 
-#### scenario.harness.agent-node — Run a worker as a LangGraph node typed by its contract
+##### scenario.harness.agent-node — Run a worker as a LangGraph node typed by its contract
 
 - GIVEN a canonical worker definition and its task contract
 - WHEN the host binds it as an AgentNode and executes an invocation through its compiled Flow
@@ -223,14 +234,14 @@ rule: see [names for every phase](#req.harness.context-file-names-every-phase) a
 - AND the same factory compiled without a launcher is inspectable inside the Flows that run it and starts no process
 - BUT the Pi worker launch, its admission checks and usage recording stay in the host's launcher, outside the graph's public state
 
-#### scenario.harness.context-invalid-input — Reject an unsupported phase or a blank task
+##### scenario.harness.context-invalid-input — Reject an unsupported phase or a blank task
 
 - GIVEN an unsupported phase value or a blank task string
 - WHEN resolve_context is called
 - THEN the call raises SpecError with code invalid_phase or invalid_input
 - AND no partial or reusable snapshot is returned
 
-#### scenario.harness.context-stale-recheck — Reject reuse after an admitted input changed
+##### scenario.harness.context-stale-recheck — Reject reuse after an admitted input changed
 
 - GIVEN a previously resolved context snapshot
 - AND a document, ownership, reference declaration, inclusion reason, Protocol binding or other admitted byte has since changed
@@ -240,7 +251,7 @@ rule: see [names for every phase](#req.harness.context-file-names-every-phase) a
 
 See [the changed-input recheck bound](#req.harness.context-recheck).
 
-#### scenario.harness.context-discovery — Assemble several explicit Module contexts for a discovery worker
+##### scenario.harness.context-discovery — Assemble several explicit Module contexts for a discovery worker
 
 - GIVEN a nonempty, duplicate-free ordered tuple of registered Module IDs, a capability, a phase of route, and an action of route, ask or design-topology
 - WHEN resolve_discovery_context is called
@@ -250,7 +261,7 @@ See [the changed-input recheck bound](#req.harness.context-recheck).
 
 See [the no-recursive-expansion bound](#req.harness.context-discovery-no-recurse).
 
-#### scenario.harness.context-gap — Report a missing local dependency promise as a Spec gap
+##### scenario.harness.context-gap — Report a missing local dependency promise as a Spec gap
 
 - GIVEN a selected Module whose local concorde-dependencies entries do not match its registered uses and parent relationships
 - WHEN the host compares them before launching the context assessor for that Module
@@ -258,12 +269,12 @@ See [the no-recursive-expansion bound](#req.harness.context-discovery-no-recurse
 - AND planning stops only for the dependent step while independent reasoning continues
 - BUT no relationship inventory is injected into the worker snapshot when this comparison stops planning
 
-### Agent and Harness binding
+#### Agent and Harness binding
 
 Realized by `agent_definition` and `resolve_agent`; see [Agents and Harnesses](agents-and-harnesses.md)
 and [runtime values](runtime-values.md).
 
-#### scenario.harness.agent-bind — Bind a named worker's Spec, profile and children
+##### scenario.harness.agent-bind — Bind a named worker's Spec, profile and children
 
 - GIVEN a named worker registered in the Agent inventory and a current, fresh build
 - WHEN resolve_agent is called for that name
@@ -273,18 +284,18 @@ and [runtime values](runtime-values.md).
 
 See [the profile-within-contract bound](#req.harness.profile-within-contract).
 
-#### scenario.harness.agent-bind-reject — Reject an unknown worker or a stale or inconsistent build
+##### scenario.harness.agent-bind-reject — Reject an unknown worker or a stale or inconsistent build
 
 - GIVEN an unregistered worker name, a stale package build, a profile inconsistent with its contract or workspace, or a child definition that is missing, malformed, names a model or thinking level or lists a tool outside the child tool set
 - WHEN agent_definition or resolve_agent is called
 - THEN the call raises BuildError with code unknown_agent, stale_build or invalid_agent_binding
 - AND no invocation starts from an unverified binding
 
-### Permission compilation
+#### Permission compilation
 
 Realized by `compile_policy` and the worktree boundary check; see [permissions](permissions.md).
 
-#### scenario.harness.permission-compile — Compile an effective policy within declared and host authority
+##### scenario.harness.permission-compile — Compile an effective policy within declared and host authority
 
 - GIVEN a worker contract's EffectDeclaration, a host-supplied narrowing PolicyBinding and concrete role paths
 - WHEN compile_policy is called
@@ -295,7 +306,7 @@ See [the declared-and-granted subset bound](#req.harness.permission-no-widen), [
 scoped to code-writing invocations](#req.harness.permission-write-scope) and [no write authority
 over Spec or the registry](#req.harness.permission-no-spec-write).
 
-#### scenario.harness.permission-reject — Reject unknown roles, unsafe paths or widened grants
+##### scenario.harness.permission-reject — Reject unknown roles, unsafe paths or widened grants
 
 - GIVEN an unknown or duplicate role, an unsafe path, a widened read, write, network or credential effect, or an invocation granting writes, network or credentials its worker contract does not declare
 - WHEN compile_policy is called or the worker executor admits the invocation
@@ -304,7 +315,7 @@ over Spec or the registry](#req.harness.permission-no-spec-write).
 
 See [the no-wider-retry bound](#req.harness.permission-no-retry).
 
-#### scenario.harness.change-owner — Preserve and validate candidate ownership
+##### scenario.harness.change-owner — Preserve and validate candidate ownership
 
 - GIVEN host-owned candidate state in the current worktree, possibly created before routing
 - WHEN the host reads, restores or binds its owner
@@ -315,7 +326,7 @@ See [the no-wider-retry bound](#req.harness.permission-no-retry).
 - AND only a trusted coordinated child may use a distinct component intent without rewriting the root owner
 - AND lifecycle metadata supplies recovery identity but never grants implementation access or waives readiness checks
 
-#### scenario.harness.worktree-boundary — Require an isolated worktree before unsafe mutation
+##### scenario.harness.worktree-boundary — Require an isolated worktree before unsafe mutation
 
 - GIVEN a project root and an explicit allow_primary_worktree flag
 - WHEN require_isolated_worktree is called
@@ -323,7 +334,7 @@ See [the no-wider-retry bound](#req.harness.permission-no-retry).
 - AND a symlink root, missing directory or unavailable Git identity raises WorktreeBoundaryError instead
 - BUT allow_primary_worktree is set only by a trusted host decision, never by task input
 
-### Worker execution
+#### Worker execution
 
 Realized by `WorkerExecutor`, the Pi worker runtime and the capability host's worker launches; see
 [execution](execution.md) and [host](host.md).
@@ -337,7 +348,7 @@ gated](#req.harness.worker-gate), [a capsule grants only its own snapshot](#req.
 children](#req.harness.delegation-one-level) and [only the submitted result leaves the
 worker](#req.harness.worker-single-result).
 
-#### scenario.harness.execute-success — Execute a bound worker and accept its typed result
+##### scenario.harness.execute-success — Execute a bound worker and accept its typed result
 
 - GIVEN a host-built WorkerInvocation carrying a verified AgentBinding, frozen context, compiled policy and model selection
 - WHEN WorkerExecutor is called with it
@@ -348,7 +359,7 @@ worker](#req.harness.worker-single-result).
 See [the no-automatic-retry bound](#req.harness.execute-no-retry) and [the
 settling-is-not-completion bound](#req.harness.execute-exit-insufficient).
 
-#### scenario.harness.execute-failure — Distinguish failed, cancelled, limit-exhausted and invalid outcomes
+##### scenario.harness.execute-failure — Distinguish failed, cancelled, limit-exhausted and invalid outcomes
 
 - GIVEN a refused preflight or a Pi process that fails before settling, a host interrupt, a run past its timeout, or a run whose submitted result is missing, repeated or outside the contract
 - WHEN WorkerExecutor is called
@@ -356,7 +367,7 @@ settling-is-not-completion bound](#req.harness.execute-exit-insufficient).
 - AND a contract rejection keeps its code, permission_denied for disallowed authored fields
 - AND the caller stops the affected transition rather than retrying automatically
 
-#### scenario.harness.worker-contract — A worker runs only its own task contract
+##### scenario.harness.worker-contract — A worker runs only its own task contract
 
 - GIVEN the twelve catalog workers and a selected Module or discovery collection
 - WHEN the host binds a worker and the executor admits its launch and its result
@@ -365,7 +376,7 @@ settling-is-not-completion bound](#req.harness.execute-exit-insufficient).
 - AND a result with an outcome or a populated field its contract does not permit is rejected, disallowed authored fields as permission_denied
 - AND an author and a reviewer of the same Module have different invocation and context identities with no shared conversation, stage artifacts or write grant
 
-#### scenario.harness.usage-accounting — Record what every worker launch consumed, per step
+##### scenario.harness.usage-accounting — Record what every worker launch consumed, per step
 
 - GIVEN a Pi worker that settled and reported its session statistics
 - WHEN the host accepts the WorkerOutcome of a stage, review, discovery or topology-author launch
@@ -374,7 +385,7 @@ settling-is-not-completion bound](#req.harness.execute-exit-insufficient).
 - AND the host observer receives the same record as an `agent_usage` event, and the `usage` Tool and the executable boundary summarize those lines per step, stage, target and worker
 - BUT a figure Pi did not report is recorded as unknown rather than zero, and a persistence failure never fails the launch
 
-#### scenario.harness.worker-selection — Launch each worker and child on its configured model
+##### scenario.harness.worker-selection — Launch each worker and child on its configured model
 
 - GIVEN `.concorde/config.json` capability configuration naming a default `model`, `thinking` and `timeout_seconds` and, under `workers`, entries keyed by a worker such as `programmer` or by a worker child such as `programmer/scout`
 - WHEN the host binds any worker invocation
@@ -386,19 +397,19 @@ settling-is-not-completion bound](#req.harness.execute-exit-insufficient).
 
 See [each worker runs on its own configured selection](#req.harness.worker-selection).
 
-#### scenario.harness.worker-selection-reject — Reject a selection no worker can run
+##### scenario.harness.worker-selection-reject — Reject a selection no worker can run
 
 - GIVEN a capability configuration whose `workers` map has a key naming no worker or worker child, a child entry with a timeout, a nonpositive timeout, a model that is not a Pi `provider/id` or an unknown thinking level
 - WHEN the configuration is proposed, applied or loaded
 - THEN it is rejected with a typed field error naming the offending entry
 - AND a rejected proposal or application leaves the stored configuration unchanged
 
-### Typed value validation
+#### Typed value validation
 
 Realized by `typed`, `validate_typed`, `json_schema`, `decode`, `canonical` and the schema
 evaluator; see [typed values](typed-values.md).
 
-#### scenario.harness.typed-validate — Validate a named registered wire type or contract schema
+##### scenario.harness.typed-validate — Validate a named registered wire type or contract schema
 
 - GIVEN a type_id registered in the wire schema catalog and a candidate value
 - WHEN validate_typed or typed is called
@@ -408,18 +419,28 @@ evaluator; see [typed values](typed-values.md).
 
 See [the canonical-encoding bound](#req.harness.typed-canonical).
 
-#### scenario.harness.typed-reject — Reject unknown types, duplicate keys or unsafe paths
+##### scenario.harness.typed-reject — Reject unknown types, duplicate keys or unsafe paths
 
 - GIVEN an unknown or unsupported type or version, duplicate JSON object keys, a non-finite numeric constant, or a path outside the safe project-relative form
 - WHEN decode, validate_typed, safe_path or checked_path is called
 - THEN it raises TypedDataError with a stable code and a JSON-pointer field identifying the problem
 - AND the caller stops the affected transition rather than substituting a default
 
-## Ontology
+## Architecture & Realization
 
-The Harness realizes its promises through the programs and used Modules below, wired together by
-the relationships that turn a bounded invocation's four context kinds into a launched, verified
-worker.
+### Design
+
+The host binds a worker in stages: select its task contract, resolve fresh instructions and profile,
+freeze admitted inputs, intersect declared effects with host authority, bind model selections, then
+execute. The executor independently rechecks this identity before launch and validates the single
+submitted result afterward. This ordering supports the external stale-input and no-widening
+promises without asking a model to police itself.
+
+[Host Flows](host.md) compose worker invocations; [execution](execution.md#architecture--realization)
+explains capsule, launch, gate and process-lifetime mechanics. Only typed admitted artifacts cross
+stages. Worker shells currently lack the stronger OS confinement used for deterministic checks;
+that limitation is not hidden by the permission diagram. The entities below map responsibilities
+to source and shared files rather than treating every physical package as a separate Module.
 
 ### Entities
 
@@ -640,7 +661,8 @@ flowchart TB
     piRuntime -->|bounds delegation to one level with| piSubagents
 ```
 
-## Local collaboration agreements
+
+### Local collaboration agreements
 
 These entries describe the exact direct providers registered for this Module. They state
 relied-upon behavior from this Module's perspective without importing another Module's documents.
@@ -666,7 +688,8 @@ relied-upon behavior from this Module's perspective without importing another Mo
 ]
 ```
 
-## Unresolved information
+
+### Unresolved information
 
 - Capability context carries only the Module's declared external references and each worker's
   profile tools today: no worker admits a Capability or Tool reference beyond them, so those

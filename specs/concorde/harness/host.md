@@ -8,11 +8,34 @@
 
 # Invocation host
 
+## Usage & Contract
+
 This document defines how the Harness binds and runs one worker invocation, the LangGraph substrate
 every control flow uses, and the optional Studio view. Value records are defined in
 [runtime values](runtime-values.md).
 
-## Invocation binding
+### Studio execution view
+
+The Studio adapter starts or observes the same CapabilityHost used by CLI and Skill invocations, with
+the same worker executor. Its generated LangGraph configuration exposes one Flow per Skill. Studio
+expands the same admission, dispatch and composed Flow instances used by local calls, including
+query/discovery, topology, planning, development and reflection branches. Non-public Capabilities
+remain callable through declared composition. Batch and coordination Flows are also inspectable from
+their executable factories; their runtime instances depend on host admission. Studio receives an
+invocation wrapper containing the existing schema-3 invocation and an optional expected_workspace
+assertion. Project and package roots remain host-bound; the assertion does not select another
+workspace.
+
+The final state exposes the unchanged capability result envelope, admitted policy descriptions and
+stage and worker events (`agent_started`, `agent_finished`, `agent_failed` naming the capability,
+stage, worker and invocation). Pausing or replaying a run does not waive permissions, checks or the
+worktree lifecycle, and replay may execute effects again. Ordinary local CLI and Skill calls do not
+require a Studio server. The source-checkout setup and debugging guide is scripts/development/STUDIO.md.
+This execution view participates in Developer view and feedback through the Development host.
+
+## Architecture & Realization
+
+### Invocation binding
 
 The host obtains an invocation's inputs in a fixed order: select the worker whose contract names the
 stage; load its rendered instructions and resolve its `AgentBinding` against the build (see
@@ -30,7 +53,8 @@ exposing context bodies: the worker, its binding, profile and instructions diges
 kind, tools and children, the read and write paths and policy digest, and the resolved model,
 thinking level and timeout.
 
-## Control-flow substrate
+
+### Control-flow substrate
 
 Every capability Flow, including the global discovery loop, the development loop, topology
 evolution, reflection triage and the deterministic capabilities, is a LangGraph `StateGraph` built
@@ -39,7 +63,8 @@ model call, or worker invocations, which do. These Flows are the Studio surface;
 its control flow outside them. Flow structure alone proves nothing about semantics: transitions,
 limits and evidence still follow G1–G4.
 
-## Agent invocation node (`agent_node`)
+
+### Agent invocation node (`agent_node`)
 
 Every model-backed node of every Flow executes its worker through an `AgentNode`: a one-node Flow
 whose input schema is the worker contract's admitted context type and whose output schema is its
@@ -66,7 +91,8 @@ flowchart TB
     planner --> __end__
 ```
 
-## Sequential work items Flow (`batch_flow`)
+
+### Sequential work items Flow (`batch_flow`)
 
 Independently admitted work items (consumer reviews, component Specs, component implementations,
 participant finalization) run one at a time through this Flow; the item node is named per use
@@ -96,22 +122,3 @@ flowchart TB
     execute_item -->|item returned None| select_item
     execute_item -->|item returned a result| __end__
 ```
-
-## Studio execution view
-
-The Studio adapter starts or observes the same CapabilityHost used by CLI and Skill invocations, with
-the same worker executor. Its generated LangGraph configuration exposes one Flow per Skill. Studio
-expands the same admission, dispatch and composed Flow instances used by local calls, including
-query/discovery, topology, planning, development and reflection branches. Non-public Capabilities
-remain callable through declared composition. Batch and coordination Flows are also inspectable from
-their executable factories; their runtime instances depend on host admission. Studio receives an
-invocation wrapper containing the existing schema-3 invocation and an optional expected_workspace
-assertion. Project and package roots remain host-bound; the assertion does not select another
-workspace.
-
-The final state exposes the unchanged capability result envelope, admitted policy descriptions and
-stage and worker events (`agent_started`, `agent_finished`, `agent_failed` naming the capability,
-stage, worker and invocation). Pausing or replaying a run does not waive permissions, checks or the
-worktree lifecycle, and replay may execute effects again. Ordinary local CLI and Skill calls do not
-require a Studio server. The source-checkout setup and debugging guide is scripts/development/STUDIO.md.
-This execution view participates in Developer view and feedback through the Development host.

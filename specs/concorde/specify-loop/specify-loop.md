@@ -8,6 +8,8 @@
 
 # Specification Flow
 
+## Usage & Contract
+
 The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/review-and-gaps.md) apply. Artifact references are host-issued paths
@@ -22,7 +24,7 @@ with fresh context; there is no automatic Spec-repair edge. `specify=false` sele
 existing Spec, and `run_reviews=false` records only a Spec review skip where no requirement exists.
 
 
-## Composition, state and recovery
+### Composition, state and recovery
 
 The public request requires task and admits optional target/focus hints, constraints, change_id,
 specify and run_reviews. Both booleans default true. New tasks use Query and Routing to select one
@@ -43,7 +45,9 @@ failed, incomplete and successful evidence remain distinct. The flow returns com
 common response and ArtifactRefs; it never requires code review, runs implementation checks or marks
 ready. Dev-loop may consume that completed result without repeating accepted current Spec work.
 
-## Specification Flow (`specify_flow`)
+## Architecture & Realization
+
+### Specification Flow (`specify_flow`)
 
 State: `output` (the last stage's typed response data), `artifacts` (every stage's artifact
 references under a merge reducer), `result`. The candidate record carries the accepted authoring

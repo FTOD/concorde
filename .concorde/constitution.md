@@ -1,67 +1,53 @@
-<!--
-Sync Impact Report
-- Version: 15.1.0 -> 16.0.0
-- Bump rationale: MAJOR; adopt Protocol 4.0.0 and Architecture Profile 11. The reading entry's
-  four parts are now Purpose, Requirements, Scenarios and Ontology (Entities and Relationships);
-  requirements are Module-level heading sections with one SHALL statement each and no longer
-  attach to scenarios; scenario, requirement and entity IDs are link anchors; tests declare the
-  scenarios they verify and Specs never list tests.
-- Modified principles: P6 gains the scenario verification index as deterministic evidence; the
-  authoring conventions describe the new layout, the `verifies` decorator and ID anchors.
-- Added sections: none.
-- Removed sections: scenario-attached requirement items; the Architecture section name.
-- Deferred placeholders: none.
--->
-
 # Concorde Constitution
 
-Version: 16.0.0. Architecture Profile 11; Workspace Protocol 15; Delivery Proposal 10.
+Version: 17.0.0. Spec Protocol 6.0.0; Framework Profile 13; registry schema 4;
+Workspace Protocol 15; Delivery Proposal 10.
 
-## Part A: Protocol and Framework rule sources
+## Protocol and Framework rule sources
 
 The independent specification standard is authored under `protocol/`. Its principles, Module
 chapter, Spec management (including Spec and Context), Required format and canonical templates
-define the meaning and authored representation of project Specs.
+define the meaning and authored representation of project Specs. The standard is not itself a
+registered software Module and need not describe its own chapters as Modules.
 
-Concorde's operational rules are authored separately in `prompts/protocol/framework-profile.md`.
-They define the Framework's configuration compatibility, bounded agent contexts, execution
-permissions, review evidence, worktree handoffs and authoring/publication conventions.
+Concorde's execution profile is authored separately in `prompts/protocol/framework-profile.md`.
+It defines configuration compatibility, bounded worker contexts, permissions, review evidence,
+worktree handoffs and Framework authoring/publication conventions. The build combines these with
+the Protocol into the rule assets. Source-checkout maintenance refreshes the tracked installed
+copy through `python3 scripts/concorde.py protocol-manifest --write --bind-project` after building.
+Read `.concorde/protocol/principles.md` as the canonical rule bundle, including P10; this document
+references those authorities rather than maintaining another copy of their requirements.
 
-`generated/protocol/principles.md` combines the Protocol principles, Spec management, its Spec and
-Context chapter, and Required format with those Framework rules, including P10. The generated
-Module kind definition supplies the Module chapter with its canonical templates. Read the current
-built rule assets; this constitution references those authorities instead of maintaining a
-second copy of their text.
+## Project application
 
-## Part B: Concorde project application
+The explicit registry is `.concorde/specs.json`, with `module.concorde` as its entry Module.
+Every Module owns an English Spec collection. Its `module.md` introduces **Usage & Contract**
+for consumers, followed by **Architecture & Realization** for implementers. Usage explains correct
+use before formal guarantees; Design explains how responsibilities, flow, state and constraints
+fulfill them. Requirements and scenarios are defined once in the appropriate part with stable IDs.
+Internal obligations remain normative. Companion documents may cover either or both parts, and
+a logical Module need not invent a public API or physical package.
 
-The explicit registry is `.concorde/specs.json`; `module.concorde` is the project entry Module.
-Concorde adopts Protocol 4.0.0 and registry schema 3. Every Module owns a self-contained English
-Spec collection whose `module.md` states its Purpose, Requirements, Scenarios and Ontology, the
-Ontology holding its Entities and Relationships. A requirement is a Module-level heading section
-with one SHALL statement; a scenario holds steps only and is the unit that tests verify, each test
-declaring the scenario ID it exercises. Its entities list the files that realize them, as exact files or as directory prefixes ending in `/`
-that bind every regular file below them; the registry mirrors that union as the Module's `files`,
-entry for entry, and a file bound by several Modules is listed by each of them. Within one Module
-the most specific entry owns a file. Only code-writing workers receive file contents; other workers
-use their own complete Module contracts and see declared entries and bound file names only. Changes
-to a shared file require fresh evidence for every listing Module. Delivery confirms declared pending
-entries that now exist. Runtime, distribution, self Specs and human publication evolve together.
-Older profiles have no compatibility path: the runtime, the validator and publication accept
-Profile 11 only, and an older project requires an explicit migration.
+Document ownership and explicit one-level references determine full-file Spec context; part headings
+are not context filters or permissions. Entity bindings separately record implementation entries,
+and the registry mirrors their union. Several Modules may bind one file; within one Module the most
+specific entry owns it. Phase-specific grants decide which workers receive implementation contents,
+with code review and investigation read-only. Tests declare their scenario identities in code.
+Structural checks and declared coverage are evidence, not semantic proof.
 
-### Independent Protocol standard
+Concorde's source Specs, format validators, initializer, authored worker instructions, build and
+publication implement the same reader-oriented model. The runtime and publisher accept Profile 13;
+older projects need an explicit migration, not a silent installer rewrite or compatibility guess.
+Existing wire versions, unique definition ownership, complete context and worktree authority remain
+independent of this document-layout change. The source-checkout `AGENTS.md` governs direct
+maintenance and worktree ownership, subject to explicit developer instructions such as no commit.
 
-The Protocol text lives under `protocol/` and defines the standard independently of the Framework.
-It is not a registered Module and is not required to conform to its own format. The Framework's
-software Specs under `specs/` remain subject to the adopted Protocol.
+## Project diagrams and publication
 
-### Concorde project architecture diagrams
-
-Every Module in this repository describes its entities and directed relationships in an inline
-Mermaid flowchart in the Relationships subsection of its local `module.md` Ontology, with English
-accessible title and description text. Node labels are exactly the declared entity titles and every edge is
-labeled with its relationship verb. The whole registered Markdown remains the source of
-authority. Publication renders that source in place; generated views do not create additional
-context membership. This convention applies to Concorde's software Specs and leaves the
-independent Protocol unchanged.
+Each Module's Architecture & Realization / Relationships subsection has an inline Mermaid
+flowchart whose node labels are exactly its own entity titles and whose directed edges carry
+relationship labels. English accessible titles and descriptions accompany Concorde diagrams.
+Flow Specs describe execution separately from the entity relationship model. Publication preserves
+both reader parts in source order, renders diagrams in place and puts derived implementation-file
+listings in the internal part. Rendered pages and navigation create no second contract authority,
+context inclusion or write grant.

@@ -8,19 +8,38 @@
 
 # Spec Authoring
 
-## Purpose
+## Usage & Contract
+
+### Purpose
 
 Spec Authoring proposes complete replacements for the selected Module's owned Spec documents from its complete contract and an explicit task. It serves specification flows and other declared callers; independent review and flow completion belong to their consumers.
 
-## Requirements
+### Usage
 
-### req.spec-authoring.admitted-contract — Propose only owned Spec replacements
+Use `specify` from a declared composing capability to author or revise the selected Module's owned
+Spec documents. Supply the task, constraints and current complete owned/direct-reference context;
+this private bound provider has no direct Skill/CLI entry and does not select a different owner.
+Its author returns full Markdown replacements for host acceptance, never direct project writes.
+Write consumer usage and guarantees first, then the design and internal constraints that fulfill
+them, keeping each definition canonical and preserving stable identities.
+
+Unknown meaning returns attributed gaps without replacements. Foreign, malformed or stale output
+is rejected with prior document bytes and blockers preserved. Referencing a provider permits
+reading, not replacing its Spec. Ordinary authoring retains metadata and membership; ownership or
+reference changes require topology reconciliation. Shared changes require separate affected-consumer
+compatibility checks. Independent review, accepted-authoring reuse and completion belong to the
+calling Flow, not to this author. See [authoring](authoring.md) for the precise input/output and
+failure contract.
+
+### Requirements
+
+#### req.spec-authoring.admitted-contract — Propose only owned Spec replacements
 
 Spec Authoring SHALL propose replacements only for the selected Module's owned documents.
 
-## Scenarios
+### Scenarios
 
-### scenario.spec-authoring.admitted-work — Apply valid owner-bound replacements
+#### scenario.spec-authoring.admitted-work — Apply valid owner-bound replacements
 
 - GIVEN a selected Module's complete current Spec and an explicit authoring task
 - WHEN a fresh Spec author returns complete owned replacements whose identity, metadata and before-state remain valid
@@ -30,7 +49,20 @@ Spec Authoring SHALL propose replacements only for the selected Module's owned d
 
 The detailed contract is [Owner-only Spec replacements](authoring.md).
 
-## Ontology
+## Architecture & Realization
+
+### Design
+
+A fresh author sees the full contract and task but no implementation contents or write grant.
+It returns complete owned Markdown replacements; the host checks metadata, current bytes and
+allowed paths before applying them as one accepted change. Independent candidate reviews assess
+affected consumers in their own contexts, preserving provider ownership and preventing copied
+shared definitions from becoming competing authorities.
+
+This proposal/acceptance split realizes the [authoring boundary](authoring.md) without trusting
+model-authored paths as permission. Ordinary authoring preserves registered metadata; topology
+reconciliation remains the separate mechanism for structural changes. Accepted-output reuse and
+independent review ordering belong to the consuming Flow.
 
 ### Entities
 
@@ -92,7 +124,8 @@ flowchart TB
     e0 -->|proposes and applies accepted| domain_replacements
 ```
 
-## Dependencies and composition
+
+### Dependencies and composition
 
 ```concorde-dependencies
 [
@@ -123,7 +156,8 @@ flowchart TB
 ]
 ```
 
-## Realization and reuse limits
+
+### Realization and reuse limits
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,

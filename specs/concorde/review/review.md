@@ -8,6 +8,8 @@
 
 # Independent review capability
 
+## Usage & Contract
+
 The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/review-and-gaps.md) apply. Artifact references are host-issued paths
@@ -96,7 +98,7 @@ never enters the aggregating Module's reviewer. Spec review always assesses the 
 Module whose entities list no implementation files is reviewed in code mode only through its
 recorded components and returns unsupported when it has none. The consumer selects local or recorded-component review only after the required component admission; this provider does not choose development-stage ordering.
 
-## Scope and feedback relevance
+### Scope and feedback relevance
 
 `concorde-review` uses separate fresh Spec and code reviewers. Spec review sees the complete owned and directly referenced Specs, task and scoped Spec patches; code review additionally sees only the owning
 target's registered implementation files, the files its declared entries currently bind, and scoped

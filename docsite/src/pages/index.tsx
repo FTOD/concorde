@@ -13,10 +13,8 @@ import styles from './index.module.css';
 interface GlobalData {pages: Page[]; entryTarget: string; siteIdentity: SiteIdentity}
 
 const contractParts = [
-  ['Purpose', 'The responsibility. The people it serves.'],
-  ['Requirements', 'The guarantees the Module must uphold.'],
-  ['Scenarios', 'Concrete situations. Testable outcomes.'],
-  ['Ontology', 'The entities, relationships and implementation files.'],
+  ['Usage & Contract', 'When and how to use the responsibility. The guarantees consumers can rely on.'],
+  ['Architecture & Realization', 'How design, internal constraints and implementation fulfill those promises.'],
 ];
 
 /** An opt-in introduction; registered Specs retain their own routes and authority. */

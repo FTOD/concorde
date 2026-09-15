@@ -7,6 +7,7 @@
 ```
 # Delivery capability
 
+## Usage & Contract
 
 Delivery consumes host-recorded candidate identity, progress and current validation/review evidence.
 The [common worktree metadata](../development/interfaces.md#worktree-awareness) supplies those
@@ -58,7 +59,9 @@ identities even when the implementation reverse index is unchanged. Each consume
 own context and code grant; no delivery check transfers provider ownership or authority. The
 evidence collector binds complete resolutions and separately retained consumer review artifacts.
 
-## Integration verification
+## Architecture & Realization
+
+### Integration verification
 
 Delivery validates its actual integration result in a temporary detached worktree. When that tree
 contains `concorde.json`, it is a Concorde package checkout: the host calls `write_build` on that

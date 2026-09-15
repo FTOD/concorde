@@ -8,6 +8,8 @@
 
 # Development host Flows
 
+## Architecture & Realization
+
 The Development host executes every capability invocation as LangGraph Flows. The six Flows
 below are its own: admission, dispatch, target admission, project initialization and
 configuration, component coordination and shared-candidate stabilization. The composed Flows they
@@ -17,7 +19,7 @@ specified by their owning Modules. Each Flow Spec follows the
 labels state the state read and written. Every diagram is bound to its compiled Flow by
 `%% flow:` and kept equal to it by the configured Flow Spec check.
 
-## Capability admission Flow (`capability_flow`)
+### Capability admission Flow (`capability_flow`)
 
 State: `invocation` (the admitted `concorde-capability-invocation@3`), `result` (the
 `concorde-capability-result@3` envelope, filled by `finalize` or by a guard that caught an
@@ -60,7 +62,7 @@ flowchart TB
     finalize --> __end__
 ```
 
-## Capability dispatch Flow (`dispatch_flow`)
+### Capability dispatch Flow (`dispatch_flow`)
 
 State: `route` (the leaf or subflow selected for the admitted capability), `output` (the
 capability's typed response), `result`. The Studio and CLI build one dispatch Flow per public
@@ -154,7 +156,7 @@ flowchart TB
     context_solve --> __end__
 ```
 
-## Target admission Flow (`target_flow`)
+### Target admission Flow (`target_flow`)
 
 State: `route`, `occurrence`, `routes` and `decision` (the discovery subflow's counters and
 routed selection), `output`, `result`.
@@ -184,7 +186,7 @@ flowchart TB
     bind_target --> __end__
 ```
 
-## Project Flow (`project_flow`)
+### Project Flow (`project_flow`)
 
 State: `route`, `output`, `result`.
 
@@ -216,7 +218,7 @@ flowchart TB
     apply --> __end__
 ```
 
-## Component coordination Flow (`coordination_flow`)
+### Component coordination Flow (`coordination_flow`)
 
 State: `output` (a blocking result, or none while the Flow advances), `route`; the candidate's
 target record carries the coordination table (per component: task, Spec and implementation
@@ -259,7 +261,7 @@ flowchart TB
     record_completion --> __end__
 ```
 
-## Shared candidate stabilization Flow (`stabilization_flow`)
+### Shared candidate stabilization Flow (`stabilization_flow`)
 
 State: `output`, `route`; the enclosing coordination holds the participant set and a bounded
 remaining-round counter, because a later participant's repair can stale an earlier participant's

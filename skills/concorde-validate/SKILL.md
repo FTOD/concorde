@@ -17,8 +17,9 @@ capability: validate
 @include prompts/workflow-host/target-identity-opener.md
 @include prompts/workflow-host/worktree-handoff.md
 
-Validation checks every Module's `module.md` for its four mandatory sections in order -- Purpose,
-Requirements, Scenarios, Ontology, the last with its Entities and Relationships subsections -- the
+Validation checks every Module's `module.md` for Usage & Contract (Purpose, Usage, Requirements,
+Scenarios) followed by Architecture & Realization (Design, Entities, Relationships), and each
+companion document for its applicable reading parts. It also checks the
 syntax of its requirement sections (one SHALL statement each), scenario sections (steps only) and
 `concorde-entities` declarations, unique stable IDs, that a local link whose fragment is a
 scenario, requirement or entity ID points at the document defining it, and that the registry's

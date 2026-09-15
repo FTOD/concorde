@@ -8,6 +8,8 @@
 
 # Review-result interface
 
+## Usage & Contract
+
 `concorde-review-result@1` has exactly the typed envelope fields `type_id`, integer
 `schema_version: 1` (not boolean), and `data`. Its closed payload has all these required fields.
 Here `S` is a nonblank string, `N` is `S|null`, and `D` is `sha256:` plus exactly 64 lowercase

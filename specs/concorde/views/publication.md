@@ -7,9 +7,11 @@
 ```
 # Publication service
 
-## Scaffolding a project's docsite
+## Usage & Contract
 
-### scenario.views.scaffold-propose — Proposing a docsite scaffold
+### Scaffolding a project's docsite
+
+#### scenario.views.scaffold-propose — Proposing a docsite scaffold
 
 - GIVEN a registered project and optional `--title`, `--repository`, `--url`, `--base-url` and `--github-pages` options
 - WHEN `concorde docsite --propose` runs
@@ -17,21 +19,22 @@
 - AND it writes nothing to the project
 - AND the proposed publishing template contains no standalone graph page, Graph navigation entry or graph-view-only resources or dependencies
 
-### scenario.views.scaffold-apply — Applying an accepted scaffold proposal
+#### scenario.views.scaffold-apply — Applying an accepted scaffold proposal
 
 - GIVEN a previously proposed, still-current JSON proposal
 - WHEN `concorde docsite --apply --proposal PATH` runs under the host's worktree policy
 - THEN it checks before-digests and writes only owned scaffold files
 - AND it leaves every project Spec document unchanged
 
-### scenario.views.scaffold-stale-rejected — A stale or unsafe scaffold proposal is rejected
+#### scenario.views.scaffold-stale-rejected — A stale or unsafe scaffold proposal is rejected
 
 - GIVEN a proposal whose before-digests no longer match the project, or that names a path outside the scaffold's own ownership
 - WHEN `--apply` is requested
 - THEN the application is rejected
 - AND any already-staged files are restored to their original bytes
 
-## Scaffold proposal exchange and ownership
+
+### Scaffold proposal exchange and ownership
 
 The Docsite scaffold command exchanges the following JSON value with its caller. The schema uses
 JSON Schema's `type`, `properties`, `required`, `items`, `enum`, `minItems` and
@@ -217,9 +220,10 @@ delete existing files, including project Specs.
 
 For a Module, its unique local `module.md` is the source entry, independent of collection order.
 
-## Publishing registered Specs
 
-### scenario.views.publish-candidate — Publishing derives one canonical page per registered document
+### Publishing registered Specs
+
+#### scenario.views.publish-candidate — Publishing derives one canonical page per registered document
 
 - GIVEN an explicitly registered project registry
 - WHEN the site is built
@@ -236,7 +240,7 @@ order, followed by child Modules in registry order. Referenced documents remain 
 owner and do not create duplicate pages or sidebar entries. A Module without children or
 supplements is a direct document link.
 
-### scenario.views.publish-without-graph — Publishing retains reading and navigation without a graph view
+#### scenario.views.publish-without-graph — Publishing retains reading and navigation without a graph view
 
 - GIVEN a valid registered project using the current publishing template
 - WHEN the site is built and promoted
@@ -251,14 +255,14 @@ resource or dependency remains when another retained publication function needs 
 inline Mermaid rendering remains supported. The docsite provides no substitute embedded UA view or
 redirect from the removed graph page. UA continues through its existing independent commands.
 
-### scenario.views.publish-preserves-previous-on-failure — An incomplete or stale candidate does not replace the published build
+#### scenario.views.publish-preserves-previous-on-failure — An incomplete or stale candidate does not replace the published build
 
 - GIVEN changes to registered sources during generation, a missing expected page, an unresolved internal page or anchor link, or a failed Mermaid render
 - WHEN the candidate is validated before promotion
 - THEN promotion is refused
 - AND the previously published build is preserved unchanged
 
-### scenario.views.publish-legacy-redirect — Current document references and ownership aliases resolve
+#### scenario.views.publish-legacy-redirect — Current document references and ownership aliases resolve
 
 - GIVEN a still-registered document whose owner changes from Module A to Module B while a currently published document of A retains a reference to its source path or canonical page and an existing anchor
 - WHEN the current build is validated and promoted
@@ -288,7 +292,7 @@ or separate diagram installation is used. Local document links resolve against t
 explicit registered-page inventory, independently of the referring Module's collection; unknown
 or ambiguous destinations and missing anchors fail validation.
 
-### scenario.views.publish-repeat-without-graph — Rebuilding replaces obsolete graph output
+#### scenario.views.publish-repeat-without-graph — Rebuilding replaces obsolete graph output
 
 - GIVEN an existing published build that contains the former standalone graph page and architecture-graph artifact
 - WHEN a fresh build using the current publishing template successfully validates and is promoted
@@ -296,7 +300,8 @@ or ambiguous destinations and missing anchors fail validation.
 - AND a subsequent successful build retains that absence and the registered-document reading and navigation behavior
 - BUT a failed candidate leaves the previous published build unchanged under the normal promotion rules
 
-## Retired unregistered projections
+
+### Retired unregistered projections
 
 Publication ignores `generated/docs/instructions.json` and `generated/docs/wire.json`, even when
 stale files exist. It emits no Projections navigation or instruction/wire reading pages. Successful
@@ -304,9 +309,10 @@ whole-directory promotion removes previously published projection pages; failed 
 the previous output. Runtime schema generation and APIs remain Distribution/Development facilities.
 Registered Specs are not restricted by the formerly reserved `projections/` source-path prefix.
 
-## Project introduction
 
-### scenario.views.publish-homepage — Publishing an explicitly configured project introduction
+### Project introduction
+
+#### scenario.views.publish-homepage — Publishing an explicitly configured project introduction
 
 - GIVEN site identity schema 1 in `docsite/site.json` includes a valid `homepage` object
 - WHEN the site builds
@@ -316,14 +322,14 @@ Registered Specs are not restricted by the formerly reserved `projections/` sour
 - AND project-owned `homepage.links` and the repository link appear only when configured
 - BUT the introduction does not join any Module collection, add a registered-page manifest entry, or grant agent context
 
-### scenario.views.publish-homepage-default — Preserving the default entry redirect
+#### scenario.views.publish-homepage-default — Preserving the default entry redirect
 
 - GIVEN the site identity omits `homepage`
 - WHEN the site builds
 - THEN its root redirects to the registered entry Module's canonical page and includes a visible continuation link
 - AND the packaged renderer introduces no Concorde-specific marketing content into the consumer project
 
-### scenario.views.publish-homepage-invalid — Rejecting incomplete introduction content
+#### scenario.views.publish-homepage-invalid — Rejecting incomplete introduction content
 
 - GIVEN the site identity includes an invalid or incomplete `homepage` object
 - WHEN publication loads that identity
@@ -343,9 +349,10 @@ a nonempty `tables` array. Each table has nonempty `title` and `description` str
 nonempty string per column. These values also render as plain text. Invalid reference content
 fails with its field path; omitting the object preserves the homepage without a reference section.
 
-## Project-owned custom documentation
 
-### scenario.views.custom-docs — Publishing separate project documentation
+### Project-owned custom documentation
+
+#### scenario.views.custom-docs — Publishing separate project documentation
 
 - GIVEN a consumer project configures `customDocs` collections or a `custom-docs/index.ts` extension
 - WHEN its site builds
@@ -373,7 +380,7 @@ checkout-only `concorde-only/` assets, and project-owned site identity bytes.
 local absolute routes or HTTP(S) URLs. Local links honor the site's base URL. No Protocol or Flow
 link is built into the homepage renderer.
 
-### scenario.views.protocol-docs-tab — Concorde publishes its standard through custom docs
+#### scenario.views.protocol-docs-tab — Concorde publishes its standard through custom docs
 
 - GIVEN Concorde's project-owned configuration selects `protocol/` as a custom docs collection and registers the Agent Flows extension
 - WHEN the site builds
@@ -390,7 +397,8 @@ These generated views are human navigation, not agent context grants. The public
 multiple registered collections deterministically; an agent still receives one host-bound target
 snapshot.
 
-## Main routing view
+
+### Main routing view
 
 Consumer-visible scaffold and publication lifecycle behavior remains on `module.views`. Select
 `module.views` for registry loading, page materialization, link rewriting, sidebars, inline diagram
@@ -400,7 +408,7 @@ Production builds keep their Docusaurus-generated modules separate from the deve
 Building the site does not clear the preview's `.docusaurus` directory. Both views still derive
 from the current registered sources and independently verify their publication inputs.
 
-### scenario.views.publish-reference-link — References preserve one canonical page
+#### scenario.views.publish-reference-link — References preserve one canonical page
 
 - GIVEN one provider-owned interface document referenced by two consumer Modules, one by Module and one by document ID
 - WHEN a publication candidate is built

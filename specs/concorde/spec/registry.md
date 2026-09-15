@@ -7,66 +7,70 @@
 ```
 # Registry
 
+## Usage & Contract
+
 This document defines `SpecRepository`'s selection and query behavior: what a caller receives when it selects a Module, reads its documents and structured declarations, or resolves a stable ID to its complete Spec file set. [values](values.md) defines the exact returned records and Framework configuration versions; [structure](structure.md) defines validation; [initialize](initialize.md) defines project initialization.
 
-## Scenarios
+### Scenarios
 
-### scenario.spec.select-module — Selecting a Module's complete context
+#### scenario.spec.select-module — Selecting a Module's complete context
 
 - GIVEN a registered Module identity
 - WHEN a caller selects it
 - THEN the repository returns that Module's complete descriptor including its owned documents and explicit references
 - AND resolving its context includes only the full documents selected by those declarations, with original ownership retained
 
-### scenario.spec.select-scenario-focus — Selecting through a scenario focus
+#### scenario.spec.select-scenario-focus — Selecting through a scenario focus
 
 - GIVEN a registered scenario identity that belongs to a Module
 - WHEN a caller selects the Module with that scenario as focus
 - THEN the repository returns the same complete Module descriptor as an unfocused selection
 - AND the focus narrows attention only, never the returned file set
 
-### scenario.spec.reject-foreign-focus — Rejecting a focus that is not the target's own
+#### scenario.spec.reject-foreign-focus — Rejecting a focus that is not the target's own
 
 - GIVEN a scenario identity that belongs to a different Module than the one being selected
 - WHEN a caller selects the target with that focus
 - THEN selection fails with an invalid-focus error
 - AND no descriptor is returned
 
-### scenario.spec.query-files — Resolving a stable ID to its complete file set
+#### scenario.spec.query-files — Resolving a stable ID to its complete file set
 
 - GIVEN a registered Module identity or a registered scenario identity
 - WHEN a caller queries its Spec file set
 - THEN the query returns the owning Module's complete resolved document context, deduplicated and sorted by canonical path
 - BUT it neither follows uses, parentage nor entity listing entries, and it never reads the returned files' contents
 
-## Requirements
 
-### req.spec.no-writes — No writes during construction or queries
+### Requirements
+
+#### req.spec.no-writes — No writes during construction or queries
 
 SpecRepository construction and every query method SHALL NOT write project files.
 
-### req.spec.snapshot-reconstruct — A repository instance is an immutable snapshot
+#### req.spec.snapshot-reconstruct — A repository instance is an immutable snapshot
 
 A repository instance SHALL be treated as a snapshot.
 
-### req.spec.reconstruct-for-changes — Reconstruct the repository to see changes
+#### req.spec.reconstruct-for-changes — Reconstruct the repository to see changes
 
 A caller SHALL reconstruct the repository to observe source changes.
 
-### req.spec.deterministic-order — Deterministic order for repeated queries
+#### req.spec.deterministic-order — Deterministic order for repeated queries
 
 Repeated queries against the same admitted repository SHALL return results in the same order.
 
-### req.spec.local-contracts-only — Definition ownership stays local
+#### req.spec.local-contracts-only — Definition ownership stays local
 
 contracts(target) SHALL return only canonical definitions in documents owned by the target.
 
-### req.spec.contracts-defer-agreement-checks — Cross-Module checks stay with the validator
+#### req.spec.contracts-defer-agreement-checks — Cross-Module checks stay with the validator
 
 contracts(target) SHALL leave canonical-definition uniqueness and cross-Module binding checks to the
 repository validator.
 
-## Interface signatures
+
+### Interface signatures
 
 ```python
 SpecRepository(project_root: Path | str, package_root: Path | str | None = None, *,
@@ -125,7 +129,8 @@ entirely.
 
 No call above writes project files. Host candidate overlays stay in memory. A repository is a snapshot-oriented reader with document caching; reconstruct it after source changes. Selection returns the full target descriptor even with a scenario focus. Ownership and references are explicit; context expands references once. Paths, links and entity file listings do not add files.
 
-## Required collaborator promises
+
+### Required collaborator promises
 
 The wire boundary's `decode(text: str) -> Any` rejects duplicate JSON keys and non-finite numbers;
 `canonical(value: Any) -> str` produces stable sorted-key compact JSON. Its
@@ -161,7 +166,8 @@ empty tuple when no blocks exist, and leaves canonical-definition uniqueness and
 separate repository validator. This is the canonical offline schema and path boundary used by interface definitions; consumers
 include this document explicitly and link to it without copying its vocabulary.
 
-## Stable-ID Spec context queries
+
+### Stable-ID Spec context queries
 
 `spec_files(entity_id: str) -> tuple[str, ...]` is the metadata-only locator query. Module and
 scenario identities resolve to the selected owner's full context, sorted by canonical path:
@@ -197,6 +203,6 @@ reverse index. Ownership or reference edits compare both old and candidate users
 resulting file set is unchanged. A Module reference tracks additions/removals to the provider's
 owned documents; changes only to the provider's references do not expand the consumer.
 
-The runtime implements these resolution and binding interfaces under Protocol 5.5.0/Profile 12/
+The runtime implements these resolution and binding interfaces under Protocol 6.0.0/Profile 13/
 schema 4. Older profiles and membership-based declarations fail admission. Owned-definition and
 implementation queries remain separate from the explicit context resolver.

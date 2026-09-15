@@ -7,7 +7,9 @@
 ```
 # Permissions
 
-## Required worker authority boundary
+## Usage & Contract
+
+### Required worker authority boundary
 
 The local companion contract **Agents and Harnesses** defines A4 for this Module. Effective authority
 MUST be a subset of the worker contract's effects and the host's invocation grant, including tool
@@ -24,7 +26,8 @@ and caller task JSON cannot add paths or operations. The executor recompiles the
 worker's contract before launch and rejects a policy that is wider, that grants writes to a worker
 without a write effect, or that grants network or credential effects to any worker.
 
-## Enforcement
+
+### Enforcement
 
 The compiled policy becomes the Concorde worker extension's policy for the invocation. The extension
 gates every tool call inside the worker's Pi process and inside every child session: a tool outside
@@ -41,7 +44,8 @@ process inside an operating-system sandbox that mounts only the granted paths is
 boundary. Configured deterministic checks already run under the host's OS-enforced read-only executor
 ([execution](execution.md)).
 
-## Policy compilation
+
+### Policy compilation
 
 `compile_policy(effects, binding, role_paths, deny_paths=())` intersects declared role paths with
 explicit host authority, producing a digest-bound policy. `verify_effective_subset(declared,
@@ -49,7 +53,8 @@ effective)` rejects an effective policy that widens a declared one. `require_iso
 allow_primary_worktree=False)` rejects unsafe mutation environments unless the trusted host grants the
 explicit exception. Task JSON cannot override any permission.
 
-## Interface signatures
+
+### Interface signatures
 
 These signatures identify public call shapes; bodies and private helpers are outside this Spec.
 

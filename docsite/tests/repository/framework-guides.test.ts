@@ -21,8 +21,11 @@ describe('Explicit Concorde self specification',()=>{
   for(const module of r.targets.filter(t=>t.kind==='module')) {
    expect(module.documents.some(path=>path.endsWith('/architecture.md')||path.endsWith('/developer-experience.md'))).toBe(false);
    const entry=r.pages.find(p=>p.primaryOf===module.id)!.content;
-   for(const section of ['Purpose','Requirements','Scenarios','Ontology'])
+   for(const section of ['Usage & Contract','Architecture & Realization'])
     expect(entry).toContain(`## ${section}`);
+   for(const section of ['Purpose','Usage','Requirements','Scenarios','Design','Entities','Relationships'])
+    expect(entry).toContain(`### ${section}`);
+   expect(entry.indexOf('## Usage & Contract')).toBeLessThan(entry.indexOf('## Architecture & Realization'));
   }
  });
 });

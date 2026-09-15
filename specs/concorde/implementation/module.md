@@ -8,19 +8,37 @@
 
 # Implementation
 
-## Purpose
+## Usage & Contract
+
+### Purpose
 
 Implementation fulfills an admitted task list within the selected Module implementation grant and reports exact task completion. It serves composing capabilities that supply current plans and tasks, and distinguishes local code writing from separately admitted component coordination.
 
-## Requirements
+### Usage
 
-### req.implementation.admitted-contract — Preserve task identity and acceptance
+A declared composing capability calls `implement` with a current accepted plan and nonempty task
+list for one selected Module. This is a private bound provider, not a directly invocable Skill.
+The programmer receives the complete Module Spec and the implementation paths its own entities
+bind, and must return every admitted task with unchanged identity and acceptance. Only fulfilled
+tasks are complete; completion is not validation, readiness or delivery.
+
+Missing tasks reject before launch. Incomplete output cannot establish fulfillment. Authorized
+edits may remain after execution failure, so inspect preserved candidate state and re-admit current
+artifacts rather than assuming rollback. A listed test does not grant its transitive inputs:
+record unavailable repository-level execution as deferred host verification, not as a pass.
+Coordination with other Modules requires their separate contexts and the existing enclosing-flow
+adapter; no arbitrary scheduler is accepted. See [implementation](implementation.md) for writable
+boundaries, deferred checks, component limits and recovery.
+
+### Requirements
+
+#### req.implementation.admitted-contract — Preserve task identity and acceptance
 
 Implementation SHALL preserve every admitted task identity and acceptance condition when reporting completion.
 
-## Scenarios
+### Scenarios
 
-### scenario.implementation.admitted-work — Return complete fulfillment of the admitted tasks
+#### scenario.implementation.admitted-work — Return complete fulfillment of the admitted tasks
 
 - GIVEN a current accepted plan and nonempty task list bound to a selected Module
 - WHEN the worker fulfills every task's acceptance within that Module's implementation grant and returns the complete task list
@@ -29,7 +47,20 @@ Implementation SHALL preserve every admitted task identity and acceptance condit
 
 The detailed contract is [Exact tasks and bounded code effects](implementation.md).
 
-## Ontology
+## Architecture & Realization
+
+### Design
+
+The implementation adapter admits current plan/task artifacts, launches one programmer under the
+selected Module's implementation grant, and validates exact returned task identities and acceptance
+before storing completion. Code edits are made inside the candidate, so execution failure can
+leave authorized partial edits; progress and currentness checks support recovery rather than a
+fictional rollback guarantee.
+
+[Component coordination](implementation.md#component-coordination-and-current-adapter-limit)
+separates local tasks from participant work and delegates scheduling/final shared-consumer checks
+to the existing enclosing Flow. This shared realization does not transfer those Flow completion
+conditions to the reusable local task contract.
 
 ### Entities
 
@@ -99,7 +130,8 @@ flowchart TB
     e0 -->|reports fulfilled acceptance as| domain_completion
 ```
 
-## Dependencies and composition
+
+### Dependencies and composition
 
 ```concorde-dependencies
 [
@@ -130,7 +162,8 @@ flowchart TB
 ]
 ```
 
-## Realization and reuse limits
+
+### Realization and reuse limits
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,

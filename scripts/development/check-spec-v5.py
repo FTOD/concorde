@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Offline audit of authored Protocol 5 Specs; does not admit a runtime repository.
+"""Offline audit of authored Protocol 6 Specs; does not admit a runtime repository.
 
-Reuses only the unchanged Markdown grammar, diagram and offline schema helpers.
+Retains its historical script path for configured checks. Reuses the current reading-part,
+Markdown definition, diagram and offline schema helpers.
 This is maintenance evidence, not a Framework lifecycle/readiness validator.
 """
 from __future__ import annotations
@@ -135,7 +136,7 @@ def audit(base=None):
     example_count = resolution_examples()
     registry = decode((ROOT / ".concorde/specs.json").read_text())
     config = decode((ROOT / ".concorde/config.json").read_text())
-    require(registry["schema_version"] == 4 and config["profile_version"] == 12, "version binding")
+    require(registry["schema_version"] == 4 and config["profile_version"] == 13, "version binding")
     require(set(registry) == {"schema_version", "project_id", "entry_target", "targets", "checks"}, "registry fields")
     targets = {t["id"]: t for t in registry["targets"]}
     require(len(targets) == len(registry["targets"]) and registry["entry_target"] in targets, "Module identity")
@@ -194,7 +195,7 @@ def audit(base=None):
             bindings.extend((b, path, key) for b in blocks(text, "concorde-contract-binding"))
     require(set(docs) == {str(p.relative_to(ROOT)) for p in (ROOT / "specs").rglob("*.md")}, "unregistered Spec document")
     contexts = {key: resolve(targets, docs, key) for key in targets}
-    facade = SimpleNamespace(targets={key: SimpleNamespace(id=key, primary_document=next(p for p in t["documents"] if PurePosixPath(p).name == "module.md")) for key, t in targets.items()}, document=docs.__getitem__)
+    facade = SimpleNamespace(targets={key: SimpleNamespace(id=key, documents=t["documents"], primary_document=next(p for p in t["documents"] if PurePosixPath(p).name == "module.md")) for key, t in targets.items()}, document=docs.__getitem__)
     findings = list(module_findings(facade))
     for key, target in targets.items():
         local = entities[key]
@@ -268,8 +269,8 @@ def audit(base=None):
                     require(value in identities and identities[value][1] == target["id"], f"lost/transferred stable ID: {value}")
                     stable += 1
     manifest = decode((ROOT / "protocol/manifest.json").read_text())
-    require(manifest["version"] == "5.5.0" and manifest["source_profile"] == 12, "manifest version")
-    require(config["protocol"] == {"version": "5.5.0", "digest": digest((ROOT / "protocol/manifest.json").read_bytes())}, "manifest binding")
+    require(manifest["version"] == "6.0.0" and manifest["source_profile"] == 13, "manifest version")
+    require(config["protocol"] == {"version": "6.0.0", "digest": digest((ROOT / "protocol/manifest.json").read_bytes())}, "manifest binding")
     for asset in manifest["assets"]:
         require(asset["digest"] == digest(safe(asset["path"]).read_bytes()), f"asset digest: {asset['path']}")
     return {"status": "passed", "modules": len(targets), "documents": len(docs),
@@ -287,5 +288,5 @@ if __name__ == "__main__":
     try:
         print(json.dumps(audit(args.base), indent=2))
     except (ValueError, KeyError, OSError) as error:
-        print(f"Spec v5 audit failed: {error}", file=sys.stderr)
+        print(f"Spec v6 audit failed: {error}", file=sys.stderr)
         sys.exit(1)

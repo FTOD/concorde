@@ -8,11 +8,13 @@
 
 # Context resolution
 
+## Usage & Contract
+
 This document defines the four kinds of context a Harness freezes for one invocation and the
 host-internal interface that resolves them. The Spec Protocol defines Spec context and
 implementation context; this Module realizes those definitions and adds the two Framework kinds.
 
-## Context kinds
+### Context kinds
 
 | Kind | Content | Required for |
 | --- | --- | --- |
@@ -26,7 +28,8 @@ Protocol rule bundle and installed Skills are not context: instructions belong t
 definition and are injected beside the context, and a Skill is the developer-facing projection of
 a public Capability. The snapshot identity covers every admitted byte of every kind.
 
-## Context snapshot resolution
+
+### Context snapshot resolution
 
 `resolve_context` freezes one Module's Spec context with its task context, its external
 references, and, for code phases, its implementation context, into a private
@@ -35,7 +38,7 @@ freezes several explicitly selected complete Spec contexts for the global coordi
 `recheck_context` and `recheck_discovery_context` reject reuse after any admitted input changed.
 The sections below define the exact inputs, records, phases and errors.
 
-The required Profile 12 boundary below is Module-oriented: it accepts a Module `target_id` and an
+The required Profile 13 boundary below is Module-oriented: it accepts a Module `target_id` and an
 optional local scenario `focus_id`. Its project contract files implement the Protocol's Spec and
 Context mapping: the one-level union of owned and explicitly referenced documents, including inline Mermaid architecture
 fences and entity declarations. The independent Protocol supports only Module and scenario
@@ -122,7 +125,8 @@ and the phase-appropriate Protocol records, which name the principles and Module
 granted to every phase alike. Every listed snapshot field is required; unknown fields are rejected
 at typed host admission. The digest covers the complete canonical dictionary except `context_id`.
 
-## Spec context grant
+
+### Spec context grant
 
 The Spec Protocol defines which files a Module-bound reader may see and leaves their delivery to the
 tool. The Framework chooses a context index and grant, so an invocation pays only for the documents
@@ -200,7 +204,7 @@ The context identity covers all inputs apart from its own identity field. The wi
 contains the distributed principles bundle and Module kind definition. This bundle includes
 both Concorde Spec Protocol requirements and the Framework execution profile; the field name does
 not classify all runtime rules as Spec organization rules.
-Concorde Spec Protocol 5.5.0 defines the Spec context, implementation context and external
+Concorde Spec Protocol 6.0.0 defines the Spec context, implementation context and external
 references this service resolves. The distributed rule bundle also includes the separately authored Framework execution
 profile, including P10 handoffs. The resolver verifies the build is
 fresh, then admits the Protocol copy the installer placed under `.concorde/protocol/`, the manifest
@@ -249,7 +253,8 @@ Module-owned structured Spec gap; malformed, duplicate, unknown, unrelated
 entries return a conflicting outcome. Both stop planning, and no relationship inventory is injected
 into the worker snapshot.
 
-## Context selection agreement
+
+### Context selection agreement
 
 This is the sole canonical definition of the selection agreement. Development references this
 owned document and declares its local binding. Version 2 changes context semantics; version 1
@@ -290,21 +295,24 @@ in characters. The example’s target ID illustrates a separately registered con
 }
 ```
 
-## Gap rule for bounded tasks
+
+### Gap rule for bounded tasks
 
 All task roles use the same necessary-contract gap rule. Explanation, planning, tasks and
 implementation pause only dependent judgments when a required contract is missing or ambiguous;
 independent reasoning may continue. Development gaps retain target, task, phase and Spec revision
 until repair and a successful fresh assessment of that step. Pure queries do not create Reflections.
 
-## Review-result stage-input value
+
+### Review-result stage-input value
 
 The canonical [review-result record](../review/review-result.md)
 is owned by Review and included by Harness's explicit document reference. Harness validates
 and freezes it only in admitted tasks/implementation repair contexts; Development checks current
 review intent and evidence before providing it. Neither party copies or widens its definition.
 
-## Global Spec context assembly
+
+### Global Spec context assembly
 
 The host-internal Python API resolves several explicitly selected Module contexts for a
 coordinator with a global view:
@@ -384,7 +392,9 @@ preview; actual launch admission requires every mode-required input.
 }
 ```
 
-## Implementation status
+## Architecture & Realization
+
+### Implementation status
 
 Snapshot/discovery serializers and the agent-stage, main-stage, review-stage and topology-author
 wrappers use version 2. They freeze spec_resolution and original source pools, preserve owner and

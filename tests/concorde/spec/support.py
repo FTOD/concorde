@@ -1,4 +1,4 @@
-"""Consumer fixture and explicit Pi worker double for the Profile 12 boundary."""
+"""Consumer fixture and explicit Pi worker double for the Profile 13 boundary."""
 import json
 import re
 import tempfile
@@ -30,15 +30,18 @@ def block(name, value):
 
 def module_document(document_id, target_id, title, purpose, scenarios, entities, architecture,
                     diagram, dependencies=(), trailer='', requirements='No Module-level requirement is stated here.'):
-    """One four-part reading entry: Purpose, Requirements, Scenarios and an Ontology whose
-    Entities subsection declares the entities and whose Relationships subsection draws them."""
+    """One two-part reading entry with consumer prose and a separate realization model."""
+    requirements = re.sub(r'(?m)^(#{2,4}) ', r'#\1 ', requirements)
+    scenarios = re.sub(r'(?m)^(#{2,4}) ', r'#\1 ', scenarios)
     text = (block('concorde-document', {'id':document_id,'owner': target_id,'main_visible':True})
-        + f'\n# {title}\n\n## Purpose\n\n{purpose}\n\n## Requirements\n\n{requirements}\n\n'
-          f'## Scenarios\n\n{scenarios}\n\n## Ontology\n\n### Entities\n\n{entities[0]}\n\n'
+        + f'\n# {title}\n\n## Usage & Contract\n\n### Purpose\n\n{purpose}\n\n'
+          '### Usage\n\nUse the declared boundary for the cases below; rejected input has no implicit retry.\n\n'
+        + f'### Requirements\n\n{requirements}\n\n### Scenarios\n\n{scenarios}\n\n'
+          f'## Architecture & Realization\n\n### Design\n\n{architecture}\n\n### Entities\n\n{entities[0]}\n\n'
         + block('concorde-entities', entities[1])
-        + f'\n### Relationships\n\n{architecture}\n\n```mermaid\n{diagram}\n```\n')
+        + f'\n### Relationships\n\n```mermaid\n{diagram}\n```\n')
     if dependencies:
-        text += '\n## Collaborators\n\nEach collaborator below is described from this Module\'s own perspective.\n\n'
+        text += '\n### Collaborators\n\nEach collaborator below is described from this Module\'s own perspective.\n\n'
         text += block('concorde-dependencies', list(dependencies))
     return text + trailer
 
@@ -161,7 +164,7 @@ LEDGER = module_document('document.ledger.api','module.ledger','Ledger API',
 
 PROMISES = (block('concorde-document', {'id':'document.transfer.promises',
     'owner': 'service.transfer','main_visible':True})
-    + '\n# Local promises\n\nBalance and amount are integers. No network, persistence or implicit\n'
+    + '\n# Local promises\n\n## Usage & Contract\n\nBalance and amount are integers. No network, persistence or implicit\n'
       'retry is performed by transfer. This complete collection defines all facts required to\n'
       'implement and test transfer.\n')
 

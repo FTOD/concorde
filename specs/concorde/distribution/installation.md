@@ -7,31 +7,34 @@
 ```
 # Installation service
 
-## Configuration compatibility
+## Usage & Contract
+
+### Configuration compatibility
 
 The canonical Module template and Scenario fragment and the mandatory Spec document format are
 authored under `protocol/` and distributed with the independent standard. The `templates/` entry
 links to those sources. Plan, task and reflection starters remain Framework workflow assets; they
 are not additional Protocol Spec kinds.
 
-The Framework identifies its supported project configuration as Profile 12. Initialization writes
-`.concorde/config.json` with `profile_version: 12`, the `registry` path, an accepted Protocol
+The Framework identifies its supported project configuration as Profile 13. Initialization writes
+`.concorde/config.json` with `profile_version: 13`, the `registry` path, an accepted Protocol
 `version` and manifest `digest` under `protocol`, and the typed `capability_configuration` for the
 project's Pi worker model, thinking level, timeout and per-worker overrides; the `protocol` binding names the Protocol copy the installer placed
-under `.concorde/protocol/`, which initialization never creates. Its registry uses JSON schema version 4. Profile 12 and registry
-schema 4 are Framework compatibility and storage versions; Spec Protocol 5.5.0 identifies the
+under `.concorde/protocol/`, which initialization never creates. Its registry uses JSON schema version 4. Profile 13 and registry
+schema 4 are Framework compatibility and storage versions; Spec Protocol 6.0.0 identifies the
 independent specification standard. Installation and initialization preserve these separate roles.
 
-## Installing and updating a target project
 
-### scenario.distribution.install-preview — Preview reports current owned output integrity without writing
+### Installing and updating a target project
+
+#### scenario.distribution.install-preview — Preview reports current owned output integrity without writing
 
 - GIVEN a supported integration and a target directory
 - WHEN the installer runs without `--apply`
 - THEN it returns a read-only preview of owned Framework, Skill and root-guidance changes
 - AND repeating the preview reports current owned output integrity without writing anything
 
-### scenario.distribution.install-apply — Applying an accepted current proposal installs owned outputs
+#### scenario.distribution.install-apply — Applying an accepted current proposal installs owned outputs
 
 - GIVEN a reviewed installation or update proposal that is still current
 - WHEN the installer runs with `--apply`
@@ -57,7 +60,7 @@ excluded from the installation receipt and never overwritten on update. Everythi
 because Concorde is installed is the installer's output; initialization creates only what the
 user's project generates through Concorde, its configuration, registry and Module stub.
 
-### scenario.distribution.install-conflict-rejected — Conflicting or stale ownership blocks acceptance
+#### scenario.distribution.install-conflict-rejected — Conflicting or stale ownership blocks acceptance
 
 - GIVEN a locally modified owned block, an unowned root entry, a symlinked or malformed root file, or a stale preview
 - WHEN `--apply` is requested
@@ -74,7 +77,7 @@ survive reinstall, update and integration changes. Root symlinks (including dang
 directories, malformed/duplicate/misordered markers, unowned blocks and modified owned blocks are
 conflicts.
 
-### scenario.distribution.install-remove-guidance — Root-guidance cleanup removes only receipt-owned entries
+#### scenario.distribution.install-remove-guidance — Root-guidance cleanup removes only receipt-owned entries
 
 - GIVEN an installed receipt with owned root entries
 - WHEN `--remove-protocol-guidance --apply` is requested
@@ -84,7 +87,7 @@ conflicts.
 
 This is the root-entry cleanup step for uninstall, not a full-package removal command.
 
-### scenario.distribution.install-switch-integration — Switching integration replaces only the previous entry
+#### scenario.distribution.install-switch-integration — Switching integration replaces only the previous entry
 
 - GIVEN an existing installation for one supported integration
 - WHEN installation is applied for a different integration
@@ -92,16 +95,17 @@ This is the root-entry cleanup step for uninstall, not a full-package removal co
 - AND the new integration's entry is installed
 - AND old receipts without root entries can upgrade by adding them without adopting arbitrary preexisting marked content
 
-## Configuring an initialized project
 
-### scenario.distribution.configure-apply — Configuration changes an initialized project's Pi worker selection atomically
+### Configuring an initialized project
+
+#### scenario.distribution.configure-apply — Configuration changes an initialized project's Pi worker selection atomically
 
 - GIVEN an initialized project and an explicit supported configuration value
 - WHEN concorde-configure is applied
 - THEN the new configuration is written atomically
 - AND unsupported values, an uninitialized project or a failed write leave the previous configuration in place
 
-### scenario.distribution.accept-protocol — Accepting an upgraded installed Protocol is explicit
+#### scenario.distribution.accept-protocol — Accepting an upgraded installed Protocol is explicit
 
 - GIVEN an initialized project whose Protocol binding no longer matches the Protocol copy the installer placed under `.concorde/protocol/`
 - WHEN concorde-configure is applied without `accept_protocol`
@@ -115,8 +119,8 @@ receipts. The locked managed Python runtime runs actual capabilities; viewer pro
 separate and versioned. Check verifies receipt hashes and required runtime identity without
 changing project behavior.
 
-The distributable manifest is `concorde.json` schema_version 3, Concorde 5.5.0, Architecture
-Profile 12, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 12 Agents, each one
+The distributable manifest is `concorde.json` schema_version 3, Concorde 6.0.0, Architecture
+Profile 13, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 12 Agents, each one
 Pi worker with a single task contract, and 14 Capabilities: 9 are public through Skills and 5 are available through declared
 composition. It also declares package roots including `prompts`/`capabilities`/`protocol`, and 5
 templates. Codex `.agents/skills` and Claude `.claude/skills` expose the same 9 Skills; canonical
@@ -126,9 +130,10 @@ Agent definitions and non-public Capabilities remain private. Every Skill sends 
 Project initialization and Protocol-binding decisions are a distinct typed `concorde-init`
 capability owned by `module.spec`, not by this Module.
 
-## Worktree guard
 
-### scenario.distribution.worktree-guard-refuses — The guard refuses native worktree creation in a developer session
+### Worktree guard
+
+#### scenario.distribution.worktree-guard-refuses — The guard refuses native worktree creation in a developer session
 
 - GIVEN a Claude Code or Codex hook payload for a `WorktreeCreate` event, an `EnterWorktree` tool call, a worktree-isolated Agent/Task call, or a shell command whose text contains a worktree-add/move or `claude --worktree` form
 - WHEN the worktree guard decides that payload
@@ -159,9 +164,10 @@ are unaffected: each Pi worker process starts with sessions, project settings an
 extensions disabled and its own configuration directory holding only what the host placed there,
 so it never reads this checkout's `.claude/` or `.codex/` layer and never creates a worktree itself.
 
-## Source-checkout type check
 
-### scenario.distribution.check-docsite-external — Type-check preparation uses disposable external files
+### Source-checkout type check
+
+#### scenario.distribution.check-docsite-external — Type-check preparation uses disposable external files
 
 - GIVEN a source checkout with a configured docsite type check
 - WHEN the maintenance type-check command runs
@@ -176,7 +182,8 @@ dependencies are linked for reads; otherwise `npm ci --ignore-scripts` installs 
 copy. It never updates a dependency marker or `.generated` files in the actual checkout. Checks
 that need persistent source or dependency changes must prepare them in the implementation phase.
 
-## Main routing view
+
+### Main routing view
 
 Select `module.distribution` for manifest inventory, canonical Skill/role rendering, the build's
 agent surface ownership, and managed Python or viewer provisioning. Select `module.spec` when the

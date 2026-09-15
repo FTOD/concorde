@@ -7,6 +7,8 @@
 ```
 # Query and routing Agent Flow
 
+## Usage & Contract
+
 `concorde-main` accepts a question or task with optional routing hints. Main starts with the entry
 Module's complete collection, then explicitly expands other Module collections
 when needed. It identifies the owning target from admitted responsibilities and selection conditions.
@@ -40,7 +42,9 @@ unbounded context expansion. The loop records its configured limits and returns 
 outcome if additional discovery cannot be admitted. Human clarification creates a revised task or
 context and starts fresh invocations under the Flow and Loop contract.
 
-## Discovery Flow (`discovery_flow`)
+## Architecture & Realization
+
+### Discovery Flow (`discovery_flow`)
 
 State: `occurrence` (the bounded number of discovery decisions so far), `decision` (the
 discovery worker's last typed result), `routes` (the bound single-target routes), `route`, `result`.
@@ -75,7 +79,8 @@ flowchart TB
     finish --> __end__
 ```
 
-## Query Flow (`query_flow`)
+
+### Query Flow (`query_flow`)
 
 State: the discovery state above plus `output` (the main response). `concorde-main` runs this
 Flow for `ask` and `design-topology`.

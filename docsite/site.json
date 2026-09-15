@@ -16,7 +16,7 @@
       "items": [
         {
           "title": "Write and maintain architecture-aware Specs.",
-          "description": "Describe each Module’s purpose, requirements, scenarios and architecture together. Author and review entities, relationships, dependencies and implementation file bindings, and keep the Specs consistent as the software evolves."
+          "description": "Explain when and how to use each Module in Usage & Contract, then show how its design fulfills those promises in Architecture & Realization. Keep consumer guarantees, internal constraints, stable definitions and implementation bindings consistent as the software evolves."
         },
         {
           "title": "Understand the project. Observe agent execution.",

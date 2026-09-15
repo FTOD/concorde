@@ -7,13 +7,15 @@
 ```
 # Agent runtime value and collaborator contracts
 
+## Usage & Contract
+
 This registered local companion document defines the exact public value records used by the
 capability host, permission compiler and worker executor. These are Python in-process contracts;
 they do not give a worker permission to construct its own grant. Strings called digests are
 canonical `sha256:` plus 64 lower-case hex digits. Paths in policies are project-relative POSIX
 paths without aliases or symlinks.
 
-## Policy construction
+### Policy construction
 
 ```python
 EffectDeclaration(reads: tuple[str, ...] = (), writes: tuple[str, ...] = (),
@@ -53,7 +55,8 @@ Spec-only workers receive only their context role. The programmer additionally r
 `implementation` with writes. Code review and investigation receive the current target's enumerated
 implementation files for reading, with an empty write-role tuple.
 
-## Agent definition and binding
+
+### Agent definition and binding
 
 ```python
 Contract(phase: str, context: str, result: str, effects: EffectDeclaration, action: str | None = None,
@@ -107,7 +110,8 @@ a policy no wider than the contract recompiles. `validate_agent_output` checks t
 outcome and permitted populated fields; disallowed authored fields use code `permission_denied`,
 other violations `invalid_completion`.
 
-## Worker invocation and outcome
+
+### Worker invocation and outcome
 
 ```python
 WorkerSelection(model: str | None = None, thinking: str | None = None, timeout_seconds: int | None = None)
@@ -152,7 +156,9 @@ an invalid submitted result); `code` preserves a contract rejection class. None 
 `ExecutionUsage` is diagnostic evidence about cost: a figure Pi did not report is `None`, and usage
 gates nothing.
 
-## Relationships diagrams
+## Architecture & Realization
+
+### Relationships diagrams
 
 A Module's architecture diagram is an inline `mermaid` flowchart fence inside its `module.md`
 Relationships subsection, or another registered document, with `accTitle` and `accDescr` accessible

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .model import Finding, ToolResult
 from .repository import (ANCHOR_PREFIXES, HEADING, IDENTITY, LIST_ITEM, MANDATORY_SECTIONS,
-                         ONTOLOGY_SECTIONS, ENTITIES_BLOCK, BINDING_BLOCK, DEPENDENCIES_BLOCK, SKIPPED_DIRECTORIES, SKIPPED_SUFFIXES, SpecError,
+                         USAGE_SECTIONS, ARCHITECTURE_SECTIONS, ENTITIES_BLOCK, BINDING_BLOCK, DEPENDENCIES_BLOCK, SKIPPED_DIRECTORIES, SKIPPED_SUFFIXES, SpecError,
                          SpecRepository, SpecTarget, digest, entry_exists, is_directory_entry, read_file,
                          walk_lines)
 from .typed_data import checked_path
@@ -153,17 +153,62 @@ def _section_ranges(body: str) -> tuple[list[tuple[str, int, int, int]], list[tu
     return sections, lines
 
 
-def _ontology_subsections(sections) -> dict[str, tuple[str, int, int, int]]:
-    """The Entities and Relationships subsections found inside the level-1..3 Ontology section."""
-    ontology = next((section for section in sections if section[0] == "Ontology" and section[1] <= 3), None)
-    if ontology is None:
-        return {}
-    found: dict[str, tuple[str, int, int, int]] = {}
-    for section in sections:
-        text, level, start, end = section
-        if text in ONTOLOGY_SECTIONS and ontology[2] < start <= ontology[3] and level > ontology[1]:
-            found.setdefault(text, section)
-    return found
+def _part_subsections(sections, part: str):
+    """Direct level-3 subsections of a level-2 reading part, retaining duplicates."""
+    parent = next((s for s in sections if s[0] == part and s[1] == 2), None)
+    if parent is None:
+        return []
+    return [s for s in sections if s[1] == 3 and parent[2] < s[2] <= parent[3]]
+
+
+def reading_part_problems(body: str, *, primary: bool = False) -> list[str]:
+    """Check reader-part syntax, not whether prose supplies sufficient domain meaning."""
+    sections, lines = _section_ranges(body)
+    parts = [s for s in sections if s[0] in MANDATORY_SECTIONS]
+    expected = list(MANDATORY_SECTIONS) if primary else [p for p in MANDATORY_SECTIONS
+                                                       if any(s[0] == p for s in parts)]
+    problems = []
+    if not parts or [s[0] for s in parts] != expected or any(s[1] != 2 for s in parts):
+        problems.append("Spec requires Usage & Contract and Architecture & Realization as unique "
+                        "level-2 reading parts in order (a companion may contain only one)")
+    # Titles and navigation may precede the parts, but substantive headings cannot escape them.
+    first = min((s[2] for s in parts), default=0)
+    if any((s[1] <= 2 and s[0] not in MANDATORY_SECTIONS and s[2] > first)
+           or (s[1] >= 2 and s[2] < first) for s in sections):
+        problems.append("substantive sections must be nested inside a reader-oriented part")
+    for number, kind, line in lines:
+        if kind == "fence-open" and line.strip() == "```concorde-entities":
+            if not any(s[0] == MANDATORY_SECTIONS[1] and s[1] == 2 and s[2] < number <= s[3]
+                       for s in parts):
+                problems.append("entity declarations belong in Architecture & Realization")
+    if not primary:
+        return problems
+    for part, required in ((MANDATORY_SECTIONS[0], USAGE_SECTIONS),
+                           (MANDATORY_SECTIONS[1], ARCHITECTURE_SECTIONS)):
+        subsections = _part_subsections(sections, part)
+        parent = next((s for s in sections if s[0] == part and s[1] == 2), None)
+        named = [s for s in sections if parent and parent[2] < s[2] <= parent[3] and s[0] in required]
+        found = [s[0] for s in named]
+        if found != list(required) or any(s[1] != 3 for s in named):
+            problems.append(f"{part} requires {', '.join(required)} exactly once, in order, "
+                            f"as direct level-3 subsections; found {found}")
+            continue
+        for section in subsections:
+            name, _, start, end = section
+            content = [(kind, line) for n, kind, line in lines if start < n <= end]
+            if name in {"Purpose", "Usage", "Design"}:
+                if not any(kind == "prose" and line.strip() and not HEADING.match(line)
+                           and not LIST_ITEM.match(line) and not line.lstrip().startswith("|")
+                           for kind, line in content):
+                    problems.append(f"the {name} section must contain explanatory prose")
+            if name == "Purpose" and any(kind != "prose" or HEADING.match(line)
+                    or LIST_ITEM.match(line) or line.lstrip().startswith("|") for kind, line in content):
+                problems.append("the Purpose section must contain plain prose only, without headings, fences, lists or tables")
+            if name == "Entities" and not _fences_in_range(lines, start, end, "concorde-entities"):
+                problems.append("the Entities subsection must declare at least one concorde-entities block")
+            if name == "Relationships" and not _fences_in_range(lines, start, end, "mermaid"):
+                problems.append("the Relationships subsection must contain a Mermaid flowchart fence")
+    return problems
 
 
 def _fences_in_range(lines, start: int, end: int, language: str) -> list[str]:
@@ -183,15 +228,16 @@ def _fences_in_range(lines, start: int, end: int, language: str) -> list[str]:
 
 
 def _relationship_fences(body: str) -> list[str]:
-    """Mermaid fences inside the Relationships subsection of the reading entry's Ontology."""
+    """Mermaid fences in Architecture & Realization / Relationships of the reading entry."""
     sections, lines = _section_ranges(body)
-    relationships = _ontology_subsections(sections).get("Relationships")
+    relationships = next((s for s in _part_subsections(sections, MANDATORY_SECTIONS[1])
+                          if s[0] == "Relationships"), None)
     if relationships is None:
         return []
     return _fences_in_range(lines, relationships[2], relationships[3], "mermaid")
 
 def module_findings(repository: SpecRepository, target_id: str | None = None) -> tuple[Finding, ...]:
-    """Check the four mandatory sections of every reading entry, not semantic sufficiency."""
+    """Check the reading entry and companion reading parts, not semantic sufficiency."""
     findings = []
     for target in repository.targets.values():
         if target_id is not None and target.id != target_id:
@@ -203,40 +249,17 @@ def module_findings(repository: SpecRepository, target_id: str | None = None) ->
             findings.append(Finding("CONCORDE-MODULE-001", "error", path, str(problem),
                 "Register a readable module.md reading entry.", subject_id=target.id))
             continue
-        problems = []
-        sections, lines = _section_ranges(document.body)
-        mandatory = [(text, level, start, end) for text, level, start, end in sections
-                     if text in MANDATORY_SECTIONS and level <= 3]
-        names = [text for text, *_ in mandatory]
-        if names != list(MANDATORY_SECTIONS):
-            problems.append("module.md must contain the headings Purpose, Requirements, Scenarios and Ontology "
-                            f"(level 1-3) exactly once each and in that order; found {names}")
-        else:
-            purpose = mandatory[0]
-            purpose_lines = [(number, kind, line) for number, kind, line in lines
-                             if purpose[2] < number <= purpose[3]]
-            if not any(kind == "prose" and line.strip() for _, kind, line in purpose_lines):
-                problems.append("the Purpose section must contain prose")
-            if any(kind != "prose" for _, kind, _ in purpose_lines):
-                problems.append("the Purpose section must not contain fenced blocks")
-            if any(kind == "prose" and (LIST_ITEM.match(line) or line.lstrip().startswith("|"))
-                   for _, kind, line in purpose_lines):
-                problems.append("the Purpose section must not contain lists or tables")
-            subsections = _ontology_subsections(sections)
-            ordered = sorted(subsections.values(), key=lambda section: section[2])
-            if [text for text, *_ in ordered] != list(ONTOLOGY_SECTIONS):
-                problems.append("the Ontology section must contain the subsections Entities and Relationships, "
-                                f"once each, in that order and below the Ontology heading; found {[text for text, *_ in ordered]}")
-            else:
-                entities = subsections["Entities"]
-                if not _fences_in_range(lines, entities[2], entities[3], "concorde-entities"):
-                    problems.append("the Entities subsection must declare at least one concorde-entities block")
-                if not _relationship_fences(document.body):
-                    problems.append("the Relationships subsection must contain a Mermaid flowchart fence")
-        for problem in problems:
-            findings.append(Finding("CONCORDE-MODULE-001", "error", path, problem,
-                "Give the reading entry its Purpose, Requirements, Scenarios and Ontology sections, "
-                "with Entities and Relationships inside Ontology.", subject_id=target.id))
+        for owned_path in target.documents:
+            try:
+                body = document.body if owned_path == path else repository.document(owned_path).body
+                problems = reading_part_problems(body, primary=owned_path == path)
+            except (ValueError, OSError, KeyError, TypeError) as problem:
+                problems = [str(problem)]
+            for problem in problems:
+                findings.append(Finding("CONCORDE-MODULE-001", "error", owned_path, problem,
+                    "Organize consumer usage and guarantees under Usage & Contract, and design, "
+                    "constraints and bindings under Architecture & Realization; preserve required subsections.",
+                    subject_id=target.id))
     return tuple(findings)
 
 def definition_findings(repository: SpecRepository, target_id: str | None = None) -> tuple[Finding, ...]:
@@ -619,7 +642,7 @@ def validate_repository(root: str | Path, target_id: str | None = None,
             "errors": counts["error"], "warnings": counts["warning"], "infos": counts["info"]},
             "source_digest": digest(sorted(inputs)),
             "claims": ["registry structure", "Spec document identity/membership/main visibility",
-                       "four mandatory Module sections", "requirement, scenario and entity syntax",
+                       "two reader-oriented Module parts and their required subsections", "requirement, scenario and entity syntax",
                        "ID anchors in local links", "entity file listings and registry files",
                        "relationship diagram entities and labeled edges", "contract examples",
                        "canonical definitions and complementary participant bindings", "Module dependency promises",

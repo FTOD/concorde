@@ -12,7 +12,7 @@ under `.concorde/` is excluded from published prose.
 
 ## Navigation
 
-The adapter publishes Profile 12 projects only: it reads `plugins/scoped-content` and registry
+The adapter publishes Profile 13 projects only: it reads `plugins/scoped-content` and registry
 schema 4, and refuses any other `profile_version` with an explicit error. Every registered document
 publishes once at a readable source-derived route: `specs/project/module.md` becomes
 `/specs/project/module`. The navbar exposes a single `Module Specs` tab;
@@ -30,8 +30,10 @@ section repeats its declared entries as written: an exact file, or a directory p
 that binds the regular files below it. Publication validates that an existing exact entry is a file
 and an existing directory entry a directory, and that no listed directory contains a registered Spec
 document; it does not read or publish implementation file bytes, and it never expands a directory
-entry into file names. Every Module's Ontology Relationships
-subsection renders its own inline Mermaid flowchart directly from the registered Markdown, with node
+entry into file names. Each Module is read as Usage & Contract followed by Architecture &
+Realization; the derived Files subsection stays inside the latter. Companion documents cover one
+or both parts. Part headings do not filter complete context. Every Module's Architecture &
+Realization / Relationships subsection renders its own inline Mermaid flowchart directly from the registered Markdown, with node
 labels equal to the declared entity titles and every edge labeled; there is no separate diagram
 source or build step.
 
@@ -89,7 +91,8 @@ the registered-page manifest; it grants no agent context and does not replace an
 
 Keep human-authored guides outside the Spec registry and publish them in independent tabs. They
 will not enter a Module's agent Spec context or its registered-page manifest. This is the recommended
-extension path; do not add reading guides to Module Specs merely to make them visible on the site.
+extension path for general project guides. Module-specific usage documentation belongs in the
+Module's own Usage & Contract and should not be copied into a competing external manual.
 
 1. Create `docsite/custom-docs/guides/index.md`:
 

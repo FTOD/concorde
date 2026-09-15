@@ -8,19 +8,37 @@
 
 # Planning
 
-## Purpose
+## Usage & Contract
+
+### Purpose
 
 Planning assesses whether a selected Module contract supports a task, creates a revision-bound plan and derives implementation acceptance tasks. It serves admitted composing capabilities with separate assessment, plan and task contracts; no development-loop history is an implicit source of software meaning.
 
-## Requirements
+### Usage
 
-### req.planning.admitted-contract — Assess sufficiency before saving a plan
+Consume Planning from a declared in-process capability, not a public Skill. First use
+[context assessment](assessment.md) with the selected complete Module contract and explicit task.
+A sufficient result permits [planning](plan.md); an accepted current nonempty plan permits
+[task authoring](tasks.md). Supply current candidate identity and admitted artifact references where
+required. Assessment produces no authored artifact, planning produces a revision-bound plan, and
+task authoring produces a nonempty list of new, initially incomplete acceptance tasks.
+
+Non-code phases see implementation names, not file contents, and do not infer missing software
+meaning from code. A gap pauses the dependent step; a prohibition, contradiction or failed execution
+has a distinct outcome. Empty plans, stale artifacts and reserved task-ID collisions preserve
+previous accepted state without making it current. Tasks express implementation acceptance, not a
+requirement that later host checks, review or delivery have already completed. Planning itself
+neither implements work nor marks a candidate ready.
+
+### Requirements
+
+#### req.planning.admitted-contract — Assess sufficiency before saving a plan
 
 Planning SHALL persist a plan only after sufficient assessment of the selected current Module contract.
 
-## Scenarios
+### Scenarios
 
-### scenario.development.task-history-identities — Task authors receive reserved identities
+#### scenario.development.task-history-identities — Task authors receive reserved identities
 
 - GIVEN a target may retain task lists from earlier repair rounds
 - WHEN the Host invokes a fresh task author, including after replanning
@@ -31,7 +49,19 @@ Planning SHALL persist a plan only after sufficient assessment of the selected c
 
 The independent contracts are [Assessment](assessment.md), [Plan](plan.md) and [Tasks](tasks.md).
 
-## Ontology
+## Architecture & Realization
+
+### Design
+
+The [planning Flow](plan.md#architecture--realization) checks local dependency declarations before
+context assessment, admits a planner only after sufficiency, and persists a nonempty revision-bound
+plan before tasks can be authored. The host then supplies reserved historical IDs and validates new
+incomplete tasks before replacing accepted state. Separate artifacts prevent planning from being
+mistaken for implementation completion or a later readiness decision.
+
+Each non-code worker has a fresh complete Spec context without source contents. Dependency tasks
+name declared children or used Modules; separately admitted component work, not a wider planner
+grant, supplies their implementations. Existing host repair admission remains an adapter limit.
 
 ### Entities
 
@@ -112,7 +142,8 @@ flowchart TB
     e0 -->|derives implementation obligations as| domain_tasks
 ```
 
-## Dependencies and composition
+
+### Dependencies and composition
 
 ```concorde-dependencies
 [
@@ -143,7 +174,8 @@ flowchart TB
 ]
 ```
 
-## Realization and reuse limits
+
+### Realization and reuse limits
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,

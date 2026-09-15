@@ -17,15 +17,15 @@ reflection system retains feedback and persistent
 Spec gaps, coordinates investigation and routes approved resolutions into new development tasks.
 
 The development and delivery workflows below build on these foundations. The **Spec Protocol
-5.5.0** defines one specification category:
+6.0.0** defines one specification category:
 
-- **Module Spec:** a self-contained contract in four mandatory parts. Purpose, Requirements (one
-  decidable SHALL statement each, about the Module) and Scenarios (testable GIVEN/WHEN/THEN
-  situations) state what the Module promises; the Ontology, its Entities and Relationships, states
-  how it is built. An entity may be a submodule, a program, a file, a record, a concept, an
-  interface at the Module boundary or an external actor, and may bind the files that realize it, as
-  exact paths or as directory prefixes ending in `/`. Tests declare the scenario they verify; no
-  Spec lists tests.
+- **Module Spec:** one contract with two reader-oriented parts. **Usage & Contract** explains the
+  responsibility, its consumers, when and how to use it, and the results, effects and failures they
+  can rely on. **Architecture & Realization** explains the design, responsibilities, state, flow,
+  dependencies and constraints that fulfill those promises. Requirements (one decidable SHALL
+  each) and scenarios (testable GIVEN/WHEN/THEN situations) make external and internal obligations
+  precise without duplicating them. Entity declarations bind exact files or directory prefixes;
+  tests declare the scenarios they verify. A logical Module need not have a public executable API.
 
 Each Module has one structural parent at most. Shared capabilities are independent siblings;
 `uses` does not create another parent. Module composition and file reuse are separate
@@ -51,7 +51,8 @@ specs/concorde/           Module contracts, entities and architectures
 ```
 
 Start with the [Concorde Module](../specs/concorde/module.md), its
-[Ontology](../specs/concorde/module.md#ontology), and the
+[Usage & Contract](../specs/concorde/module.md#usage--contract) and
+[Architecture & Realization](../specs/concorde/module.md#architecture--realization), and the
 [Spec Protocol](../protocol/README.md). The
 [authored Protocol rules](../protocol/principles.md) define the standard. Protocol documents are
 outside the project Spec registry and do not need to satisfy their own Module format.
@@ -85,7 +86,9 @@ The originating session does not follow the task into a different checkout.
 
 Send the JSON on stdin to `python .concorde/framework/scripts/run-capability.py concorde-init`.
 Review the returned proposal, then send action apply and that complete proposal. Initialization creates
-an honest Module stub; supply its Purpose, Requirements, Scenarios and Ontology before implementation.
+an honest Module stub; supply its consumer usage/contract and intended architecture/realization
+before implementation. The reading entry introduces both parts; topic documents can cover either
+or both without repeating the whole template.
 `.concorde/config.json` pins the Protocol and references `.concorde/specs.json`; that registry explicitly
 records document members, parent/uses relationships, each Module's `files` and deterministic checks.
 Local dependency declarations state the promises needed for routing and planning; validation keeps
@@ -213,7 +216,7 @@ return identical shared bytes.
 
 The [Developer experience](../specs/concorde/module.md#developer-entry-points) covers the
 Spec docsite, interactive diagrams, the Understand Anything code viewer and feedback into the
-Framework's existing workflows. [Spec publication](../specs/concorde/views/module.md#ontology) provides the authored-Spec view in this experience.
+Framework's existing workflows. [Spec publication](../specs/concorde/views/module.md#architecture--realization) provides the authored-Spec view in this experience.
 
 The [viewer service](../specs/concorde/views/viewer.md) opens an existing raw Understand
 Anything graph using the installer-owned runtime. Starting it does not generate a code graph or
@@ -245,7 +248,7 @@ checked before promotion. Human navigation does not grant agent context access.
 ## Concorde Spec Protocol entry and upgrades
 
 The Framework execution profile defines session handoffs in [P10](../prompts/protocol/framework-profile.md#p10-explicit-session-handoffs).
-Concorde Spec Protocol 4.0.0 defines self-contained, four-part Module Specs whose entities list the
+Concorde Spec Protocol 6.0.0 defines two-part reader-oriented Module Specs whose entities list the
 files that realize them, as exact paths or directory prefixes, and whose scenarios are declared by
 the tests that verify them. Root instructions and runtime drafts refer to that rule; public Skills do
 not carry another copy.

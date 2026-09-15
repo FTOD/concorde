@@ -8,7 +8,9 @@
 
 # Development capability host
 
-## Purpose
+## Usage & Contract
+
+### Purpose
 
 Development supplies the common capability invocation boundary, typed admission, dispatch and
 host-owned state mechanics used by Concorde's providers and flows. It serves external runtimes and
@@ -17,30 +19,35 @@ their sequencing and completion policies; this host does not make dev-loop a uni
 precondition. Harness binds execution, Spec resolves contracts, Reflections captures explicit gaps,
 and Distribution supplies fresh instruction projections.
 
-## Requirements
+### Usage
 
-### req.development.stage-no-reselect — Bound capabilities preserve their context
+Use this host boundary to submit a registered public capability from an external runtime, or to
+compose a declared private capability from trusted host code. Run the project-relative
+`scripts/run-capability.py <skill-name>` from the intended project root and send one schema-3
+invocation on stdin. Select execute or describe-policy mode, provide the capability's typed request,
+and use configuration matching the initialized project. The [boundary reference](interfaces.md)
+defines the exact envelope, error vocabulary and output; the [inventory](capabilities.md) maps
+entries to their behavioral owners.
+
+A successful envelope does not mean every domain goal completed: inspect the typed outcome for an
+answer, a gap, a ready candidate or another result. Policy preview launches no Agent. Private entries
+have no direct CLI or Skill. Mutating work in primary normally returns a fresh-session handoff from
+the committed base; it neither carries uncommitted edits nor moves the originating session.
+Resumption must match recorded worktree identity and intent. The host admits and dispatches work;
+the chosen provider or Flow, not this common boundary, defines its sequencing and completion.
+
+### Requirements
+
+#### req.development.stage-no-reselect — Bound capabilities preserve their context
 
 A Capability with bound context selection SHALL NOT reselect or expand the frozen context its composing capability gave it.
 
-### req.development.langgraph-control-flow — Orchestration executes as a LangGraph Flow
-
-Every capability's orchestration SHALL execute as a LangGraph Flow of deterministic operations,
-Agent invocations and explicitly represented transitions.
-
-Flow is the terminology defined by Harness in [Agent Flows and Loops](../harness/graphs-and-loops.md).
-
-### req.development.no-implementation-for-non-code — No implementation contents for non-code phases
+#### req.development.no-implementation-for-non-code — No implementation contents for non-code phases
 
 A planner, task author or Spec-only reviewer SHALL NOT receive the contents of this Module's or any
 other Module's listed implementation files.
 
-### req.development.single-boundary — Every invocation passes through the host adapter
-
-Every capability invocation SHALL pass through this Module's host adapter, with no direct
-agent-to-agent channel bypassing it.
-
-### req.development.project-root-is-working-directory — Project root is the entry process's working directory
+#### req.development.project-root-is-working-directory — Project root is the entry process's working directory
 
 The host SHALL bind every invocation's project root to the working directory of its entry
 process, exactly as resolved and without searching parent directories.
@@ -51,59 +58,23 @@ developer's agent session started, the worktree whose rendered Skill supplied th
 and every other linked worktree are not inputs; see
 [invocation worktree binding](#scenario.development.invocation-worktree-binding).
 
-### req.development.distinct-outcomes — Results distinguish admission, domain and execution outcomes
+#### req.development.distinct-outcomes — Results distinguish admission, domain and execution outcomes
 
 A capability result SHALL distinguish admission, domain and execution outcomes instead of collapsing
 them into one generic failure.
 
-### req.development.stage-no-skill — Non-public capabilities have no installed Skill
+#### req.development.stage-no-skill — Non-public capabilities have no installed Skill
 
 A non-public Capability SHALL have no installed Skill.
 
-### req.development.stage-in-process-only — Non-public capabilities require declared composition
+#### req.development.stage-in-process-only — Non-public capabilities require declared composition
 
 A non-public Capability SHALL be reachable only in-process from a capability that declares it in its
 composition.
 
-## Scenarios
+### Scenarios
 
-### scenario.development.flow-specs — Every Flow Spec equals its compiled Flow
-
-- GIVEN the Flow catalog compiles every executable Flow with inert nodes
-- WHEN the Flow Spec check reads every Mermaid flowchart bound with `%% flow: <name>` in the registered Spec documents
-- THEN each bound diagram's node identifiers are exactly the compiled nodes including start and end, its edges are exactly the compiled edges, each edge leaving a node with several successors carries its routing condition and each edge leaving a node with one successor carries none, and every executing node's label states its in and out state
-- AND every compiled Flow has exactly one bound diagram and every bound name is a compiled Flow
-- BUT a passing check proves only that the Spec and the executed topology agree, not that the routing is right
-
-### scenario.development.graph-api-only — Every Flow is built with the Graph API
-
-- GIVEN the Flow catalog compiles every executable Flow with inert nodes
-- WHEN the Flow Spec check inspects each compiled Flow and parses every Python file under `src/` and `scripts/` without executing it
-- THEN each compiled Flow is a compiled `StateGraph` of LangGraph's Graph API
-- AND no file imports LangGraph's Functional API, `langgraph.func` or its `entrypoint` and `task` decorators
-- AND a Flow of any other kind, an import of the Functional API and a file that cannot be parsed are each an error finding naming the Flow or the file and line
-
-### scenario.development.flow-execution — Execute the inspected Flow
-
-- GIVEN an admitted capability request through a local or Studio entry
-- WHEN the host executes the request
-- THEN the same compiled Flow definitions select its capability branch, Agent stages and feedback transitions
-- AND discovery expansion, topology authors, component work and reflection resolutions advance through bounded Flow transitions
-- AND failed admission or a stopping outcome prevents dependent nodes from running
-- AND existing task identity, context isolation, review requirements and delivery authorization remain enforced
-- AND a change to the Flow that schedules scoped reviews invalidates their recorded input identity
-
-### scenario.development.flow-bounds — Preserve domain limits across Flow composition
-
-- GIVEN a Flow whose admitted work requires more than LangGraph's default scheduling limit
-- WHEN the host executes its bounded discovery, batch or review-repair transitions
-- THEN the configured scheduling allowance permits the admitted sequence to reach its domain completion or limit outcome
-- AND exhausting a declared domain limit does not silently restart the Flow or widen its authority
-
-
-
-
-### scenario.development.execute-capability — Successful capability execution
+#### scenario.development.execute-capability — Successful capability execution
 
 - GIVEN an installed `concorde-*` Skill names one registered public Capability
 - AND stdin carries a well-formed `concorde-capability-invocation@3` envelope in `execute` mode
@@ -113,7 +84,7 @@ composition.
 
 See [single boundary](#req.development.single-boundary) and [distinct outcomes](#req.development.distinct-outcomes).
 
-### scenario.development.execute-unregistered — Unregistered or private capability refused
+#### scenario.development.execute-unregistered — Unregistered or private capability refused
 
 - GIVEN a `capability_id` that names no registered Skill, or a non-public capability invoked directly instead of through its composing capability
 - WHEN the host admits the request
@@ -123,21 +94,21 @@ See [single boundary](#req.development.single-boundary) and [distinct outcomes](
 See [non-public capabilities have no installed Skill](#req.development.stage-no-skill) and
 [non-public capabilities require declared composition](#req.development.stage-in-process-only).
 
-### scenario.development.execute-blocked-launch — Stale build or unenforceable permission blocks launch
+#### scenario.development.execute-blocked-launch — Stale build or unenforceable permission blocks launch
 
 - GIVEN the recorded build manifest no longer matches its sources, or the compiled policy for the bound Agent cannot be enforced by the Pi worker extension gate
 - WHEN the host would otherwise launch an Agent for an admitted request
 - THEN it blocks the request with `stale_build` or the applicable permission error before any process starts
 - AND any existing candidate is preserved unchanged
 
-### scenario.development.describe-policy — Preview a capability's grants without executing it
+#### scenario.development.describe-policy — Preview a capability's grants without executing it
 
 - GIVEN a request with `mode: describe-policy`
 - WHEN the host processes it
 - THEN it returns status `described`, naming the bound Agent, Harness, `agent_binding_digest`, `instructions_digest` and effective loop timeout for each previewed stage
 - AND no Agent is launched and no project file changes
 
-### scenario.development.invocation-worktree-binding — An invocation binds to the worktree at its working directory
+#### scenario.development.invocation-worktree-binding — An invocation binds to the worktree at its working directory
 
 - GIVEN a public Skill submits an invocation through the entry script from some working directory
 - WHEN the host admits the request
@@ -149,7 +120,7 @@ See [non-public capabilities have no installed Skill](#req.development.stage-no-
 
 See [project root is the entry process's working directory](#req.development.project-root-is-working-directory).
 
-### scenario.development.workspace-inventory — The primary inventory reads only linked worktrees' lifecycle state
+#### scenario.development.workspace-inventory — The primary inventory reads only linked worktrees' lifecycle state
 
 - GIVEN the primary worktree and one or more live linked worktrees, some managed by their own `.concorde/worktree.json` and some not
 - WHEN a capability invoked in the primary worktree resolves its `workspace` metadata
@@ -159,7 +130,7 @@ See [project root is the entry process's working directory](#req.development.pro
 - BUT no linked worktree's registry, Spec document or implementation file is read, so a candidate's draft Spec edits stay invisible to the primary until they are delivered
 - AND a capability invoked in a linked worktree instead sees kind `change` with its own candidate identity and status
 
-### scenario.development.worktree-handoff — Mutating request in the primary worktree hands off
+#### scenario.development.worktree-handoff — Mutating request in the primary worktree hands off
 
 - GIVEN a mutating capability request is admitted while the current session's worktree is the primary worktree
 - WHEN the host would otherwise start development work there
@@ -167,10 +138,20 @@ See [project root is the entry process's working directory](#req.development.pro
 - AND it does not copy uncommitted primary changes or continue the originating session in the new worktree
 - AND the error carries a complete Framework execution profile P10 prompt with real worktree identity, the submitted task and constraints, and the current preparation and check status
 
-## Ontology
+## Architecture & Realization
 
-This Module's Ontology sets out the programs behind the host adapter, the mechanics it shares with
-other Modules, and the sibling providers and services it depends on directly, together with how they connect.
+### Design
+
+Admission, workspace binding, configuration checks, dispatch and finalization execute through the
+[host Flows](flows.md). The host selects or restores a target before any bounded provider stage,
+then delegates context, permissions and execution to Harness. Results, artifact references and
+gap histories are host-validated before persistence; model completion alone cannot advance state.
+These boundaries realize the versioned-result and frozen-context guarantees above.
+
+Capability declarations describe exposure and allowed composition, not Module ownership. The shared
+host package still realizes provider and Flow internals whose contracts belong to siblings. Its
+worktree lifecycle and file-transaction entities supply common mutation mechanics. Detailed local
+collaborator obligations and the remaining invocation-binding extraction gap stay internal here.
 
 ### Entities
 
@@ -419,7 +400,62 @@ flowchart TB
     developmentHost -->|executes orchestration as Flows built with| langgraph
 ```
 
-## Dependencies and composition
+
+### Internal constraints
+
+#### req.development.langgraph-control-flow — Orchestration executes as a LangGraph Flow
+
+Every capability's orchestration SHALL execute as a LangGraph Flow of deterministic operations,
+Agent invocations and explicitly represented transitions.
+
+Flow is the terminology defined by Harness in [Agent Flows and Loops](../harness/graphs-and-loops.md).
+
+#### req.development.single-boundary — Every invocation passes through the host adapter
+
+Every capability invocation SHALL pass through this Module's host adapter, with no direct
+agent-to-agent channel bypassing it.
+
+
+### Internal verification scenarios
+
+#### scenario.development.flow-specs — Every Flow Spec equals its compiled Flow
+
+- GIVEN the Flow catalog compiles every executable Flow with inert nodes
+- WHEN the Flow Spec check reads every Mermaid flowchart bound with `%% flow: <name>` in the registered Spec documents
+- THEN each bound diagram's node identifiers are exactly the compiled nodes including start and end, its edges are exactly the compiled edges, each edge leaving a node with several successors carries its routing condition and each edge leaving a node with one successor carries none, and every executing node's label states its in and out state
+- AND every compiled Flow has exactly one bound diagram and every bound name is a compiled Flow
+- BUT a passing check proves only that the Spec and the executed topology agree, not that the routing is right
+
+#### scenario.development.graph-api-only — Every Flow is built with the Graph API
+
+- GIVEN the Flow catalog compiles every executable Flow with inert nodes
+- WHEN the Flow Spec check inspects each compiled Flow and parses every Python file under `src/` and `scripts/` without executing it
+- THEN each compiled Flow is a compiled `StateGraph` of LangGraph's Graph API
+- AND no file imports LangGraph's Functional API, `langgraph.func` or its `entrypoint` and `task` decorators
+- AND a Flow of any other kind, an import of the Functional API and a file that cannot be parsed are each an error finding naming the Flow or the file and line
+
+#### scenario.development.flow-execution — Execute the inspected Flow
+
+- GIVEN an admitted capability request through a local or Studio entry
+- WHEN the host executes the request
+- THEN the same compiled Flow definitions select its capability branch, Agent stages and feedback transitions
+- AND discovery expansion, topology authors, component work and reflection resolutions advance through bounded Flow transitions
+- AND failed admission or a stopping outcome prevents dependent nodes from running
+- AND existing task identity, context isolation, review requirements and delivery authorization remain enforced
+- AND a change to the Flow that schedules scoped reviews invalidates their recorded input identity
+
+#### scenario.development.flow-bounds — Preserve domain limits across Flow composition
+
+- GIVEN a Flow whose admitted work requires more than LangGraph's default scheduling limit
+- WHEN the host executes its bounded discovery, batch or review-repair transitions
+- THEN the configured scheduling allowance permits the admitted sequence to reach its domain completion or limit outcome
+- AND exhausting a declared domain limit does not silently restart the Flow or widen its authority
+
+
+
+
+
+### Dependencies and composition
 
 Development's sole structural parent is `module.concorde`; it has no submodules of its own. Its direct uses distinguish shared services, providers and composing flows.
 
@@ -546,7 +582,8 @@ Development's sole structural parent is `module.concorde`; it has no submodules 
 ]
 ```
 
-## Unresolved information
+
+### Unresolved information
 
 `capability_host.py` still contains invocation-binding mechanics (the freeze, compile, render,
 launch, execute and validate sequence of `Invocation.stage` and `MainInvocation.stage`) that belong

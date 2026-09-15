@@ -23,24 +23,25 @@ let root:string,targets:Target[];
 function put(path:string,text:string){mkdirSync(dirname(resolve(root,path)),{recursive:true});writeFileSync(resolve(root,path),text);}
 function target(id:string,documents:string[]):Target{return{id,kind:'module',title:id,documents,references:[],parent:null,uses:[],files:[],checks:[]};}
 function save(){put('.concorde/specs.json',JSON.stringify({schema_version:4,project_id:'project.bank',entry_target:'scope.bank',targets,checks:[]}));}
-/** A minimal, Protocol-compliant module.md body: Purpose, Requirements, Scenarios and Ontology
- * (Entities with a concorde-entities block, Relationships with a Mermaid flowchart) — appended
- * only when writing a target's own primary document, never a shared or secondary document. */
+/** A two-part Module entry with consumer prose and a separate realization model. */
 function requiredSections(owner:Target):string {
  const entityId='entity.'+owner.id.replace(/^[a-z]+\./,'').replace(/\./g,'-');
- return '\n\n## Purpose\n\nLocal purpose prose for '+owner.title+'.\n\n'+
-  '## Requirements\n\nIntroductory requirement prose.\n\n'+
-  '## Scenarios\n\nIntroductory scenario prose.\n\n'+
-  '## Ontology\n\n### Entities\n\n```concorde-entities\n'+JSON.stringify([{id:entityId,title:owner.title,kind:'concept',responsibility:'Represents the module core responsibility.'}])+'\n```\n\n'+
+ return '\n\n## Usage & Contract\n\n### Purpose\n\nLocal purpose prose for '+owner.title+'.\n\n'+
+  '### Usage\n\nUse the declared responsibility for the scenarios below.\n\n'+
+  '### Requirements\n\nIntroductory requirement prose.\n\n'+
+  '### Scenarios\n\nIntroductory scenario prose.\n\n'+
+  '## Architecture & Realization\n\n### Design\n\nThe core responsibility realizes the declared contract.\n\n### Entities\n\n```concorde-entities\n'+JSON.stringify([{id:entityId,title:owner.title,kind:'concept',responsibility:'Represents the module core responsibility.'}])+'\n```\n\n'+
   '### Relationships\n\n```mermaid\nflowchart TB\n    core["'+owner.title+'"]\n```\n';
 }
 function putSpec(path:string,references:string[],body:string,mainVisible=true){
  const id='document.'+path.replace(/\.md$/,'').replaceAll('/','.').replace(/[^a-z0-9.-]/g,'-');
  const owner=targets.find(t=>primaryDocument(t)===path);
  if(owner){
-  if(!body.includes('## Purpose'))body+=requiredSections(owner);
+  if(!body.includes('## Usage & Contract'))body+=requiredSections(owner);
   const peers=[...owner.uses,...targets.filter(t=>t.parent===owner.id).map(t=>t.id)];
   if(peers.length)body+='\n```concorde-dependencies\n'+JSON.stringify(peers.map(target_id=>({target_id,responsibility:'Provide the declared capability.',selection_condition:'Select for '+target_id,relied_upon_promises:['The interface returns a declared result or an explicit failure.']})))+'\n```\n';
+ } else if(!body.includes('## Usage & Contract') && !body.includes('## Architecture & Realization')) {
+  body=body.replace(/^(# [^\n]+\n)/,'$1\n## Usage & Contract\n');
  }
  put(path,'```concorde-document\n'+JSON.stringify({id,owner:references[0],main_visible:mainVisible},null,2)+'\n```\n\n'+body);
 }
@@ -49,7 +50,7 @@ function updateDocument(path:string,updates:Record<string,unknown>){
  const value={...JSON.parse(match[1]),...updates};put(path,'```concorde-document\n'+JSON.stringify(value,null,2)+'\n```'+text.slice(match[0].length));
 }
 beforeEach(()=>{
- root=mkdtempSync(resolve(tmpdir(),'concorde-scoped-'));put('.concorde/config.json',JSON.stringify({profile_version:12,registry:'.concorde/specs.json'}));
+ root=mkdtempSync(resolve(tmpdir(),'concorde-scoped-'));put('.concorde/config.json',JSON.stringify({profile_version:13,registry:'.concorde/specs.json'}));
  put('docsite/site.json',JSON.stringify({schema_version:1,title:'Bank',url:'https://localhost',baseUrl:'/',organizationName:'bank',projectName:'bank'}));
  targets=[target('scope.bank',['specs/bank/module.md']),target('scope.audit',['specs/audit/module.md']),target('service.transfer',['specs/transfer/module.md','specs/transfer/promises.md']),target('module.ledger',['specs/ledger/module.md'])];
  targets[0].uses=['service.transfer'];targets[1].uses=['service.transfer'];targets[3].parent='service.transfer';
@@ -282,36 +283,51 @@ it('requires one local Module entry and treats visibility as metadata',()=>{
  targets[0].documents=[main];targets[2].documents.push(main);save();updateDocument(main,{owner:'scope.bank'});expect(()=>loadScopedRegistry(root)).toThrow(/one owner|must be local|exactly one/);
  targets[2].documents.pop();save();updateDocument(main,{owner:'scope.bank',main_visible:false});expect(loadScopedRegistry(root).pages.find(p=>p.sourcePath===main)?.mainVisible).toBe(false);
 });
-it('requires the Purpose, Requirements, Scenarios and Ontology headings on module.md, in order, with Entities and Relationships inside Ontology',()=>{
+it('scenario.spec.reader-parts-invalid: rejects old, duplicate, misnested and unexplained reading parts',()=>{
  const main=targets[0].documents[0];
- const section=(heading:string)=>`## ${heading}\n\nProse for ${heading}.\n`;
- const entities='### Entities\n\n```concorde-entities\n'+JSON.stringify([{id:'entity.bank.core',title:'Bank',kind:'concept',responsibility:'Represents the module.'}])+'\n```\n';
- const relationships='### Relationships\n\n```mermaid\nflowchart TB\n    core["Bank"]\n```\n';
- const ontology=['## Ontology\n',entities,relationships].join('\n');
- putSpec(main,['scope.bank'],[section('Purpose'),section('Requirements'),section('Scenarios'),ontology].join('\n'));save();
+ const original=readFileSync(resolve(root,main),'utf8');
  expect(()=>loadScopedRegistry(root)).not.toThrow();
- putSpec(main,['scope.bank'],[section('Purpose'),section('Scenarios'),section('Requirements'),ontology].join('\n'));save();
- expect(()=>loadScopedRegistry(root)).toThrow(/Purpose, Requirements, Scenarios, Ontology/);
- putSpec(main,['scope.bank'],[section('Purpose'),section('Requirements'),section('Scenarios'),'## Ontology\n',relationships].join('\n'));save();
- expect(()=>loadScopedRegistry(root)).toThrow(/Entities, Relationships/);
- putSpec(main,['scope.bank'],[section('Purpose'),section('Requirements'),section('Scenarios'),'## Ontology\n',relationships,entities].join('\n'));save();
- expect(()=>loadScopedRegistry(root)).toThrow(/Entities, Relationships/);
- putSpec(main,['scope.bank'],[section('Purpose'),section('Requirements'),section('Scenarios'),'## Ontology\n',entities,'## Relationships\n\n```mermaid\nflowchart TB\n    core["Bank"]\n```\n'].join('\n'));save();
- expect(()=>loadScopedRegistry(root)).toThrow(/Entities, Relationships/);
- putSpec(main,['scope.bank'],[section('Purpose'),section('Requirements'),section('Scenarios'),'~~~~markdown\n## Ontology\n~~~~\n'].join('\n'));save();
- expect(()=>loadScopedRegistry(root)).toThrow(/Purpose, Requirements, Scenarios, Ontology/);
+ const cases=[
+  original.replace('## Usage & Contract','## Functional specification'),
+  original.replace('## Architecture & Realization','## Ontology'),
+  original.replace('## Usage & Contract','### Usage & Contract'),
+  original+'\n## Usage & Contract\n\nDuplicate.\n',
+  original.replace('### Entities','### Entities\n\n### Entities'),
+  original.replace('### Relationships','## Relationships'),
+  original.replace('### Usage','#### Usage'),
+  original.replace('### Design','#### Design'),
+  original.replace('Use the declared responsibility for the scenarios below.',''),
+  original.replace('The core responsibility realizes the declared contract.',''),
+  original.replace('### Purpose','### Purpose\n\n#### Nested title'),
+  original.replace('### Usage','~~~~markdown\n### Usage\n~~~~'),
+  original.replace(/(```mermaid\n[\s\S]*?\n```)/, '~~~~markdown\n$1\n~~~~'),
+  original.replace('### Usage', '### Usage\n\n```concorde-entities\n[]\n```'),
+  original+'\n## Escaped section\n\nOutside the parts.\n',
+ ];
+ for(const invalid of cases){put(main,invalid);expect(()=>loadScopedRegistry(root)).toThrow();}
+ // Closing ATX markers and a closed final fence without a trailing newline remain valid.
+ put(main,original.replace('### Purpose\n','### Purpose ###\n').trimEnd());
+ expect(()=>loadScopedRegistry(root)).not.toThrow();
+ put(main,original);
+ const companion='specs/transfer/promises.md';const source=readFileSync(resolve(root,companion),'utf8');
+ put(companion,source.replace('## Usage & Contract','## Architecture & Realization'));
+ expect(()=>loadScopedRegistry(root)).not.toThrow();
+ put(companion,source+'\n## Architecture & Realization\n\nInternal detail.\n');
+ expect(()=>loadScopedRegistry(root)).not.toThrow();
+ put(companion,source.replace('## Usage & Contract','## Unclassified'));
+ expect(()=>loadScopedRegistry(root)).toThrow(/reading|parts/);
 });
 it('scenario.views.id-anchors: injects the ID of every scenario, requirement and entity as an anchor when materializing',async()=>{
  const main=targets[0].documents[0];
- const body=['## Purpose\n\nBank purpose.\n','## Requirements\n\n### req.bank.retry — Repeated requests\n\nBanking SHALL treat a repeated request as a new decision.\n',
-  '## Scenarios\n\n#### scenario.bank.settle - Settlement\n\n- GIVEN a sender\n- WHEN a transfer is accepted\n- THEN both accounts settle\n\nSee [retry](#req.bank.retry) and [ledger](../ledger/module.md#entity.ledger.core).\n',
-  '## Ontology\n\n### Entities\n\n```concorde-entities\n'+JSON.stringify([{id:'entity.bank.core',title:'Bank',kind:'concept',responsibility:'Represents the module.'},{id:'entity.bank.request',title:'Request',kind:'record',responsibility:'One transfer request.'}])+'\n```\n',
+ const body=['## Usage & Contract\n\n### Purpose\n\nBank purpose.\n','### Usage\n\nSubmit a transfer to settle accounts.\n','### Requirements\n\n#### req.bank.retry — Repeated requests\n\nBanking SHALL treat a repeated request as a new decision.\n',
+  '### Scenarios\n\n#### scenario.bank.settle - Settlement\n\n- GIVEN a sender\n- WHEN a transfer is accepted\n- THEN both accounts settle\n\nSee [retry](#req.bank.retry) and [ledger](../ledger/module.md#entity.ledger.core).\n',
+  '## Architecture & Realization\n\n### Design\n\nRequests reach the bank.\n\n### Entities\n\n```concorde-entities\n'+JSON.stringify([{id:'entity.bank.core',title:'Bank',kind:'concept',responsibility:'Represents the module.'},{id:'entity.bank.request',title:'Request',kind:'record',responsibility:'One transfer request.'}])+'\n```\n',
   '### Relationships\n\n```mermaid\nflowchart TB\n    core["Bank"]\n    request["Request"]\n    request -->|reaches| core\n```\n',
   '```markdown\n### req.bank.example — Not a definition\n```\n'].join('\n');
  putSpec(main,['scope.bank'],body);save();
  await materializeScoped(loadScopedRegistry(root));
  const page=readFileSync(resolve(root,'docsite/.generated/content/specs/bank/module.md'),'utf8');
- expect(page).toContain('### req.bank.retry — Repeated requests {#req.bank.retry}');
+ expect(page).toContain('#### req.bank.retry — Repeated requests {#req.bank.retry}');
  expect(page).toContain('#### scenario.bank.settle - Settlement {#scenario.bank.settle}');
  expect(page).toContain('<a id="entity.bank.core"></a><a id="entity.bank.request"></a>\n\n```concorde-entities');
  expect(page).toContain('[retry](#req.bank.retry)');expect(page).toContain('[ledger](/specs/ledger/module#entity.ledger.core)');
@@ -350,9 +366,11 @@ it('scenario.views.publish-candidate: starts with Module roots and nests documen
 it('scenario.views.materialize: renders a Files section on a Module primary page from its bound files, and omits it when empty',async()=>{
  const registry=loadScopedRegistry(root);await materializeScoped(registry);
  const ledgerPage=readFileSync(resolve(root,'docsite/.generated/content/specs/ledger/module.md'),'utf8');
- expect(ledgerPage).toContain('## Files');expect(ledgerPage).toContain('`src/ledger.ts`');
+ expect(ledgerPage).toContain('\n### Files');expect(ledgerPage).toContain('`src/ledger.ts`');
+ expect(ledgerPage).not.toContain('\n## Files');
+ expect(ledgerPage.indexOf('### Files')).toBeGreaterThan(ledgerPage.indexOf('## Architecture & Realization'));
  const bankPage=readFileSync(resolve(root,'docsite/.generated/content/specs/bank/module.md'),'utf8');
- expect(bankPage).not.toContain('## Files');
+ expect(bankPage).not.toContain('\n### Files');
 });
 it('renders a directory prefix entry exactly as declared',async()=>{
  targets[3].files=['src/'];save();
@@ -469,7 +487,7 @@ it('scenario.views.publish-preserves-previous-on-failure: postBuild refuses miss
 it('scenario.views.publish-legacy-redirect: validates current cross-Module links and executes alias redirects',async()=>{
  targets[2].documents=targets[2].documents.filter(path=>path!=='specs/transfer/promises.md');
  targets[0].documents.push('specs/transfer/promises.md');save();
- putSpec('specs/transfer/promises.md',['scope.bank'],'# Promise\n\n## Promise {#promise}\n\nRetained agreement.');
+ putSpec('specs/transfer/promises.md',['scope.bank'],'# Promise\n\n### Promise {#promise}\n\nRetained agreement.');
  putSpec('specs/bank/module.md',['scope.bank'],'# Bank\n\n[Source reference](../transfer/promises.md#promise)\n\n[Canonical reference](/specs/transfer/promises#promise)\n\n[Retained form][agreement]\n\n[agreement]: /specs/transfer/promises#promise');
  put('specs/bank/module.md',readFileSync(resolve(root,'specs/bank/module.md'),'utf8')+'\n[Query source reference](../transfer/promises.md?view=compact&next=a?b#promise)\n');
  const originalSource=readFileSync(resolve(root,'specs/bank/module.md'));

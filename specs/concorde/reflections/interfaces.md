@@ -8,6 +8,8 @@
 
 # Reflection triage boundary
 
+## Usage & Contract
+
 A Reflection records a problem and human comments independently of implementation. Its stable
 R-NNN identity is allocated monotonically by `.concorde/reflections/index.json`
 (`{schema_version: 1, high_water}`). The canonical record is `.concorde/reflections/<bucket>/R-NNN.md`,
@@ -26,9 +28,9 @@ Public `concorde-reflections-triage` takes the common `invocation@3` envelope an
 containing `target_id`, `action status|record-gaps|investigate|implement|merge|close`,
 `reflection_ids` (unique string array), and optional `task, focus_id, constraints, change_id`.
 
-## Status and attribution
+### Status and attribution
 
-### scenario.reflections.status-query — Read-only status query returns typed metadata only
+#### scenario.reflections.status-query — Read-only status query returns typed metadata only
 
 - GIVEN a registered record id attributed to a Module or scenario
 - WHEN a caller requests status for that id
@@ -36,16 +38,17 @@ containing `target_id`, `action status|record-gaps|investigate|implement|merge|c
 - AND triage and bucket are derived from the record's bucket directory
 - AND no record body, source code or log is exposed
 
-### scenario.reflections.list-open-gaps — Status lists the current change's open gap history
+#### scenario.reflections.list-open-gaps — Status lists the current change's open gap history
 
 - GIVEN a managed change with open gap history for the selected target, including participating component gaps for a coordinating Module
 - WHEN status is requested for that target
 - THEN the response includes `gap_records`, each with `id` (a digest), `target_id`, `task`, `phase`, the existing structured gap, `status open|resolved`, and nullable `reflection_id`
 - AND status without a managed change returns an empty `gap_records` list
 
-## Capturing development gaps
 
-### scenario.reflections.capture-gap — record-gaps promotes a selected open gap into a pending Reflection
+### Capturing development gaps
+
+#### scenario.reflections.capture-gap — record-gaps promotes a selected open gap into a pending Reflection
 
 - GIVEN nonempty `gap_ids` selected from the current change's open gap history and `reflection_ids` is empty
 - WHEN record-gaps is invoked
@@ -54,14 +57,14 @@ containing `target_id`, `action status|record-gaps|investigate|implement|merge|c
 - AND the source gap remains open and keeps its history
 - AND the record stores the Module's unique `module.md` as its collection entry in `concerns`, independently of registry document order
 
-### scenario.reflections.repeat-capture-reuses-link — Repeating an already-captured gap returns the existing link
+#### scenario.reflections.repeat-capture-reuses-link — Repeating an already-captured gap returns the existing link
 
 - GIVEN a gap already linked to a Reflection by an earlier record-gaps call
 - WHEN record-gaps is invoked again with the same gap id
 - THEN the response reuses and returns the existing linked id
 - AND no duplicate record is created
 
-### scenario.reflections.reject-invalid-gap-selection — record-gaps rejects a foreign, resolved or implicit selection
+#### scenario.reflections.reject-invalid-gap-selection — record-gaps rejects a foreign, resolved or implicit selection
 
 - GIVEN a gap id that is foreign to the selected target's ownership or already resolved, or an omitted or empty `gap_ids` list
 - WHEN record-gaps is invoked
@@ -78,7 +81,8 @@ read/assessment requests never trigger capture. Existing scenario-owned records 
 the current owning `target_id` and optional `focus_id`, preserving their historical `feature`
 field. The public metadata above is sufficient for selection without reading control files.
 
-## Included provider definitions
+
+### Included provider definitions
 
 When a consumer encounters a defective or missing provider guarantee, its blocked-step gap stays
 attributed to the selected task/consumer. `needed_contract` and the evidence identify the canonical

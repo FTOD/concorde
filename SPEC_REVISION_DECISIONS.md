@@ -190,3 +190,33 @@ context 的定义、composite Module 可有自身协调代码），但从未正�
 `prompts/protocol/framework-profile.md`、Agent 指令（spec_author、spec_reviewer、task_author、
 implementation_worker、code_reviewer）、`skills/concorde-validate/SKILL.md`、docsite 插件
 （`model.ts`、`materialize.ts`）及其测试、全部项目 Specs、Python 测试与 golden fixtures。
+
+## Protocol 6.0.0：按使用者和实现者组织同一份 Module Spec
+
+本次按开发者明确授权直接维护；先修改独立 Protocol，再迁移 Concorde 的全部 Specs 和工具支持。
+开发者明确要求不要创建 commit，本次维护不提交。
+
+### D15：两种读者视角，而不是四类信息的平铺
+
+Module Spec 的一级结构改为 `Usage & Contract` 与 `Architecture & Realization`。前者本身就是
+可阅读的使用文档与规范性对外契约，说明用途、使用条件、概念、入口、输入输出、副作用与失败；后者
+说明为兑现这些承诺所需的职责分解、状态、控制/数据流、依赖、内部约束、设计理由和实现映射。
+实体清单和关系图不能代替设计解释；SHALL 与 GIVEN/WHEN/THEN 清单不能代替使用说明。
+
+对外是相对于该 Module 的消费者，可能是人、另一个 Module 或外部程序，不要求公开 API 或物理包。
+内部约束仍具有规范性。需求、场景、实体等仍是同一 Module 的稳定定义，每项义务只定义一次，设计
+通过引用连接到对外承诺，不另建一套重复契约。
+
+### D16：阅读结构不成为上下文或权限过滤器
+
+阅读入口用固定二级标题和各自的三级子节；主题文档使用一个或两个阅读部分，无需重复整个模板。
+不要求恰好两个物理文件。原有唯一文档所有权、单层显式引用、完整文件上下文和独立代码授权不变；
+消费者可以显式引用独立接口文档，但不能按标题偷偷裁剪已选文件或扩张访问权限。
+
+### D17：同步规范、项目文档与工具
+
+这是格式不兼容变更，因此采用 Protocol 6.0.0 / Framework Profile 13；registry schema 4、既有
+wire 类型版本和接口定义版本不因阅读重排而改变。全部 17 个 Module、56 个文档按读者视角迁移；
+保留现有定义 ID、文档路径与归属。初始化生成诚实的两部分草稿，Python 与 TypeScript 校验阅读结构，
+作者/审阅者指令同步更新，发布保留原文顺序并将派生文件列表置于对内部分。历史审阅记录和旧决策
+保留原样，不把格式迁移表述为所有既有业务缺口已经补齐。

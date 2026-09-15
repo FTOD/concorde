@@ -8,30 +8,44 @@
 
 # Delivery
 
-## Purpose
+## Usage & Contract
+
+### Purpose
 
 Delivery stages a verified candidate on an independent branch, cleans up its source worktree and separately merges into the primary branch when explicitly authorized. It serves participating outer sessions and consumes current evidence without owning the flow that produced the candidate.
 
-## Requirements
+### Usage
 
-### req.development.single-primary-writer — Only one agent writes to primary
+Request `concorde-deliver` with the ready candidate's change_id from either its source worktree
+or the primary worktree. A third-worktree session cannot initiate that delivery. Default delivery
+verifies current evidence and actual integration, publishes `concorde/delivered/<change_id>`, and
+removes the source worktree. It does not advance primary or modify its index or project files.
+Supply `keep_worktree:true` explicitly to retain the source. A source session must end after
+removal; retries then use the primary session and recorded change ID.
+
+Merging primary is a separate `merge_primary:true` request after delivery, authorized explicitly
+and issued by the sole primary writer. Conflicts, failed checks or stale evidence block the
+transition; unrelated edits are never discarded. Receipts distinguish publication, cleanup and
+merge: cleanup retries do not republish and accepted merge retries do not merge again. The producer
+need not be dev-loop, but every candidate must meet the same evidence gates. Read
+[participating-session delivery](delivery.md) before invoking this destructive cleanup boundary.
+
+### Requirements
+
+#### req.development.single-primary-writer — Only one agent writes to primary
 
 At most one agent SHALL own writes in the primary worktree at a time.
 
-### req.development.primary-writes-serialized — Repository lock serializes primary writes
+### Scenarios
 
-The host SHALL serialize shared lifecycle writes and final primary merges with the repository lock.
-
-## Scenarios
-
-### scenario.development.deliver-branch — Publish an independent delivery branch
+#### scenario.development.deliver-branch — Publish an independent delivery branch
 
 - GIVEN a ready change selected by `change_id`, requested from its source or the primary worktree
 - WHEN `concorde-deliver` runs
 - THEN the host verifies participation, candidate evidence and actual integration, then publishes an independent `concorde/delivered/<change_id>` branch and removes the source worktree unless `keep_worktree:true`
 - AND default delivery leaves the primary branch, index and project files unchanged
 
-### scenario.development.deliver-merge-primary — Explicit primary merge
+#### scenario.development.deliver-merge-primary — Explicit primary merge
 
 - GIVEN an already delivered receipt and an explicit user-authorized `merge_primary:true` request from the primary worktree's owning session
 - WHEN the host processes that request
@@ -41,14 +55,14 @@ The host SHALL serialize shared lifecycle writes and final primary merges with t
 See [only one agent writes to primary](#req.development.single-primary-writer) and
 [repository lock serializes primary writes](#req.development.primary-writes-serialized).
 
-### scenario.development.deliver-session-rejected — Delivery refused from an unrelated worktree
+#### scenario.development.deliver-session-rejected — Delivery refused from an unrelated worktree
 
 - GIVEN a session whose worktree is neither the change's selected source nor the primary worktree
 - WHEN it requests delivery or final merging for that change
 - THEN the host refuses it with `delivery_session_required` or `primary_session_required`
 - AND no branch is published or merged
 
-### scenario.development.deliver-conflict — Integration conflict blocks final merge
+#### scenario.development.deliver-conflict — Integration conflict blocks final merge
 
 - GIVEN the candidate's actual integration against the latest primary commit fails its configured checks or conflicts
 - WHEN final merging runs
@@ -56,7 +70,20 @@ See [only one agent writes to primary](#req.development.single-primary-writer) a
 
 The detailed contract is [Participating-session delivery](delivery.md).
 
-## Ontology
+## Architecture & Realization
+
+### Design
+
+Delivery treats branch publication, cleanup and primary merging as distinct receipted transitions.
+It verifies actual integration in a temporary detached worktree and uses create-only publication
+for the independent branch. The repository lock serializes shared lifecycle metadata and final
+primary transactions; it is a cooperative host constraint, not permission for competing direct
+writers. [Integration verification](delivery.md#integration-verification) explains package builds
+and current-consumer checks.
+
+Recording retention and recovery state before destructive transitions permits cleanup retries
+without republishing and merge recovery without repeating an accepted update. Consumer evidence
+and pending-entry confirmation remain currentness gates, not inferred success from a branch name.
 
 ### Entities
 
@@ -128,7 +155,15 @@ flowchart TB
     e0 -->|records publication cleanup and merge in| domain_receipt
 ```
 
-## Dependencies and composition
+
+### Internal constraints
+
+#### req.development.primary-writes-serialized — Repository lock serializes primary writes
+
+The host SHALL serialize shared lifecycle writes and final primary merges with the repository lock.
+
+
+### Dependencies and composition
 
 ```concorde-dependencies
 [
@@ -169,7 +204,8 @@ flowchart TB
 ]
 ```
 
-## Realization and reuse limits
+
+### Realization and reuse limits
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,

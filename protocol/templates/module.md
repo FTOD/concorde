@@ -4,11 +4,12 @@ Copy the Markdown block below into the Module's `module.md` reading entry, repla
 project facts and explicitly register the complete collection. This is a starter layout for the
 [required format](../format.md), not another kind of Spec or a completed contract.
 
-The four headings Purpose, Requirements, Scenarios and Ontology are mandatory in this order, and
-Ontology holds the Entities and Relationships subsections. Requirement and scenario definitions and
-further entity blocks may also live in other single-owner documents of the collection. The Mermaid
-flowchart must name exactly the declared entity titles and label every edge with the relationship
-verb.
+The two level-2 parts serve different readers without creating different contracts. Usage &
+Contract contains Purpose, Usage, Requirements and Scenarios; Architecture & Realization contains
+Design, Entities and Relationships. These are level-3 subsections in the order shown. Additional
+internal constraints and scenarios belong in the architecture part, not in the consumer guide.
+Companion documents use one or both part headings without repeating this whole starter. The Mermaid
+relationship model names exactly the declared entity titles and labels every edge.
 
 ````markdown
 ```concorde-document
@@ -21,26 +22,36 @@ verb.
 
 # [Module title]
 
-## Purpose
+## Usage & Contract
+
+### Purpose
 
 [Two or three sentences of plain prose: what this Module is for, who uses it and the boundary of its
 promises. No lists, tables or code.]
 
-## Requirements
+### Usage
+
+[Explain when to use this Module, who or what consumes it, the concepts and prerequisites needed,
+and a representative path from input to result. Name actual entry points or explain its role in a
+composition; do not invent a public API for a logical responsibility. Explain effects, errors,
+repeat behavior, cancellation and compatibility where applicable. Include examples or links to
+canonical owned interface definitions; do not require readers to reconstruct use from scenarios.]
+
+### Requirements
 
 [Introduce the Module-level requirements. Each is one decidable SHALL statement.]
 
-### req.[module].[name] — [Requirement title]
+#### req.[module].[name] — [Requirement title]
 
 [One sentence that SHALL or SHALL NOT hold for the Module as a whole.]
 
 [Optional explanatory prose: rationale, scope, or a pointer to the scenarios that exercise it.]
 
-## Scenarios
+### Scenarios
 
 [Introduce the usage scenarios. Group them under ordinary headings when that helps reading.]
 
-### scenario.[module].[name] — [Scenario title]
+#### scenario.[module].[name] — [Scenario title]
 
 - GIVEN [the precondition or state of the world]
 - AND [a further precondition]
@@ -49,15 +60,20 @@ promises. No lists, tables or code.]
 - AND [a further outcome]
 - BUT [an outcome that explicitly does not happen]
 
-### scenario.[module].[failure-name] — [Failure or repeated-invocation scenario]
+#### scenario.[module].[failure-name] — [Failure or repeated-invocation scenario]
 
 - GIVEN [the state that makes the request invalid or repeated]
 - WHEN [the same trigger]
 - THEN [the defined failure or idempotent outcome]
 
-## Ontology
+## Architecture & Realization
 
-[Introduce the Module's world: what exists in its domain and how those things relate.]
+### Design
+
+[Explain how internal responsibilities, state and control/data flow fulfill the external guarantees.
+Link to those guarantees instead of defining them again. Explain significant choices and required
+invariants, the dependencies relied on, and the intended realization or explicit unknowns.
+An inventory of entities alone is not a design explanation; current code is not a missing Spec.]
 
 ### Entities
 
@@ -99,10 +115,12 @@ flowchart TB
     accDescr: [One or two sentences describing the diagram for readers who cannot see it.]
     first["[Entity title]"]
     second["[Collaborator title]"]
+    library["[External capability title]"]
     first -->|[verb]| second
+    first -->|[verb]| library
 ```
 
-## Dependencies and composition
+### Dependencies and composition
 
 [Describe how each direct dependency or child contributes to this Module's promises.] [Remove the
 block below if there are no direct dependencies or children.]
@@ -118,9 +136,15 @@ block below if there are no direct dependencies or children.]
 ]
 ```
 
-## Unresolved information
+### Internal constraints and verification
 
-[Name unknown facts and the behavior they leave unspecified, or state that none remain.]
+[Define any required internal design constraints and their verification scenarios here, with the
+same req./scenario. identities and syntax as above. Omit this subsection if none are needed.]
+
+### Unresolved information
+
+[Name unknown design facts and the promises they prevent realizing, or state that none remain.
+Put unknown consumer behavior in Usage & Contract as well, where users would need that information.]
 ````
 
 Register `references: []` or explicit `{kind, id}` entries on the Module, never in document
@@ -136,8 +160,10 @@ file; each test declares the scenario it verifies, and no Spec section lists tes
 
 An interface may live in another document owned by this Module. Give that file its own
 `concorde-document` ID and the same owner, and add it to this Module's `documents`. Consumers add
-its document ID or this Module ID to their own `references`; they do not register it as owned. Use
-this fragment once in the owner document, after replacing the illustrative fields:
+its document ID or this Module ID to their own `references`; they do not register it as owned.
+Put its consumer-facing definition under `## Usage & Contract` in that document and any internal
+realization notes under `## Architecture & Realization`. Use this fragment once in the owner
+document, after replacing the illustrative fields:
 
 ````markdown
 ```concorde-contract

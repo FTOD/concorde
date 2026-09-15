@@ -5,7 +5,7 @@ audience: shared
 ## Concorde Framework execution profile
 
 This profile applies the independent Spec Protocol to Concorde's runtime. Framework configuration
-uses `profile_version: 12` for the four-part Module model and registry schema 4 for its JSON
+uses `profile_version: 13` for the two-part reader-oriented Module model and registry schema 4 for its JSON
 storage. `.concorde/config.json` declares `profile_version`, `registry`, `protocol` and
 `capability_configuration`. Its `protocol` binding identifies the accepted version and exact
 manifest digest. These configuration and storage versions are Framework compatibility identifiers,
@@ -158,9 +158,13 @@ handoff solely because it updates the Framework's own instructions.
 
 ### Framework authoring and publication conventions
 
-Every Concorde Module's `module.md` carries the four mandatory parts in order: Purpose,
-Requirements, Scenarios and Ontology, and its Ontology holds the Entities and Relationships
-subsections. A requirement is a heading section `req.<module>.<name> — Title` whose first paragraph
+Every Concorde Module's `module.md` starts with Usage & Contract (Purpose, Usage, Requirements,
+Scenarios) and follows with Architecture & Realization (Design, Entities, Relationships), using the
+Protocol's level-2 parts and level-3 subsections. Companion documents put their content in one or
+both parts without repeating the whole entry layout. Usage prose explains correct use before formal
+guarantees; Design explains how responsibilities, flow, state and constraints fulfill those guarantees.
+Internal requirements and verification scenarios stay in the architecture part, with stable IDs and
+one canonical definition. Reading parts do not filter full-file context or widen permissions. A requirement is a heading section `req.<module>.<name> — Title` whose first paragraph
 is one SHALL sentence about the Module; a scenario section holds steps only, and whatever one
 situation must additionally guarantee is written into its steps or prose rather than attached as a
 requirement. The Relationships subsection holds an inline Mermaid flowchart with English `accTitle`

@@ -8,19 +8,37 @@
 
 # Specification Flow
 
-## Purpose
+## Usage & Contract
+
+### Purpose
 
 Specification Flow composes routing, Spec Authoring and Review to prepare or review one Module contract independently of implementation. It owns Spec-stage ordering, accepted-authoring reuse and Spec-review completion, and returns before planning or readiness.
 
-## Requirements
+### Usage
 
-### req.development.specify-loop-boundary — Spec completion is independently available
+Choose `concorde-specify-loop` when you want to prepare or review a Module contract without yet
+planning or implementing code. Supply a task, optional target/focus hints and constraints; the
+Flow selects one owner, authors its documents and independently reviews the resulting contract
+and affected consumers. A primary mutation requires the common committed-base session handoff.
+Resume with the recorded change and compatible intent.
+
+`specify=false` reviews the existing contract. `run_reviews=false` records a Spec review skip only
+where no requirement already exists. Accepted authoring for the same intent and current review
+evidence can be reused; an unrelated review cannot stand in for authoring. Missing meaning or a
+blocking review stops for an explicit decision, without an automatic Spec-repair loop. Completion
+returns Spec-stage artifacts and blockers, not tasks, code-check evidence, readiness or delivery.
+Dev-loop can continue the same task/change afterward. See [specification flow](specify-loop.md)
+for request fields, reuse and failure behavior.
+
+### Requirements
+
+#### req.development.specify-loop-boundary — Spec completion is independently available
 
 Concorde-specify-loop SHALL complete Spec preparation independently of implementation readiness.
 
-## Scenarios
+### Scenarios
 
-### scenario.development.specify-loop — Author and review a Spec independently
+#### scenario.development.specify-loop — Author and review a Spec independently
 
 - GIVEN a developer supplies a Spec-writing or Spec-revision task and constraints
 - WHEN concorde-specify-loop routes the owning Module and runs the selected Spec stages
@@ -32,7 +50,19 @@ Concorde-specify-loop SHALL complete Spec preparation independently of implement
 
 The detailed contract is [Independent Spec completion](specify-loop.md).
 
-## Ontology
+## Architecture & Realization
+
+### Design
+
+The [specification Flow](specify-loop.md#specification-flow-specify_flow) decides whether accepted
+authoring can be reused, invokes Spec Authoring when needed, independently reviews missing/stale
+owner or consumer evidence, and summarizes typed artifacts. Accepted candidate compatibility
+reviews are rechecked against applied bytes rather than repeated blindly.
+
+The candidate records authoring intent separately from review requirements. This prevents a
+standalone review from substituting for authoring and makes prior required reviews sticky across
+skips. There is no automatic Spec-repair edge and no implementation/readiness node; consumers decide
+whether to continue into development.
 
 ### Entities
 
@@ -123,7 +153,8 @@ flowchart TB
     e0 -->|returns current Spec evidence as| domain_completion
 ```
 
-## Dependencies and composition
+
+### Dependencies and composition
 
 ```concorde-dependencies
 [
@@ -178,7 +209,8 @@ flowchart TB
 ]
 ```
 
-## Realization and reuse limits
+
+### Realization and reuse limits
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,

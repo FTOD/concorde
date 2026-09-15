@@ -7,6 +7,8 @@
 ```
 # Topology evolution Agent Flow
 
+## Usage & Contract
+
 Use this Flow when registered targets, document ownership and references, shared truth or routing structure
 must change together. The developer supplies intended behavior and constraints. Main designs a
 candidate registry; fresh target-local authors supply the affected Specs after design acceptance.
@@ -17,7 +19,9 @@ rejection may select another design or authoring loop, but cannot authorize the 
 The loop waits for a required decision and re-admits revised intent and current source identity.
 Topology-designer and target-author invocations retain separate Agent definitions and Harness bindings.
 
-## Topology preparation Flow (`topology_flow`)
+## Architecture & Realization
+
+### Topology preparation Flow (`topology_flow`)
 
 State: `occurrence` (the author being run), `route`, `output` (the main response), `result`.
 The accepted design supplies the candidate registry and one Spec task per new or changed Module.
@@ -56,7 +60,8 @@ flowchart TB
     persist_application --> __end__
 ```
 
-## Topology application Flow (`topology_apply_flow`)
+
+### Topology application Flow (`topology_apply_flow`)
 
 State: `route`, `output`, `result`.
 

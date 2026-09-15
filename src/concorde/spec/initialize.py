@@ -1,4 +1,4 @@
-"""Initialize the four-part Module profile (Profile 12) with an honest, self-contained Module stub."""
+"""Initialize the two-part Module profile (Profile 13) with an honest, self-contained Module stub."""
 from __future__ import annotations
 
 import json
@@ -42,7 +42,7 @@ def empty_target(target_id: str, kind: str, title: str, documents: list[str]) ->
 
 
 def initial_module_text(target_id: str, name: str) -> str:
-    """An honest four-part stub of the known authoring boundary, not invented business design."""
+    """An honest two-part stub of the known authoring boundary, not invented business design."""
     declaration = {"id": "document." + target_id, "owner": target_id, "main_visible": True}
     local = target_id.split(".")[-1]
     entities = [
@@ -54,20 +54,27 @@ def initial_module_text(target_id: str, name: str) -> str:
          "responsibility": "Checks the Project Spec for Concorde Spec Protocol conformance."},
     ]
     return ("```concorde-document\n" + json.dumps(declaration, indent=2) + "\n```\n\n"
-        f"# {name}\n\n## Purpose\n\n"
+        f"# {name}\n\n## Usage & Contract\n\n### Purpose\n\n"
         "This Module identifies the initialized project. Its only supported use is to identify the\n"
         "project and author its intended behavior; business purpose has not yet been supplied.\n\n"
-        "## Requirements\n\n"
+        "### Usage\n\n"
+        "Use this draft to supply the project's intended responsibility and its consumer-facing\n"
+        "behavior before planning implementation. No business entry points, inputs, results, effects,\n"
+        "errors, repeat, cancellation or compatibility behavior have been supplied. Do not infer them\n"
+        "from this authoring example or from existing code.\n\n"
+        "### Requirements\n\n"
         "No Module-level requirement has been supplied. Each requirement, once known, is one decidable\n"
         "SHALL statement in its own section; initialization does not infer requirements from\n"
         "implementation code.\n\n"
-        "## Scenarios\n\n"
+        "### Scenarios\n\n"
         "No business scenario has been supplied. A task that requires business behavior must report\n"
         "Spec incomplete and name the missing scenario. Tests, once written, declare the scenario they\n"
         "verify; no Spec section lists tests.\n\n"
-        "## Ontology\n\n"
-        "The Ontology names what exists in this project's world and how those things relate. Until\n"
-        "business facts are supplied it holds only the authoring boundary below.\n\n"
+        "## Architecture & Realization\n\n"
+        "### Design\n\n"
+        "Business responsibility decomposition, state, control/data flow, dependencies and internal\n"
+        "constraints are unknown. The authoring boundary below explains only how the developer\n"
+        "supplies a Spec and the Framework checks it; it is not an invented business design.\n\n"
         "### Entities\n\n"
         "The known entities are the Project Spec (a document collection), the Developer (its external\n"
         "author) and Concorde Framework (the external software that validates it). No entity lists\n"
@@ -83,7 +90,7 @@ def initial_module_text(target_id: str, name: str) -> str:
         "    accDescr: The Developer specifies the Project Spec and Concorde Framework validates it. Business entities are not yet known.\n"
         "    developer[\"Developer\"]\n    spec[\"Project Spec\"]\n    framework[\"Concorde Framework\"]\n"
         "    developer -->|specifies| spec\n    framework -->|validates| spec\n```\n\n"
-        "## Unresolved information\n\n"
+        "### Unresolved information\n\n"
         "Business scenarios, requirements, entities, relationships and implementation files remain\n"
         "unspecified until the developer supplies them.\n")
 

@@ -8,6 +8,8 @@
 
 # Validation capability
 
+## Usage & Contract
+
 The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/review-and-gaps.md) apply. Artifact references are host-issued paths
@@ -34,7 +36,9 @@ preserves the candidate. Repeating validation recomputes or verifies evidence ag
 Spec and shared-file consumers each retain their own revision and evidence. Structural success and
 scenario coverage do not establish semantic completeness.
 
-## Configured check execution
+## Architecture & Realization
+
+### Configured check execution
 
 Only the host admits configured argv, expands an initial `{python}` to its interpreter, and calls
 Harness's `execute_check(project_root, argv, timeout=..., environment=...)`. The supplied environment

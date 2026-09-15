@@ -42,7 +42,10 @@ ownership.
 Every Module registers a nonempty `documents` collection with exactly one local `module.md` reading
 entry. Registering a physical document establishes its sole owner. Multiple ownership, unregistered
 documents and aliases of a physical file are invalid. Reading order and visibility are presentation
-attributes; all selected files are included in full.
+attributes; all selected files are included in full. Usage & Contract and Architecture & Realization
+organize reading inside those documents, not ownership or context membership. Consumers SHOULD
+cite provider boundary guarantees rather than incidental realization details. An explicit document
+reference may select a separate interface document, but no part heading implicitly trims a file.
 
 The Module registration also declares `references`, a distinct list of typed stable identities:
 
@@ -250,7 +253,7 @@ without transcluding it into consumer pages.
 ## Relationship diagrams
 
 A Module's relationships are authored as Mermaid flowchart fences inside its registered Markdown
-documents. The fences in the Relationships subsection of the reading entry's Ontology are the
+documents. The fences in the Relationships subsection of the reading entry's Architecture & Realization part are the
 authoritative relationship model: their nodes MUST be exactly the owning Module's entity titles,
 excluding included foreign entities and every edge MUST carry a label. Further diagrams in other
 registered documents MAY illustrate behavior or detail. An inline fence is part of its containing

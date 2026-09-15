@@ -8,6 +8,8 @@
 
 # Capability ownership migration
 
+## Architecture & Realization
+
 This ledger records the explicitly authorized direct Spec maintenance against the saved current-byte
 baseline, not committed HEAD. Stable prefixes do not prescribe ownership. Every original document,
 requirement, scenario, entity and canonical contract ID remains defined exactly once; the entries
@@ -61,7 +63,7 @@ Review-result remains the same version-1 wire value, now owned by Review.
 | `scenario.development.validate-check-isolation` | `module.development` · `specs/concorde/development/module.md` | `module.validation` · [definition](validation/module.md#scenario.development.validate-check-isolation) |
 | `scenario.development.validate-ready` | `module.development` · `specs/concorde/development/module.md` | `module.validation` · [definition](validation/module.md#scenario.development.validate-ready) |
 
-## Compatibility and evidence scope
+### Compatibility and evidence scope
 
 All new providers and flows have Concorde Framework as their sole parent; uses and local dependency
 promises describe reuse. The old Development package binding is retained and exact existing wrapper

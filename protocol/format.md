@@ -2,7 +2,7 @@
 
 This chapter defines the mandatory representation of project Spec documents. The information model
 determines what a Spec must explain; these format rules determine how its identity, ownership,
-references, four mandatory parts and structured declarations are expressed. Templates provide
+references, two reader-oriented parts and structured declarations are expressed. Templates provide
 starting layouts for satisfying both. The Protocol chapters and template examples are not themselves
 project Specs.
 
@@ -31,35 +31,60 @@ A Module MUST register exactly one local `module.md` reading entry and its compl
 collection. Fenced code blocks are opaque: headings, list items and declarations inside a fence are
 not interpreted by the rules below.
 
-## The four mandatory sections
+## The two reader-oriented parts
 
-The `module.md` reading entry MUST contain these four ATX headings, at level 1, 2 or 3, with exactly
-this text, outside code fences and in this order:
+The `module.md` reading entry MUST contain these two level-2 ATX headings, exactly once each,
+outside code fences and in this order:
+
+```text
+Usage & Contract
+Architecture & Realization
+```
+
+All substantive content belongs under one of these parts. Document metadata, a level-1 title and
+brief reading navigation MAY precede them. A section extends to the next heading of the same or a
+higher level. The part names are fixed syntax; other prose and optional headings may use the
+project's language.
+
+Usage & Contract MUST contain these direct level-3 subsections, exactly once each and in order:
 
 ```text
 Purpose
+Usage
 Requirements
 Scenarios
-Ontology
 ```
 
-Each section extends to the next heading of the same or a higher level. The **Purpose** section MUST
-contain nonempty prose only: no headings, list items, tables or fenced blocks. The **Requirements**
-section introduces the Module's requirements and the **Scenarios** section its scenarios; their
-definitions MAY appear there or in other single-owner documents of the collection.
+Purpose MUST contain nonempty plain prose only, without nested headings, lists, tables or fences.
+Usage MUST contain a nonempty prose explanation of how and when to use this responsibility, not
+just links or formal definitions. It MAY also contain examples, tables and task-oriented headings.
+Requirements and Scenarios introduce external guarantees and their concrete cases; their canonical
+definitions MAY be here or in registered companion documents. If none are known, state the gap
+explicitly; an initialized stub does not invent business behavior.
 
-The **Ontology** section MUST contain two ATX subsections, each exactly once and in this order, at a
-level deeper than the Ontology heading:
+Architecture & Realization MUST contain these direct level-3 subsections, exactly once each and
+in order:
 
 ```text
+Design
 Entities
 Relationships
 ```
 
-The **Entities** subsection MUST contain at least one `concorde-entities` block. The
-**Relationships** subsection MUST contain at least one Mermaid flowchart fence that satisfies the
-diagram rules below. Other prose and titles may use the project's language, and further sections MAY
-follow.
+Design MUST contain nonempty prose explaining how the Module realizes its promises, or explicitly
+identifying the design facts still unknown. Entities MUST contain at least one `concorde-entities`
+block. Relationships MUST contain at least one Mermaid flowchart fence satisfying the diagram rules
+below. Additional internal requirements, verification scenarios, dependency declarations, rationale
+and realization limits MAY occupy further subsections of this part. An internal requirement is still
+a Module-owned requirement, not a new definition kind.
+
+A registered companion document MUST put its substantive content under one or both of the same
+level-2 part headings, once each and in the same order when both appear. It need not repeat the
+reading entry's required subsections or invent content for a part it does not cover. A mixed topic
+separates consumer behavior from implementation explanation within that document. Splitting a
+collection into exactly two physical files is neither required nor implied. Definitions keep their
+stable IDs and single owner when moved; update links and explicit references when paths change.
+Reading-part boundaries do not filter context, alter permissions or create another Spec kind.
 
 ## Identifier spelling
 
@@ -186,7 +211,7 @@ headings as the renderer defines and are not interpreted.
 ## Entity declarations
 
 A Module declares its entities in `concorde-entities` fenced JSON blocks located in its single-owner
-documents; the reading entry's Entities subsection holds at least one. Each block is a nonempty JSON
+documents under Architecture & Realization; the reading entry's Entities subsection holds at least one. Each block is a nonempty JSON
 array whose entries have exactly the required fields `id`, `title`, `kind` and `responsibility`, and
 any of the optional fields `files`, `pending` and `target_id`:
 
@@ -209,7 +234,7 @@ inventory `files`. Every child and used Module MUST have exactly one entity with
 
 ## Relationship diagrams
 
-The reading entry's Relationships subsection contains one or more Mermaid fences (` ```mermaid `)
+The reading entry's Architecture & Realization / Relationships subsection contains one or more Mermaid fences (` ```mermaid `)
 whose first line begins with `flowchart` or `graph`. Together their node labels MUST be exactly
 the Module's own entity titles, excluding definitions in referenced foreign documents, and every edge MUST carry a label. A node's label is the text inside
 its shape delimiters; when the label spans several lines with `<br/>`, the first line is the
@@ -273,8 +298,8 @@ Templates section. Square-bracket placeholders stand for facts the author must s
 instructions, sample IDs and sample paths are not adopted project facts.
 
 Authors MAY rearrange optional sections or split requirements, scenarios and entities across
-registered single-owner documents while preserving the mandatory syntax, the four mandatory sections
-of the reading entry and the complete information contract. A Scenario fragment is inserted into its
+registered single-owner documents while preserving the mandatory syntax, the two reader-oriented parts
+and their required reading-entry subsections and the complete information contract. A Scenario fragment is inserted into its
 owning Module collection; it does not create another Spec kind. If saved as a separate document, it
 needs its own document declaration and explicit ownership registration.
 

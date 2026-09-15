@@ -8,11 +8,9 @@
 
 # Views
 
-Publish registered Module Specs as a navigable documentation site, deterministically export or
-overlay a skeleton Understand Anything code graph from that same registry, and open an existing
-Understand Anything code graph with the verified installed viewer.
+## Usage & Contract
 
-## Purpose
+### Purpose
 
 Views turns the project's explicit Spec registry into a documentation site that developers and
 reviewers read, deterministically projects that same registry into a skeleton Understand Anything
@@ -26,9 +24,27 @@ declared ownership scope. Its viewer promises stop at admission and launch: the 
 the graph it opens, does not judge whether that graph still agrees with the code, and does not grant
 an agent any access beyond its own host-bound Spec context.
 
-## Requirements
+### Usage
 
-### req.views.registry-derived-pages — Pages and navigation derive from the registry
+Choose among three independent uses: publish registered Specs as a docsite, export or overlay a
+registry-derived UA graph, or open an existing graph in the installed viewer. For a new site, propose
+a scaffold, inspect it and apply the exact proposal; existing site files are not overwritten.
+With site dependencies prepared, build and validate the candidate before publication. A broken
+link, invalid document or stale input prevents promotion and preserves the previous published site.
+[Publication](publication.md) explains scaffolding, custom documentation and reading behavior;
+[pipeline](pipeline.md) defines the build API and records.
+
+The Spec reader presents Usage & Contract before Architecture & Realization, so using a Module
+does not require first reading its entity/file inventory. Both parts remain canonical source text.
+Custom docs are separate human documentation and grant no Spec context. For graphs, use
+[UA export](ua-graph.md) to derive or overlay declared structure and `--check` for drift without
+writes. Use the [viewer launcher](viewer.md) only with an existing valid graph and verified runtime.
+The launcher neither generates a graph nor verifies agreement with code; no rendered view proves
+semantic completeness or authorizes a change.
+
+### Requirements
+
+#### req.views.registry-derived-pages — Pages and navigation derive from the registry
 
 Publication SHALL derive Module Spec pages and their navigation only from the explicit registry.
 
@@ -37,22 +53,22 @@ and project-owned custom docs are presentation surfaces outside that membership.
 The Module Specs sidebar follows registry parentage alone; custom docs use independent tabs. See
 [req.views.no-directory-scanning](#req.views.no-directory-scanning).
 
-### req.views.custom-docs — Separate project documentation
+#### req.views.custom-docs — Separate project documentation
 
 Publication SHALL support project-owned custom docs through independent tabs outside Module Spec registration and agent Spec context.
 
 The generic template defaults to Module Specs alone and publishes no unregistered Projections
 section. See [custom docs](publication.md#scenario.views.custom-docs) for configuration and migration.
 
-### req.views.no-directory-scanning — No directory scanning or link-based discovery
+#### req.views.no-directory-scanning — No directory scanning or link-based discovery
 
 Publication SHALL NOT discover Spec documents by scanning directories or following links.
 
-### req.views.one-page-per-document — One canonical page per registered document
+#### req.views.one-page-per-document — One canonical page per registered document
 
 A physical Spec document SHALL publish at exactly one canonical page regardless of how many Modules reference it.
 
-### req.views.current-internal-links — Published internal links resolve
+#### req.views.current-internal-links — Published internal links resolve
 
 Publication SHALL promote only a candidate in which every internal navigation link retained in its published documents resolves to an available destination and, when specified, an existing anchor.
 
@@ -63,21 +79,21 @@ the continued availability of another website. Current-owner legacy aliases and 
 behavior are defined in [publication](publication.md#scenario.views.publish-legacy-redirect)
 and [pipeline](pipeline.md#scenario.views.validate-candidate-mismatch).
 
-### req.views.no-agent-context-grant — No extra agent context from a rendered view
+#### req.views.no-agent-context-grant — No extra agent context from a rendered view
 
 A rendered page or generated view SHALL NOT itself grant an agent invocation additional Spec context beyond its own host-bound target snapshot.
 
-### req.views.diagram-source-identity — Mermaid fence is the sole diagram source
+#### req.views.diagram-source-identity — Mermaid fence is the sole diagram source
 
 An inline Mermaid fence in a Module's Relationships subsection SHALL be its sole authored diagram source.
 
-### req.views.no-external-diagram-record — No external diagram record or output
+#### req.views.no-external-diagram-record — No external diagram record or output
 
 Publication SHALL create no external diagram record or `generated/diagrams` output.
 
 The authored fence is the sole source; publication produces no external record derived from it.
 
-### req.views.no-docsite-graph-view — No docsite graph view
+#### req.views.no-docsite-graph-view — No docsite graph view
 
 Publication SHALL NOT expose the former Module, Scenario or entity-relationship graph view.
 
@@ -91,53 +107,53 @@ Concorde's own source-checkout site has an independent Agent Flows page describi
 execution. It is excluded from the consumer template and does not derive a graph from the Spec
 registry. See [Agent execution publication](pipeline.md#scenario.views.agent-flows).
 
-### req.views.agent-flows — Concorde-only execution diagrams
+#### req.views.agent-flows — Concorde-only execution diagrams
 
 Concorde's own docsite SHALL publish an Agent Flows tab whose LangGraph nodes and edges come from
 the current executable factories and whose explanations distinguish execution, wrappers and
 unimplemented design.
 
-### req.views.production-preview-isolation — Production builds preserve preview output
+#### req.views.production-preview-isolation — Production builds preserve preview output
 
 A production build SHALL NOT clear or overwrite the development preview's generated directory.
 
-### req.views.hash-format — Digests use the sha256 hex format
+#### req.views.hash-format — Digests use the sha256 hex format
 
 Every content or source digest SHALL be `sha256:` followed by 64 lowercase hexadecimal digits.
 
-### req.views.safe-relative-paths — Member paths are safe relative POSIX paths
+#### req.views.safe-relative-paths — Member paths are safe relative POSIX paths
 
 Every member path SHALL use POSIX separators without absolute paths, backslashes, empty, dot or traversal components, or symlinks.
 
-### req.views.promote-atomic — Promotion restores the prior destination on failure
+#### req.views.promote-atomic — Promotion restores the prior destination on failure
 
 `promoteCandidate` SHALL attempt to restore the prior destination on a failed move or removal.
 
-### req.views.promote-requires-checked-candidate — Promotion runs only on checked candidates
+#### req.views.promote-requires-checked-candidate — Promotion runs only on checked candidates
 
 `promoteCandidate` SHALL NOT be called on unchecked or stale output.
 
-### req.views.no-contract-context-expansion — Contract edges do not expand loaded context
+#### req.views.no-contract-context-expansion — Contract edges do not expand loaded context
 
 The registry loader SHALL NOT follow a `concorde-contract` edge to import additional Module context.
 
-### req.views.no-graph-generation — Launcher leaves graph contents unchanged
+#### req.views.no-graph-generation — Launcher leaves graph contents unchanged
 
 The viewer launcher SHALL NOT modify graph contents, including generating or rewriting the graph it opens.
 
-### req.views.no-graph-freshness-verification — Launcher never verifies graph freshness
+#### req.views.no-graph-freshness-verification — Launcher never verifies graph freshness
 
 The viewer launcher SHALL NOT verify the freshness of the graph it opens against source.
 
-### req.views.no-dependency-install — Launcher resolves no dependencies or network access
+#### req.views.no-dependency-install — Launcher resolves no dependencies or network access
 
 The viewer launcher SHALL NOT resolve dependencies or perform network acquisition.
 
-### req.views.cli-syntax-errors — Argument errors exit separately from launch failures
+#### req.views.cli-syntax-errors — Argument errors exit separately from launch failures
 
 Invalid launch syntax or a port outside 0-65535 SHALL exit through argument parsing with code 2, distinct from a failed launch's exit code 3.
 
-### req.views.ua-graph-registry-only — Exported skeleton derives only from the registry
+#### req.views.ua-graph-registry-only — Exported skeleton derives only from the registry
 
 The UA graph exporter SHALL limit derivation inputs to the explicit registry, registered documents, declared implementation listings and an admitted existing graph.
 
@@ -146,22 +162,31 @@ rules; it does not authorize discovery of additional project files or Spec membe
 skeletons derive their structure solely from registered inputs, with initial project metadata as
 defined in the local serialized graph contract.
 
-### req.views.ua-graph-idempotent — Re-export replaces only Concorde-owned elements
+#### req.views.ua-graph-idempotent — Re-export replaces only Concorde-owned elements
 
 A repeated export SHALL replace only the nodes, edges and layers in the ownership scope defined by scenario.views.ua-graph-overlay, leaving every other element of an existing graph unchanged.
 
-## Scenarios
+### Scenarios
 
 Scaffold and top-level publication scenarios are defined in [publication](publication.md).
 Registry loading, materialization and build/promotion scenarios are defined in
 [pipeline](pipeline.md). Viewer launch scenarios are defined in [viewer](viewer.md), and UA graph
 export scenarios in [ua-graph](ua-graph.md).
 
-## Ontology
+## Architecture & Realization
 
-The Ontology names the publication, viewer and UA export programs, their interfaces and the data
-they exchange. Removing the docsite graph view does not remove authored relationship diagrams,
-registry relationships or the independent UA facilities.
+### Design
+
+Publication uses registry admission, materialization, candidate build, link/source validation and
+promotion as distinct stages. Keeping the previous successful site until candidate validation
+supports the preservation guarantee. The [pipeline design](pipeline.md#architecture--realization)
+records build identities and promotion mechanics. Rendering keeps the two reading parts in source
+order and puts derived file listings in the internal part; it never transcludes provider contracts.
+
+Scaffolding owns only proposed site files. UA export independently overlays declared structure onto
+a graph under its reserved ownership selectors; viewer launch independently validates graph and
+runtime identity. Neither operation supplies a new Spec authority. The entities below bind these
+separate responsibilities and the shared file-transaction implementation.
 
 ### Entities
 
@@ -242,7 +267,7 @@ precedence over a containing directory entry.
     "id": "entity.views.docsite-build-interface",
     "title": "Docsite build interface",
     "kind": "interface",
-    "responsibility": "The TypeScript requireScoped/loadScopedRegistry/materializeScoped/buildSite/promoteCandidate functions and Docusaurus plugin hooks, plus the project-local npm run validate/npm run build commands, that admit only a Profile 12 project, load the registry, stage Markdown and navigation, build and validate a candidate and promote only a checked result."
+    "responsibility": "The TypeScript requireScoped/loadScopedRegistry/materializeScoped/buildSite/promoteCandidate functions and Docusaurus plugin hooks, plus the project-local npm run validate/npm run build commands, that admit only a Profile 13 project, load the registry, stage Markdown and navigation, build and validate a candidate and promote only a checked result."
   },
   {
     "id": "entity.views.viewer-launch-command",
@@ -380,7 +405,8 @@ flowchart TB
     publicationDocsite -->|uses| module_harness
 ```
 
-## Dependencies and composition
+
+### Dependencies and composition
 
 ```concorde-dependencies
 [
@@ -412,12 +438,14 @@ flowchart TB
 ]
 ```
 
-## Unresolved information
 
-Publication accepts Profile 12 projects only. `requireScoped` refuses any other `profile_version`
+### Unresolved information
+
+Publication accepts Profile 13 projects only. `requireScoped` refuses any other `profile_version`
 with an explicit error, and no compatibility rendering path exists for an older profile: migrating
 such a project is a separate, explicit topology change that this Module does not perform.
 
-## Ownership, context and implementation status
+
+### Ownership, context and implementation status
 
 The loaders and exporters implement publication schema 19, unique owners, reference provenance, canonical contract anchors and UA reference edges. Reference inclusion creates no transclusion, implementation grant or new page authority.

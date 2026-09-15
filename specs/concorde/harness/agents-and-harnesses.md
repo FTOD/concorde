@@ -8,13 +8,15 @@
 
 # Agents and Harnesses
 
+## Usage & Contract
+
 This document defines the required Agent model for Concorde Framework. The requirements below are
 the standard for implementation review; an existing role prompt or launcher is not evidence that
 the complete model is implemented. Agent, worker, Harness and Capability are Framework entities, not
 new Concorde Spec Protocol target kinds. Their providing Modules retain the explicit registered Spec
 structure.
 
-## The Agent and Harness model
+### The Agent and Harness model
 
 **Harness = context + control flow + models + permissions and environment, per worker.**
 **Agent = role Spec + worker profile (task contract, workspace, tools, children, timeout).**
@@ -48,7 +50,8 @@ contracts. Loading an instruction or mentioning a tool does not itself grant aut
 not worker context: a Skill is the installed projection of a public Capability for the developer's
 own agent runtime. The four context kinds an invocation receives are defined in [context](context.md).
 
-## A1. Agent Spec and Python definition
+
+### A1. Agent Spec and Python definition
 
 Every named Agent MUST have an identifiable authored role `spec.md` under `agents/<name>/`. It MUST
 describe its responsibilities, goals, accepted input and feedback, expected results, completion
@@ -70,7 +73,8 @@ implementation context are separate admitted inputs about the work to perform. N
 implicitly grants access to the other's neighboring files. This filename convention adds no filename
 requirement to ordinary Module Specs.
 
-## A2. Worker profile and Harness
+
+### A2. Worker profile and Harness
 
 A Harness MUST have an explicit identity and inspectable configuration. The per-worker part is the
 worker profile: its workspace kind (`capsule` for Spec-only work, `project` for work that reads or
@@ -93,7 +97,8 @@ required by [Agent Flows, Agent Loops and feedback](graphs-and-loops.md). Execut
 distinguish model reasoning, tool execution and human decisions. A model adapter, virtual
 environment or bag of tools alone is not the complete Harness.
 
-## A3. Capability use and composition
+
+### A3. Capability use and composition
 
 A Capability MUST declare its identity, purpose, inputs, results, effects, constraints and relevant
 failure or retry behavior. Its meaning is the functionality it provides, not the Python file that
@@ -112,7 +117,8 @@ compose an operation does not make it callable by every worker. Existing `capabi
 and their exposure and context-selection properties describe Concorde's current host adapter; the
 Development Module registers that inventory.
 
-## A4. Constraints, context and invocation
+
+### A4. Constraints, context and invocation
 
 Constraints/Permissions MUST cover applicable context access, tool calls, file and process effects,
 network and credential use, and execution limits. The trusted runtime MUST enforce the effective
@@ -130,7 +136,8 @@ decision, cancellation, an execution failure and exhaustion of the configured ex
 Failure MUST NOT cause an automatic retry with broader permissions. Feedback that requests a new
 goal, different context or additional authority MUST pass admission again before dependent work.
 
-## A5. One-level delegation
+
+### A5. One-level delegation
 
 A worker MAY delegate a focused subtask only to a child its own profile declares, and only through
 its `subagent` tool. A child is a lightweight pi-subagents Markdown definition under
@@ -146,7 +153,8 @@ granted files, and only the worker's single submitted result leaves the process.
 workers does not exist: Flows compose workers, and one worker never starts another. The capability
 ceiling that bounds delegation, and its enforcement, are defined in [execution](execution.md).
 
-## Common worker rules
+
+### Common worker rules
 
 Worker instructions have two tiers. The first tier is common to every worker: the rules in
 `prompts/workers/common.md` (how to read the input and the granted files, what the tool gate
@@ -155,7 +163,8 @@ Protocol rule bundle, which the host appends to every system prompt. The second 
 own profile and role Spec, managed with the Flow that launches it; its static model selection is
 exposed in project configuration.
 
-## Registered workers
+
+### Registered workers
 
 The twelve workers are each one Python module under the top-level `agents/` package, declared in
 `agents/__init__.py`. Exact Agent source files have the single authoritative owner
@@ -259,7 +268,8 @@ redundancy so that this Spec explains the catalog without reading Python; it nev
 that code does not implement. `capabilities` records which Development capabilities launch the
 worker; it is not the worker's capability context.
 
-## Task contracts
+
+### Task contracts
 
 Each worker fulfils exactly one task contract. The table uses these typed pairs: **stage** =
 `concorde-agent-stage-context` / `concorde-agent-stage-result`, **review** =
@@ -303,7 +313,9 @@ Every phase, target, repair and review has a fresh invocation identity and froze
 role never shares a conversation, private reasoning, stage inputs or write grant between workers.
 Only explicitly admitted structured artifacts cross stages.
 
-## Responsibilities and implementation boundaries
+## Architecture & Realization
+
+### Responsibilities and implementation boundaries
 
 The common Development host dispatches the declared provider and Flow contracts and schedules
 invocations. Planning owns plan/task semantics, Implementation owns task fulfillment, and each

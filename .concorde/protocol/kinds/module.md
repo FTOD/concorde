@@ -1,9 +1,10 @@
 # Module specifications
 
-A Module Spec describes one cohesive software responsibility in four parts. Its purpose,
-requirements and scenarios say what the Module promises; its Ontology says how the Module is built.
-Together they answer what the Module is for, what it guarantees, how it reacts in each situation it
-is used in, what it consists of and how those parts collaborate.
+A Module Spec describes one cohesive software responsibility in two parts. **Usage & Contract**
+serves consumers: what it is for, when and how to use it, and what they can rely on.
+**Architecture & Realization** serves implementers: how responsibilities, state, collaborations and
+implementation bindings fulfill those promises. These are two readings of one consistent Spec,
+not separate authorities or a documentation summary competing with the contract.
 
 A Module is a unit of specification, not a unit of implementation. It need not correspond to a
 package, directory, process, service or other physical unit: its realization may be spread across
@@ -15,33 +16,47 @@ where that responsibility is realized and do not define it.
 ```mermaid
 flowchart TB
     accTitle: Information inside a Module Spec
-    accDescr: A Module Spec has a functional half and an architecture half. The functional half states the purpose, the Module-level requirements and the scenarios. The architecture half is the Ontology: the entities and the labeled relationships between them. Entities may bind implementation files, and tests among those files declare the scenarios they verify.
+    accDescr: One Module Spec serves consumers through Usage and Contract and implementers through Architecture and Realization. Usage prose explains entry points and outcomes; requirements and scenarios make promises precise. Design explains how the promises are fulfilled, with entities, relationships and file bindings. Internal constraints remain normative without duplicating external guarantees.
     module["Module Spec"]
-    purpose["Purpose<br/>plain prose"]
-    requirements["Requirements<br/>one SHALL statement each"]
-    scenarios["Scenarios<br/>GIVEN, WHEN, THEN"]
-    ontology["Ontology"]
-    entities["Entities<br/>submodules, programs, files, records, actors"]
-    relationships["Relationships<br/>directed edges with verb labels"]
+    usage["Usage & Contract<br/>when and how to use it"]
+    promises["Requirements and scenarios<br/>consumer guarantees"]
+    architecture["Architecture & Realization<br/>how promises are fulfilled"]
+    design["Design and internal constraints<br/>responsibilities, flow, state, rationale"]
+    entities["Entities and relationships<br/>one identity per definition"]
     files["Implementation files"]
-    module -->|functional spec| purpose
-    module -->|functional spec| requirements
-    module -->|functional spec| scenarios
-    module -->|architecture spec| ontology
-    ontology -->|consists of| entities
-    ontology -->|connects entities by| relationships
+    module -->|serves consumers through| usage
+    usage -->|makes precise with| promises
+    module -->|serves implementers through| architecture
+    architecture -->|explains| design
+    design -->|fulfills| promises
+    architecture -->|records| entities
     entities -->|may bind| files
-    files -->|tests declare| scenarios
+    files -->|tests verify| promises
 ```
 
-## Purpose
+## Usage & Contract
+
+A consumer must be able to understand correct use without reconstructing internal machinery.
+Explain the audience, scope and non-goals, the concepts the consumer must understand, when this
+responsibility applies, prerequisites, entry points and representative use, results and effects,
+and failure and repeat behavior. State cancellation and compatibility behavior where applicable;
+if unsupported, say so. A logical Module may be used through a composed workflow or a conceptual
+agreement rather than a callable API.
+
+This is the canonical usage documentation, not a second shortened copy of formal behavior.
+Introduce the normal path before unusual cases. Use ordinary explanations and examples to make
+requirements and scenarios navigable. Link to canonical shared definitions rather than repeating
+schemas. A consumer should not have to know a repository lock's implementation to learn that
+concurrent publication is rejected or serialized.
+
+### Purpose
 
 The purpose is a short plain-prose statement of what the Module is for, who uses it and the boundary
 of its promises. It contains no lists, tables or structured blocks. It is the first thing a reader
 sees and the sentence a parent Module or consumer can rely on when it names this Module's
 responsibility.
 
-## Requirements
+### Requirements
 
 A requirement is a promise the Module as a whole makes. It has a stable identity, a title and a
 statement: one sentence containing SHALL or SHALL NOT. Requirements are the coarse statement of what
@@ -62,11 +77,13 @@ Each requirement obeys three rules:
 - **Stable and unique.** The identity names the requirement for its whole life. The title and the
   prose around the statement may change; the identity does not.
 
-A requirement may prescribe technology or structure when that is the promise: "Checkout control flow
-SHALL be a LangGraph graph" is a valid requirement. Explanatory prose may follow the statement, and
-requirements MAY be grouped under ordinary headings for reading.
+A requirement may prescribe technology or structure: "Checkout control flow SHALL be a LangGraph
+graph" is valid, but belongs in Architecture & Realization unless consumers must depend on that
+technology at the boundary. External guarantees stay here. Explanatory prose may follow a statement,
+and requirements MAY be grouped under ordinary headings for reading. Placement never weakens an
+internal constraint or changes its Module ownership.
 
-## Scenarios
+### Scenarios
 
 A scenario describes one concrete situation in which the Module is used and how the Module must
 react. It has a stable identity, a title and a sequence of steps:
@@ -93,7 +110,7 @@ A scenario is the unit of verification: it is specific enough that a set of test
 Whatever the situation must additionally guarantee, such as a limit, an invariant that holds
 afterwards or a thing that must not happen, is written into the scenario's own steps or into prose
 inside its section. A scenario does not carry requirements of its own; a promise that holds across
-situations belongs in the Requirements part.
+situations belongs in a Module-level requirement in the appropriate reader-oriented part.
 
 Error paths, partial outcomes and repeated invocations are scenarios of their own. A scenario in
 which the same checkout is submitted twice states what the second submission does; a scenario in
@@ -105,18 +122,31 @@ Module's relied-upon promises SHOULD cite the provider's scenario or requirement
 they exist, so that both Modules refer to the same promise.
 
 An interface is a means of using the Module: an API, function, command, file, protocol or event. It
-appears as an entity in the Ontology, and the scenarios triggered through it state its inputs,
+has one entity identity in the architecture inventory, while this part explains its use and the
+scenarios triggered through it state its inputs,
 preconditions, outputs, effects, errors, compatibility expectations and retry or idempotency
 behavior. When an interface exchanges a structured value, a structured contract declaration records
 the agreed shape; the declaration does not replace the scenarios.
 
-## Ontology
+## Architecture & Realization
 
-The Ontology is the Module's account of its world: the things that exist in its domain and how those
-things stand to one another. It has two parts, entities and relationships. The term carries no
-formal apparatus; it names the section in which the Module states what it consists of, what it
-interacts with at its boundary and how those things connect. A program, a file, a record, an
-external actor and a domain concept all belong to it.
+### Design
+
+Explain how the Module fulfills its external contract: its internal responsibility decomposition,
+control and data flow, state lifecycle, dependency choices, failure containment and relevant design
+rationale. Connect these decisions to the guarantees they realize using links, not restatements.
+Distinguish required constraints, changeable design choices and unresolved realization work.
+The Spec is intended design, not a transcript of the code or a claim of implementation conformance.
+
+Internal requirements and scenarios use the same stable-ID syntax as external ones. For example,
+"publication SHALL hold the repository lock during its ref update" is an internal constraint;
+"a conflict leaves the destination unchanged" is external behavior. Define each once. An internal
+verification scenario may exercise an internal state transition instead of a consumer invocation.
+Tests declare either kind by ID in the same way.
+
+Entities and relationships support this explanation but do not replace it. The inventory may name
+domain concepts and actors as well as implementation programs; their consumer-facing meaning is
+explained in Usage & Contract, without defining those identities again.
 
 ### Entities
 
@@ -132,7 +162,7 @@ concept entity) and the Inventory Module it uses (a used-Module entity). The cus
 actor at the boundary.
 
 Every child Module and every used Module MUST appear as an entity of the containing or consuming
-Module, so that the Ontology shows the composition and dependency the registry records. Domain
+Module, so that the architecture inventory shows the composition and dependency the registry records. Domain
 concepts such as a reservation or account, and external actors such as a customer, MAY appear as
 entities without becoming software Modules.
 
@@ -141,7 +171,7 @@ entities without becoming software Modules.
 The relationships connect the entities. Each relationship is a directed edge from one entity to
 another with a free-text label, which SHOULD be a verb: the checkout service "reserves stock
 through" Inventory, the order form "submits to" the checkout service, the checkout service "writes"
-the order record. The set of labeled edges, drawn as a diagram, is the Module's architecture. A
+the order record. The set of labeled edges, drawn as a diagram, is the Module's relationship model. A
 diagram MUST name exactly the Module's entities and label every edge; the prose around it explains
 invariants, state transitions and completion or failure conditions the edges cannot show.
 
@@ -241,7 +271,11 @@ the scenario is met.
 The Module's resolved context MUST make its purpose, requirements, scenarios, entities and
 relationships understandable. Authors split owned topics across documents and explicitly include
 canonical provider definitions using the Module registration's references. The owned `module.md`
-entry holds the four mandatory parts; it does not replace any owned or referenced file.
+entry introduces both reader-oriented parts; companion documents carry one or both as appropriate.
+It does not replace any owned or referenced file. These reading boundaries do not change context
+resolution: all explicitly selected files remain complete. A consumer SHOULD rely on provider
+Usage & Contract definitions, not on incidental implementation choices; a document reference can
+select a separately owned provider interface document when that is the complete needed agreement.
 
 Ownership remains with the defining Module. Referenced entities do not enter the consumer's main
 diagram or implementation binding union. The consumer describes its role, collaboration conditions,
@@ -256,11 +290,12 @@ Copy the Markdown block below into the Module's `module.md` reading entry, repla
 project facts and explicitly register the complete collection. This is a starter layout for the
 [required format](../format.md), not another kind of Spec or a completed contract.
 
-The four headings Purpose, Requirements, Scenarios and Ontology are mandatory in this order, and
-Ontology holds the Entities and Relationships subsections. Requirement and scenario definitions and
-further entity blocks may also live in other single-owner documents of the collection. The Mermaid
-flowchart must name exactly the declared entity titles and label every edge with the relationship
-verb.
+The two level-2 parts serve different readers without creating different contracts. Usage &
+Contract contains Purpose, Usage, Requirements and Scenarios; Architecture & Realization contains
+Design, Entities and Relationships. These are level-3 subsections in the order shown. Additional
+internal constraints and scenarios belong in the architecture part, not in the consumer guide.
+Companion documents use one or both part headings without repeating this whole starter. The Mermaid
+relationship model names exactly the declared entity titles and labels every edge.
 
 ````markdown
 ```concorde-document
@@ -273,26 +308,36 @@ verb.
 
 # [Module title]
 
-## Purpose
+## Usage & Contract
+
+### Purpose
 
 [Two or three sentences of plain prose: what this Module is for, who uses it and the boundary of its
 promises. No lists, tables or code.]
 
-## Requirements
+### Usage
+
+[Explain when to use this Module, who or what consumes it, the concepts and prerequisites needed,
+and a representative path from input to result. Name actual entry points or explain its role in a
+composition; do not invent a public API for a logical responsibility. Explain effects, errors,
+repeat behavior, cancellation and compatibility where applicable. Include examples or links to
+canonical owned interface definitions; do not require readers to reconstruct use from scenarios.]
+
+### Requirements
 
 [Introduce the Module-level requirements. Each is one decidable SHALL statement.]
 
-### req.[module].[name] — [Requirement title]
+#### req.[module].[name] — [Requirement title]
 
 [One sentence that SHALL or SHALL NOT hold for the Module as a whole.]
 
 [Optional explanatory prose: rationale, scope, or a pointer to the scenarios that exercise it.]
 
-## Scenarios
+### Scenarios
 
 [Introduce the usage scenarios. Group them under ordinary headings when that helps reading.]
 
-### scenario.[module].[name] — [Scenario title]
+#### scenario.[module].[name] — [Scenario title]
 
 - GIVEN [the precondition or state of the world]
 - AND [a further precondition]
@@ -301,15 +346,20 @@ promises. No lists, tables or code.]
 - AND [a further outcome]
 - BUT [an outcome that explicitly does not happen]
 
-### scenario.[module].[failure-name] — [Failure or repeated-invocation scenario]
+#### scenario.[module].[failure-name] — [Failure or repeated-invocation scenario]
 
 - GIVEN [the state that makes the request invalid or repeated]
 - WHEN [the same trigger]
 - THEN [the defined failure or idempotent outcome]
 
-## Ontology
+## Architecture & Realization
 
-[Introduce the Module's world: what exists in its domain and how those things relate.]
+### Design
+
+[Explain how internal responsibilities, state and control/data flow fulfill the external guarantees.
+Link to those guarantees instead of defining them again. Explain significant choices and required
+invariants, the dependencies relied on, and the intended realization or explicit unknowns.
+An inventory of entities alone is not a design explanation; current code is not a missing Spec.]
 
 ### Entities
 
@@ -351,10 +401,12 @@ flowchart TB
     accDescr: [One or two sentences describing the diagram for readers who cannot see it.]
     first["[Entity title]"]
     second["[Collaborator title]"]
+    library["[External capability title]"]
     first -->|[verb]| second
+    first -->|[verb]| library
 ```
 
-## Dependencies and composition
+### Dependencies and composition
 
 [Describe how each direct dependency or child contributes to this Module's promises.] [Remove the
 block below if there are no direct dependencies or children.]
@@ -370,9 +422,15 @@ block below if there are no direct dependencies or children.]
 ]
 ```
 
-## Unresolved information
+### Internal constraints and verification
 
-[Name unknown facts and the behavior they leave unspecified, or state that none remain.]
+[Define any required internal design constraints and their verification scenarios here, with the
+same req./scenario. identities and syntax as above. Omit this subsection if none are needed.]
+
+### Unresolved information
+
+[Name unknown design facts and the promises they prevent realizing, or state that none remain.
+Put unknown consumer behavior in Usage & Contract as well, where users would need that information.]
 ````
 
 Register `references: []` or explicit `{kind, id}` entries on the Module, never in document
@@ -388,8 +446,10 @@ file; each test declares the scenario it verifies, and no Spec section lists tes
 
 An interface may live in another document owned by this Module. Give that file its own
 `concorde-document` ID and the same owner, and add it to this Module's `documents`. Consumers add
-its document ID or this Module ID to their own `references`; they do not register it as owned. Use
-this fragment once in the owner document, after replacing the illustrative fields:
+its document ID or this Module ID to their own `references`; they do not register it as owned.
+Put its consumer-facing definition under `## Usage & Contract` in that document and any internal
+realization notes under `## Architecture & Realization`. Use this fragment once in the owner
+document, after replacing the illustrative fields:
 
 ````markdown
 ```concorde-contract
@@ -434,10 +494,12 @@ Spec kind or an assertion that the example Modules and paths exist in a project.
 
 # Scenario fragment
 
-Use this fragment within a Module's registered collection to describe one usage scenario. A scenario
+Use this fragment within a Module's registered collection to describe one external usage scenario
+under Usage & Contract, or one internal verification scenario under Architecture & Realization. A scenario
 belongs to the Module that solely owns its defining document; it is not an independent Spec kind. If
 the fragment occupies a separate physical document, add the required `concorde-document` block with
-that single Module as its owner and register the document in the Module's collection. The [required
+that single Module as its owner, the appropriate level-2 reader-part heading, and register the
+document in the Module's collection. The [required
 format](../format.md) still applies.
 
 ````markdown
@@ -457,7 +519,7 @@ limit or invariant that must hold in this situation, or identifies unresolved fa
 Write one scenario per situation: the successful path, each defined failure and each repeated or
 concurrent invocation whose outcome the Module promises. Everything the situation guarantees goes
 into its steps or its prose; a promise that holds across situations is a Module requirement and is
-defined in the Requirements part instead. Keep the scenario ID stable when moving the fragment or
+defined once as a requirement in the appropriate reader-oriented part instead. Keep the scenario ID stable when moving the fragment or
 changing its title; the ID is also the anchor by which links and tests refer to the scenario. Naming
 the scenario does not trim the Module's complete contract context: a query for the scenario selects
 every document owned by its Module plus the full files included by that Module's explicit

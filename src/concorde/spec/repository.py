@@ -1,4 +1,4 @@
-"""Module contracts with four mandatory parts and entity-listed implementation files (Profile 12).
+"""Two-part Module contracts and entity-listed implementation files (Profile 13).
 
 Module composition, dependency and file listing are independent relations. Resolving a Module
 never reads a collaborator's body or a listed file's contents; requirements, scenarios and
@@ -19,8 +19,8 @@ from .frontmatter import parse_document
 from .schema import ContractError, admit, validate
 
 
-PROFILE_VERSION = 12
-PROTOCOL_VERSION = "5.5.0"
+PROFILE_VERSION = 13
+PROTOCOL_VERSION = "6.0.0"
 REGISTRY_SCHEMA = 4
 KINDS = frozenset({"module"})
 SPEC_KINDS = frozenset({"module"})
@@ -37,8 +37,9 @@ STEP = re.compile(r"^(GIVEN|WHEN|THEN|AND|BUT)[ \t]+(\S.*)$")
 REQUIREMENT_HEADING = re.compile(r"^(req\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)[ \t]+[—–-][ \t]+(\S.*)$")
 REQUIREMENT_ITEM = re.compile(r"^req\.[a-z0-9.-]+[ \t]*:")
 SHALL = re.compile(r"\bSHALL(?: NOT)?\b")
-MANDATORY_SECTIONS = ("Purpose", "Requirements", "Scenarios", "Ontology")
-ONTOLOGY_SECTIONS = ("Entities", "Relationships")
+MANDATORY_SECTIONS = ("Usage & Contract", "Architecture & Realization")
+USAGE_SECTIONS = ("Purpose", "Usage", "Requirements", "Scenarios")
+ARCHITECTURE_SECTIONS = ("Design", "Entities", "Relationships")
 ANCHOR_PREFIXES = ("scenario.", "req.", "entity.", "contract.")
 CONTROL_PREFIXES = (".concorde/", ".git/", ".agents/", ".claude/", ".codex/", "generated/")
 SKIPPED_DIRECTORIES = frozenset({"node_modules", "__pycache__", ".venv", "build", "dist"})
@@ -290,7 +291,7 @@ class SpecRepository:
         self.package_root = Path(package_root).resolve() if package_root else Path(__file__).resolve().parents[3]
         self.config = decode(read_file(self.root, ".concorde/config.json").decode())
         if self.config.get("profile_version") != PROFILE_VERSION:
-            raise SpecError("Profile 12 is required; older profiles need explicit migration", "unsupported_profile")
+            raise SpecError("Profile 13 is required; older profiles need explicit migration", "unsupported_profile")
         if set(self.config) != {"profile_version", "registry", "protocol", "capability_configuration"}:
             raise SpecError("configuration fields must be profile_version, registry, protocol, capability_configuration")
         self.registry_path = safe_path(self.config["registry"])

@@ -8,6 +8,8 @@
 
 # Context assessment
 
+## Usage & Contract
+
 The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/review-and-gaps.md) apply. Artifact references are host-issued paths
@@ -33,19 +35,20 @@ Reassessment after an explicit contract repair uses fresh inputs; an unchanged b
 blocked. Successful assessment resolves historical phase gaps only after any associated authored
 output has passed host acceptance. It proves no universal completeness.
 
-## Requirements
+### Requirements
 
-### req.planning.assessment-context — Assess only the selected contract
+#### req.planning.assessment-context — Assess only the selected contract
 
 Planning SHALL assess task sufficiency only from the selected Module's complete admitted Spec context.
 
-### req.planning.assessment-gap — Attribute necessary contract gaps
+#### req.planning.assessment-gap — Attribute necessary contract gaps
 
 Planning SHALL report a necessary missing contract with its question, blocked step, needed contract and host-bound target/context provenance.
 
-## Scenarios
 
-### scenario.planning.assessment-sufficient — The admitted contract supports the task
+### Scenarios
+
+#### scenario.planning.assessment-sufficient — The admitted contract supports the task
 
 - GIVEN a selected Module whose dependency declarations agree with its registered relationships
 - AND its complete admitted Spec supplies the contracts necessary for the task
@@ -53,7 +56,7 @@ Planning SHALL report a necessary missing contract with its question, blocked st
 - THEN it returns sufficient without authored documents, a plan or tasks
 - AND the assessment concerns that task and does not prove universal semantic completeness
 
-### scenario.planning.assessment-gap — A necessary promise is missing
+#### scenario.planning.assessment-gap — A necessary promise is missing
 
 - GIVEN the selected Module's complete admitted Spec lacks a contract needed for the task
 - WHEN context assessment reaches the dependent judgment

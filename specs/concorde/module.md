@@ -8,7 +8,9 @@
 
 # Concorde Framework
 
-## Purpose
+## Usage & Contract
+
+### Purpose
 
 Concorde Framework helps developers author and maintain architecture-aware Module Specs, understand
 their projects through a Spec docsite and Understand Anything graph views, and guide agents with
@@ -21,58 +23,90 @@ The reflection system retains feedback and persistent gaps attributed to Modules
 supports investigation within their declared boundaries, and routes approved resolutions into
 fresh development tasks while preserving explicit developer control of report disposition.
 
-It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 5.5.0; its complete context is derived from the owned documents and references registered for `module.concorde` in `.concorde/specs.json`. It owns this reading entry and the definition migration ledger. This root Module owns no implementation files of its own; its promises are realized entirely by its sixteen child Modules.
+### Usage
 
-## Requirements
+Start with the responsibility you need, not an implementation package. Ask a question with
+`concorde-main`, prepare a contract with `concorde-specify-loop`, or carry an intended change to a
+ready candidate with `concorde-dev-loop`. Supply the task and constraints; target and scenario
+hints help selection but do not grant access. A Module is a cohesive responsibility, so it may
+be used by another Module even when it has no command or package of its own.
 
-### req.concorde.routing-no-access — No access beyond frozen context
+Install Concorde before initializing a consumer project. Initialization proposes an honest draft;
+it does not infer business behavior from code. Configure the worker model separately. During work,
+a missing necessary promise pauses the dependent step, and failed progress remains inspectable.
+Validation records evidence, not proof of universal correctness. Delivery is a separate choice:
+by default it publishes an independent branch and removes the source worktree, not merges primary.
+The entry table below identifies the available actions and their completion boundaries.
+
+#### Developer entry points
+
+| Intent | Entry and completion |
+| --- | --- |
+| Ask about a Spec or route a task | `concorde-main` takes intent and optional target/focus hints; an answer or attributed limitation completes a query without mutation. |
+| Prepare or review a Spec | `concorde-specify-loop` completes independent Spec preparation; Planning and Implementation are separate downstream choices. |
+| Review a task | `concorde-review` returns independent Spec/code coverage and findings without creating a development change. |
+| Develop a change | `concorde-dev-loop` takes task/constraints and optional authoring/review flags; completion is a ready candidate, with explicit skips where authorized. |
+| Initialize a project | `concorde-init` proposes then applies initial configuration and an honest Module stub; an existing project cannot be overwritten. |
+| Change worker configuration | `concorde-configure` applies an explicit supported Pi worker model/thinking/timeout selection to an initialized project. |
+| Check a candidate | `concorde-validate` records current deterministic evidence; a failed or stale check cannot establish readiness. |
+| Deliver a candidate | `concorde-deliver` stages the selected change on an independent branch and removes its worktree by default; only a separate explicitly authorized request by the sole primary writer merges it into the primary branch. |
+| Work with recorded feedback | `concorde-reflections-triage` selects explicit Module-owned reports/gaps; status is read-only and mutations follow their declared evidence and disposition conditions. |
+
+Installed Skills use a single schema-3 capability invocation with `capability_id`, execute or describe-policy mode, configuration and a version-1 typed request. Unsupported versions, malformed requests and configuration mismatch fail admission. The result reports succeeded, blocked, failed or described; domain output still distinguishes a ready candidate, gap, conflict or completed answer. Describe-policy reports the bound grant without launching an Agent. Standard execution can create candidate state and invoke separately bounded Agents; only the admitted action can change files.
+
+Human views are complementary entries: Views presents registered contracts and declared relationships and opens a preexisting raw code graph. A view or feedback comment does not itself authorize code changes, claim Spec/code agreement or create a Reflection. The developer's explicit intent and constraints determine a subsequent task.
+
+
+### Requirements
+
+#### req.concorde.routing-no-access — No access beyond frozen context
 
 A routing or target/focus hint SHALL NOT by itself grant file access beyond the selected Module's
 frozen context.
 
-### req.concorde.read-no-mutate — No mutation from read operations
+#### req.concorde.read-no-mutate — No mutation from read operations
 
 A read or preview operation SHALL NOT mutate project state.
 
-### req.concorde.versioned-result — Versioned result per invocation
+#### req.concorde.versioned-result — Versioned result per invocation
 
 Every invocation SHALL return a versioned capability result that distinguishes admission failure,
 execution failure and the domain outcome.
 
-### req.concorde.preserve-user-content — Preservation of developer-owned content
+#### req.concorde.preserve-user-content — Preservation of developer-owned content
 
 Installation and configuration changes SHALL preserve content the developer owns.
 
-### req.concorde.no-overwrite-initialized — No overwrite of initialized projects
+#### req.concorde.no-overwrite-initialized — No overwrite of initialized projects
 
 Initialization SHALL NOT overwrite an already-initialized project.
 
-### req.concorde.delivery-separate — Delivery as a separately authorized step
+#### req.concorde.delivery-separate — Delivery as a separately authorized step
 
 Delivery to a destination SHALL require a separately authorized transition beyond a ready candidate.
 
-### req.concorde.unsupported-explicit — Explicit failure for unsupported versions
+#### req.concorde.unsupported-explicit — Explicit failure for unsupported versions
 
 An unsupported capability version or integration SHALL fail explicitly rather than degrading
 silently.
 
-### req.concorde.no-stale-replay — No replay of stale effects
+#### req.concorde.no-stale-replay — No replay of stale effects
 
 A repeated mutation SHALL re-admit current saved state or require a fresh proposal rather than
 replaying a stale effect.
 
-## Scenarios
+### Scenarios
 
 These scenarios state what a developer request accomplishes at the Framework's single entry point. Each routes to the child Module that supplies the underlying behavior, described locally under "Local collaboration agreements" below.
 
-### scenario.concorde.develop-change — Successful development to a ready candidate
+#### scenario.concorde.develop-change — Successful development to a ready candidate
 
 - GIVEN a developer supplies intended behavior and constraints
 - WHEN the Framework routes the change to its providing Module and coordinates specification, planning, implementation and required evidence
 - THEN the request completes with one ready candidate that meets its configured completion conditions
 - AND delivery to a destination remains a separate, explicitly authorized transition
 
-### scenario.concorde.develop-gap — Missing promise stops dependent work
+#### scenario.concorde.develop-gap — Missing promise stops dependent work
 
 - GIVEN a routed change depends on a Module promise that is not specified
 - WHEN development reaches that dependency
@@ -80,14 +114,14 @@ These scenarios state what a developer request accomplishes at the Framework's s
 - AND independent work in the same candidate continues
 - BUT the candidate does not reach ready
 
-### scenario.concorde.develop-failure — Failed step preserves inspectable progress
+#### scenario.concorde.develop-failure — Failed step preserves inspectable progress
 
 - GIVEN a routed change fails during specification, planning, implementation or evidence collection
 - WHEN the failure occurs
 - THEN the candidate's progress remains inspectable and resumable
 - BUT the candidate is not represented as a completed delivery
 
-### scenario.concorde.inspect-answer — Answering a Spec-grounded question
+#### scenario.concorde.inspect-answer — Answering a Spec-grounded question
 
 - GIVEN a developer asks a Spec-grounded question or requests a Spec or existing code-graph view
 - WHEN the request is routed to Query and Routing or Views
@@ -97,21 +131,21 @@ These scenarios state what a developer request accomplishes at the Framework's s
 Project-owned custom documentation is a separate human reading surface outside Spec queries and
 agent Spec context; it does not acquire authority as a registered Module contract.
 
-### scenario.concorde.inspect-gap — Missing Spec promise reported
+#### scenario.concorde.inspect-gap — Missing Spec promise reported
 
 - GIVEN a requested answer depends on a promise that is not specified
 - WHEN the query is answered
 - THEN the selected interface reports the missing promise
 - BUT does not guess or invent the missing behavior
 
-### scenario.concorde.adopt-initialize — Initializing an uninitialized project
+#### scenario.concorde.adopt-initialize — Initializing an uninitialized project
 
 - GIVEN an uninitialized project and a supported integration
-- WHEN the developer previews and then applies installation
-- THEN the Framework pins the accepted Protocol binding and creates an honest Module stub
+- WHEN the developer previews and applies installation, then explicitly proposes and applies initialization
+- THEN initialization pins the accepted installed Protocol binding and creates an honest Module stub
 - AND unspecified business behavior is recorded as an explicit draft gap
 
-### scenario.concorde.adopt-conflict — Conflicting ownership prevents adoption
+#### scenario.concorde.adopt-conflict — Conflicting ownership prevents adoption
 
 - GIVEN an installation target already owns conflicting state, or provisioning fails
 - WHEN adoption is attempted
@@ -119,39 +153,49 @@ agent Spec context; it does not acquire authority as a registered Module contrac
 - AND the Framework recovers previously valid owned state
 - BUT no partially applied owned state is left in place
 
-### scenario.concorde.configure-apply — Applying Pi worker configuration
+#### scenario.concorde.configure-apply — Applying Pi worker configuration
 
 - GIVEN an initialized project and an explicit, supported Pi worker model/thinking/timeout configuration
 - WHEN the developer applies it
 - THEN the Framework updates the configured worker selection accordingly
 - BUT an unsupported configuration value fails explicitly
 
-### scenario.concorde.validate-record — Recording current deterministic evidence
+#### scenario.concorde.validate-record — Recording current deterministic evidence
 
 - GIVEN a candidate under development
 - WHEN the developer checks it
 - THEN the Framework records current deterministic Spec and configured code check evidence for that candidate
 - BUT a failed or stale check cannot establish readiness
 
-### scenario.concorde.deliver-stage — Staging a verified change for delivery
+#### scenario.concorde.deliver-stage — Staging a verified change for delivery
 
 - GIVEN a ready candidate
 - WHEN the developer requests delivery
 - THEN the Framework stages the change on an independent branch and removes its worktree by default
 - BUT merging into the primary branch requires a further, separately authorized request by the sole primary writer
 
-### scenario.concorde.reflections-triage — Working with recorded feedback
+#### scenario.concorde.reflections-triage — Working with recorded feedback
 
 - GIVEN feedback or a persistent gap recorded against a Module or scenario identity
 - WHEN the developer selects it through reflections triage
 - THEN status reporting is read-only
 - AND any mutation follows its declared evidence and disposition conditions
 
-## Ontology
+## Architecture & Realization
 
-This root Module's Ontology holds the Developer who supplies intent, the external Spec Protocol
-that Spec pins, and the sixteen child Modules that realize every Requirement and Scenario above; the
-Relationships subsection below traces how a request moves between them.
+### Design
+
+The Framework realizes its entry contract entirely through sixteen child responsibilities and
+binds no implementation files of its own. The common Development host admits typed requests;
+providers own reusable behavior and sibling Flows own sequencing. Spec supplies identities and
+complete contexts, Harness bounds worker execution, and Distribution supplies fresh runtime assets.
+This separates permission and admission from model decisions. Validation and Review produce
+revision-bound evidence; Delivery consumes it only at a separately authorized boundary.
+
+The child collaboration declarations below explain which guarantees support each entry. Reference
+inclusion preserves their ownership and is not permission to inspect their implementations. The
+[ownership ledger](ownership-migration.md) records realization sharing and remaining extraction
+limits; logical responsibility boundaries do not imply separate runtime packages.
 
 ### Entities
 
@@ -167,7 +211,7 @@ Relationships subsection below traces how a request moves between them.
     "id": "entity.concorde.protocol",
     "title": "Spec Protocol",
     "kind": "external standard",
-    "responsibility": "The independent Spec Protocol 5.5.0 that defines what a Module Spec must explain; Spec admits and pins it but does not own its meaning."
+    "responsibility": "The independent Spec Protocol 6.0.0 that defines what a Module Spec must explain; Spec admits and pins it but does not own its meaning."
   },
   {
     "id": "entity.concorde.spec",
@@ -302,7 +346,7 @@ flowchart TB
     reflections["Reflections"]
     distribution["Distribution"]
     views["Views"]
-    developer -->|installed Skills and lifecycle commands| development
+    developer -->|invokes through installed Skills and lifecycle commands| development
     developer -->|installs and configures through| distribution
     developer -->|reads Specs and code graphs through| views
     protocol -->|defines meaning of| spec
@@ -350,9 +394,10 @@ flowchart TB
 
 #### Project diagram convention
 
-Every Concorde Module MUST describe its principal entities and directed relationships with an inline Mermaid diagram in the Relationships subsection of its `module.md` Ontology. Labels, titles, descriptions and explanatory prose use English. Include an accessible title and description, and explain the relationships, cardinalities or state rules needed to read the diagram. This is a Concorde project convention under the tool-neutral Spec Protocol, not a change to the independent standard. Rendered SVG/HTML and navigation remain derived views.
+Every Concorde Module MUST describe its principal entities and directed relationships with an inline Mermaid diagram in the Relationships subsection of its `module.md` Architecture & Realization part. Labels, titles, descriptions and explanatory prose use English. Include an accessible title and description, and explain the relationships, cardinalities or state rules needed to read the diagram. This is a Concorde project convention under the tool-neutral Spec Protocol, not a change to the independent standard. Rendered SVG/HTML and navigation remain derived views.
 
-## Local collaboration agreements
+
+### Local collaboration agreements
 
 These entries describe the sixteen children registered for this Module from the Framework's own perspective. Each child's complete contract is its own registered collection; these promises are only what the composition relies on.
 
@@ -498,30 +543,14 @@ These entries describe the sixteen children registered for this Module from the 
 ]
 ```
 
-## Developer entry points
 
-| Intent | Entry and completion |
-| --- | --- |
-| Ask about a Spec or route a task | `concorde-main` takes intent and optional target/focus hints; an answer or attributed limitation completes a query without mutation. |
-| Prepare or review a Spec | `concorde-specify-loop` completes independent Spec preparation; Planning and Implementation are separate downstream choices. |
-| Review a task | `concorde-review` returns independent Spec/code coverage and findings without creating a development change. |
-| Develop a change | `concorde-dev-loop` takes task/constraints and optional authoring/review flags; completion is a ready candidate, with explicit skips where authorized. |
-| Initialize a project | `concorde-init` proposes then applies initial configuration and an honest Module stub; an existing project cannot be overwritten. |
-| Change worker configuration | `concorde-configure` applies an explicit supported Pi worker model/thinking/timeout selection to an initialized project. |
-| Check a candidate | `concorde-validate` records current deterministic evidence; a failed or stale check cannot establish readiness. |
-| Deliver a candidate | `concorde-deliver` stages the selected change on an independent branch and removes its worktree by default; only a separate explicitly authorized request by the sole primary writer merges it into the primary branch. |
-| Work with recorded feedback | `concorde-reflections-triage` selects explicit Module-owned reports/gaps; status is read-only and mutations follow their declared evidence and disposition conditions. |
-
-Installed Skills use a single schema-3 capability invocation with `capability_id`, execute or describe-policy mode, configuration and a version-1 typed request. Unsupported versions, malformed requests and configuration mismatch fail admission. The result reports succeeded, blocked, failed or described; domain output still distinguishes a ready candidate, gap, conflict or completed answer. Describe-policy reports the bound grant without launching an Agent. Standard execution can create candidate state and invoke separately bounded Agents; only the admitted action can change files.
-
-Human views are complementary entries: Views presents registered contracts and declared relationships and opens a preexisting raw code graph. A view or feedback comment does not itself authorize code changes, claim Spec/code agreement or create a Reflection. The developer's explicit intent and constraints determine a subsequent task.
-
-## Unresolved information
+### Unresolved information
 
 None beyond what each child Module records in its own Unresolved information: this root Module delegates every unresolved business fact to the child Module that owns the affected contract.
 
-## Ownership, context and implementation status
 
-This root owns its reading entry and migration ledger and explicitly references all sixteen child Modules, so its resolved context includes their owned documents once. Child references do not expand again. Protocol 5/Profile 12/schema 4 is the authored target; runtime support remains incomplete as recorded in each owning Module. This maintenance produces no lifecycle-ready or delivery evidence.
+### Ownership, context and implementation status
+
+This root owns its reading entry and migration ledger and explicitly references all sixteen child Modules, so its resolved context includes their owned documents once. Child references do not expand again. Protocol 6/Profile 13/schema 4 is the authored target; runtime support remains incomplete as recorded in each owning Module. This maintenance produces no lifecycle-ready or delivery evidence.
 
 See the [ownership migration ledger](ownership-migration.md) for preserved IDs, transferred definitions and adapter limitations.

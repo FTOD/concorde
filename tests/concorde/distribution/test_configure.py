@@ -38,7 +38,7 @@ class ConfigureTests(unittest.TestCase):
         self.write(CONFIGURATION)
 
     def write(self, value: dict) -> None:
-        self.path.write_text(json.dumps({"profile_version": 12, "registry": ".concorde/specs.json",
+        self.path.write_text(json.dumps({"profile_version": 13, "registry": ".concorde/specs.json",
                                          "capability_configuration": value}))
 
     def stored(self) -> dict:
