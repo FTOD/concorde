@@ -26,6 +26,7 @@ from concorde.distribution import protocol_guidance as guidance  # noqa: E402
 
 
 FRAMEWORK_ROOT = ".concorde/framework"
+PROTOCOL_ROOT = ".concorde/protocol"
 RECEIPT_PATH = ".concorde/install.json"
 INSTALL_SCHEMA = 1
 REFLECTIONS_CONFIG_PATH = ".concorde/reflections/config.json"
@@ -251,6 +252,14 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
         else:
             outputs[f"{FRAMEWORK_ROOT}/{output.path}"] = (output.content, "framework")
     outputs[f"{FRAMEWORK_ROOT}/generated/build-manifest.json"] = (build_result.manifest, "framework")
+    # The Protocol bundle the project is granted lives at a stable project path, .concorde/protocol/:
+    # the tracked package manifest verbatim (its digest is what `.concorde/config.json` binds) and
+    # the rendered assets it lists. The installer owns and updates these files; initialization
+    # binds them and configuration accepts an updated bundle explicitly.
+    outputs[f"{PROTOCOL_ROOT}/manifest.json"] = ((package.root / "protocol/manifest.json").read_bytes(), "protocol")
+    for output in build_result.outputs:
+        if output.path.startswith("generated/protocol/"):
+            outputs[f"{PROTOCOL_ROOT}/{output.path.removeprefix('generated/protocol/')}"] = (output.content, "protocol")
     defaults = {
         REFLECTIONS_CONFIG_PATH: (package.root / REFLECTIONS_CONFIG_DEFAULT).read_bytes(),
         ".concorde/reflections/.gitignore": b"plans/\nworktrees/\n",

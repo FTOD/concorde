@@ -2442,21 +2442,19 @@ def _project_nodes(capability, configuration, task, host):
                 "apply" if task["action"] == "apply" else "propose"}
 
     def configure(state):
-        from ..spec.initialize import protocol_binding, protocol_changes
+        from ..spec.initialize import installed_protocol_binding
         accept = bool(task.get("accept_protocol"))
         if not accept:
             SpecRepository(host.project_root, host.package_root)
         value = decode(read_file(host.project_root, ".concorde/config.json").decode())
-        changes = []
         if accept:
-            # Explicit acceptance of the installed Protocol: refresh the project's accepted copy
-            # under .concorde/protocol/ and rebind the configuration to it, in one transaction that
-            # the repository admission verifies before it is kept.
-            changes.extend(protocol_changes(host.project_root, host.package_root))
-            value["protocol"] = protocol_binding(host.package_root)
+            # Explicit acceptance of the Protocol the installer placed under .concorde/protocol/:
+            # rebind the configuration to that copy; the repository admission verifies the result
+            # before the write is kept.
+            value["protocol"] = installed_protocol_binding(host.project_root)
         value["capability_configuration"] = task["configuration"]
-        changes.append(file_change(host.project_root, ".concorde/config.json", canonical(value) + "\n"))
-        apply_files(host.project_root, changes, {item["path"] for item in changes},
+        changed = file_change(host.project_root, ".concorde/config.json", canonical(value) + "\n")
+        apply_files(host.project_root, [changed], {changed["path"]},
                     verify=lambda: SpecRepository(host.project_root, host.package_root))
         return {"output": typed("concorde-configure-response", {"status": "applied", "configuration": task["configuration"]}), "route": END}
 

@@ -1,6 +1,6 @@
 ---
 name: concorde-configure
-description: "Capability: apply the initialized integration and enforcement configuration; with accept_protocol, adopt the installed Protocol as the project's accepted copy."
+description: "Capability: apply the initialized integration and enforcement configuration; with accept_protocol, rebind the project to the installed Protocol copy."
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"

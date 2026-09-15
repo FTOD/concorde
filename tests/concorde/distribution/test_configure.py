@@ -76,7 +76,7 @@ class ConfigureTests(unittest.TestCase):
 
 
 class AcceptProtocolTests(unittest.TestCase):
-    """The accepted Protocol copy under .concorde/protocol/ changes only on explicit acceptance."""
+    """The binding moves to the installer's Protocol copy under .concorde/protocol/ only on explicit acceptance."""
 
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -90,15 +90,14 @@ class AcceptProtocolTests(unittest.TestCase):
 
     @verifies("scenario.distribution.accept-protocol")
     def test_configure_accepts_an_upgraded_protocol_only_on_explicit_request(self):
-        # A project whose accepted copy lags behind the installed package: the binding still matches
-        # the copy, but the installed manifest differs.
+        # An installation update refreshed the copy under .concorde/protocol/ while the project's
+        # binding still names the previously accepted manifest.
         manifest = self.root / PROTOCOL_MANIFEST_PATH
-        stale = json.loads(manifest.read_text())
-        stale["assets"][0]["digest"] = "sha256:" + "0" * 64
-        manifest.write_text(json.dumps(stale, indent=2) + "\n")
+        installed = manifest.read_bytes()
         config = self.root / ".concorde/config.json"
         value = json.loads(config.read_text())
-        value["protocol"] = {"version": stale["version"], "digest": digest_bytes(manifest.read_bytes())}
+        previous = {"version": value["protocol"]["version"], "digest": "sha256:" + "0" * 64}
+        value["protocol"] = previous
         config.write_text(json.dumps(value))
         with self.assertRaises(SpecError) as raised:
             SpecRepository(self.root, PACKAGE)
@@ -106,10 +105,14 @@ class AcceptProtocolTests(unittest.TestCase):
         result = self.configure({"configuration": CONFIGURATION})
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("protocol_mismatch", result["errors"][0]["code"])
-        self.assertEqual(stale, json.loads(manifest.read_text()))
+        self.assertEqual(previous, json.loads(config.read_text())["protocol"])
         result = self.configure({"configuration": CONFIGURATION, "accept_protocol": True})
         self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual({"version": previous["version"], "digest": digest_bytes(installed)},
+                         json.loads(config.read_text())["protocol"])
         self.assertEqual(protocol_binding(PACKAGE), json.loads(config.read_text())["protocol"])
+        # Acceptance rebinds; it never writes the installer-owned copy.
+        self.assertEqual(installed, manifest.read_bytes())
         for path, content in protocol_files(PACKAGE).items():
             self.assertEqual(content, (self.root / path).read_bytes())
         SpecRepository(self.root, PACKAGE)

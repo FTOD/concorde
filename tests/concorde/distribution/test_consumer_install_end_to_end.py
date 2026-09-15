@@ -80,10 +80,12 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
             self.assertFalse((framework / legacy).exists(), legacy)
 
     @verifies("scenario.distribution.install-apply")
-    def test_consumer_claude_md_protocol_block_references_the_framework_build(self):
+    def test_consumer_claude_md_protocol_block_references_the_installed_protocol_copy(self):
         claude_md = (self.target / "CLAUDE.md").read_text(encoding="utf-8")
         self.assertIn("concorde-protocol:start", claude_md)
-        self.assertIn("@.concorde/framework/generated/protocol/principles.md", claude_md)
+        self.assertIn("@.concorde/protocol/principles.md", claude_md)
+        self.assertTrue((self.target / ".concorde/protocol/principles.md").is_file())
+        self.assertTrue((self.target / ".concorde/protocol/manifest.json").is_file())
 
     def test_describe_policy_init_propose_works_without_the_consumer_building(self):
         # The installer already built the framework as part of --apply; a consumer never runs a

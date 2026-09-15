@@ -16,8 +16,8 @@ PHASES = frozenset({"ask", "specify", "plan", "tasks", "implementation", "spec-r
 CODE_PHASES = frozenset({"implementation", "code-review"})
 DISCOVERY_PHASES = frozenset({"route"})
 DISCOVERY_KINDS = frozenset({"module"})
-# The project's accepted Protocol copy (installed by initialization and explicit acceptance), granted
-# in place like any other project file.
+# The Protocol copy the installer places in the project and the configuration binds, granted in
+# place like any other project file.
 PROTOCOL_PATHS = (".concorde/protocol/principles.md", ".concorde/protocol/kinds/module.md")
 
 
@@ -148,7 +148,7 @@ def context_grants(value: dict) -> tuple[str, ...]:
 
     Accepts a context snapshot or a topology author context (both carry ``spec_resolution``) or a
     discovery context (which carries the deduplicated ``documents`` pool). Every grant is a
-    project-relative path: Spec documents where they live and the accepted Protocol copy under
+    project-relative path: Spec documents where they live and the installed Protocol copy under
     ``.concorde/protocol/``. The bodies are never embedded (Protocol, Context index and grant).
     """
     return tuple(sorted({*(item["path"] for item in value["protocol"]),

@@ -17,8 +17,8 @@ are not additional Protocol Spec kinds.
 The Framework identifies its supported project configuration as Profile 12. Initialization writes
 `.concorde/config.json` with `profile_version: 12`, the `registry` path, an accepted Protocol
 `version` and manifest `digest` under `protocol`, and the typed `capability_configuration` for
-integration and enforcement, and installs the bound Protocol bundle under `.concorde/protocol/`
-as the project's accepted copy. Its registry uses JSON schema version 4. Profile 12 and registry
+integration and enforcement; the `protocol` binding names the Protocol copy the installer placed
+under `.concorde/protocol/`, which initialization never creates. Its registry uses JSON schema version 4. Profile 12 and registry
 schema 4 are Framework compatibility and storage versions; Spec Protocol 5.2.0 identifies the
 independent specification standard. Installation and initialization preserve these separate roles.
 
@@ -36,18 +36,21 @@ independent specification standard. Installation and initialization preserve the
 - GIVEN a reviewed installation or update proposal that is still current
 - WHEN the installer runs with `--apply`
 - THEN it writes the accepted receipt-owned Framework, Skill and root-guidance changes
+- AND it deploys the Protocol bundle under `.concorde/protocol/` as receipt-owned output, refreshed on every install and update, without touching the project's Protocol binding
 - AND it preserves project Specs, configuration, reflection history and unrelated user files
 - AND a `node_modules` directory below the package's `viewer/` directory is neither deployed nor inspected
 
 Installation places rendered Skill entries in the selected project's `.agents/skills/` or
 `.claude/skills/` directory. Framework code, role instructions, rule assets, templates and
 supporting tools are deployed under `.concorde/framework/`; the managed runtime is provisioned
-separately. A `node_modules` directory below the package's `viewer/` directory, left by a local
+separately. The Protocol bundle the project binds and grants to agents, the tracked manifest and
+its rendered assets, is deployed at `.concorde/protocol/`, a stable project path independent of
+the Framework layout. A `node_modules` directory below the package's `viewer/` directory, left by a local
 viewer install in a source checkout, is neither deployed nor inspected, because the managed runtime
 provisions the viewer from the package's `viewer/package.json` and its lock; every other entry
 below `viewer/` is deployed like the rest of the package. It also installs the selected root rule entry: `AGENTS.md` explicitly directs Codex to
-read `.concorde/framework/generated/protocol/principles.md`; `CLAUDE.md` uses Claude's native
-relative `@` import. Only the selected integration's entry is installed. It seeds project-owned
+read `.concorde/protocol/principles.md`; `CLAUDE.md` uses Claude's native relative `@` import of
+the same file. Only the selected integration's entry is installed. It seeds project-owned
 Reflection defaults and `.concorde/topology-proposals/.gitignore` only when absent; project
 defaults are excluded from the installation receipt and never overwritten on update.
 
@@ -97,10 +100,10 @@ This is the root-entry cleanup step for uninstall, not a full-package removal co
 
 ### scenario.distribution.accept-protocol — Accepting an upgraded installed Protocol is explicit
 
-- GIVEN an initialized project whose accepted Protocol copy under `.concorde/protocol/` differs from the installed package's Protocol manifest
+- GIVEN an initialized project whose Protocol binding no longer matches the Protocol copy the installer placed under `.concorde/protocol/`
 - WHEN concorde-configure is applied without `accept_protocol`
-- THEN it fails with protocol_mismatch and leaves the accepted copy and binding unchanged
-- BUT when it is applied with `accept_protocol: true`, it rewrites the accepted copy from the installed package, rebinds the configuration to that manifest and admits the repository, in one transaction that is rolled back if admission fails
+- THEN it fails with protocol_mismatch and leaves the binding unchanged
+- BUT when it is applied with `accept_protocol: true`, it rebinds the configuration to the installed copy's manifest and admits the repository, rolling the write back if admission fails
 
 Owned content is hashed in the installation receipt. A local modification conflicts unless an
 explicit supported ownership transition authorizes replacement. Staging, provisioning and

@@ -56,7 +56,6 @@ changing project files; apply returns `status: "applied"`, `proposal: null` and 
 - GIVEN a previously returned proposal whose destinations are still absent and whose Protocol binding is current
 - WHEN the developer requests action apply with that exact proposal
 - THEN the capability validates the complete resulting registry and documents and commits every file in one transaction
-- AND it installs the accepted Protocol bundle under `.concorde/protocol/`, the manifest and its rendered assets, which every agent is granted in place
 - AND it also creates the Reflection defaults and the topology-artifact ignore file when they are absent
 - AND the response reports status applied with the applied paths
 
@@ -159,9 +158,10 @@ failures are failed, with no successful output.
 
 New registries use schema 4 with explicit empty `references` on the initial Module; the stub's
 document metadata names its single `owner`. Initialization pins Protocol 5.2.0/Profile 12 and
-the exact current manifest digest, and installs that manifest with its rendered assets under
-`.concorde/protocol/` as the project's accepted Protocol copy; later package upgrades are adopted
-only through explicit acceptance (`concorde-configure` with `accept_protocol`). A draft identifies missing behavior without inventing external
+the exact manifest digest of the Protocol copy the installer placed under `.concorde/protocol/`;
+it creates no Protocol file itself and fails with `not_installed` when that copy is absent. Later
+installations update the copy but never the binding, which the developer moves explicitly with
+`concorde-configure` and `accept_protocol`. A draft identifies missing behavior without inventing external
 definitions. Existing projects require an explicit atomic ownership/reference/metadata migration;
 an installer must not silently relabel old shared memberships or interpret them as references.
 The initializer emits this schema and metadata and validates the proposed overlay before application.

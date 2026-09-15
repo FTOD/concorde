@@ -256,7 +256,7 @@ their kinds are listed in [Agents and Harnesses](agents-and-harnesses.md).
 - A **project** workspace is the candidate worktree itself: it is the process's working directory
   and its workspace root for policy rendering. The snapshot is written below
   `.concorde/runs/<invocation>/<uuid>/context.json` inside that worktree; the policy grants reading
-  it, the Spec documents and the accepted Protocol copy under `.concorde/protocol/` it indexes, at
+  it, the Spec documents and the installed Protocol copy under `.concorde/protocol/` it indexes, at
   their project paths, and the selected Module's listed implementation entries, and only a code-writing
   invocation additionally receives write authority over those entries. The
   `implementation-workspace` Harness uses this kind.

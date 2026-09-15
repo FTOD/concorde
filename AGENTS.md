@@ -4,10 +4,12 @@ This policy applies only while developing the Concorde repository itself. Projec
 `concorde-*` Skills are worktree-owned instructions: an agent session must not carry them from the
 worktree where the session started into another linked worktree.
 
-In a fresh clone, run `python3 scripts/concorde.py build` once before this path resolves, then
+In a fresh clone, run `python3 scripts/concorde.py build` once so the Concorde Skills exist, then
 `python3 scripts/development/init-references.py` to check out the vendored external references
 under `reference/` (media-free partial clones of the submodules `.gitmodules` records). Read and
-follow `generated/protocol/principles.md` as the canonical Concorde Spec Protocol and Framework rule bundle, including P10 for
+follow `.concorde/protocol/principles.md`, the tracked Protocol copy that
+`python3 scripts/concorde.py protocol-manifest --write --bind-project` refreshes after a Protocol
+change, as the canonical Concorde Spec Protocol and Framework rule bundle, including P10 for
 all session handoffs below. This file adds only source-checkout worktree and maintenance boundaries.
 
 ## Spec language

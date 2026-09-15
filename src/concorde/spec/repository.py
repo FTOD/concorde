@@ -321,12 +321,12 @@ class SpecRepository:
                 self._context_paths(target)
 
     def _protocol(self) -> tuple[dict, dict[str, bytes]]:
-        """Admit the project's accepted Protocol copy under .concorde/protocol/, cross-checked with the package.
+        """Admit the Protocol copy the installer placed under .concorde/protocol/, as the configuration binds it.
 
-        The copy is what the configuration binding pins and what agents are granted as project
-        files. The installed package must carry the same manifest: an upgraded package is rejected
-        until the developer accepts it explicitly (configure with ``accept_protocol``), never adopted
-        silently.
+        The copy is what agents are granted as project files. The binding must name exactly that
+        copy and the installed package must carry the same manifest: an updated installation is
+        rejected until the developer accepts it explicitly (configure with ``accept_protocol``),
+        never adopted silently.
         """
         from ..distribution.build import BuildError, verify_fresh
         from .initialize import PROTOCOL_DIR, PROTOCOL_MANIFEST_PATH, protocol_asset_path
@@ -338,14 +338,15 @@ class SpecRepository:
         try:
             raw = read_file(self.root, PROTOCOL_MANIFEST_PATH)
         except (SpecError, OSError) as error:
-            raise SpecError("project has no accepted Protocol copy under .concorde/protocol; initialize the "
-                            "project or accept the installed Protocol explicitly", "protocol_mismatch") from error
+            raise SpecError("project has no Protocol copy under .concorde/protocol; run the installer",
+                            "protocol_mismatch") from error
         manifest = decode(raw.decode())
         binding = {"version": manifest.get("version"), "digest": digest(raw)}
         if self.config["protocol"] != binding or binding["version"] != PROTOCOL_VERSION:
-            raise SpecError("project Protocol binding does not match its accepted Protocol copy", "protocol_mismatch")
+            raise SpecError("project Protocol binding does not match the installed Protocol copy; accept it "
+                            "explicitly with concorde-configure", "protocol_mismatch")
         if read_file(self.package_root, "protocol/manifest.json") != raw:
-            raise SpecError("installed Protocol differs from the project's accepted copy; accept it explicitly",
+            raise SpecError("installed package Protocol differs from the project's Protocol copy; reinstall",
                             "protocol_mismatch")
         assets = {}
         for item in manifest["assets"]:
@@ -353,9 +354,9 @@ class SpecRepository:
             try:
                 content = read_file(self.root, path)
             except (SpecError, OSError) as error:
-                raise SpecError(f"accepted Protocol asset is missing: {path}", "protocol_mismatch") from error
+                raise SpecError(f"installed Protocol asset is missing: {path}", "protocol_mismatch") from error
             if digest(content) != item["digest"]:
-                raise SpecError(f"accepted Protocol asset has changed: {path}", "protocol_mismatch")
+                raise SpecError(f"installed Protocol asset has changed: {path}", "protocol_mismatch")
             assets[path] = content
         required = {f"{PROTOCOL_DIR}/principles.md", *(f"{PROTOCOL_DIR}/kinds/{kind}.md" for kind in SPEC_KINDS)}
         if not required.issubset(assets):

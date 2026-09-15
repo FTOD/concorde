@@ -248,6 +248,8 @@ class InitialModuleTests(unittest.TestCase):
     def test_initialization_is_honest_and_rolls_back_a_bad_reading_entry(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            from concorde.spec.initialize import write_protocol_copy
+            write_protocol_copy(root, PACKAGE)  # the installer's Protocol copy precedes initialization
             proposal = project_proposal(root, PACKAGE, "New project", CONFIGURATION)
             source = next(f for f in proposal["files"]
                           if f["path"] == "specs/project/module.md")

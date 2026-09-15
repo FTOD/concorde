@@ -164,6 +164,8 @@ def initialize_project(root: Path) -> Path:
 
     configuration = typed("concorde-capability-configuration",
                           {"integration": "claude", "enforcement": "native"})
+    from concorde.spec.initialize import write_protocol_copy
+    write_protocol_copy(root, REPOSITORY_ROOT)
     apply_project_proposal(root, REPOSITORY_ROOT,
                            project_proposal(root, REPOSITORY_ROOT, "Example", configuration, MODULE_ID))
     source = root / CONCERNED_FILE

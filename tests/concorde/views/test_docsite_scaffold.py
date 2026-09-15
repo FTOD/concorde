@@ -29,6 +29,8 @@ IGNORED_PACKAGE_DIRS = {"node_modules", "build", ".generated", ".docusaurus", "c
 
 
 def _init_project(root: Path, module_id: str = "module.atlas", name: str = "Atlas") -> None:
+    from concorde.spec.initialize import write_protocol_copy
+    write_protocol_copy(root, REPOSITORY_ROOT)
     apply_project_proposal(root, REPOSITORY_ROOT,
                            project_proposal(root, REPOSITORY_ROOT, name, CONFIGURATION, module_id))
 

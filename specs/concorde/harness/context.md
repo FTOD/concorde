@@ -128,7 +128,7 @@ Every launch delivers the Spec context as the Protocol's context index and grant
 the index, written to `context.json`; the `spec-context` role path list names that file together
 with every path in `spec_resolution.sources` and `protocol`, and the compiled policy grants
 exactly those paths read-only. Every grant is a project-relative path: Spec documents where they
-live and the accepted Protocol copy under `.concorde/protocol/`. In a capsule the host copies every
+live and the installed Protocol copy under `.concorde/protocol/`. In a capsule the host copies every
 granted file to that path, byte-identical to the digest the index records, before launch; in a
 project workspace the files are granted in place after the host verifies that their current bytes
 still match the index. No document or Protocol body is embedded in the invocation input or
@@ -194,12 +194,12 @@ not classify all runtime rules as Spec organization rules.
 Concorde Spec Protocol 5.2.0 defines the Spec context, implementation context and external
 references this service resolves. The distributed rule bundle also includes the separately authored Framework execution
 profile, including P10 handoffs. The resolver verifies the build is
-fresh, then admits the project's accepted Protocol copy under `.concorde/protocol/`, the manifest
+fresh, then admits the Protocol copy the installer placed under `.concorde/protocol/`, the manifest
 the configuration binds and its rendered assets, cross-checked against the installed package's
 manifest, without discovering root AGENTS.md/CLAUDE.md. The installed root entry serves
-outer user sessions only. Package update leaves the accepted copy and binding unchanged and
-resolution rejects `protocol_mismatch` until the developer explicitly accepts the installed
-version through `concorde-configure` with `accept_protocol`. Changed bindings require new contexts.
+outer user sessions only. An installation update refreshes the copy but leaves the binding
+unchanged, and resolution rejects `protocol_mismatch` until the developer explicitly accepts the
+installed version through `concorde-configure` with `accept_protocol`. Changed bindings require new contexts.
 Stage inputs must be versioned plan, implementation-task, task-identity-constraints,
 task-scope-feedback, reflection-selection or review-result
 values (the last only accompanies a bounded dev-loop code-review repair round: see

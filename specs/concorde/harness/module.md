@@ -62,7 +62,7 @@ index of the included files plus a read-only grant of exactly those files, witho
 document body in the invocation input.
 
 The index is the frozen snapshot; the grant names project-relative paths, Spec documents where they
-live and the accepted Protocol copy under `.concorde/protocol/`, as byte-identical copies in a
+live and the installed Protocol copy under `.concorde/protocol/`, as byte-identical copies in a
 capsule or the verified files in place in a project workspace. An agent opens what its task needs, starting from the reading
 entry, and nothing outside the grant is readable. This realizes the Protocol's Context index and
 grant rule; see [Spec context grant](context.md#spec-context-grant).

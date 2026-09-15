@@ -60,13 +60,22 @@ def protocol_files(package: Path) -> dict[str, bytes]:
     return files
 
 
-def protocol_changes(root: Path, package: Path) -> list[dict]:
-    """The file changes that install the package's Protocol bundle as the project's accepted copy."""
-    return [file_change(root, path, content.decode("utf-8")) for path, content in protocol_files(package).items()]
+def installed_protocol_binding(root: Path) -> dict:
+    """The binding of the Protocol copy the installer placed under ``.concorde/protocol/``.
+
+    Initialization and explicit acceptance bind this copy; neither creates it. A project without it
+    has not had Concorde installed.
+    """
+    try:
+        raw = read_file(root, PROTOCOL_MANIFEST_PATH)
+    except (SpecError, OSError) as error:
+        raise SpecError("Concorde is not installed in this project: .concorde/protocol/ is missing; "
+                        "run the installer first", "not_installed") from error
+    return {"version": decode(raw.decode())["version"], "digest": digest(raw)}
 
 
 def write_protocol_copy(root: Path, package: Path) -> list[str]:
-    """Write the accepted Protocol copy directly (developer tooling and fixtures; no transaction)."""
+    """Write the Protocol copy the way the installer does, for the source checkout and fixtures."""
     written = []
     for path, content in protocol_files(package).items():
         target = checked_path(root, path)
@@ -141,12 +150,10 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
     registry = {"schema_version": REGISTRY_SCHEMA, "project_id": "project.initialized", "entry_target": target_id,
         "targets": [target], "checks": []}
     config = {"profile_version": PROFILE_VERSION, "registry": ".concorde/specs.json",
-        "protocol": protocol_binding(package), "capability_configuration": configuration}
+        "protocol": installed_protocol_binding(root), "capability_configuration": configuration}
     files = [file_change(root, ".concorde/config.json", json.dumps(config, indent=2) + "\n"),
              file_change(root, ".concorde/specs.json", json.dumps(registry, indent=2) + "\n"),
-             file_change(root, path, initial_module_text(target_id, name)),
-             # The accepted Protocol bundle is installed with the project, under .concorde/protocol/.
-             *protocol_changes(root, package)]
+             file_change(root, path, initial_module_text(target_id, name))]
     # Reflection defaults remain independently owned, and are never overwritten on init.
     index = ".concorde/reflections/index.json"
     if not checked_path(root, index).exists():
@@ -171,11 +178,10 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         raise SpecError("project proposal must include configuration and registry", "invalid_proposal")
     config = decode(proposed[".concorde/config.json"]["content"])
     registry = decode(proposed[".concorde/specs.json"]["content"])
-    if config.get("registry") != ".concorde/specs.json" or config.get("protocol") != protocol_binding(package):
+    if config.get("registry") != ".concorde/specs.json" or config.get("protocol") != installed_protocol_binding(root):
         raise SpecError("project proposal has a mismatched registry or Protocol binding", "invalid_proposal")
     allowed = {".concorde/config.json", ".concorde/specs.json", TOPOLOGY_IGNORE_PATH,
                ".concorde/reflections/index.json", ".concorde/reflections/config.json",
-               *protocol_files(package),
                *(p for target in registry["targets"] for p in target["documents"])}
     if proposal["base_digest"] is not None or any(item["before_digest"] is not None for item in files):
         raise SpecError("initialization cannot replace existing files", "invalid_proposal")
@@ -185,4 +191,4 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
             raise SpecError("target-state validation failed: " + "; ".join(f.message for f in report.findings))
     changed = apply_files(root, files, allowed, verify=verify)
     return {"action": proposal["action"], "status": "applied", "files": changed,
-            "profile_version": PROFILE_VERSION, "protocol": protocol_binding(package)}
+            "profile_version": PROFILE_VERSION, "protocol": installed_protocol_binding(root)}

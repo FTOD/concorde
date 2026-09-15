@@ -19,7 +19,7 @@ Registry schema 4 stores exactly `schema_version`, `project_id`, `entry_target`,
 
 ### scenario.spec.reject-unsupported-profile — Rejecting an unsupported configuration profile
 
-- GIVEN a project configuration whose profile_version is not 12, or whose Protocol binding does not match the project's accepted Protocol copy under `.concorde/protocol/`, or whose accepted copy differs from the installed package's Protocol
+- GIVEN a project configuration whose profile_version is not 12, or whose Protocol binding does not match the Protocol copy the installer placed under `.concorde/protocol/`, or whose copy differs from the installed package's Protocol
 - WHEN the repository is constructed
 - THEN construction fails with unsupported_profile or protocol_mismatch
 - BUT a matching Profile 12 configuration with a current Protocol binding admits normally

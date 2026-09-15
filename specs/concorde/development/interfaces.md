@@ -258,6 +258,7 @@ context forms; package/schema alignment checks verify those identities.
 | `invalid_context` | A resolved context is structurally invalid, for example discovery without nonempty, unique, ordered targets. |
 | `invalid_phase` | The requested context or discovery phase is not one this host supports. |
 | `missing_source` | A required regular file named by the registry or by a resolved context is missing from the project. |
+| `not_installed` | Initialization or Protocol acceptance found no Protocol copy under `.concorde/protocol/`; Concorde has not been installed into the project, so run the installer first. |
 | `primary_session_required` | Final primary merging requires the primary owning outer session. |
 | `delivery_required` | Final primary merging requires a completed staged delivery; finish staging or cleanup first. |
 | `detached_primary` | The destination (primary) worktree has no attached branch to deliver onto. |
