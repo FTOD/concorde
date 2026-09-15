@@ -1,6 +1,6 @@
 # Spec Protocol
 
-Concorde Spec Protocol 5.3.0 defines a standard for describing software: what a component is for,
+Concorde Spec Protocol 5.4.0 defines a standard for describing software: what a component is for,
 how it behaves in its usage scenarios, which entities make it up and how those entities relate to
 each other and to the files that realize them. Its purpose is to make that meaning explicit enough
 for people and tools to reach a consistent understanding.

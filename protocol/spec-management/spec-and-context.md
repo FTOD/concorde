@@ -64,8 +64,9 @@ bodies in the reader's instructions, grants read access to the files at their pa
 into a private workspace or combines these is the tool's implementation choice. Whatever the
 mechanism, a tool MUST make every file in the scope available to the reader whole, and it MUST NOT
 make any file outside the scope visible. A copy delivered to the reader MUST be byte-identical to
-the file the resolution record identifies. The boundary is a property of the delivery, not of the
-reader's judgment: a file outside the scope is unavailable rather than merely discouraged.
+the file the resolution record identifies. Keeping files outside the scope from the reader is the
+tool's obligation rather than a request left to the reader's judgment; how the tool meets it is
+likewise its implementation choice.
 
 A tool MAY also give a reader task material derived from files inside the scope, such as the
 changes to those files since a baseline revision under review. Such material adds no file to the

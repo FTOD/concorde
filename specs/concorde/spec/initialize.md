@@ -162,7 +162,7 @@ failures are failed, with no successful output.
 ## Protocol 5 initialization
 
 New registries use schema 4 with explicit empty `references` on the initial Module; the stub's
-document metadata names its single `owner`. Initialization pins Protocol 5.3.0/Profile 12 and
+document metadata names its single `owner`. Initialization pins Protocol 5.4.0/Profile 12 and
 the exact manifest digest of the Protocol copy the installer placed under `.concorde/protocol/`;
 it creates no Protocol file itself and fails with `not_installed` when that copy is absent. Later
 installations update the copy but never the binding, which the developer moves explicitly with

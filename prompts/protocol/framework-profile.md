@@ -93,8 +93,9 @@ The host binds each normal Framework invocation to declared context and file per
 code-writing invocations receive file contents with write authority, and only for the files the
 selected Module lists; they never change Spec documents, entity declarations or the registry. Code
 review and deterministic checks have separately declared read authority. The registry's reverse
-index never grants a writer another Module's Spec or unrelated code. Unsupported enforcement fails
-closed. An outer developer-authorized maintenance session may read and modify the project directly;
+index never grants a writer another Module's Spec or unrelated code. How the host keeps an
+invocation within that authority belongs to the Harness Module's Specs, not to this profile. An
+outer developer-authorized maintenance session may read and modify the project directly;
 its explicit authorization does not silently widen normal worker permissions or become a project
 business contract.
 

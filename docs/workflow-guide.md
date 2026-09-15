@@ -15,7 +15,7 @@ support this work through installable Skills. The reflection system retains feed
 Spec gaps, coordinates investigation and routes approved resolutions into new development tasks.
 
 The development and delivery workflows below build on these foundations. The **Spec Protocol
-5.3.0** defines one specification category:
+5.4.0** defines one specification category:
 
 - **Module Spec:** a self-contained contract in four mandatory parts. Purpose, Requirements (one
   decidable SHALL statement each, about the Module) and Scenarios (testable GIVEN/WHEN/THEN

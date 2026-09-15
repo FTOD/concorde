@@ -20,7 +20,7 @@ from .schema import ContractError, admit, validate
 
 
 PROFILE_VERSION = 12
-PROTOCOL_VERSION = "5.3.0"
+PROTOCOL_VERSION = "5.4.0"
 REGISTRY_SCHEMA = 4
 KINDS = frozenset({"module"})
 SPEC_KINDS = frozenset({"module"})

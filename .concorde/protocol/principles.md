@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 5.3.0 defines Module Specs and their organization. These requirements apply
+Concorde Spec Protocol 5.4.0 defines Module Specs and their organization. These requirements apply
 to project specifications, including the specifications of software that implements this Protocol.
 They do not require the Protocol text to describe itself as a Module.
 
@@ -489,8 +489,9 @@ bodies in the reader's instructions, grants read access to the files at their pa
 into a private workspace or combines these is the tool's implementation choice. Whatever the
 mechanism, a tool MUST make every file in the scope available to the reader whole, and it MUST NOT
 make any file outside the scope visible. A copy delivered to the reader MUST be byte-identical to
-the file the resolution record identifies. The boundary is a property of the delivery, not of the
-reader's judgment: a file outside the scope is unavailable rather than merely discouraged.
+the file the resolution record identifies. Keeping files outside the scope from the reader is the
+tool's obligation rather than a request left to the reader's judgment; how the tool meets it is
+likewise its implementation choice.
 
 A tool MAY also give a reader task material derived from files inside the scope, such as the
 changes to those files since a baseline revision under review. Such material adds no file to the
@@ -955,8 +956,9 @@ The host binds each normal Framework invocation to declared context and file per
 code-writing invocations receive file contents with write authority, and only for the files the
 selected Module lists; they never change Spec documents, entity declarations or the registry. Code
 review and deterministic checks have separately declared read authority. The registry's reverse
-index never grants a writer another Module's Spec or unrelated code. Unsupported enforcement fails
-closed. An outer developer-authorized maintenance session may read and modify the project directly;
+index never grants a writer another Module's Spec or unrelated code. How the host keeps an
+invocation within that authority belongs to the Harness Module's Specs, not to this profile. An
+outer developer-authorized maintenance session may read and modify the project directly;
 its explicit authorization does not silently widen normal worker permissions or become a project
 business contract.
 

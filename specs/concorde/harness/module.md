@@ -8,7 +8,7 @@
 
 # Harness
 
-`module.harness` follows Spec Protocol 5.3.0. Its sole structural parent is `module.concorde`. The
+`module.harness` follows Spec Protocol 5.4.0. Its sole structural parent is `module.concorde`. The
 complete contract is the Markdown collection explicitly registered in `.concorde/specs.json`; links
 and entity file listings do not expand it. This reading entry introduces the collection; the
 registered companion documents explain [Agents and Harnesses](agents-and-harnesses.md), [Agent
