@@ -210,8 +210,11 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertIn('"developer":"custom"', config.read_text())
             paths = {entry["path"] for entry in json.loads((target / ".concorde/install.json").read_text())["outputs"]}
             self.assertNotIn(".concorde/reflections/config.json", paths)
+            self.assertNotIn(".concorde/reflections/index.json", paths)
             self.assertNotIn(".concorde/reflections/.gitignore", paths)
             self.assertNotIn(".concorde/topology-proposals/.gitignore", paths)
+            self.assertTrue((target / ".concorde/reflections/index.json").is_file())
+            self.assertIn(".concorde/protocol/manifest.json", paths)
 
     @verifies("scenario.distribution.runtime-plan", "scenario.distribution.runtime-provision")
     def test_target_root_venv_is_ignored_and_managed_runtime_rebuild_removes_obsolete_files(self):

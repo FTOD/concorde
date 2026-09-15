@@ -11,10 +11,6 @@ from .repository import PROFILE_VERSION, REGISTRY_SCHEMA, SpecError, SpecReposit
 from .validation import validate_repository
 
 
-TOPOLOGY_IGNORE_PATH = ".concorde/topology-proposals/.gitignore"
-TOPOLOGY_IGNORE = "# Exact topology applications are local, developer-reviewed host artifacts.\n*\n!.gitignore\n"
-
-
 def protocol_binding(package: Path) -> dict:
     from ..distribution.build import BuildError, verify_fresh
     try:
@@ -25,64 +21,19 @@ def protocol_binding(package: Path) -> dict:
     return {"version": decode(raw.decode())["version"], "digest": digest(raw)}
 
 
-PROTOCOL_DIR = ".concorde/protocol"
-PROTOCOL_MANIFEST_PATH = PROTOCOL_DIR + "/manifest.json"
-RENDERED_PROTOCOL_PREFIX = "generated/protocol/"
-
-
-def protocol_asset_path(asset_path: str) -> str:
-    """Where a rendered Protocol asset is installed: ``generated/protocol/<name>`` becomes
-    ``.concorde/protocol/<name>`` in the project."""
-    if not asset_path.startswith(RENDERED_PROTOCOL_PREFIX):
-        raise SpecError(f"unexpected Protocol asset path: {asset_path}", "protocol_mismatch")
-    return PROTOCOL_DIR + "/" + asset_path[len(RENDERED_PROTOCOL_PREFIX):]
-
-
-def protocol_files(package: Path) -> dict[str, bytes]:
-    """The accepted Protocol bundle a project carries under ``.concorde/protocol/``.
-
-    It is the package manifest verbatim, whose digest is the configuration binding, and every
-    rendered asset the manifest lists. Agents are granted the Protocol as these project files, and
-    the project stays self-describing after the installed package moves on.
-    """
-    from ..distribution.build import BuildError, verify_fresh
-    try:
-        verify_fresh(package)
-    except BuildError as error:
-        raise SpecError(str(error), error.code) from error
-    raw = read_file(package, "protocol/manifest.json")
-    files = {PROTOCOL_MANIFEST_PATH: raw}
-    for item in decode(raw.decode())["assets"]:
-        content = read_file(package, item["path"])
-        if digest(content) != item["digest"]:
-            raise SpecError(f"Protocol asset has changed: {item['path']}", "protocol_mismatch")
-        files[protocol_asset_path(item["path"])] = content
-    return files
-
-
 def installed_protocol_binding(root: Path) -> dict:
     """The binding of the Protocol copy the installer placed under ``.concorde/protocol/``.
 
     Initialization and explicit acceptance bind this copy; neither creates it. A project without it
     has not had Concorde installed.
     """
+    from ..distribution.project_defaults import PROTOCOL_MANIFEST_PATH
     try:
         raw = read_file(root, PROTOCOL_MANIFEST_PATH)
     except (SpecError, OSError) as error:
         raise SpecError("Concorde is not installed in this project: .concorde/protocol/ is missing; "
                         "run the installer first", "not_installed") from error
     return {"version": decode(raw.decode())["version"], "digest": digest(raw)}
-
-
-def write_protocol_copy(root: Path, package: Path) -> list[str]:
-    """Write the Protocol copy the way the installer does, for the source checkout and fixtures."""
-    written = []
-    for path, content in protocol_files(package).items():
-        target = checked_path(root, path)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(content)
-        written.append(path)
-    return written
 
 
 def empty_target(target_id: str, kind: str, title: str, documents: list[str]) -> dict:
@@ -154,15 +105,9 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
     files = [file_change(root, ".concorde/config.json", json.dumps(config, indent=2) + "\n"),
              file_change(root, ".concorde/specs.json", json.dumps(registry, indent=2) + "\n"),
              file_change(root, path, initial_module_text(target_id, name))]
-    # Reflection defaults remain independently owned, and are never overwritten on init.
-    index = ".concorde/reflections/index.json"
-    if not checked_path(root, index).exists():
-        files.append(file_change(root, index, json.dumps({"schema_version": 1, "high_water": "R-000"}, indent=2) + "\n"))
-    settings = ".concorde/reflections/config.json"
-    if not checked_path(root, settings).exists():
-        files.append(file_change(root, settings, read_file(package, "src/concorde/reflections/config.default.json").decode()))
-    if not checked_path(root, TOPOLOGY_IGNORE_PATH).exists():
-        files.append(file_change(root, TOPOLOGY_IGNORE_PATH, TOPOLOGY_IGNORE))
+    # Initialization creates only what the user's project generates through Concorde. Everything
+    # that exists because Concorde is installed (the Protocol copy, Reflection defaults, the
+    # topology-artifact ignore file) is the installer's output.
     return {"type_id": "concorde-project-proposal", "schema_version": 1,
             "action": "initialize", "base_digest": None, "files": files}
 
@@ -180,8 +125,7 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
     registry = decode(proposed[".concorde/specs.json"]["content"])
     if config.get("registry") != ".concorde/specs.json" or config.get("protocol") != installed_protocol_binding(root):
         raise SpecError("project proposal has a mismatched registry or Protocol binding", "invalid_proposal")
-    allowed = {".concorde/config.json", ".concorde/specs.json", TOPOLOGY_IGNORE_PATH,
-               ".concorde/reflections/index.json", ".concorde/reflections/config.json",
+    allowed = {".concorde/config.json", ".concorde/specs.json",
                *(p for target in registry["targets"] for p in target["documents"])}
     if proposal["base_digest"] is not None or any(item["before_digest"] is not None for item in files):
         raise SpecError("initialization cannot replace existing files", "invalid_proposal")

@@ -26,6 +26,11 @@ files: list[{path, before_digest: sha256|null, content: str}]}` in its data. Fil
 canonical project-relative paths and distinct; content may be empty. These nested records reject
 unknown properties.
 
+Initialization produces only what the user's project generates through Concorde: its
+configuration, its registry and its first Module Spec. Everything that exists only because Concorde
+is installed, the Protocol copy under `.concorde/protocol/`, the Reflection defaults and the
+topology-artifact ignore file, is the installer's output and is never created here.
+
 `action: "propose"` additionally requires `name` and `configuration` and optionally a `target_id`
 (default `module.project`); `action: "apply"` requires the returned typed project proposal. A
 proposal records `action: "initialize"`, a nullable `base_digest` and `files: {path, before_digest,
@@ -56,7 +61,7 @@ changing project files; apply returns `status: "applied"`, `proposal: null` and 
 - GIVEN a previously returned proposal whose destinations are still absent and whose Protocol binding is current
 - WHEN the developer requests action apply with that exact proposal
 - THEN the capability validates the complete resulting registry and documents and commits every file in one transaction
-- AND it also creates the Reflection defaults and the topology-artifact ignore file when they are absent
+- AND it creates nothing that exists only because Concorde is installed: the Protocol copy, the Reflection defaults and the topology-artifact ignore file are the installer's outputs
 - AND the response reports status applied with the applied paths
 
 ### scenario.spec.reject-already-initialized — Rejecting an already-configured project

@@ -17,7 +17,8 @@ from concorde.spec.verification import verifies  # noqa: E402
 from tests.concorde.support.capability_json import CONFIGURATION  # noqa: E402
 from concorde.development.capability_host import CapabilityHost  # noqa: E402
 from concorde.development.capability_service import run_capability  # noqa: E402
-from concorde.spec.initialize import PROTOCOL_MANIFEST_PATH, protocol_binding, protocol_files  # noqa: E402
+from concorde.spec.initialize import protocol_binding  # noqa: E402
+from concorde.distribution.project_defaults import PROTOCOL_MANIFEST_PATH, protocol_files  # noqa: E402
 from concorde.spec.repository import SpecError, SpecRepository, digest as digest_bytes  # noqa: E402
 from concorde.spec.typed_data import typed  # noqa: E402
 from tests.concorde.spec.support import PACKAGE, ModelProcessDouble, project  # noqa: E402

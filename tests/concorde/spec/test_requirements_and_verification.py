@@ -6,7 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.spec.initialize import protocol_binding, write_protocol_copy
+from concorde.spec.initialize import protocol_binding
+from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import scan_declarations, verifies

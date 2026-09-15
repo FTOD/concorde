@@ -329,7 +329,7 @@ class SpecRepository:
         never adopted silently.
         """
         from ..distribution.build import BuildError, verify_fresh
-        from .initialize import PROTOCOL_DIR, PROTOCOL_MANIFEST_PATH, protocol_asset_path
+        from ..distribution.project_defaults import PROTOCOL_DIR, PROTOCOL_MANIFEST_PATH, protocol_asset_path
 
         try:
             verify_fresh(self.package_root)

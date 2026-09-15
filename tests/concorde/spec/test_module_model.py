@@ -12,7 +12,8 @@ from unittest.mock import patch
 from concorde.development.capability_host import Invocation, _implementation_digest, _target_revision
 from concorde.spec.changes import confirm_pending_files
 from concorde.harness.context import resolve_context, recheck_context
-from concorde.spec.initialize import protocol_binding, write_protocol_copy
+from concorde.spec.initialize import protocol_binding
+from concorde.distribution.project_defaults import write_protocol_copy
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies

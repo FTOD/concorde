@@ -7,7 +7,8 @@ import subprocess
 from pathlib import Path
 from concorde.spec.typed_data import typed
 from concorde.harness.agent_executor import AgentProcessExecutor
-from concorde.spec.initialize import project_proposal, apply_project_proposal, empty_target, write_protocol_copy
+from concorde.spec.initialize import project_proposal, apply_project_proposal, empty_target
+from concorde.distribution.project_defaults import install_project_defaults
 
 PACKAGE = Path(__file__).resolve().parents[3]
 CONFIGURATION = typed('concorde-capability-configuration', {'integration':'claude','enforcement':'native'})
@@ -162,7 +163,7 @@ PROMISES = (block('concorde-document', {'id':'document.transfer.promises',
 
 
 def project(root):
-    write_protocol_copy(root, PACKAGE)  # what the installer places before initialization
+    install_project_defaults(root, PACKAGE)  # what the installer places before initialization
     apply_project_proposal(root, PACKAGE, project_proposal(root, PACKAGE, 'Bank', CONFIGURATION, 'scope.bank'))
     targets=[empty_target('scope.bank','module','Banking',['specs/bank/module.md']),
              empty_target('scope.audit','module','Audit',['specs/audit/module.md']),

@@ -102,8 +102,8 @@ def _target(target_id, title, documents, *, parent=None, uses=(), files=()):
 def build_project(root: Path) -> None:
     """A minimal registered project: Root composes Alpha and Beta; Alpha uses Beta; they share
     ``src/shared/util.py``; Alpha additionally declares one pending file that already exists."""
-    from concorde.spec.initialize import write_protocol_copy
-    write_protocol_copy(root, REPOSITORY_ROOT)
+    from concorde.distribution.project_defaults import install_project_defaults
+    install_project_defaults(root, REPOSITORY_ROOT)  # what the installer places before initialization
     apply_project_proposal(root, REPOSITORY_ROOT,
                            project_proposal(root, REPOSITORY_ROOT, "Fixture", CONFIGURATION, "module.root"))
     targets = [

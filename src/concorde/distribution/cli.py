@@ -173,7 +173,7 @@ def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
     if arguments.bind_project:
         # The source checkout has no installer run: bind the configuration to the current manifest
         # and refresh its Protocol copy under .concorde/protocol/ from the current build.
-        from ..spec.initialize import PROTOCOL_DIR, write_protocol_copy
+        from .project_defaults import PROTOCOL_DIR, write_protocol_copy
         config_path = root / ".concorde/config.json"
         config = json_module.loads(config_path.read_text(encoding="utf-8"))
         config["protocol"] = {"version": updated["version"], "digest": digest_bytes(manifest_path.read_bytes())}

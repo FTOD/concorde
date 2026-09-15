@@ -23,14 +23,13 @@ from concorde.distribution.managed_runtime import (  # noqa: E402
     provision_runtime,
 )
 from concorde.distribution import protocol_guidance as guidance  # noqa: E402
+from concorde.distribution.project_defaults import project_default_files  # noqa: E402
 
 
 FRAMEWORK_ROOT = ".concorde/framework"
 PROTOCOL_ROOT = ".concorde/protocol"
 RECEIPT_PATH = ".concorde/install.json"
 INSTALL_SCHEMA = 1
-REFLECTIONS_CONFIG_PATH = ".concorde/reflections/config.json"
-REFLECTIONS_CONFIG_DEFAULT = "src/concorde/reflections/config.default.json"
 PACKAGE_ROOTS = [
     "agents",
     "capabilities",
@@ -260,15 +259,9 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
     for output in build_result.outputs:
         if output.path.startswith("generated/protocol/"):
             outputs[f"{PROTOCOL_ROOT}/{output.path.removeprefix('generated/protocol/')}"] = (output.content, "protocol")
-    defaults = {
-        REFLECTIONS_CONFIG_PATH: (package.root / REFLECTIONS_CONFIG_DEFAULT).read_bytes(),
-        ".concorde/reflections/.gitignore": b"plans/\nworktrees/\n",
-        ".concorde/topology-proposals/.gitignore": (
-            b"# Exact topology applications are local, developer-reviewed host artifacts.\n"
-            b"*\n!.gitignore\n"
-        ),
-    }
-    for path, content in defaults.items():
+    # Concorde-owned defaults a project starts from, seeded only when absent and never owned by
+    # the receipt. Initialization creates none of them; it produces only the user's project files.
+    for path, content in project_default_files(package.root).items():
         outputs[path] = (content, "project-default")
     outputs[guidance.FILES[integration]] = (guidance.entry(integration), guidance.ROLE)
     return dict(sorted(outputs.items()))

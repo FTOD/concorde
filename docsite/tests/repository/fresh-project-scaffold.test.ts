@@ -40,11 +40,12 @@ beforeAll(async () => {
   await mkdir(resolve(root, '.concorde'), {recursive: true});
   const initialized=run(process.env.CONCORDE_PYTHON ?? 'python3',['-c', `import sys;from pathlib import Path
 sys.path.insert(0,sys.argv[1]+'/src')
-from concorde.spec.initialize import project_proposal,apply_project_proposal,write_protocol_copy
+from concorde.spec.initialize import project_proposal,apply_project_proposal
+from concorde.distribution.project_defaults import install_project_defaults
 from concorde.spec.typed_data import typed
 root=Path(sys.argv[2]);package=Path(sys.argv[1])
 config=typed('concorde-capability-configuration',{'integration':'codex','enforcement':'native'})
-write_protocol_copy(root,package)  # the installer places the Protocol copy before initialization
+install_project_defaults(root,package)  # what the installer places before initialization
 apply_project_proposal(root,package,project_proposal(root,package,'Atlas',config,'module.atlas'))`,repositoryRoot,root],root);
   expect(initialized.status,initialized.stderr).toBe(0);
 

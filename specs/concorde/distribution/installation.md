@@ -50,9 +50,12 @@ viewer install in a source checkout, is neither deployed nor inspected, because 
 provisions the viewer from the package's `viewer/package.json` and its lock; every other entry
 below `viewer/` is deployed like the rest of the package. It also installs the selected root rule entry: `AGENTS.md` explicitly directs Codex to
 read `.concorde/protocol/principles.md`; `CLAUDE.md` uses Claude's native relative `@` import of
-the same file. Only the selected integration's entry is installed. It seeds project-owned
-Reflection defaults and `.concorde/topology-proposals/.gitignore` only when absent; project
-defaults are excluded from the installation receipt and never overwritten on update.
+the same file. Only the selected integration's entry is installed. It seeds the Concorde-owned
+defaults a project starts from, `.concorde/reflections/config.json`, `index.json` and
+`.gitignore` and `.concorde/topology-proposals/.gitignore`, only when absent; these defaults are
+excluded from the installation receipt and never overwritten on update. Everything that exists only
+because Concorde is installed is the installer's output; initialization creates only what the
+user's project generates through Concorde, its configuration, registry and Module stub.
 
 ### scenario.distribution.install-conflict-rejected — Conflicting or stale ownership blocks acceptance
 
