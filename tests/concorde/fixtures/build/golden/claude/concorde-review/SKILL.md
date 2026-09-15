@@ -10,7 +10,7 @@ metadata:
   capability: "review"
   entrypoint: "scripts/run-capability.py concorde-review"
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 ---
 # concorde-review
 

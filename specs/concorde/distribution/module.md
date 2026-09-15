@@ -50,6 +50,15 @@ Every build invocation SHALL operate only on the worktree containing its named s
 
 Build SHALL NOT point one worktree's build at another worktree's outputs.
 
+### req.distribution.checkout-skills-user-invoked — Source-checkout Skills wait for the developer
+
+Build SHALL render the source checkout's own Claude Skill projections as user-invocable only,
+hidden from model-initiated invocation.
+
+Developing the Concorde checkout is direct developer-authorized maintenance by default; a Concorde
+flow runs on the checkout only when the developer explicitly asks for it. The installed consumer
+projection is unaffected and stays model-invocable.
+
 ### req.distribution.root-block-ownership — Root rule ownership is block-scoped
 
 A root rule entry SHALL be owned only within its exact bounded block, including its separator.

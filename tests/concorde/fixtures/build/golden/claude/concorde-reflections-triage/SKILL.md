@@ -10,7 +10,7 @@ metadata:
   capability: "reflections_triage"
   entrypoint: "scripts/run-capability.py concorde-reflections-triage"
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 ---
 # concorde-reflections-triage
 

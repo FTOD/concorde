@@ -10,7 +10,7 @@ metadata:
   capability: "validate"
   entrypoint: "scripts/run-capability.py concorde-validate"
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 ---
 # concorde-validate
 

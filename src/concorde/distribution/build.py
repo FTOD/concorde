@@ -156,7 +156,9 @@ def render_agent(project_root: Path, agent: str, mode: str | None = None) -> Bui
 render_role = render_agent
 
 
-def _skill_frontmatter(name: str, description: str, integration: str, capability: str, entrypoint: str) -> str:
+def _skill_frontmatter(
+    name: str, description: str, integration: str, capability: str, entrypoint: str, *, model_invocable: bool
+) -> str:
     values = ["---", f"name: {name}", f"description: {json.dumps(description)}"]
     if integration == "claude":
         values.append('argument-hint: "Optional capability guidance"')
@@ -172,12 +174,23 @@ def _skill_frontmatter(name: str, description: str, integration: str, capability
         ]
     )
     if integration == "claude":
-        values.extend(["user-invocable: true", "disable-model-invocation: false"])
+        # `disable-model-invocation: true` hides the Skill from the model entirely; only the user's
+        # own `/name` invocation reaches it. `false` lets Claude Code select it by description.
+        values.extend(["user-invocable: true", f"disable-model-invocation: {'false' if model_invocable else 'true'}"])
     values.extend(["---", ""])
     return "\n".join(values)
 
 
 def render_skill(project_root: Path, name: str, integration: str, *, framework_prefix: str = "") -> BuildOutput:
+    """Render one public Skill for one integration.
+
+    Without a ``framework_prefix`` the Skill is projected into the Concorde source checkout
+    itself, whose launcher is the checkout's own ``scripts/run-capability.py``. Developing that
+    checkout is direct maintenance by default and a Concorde flow runs there only on the
+    developer's explicit request, so the Claude projection is rendered user-invocable only:
+    hidden from the model, reachable through the developer's own ``/name`` invocation. With a
+    framework prefix the Skill is the installed consumer projection and stays model-invocable.
+    """
     if integration not in INTEGRATIONS:
         raise BuildError(f"unsupported integration: {integration}")
     metadata = _skill_metadata(project_root, name)
@@ -204,7 +217,10 @@ def render_skill(project_root: Path, name: str, integration: str, *, framework_p
         + json.dumps(schemas[f"{name}-request"], indent=2)
         + "\n```\n"
     )
-    frontmatter = _skill_frontmatter(name, str(metadata["description"]), integration, str(metadata["capability"]), entrypoint)
+    frontmatter = _skill_frontmatter(
+        name, str(metadata["description"]), integration, str(metadata["capability"]), entrypoint,
+        model_invocable=bool(prefix),
+    )
     content = (frontmatter + body.lstrip()).encode("utf-8")
     target = f"{INTEGRATION_ROOTS[integration]}/{name}/SKILL.md"
     return BuildOutput(path=target, content=content, sources=tuple(sorted(set((*resolved.sources, SKILL_SOURCES[name], *schema_sources)))))

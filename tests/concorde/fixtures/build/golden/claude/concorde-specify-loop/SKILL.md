@@ -10,7 +10,7 @@ metadata:
   capability: "specify_loop"
   entrypoint: "scripts/run-capability.py concorde-specify-loop"
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 ---
 # concorde-specify-loop
 

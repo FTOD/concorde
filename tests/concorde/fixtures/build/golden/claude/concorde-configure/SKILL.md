@@ -10,7 +10,7 @@ metadata:
   capability: "configure"
   entrypoint: "scripts/run-capability.py concorde-configure"
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 ---
 # concorde-configure
 

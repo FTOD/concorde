@@ -66,6 +66,31 @@ class BuildGoldenTests(unittest.TestCase):
             mine = self.by_path[f"{INTEGRATION_ROOTS[integration]}/concorde-main/SKILL.md"].content.decode("utf-8")
             self.assertIn('source: "skills/concorde-main/SKILL.md"', mine)
 
+    @verifies("scenario.distribution.build-checkout-skills-user-invoked")
+    def test_checkout_claude_skills_are_user_invoked_while_installed_ones_stay_model_invocable(self):
+        installed = {
+            output.path: output
+            for output in build(REPOSITORY_ROOT, "all", framework_prefix=".concorde/framework").outputs
+        }
+        for name in SKILL_NAMES:
+            claude_path = f"{INTEGRATION_ROOTS['claude']}/{name}/SKILL.md"
+            codex_path = f"{INTEGRATION_ROOTS['codex']}/{name}/SKILL.md"
+            with self.subTest(skill=name):
+                checkout_claude = self.by_path[claude_path].content.decode("utf-8")
+                checkout_front, _, _ = checkout_claude.removeprefix("---\n").partition("\n---\n")
+                self.assertIn("\nuser-invocable: true\n", "\n" + checkout_front + "\n")
+                self.assertIn("\ndisable-model-invocation: true\n", "\n" + checkout_front + "\n")
+                self.assertIn(f"python3 scripts/run-capability.py {name}", checkout_claude)
+                installed_claude = installed[claude_path].content.decode("utf-8")
+                installed_front, _, _ = installed_claude.removeprefix("---\n").partition("\n---\n")
+                self.assertIn("\nuser-invocable: true\n", "\n" + installed_front + "\n")
+                self.assertIn("\ndisable-model-invocation: false\n", "\n" + installed_front + "\n")
+                self.assertIn(f"python3 .concorde/framework/scripts/run-capability.py {name}", installed_claude)
+                for codex in (self.by_path[codex_path], installed[codex_path]):
+                    codex_front, _, _ = codex.content.decode("utf-8").removeprefix("---\n").partition("\n---\n")
+                    self.assertNotIn("user-invocable", codex_front)
+                    self.assertNotIn("disable-model-invocation", codex_front)
+
     @verifies("scenario.distribution.build-render")
     def test_eighteen_skills_three_common_agents_twelve_modes_and_one_langgraph_config(self):
         skill_outputs = [

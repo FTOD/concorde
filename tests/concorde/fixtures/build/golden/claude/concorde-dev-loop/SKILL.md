@@ -10,7 +10,7 @@ metadata:
   capability: "dev_loop"
   entrypoint: "scripts/run-capability.py concorde-dev-loop"
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 ---
 # concorde-dev-loop
 

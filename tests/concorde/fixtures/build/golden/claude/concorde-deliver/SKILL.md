@@ -10,7 +10,7 @@ metadata:
   capability: "deliver"
   entrypoint: "scripts/run-capability.py concorde-deliver"
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 ---
 # concorde-deliver
 

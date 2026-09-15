@@ -40,6 +40,24 @@ a Skill does not execute its Capability or add it to a Concorde Agent's Harness.
 - THEN it renders Agent instructions, Skill files, the Studio graph configuration, Protocol assets and runtime schemas deterministically
 - AND repeated renders of unchanged inputs are byte-identical and perform no network or process I/O
 
+### scenario.distribution.build-checkout-skills-user-invoked — The source checkout's Skills wait for the developer's explicit request
+
+- GIVEN a build without a framework prefix, whose Skill launcher is the checkout's own `scripts/run-capability.py`
+- WHEN build renders the Claude Skill projections
+- THEN every rendered `SKILL.md` declares `user-invocable: true` and `disable-model-invocation: true`, so Claude Code offers the Skill to the developer's own `/concorde-<name>` invocation and never lists it for the model
+- AND a build with a framework prefix, the installed consumer projection, declares `disable-model-invocation: false`
+- BUT Codex projections carry no invocation fields in either case
+
+A build without a framework prefix projects the Skills into the Concorde source checkout itself.
+Developing that checkout is direct developer-authorized maintenance by default, and one of
+Concorde's own flows runs there only when the developer explicitly asks for it, by its slash
+command or by naming it in prose; in the latter case the developer's session reads the rendered
+Skill file under `.claude/skills/<name>/` and submits the typed request it describes. Hiding the
+Skill from the model keeps that choice with the developer. An installed consumer project receives
+the same Skills through a framework prefix and keeps model-initiated invocation, because there the
+Skills are the intended everyday entry points. Codex has no equivalent front-matter switch; the
+checkout's root instructions state the rule for that runtime.
+
 ### scenario.distribution.build-write — write_build records source and output digests in the manifest
 
 - GIVEN a completed render
