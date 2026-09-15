@@ -1,37 +1,26 @@
-```concorde-document
-{
-  "id": "document.spec.values",
-  "owner": "module.spec",
-  "main_visible": true
-}
-```
 # Registry values and selection
-
-## Usage & Contract
 
 ### Framework configuration and storage versions
 
-`Profile 13` is the Framework's project-configuration compatibility version for the two-part Module model (Usage & Contract and Architecture & Realization). It is distinct from Spec Protocol 6.0.0 and from registry schema 4, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
+`Profile 14` is the Framework's project-configuration compatibility version for the complete content model and its human-readable subset. It is distinct from Spec Protocol 7.0.0 and from registry schema 5, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
 
-The Framework reads `.concorde/config.json` with exactly `profile_version: 13`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest, whose bundle the project carries under `.concorde/protocol/`) and `capability_configuration` (the typed Pi worker model selection: an optional default `model`, `thinking` level and `timeout_seconds`, and optional `workers` overrides per worker or per worker child). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
+The Framework reads `.concorde/config.json` with exactly `profile_version: 14`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest, whose bundle the project carries under `.concorde/protocol/`) and `capability_configuration` (the typed Pi worker model selection: an optional default `model`, `thinking` level and `timeout_seconds`, and optional `workers` overrides per worker or per worker child). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
 
-Registry schema 4 stores exactly `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. `targets` holds Module descriptors; there is no separate Implementation Spec collection, because every entity file binding is declared inside its owning Module's own documents. The separate check records configure executable verification; they are Framework execution metadata. Their serialized shape does not replace the Protocol's meaning of identity, membership, composition, dependency, entity or file binding.
-
+Registry schema 5 stores exactly `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. `targets` holds Module descriptors; there is no separate Implementation Spec collection, because every entity file binding is declared in its owning document unit's metadata. The separate check records configure executable verification; they are Framework execution metadata. Their serialized shape does not replace the Protocol's meaning of identity, membership, composition, dependency, entity or file binding.
 
 ### Scenarios
 
 #### scenario.spec.reject-unsupported-profile — Rejecting an unsupported configuration profile
 
-- GIVEN a project configuration whose profile_version is not 13, or whose Protocol binding does not match the Protocol copy the installer placed under `.concorde/protocol/`, or whose copy differs from the installed package's Protocol
+- GIVEN a project configuration whose profile_version is not 14, or whose Protocol binding does not match the Protocol copy the installer placed under `.concorde/protocol/`, or whose copy differs from the installed package's Protocol
 - WHEN the repository is constructed
 - THEN construction fails with unsupported_profile or protocol_mismatch
-- BUT a matching Profile 13 configuration with a current Protocol binding admits normally
-
+- BUT a matching Profile 14 configuration with a current Protocol binding admits normally
 
 ### Selection and returned values
 
 SpecRepository(project_root, package_root=None, *, registry_bytes=None, document_overrides=None)
-admits Profile 13 and registry schema 4. The optional bytes and document overrides form an in-memory
+admits Profile 14 and registry schema 5. The optional bytes and document overrides form an in-memory
 candidate; they never authorize ambient agent reads. Construction rejects malformed identities,
 unknown parents/uses/references, composition cycles, duplicate file owners within one Module and non-sibling shared
 providers.
@@ -41,10 +30,10 @@ resolves exactly one local module.md, independently of document order. select(ta
 focus_id=None) returns the complete Module descriptor and rejects a focus that does not belong to
 the target. documents(target) returns only its owned Markdown collection; spec_context(target.id) returns
 the owned-plus-referenced full sources with provenance. document(path) checks
-the exact concorde-document identity and sole owner. contracts(target) parses owned canonical contract definitions and checks schemas/examples offline;
+the paired metadata identity and sole owner. contracts(target) parses owned canonical contract definitions and checks schemas/examples offline;
 contract_bindings(target) returns local participant bindings without copying provider definitions.
 context_contracts(target) resolves canonical definitions from the full context, retaining their owners. dependencies(target) parses local
-concorde-dependencies promises without following those edges. definitions(target) parses the
+dependency metadata and its local readable explanation without following those edges. definitions(target) parses the
 Module's own scenarios, requirements and entities from its registered documents; entities(target) and
 scenarios(target) project that same result. entity_files(target) maps each declared listing entry, an exact
 file or a directory prefix, to its owning entity, and entity_for_path(target, path) resolves a
@@ -57,14 +46,19 @@ index, in which a directory prefix covers every path below it, and covering_modu
 to one Module's complete listing; a shared file therefore names several
 Modules, never one exclusive owner.
 
-SpecDocument carries path, content, digest, document_id, owner, main_visible, metadata and body.
+SpecDocument is the reading view carrying path, content, digest, document_id, owner, metadata and body.
+DocumentUnit carries the reading and metadata SourceMembers plus local readable meanings. Each source
+has path, role, exact bytes and its own digest. SpecTarget.sources expands its registered document
+paths to reading/metadata pairs in document order. No presentation-visibility field selects reading.
+source_records returns both indexed members; source_bytes verifies registration and reads current
+bytes for digest checking; source_is_overridden selects the complete candidate unit even when only
+metadata changes. validate_source_records rejects incomplete pairs or inconsistent role/provenance.
 A referenced document is included only by explicit Module references and retains its sole owner. Paths are safe project-relative
 POSIX file paths; symlinks and aliases fail. read_file reads a regular file, digest produces
 canonical sha256 identity, strings checks unique string arrays and identifier checks stable IDs.
 Failures raise SpecError with code and field; typed path/JSON failures retain their TypedDataError
 contract. No lookup writes files, changes authority, silently retries a different path or reads
 source to invent missing Module meaning.
-
 
 ### Task authoring transport values
 

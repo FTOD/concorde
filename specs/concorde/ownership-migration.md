@@ -1,14 +1,6 @@
-```concorde-document
-{
-  "id": "document.concorde.ownership-migration",
-  "owner": "module.concorde",
-  "main_visible": true
-}
-```
-
 # Capability ownership migration
 
-## Architecture & Realization
+## Design
 
 This ledger records the explicitly authorized direct Spec maintenance against the saved current-byte
 baseline, not committed HEAD. Stable prefixes do not prescribe ownership. Every original document,

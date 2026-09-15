@@ -1,14 +1,4 @@
-```concorde-document
-{
-  "id": "document.spec-authoring.authoring",
-  "owner": "module.spec-authoring",
-  "main_visible": true
-}
-```
-
 # Spec authoring capability
-
-## Usage & Contract
 
 The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and

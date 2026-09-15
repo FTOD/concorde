@@ -12,6 +12,13 @@
 }
 
 [data-theme='dark'] {
+  --ifm-color-primary: #a6adff;
+  --ifm-color-primary-dark: #929bff;
+  --ifm-color-primary-darker: #848eff;
+  --ifm-color-primary-darkest: #6c78f4;
+  --ifm-color-primary-light: #b7bdff;
+  --ifm-color-primary-lighter: #c7ccff;
+  --ifm-color-primary-lightest: #dce0ff;
   --concorde-surface: #202238;
   --concorde-border: #363a63;
 }

@@ -1,14 +1,4 @@
-```concorde-document
-{
-  "id": "document.specify-loop.specify-loop",
-  "owner": "module.specify-loop",
-  "main_visible": true
-}
-```
-
 # Specification Flow
-
-## Usage & Contract
 
 The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
@@ -22,7 +12,6 @@ marks ready or delivers. Repeated invocations retain accepted authoring for the 
 reuse only current review evidence. Necessary gaps and blocking reviews stop for Spec repair
 with fresh context; there is no automatic Spec-repair edge. `specify=false` selects review of the
 existing Spec, and `run_reviews=false` records only a Spec review skip where no requirement exists.
-
 
 ### Composition, state and recovery
 
@@ -45,7 +34,7 @@ failed, incomplete and successful evidence remain distinct. The flow returns com
 common response and ArtifactRefs; it never requires code review, runs implementation checks or marks
 ready. Dev-loop may consume that completed result without repeating accepted current Spec work.
 
-## Architecture & Realization
+## Design
 
 ### Specification Flow (`specify_flow`)
 

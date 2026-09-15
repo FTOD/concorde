@@ -13,15 +13,14 @@ from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 from tests.concorde.spec.support import (
-    CONFIGURATION, PACKAGE, ModelProcessDouble, project, update_document_declaration,
+    CONFIGURATION, PACKAGE, ModelProcessDouble, project, update_document_declaration, DocumentSource, write_document, source_pairs,
 )
 
 
 def replace_entities(text, update):
-    prefix, rest = text.split("```concorde-entities\n", 1)
-    payload, suffix = rest.split("\n```", 1)
-    value = update(json.loads(payload))
-    return prefix + "```concorde-entities\n" + json.dumps(value, indent=2) + "\n```" + suffix
+    metadata = json.loads(text)
+    metadata['entities'] = update(metadata['entities'])
+    return json.dumps(metadata, indent=2) + '\n'
 
 
 class ModuleArchitectureTests(unittest.TestCase):
@@ -44,17 +43,17 @@ class ModuleArchitectureTests(unittest.TestCase):
     @verifies("scenario.spec.select-module")
     def test_main_document_does_not_depend_on_order_or_replace_full_context(self):
         topic = "specs/bank/routing.md"
-        (self.root / topic).write_text('```concorde-document\n' + json.dumps({
-            "id": "document.bank.routing", "owner": "scope.bank", "main_visible": True,
-        }) + '\n```\n\n# Routing\n\n## Usage & Contract\n\nRead the registered banking responsibilities.\n')
+        write_document(self.root, topic, DocumentSource('# Routing\n\nRead the registered banking responsibilities.\n', {
+            'schema_version':1, 'document':{'id':'document.bank.routing','owner':'scope.bank'},
+            'entities':[], 'dependencies':[], 'bindings':[]}))
         self.registry["targets"][0]["documents"].insert(0, topic)
         self.save()
         repository = SpecRepository(self.root)
         target = repository.select("scope.bank")
         self.assertEqual(self.main, target.primary_document)
         snapshot = resolve_context(repository, target.id).value
-        self.assertEqual(sorted([topic, self.main]), [source["path"] for source in snapshot["spec_resolution"]["sources"]])
-        self.assertEqual(sorted([topic, self.main]), [d["path"] for d in snapshot["spec_resolution"]["sources"]])
+        self.assertEqual(source_pairs([topic, self.main]), [source["path"] for source in snapshot["spec_resolution"]["sources"]])
+        self.assertEqual(source_pairs([topic, self.main]), [d["path"] for d in snapshot["spec_resolution"]["sources"]])
         self.assertEqual("success", validate_repository(self.root).status)
 
     def test_missing_duplicate_or_shared_module_entry_is_rejected(self):
@@ -78,11 +77,11 @@ class ModuleArchitectureTests(unittest.TestCase):
 
     @verifies("scenario.spec.query-files", "scenario.spec.validate-structural-errors")
     def test_complete_context_ignores_visibility_and_architecture_heading_is_outside_fences(self):
-        update_document_declaration(self.root, self.main, main_visible=False)
+        metadata = self.root / (self.main + ".json")
+        metadata.write_bytes(metadata.read_bytes() + b"\n")
         self.assertIn(self.main, [source["path"] for source in resolve_context(SpecRepository(self.root), "scope.bank").value["spec_resolution"]["sources"]])
-        update_document_declaration(self.root, self.main, main_visible=True)
         path = self.root / self.main
-        body = path.read_text().replace("### Relationships", "### Vocabulary")
+        body = path.read_text().replace("## Relationships", "## Vocabulary")
         for fence in ("```", "~~~~"):
             with self.subTest(fence=fence):
                 path.write_text(body + f"\n{fence}markdown\n### Relationships\n{fence}\n")
@@ -122,14 +121,22 @@ class ModuleArchitectureTests(unittest.TestCase):
 
     @verifies("scenario.spec.validate-structural-errors")
     def test_an_entity_can_only_stand_for_a_child_or_used_module(self):
-        path = self.root / self.main
+        path = self.root / (self.main + ".json")
         path.write_text(replace_entities(path.read_text(), lambda values: [
             {**value, "target_id": "module.ledger"} if value["id"] == "entity.bank.audit" else value
             for value in values]))
         report = validate_repository(self.root)
         self.assertEqual("invalid", report.status)
         self.assertIn("CONCORDE-DEFINITION-001", {f.rule_id for f in report.findings})
-        self.assertTrue(any("is represented by two entities" in f.message for f in report.findings))
+        self.assertTrue(any("unique non-self provider" in f.message for f in report.findings))
+
+    def test_reserved_mermaid_identifiers_are_rejected_before_publication(self):
+        path = self.root / self.main
+        source = path.read_text().replace('request["Transfer request"]', 'graph["Transfer request"]').replace('request -->', 'graph -->')
+        path.write_text(source)
+        report = validate_repository(self.root)
+        self.assertEqual('invalid', report.status)
+        self.assertTrue(any('reserved Mermaid keyword' in finding.message for finding in report.findings))
 
     def test_inline_diagram_bytes_invalidate_an_existing_context(self):
         repository = SpecRepository(self.root)
@@ -147,7 +154,7 @@ class ModuleArchitectureTests(unittest.TestCase):
         self.registry["targets"][2]["files"] = ["app/extra.py", "app/transfer.py",
                                                 "checks/transfer_check.py"]
         self.save()
-        with self.assertRaisesRegex(SpecError, "listed implementation entries"):
+        with self.assertRaisesRegex(SpecError, "changed"):
             recheck_context(repository, snapshot)
 
     def test_spec_author_can_update_its_own_inline_diagram_but_not_a_foreign_document(self):
@@ -206,23 +213,18 @@ class ModuleArchitectureTests(unittest.TestCase):
 
             if stage == "topology-author" and snapshot["target"]["id"] == "scope.bank":
                 import re
-                item = next(item for item in result["documents"] if item["path"] == self.main)
-                match = re.search(r"```concorde-dependencies\s*\n(.*?)^```", item["content"], re.M | re.S)
-                entries = json.loads(match.group(1))
-                entries.append({"target_id": "scope.risk",
-                    "responsibility": "Describe risk modeling.", "selection_condition": "Select for risk rules.",
-                    "relied_upon_promises": ["Unknown risk rules remain explicit rather than inferred from code."]})
-                content = (item["content"][:match.start()] + "```concorde-dependencies\n"
-                           + json.dumps(entries) + "\n```" + item["content"][match.end():])
-                content = replace_entities(content, lambda values: [*values, {
-                    "id": "entity.bank.risk", "title": "Risk", "kind": "module",
-                    "responsibility": "Describes risk modeling for Banking.",
-                    "target_id": "scope.risk"}])
-                item["content"] = content.replace('    audit["Audit"]',
-                    '    audit["Audit"]\n    risk["Risk"]').replace(
-                    "    transfer -->|reports accepted changes to| audit",
-                    "    transfer -->|reports accepted changes to| audit\n"
-                    "    request -->|assessed by| risk")
+                item = next(item for item in result['documents'] if item['path'] == self.main)
+                member = next(item for item in result['documents'] if item['path'] == self.main + '.json')
+                metadata = json.loads(member['content'])
+                anchor = 'entity.bank.risk'
+                metadata['entities'].append({'id':anchor,'title':'Risk','kind':'module',
+                    'meaning':'#'+anchor,'target_id':'scope.risk'})
+                metadata['dependencies'].append({'target_id':'scope.risk','meaning':'#'+anchor})
+                member['content'] = json.dumps(metadata, indent=2) + '\n'
+                item['content'] = item['content'].replace('    audit["Audit"]','    audit["Audit"]\n    risk["Risk"]').replace(
+                    '    transfer -->|reports accepted changes to| audit',
+                    '    transfer -->|reports accepted changes to| audit\n    request -->|assessed by| risk')
+                item['content'] += f'\n<a id="{anchor}"></a>\n\nRisk describes risk modeling when risk rules are needed; unknown rules remain explicit rather than inferred from code.\n'
 
         result = self.call("concorde-main", {"action": "design-topology", "task": "Add the Risk Module"}, callback)
         self.assertEqual("topology_proposed", result["output"]["data"]["outcome"], result)
@@ -254,7 +256,7 @@ class InitialModuleTests(unittest.TestCase):
             source = next(f for f in proposal["files"]
                           if f["path"] == "specs/project/module.md")
             before = source["content"]
-            source["content"] = before.replace("### Relationships", "### Drawing")
+            source["content"] = before.replace("## Relationships", "## Drawing")
             with self.assertRaises(SpecError):
                 apply_project_proposal(root, PACKAGE, proposal)
             self.assertFalse((root / ".concorde/config.json").exists())

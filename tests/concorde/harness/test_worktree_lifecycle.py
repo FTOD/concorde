@@ -204,7 +204,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(result, json.loads(json.dumps(result)))
         try:
             self.assertTrue((created / STATE_PATH).exists())
-            self.assertEqual("created", read_change(created)["phase"])
+            self.assertEqual("created", read_change(created, required=True)["phase"])
             self.assertEqual("# TRANSFER_IMPLEMENTATION_CODE\ndef transfer(balance, amount):\n    return balance\n",
                              (self.primary / "app/transfer.py").read_text())
         finally:
@@ -346,12 +346,12 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 change_worktree.bind_owner(self.change, task)
             self.assertEqual("invalid_input", caught.exception.code)
             self.assertEqual(field, caught.exception.field)
-        self.assertIsNone(read_change(self.change)["target_id"])
+        self.assertIsNone(read_change(self.change, required=True)["target_id"])
 
     @verifies("scenario.development.resume-bound", "scenario.harness.change-owner")
     def test_trusted_component_route_keeps_root_owner_and_rejects_mismatch(self):
         change_id = self.ready(task={**self.task, "specify": False, "run_reviews": False})
-        owner = read_change(self.change)
+        owner = read_change(self.change, required=True)
         double = ModelProcessDouble()
         host = CapabilityHost(self.change, PACKAGE, executor=double.executor,
                               routed_target="module.ledger", coordinated=True)
@@ -360,7 +360,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         result = self.call_capability(self.change, "concorde-review", task, host=host)
         self.assertEqual("succeeded", result["status"], result)
         self.assertNotIn("route", [call["stage"] for call in double.calls])
-        current = read_change(self.change)
+        current = read_change(self.change, required=True)
         for field in ("target_id", "task", "constraints", "focus_id"):
             self.assertEqual(owner[field], current[field])
         double.calls.clear()
@@ -389,7 +389,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             self.assertIn("```text", message)
             self.assertIn(task["constraints"][0], message)
             self.assertIn(str(created / STATE_PATH), message)
-            self.assertEqual("created", read_change(created)["phase"])
+            self.assertEqual("created", read_change(created, required=True)["phase"])
         finally:
             git(self.primary, "worktree", "remove", "--force", str(created))
             created.parent.rmdir()
@@ -400,23 +400,23 @@ class WorktreeLifecycleTests(unittest.TestCase):
                              {"target_id": "module.ledger", "task": "Implement an unrelated ledger change"})
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("incompatible_handoff", result["errors"][0]["code"])
-        self.assertEqual("ready", read_change(self.change)["status"])
+        self.assertEqual("ready", read_change(self.change, required=True)["status"])
 
     @verifies("scenario.development.dev-loop-spec-gap", "scenario.development.dev-loop-coordinated")
     def test_partial_spec_reconciliation_is_explicit_and_resumes_completed_authors(self):
         before_primary = (self.primary / "specs/transfer/module.md").read_bytes()
+        from tests.concorde.spec.support import add_binding
         def binding(role, peer):
-            return "\n```concorde-contract-binding\n" + json.dumps({"id": "contract.fixture.sync", "version": 1,
-                "role": role, "peer": peer, "selection_condition": "When coordinating values.",
-                "relied_upon_guarantees": ["Return the agreed representation."],
-                "obligations": ["Handle the agreed value."]}) + "\n```\n"
-        consumer = self.change / "specs/transfer/module.md"
-        provider = self.change / "specs/ledger/module.md"
-        consumer.write_text(consumer.read_text() + binding("required", "module.ledger"))
-        provider.write_text(provider.read_text() + "\n```concorde-contract\n" + json.dumps({
-            "id": "contract.fixture.sync", "version": 1, "schema": {"type": "integer"},
-            "semantics": "The coordinated value has the agreed representation.", "example": 7}) + "\n```\n"
-            + binding("provided", "service.transfer"))
+            return {'id':'contract.fixture.sync','version':1,'role':role,'peer':peer,
+                    'selection_condition':'When coordinating values.',
+                    'relied_upon_guarantees':['Return the agreed representation.'],
+                    'obligations':['Handle the agreed value.']}
+        add_binding(self.change,'specs/transfer/module.md',binding('required','module.ledger'))
+        provider = self.change / 'specs/ledger/module.md'
+        provider.write_text(provider.read_text() + '\n```concorde-contract\n' + json.dumps({
+            'id':'contract.fixture.sync','version':1,'schema':{'type':'integer'},
+            'semantics':'The coordinated value has the agreed representation.','example':7}) + '\n```\n')
+        add_binding(self.change,'specs/ledger/module.md',binding('provided','service.transfer'))
         registry_path = self.change / ".concorde/specs.json"
         registry = json.loads(registry_path.read_text())
         next(t for t in registry["targets"] if t["id"] == "service.transfer")["references"] = [
@@ -428,9 +428,10 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 data["tasks"].append({"id": "task.ledger", "target_id": "module.ledger",
                     "description": "Implement the ledger API", "acceptance": "Read a known balance", "complete": False})
             if stage == "specify" and snapshot["target_id"] == "service.transfer":
-                document = next(s for s in snapshot["spec_resolution"]["sources"] if s["owner"] == snapshot["target_id"])
-                replacement = (cwd / document["path"]).read_text().replace('"version": 1', '"version": 2').replace('"type": "integer"', '"type": "string"').replace('"example": 7', '"example": "new"')
-                data["documents"] = [{"path": document["path"], "content": replacement + "\nClarified candidate promise.\n"}]
+                reading='specs/transfer/module.md';metadata=reading+'.json'
+                value=json.loads((cwd/metadata).read_text());value['bindings'][0]['version']=2
+                data['documents']=[{'path':reading,'content':(cwd/reading).read_text()+'\nClarified candidate promise.\n'},
+                                   {'path':metadata,'content':json.dumps(value)}]
             if stage == "specify" and snapshot["target_id"] == "module.ledger":
                 data.update(outcome="spec_incomplete", gaps=[{"question": "Which account is known?",
                     "blocked_step": "Author the ledger view", "needed_contract": "Known account identity"}])
@@ -448,14 +449,15 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertFalse(any(c["stage"] == "implementation" for c in self.last_double.calls))
         def finish_provider(stage, snapshot, data, cwd):
             if stage == "specify" and snapshot["target_id"] == "module.ledger":
-                document = next(s for s in snapshot["spec_resolution"]["sources"] if s["owner"] == snapshot["target_id"])
-                replacement = (cwd / document["path"]).read_text().replace('"version": 1', '"version": 2').replace('"type": "integer"', '"type": "string"').replace('"example": 7', '"example": "new"')
-                data["documents"] = [{"path": document["path"], "content": replacement}]
+                reading='specs/ledger/module.md';metadata=reading+'.json'
+                replacement=(cwd/reading).read_text().replace('"version": 1','"version": 2').replace('"type": "integer"','"type": "string"').replace('"example": 7','"example": "new"')
+                value=json.loads((cwd/metadata).read_text());value['bindings'][0]['version']=2
+                data['documents']=[{'path':reading,'content':replacement},{'path':metadata,'content':json.dumps(value)}]
         result = self.call_capability(self.change, "concorde-dev-loop", task, finish_provider)
         self.assertEqual("succeeded", result["status"], result)
         authors = [c["snapshot"]["target_id"] for c in self.last_double.calls if c["stage"] == "specify"]
         self.assertEqual(["module.ledger"], authors)
-        self.assertEqual(state["change_id"], read_change(self.change)["change_id"])
+        self.assertEqual(state["change_id"], read_change(self.change, required=True)["change_id"])
         self.assertTrue(self.change.exists())
 
     @verifies("scenario.development.deliver-branch")
@@ -476,14 +478,11 @@ class WorktreeLifecycleTests(unittest.TestCase):
 
     def declare_pending_files(self):
         """Declare two files the plan intends to create, before any of them exists."""
-        path = self.change / "specs/transfer/module.md"
-        prefix, rest = path.read_text().split("```concorde-entities\n", 1)
-        payload, suffix = rest.split("\n```", 1)
-        entities = json.loads(payload)
-        entities[0].update(files=["app/rounding.py", "app/transfer.py"], pending=["app/rounding.py"])
-        entities[1].update(files=["checks/rounding_check.py", "checks/transfer_check.py"],
-                           pending=["checks/rounding_check.py"])
-        path.write_text(prefix + "```concorde-entities\n" + json.dumps(entities, indent=2) + "\n```" + suffix)
+        path = self.change / 'specs/transfer/module.md.json'
+        metadata=json.loads(path.read_text());entities=metadata['entities']
+        entities[0].update(files=['app/rounding.py','app/transfer.py'],pending=['app/rounding.py'])
+        entities[1].update(files=['checks/rounding_check.py','checks/transfer_check.py'],pending=['checks/rounding_check.py'])
+        path.write_text(json.dumps(metadata,indent=2)+'\n')
         registry = json.loads((self.change / ".concorde/specs.json").read_text())
         registry["targets"][2]["files"] = ["app/rounding.py", "app/transfer.py",
                                            "checks/rounding_check.py", "checks/transfer_check.py"]
@@ -505,21 +504,16 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(["checks/rounding_check.py"], receipt["still_pending"])
         self.assertEqual("Confirm created files for " + change_id,
             git_value(self.primary, "log", "-1", "--format=%s", receipt["candidate_commit"]))
-        payload = (self.change / "specs/transfer/module.md").read_text().split(
-            "```concorde-entities\n", 1)[1].split("\n```", 1)[0]
-        entities = json.loads(payload)
+        entities = json.loads((self.change / 'specs/transfer/module.md.json').read_text())['entities']
         self.assertNotIn("pending", entities[0])
         self.assertEqual(["checks/rounding_check.py"], entities[1]["pending"])
         self.assertEqual("success", validate_repository(self.change, package_root=PACKAGE).status)
 
     def test_delivery_refuses_a_declared_file_that_was_never_created_or_marked(self):
         self.declare_pending_files()
-        path = self.change / "specs/transfer/module.md"
-        prefix, rest = path.read_text().split("```concorde-entities\n", 1)
-        payload, suffix = rest.split("\n```", 1)
-        entities = json.loads(payload)
-        entities[0].pop("pending")
-        path.write_text(prefix + "```concorde-entities\n" + json.dumps(entities, indent=2) + "\n```" + suffix)
+        path = self.change / 'specs/transfer/module.md.json'
+        metadata=json.loads(path.read_text());metadata['entities'][0].pop('pending')
+        path.write_text(json.dumps(metadata,indent=2)+'\n')
         report = validate_repository(self.change, package_root=PACKAGE)
         self.assertEqual("invalid", report.status)
         self.assertIn("CONCORDE-ENTITY-002", {finding.rule_id for finding in report.findings})
@@ -748,7 +742,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         result = self.call_capability(self.primary, "concorde-deliver", {"change_id": change_id, "keep_worktree": True})
         self.assertEqual("succeeded", result["status"], result)
         self.assertTrue(self.change.exists())
-        self.assertEqual("delivered", read_change(self.change)["status"])
+        self.assertEqual("delivered", read_change(self.change, required=True)["status"])
 
     @verifies("scenario.development.deliver-branch", "scenario.development.deliver-merge-primary", "scenario.development.execute-capability")
     def test_paired_cli_delivers_from_source_and_primary_can_clean_up(self):
@@ -836,7 +830,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
     def test_validation_does_not_bypass_an_unfinished_authored_plan(self):
         result = self.call_capability(self.change, "concorde-plan", self.task)
         self.assertEqual("succeeded", result["status"], result)
-        state = read_change(self.change)
+        state = read_change(self.change, required=True)
         result = self.call_capability(self.change, "concorde-validate", {**self.task, "change_id": state["change_id"]})
         self.assertNotEqual("ready", result["output"]["data"]["outcome"])
         result = self.call_capability(self.primary, "concorde-deliver", {"change_id": state["change_id"]})
@@ -883,8 +877,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         advanced = self.commit(self.primary, "Conflicting accepted change")
         result = self.call_capability(self.primary, "concorde-deliver", {"change_id": change_id})
         self.assertEqual("merge_conflict", result["errors"][0]["code"], result)
-        self.assertEqual("blocked", read_change(self.change)["status"])
-        self.assertEqual("merge_conflict", read_change(self.change)["outcome"])
+        self.assertEqual("blocked", read_change(self.change, required=True)["status"])
+        self.assertEqual("merge_conflict", read_change(self.change, required=True)["outcome"])
         self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertEqual("candidate\n", (self.change / "shared.txt").read_text())
 
@@ -927,7 +921,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         advanced = self.commit(self.primary, "Changed acceptance")
         result = self.call_capability(self.primary, "concorde-deliver", {"change_id": change_id})
         self.assertEqual("failed_merge_checks", result["errors"][0]["code"], result)
-        self.assertEqual("failed_merge_checks", read_change(self.change)["outcome"])
+        self.assertEqual("failed_merge_checks", read_change(self.change, required=True)["outcome"])
         self.assertEqual(advanced, git_value(self.primary, "rev-parse", "HEAD"))
         self.assertTrue((self.change / STATE_PATH).exists())
 
@@ -942,7 +936,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         with patch.object(worktree_delivery, "git", side_effect=fail_cleanup):
             result = self.call_capability(self.primary, "concorde-deliver", {"change_id": change_id})
         self.assertEqual("failed", result["status"], result)
-        self.assertEqual("cleanup_pending", read_change(self.change)["status"])
+        self.assertEqual("cleanup_pending", read_change(self.change, required=True)["status"])
         merged = git_value(self.primary, "rev-parse", "HEAD")
         with patch.object(worktree_delivery, "_verify_merged_tree", side_effect=AssertionError("duplicate verification")):
             result = self.call_capability(self.primary, "concorde-deliver", {"change_id": change_id})

@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.harness.execution",
-  "owner": "module.harness",
-  "main_visible": true
-}
-```
 # Agent execution
-
-## Usage & Contract
 
 ### Configured deterministic checks
 
@@ -87,7 +78,6 @@ completeness. The calling host remains responsible for digest and candidate fres
 - THEN the host terminates every descendant before returning and removes scratch afterward
 - AND a timeout preserves partial output with timeout status instead of successful evidence
 
-
 ### Required Agent and Harness boundary
 
 The local companion contract **Agents and Harnesses** defines A1–A5 for this Module. Execution MUST
@@ -96,7 +86,6 @@ and run exactly that worker. The worker executor's preflight reverifies the carr
 the instructions, the admitted context and the policy against the current build and the worker's
 contract before starting any process, so the launch below executes only a complete, checked worker
 profile.
-
 
 ### Worker execution
 
@@ -148,7 +137,6 @@ credential paths the compiler always denies (`.env`, `.aws`, `.ssh` and the othe
 are project-relative entries; home-directory secrets are outside the grant because the grant is
 default-deny. Running the whole Pi process inside an operating-system sandbox that mounts only the
 granted paths is the planned stronger boundary.
-
 
 ### Pi worker runtime
 
@@ -202,7 +190,6 @@ stage, target, worker and run; the `concorde usage` Tool and the executable boun
 use them. Usage is diagnostic evidence about cost: it gates nothing, and a failure to persist it
 never fails the launch. See [usage accounting](module.md#scenario.harness.usage-accounting).
 
-
 ### Outcomes
 
 A worker's deadline is its selected `timeout_seconds`, else its profile's timeout as bound in its
@@ -215,7 +202,6 @@ rejection keeps its class in `code` (`permission_denied` for disallowed authored
 these outcomes triggers an automatic retry, with the same or any wider permissions. Authorized
 implementation edits made before a failure can remain in the candidate; the executor does not
 promise rollback.
-
 
 ### Representative use
 
@@ -242,7 +228,7 @@ Consumers bind the outcome to the invocation and binding digests and consume the
 rather than raw process output. A runtime double can test these boundary mechanics but cannot
 establish that a model detected a semantic gap or behavior defect.
 
-## Architecture & Realization
+## Design
 
 ### Check isolation mechanism
 

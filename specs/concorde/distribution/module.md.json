@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.distribution.module",
+    "owner": "module.distribution"
+  },
+  "entities": [
+    {
+      "id": "entity.distribution.build",
+      "title": "Build",
+      "kind": "program",
+      "files": [
+        "agents/__init__.py",
+        "capabilities/__init__.py",
+        "concorde.json",
+        "pyproject.toml",
+        "src/concorde/distribution/build.py",
+        "src/concorde/distribution/package_validation.py",
+        "src/concorde/distribution/prompt_resolver.py",
+        "tests/concorde/distribution/test_build.py",
+        "tests/concorde/distribution/test_package_validation.py",
+        "tests/concorde/distribution/test_prompt_resolver.py",
+        "tests/concorde/fixtures/build/golden/claude/",
+        "tests/concorde/fixtures/build/golden/codex/",
+        "tests/concorde/support/build_fixture.py",
+        "uv.lock"
+      ],
+      "meaning": "#entity.distribution.build"
+    },
+    {
+      "id": "entity.distribution.installation",
+      "title": "Installation",
+      "kind": "program",
+      "files": [
+        "capabilities/configure.py",
+        "scripts/concorde.ps1",
+        "scripts/concorde.py",
+        "scripts/concorde.sh",
+        "scripts/development/check-docsite-types.py",
+        "scripts/development/init-references.py",
+        "scripts/development/run-tests.py",
+        "scripts/install-concorde.py",
+        "scripts/requirements.lock",
+        "scripts/run-capability.py",
+        "scripts/worktree-guard.py",
+        "src/concorde/distribution/",
+        "templates/",
+        "tests/concorde/distribution/"
+      ],
+      "meaning": "#entity.distribution.installation"
+    },
+    {
+      "id": "entity.distribution.skill-sources",
+      "title": "Skill sources",
+      "kind": "authored instructions",
+      "files": [
+        "prompts/workflow-host/",
+        "skills/"
+      ],
+      "meaning": "#entity.distribution.skill-sources"
+    },
+    {
+      "id": "entity.distribution.installed-skills",
+      "title": "Installed Skills",
+      "kind": "instruction artifact",
+      "meaning": "#entity.distribution.installed-skills"
+    },
+    {
+      "id": "entity.distribution.developer-runtime",
+      "title": "Developer runtime",
+      "kind": "external actor",
+      "meaning": "#entity.distribution.developer-runtime"
+    },
+    {
+      "id": "entity.distribution.managed-runtime",
+      "title": "Managed runtime",
+      "kind": "program",
+      "files": [
+        "src/concorde/distribution/managed_runtime.py",
+        "tests/concorde/support/managed_runtime.py",
+        "viewer/"
+      ],
+      "meaning": "#entity.distribution.managed-runtime"
+    },
+    {
+      "id": "entity.distribution.spec",
+      "title": "Spec",
+      "kind": "used module",
+      "target_id": "module.spec",
+      "meaning": "#entity.distribution.spec"
+    },
+    {
+      "id": "entity.distribution.install-script",
+      "title": "Install script",
+      "kind": "interface",
+      "meaning": "#entity.distribution.install-script"
+    },
+    {
+      "id": "entity.distribution.build-command",
+      "title": "Build command",
+      "kind": "interface",
+      "meaning": "#entity.distribution.build-command"
+    },
+    {
+      "id": "entity.distribution.runtime-provisioning",
+      "title": "Runtime provisioning interface",
+      "kind": "interface",
+      "meaning": "#entity.distribution.runtime-provisioning"
+    },
+    {
+      "id": "entity.distribution.worktree-guard",
+      "title": "Worktree guard",
+      "kind": "interface",
+      "meaning": "#entity.distribution.worktree-guard"
+    },
+    {
+      "id": "entity.distribution.authored-sources",
+      "title": "Authored sources",
+      "kind": "concept",
+      "meaning": "#entity.distribution.authored-sources"
+    },
+    {
+      "id": "entity.distribution.build-manifest",
+      "title": "Build manifest",
+      "kind": "record",
+      "meaning": "#entity.distribution.build-manifest"
+    },
+    {
+      "id": "entity.distribution.package-inventory",
+      "title": "Package inventory",
+      "kind": "record",
+      "meaning": "#entity.distribution.package-inventory"
+    },
+    {
+      "id": "entity.distribution.installation-proposal",
+      "title": "Installation proposal",
+      "kind": "record",
+      "meaning": "#entity.distribution.installation-proposal"
+    },
+    {
+      "id": "entity.distribution.ownership-receipt",
+      "title": "Ownership receipt",
+      "kind": "record",
+      "meaning": "#entity.distribution.ownership-receipt"
+    },
+    {
+      "id": "entity.distribution.target-project",
+      "title": "Target project",
+      "kind": "concept",
+      "meaning": "#entity.distribution.target-project"
+    },
+    {
+      "id": "entity.distribution.verified-runtime",
+      "title": "Verified managed runtime",
+      "kind": "concept",
+      "meaning": "#entity.distribution.verified-runtime"
+    },
+    {
+      "id": "entity.distribution.integration-configuration",
+      "title": "Pi worker configuration",
+      "kind": "concept",
+      "meaning": "#entity.distribution.integration-configuration"
+    },
+    {
+      "id": "entity.distribution.developer-session",
+      "title": "Developer agent session",
+      "kind": "external actor",
+      "meaning": "#entity.distribution.developer-session"
+    }
+  ],
+  "dependencies": [
+    {
+      "target_id": "module.spec",
+      "meaning": "#agreement.document.distribution.module.1"
+    }
+  ],
+  "bindings": []
+}

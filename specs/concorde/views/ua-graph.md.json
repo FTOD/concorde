@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.views.ua-graph",
+    "owner": "module.views"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": [
+    {
+      "id": "contract.views.ua-overlay-input",
+      "version": 1,
+      "role": "required",
+      "peer": "external:ua-graph-producer",
+      "meaning": "#participation.document.views.ua-graph.1"
+    }
+  ]
+}

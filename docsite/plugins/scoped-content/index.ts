@@ -5,13 +5,14 @@ import {loadScopedRegistry,type Page,type ScopedRegistry} from './model';
 import {canonicalRoute,normalizeRoute} from './routes';
 import {loadSiteIdentity} from './site-identity';
 import {validateInternalLinks} from './internal-links';
+import {parseJson} from './reading-format';
 async function requireMaterialized(registry:ScopedRegistry):Promise<void> {
-  const identity=JSON.parse(await readFile(resolve(registry.projectRoot,'docsite/.generated/scoped-materialization.json'),'utf8'));
+  const identity=parseJson(await readFile(resolve(registry.projectRoot,'docsite/.generated/scoped-materialization.json'),'utf8'), 'scoped-materialization.json');
   if(identity.schema_version!==1||identity.sourceDigest!==registry.sourceDigest)throw new Error('Materialized Spec source identity differs; prepare publication again');
 }
 function manifestPages(registry:ScopedRegistry) {
-  return registry.pages.map(({sourcePath,route,contentDigest,owner,includedBy,aliases})=>
-    ({sourcePath,route,contentDigest,owner,includedBy,aliases}));
+  return registry.pages.map(({sourcePath,route,contentDigest,metadataPath,metadataDigest,owner,includedBy,aliases})=>
+    ({sourcePath,route,contentDigest,metadataPath,metadataDigest,owner,includedBy,aliases}));
 }
 function withBaseUrl(baseUrl:string,route:string):string {
   return (baseUrl==='/'?'':baseUrl.replace(/\/$/,''))+route;
@@ -30,9 +31,9 @@ function redirectStub(target:string,title:string):string {
 }
 export async function validateScopedBuild(root:string,directory:string) {
   const registry=loadScopedRegistry(root);
-  const manifest=JSON.parse(await readFile(resolve(directory,'build-manifest.json'),'utf8'));
+  const manifest=parseJson(await readFile(resolve(directory,'build-manifest.json'),'utf8'), 'build-manifest.json');
   const expected=manifestPages(registry);
-  if(manifest.schema_version!==19||manifest.sourceDigest!==registry.sourceDigest||JSON.stringify(manifest.pages)!==JSON.stringify(expected))throw new Error('Stale or incomplete Build Manifest 19');
+  if(manifest.schema_version!==20||manifest.sourceDigest!==registry.sourceDigest||JSON.stringify(manifest.pages)!==JSON.stringify(expected))throw new Error('Stale or incomplete Build Manifest 20');
   for (const page of registry.pages) for (const alias of page.aliases) {
     const stubPath=resolve(directory,alias.replace(/^\//,'')+'.html');
     let stub:string;
@@ -49,10 +50,10 @@ export default function scopedContent(context:LoadContext,options:unknown):Plugi
   return {name:'concorde-content',
     async loadContent(){loaded=loadScopedRegistry(root);await requireMaterialized(loaded);return loaded;},
     async contentLoaded({content,actions}){actions.setGlobalData({schema_version:content.schema_version,entryTarget:content.entryTarget,
-      pages:content.pages.map(({content:_,...page})=>page),
+      pages:content.pages.map(page=>Object.fromEntries(Object.entries(page).filter(([key])=>key!=='content'))),
       siteIdentity:loadSiteIdentity(context.siteDir)});},
     getPathsToWatch(){return ['docsite/site.json','.concorde/config.json',
-      ...(loaded?[loaded.registryPath,...loaded.pages.map(p=>p.sourcePath)]:[])].map(p=>resolve(root,p));},
+      ...(loaded?[loaded.registryPath,...loaded.pages.flatMap(p=>[p.sourcePath,p.metadataPath])]:[])].map(p=>resolve(root,p));},
     async postBuild({outDir,routesPaths}){
       const current=loadScopedRegistry(root);if(current.sourceDigest!==loaded.sourceDigest)throw new Error('Spec source changed during publication');
       await requireMaterialized(loaded);

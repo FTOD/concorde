@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.planning.plan",
+    "owner": "module.planning"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": []
+}

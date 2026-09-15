@@ -1,14 +1,4 @@
-```concorde-document
-{
-  "id": "document.validation.validation",
-  "owner": "module.validation",
-  "main_visible": true
-}
-```
-
 # Validation capability
-
-## Usage & Contract
 
 The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
@@ -28,7 +18,6 @@ stores root validation evidence against the exact candidate tree. Existing autho
 still require completion; this path cannot bypass unfinished work. Deterministic readiness does not
 claim universal semantic completeness. The primary delivery request accepts the verified candidate.
 
-
 Existing authored tasks must be complete and every already-required review must be current,
 successful and nonblocking before readiness. Validation does not choose new review requirements,
 run an Agent, repair a defect or deliver. A failed/missing/stale check or review blocks ready and
@@ -36,7 +25,7 @@ preserves the candidate. Repeating validation recomputes or verifies evidence ag
 Spec and shared-file consumers each retain their own revision and evidence. Structural success and
 scenario coverage do not establish semantic completeness.
 
-## Architecture & Realization
+## Design
 
 ### Configured check execution
 

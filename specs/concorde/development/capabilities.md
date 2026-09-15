@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.development.capabilities",
-  "owner": "module.development",
-  "main_visible": true
-}
-```
 # Capability registry
-
-## Usage & Contract
 
 A **Capability** is functionality available for Agent use or composition, with declared inputs,
 results, effects and usage conditions. A Harness makes selected capabilities available by explicit
@@ -20,6 +11,7 @@ composition and authority contract.
 Lowercase *operation* still describes an ordinary action, such as a filesystem or Git operation.
 
 ### Current host adapter
+
 The following inventory describes the existing Python host adapter. Each entry is implemented by a
 module under `capabilities/`, declaring launched Agents, effects, composed entries and typed requests
 and responses. The Python module is an implementation of functionality, not the definition of the
@@ -55,7 +47,6 @@ Request and response types are `concorde-<capability>-request@1` and
 `concorde-<capability>-response@1`; their promise-level meaning is defined in the [Development host
 boundary](interfaces.md).
 
-
 ### Capability properties
 
 Every entry is a Capability. A Flow organizes capability calls, Agent invocations, branches and
@@ -86,40 +77,23 @@ The former CLASS declaration is removed. Existing wire identities and event fiel
 `stage` continue to identify an execution phase, not a capability type. Stable Spec anchors retain
 their identities when their titles or terminology change.
 
-```concorde-capabilities
-[
-  {"id": "main", "public": true, "context_selection": "discover", "deterministic": false, "skill": "concorde-main"},
-  {"id": "specify-loop", "public": true, "context_selection": "discover", "deterministic": false, "skill": "concorde-specify-loop"},
-  {"id": "dev-loop", "public": true, "context_selection": "discover", "deterministic": false, "skill": "concorde-dev-loop"},
-  {"id": "reflections-triage", "public": true, "context_selection": "bound", "deterministic": false, "skill": "concorde-reflections-triage"},
-  {"id": "init", "public": true, "context_selection": "none", "deterministic": true, "skill": "concorde-init"},
-  {"id": "configure", "public": true, "context_selection": "none", "deterministic": true, "skill": "concorde-configure"},
-  {"id": "validate", "public": true, "context_selection": "none", "deterministic": true, "skill": "concorde-validate"},
-  {"id": "deliver", "public": true, "context_selection": "none", "deterministic": true, "skill": "concorde-deliver"},
-  {"id": "specify", "public": false, "context_selection": "bound", "deterministic": false, "skill": null},
-  {"id": "review", "public": true, "context_selection": "discover", "deterministic": false, "skill": "concorde-review"},
-  {"id": "context-solve", "public": false, "context_selection": "bound", "deterministic": false, "skill": null},
-  {"id": "plan", "public": false, "context_selection": "bound", "deterministic": false, "skill": null},
-  {"id": "tasks", "public": false, "context_selection": "bound", "deterministic": false, "skill": null},
-  {"id": "implement", "public": false, "context_selection": "bound", "deterministic": false, "skill": null}
-]
-```
+The associated metadata records the machine-checked implementation inventory. The reading explanations here define its responsibilities and use.
 
 Deterministic validation requires this block to equal the capability inventory declared in code:
 the same identifiers, boolean `public` and `deterministic` values, `context_selection` values and
 Skill names, exactly one Skill for each public capability and none for a non-public capability. The block is intentional redundancy so that this Spec explains the workflow
 without reading Python; it never adds a capability that code does not implement.
 
-Target workers use `concorde-agent-stage-context@2`/`concorde-agent-stage-result@1` with explicit
+Target workers use `concorde-agent-stage-context@3`/`concorde-agent-stage-result@1` with explicit
 document order, owned and directly referenced Specs. Discovery questions, routing and topology design
-use `concorde-main-stage-context@2`/`concorde-main-stage-result@1` with explicit complete Module contexts, deduplicated original source pools and per-Module resolution provenance. Accepted topology design uses
-`concorde-topology-proposal@1`, `concorde-topology-author-context@2`/`concorde-topology-author-result@1`
+use `concorde-main-stage-context@3`/`concorde-main-stage-result@1` with explicit complete Module contexts, deduplicated original source pools and per-Module resolution provenance. Accepted topology design uses
+`concorde-topology-proposal@1`, `concorde-topology-author-context@3`/`concorde-topology-author-result@1`
 and a host-private `concorde-topology-application@1` artifact; shared replacements require sole-owner authoring and compatibility evidence for each affected consumer. Plan artifacts, implementation tasks and selected reflections have
 separate registered type identities. Fresh snapshots accompany every handoff. Deterministic outputs
 carry identities and digests, never non-visible Module collections, code or logs into main or
 unrelated cognition.
 
-Reviewers use `concorde-review-stage-context@2` containing a full `concorde-context-snapshot@4`
+Reviewers use `concorde-review-stage-context@3` containing a full `concorde-context-snapshot@5`
 and host-produced `concorde-review-input@1`; they return `concorde-review-stage-result@1`. The host
 publishes `concorde-review-result@1` with target/focus/revision identity and
 `semantic_completeness=not_proven`. Spec and code modes use different fresh roles, with no writes in
@@ -132,7 +106,7 @@ launch the exact worker its task contract declares; reusing one worker across se
 combine capability names, workflow responsibilities, public Skills or callable authority. Each
 phase and target remains a fresh invocation.
 
-## Architecture & Realization
+## Design
 
 ### Behavioral ownership and composition limits
 

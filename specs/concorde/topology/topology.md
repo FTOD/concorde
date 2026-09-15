@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.development.topology",
-  "owner": "module.topology",
-  "main_visible": true
-}
-```
 # Topology evolution Agent Flow
-
-## Usage & Contract
 
 Use this Flow when registered targets, document ownership and references, shared truth or routing structure
 must change together. The developer supplies intended behavior and constraints. Main designs a
@@ -19,7 +10,7 @@ rejection may select another design or authoring loop, but cannot authorize the 
 The loop waits for a required decision and re-admits revised intent and current source identity.
 Topology-designer and target-author invocations retain separate Agent definitions and Harness bindings.
 
-## Architecture & Realization
+## Design
 
 ### Topology preparation Flow (`topology_flow`)
 
@@ -60,7 +51,6 @@ flowchart TB
     persist_application --> __end__
 ```
 
-
 ### Topology application Flow (`topology_apply_flow`)
 
 State: `route`, `output`, `result`.
@@ -97,7 +87,6 @@ No target author writes project files. A gap or unresolved consumer compatibilit
 pre-design project unchanged. Prepared
 artifacts contain full proposed bytes, but only their path/digest enters the topology designer's cognition.
 Application is one host transaction with current before-digests and final repository validation.
-
 
 Every new Concorde Module includes a local `module.md` with an inline Mermaid entity diagram
 whose `accTitle` and `accDescr` describe it for readers who cannot see it. Its author returns the

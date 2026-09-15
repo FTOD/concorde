@@ -5,7 +5,7 @@ audience: shared
 ## Concorde Framework execution profile
 
 This profile applies the independent Spec Protocol to Concorde's runtime. Framework configuration
-uses `profile_version: 13` for the two-part reader-oriented Module model and registry schema 4 for its JSON
+uses `profile_version: 14` for the content/reading document-unit model and registry schema 5 for its JSON
 storage. `.concorde/config.json` declares `profile_version`, `registry`, `protocol` and
 `capability_configuration`. Its `protocol` binding identifies the accepted version and exact
 manifest digest. These configuration and storage versions are Framework compatibility identifiers,
@@ -15,12 +15,12 @@ migration; the runtime must not infer their meaning from paths or names.
 ### P5. One complete Module context per bounded task
 
 A bounded invocation selects one Module and freezes four kinds of context. Its **Spec context** is
-the Protocol's one-level union of owned documents and explicit Module references; scenario focus
+the Protocol's one-level union of complete owned document units and explicit Module references; scenario focus
 does not trim it. Definitions in included documents retain their original owner. The Protocol
 fixes which files are visible, not how they are delivered; this profile chooses the delivery. The
 host delivers the Spec context as a **context index and grant**: the invocation's frozen record
-lists every included document with its identity, owner, digest, inclusion reasons and the reading
-entry, and the documents themselves are granted read-only at their project-relative paths, copied
+lists both source members of every included unit with document identity, owner, source role, digest,
+inclusion reasons and the reading entry; reading and metadata members themselves are granted read-only at their project-relative paths, copied
 byte-for-byte into a capsule when the phase has no project workspace. No Spec document body is
 embedded in an invocation's input, so an invocation pays only for the documents its task opens;
 the agent opens the granted files with its own tools, starting from the reading entry, and nothing
@@ -158,22 +158,30 @@ handoff solely because it updates the Framework's own instructions.
 
 ### Framework authoring and publication conventions
 
-Every Concorde Module's `module.md` starts with Usage & Contract (Purpose, Usage, Requirements,
-Scenarios) and follows with Architecture & Realization (Design, Entities, Relationships), using the
-Protocol's level-2 parts and level-3 subsections. Companion documents put their content in one or
-both parts without repeating the whole entry layout. Usage prose explains correct use before formal
-guarantees; Design explains how responsibilities, flow, state and constraints fulfill those guarantees.
-Internal requirements and verification scenarios stay in the architecture part, with stable IDs and
-one canonical definition. Reading parts do not filter full-file context or widen permissions. A requirement is a heading section `req.<module>.<name> — Title` whose first paragraph
-is one SHALL sentence about the Module; a scenario section holds steps only, and whatever one
-situation must additionally guarantee is written into its steps or prose rather than attached as a
-requirement. The Relationships subsection holds an inline Mermaid flowchart with English `accTitle`
-and `accDescr` lines whose nodes are exactly the declared entity titles and whose edge labels are
-the relationship verbs. Show real responsibilities and connections; do not invent nodes to satisfy a
-diagram shape. Files that realize an entity are listed on that entity: a Module's own package
-directories (`src/concorde/<module>/`, `tests/concorde/<module>/`) and the directories it alone owns
-are listed as directory prefixes on the entity that owns that directory's core responsibility, and a
-file shared by several Modules is listed exactly by each of them under its own entity.
+Every Concorde Module's `module.md` starts with Purpose, Usage, Design and Relationships as
+level-2 headings. Requirements, Scenarios and other precise details follow or live in owned
+companions; companions do not repeat a mandatory template. Reading is the Protocol-defined subset
+of complete content, not a publisher summary. Each Markdown source has one `.md.json` companion
+with document identity/owner and entity, dependency and participant declarations. Mechanical fields
+stay there; readable responsibilities, conditions, guarantees and obligations have local anchors
+referenced by metadata. Group adjacent anchors on one line when a coherent explanation covers
+several entities. Do not replace the retired JSON inventory with another giant human inventory.
+
+Both source members are indexed, granted whole and byte-bound. A metadata-only change invalidates
+owner and direct-consumer evidence. Authors return complete changed source members in `documents`;
+a topology author returns both members of every candidate-owned unit in registration order.
+Validate one combined overlay, not one file at a time. Ordinary authoring preserves document identity
+and ownership; topology reconciles structural changes. Code writers never edit either member.
+
+A requirement is one Module-wide SHALL statement with a stable heading ID. A scenario has ordered
+GIVEN/WHEN/THEN steps and its own situational guarantees, not attached requirements. Internal
+constraints remain normative; link rather than duplicate obligations. The Relationships view uses
+English labels, accTitle and accDescr, a nonempty subset of local entity titles and labeled edges.
+Explain its scope; inventory coverage is not a readability requirement or proof of completeness.
+Files are bound in entity metadata, using owned package directory prefixes and exact shared files;
+the registry listing remains their exact union. Project-owned metadata extensions
+`concorde.capabilities` and `concorde.agents` record the checked implementation inventories; their
+behavioral explanations remain reading content and unknown extensions cannot override the Protocol.
 
 Every executable Flow has a Flow Spec in its owning Module's documents written with LangGraph's
 concepts: a State part, a Nodes table (node name, what executes, `in` and `out` state) and a

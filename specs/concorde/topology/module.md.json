@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.topology.module",
+    "owner": "module.topology"
+  },
+  "entities": [
+    {
+      "id": "entity.topology.adapter",
+      "title": "Topology adapter",
+      "kind": "shared program",
+      "files": [
+        "capabilities/main.py",
+        "tests/concorde/harness/test_scoped_protocol.py"
+      ],
+      "meaning": "#entity.topology.adapter"
+    },
+    {
+      "id": "entity.topology.development",
+      "title": "Development",
+      "kind": "used module",
+      "target_id": "module.development",
+      "meaning": "#entity.topology.development"
+    },
+    {
+      "id": "entity.topology.harness",
+      "title": "Harness",
+      "kind": "used module",
+      "target_id": "module.harness",
+      "meaning": "#entity.topology.harness"
+    },
+    {
+      "id": "entity.topology.spec",
+      "title": "Spec",
+      "kind": "used module",
+      "target_id": "module.spec",
+      "meaning": "#entity.topology.spec"
+    },
+    {
+      "id": "entity.topology.query-routing",
+      "title": "Query and Routing",
+      "kind": "used module",
+      "target_id": "module.query-routing",
+      "meaning": "#entity.topology.query-routing"
+    },
+    {
+      "id": "entity.topology.application",
+      "title": "Prepared application",
+      "kind": "record",
+      "meaning": "#entity.topology.application"
+    }
+  ],
+  "dependencies": [
+    {
+      "target_id": "module.development",
+      "meaning": "#agreement.document.topology.module.1"
+    },
+    {
+      "target_id": "module.harness",
+      "meaning": "#agreement.document.topology.module.2"
+    },
+    {
+      "target_id": "module.spec",
+      "meaning": "#agreement.document.topology.module.3"
+    },
+    {
+      "target_id": "module.query-routing",
+      "meaning": "#agreement.document.topology.module.4"
+    }
+  ],
+  "bindings": []
+}

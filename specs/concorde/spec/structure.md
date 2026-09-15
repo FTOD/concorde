@@ -1,25 +1,26 @@
-```concorde-document
-{
-  "id": "document.spec.structure",
-  "owner": "module.spec",
-  "main_visible": true
-}
-```
-
 # Spec structure and validation
-
-## Usage & Contract
 
 This document defines the registry shape this Module admits and the deterministic validation it performs against that shape. Selection and returned value records are defined in [registry](registry.md) and [values](values.md); the admission scenarios for a consistent or inconsistent inventory are defined in [module](module.md).
 
 ### Registry shape
 
-Registry schema 4 contains `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. A Module descriptor has `id`, `kind="module"`, `title`, `documents`, `references`, `parent`, `uses`, `files` and `checks`. Every array is explicit. `files` holds listing entries: an exact project file, or a directory prefix written with a trailing `/` that binds every regular file below it. It MUST equal the sorted union of the Module's own entity listing declarations, entry for entry, so a directory prefix appears as that prefix and never as its expanded file names; membership, composition and dependency are checked independently of that entry set. The entry names one Module, and its complete collection starts routing.
+Registry schema 5 contains `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. A Module descriptor has `id`, `kind="module"`, `title`, `documents`, `references`, `parent`, `uses`, `files` and `checks`. Every array is explicit. `files` holds listing entries: an exact project file, or a directory prefix written with a trailing `/` that binds every regular file below it. It MUST equal the sorted union of the Module's own entity listing declarations, entry for entry, so a directory prefix appears as that prefix and never as its expanded file names; membership, composition and dependency are checked independently of that entry set. The entry names one Module, and its complete collection starts routing.
 
-Each Markdown document declares `id`, its sole `owner` and `main_visible`. A Module's `concorde-dependencies` entries contain `target_id`, `responsibility`, `selection_condition` and nonempty `relied_upon_promises`, covering exactly its children and `uses` targets. A Module's `concorde-entities` blocks declare `id`, `title`, `kind`, `responsibility` and optionally `files`, `pending` and `target_id`; every child and used Module needs exactly one entity naming it by `target_id`. `files` entries are exact files or directory prefixes, `pending` may mark either kind as declared but not yet created, and within one Module the most specific entry owns a covered file: an exact file before a directory, and a longer directory before a shorter one. A listed directory MUST NOT contain a registered Spec document. Every Concorde Module has a principal entity diagram in its `module.md` Relationships subsection, whose node labels equal its own entity titles, excluding referenced foreign definitions, as required by the Protocol. Check records declare `id`, `target_id`, `argv`, `timeout_seconds` and optional `inputs`. Shared implementation changes affect every Module whose entries cover the changed file, whether exactly or through a directory prefix; validation and downstream tools evaluate each affected Module's own contract separately.
+Each registered reading document has a `.md.json` companion with `schema_version: 1`, `document`
+identity/owner and explicit `entities`, `dependencies` and `bindings` arrays. Entity records contain
+id/title/kind and a local readable meaning anchor, with optional files/pending/target_id. Dependency
+records contain target_id and a local meaning anchor. Participant bindings contain id/version/role/
+peer and a local meaning anchor. Responsibilities, conditions, guarantees and obligations remain
+readable prose, never copied semantic strings in metadata. File/directory binding specificity and
+pending rules still apply, and neither source member may be bound as implementation or external
+material. Every child and used Module has exactly one local entity and one dependency explanation.
+
+The principal Relationships diagram uses a nonempty subset of local entity titles and labels each
+edge. Scoped omission of an inventory node is permitted; inventing a node is not. Check records
+retain id/target_id/argv/timeout_seconds and optional inputs. Shared implementation changes concern
+every listing Module, whose contract is evaluated separately.
 
 Topology preparation stores the exact validated registry/document replacements below the ignored `.concorde/topology-proposals/` host area. Its public ArtifactRef binds path and digest. Applying the artifact rechecks its embedded design identity, discovery context, Protocol, registry base and every file before-digest before one atomic transaction.
-
 
 ### Scenarios
 
@@ -32,7 +33,7 @@ Topology preparation stores the exact validated registry/document replacements b
 
 #### scenario.spec.validate-structural-errors — Reporting structural errors, not semantics
 
-- GIVEN a Module missing one of its two reader-oriented parts or their required subsections, an unresolved scenario/requirement/entity identity collision, an entity entry union that disagrees with the registry, or a missing local dependency promise
+- GIVEN a Module missing a required reading-entry section or its metadata companion, an unresolved scenario/requirement/entity identity collision, an entity entry union that disagrees with the registry, or a missing local dependency promise
 - WHEN the validator runs
 - THEN it returns invalid with one rule-identified, remediable finding per problem
 - AND it does not attempt to judge whether the underlying behavior is correct
@@ -45,12 +46,12 @@ Topology preparation stores the exact validated registry/document replacements b
 - THEN it reports a warning, not an error
 - BUT a declared entry whose file or directory is missing and not marked pending is still an error
 
-#### scenario.spec.validate-architecture-mismatch — Diagram nodes must equal entity titles
+#### scenario.spec.validate-architecture-mismatch — Scoped diagram nodes must name declared entities
 
-- GIVEN a Module's Relationships subsection flowchart nodes differ from its declared entity titles, or an edge has no label
+- GIVEN a Module's Relationships subsection flowchart names an undeclared entity, or an edge has no label
 - WHEN the validator runs
 - THEN it reports an architecture finding identifying the mismatched or unlabeled elements
-- AND it requires the diagram nodes to be exactly the entity titles before the Module can validate successfully
+- AND it requires every depicted node to name a declared local entity, while permitting scoped omission of inventory nodes
 
 #### scenario.spec.link-anchors — ID-shaped link fragments must resolve to their definition
 
@@ -69,29 +70,28 @@ Topology preparation stores the exact validated registry/document replacements b
 - AND a listed Python file the validator cannot read for its declarations is reported as an error
 - BUT no Spec document lists tests; the declarations live only with the code
 
+#### scenario.spec.reader-parts — Read purpose, usage and design before detailed cases
 
-#### scenario.spec.reader-parts — Read consumer behavior before realization
-
-- GIVEN a registered Module entry with Usage & Contract and Architecture & Realization and their required subsections
-- AND companion documents that cover one or both reading parts without repeating the entry layout
+- GIVEN a registered Module entry with Purpose, Usage, Design and Relationships followed by precise details
+- AND paired companion documents that cover their own topics without repeating the entry layout
 - WHEN structural validation runs
-- THEN it accepts the two-part document structure and nonempty Purpose, Usage and Design explanations
+- THEN it accepts the complete source pairs and nonempty required reading explanations
 - BUT it does not claim that those explanations are semantically complete or implemented
 
 #### scenario.spec.reader-parts-invalid — Reject malformed reader-oriented structure
 
-- GIVEN an old four-section entry, missing or duplicate parts, wrong heading levels or order, empty required explanations, an unclassified companion, or a section escaping its reading part
+- GIVEN an old enclosing-parts entry, missing metadata, missing or duplicate required sections, wrong heading levels or order, empty required explanations or an unresolved meaning anchor
 - WHEN structural validation runs
 - THEN it reports a remediable Module-structure error for each detected problem
 - AND headings inside code fences do not satisfy required structure
 
 #### scenario.spec.internal-contract-context — Internal obligations retain ordinary identity
 
-- GIVEN a Module defines a requirement and verification scenario under Architecture & Realization
+- GIVEN a Module defines a requirement and verification scenario under Design
 - AND a listed test declares that scenario's stable ID
 - WHEN definitions, scenario context and verification coverage are resolved
 - THEN the internal definitions retain the same Module ownership and identity rules as external definitions
-- AND the scenario resolves the complete owned/direct-reference context, including both reading parts and less-visible companion documents
+- AND the scenario resolves the complete owned/direct-reference context, including both source members of every selected document unit
 - AND the test declaration contributes coverage without creating another Spec kind or granting code access
 
 ### Requirements
@@ -117,13 +117,12 @@ A configured check's result SHALL NOT substitute for an agent reading source.
 
 Every validation result SHALL carry a source digest of the exact state it assessed.
 
-
 ### Validator interface
 
 `validate_repository(root, target_id=None, package_root=None) -> ToolResult` returns
 `status=success|invalid`, findings with `rule_id`, `message` and `remediation`, and a result
 containing `source_digest` for the assessed Spec state. It checks identities, document
-declarations, unique ownership, one-level references, canonical contract definitions, participant bindings, dependency blocks, scenario/requirement/entity syntax, entity listing
+declarations, unique ownership, one-level references, canonical contract definitions, participant bindings, dependency metadata and readable meaning, scenario/requirement/entity syntax, entity listing
 entries against the registry, architecture diagrams, structured contracts and Reflection
 attribution; a declared entry whose file or directory is missing is an error unless its entity marks
 it pending, a still-pending entry that now exists is a warning, and a regular file that no Module's
@@ -133,10 +132,9 @@ execute separately on the host using the registered `argv` and `timeout_seconds`
 privately. No check result is a source-read proxy for an agent. Validation reads project files and
 writes nothing.
 
-
 ### Reference and interface validation
 
-Schema 4 requires a references array on every Module. Each `{kind, id}` must resolve to the
+Schema 5 requires a references array on every Module. Each `{kind, id}` must resolve to the
 declared Module/document kind; duplicates, self references, document aliases and multiple owners
 are errors. Overlap is deduplicated with all provenance, and cycles do not recurse. Each binding's
 canonical definition/version must occur in its participant's resolved context; internal peers
@@ -161,6 +159,6 @@ Structural checks report missing references/definitions separately from semantic
 
 The maintenance-only `scripts/development/check-spec-v5.py` audits the authored registry without
 constructing the runtime repository. It checks ownership, references, binding/example shape,
-links, reader-part structure, definition/diagram grammar, entity/file/dependency consistency and manifest
+links, reading-subset structure, definition/diagram grammar, entity/file/dependency consistency and manifest
 digests; `--base REVISION` also checks stable Requirement/Scenario/Entity ownership against Git.
 It is independent documentation evidence, not a lifecycle check or a semantic-completeness claim.

@@ -156,10 +156,19 @@ class ContentMigrationTests(unittest.TestCase):
                 migrate(text)
 
     def test_unknown_profile_inventories_are_preserved_and_flagged_for_classification(self):
-        text = source() + '\n### Capability inventory\n\n' + block('concorde-capabilities', [{'id': 'submit'}])
+        text = source() + '\n### Capability inventory\n\n' + block('concorde-custom-control', [{'id': 'submit'}])
         plan = migrate(text)
-        self.assertIn(block('concorde-capabilities', [{'id': 'submit'}]), plan.unit.reading.content.decode())
-        self.assertTrue(any('concorde-capabilities' in note for note in plan.editorial_notes))
+        self.assertIn(block('concorde-custom-control', [{'id': 'submit'}]), plan.unit.reading.content.decode())
+        self.assertTrue(any('concorde-custom-control' in note for note in plan.editorial_notes))
+
+    def test_known_framework_inventories_move_to_named_metadata_extensions(self):
+        for language, key in [('concorde-capabilities','concorde.capabilities'), ('concorde-agents','concorde.agents')]:
+            entries = [{'id':'example', 'public':False}]
+            plan = migrate(source() + '\n### Inventory\n\n' + block(language, entries))
+            self.assertEqual(entries, plan.unit.declarations['extensions'][key])
+            self.assertNotIn('```' + language, plan.unit.reading.content.decode())
+            self.assertFalse(plan.report['applied'])
+            self.assertEqual('not_completed', plan.report['semantic_rewrite'])
 
     def test_old_visibility_is_not_reinterpreted_as_reading_membership(self):
         text = source().replace(block('concorde-document', DOCUMENT),
@@ -189,22 +198,15 @@ class ContentMigrationTests(unittest.TestCase):
 
 
 class RegisteredMigrationPreviewTests(unittest.TestCase):
-    def test_current_checkout_converts_without_changing_sources_or_claiming_readiness(self):
+    def test_activated_checkout_refuses_repeated_legacy_conversion_without_writes(self):
         root = Path(__file__).resolve().parents[3]
         registry = json.loads((root / '.concorde/specs.json').read_text())
-        paths = [p for target in registry['targets'] for p in target['documents']]
+        paths = [member for target in registry['targets'] for path in target['documents']
+                 for member in (path, path + '.json')]
         before = {path: (root / path).read_bytes() for path in paths}
-        report = preview_registered_migration(root)
-        self.assertEqual([], report['errors'])
-        self.assertEqual(len(paths), report['converted_documents'])
-        self.assertEqual(len(paths), report['registered_documents'])
-        self.assertGreater(report['preserved_meanings'], 300)
-        self.assertFalse(report['ready_to_apply'])
-        self.assertEqual('not_completed', report['semantic_rewrite'])
+        with self.assertRaisesRegex(ContentModelError, 'legacy registry schema 4'):
+            preview_registered_migration(root)
         self.assertEqual(before, {path: (root / path).read_bytes() for path in paths})
-        self.assertTrue(all(not (root / (path + '.json')).exists() for path in paths))
-        self.assertTrue(any('concorde-agents' in note for document in report['documents']
-                            for note in document['editorial_notes']))
 
     def test_missing_or_invalid_members_block_preview_without_claiming_partial_success(self):
         with tempfile.TemporaryDirectory() as directory:

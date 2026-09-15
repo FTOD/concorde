@@ -29,7 +29,7 @@
                 "$ref": "#/$defs/concorde-context-snapshot"
               },
               "schema_version": {
-                "const": 4,
+                "const": 5,
                 "type": "integer"
               },
               "type_id": {
@@ -252,7 +252,7 @@
             "type": "object"
           },
           "schema_version": {
-            "const": 4
+            "const": 5
           },
           "spec_resolution": {
             "additionalProperties": false,
@@ -329,6 +329,128 @@
                 "type": "array",
                 "uniqueItems": true
               },
+              "registration": {
+                "additionalProperties": false,
+                "properties": {
+                  "checks": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "documents": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "files": {
+                    "items": {
+                      "minLength": 1,
+                      "pattern": "^[^/](?:[^/]*/)*[^/]*$",
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "module"
+                  },
+                  "parent": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "references": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "id": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "kind": {
+                              "enum": [
+                                "module",
+                                "document"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "id"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "kind": {
+                              "const": "external"
+                            },
+                            "path": {
+                              "minLength": 1,
+                              "pattern": "^[^/](?:[^/]*/)*[^/]*$",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "path"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "title": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "uses": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "title",
+                  "documents",
+                  "references",
+                  "parent",
+                  "uses",
+                  "files",
+                  "checks"
+                ],
+                "type": "object"
+              },
+              "schema_version": {
+                "const": 1
+              },
               "sources": {
                 "items": {
                   "additionalProperties": false,
@@ -341,9 +463,6 @@
                     "document_id": {
                       "minLength": 1,
                       "type": "string"
-                    },
-                    "main_visible": {
-                      "type": "boolean"
                     },
                     "owner": {
                       "minLength": 1,
@@ -377,6 +496,12 @@
                       },
                       "type": "array",
                       "uniqueItems": true
+                    },
+                    "role": {
+                      "enum": [
+                        "reading",
+                        "metadata"
+                      ]
                     }
                   },
                   "required": [
@@ -384,7 +509,7 @@
                     "path",
                     "digest",
                     "owner",
-                    "main_visible",
+                    "role",
                     "reasons"
                   ],
                   "type": "object"
@@ -393,6 +518,8 @@
               }
             },
             "required": [
+              "schema_version",
+              "registration",
               "query_id",
               "query_kind",
               "module_id",
@@ -1246,7 +1373,7 @@
         "$ref": "#/$defs/concorde-agent-stage-context"
       },
       "schema_version": {
-        "const": 2,
+        "const": 3,
         "type": "integer"
       },
       "type_id": {
@@ -1936,7 +2063,7 @@
             "type": "object"
           },
           "schema_version": {
-            "const": 4
+            "const": 5
           },
           "spec_resolution": {
             "additionalProperties": false,
@@ -2013,6 +2140,128 @@
                 "type": "array",
                 "uniqueItems": true
               },
+              "registration": {
+                "additionalProperties": false,
+                "properties": {
+                  "checks": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "documents": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "files": {
+                    "items": {
+                      "minLength": 1,
+                      "pattern": "^[^/](?:[^/]*/)*[^/]*$",
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "module"
+                  },
+                  "parent": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "references": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "id": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "kind": {
+                              "enum": [
+                                "module",
+                                "document"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "id"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "kind": {
+                              "const": "external"
+                            },
+                            "path": {
+                              "minLength": 1,
+                              "pattern": "^[^/](?:[^/]*/)*[^/]*$",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "path"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "title": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "uses": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "title",
+                  "documents",
+                  "references",
+                  "parent",
+                  "uses",
+                  "files",
+                  "checks"
+                ],
+                "type": "object"
+              },
+              "schema_version": {
+                "const": 1
+              },
               "sources": {
                 "items": {
                   "additionalProperties": false,
@@ -2025,9 +2274,6 @@
                     "document_id": {
                       "minLength": 1,
                       "type": "string"
-                    },
-                    "main_visible": {
-                      "type": "boolean"
                     },
                     "owner": {
                       "minLength": 1,
@@ -2061,6 +2307,12 @@
                       },
                       "type": "array",
                       "uniqueItems": true
+                    },
+                    "role": {
+                      "enum": [
+                        "reading",
+                        "metadata"
+                      ]
                     }
                   },
                   "required": [
@@ -2068,7 +2320,7 @@
                     "path",
                     "digest",
                     "owner",
-                    "main_visible",
+                    "role",
                     "reasons"
                   ],
                   "type": "object"
@@ -2077,6 +2329,8 @@
               }
             },
             "required": [
+              "schema_version",
+              "registration",
               "query_id",
               "query_kind",
               "module_id",
@@ -2930,7 +3184,7 @@
         "$ref": "#/$defs/concorde-context-snapshot"
       },
       "schema_version": {
-        "const": 4,
+        "const": 5,
         "type": "integer"
       },
       "type_id": {
@@ -3811,9 +4065,6 @@
                   "minLength": 1,
                   "type": "string"
                 },
-                "main_visible": {
-                  "type": "boolean"
-                },
                 "owner": {
                   "minLength": 1,
                   "type": "string"
@@ -3821,6 +4072,12 @@
                 "path": {
                   "minLength": 1,
                   "type": "string"
+                },
+                "role": {
+                  "enum": [
+                    "reading",
+                    "metadata"
+                  ]
                 }
               },
               "required": [
@@ -3828,7 +4085,7 @@
                 "path",
                 "digest",
                 "owner",
-                "main_visible"
+                "role"
               ],
               "type": "object"
             },
@@ -3893,7 +4150,7 @@
             "type": "object"
           },
           "schema_version": {
-            "const": 3
+            "const": 4
           },
           "target_hint": {
             "anyOf": [
@@ -3988,6 +4245,128 @@
                       "type": "array",
                       "uniqueItems": true
                     },
+                    "registration": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "checks": {
+                          "items": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "documents": {
+                          "items": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "files": {
+                          "items": {
+                            "minLength": 1,
+                            "pattern": "^[^/](?:[^/]*/)*[^/]*$",
+                            "type": "string"
+                          },
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "id": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "kind": {
+                          "const": "module"
+                        },
+                        "parent": {
+                          "anyOf": [
+                            {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "references": {
+                          "items": {
+                            "anyOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "id": {
+                                    "minLength": 1,
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "enum": [
+                                      "module",
+                                      "document"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "id"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "const": "external"
+                                  },
+                                  "path": {
+                                    "minLength": 1,
+                                    "pattern": "^[^/](?:[^/]*/)*[^/]*$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "path"
+                                ],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "title": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "uses": {
+                          "items": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "type": "array",
+                          "uniqueItems": true
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "title",
+                        "documents",
+                        "references",
+                        "parent",
+                        "uses",
+                        "files",
+                        "checks"
+                      ],
+                      "type": "object"
+                    },
+                    "schema_version": {
+                      "const": 1
+                    },
                     "sources": {
                       "items": {
                         "additionalProperties": false,
@@ -4000,9 +4379,6 @@
                           "document_id": {
                             "minLength": 1,
                             "type": "string"
-                          },
-                          "main_visible": {
-                            "type": "boolean"
                           },
                           "owner": {
                             "minLength": 1,
@@ -4036,6 +4412,12 @@
                             },
                             "type": "array",
                             "uniqueItems": true
+                          },
+                          "role": {
+                            "enum": [
+                              "reading",
+                              "metadata"
+                            ]
                           }
                         },
                         "required": [
@@ -4043,7 +4425,7 @@
                           "path",
                           "digest",
                           "owner",
-                          "main_visible",
+                          "role",
                           "reasons"
                         ],
                         "type": "object"
@@ -4052,6 +4434,8 @@
                     }
                   },
                   "required": [
+                    "schema_version",
+                    "registration",
                     "query_id",
                     "query_kind",
                     "module_id",
@@ -4138,7 +4522,7 @@
                     "type": "string"
                   },
                   "schema_version": {
-                    "const": 4
+                    "const": 5
                   },
                   "targets": {
                     "items": {
@@ -4593,7 +4977,7 @@
         "$ref": "#/$defs/concorde-discovery-context"
       },
       "schema_version": {
-        "const": 3,
+        "const": 4,
         "type": "integer"
       },
       "type_id": {
@@ -5369,7 +5753,7 @@
                 "type": "string"
               },
               "schema_version": {
-                "const": 4
+                "const": 5
               },
               "targets": {
                 "items": {
@@ -6547,7 +6931,7 @@
                 "type": "string"
               },
               "schema_version": {
-                "const": 4
+                "const": 5
               },
               "targets": {
                 "items": {
@@ -7187,9 +7571,6 @@
                   "minLength": 1,
                   "type": "string"
                 },
-                "main_visible": {
-                  "type": "boolean"
-                },
                 "owner": {
                   "minLength": 1,
                   "type": "string"
@@ -7197,6 +7578,12 @@
                 "path": {
                   "minLength": 1,
                   "type": "string"
+                },
+                "role": {
+                  "enum": [
+                    "reading",
+                    "metadata"
+                  ]
                 }
               },
               "required": [
@@ -7204,7 +7591,7 @@
                 "path",
                 "digest",
                 "owner",
-                "main_visible"
+                "role"
               ],
               "type": "object"
             },
@@ -7269,7 +7656,7 @@
             "type": "object"
           },
           "schema_version": {
-            "const": 3
+            "const": 4
           },
           "target_hint": {
             "anyOf": [
@@ -7364,6 +7751,128 @@
                       "type": "array",
                       "uniqueItems": true
                     },
+                    "registration": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "checks": {
+                          "items": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "documents": {
+                          "items": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "files": {
+                          "items": {
+                            "minLength": 1,
+                            "pattern": "^[^/](?:[^/]*/)*[^/]*$",
+                            "type": "string"
+                          },
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "id": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "kind": {
+                          "const": "module"
+                        },
+                        "parent": {
+                          "anyOf": [
+                            {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "references": {
+                          "items": {
+                            "anyOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "id": {
+                                    "minLength": 1,
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "enum": [
+                                      "module",
+                                      "document"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "id"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "const": "external"
+                                  },
+                                  "path": {
+                                    "minLength": 1,
+                                    "pattern": "^[^/](?:[^/]*/)*[^/]*$",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "path"
+                                ],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "title": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "uses": {
+                          "items": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "type": "array",
+                          "uniqueItems": true
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "title",
+                        "documents",
+                        "references",
+                        "parent",
+                        "uses",
+                        "files",
+                        "checks"
+                      ],
+                      "type": "object"
+                    },
+                    "schema_version": {
+                      "const": 1
+                    },
                     "sources": {
                       "items": {
                         "additionalProperties": false,
@@ -7376,9 +7885,6 @@
                           "document_id": {
                             "minLength": 1,
                             "type": "string"
-                          },
-                          "main_visible": {
-                            "type": "boolean"
                           },
                           "owner": {
                             "minLength": 1,
@@ -7412,6 +7918,12 @@
                             },
                             "type": "array",
                             "uniqueItems": true
+                          },
+                          "role": {
+                            "enum": [
+                              "reading",
+                              "metadata"
+                            ]
                           }
                         },
                         "required": [
@@ -7419,7 +7931,7 @@
                           "path",
                           "digest",
                           "owner",
-                          "main_visible",
+                          "role",
                           "reasons"
                         ],
                         "type": "object"
@@ -7428,6 +7940,8 @@
                     }
                   },
                   "required": [
+                    "schema_version",
+                    "registration",
                     "query_id",
                     "query_kind",
                     "module_id",
@@ -7514,7 +8028,7 @@
                     "type": "string"
                   },
                   "schema_version": {
-                    "const": 4
+                    "const": 5
                   },
                   "targets": {
                     "items": {
@@ -7971,7 +8485,7 @@
                 "$ref": "#/$defs/concorde-discovery-context"
               },
               "schema_version": {
-                "const": 3,
+                "const": 4,
                 "type": "integer"
               },
               "type_id": {
@@ -7999,7 +8513,7 @@
         "$ref": "#/$defs/concorde-main-stage-context"
       },
       "schema_version": {
-        "const": 2,
+        "const": 3,
         "type": "integer"
       },
       "type_id": {
@@ -8237,7 +8751,7 @@
                 "type": "string"
               },
               "schema_version": {
-                "const": 4
+                "const": 5
               },
               "targets": {
                 "items": {
@@ -10260,7 +10774,7 @@
             "type": "object"
           },
           "schema_version": {
-            "const": 4
+            "const": 5
           },
           "spec_resolution": {
             "additionalProperties": false,
@@ -10337,6 +10851,128 @@
                 "type": "array",
                 "uniqueItems": true
               },
+              "registration": {
+                "additionalProperties": false,
+                "properties": {
+                  "checks": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "documents": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "files": {
+                    "items": {
+                      "minLength": 1,
+                      "pattern": "^[^/](?:[^/]*/)*[^/]*$",
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "module"
+                  },
+                  "parent": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "references": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "id": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "kind": {
+                              "enum": [
+                                "module",
+                                "document"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "id"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "kind": {
+                              "const": "external"
+                            },
+                            "path": {
+                              "minLength": 1,
+                              "pattern": "^[^/](?:[^/]*/)*[^/]*$",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "path"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "title": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "uses": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "title",
+                  "documents",
+                  "references",
+                  "parent",
+                  "uses",
+                  "files",
+                  "checks"
+                ],
+                "type": "object"
+              },
+              "schema_version": {
+                "const": 1
+              },
               "sources": {
                 "items": {
                   "additionalProperties": false,
@@ -10349,9 +10985,6 @@
                     "document_id": {
                       "minLength": 1,
                       "type": "string"
-                    },
-                    "main_visible": {
-                      "type": "boolean"
                     },
                     "owner": {
                       "minLength": 1,
@@ -10385,6 +11018,12 @@
                       },
                       "type": "array",
                       "uniqueItems": true
+                    },
+                    "role": {
+                      "enum": [
+                        "reading",
+                        "metadata"
+                      ]
                     }
                   },
                   "required": [
@@ -10392,7 +11031,7 @@
                     "path",
                     "digest",
                     "owner",
-                    "main_visible",
+                    "role",
                     "reasons"
                   ],
                   "type": "object"
@@ -10401,6 +11040,8 @@
               }
             },
             "required": [
+              "schema_version",
+              "registration",
               "query_id",
               "query_kind",
               "module_id",
@@ -11336,7 +11977,7 @@
                 "$ref": "#/$defs/concorde-context-snapshot"
               },
               "schema_version": {
-                "const": 4,
+                "const": 5,
                 "type": "integer"
               },
               "type_id": {
@@ -11400,7 +12041,7 @@
         "$ref": "#/$defs/concorde-review-stage-context"
       },
       "schema_version": {
-        "const": 2,
+        "const": 3,
         "type": "integer"
       },
       "type_id": {
@@ -12588,7 +13229,7 @@
                 "type": "string"
               },
               "schema_version": {
-                "const": 4
+                "const": 5
               },
               "targets": {
                 "items": {
@@ -13363,6 +14004,128 @@
                 "type": "array",
                 "uniqueItems": true
               },
+              "registration": {
+                "additionalProperties": false,
+                "properties": {
+                  "checks": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "documents": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "files": {
+                    "items": {
+                      "minLength": 1,
+                      "pattern": "^[^/](?:[^/]*/)*[^/]*$",
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "module"
+                  },
+                  "parent": {
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "references": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "id": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "kind": {
+                              "enum": [
+                                "module",
+                                "document"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "id"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "kind": {
+                              "const": "external"
+                            },
+                            "path": {
+                              "minLength": 1,
+                              "pattern": "^[^/](?:[^/]*/)*[^/]*$",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "path"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  },
+                  "title": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "uses": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "title",
+                  "documents",
+                  "references",
+                  "parent",
+                  "uses",
+                  "files",
+                  "checks"
+                ],
+                "type": "object"
+              },
+              "schema_version": {
+                "const": 1
+              },
               "sources": {
                 "items": {
                   "additionalProperties": false,
@@ -13375,9 +14138,6 @@
                     "document_id": {
                       "minLength": 1,
                       "type": "string"
-                    },
-                    "main_visible": {
-                      "type": "boolean"
                     },
                     "owner": {
                       "minLength": 1,
@@ -13411,6 +14171,12 @@
                       },
                       "type": "array",
                       "uniqueItems": true
+                    },
+                    "role": {
+                      "enum": [
+                        "reading",
+                        "metadata"
+                      ]
                     }
                   },
                   "required": [
@@ -13418,7 +14184,7 @@
                     "path",
                     "digest",
                     "owner",
-                    "main_visible",
+                    "role",
                     "reasons"
                   ],
                   "type": "object"
@@ -13427,6 +14193,8 @@
               }
             },
             "required": [
+              "schema_version",
+              "registration",
               "query_id",
               "query_kind",
               "module_id",
@@ -13869,7 +14637,7 @@
         "$ref": "#/$defs/concorde-topology-author-context"
       },
       "schema_version": {
-        "const": 2,
+        "const": 3,
         "type": "integer"
       },
       "type_id": {
@@ -14073,7 +14841,7 @@
                 "type": "string"
               },
               "schema_version": {
-                "const": 4
+                "const": 5
               },
               "targets": {
                 "items": {
@@ -14342,7 +15110,7 @@
                 "type": "string"
               },
               "schema_version": {
-                "const": 4
+                "const": 5
               },
               "targets": {
                 "items": {

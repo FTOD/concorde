@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.development.capabilities",
+    "owner": "module.development"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": [],
+  "extensions": {
+    "concorde.capabilities": [
+      {
+        "id": "main",
+        "public": true,
+        "context_selection": "discover",
+        "deterministic": false,
+        "skill": "concorde-main"
+      },
+      {
+        "id": "specify-loop",
+        "public": true,
+        "context_selection": "discover",
+        "deterministic": false,
+        "skill": "concorde-specify-loop"
+      },
+      {
+        "id": "dev-loop",
+        "public": true,
+        "context_selection": "discover",
+        "deterministic": false,
+        "skill": "concorde-dev-loop"
+      },
+      {
+        "id": "reflections-triage",
+        "public": true,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": "concorde-reflections-triage"
+      },
+      {
+        "id": "init",
+        "public": true,
+        "context_selection": "none",
+        "deterministic": true,
+        "skill": "concorde-init"
+      },
+      {
+        "id": "configure",
+        "public": true,
+        "context_selection": "none",
+        "deterministic": true,
+        "skill": "concorde-configure"
+      },
+      {
+        "id": "validate",
+        "public": true,
+        "context_selection": "none",
+        "deterministic": true,
+        "skill": "concorde-validate"
+      },
+      {
+        "id": "deliver",
+        "public": true,
+        "context_selection": "none",
+        "deterministic": true,
+        "skill": "concorde-deliver"
+      },
+      {
+        "id": "specify",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null
+      },
+      {
+        "id": "review",
+        "public": true,
+        "context_selection": "discover",
+        "deterministic": false,
+        "skill": "concorde-review"
+      },
+      {
+        "id": "context-solve",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null
+      },
+      {
+        "id": "plan",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null
+      },
+      {
+        "id": "tasks",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null
+      },
+      {
+        "id": "implement",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null
+      }
+    ]
+  }
+}

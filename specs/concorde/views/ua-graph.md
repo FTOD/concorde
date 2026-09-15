@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.views.ua-graph",
-  "owner": "module.views",
-  "main_visible": true
-}
-```
 # UA graph exporter
-
-## Usage & Contract
 
 This deterministic Tool exports or overlays a skeleton Understand Anything knowledge graph from the
 project's explicit Spec registry. It is a developer tool, not an agent Capability or a new Skill,
@@ -151,22 +142,16 @@ not shape-checked; only a nonempty string `filePath` participates in reuse. Miss
   }
 }
 ```
-```concorde-contract-binding
-{
-  "id": "contract.views.ua-overlay-input",
-  "version": 1,
-  "role": "required",
-  "peer": "external:ua-graph-producer",
-  "selection_condition": "When overlaying an existing graph produced outside Concorde.",
-  "relied_upon_guarantees": [
-    "[Canonical agreement](#contract.views.ua-overlay-input) defines the exchanged value for this operation."
-  ],
-  "obligations": [
-    "Validate the input and preserve fields outside exporter ownership; reject invalid graphs without writes."
-  ]
-}
-```
 
+<a id="participation.document.views.ua-graph.1"></a>
+
+**Interface participation.** This Module has the required role for `contract.views.ua-overlay-input` version 1 with `external:ua-graph-producer`.
+
+**When this applies.** When overlaying an existing graph produced outside Concorde.
+
+**Relied-upon guarantee.** [Canonical agreement](#contract.views.ua-overlay-input) defines the exchanged value for this operation.
+
+**Local obligation.** Validate the input and preserve fields outside exporter ownership; reject invalid graphs without writes.
 
 New skeletons have `version: "1.0.0"`, `tour: []`, and a `project` object with `name` equal to
 the registry project ID, `languages: []`, `frameworks: []`, `description` equal to
@@ -184,7 +169,7 @@ registry IDs or project-relative POSIX paths without hashing or escaping.
 | Module node | `id: "module:<target-id>"`, `type: "module"`, `name`: Module title, `summary`: first prose paragraph of its local module.md Purpose with trimmed lines joined by spaces (empty if absent), `tags: ["concorde-ua-graph", "module"]`, `complexity: "moderate"` |
 | Document node | `id: "document:<path>"`, `type: "document"`, `name`: path basename, `filePath`: path, `summary`: registered document ID, `tags: ["concorde-ua-graph", "document"]` |
 | Bound-file node | ID prefix `document:` for `.md`, `config:` for `.json`, `.yml`, `.yaml` or `.toml`, otherwise `file:`, followed by path; `type`: prefix without colon, `name`: basename, `filePath`: path, `summary`: path, `tags`: `concorde-ua-graph`, type, and `pending` when its selected entity declares that exact entry pending |
-| Module layer | `id: "layer:<target-id>"`, `name`: Module title, `description`: Purpose summary through its first `. ` sentence boundary, or all of it if none, `nodeIds`: sorted distinct member node IDs |
+| Module layer | `id: "layer:<target-id>"`, `name`: Module title, `description`: Purpose summary through its first `.` sentence boundary, or all of it if none, `nodeIds`: sorted distinct member node IDs |
 | Unlisted layer | `id: "layer:unlisted"`, `name: "Not listed by any Module"`, `description: "File-level nodes from the Understand Anything graph that no Module lists as an implementation file."`, `nodeIds`: sorted distinct selected unclaimed file-like node IDs |
 
 Documents are resolved before implementation files, with one generated record per ID. Thus a
@@ -222,7 +207,6 @@ are retained; normalization of absent layers/tour occurs once. Check compares th
 UTF-8 bytes, including formatting, against the existing file; a missing file is drift and is not
 created by `--check`.
 
-
 ### Exporting a skeleton
 
 #### scenario.views.ua-graph-skeleton — Exporting derives a skeleton graph when none exists
@@ -236,7 +220,6 @@ created by `--check`.
 - AND it writes one layer per Module whose registry `files` are nonempty, whose members are the
   files for which that Module is the first registered lister together with the documents that
   Module solely owns, and no `layer:unlisted`
-
 
 ### Overlaying an existing graph
 
@@ -270,7 +253,6 @@ defines the existing independent export behavior and adds no docsite graph funct
   layers, in both fresh export and overlay, and never joins `layer:unlisted`
 - AND running the export again against its own prior output produces byte-identical output
 
-
 ### Files shared by several Modules
 
 #### scenario.views.ua-graph-shared-file — A shared file gets one layer and a related edge to the rest
@@ -283,7 +265,6 @@ defines the existing independent export behavior and adds no docsite graph funct
 - AND every other listing Module gets one additional `related` edge from that file's node naming
   it as also listed by that Module
 
-
 ### Checking freshness
 
 #### scenario.views.ua-graph-check — `--check` reports drift from the current registry without writing
@@ -293,7 +274,6 @@ defines the existing independent export behavior and adds no docsite graph funct
 - THEN it recomputes the same derivation and compares it to the file on disk
 - AND a match returns success and a difference returns an `invalid` finding, in both cases without
   writing
-
 
 ### Rejecting an unsupported existing graph
 
@@ -313,5 +293,5 @@ These exporter boundaries are Module-wide requirements; see
 
 Context references are distinct graph edges and never acquire contains/depends_on meaning. A
 referenced document stays in its owner's layer; neither its implementation files nor its owner's
-references are imported. The exporter uses the schema-4 registry and keeps ownership, references and implementation listings separate. Existing external overlay
+references are imported. The exporter uses the schema-5 registry and keeps ownership, references and implementation listings separate. Existing external overlay
 admission remains contract version 1: the new edge type fits its open string type vocabulary.

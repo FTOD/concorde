@@ -21,11 +21,12 @@ describe('Explicit Concorde self specification',()=>{
   for(const module of r.targets.filter(t=>t.kind==='module')) {
    expect(module.documents.some(path=>path.endsWith('/architecture.md')||path.endsWith('/developer-experience.md'))).toBe(false);
    const entry=r.pages.find(p=>p.primaryOf===module.id)!.content;
-   for(const section of ['Usage & Contract','Architecture & Realization'])
-    expect(entry).toContain(`## ${section}`);
-   for(const section of ['Purpose','Usage','Requirements','Scenarios','Design','Entities','Relationships'])
-    expect(entry).toContain(`### ${section}`);
-   expect(entry.indexOf('## Usage & Contract')).toBeLessThan(entry.indexOf('## Architecture & Realization'));
+   const sections=['Purpose','Usage','Design','Relationships'];
+   for(const section of sections) expect(entry).toContain(`## ${section}`);
+   for(let i=1;i<sections.length;i++) expect(entry.indexOf(`## ${sections[i-1]}`)).toBeLessThan(entry.indexOf(`## ${sections[i]}`));
+   expect(entry).not.toContain('## Usage & Contract');expect(entry).not.toContain('## Architecture & Realization');
+   expect(entry).not.toContain('```concorde-entities');expect(entry).not.toContain('## Entities');
+
   }
  });
 });

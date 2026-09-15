@@ -1,14 +1,4 @@
-```concorde-document
-{
-  "id": "document.planning.assessment",
-  "owner": "module.planning",
-  "main_visible": true
-}
-```
-
 # Context assessment
-
-## Usage & Contract
 
 The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
@@ -44,7 +34,6 @@ Planning SHALL assess task sufficiency only from the selected Module's complete 
 #### req.planning.assessment-gap — Attribute necessary contract gaps
 
 Planning SHALL report a necessary missing contract with its question, blocked step, needed contract and host-bound target/context provenance.
-
 
 ### Scenarios
 

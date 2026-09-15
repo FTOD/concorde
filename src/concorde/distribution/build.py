@@ -15,12 +15,13 @@ import copy
 import hashlib
 import importlib
 import importlib.abc
+from importlib.machinery import SourceFileLoader
 import importlib.util
 import sys
 import uuid
 import json
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -58,6 +59,13 @@ class SkillPrompt:
     body: str
     effects: EffectDeclaration | None = None
     binding: "AgentBinding | None" = None
+
+
+@dataclass(frozen=True)
+class AgentPrompt(SkillPrompt):
+    """An admitted worker projection always has explicit effects and a complete Agent binding."""
+    effects: EffectDeclaration = field()
+    binding: "AgentBinding" = field()
 
 
 class BuildError(ValueError):
@@ -300,10 +308,16 @@ def _root_schemas(project_root: Path) -> tuple[dict, tuple[str, ...], tuple[str,
                 return
             location = location.with_suffix(".py")
             relative = location.relative_to(project_root).as_posix()
+            from ..spec.typed_data import checked_path
+            location = checked_path(project_root, relative)
             sources.add(relative)
             module.__file__ = str(location)
             try:
-                exec(compile(location.read_bytes(), str(location), "exec"), module.__dict__)
+                # Use the normal Python source-loader contract, but bypass timestamp-based bytecode
+                # caches: build identity covers these exact trusted package source bytes.
+                loader = SourceFileLoader(module.__name__, str(location))
+                code = loader.source_to_code(location.read_bytes(), str(location))
+                exec(code, module.__dict__)
             except BuildError:
                 raise
             except Exception as error:
@@ -580,7 +594,7 @@ def verify_fresh(project_root: str | Path) -> None:
             raise BuildError(f"build source changed since the last build: {relative}", "stale_build")
 
 
-def load_agent(package_root: str | Path, name: str) -> SkillPrompt:
+def load_agent(package_root: str | Path, name: str) -> AgentPrompt:
     """Load one worker's rendered instructions and complete binding from the build.
 
     Verifies freshness first (via ``resolve_agent``). ``name`` accepts either the external
@@ -595,7 +609,7 @@ def load_agent(package_root: str | Path, name: str) -> SkillPrompt:
     except (OSError, UnicodeError) as error:
         raise BuildError(f"cannot read rendered agent {binding.instructions_path}: {error}", "stale_build") from error
     hyphenated = binding.agent.replace("_", "-")
-    return SkillPrompt(
+    return AgentPrompt(
         name=f"concorde-{hyphenated}",
         description=f"Concorde {hyphenated} agent.",
         source_path=binding.spec_path,

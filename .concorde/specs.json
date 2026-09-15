@@ -184,7 +184,7 @@
   ],
   "entry_target": "module.concorde",
   "project_id": "project.concorde",
-  "schema_version": 4,
+  "schema_version": 5,
   "targets": [
     {
       "checks": [],

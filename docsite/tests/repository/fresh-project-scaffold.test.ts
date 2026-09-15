@@ -8,7 +8,7 @@ import {afterAll, beforeAll, describe, expect, it} from 'vitest';
 
 /**
  * Concorde-repository evidence for scenario.views.scaffold-propose: a project holding
- * only Profile 13 initialization outputs receives the packaged docsite through the native `docsite`
+ * only Profile 14 initialization outputs receives the packaged docsite through the native `docsite`
  * Tool and passes the adapter's validate and build steps. It reuses this checkout's installed
  * dependencies without a separate diagram renderer, so it stays outside the packaged template.
  */
@@ -63,7 +63,7 @@ afterAll(async () => {
   if (root) await rm(root, {recursive: true, force: true});
 });
 
-describe('a project holding only Profile 13 initialization outputs', () => {
+describe('a project holding only Profile 14 initialization outputs', () => {
   it('scenario.views.scaffold-propose: receives the graph-free adapter and identity', async () => {
     const files = (docsiteProposal.result.proposal as {files: Array<{path: string}>}).files.map((file) => file.path);
     expect(files).toContain('docsite/docusaurus.config.ts');
@@ -104,7 +104,7 @@ describe('a project holding only Profile 13 initialization outputs', () => {
     const build = run(process.execPath, ['--import','tsx','scripts/build.ts'], resolve(root, 'docsite'));
     expect(build.status, `${build.stdout}\n${build.stderr}`).toBe(0);
     const manifest = JSON.parse(await readFile(resolve(root,'docsite/build/build-manifest.json'),'utf8'));
-    expect(manifest.schema_version).toBe(19);expect(manifest.pages).toHaveLength(1);
+    expect(manifest.schema_version).toBe(20);expect(manifest.pages).toHaveLength(1);
     expect(manifest.pages[0].route).toBe('/specs/project/module');
     expect(manifest.pages[0].owner).toEqual('module.atlas');
     expect(manifest.pages[0].aliases).toEqual([expect.stringMatching(/^\/specs\/module\.atlas\/[0-9a-f]{16}$/)]);
@@ -123,10 +123,10 @@ describe('a project holding only Profile 13 initialization outputs', () => {
     expect(mainPage.match(/<nav\b[\s\S]*?<\/nav>/)![0]).not.toContain('Spec Protocol');
     expect(mainPage).not.toContain('Agent Flows');
     expect(mainPage).not.toContain('<iframe');
-    expect(mainPage).toContain('id="purpose"');expect(mainPage).toContain('id="requirements"');expect(mainPage).toContain('id="scenarios"');expect(mainPage).toContain('id="usage--contract"');expect(mainPage).toContain('id="architecture--realization"');
+    expect(mainPage).toContain('id="purpose"');expect(mainPage).toContain('id="requirements"');expect(mainPage).toContain('id="scenarios"');expect(mainPage).toContain('id="usage"');expect(mainPage).toContain('id="design"');
     expect(mainPage).toContain('id="usage"');expect(mainPage).toContain('id="design"');
-    expect(mainPage.indexOf('id="usage--contract"')).toBeLessThan(mainPage.indexOf('id="architecture--realization"'));
-    expect(mainPage).toContain('id="entities"');expect(mainPage).toContain('id="relationships"');
+    expect(mainPage.indexOf('id="usage"')).toBeLessThan(mainPage.indexOf('id="design"'));
+    expect(mainPage).not.toContain('id="entities"');expect(mainPage).not.toContain('id="usage--contract"');expect(mainPage).toContain('id="relationships"');
     expect(mainPage).not.toContain('/diagrams/');
     expect(mainPage).toContain('Spec metadata');
     expect(mainPage).toContain('Literal Spec expression: {6 * 7}.');

@@ -1,12 +1,13 @@
 # README screenshots
 
-Captured on 2026-09-10 from Concorde itself using Chromium. These are real interface screenshots;
-they contain no generated mockups or edited application content.
+These are real Chromium screenshots of Concorde interfaces, not mockups or edited application
+content. The docsite image was refreshed from the local verified Protocol-7 production build on
+2026-09-15. The other images retain their 2026-09-10 observations as identified below.
 
 | File | Source and visible state |
 | --- | --- |
-| `concorde-docsite.png` | [Published Spec Module](https://ftod.github.io/concorde/specs/concorde/spec/module), showing the Module tree, source provenance, purpose and requirements. |
-| `concorde-module-graph.png` | [Published architecture graph](https://ftod.github.io/concorde/graph), filtered to `composes`. Nodes were dragged apart using the graph's normal controls to make the labels readable. |
+| `concorde-docsite.png` | Local Protocol-7 production build, `/specs/concorde/views/module`, showing developer-oriented Design reading, the Module tree and major-section navigation without a machine inventory. This is local build evidence, not a claim that deployment has occurred. |
+| `concorde-module-graph.png` | Historical screenshot of the retired standalone docsite graph, filtered to `composes`. Retained as history; the current docsite has no Graph tab and the README no longer presents this image as an active feature. |
 | `concorde-code-graph.png` | Official Understand Anything Viewer 2.9.0, running locally against this checkout's existing `.ua/knowledge-graph.json`. Learn mode shows the project layers and the available tour. |
 | `concorde-studio.png` | The graph and input pane of LangGraph Studio connected to this checkout's local Agent Server, with `concorde-main` selected and the README's `describe-policy` input entered in View Raw. No run has been submitted in this screenshot. |
 

@@ -1,14 +1,4 @@
-```concorde-document
-{
-  "id": "document.implementation.implementation",
-  "owner": "module.implementation",
-  "main_visible": true
-}
-```
-
 # Implementation capability
-
-## Usage & Contract
 
 The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
@@ -42,7 +32,6 @@ defect. For acceptance qualified by the granted runtime, deferred repository-lev
 not prevent completion of otherwise fulfilled implementation and test obligations. An actual
 defect or missing implementation obligation remains incomplete; Host checks still gate readiness.
 
-
 ### Scenarios
 
 #### scenario.implementation.missing-tasks — Implementation has no authored tasks
@@ -67,7 +56,7 @@ defect or missing implementation obligation remains incomplete; Host checks stil
 - AND the host preserves the candidate and progress for inspection and recovery
 - AND a subsequent attempt re-admits current task artifacts and context in a fresh invocation without wider permissions
 
-## Architecture & Realization
+## Design
 
 ### Component coordination and current adapter limit
 

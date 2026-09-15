@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.distribution.installation",
+    "owner": "module.distribution"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": []
+}

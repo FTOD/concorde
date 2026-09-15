@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.distribution.build",
-  "owner": "module.distribution",
-  "main_visible": true
-}
-```
 # Build
-
-## Usage & Contract
 
 `build(project_root, integration="all", *, framework_prefix="")` renders Agent instructions,
 integration-specific Skill files (Codex `.agents/skills` and Claude `.claude/skills`),
@@ -121,7 +112,6 @@ with `CONCORDE-CAPABILITY-DETERMINISTIC-001`, and Spec metadata drift with
 `CONCORDE-SPEC-CAPABILITIES-001`. Unknown or cyclic composition remains a composition error;
 validation cannot certify its determinism.
 
-
 ### Interface signatures
 
 These signatures identify public call shapes; bodies and private helpers are outside this Spec.
@@ -172,7 +162,6 @@ transition. Repeating an unchanged read is side-effect free. Mutations require c
 preconditions and explicit caller-owned paths. Local contract facts above remain authoritative
 without reading the parent or collaborating Specs.
 
-
 ### Returned records and compatibility
 
 `BuildOutput` is a frozen record `{path: str, content: bytes, sources: tuple[str, ...]}`: path is
@@ -208,14 +197,14 @@ repair.
 
 ### Protocol and runtime support are separate
 
-The package supports Protocol 6.0.0 with source_profile 13. Its tracked manifest binds the exact
+The package supports Protocol 7.0.0 with source_profile 13. Its tracked manifest binds the exact
 generated rule and versioned schema bytes; project configuration binds the exact manifest bytes.
 Context payloads and wrappers export version 2. Build freshness establishes projection integrity;
 structural validation, configured checks and review evidence remain separate. Updates to exported
 schemas require a rebuild and explicit manifest rebinding in the same worktree. Consumer package
 updates preserve the existing binding until explicitly accepted.
 
-## Architecture & Realization
+## Design
 
 ### Projection identity
 

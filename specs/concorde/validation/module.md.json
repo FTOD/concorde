@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.validation.module",
+    "owner": "module.validation"
+  },
+  "entities": [
+    {
+      "id": "entity.validation.adapter",
+      "title": "Validation adapter",
+      "kind": "shared program",
+      "files": [
+        "capabilities/validate.py",
+        "tests/concorde/development/test_check_execution.py",
+        "tests/concorde/development/test_review.py",
+        "tests/concorde/harness/test_scoped_protocol.py",
+        "tests/concorde/harness/test_worktree_lifecycle.py"
+      ],
+      "meaning": "#entity.validation.adapter"
+    },
+    {
+      "id": "entity.validation.development",
+      "title": "Development",
+      "kind": "used module",
+      "target_id": "module.development",
+      "meaning": "#entity.validation.development"
+    },
+    {
+      "id": "entity.validation.harness",
+      "title": "Harness",
+      "kind": "used module",
+      "target_id": "module.harness",
+      "meaning": "#entity.validation.harness"
+    },
+    {
+      "id": "entity.validation.spec",
+      "title": "Spec",
+      "kind": "used module",
+      "target_id": "module.spec",
+      "meaning": "#entity.validation.spec"
+    },
+    {
+      "id": "entity.validation.evidence",
+      "title": "Validation evidence",
+      "kind": "record",
+      "meaning": "#entity.validation.evidence"
+    },
+    {
+      "id": "entity.validation.readiness",
+      "title": "Readiness decision",
+      "kind": "record",
+      "meaning": "#entity.validation.readiness"
+    }
+  ],
+  "dependencies": [
+    {
+      "target_id": "module.development",
+      "meaning": "#agreement.document.validation.module.1"
+    },
+    {
+      "target_id": "module.harness",
+      "meaning": "#agreement.document.validation.module.2"
+    },
+    {
+      "target_id": "module.spec",
+      "meaning": "#agreement.document.validation.module.3"
+    }
+  ],
+  "bindings": []
+}

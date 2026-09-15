@@ -7,6 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
+from tests.concorde.spec.support import DocumentSource, module_document, write_document, source_pairs
 from unittest.mock import patch
 
 from concorde.development.capability_host import Invocation, _implementation_digest, _target_revision
@@ -24,22 +26,15 @@ PACKAGE = Path(__file__).resolve().parents[3]
 
 def reading_entry(target_id, title, purpose, scenario, entities, diagram, dependencies=None,
                   requirements="No Module-level requirement is stated."):
-    """One valid two-part reading entry for the small composition fixture."""
-    declaration = {"id": "document." + target_id, "owner": target_id, "main_visible": True}
-    requirements = re.sub(r'(?m)^(#{2,4}) ', r'#\1 ', requirements)
-    scenario = re.sub(r'(?m)^(#{2,4}) ', r'#\1 ', scenario)
-    text = ("```concorde-document\n" + json.dumps(declaration, indent=2) + "\n```\n\n"
-        f"# {title}\n\n## Usage & Contract\n\n### Purpose\n\n{purpose}\n\n"
-        "### Usage\n\nRequest the declared value; the scenarios define the returned result.\n\n"
-        f"### Requirements\n\n{requirements}\n\n### Scenarios\n\n{scenario}\n"
-        "\n## Architecture & Realization\n\n### Design\n\nThe local entities cooperate to produce the promised value.\n\n### Entities\n\nEvery entity below is declared locally.\n\n"
-        "```concorde-entities\n" + json.dumps(entities, indent=2) + "\n```\n"
-        f"\n### Relationships\n\nThe declared entities relate as the diagram states.\n\n"
-        "```mermaid\n" + diagram + "\n```\n")
-    if dependencies:
-        text += ("\n### Collaborators\n\nEach collaborator is described locally.\n\n"
-                 "```concorde-dependencies\n" + json.dumps(dependencies, indent=2) + "\n```\n")
-    return text
+    return module_document("document." + target_id, target_id, title, purpose, scenario,
+        ("Local entities.", entities), "The local entities cooperate to produce the promised value.",
+        diagram, dependencies or (), requirements=requirements)
+
+
+def required_entity_id(repository, target, path):
+    entity = repository.entity_for_path(target, path)
+    assert entity is not None, f"No entity owns {path}"
+    return entity.id
 
 
 class ModuleImplementationTests(unittest.TestCase):
@@ -49,7 +44,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.configuration = {"type_id": "concorde-capability-configuration", "schema_version": 1,
                               "data": {"model": "openai-codex/gpt-6-astra", "thinking": "medium"}}
-        self.write(".concorde/config.json", json.dumps({"profile_version": 13,
+        self.write(".concorde/config.json", json.dumps({"profile_version": 14,
             "registry": ".concorde/specs.json", "protocol": protocol_binding(PACKAGE),
             "capability_configuration": self.configuration}))
         write_protocol_copy(self.root, PACKAGE)
@@ -84,9 +79,7 @@ class ModuleImplementationTests(unittest.TestCase):
             '    adapter["Adapter"]\n    shared["Shared value"]\n    adapter -->|reads| shared',
             requirements="### req.a.pure — A never changes the shared value\n\n"
                          "A SHALL NOT change the shared value.\n"))
-        self.write("specs/a/details.md", "```concorde-document\n" + json.dumps(
-            {"id": "document.a.details", "owner": "module.a", "main_visible": True}, indent=2)
-            + "\n```\n\n# Local details\n\n## Usage & Contract\n\nA_OWN_ADDITIONAL_CONTRACT: the adapted integer is never negative.\n")
+        self.write("specs/a/details.md", DocumentSource('# Local details\n\n\nA_OWN_ADDITIONAL_CONTRACT: the adapted integer is never negative.\n', {'schema_version': 1, 'document': {'id': 'document.a.details', 'owner': 'module.a'}, 'entities': [], 'dependencies': [], 'bindings': []}))
         self.write("specs/b/module.md", reading_entry("module.b", "b",
             "B_PRIVATE_SPEC: B reads the shared integer and promises exactly 42.",
             "### scenario.b.value — B reports the shared value\n\n"
@@ -106,14 +99,12 @@ class ModuleImplementationTests(unittest.TestCase):
             {"id": "module.b", "kind": "module", "title": "b",
              "documents": ["specs/b/module.md"], "parent": "module.root", "uses": [],
              "files": ["source/shared.py"], "checks": [], "references": []}]
-        self.registry = {"schema_version": 4, "project_id": "project.test",
+        self.registry = {"schema_version": 5, "project_id": "project.test",
                          "entry_target": "module.root", "targets": targets, "checks": []}
         self.save_registry()
 
     def write(self, path, content):
-        destination = self.root / path
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(content)
+        write_document(self.root, path, content)
 
     def save_registry(self):
         self.write(".concorde/specs.json", json.dumps(self.registry))
@@ -122,11 +113,21 @@ class ModuleImplementationTests(unittest.TestCase):
         return SpecRepository(self.root, PACKAGE)
 
     def entity_block(self, path):
-        text = (self.root / path).read_text()
-        prefix, rest = text.split("```concorde-entities\n", 1)
-        payload, suffix = rest.split("\n```", 1)
-        return json.loads(payload), (lambda value: self.write(
-            path, prefix + "```concorde-entities\n" + json.dumps(value, indent=2) + "\n```" + suffix))
+        metadata_path = self.root / (path + '.json')
+        value = json.loads(metadata_path.read_text())
+        def save(entries):
+            body = (self.root / path).read_text()
+            entries = [dict(entry) for entry in entries]
+            for entry in entries:
+                explanation = entry.pop('responsibility', None)
+                if explanation is not None:
+                    entry.setdefault('meaning', '#' + entry['id'])
+                    if f'<a id="{entry["id"]}">' not in body:
+                        body += f'\n<a id="{entry["id"]}"></a>\n\n{explanation}\n'
+            value['entities'] = entries
+            metadata_path.write_text(json.dumps(value, indent=2) + '\n')
+            (self.root / path).write_text(body)
+        return value['entities'], save
 
     @verifies("scenario.spec.validate-success")
     def test_the_fixture_is_a_valid_two_part_project(self):
@@ -214,8 +215,8 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual((), repository.missing_entries(target))
         # The most specific entry owns a covered path: an exact entry beats the directory.
         self.assertEqual("entity.a.adapter",
-                         repository.entity_for_path(target, "source/nested/deep.py").id)
-        self.assertEqual("entity.a.shared", repository.entity_for_path(target, "source/shared.py").id)
+                         required_entity_id(repository, target, "source/nested/deep.py"))
+        self.assertEqual("entity.a.shared", required_entity_id(repository, target, "source/shared.py"))
         self.assertIsNone(repository.entity_for_path(target, "elsewhere/other.py"))
 
     @verifies("scenario.spec.directory-entry")
@@ -228,8 +229,8 @@ class ModuleImplementationTests(unittest.TestCase):
         self.assertEqual("success", report.status, [f.message for f in report.findings])
         repository = self.repository()
         target = repository.select("module.a")
-        self.assertEqual("entity.a.shared", repository.entity_for_path(target, "source/nested/deep.py").id)
-        self.assertEqual("entity.a.adapter", repository.entity_for_path(target, "source/a.py").id)
+        self.assertEqual("entity.a.shared", required_entity_id(repository, target, "source/nested/deep.py"))
+        self.assertEqual("entity.a.adapter", required_entity_id(repository, target, "source/a.py"))
 
     @verifies("scenario.spec.directory-entry")
     def test_a_file_created_under_a_listed_directory_needs_no_pending_declaration(self):
@@ -530,7 +531,7 @@ class ModuleImplementationTests(unittest.TestCase):
                 host=SimpleNamespace(coordinated=True, package_root=PACKAGE, invocation_id="test-impact"),
                 work_directory=None, completed=[],
                 response=lambda outcome="completed", answer="", **kwargs: {"outcome": outcome, **kwargs})
-            return Invocation.validate(run)
+            return Invocation.validate(cast(Invocation, run))
         result = validate()
         self.assertEqual("completed", result["outcome"])
         self.assertEqual({"module.a", "module.b"}, {item["target_id"] for item in result["checks"]})
@@ -552,7 +553,7 @@ class ModuleImplementationTests(unittest.TestCase):
             response=lambda outcome="completed", answer="", **kwargs: {"outcome": outcome, **kwargs})
         peer = self.root / "specs/b/module.md"
         original = peer.read_bytes()
-        result = Invocation.validate(run)
+        result = Invocation.validate(cast(Invocation, run))
         self.assertEqual("failed", result["outcome"])
         self.assertEqual("failed", result["checks"][0]["status"])
         self.assertEqual(original, peer.read_bytes())
@@ -570,7 +571,7 @@ class ModuleImplementationTests(unittest.TestCase):
             return result
         with patch("concorde.development.capability_host.execute_check", external_change):
             with self.assertRaisesRegex(SpecError, "using Module"):
-                Invocation.validate(run)
+                Invocation.validate(cast(Invocation, run))
 
     @verifies("scenario.spec.shared-file")
     def test_shared_code_review_preserves_separate_module_contexts_and_peer_findings(self):
@@ -661,7 +662,7 @@ class ModuleImplementationTests(unittest.TestCase):
         records = repository.external_reference_records(a)
         self.assertEqual([{"path": "reference/lib/", "directory": True, "digest": repository.external_reference_digest("reference/lib/")}], records)
         # The Spec context never includes reference material, and the digest follows readable bytes only.
-        self.assertEqual(["specs/a/details.md", "specs/a/module.md"],
+        self.assertEqual(source_pairs(["specs/a/details.md", "specs/a/module.md"]),
                          [source["path"] for source in repository.spec_context("module.a").value["sources"]])
         self.assertEqual([{"kind": "external", "path": "reference/lib/"}], repository.spec_context("module.a").value["references"])
         self.write("reference/lib/logo.png", "other binary")
@@ -736,16 +737,12 @@ class ModuleImplementationTests(unittest.TestCase):
             root = Path(directory)
             registry = project(root)
             # The transfer calculation lists the whole app/ directory, shared with the ledger Module.
-            document = root / "specs/transfer/module.md"
-            text = document.read_text()
-            prefix, rest = text.split("```concorde-entities\n", 1)
-            payload, suffix = rest.split("\n```", 1)
-            entities = json.loads(payload)
-            for entity in entities:
-                if entity["id"] == "entity.transfer.calculation":
-                    entity["files"] = ["app/"]
-            document.write_text(prefix + "```concorde-entities\n" + json.dumps(entities, indent=2)
-                                + "\n```" + suffix)
+            document = root / "specs/transfer/module.md.json"
+            metadata = json.loads(document.read_text())
+            for entity in metadata['entities']:
+                if entity['id'] == 'entity.transfer.calculation':
+                    entity['files'] = ['app/']
+            document.write_text(json.dumps(metadata, indent=2) + '\n')
             registry["targets"][2]["files"] = ["app/", "checks/transfer_check.py"]
             (root / ".concorde/specs.json").write_text(json.dumps(registry))
             report = validate_repository(root, package_root=PACKAGE)
@@ -770,7 +767,7 @@ class ModuleImplementationTests(unittest.TestCase):
             target = repository.select("service.transfer")
             self.assertIn("app/helper.py", repository.implementation_files(target))
             self.assertEqual("entity.transfer.calculation",
-                             repository.entity_for_path(target, "app/helper.py").id)
+                             required_entity_id(repository, target, "app/helper.py"))
             self.assertEqual("success", validate_repository(root, package_root=PACKAGE).status)
 
     def test_composite_keeps_its_plan_and_verifies_shared_code_after_all_writers(self):
@@ -851,47 +848,40 @@ class ModuleImplementationTests(unittest.TestCase):
                 self.assertTrue(all(item["complete"] for item in state["tasks"]))
 
     def retain_dependencies(self, path, keep):
-        """Keep only the named collaborator declarations, or remove the block entirely."""
-        import re
-        content = path.read_text()
-        match = re.search(r"^```concorde-dependencies\s*\n(.*?)^```\s*$", content, re.M | re.S)
-        if match is None:
-            self.assertFalse(keep, f"{path} has no collaborator declarations")
-            return
-        retained = [item for item in json.loads(match.group(1)) if item["target_id"] in keep]
-        replacement = ("```concorde-dependencies\n" + json.dumps(retained, indent=2) + "\n```"
-                       if retained else "")
-        path.write_text(content[:match.start()] + replacement + content[match.end():])
+        metadata = Path(str(path) + '.json')
+        value = json.loads(metadata.read_text())
+        value['dependencies'] = [entry for entry in value['dependencies'] if entry['target_id'] in keep]
+        self.assertEqual(keep, {entry['target_id'] for entry in value['dependencies']})
+        metadata.write_text(json.dumps(value, indent=2) + '\n')
 
     def drop_entity(self, path, entity_id):
-        """Remove one local entity, its diagram node and every edge that referenced it."""
+        metadata = Path(str(path) + '.json')
+        value = json.loads(metadata.read_text())
+        value['entities'] = [entry for entry in value['entities'] if entry['id'] != entity_id]
+        metadata.write_text(json.dumps(value, indent=2) + '\n')
         content = path.read_text()
-        prefix, rest = content.split("```concorde-entities\n", 1)
-        payload, suffix = rest.split("\n```", 1)
-        entities = [item for item in json.loads(payload) if item["id"] != entity_id]
-        content = prefix + "```concorde-entities\n" + json.dumps(entities, indent=2) + "\n```" + suffix
-        node = entity_id.split(".")[-1]
-        marker = "```mermaid\n"
-        start = content.index(marker) + len(marker)
-        end = content.index("\n```", start)
-        kept = [line for line in content[start:end].split("\n")
-                if line.strip().startswith(("accTitle", "accDescr", "flowchart"))
-                or not re.search(r"\b" + re.escape(node) + r"\b", line)]
-        path.write_text(content[:start] + "\n".join(kept) + content[end:])
+        node = entity_id.split('.')[-1]
+        start = content.index('```mermaid\n') + len('```mermaid\n')
+        end = content.index('\n```', start)
+        kept = [line for line in content[start:end].split('\n')
+                if line.strip().startswith(('accTitle', 'accDescr', 'flowchart'))
+                or not re.search(r'\b' + re.escape(node) + r'\b', line)]
+        path.write_text(content[:start] + '\n'.join(kept) + content[end:])
 
     def add_entity(self, path, entity, edge):
-        """Declare one more local entity and give it a labeled node in the same diagram."""
+        metadata = Path(str(path) + '.json')
+        value = json.loads(metadata.read_text())
+        entry = dict(entity)
+        explanation = entry.pop('responsibility')
+        entry['meaning'] = '#' + entry['id']
+        value['entities'].append(entry)
+        metadata.write_text(json.dumps(value, indent=2) + '\n')
         content = path.read_text()
-        prefix, rest = content.split("```concorde-entities\n", 1)
-        payload, suffix = rest.split("\n```", 1)
-        entities = [*json.loads(payload), entity]
-        content = prefix + "```concorde-entities\n" + json.dumps(entities, indent=2) + "\n```" + suffix
-        node = "    " + entity["id"].split(".")[-1] + '["' + entity["title"] + '"]'
-        # Insert the node and its labeled edge just before the closing mermaid fence.
-        marker = "```mermaid\n"
-        start = content.index(marker) + len(marker)
-        end = content.index("\n```", start)
-        content = content[:end] + "\n" + node + "\n" + edge + content[end:]
+        start = content.index('```mermaid\n') + len('```mermaid\n')
+        end = content.index('\n```', start)
+        node = '    ' + entity['id'].split('.')[-1] + '["' + entity['title'] + '"]'
+        content = content[:end] + '\n' + node + '\n' + edge + content[end:]
+        content += f'\n<a id="{entry["id"]}"></a>\n\n{explanation}\n'
         path.write_text(content)
 
 

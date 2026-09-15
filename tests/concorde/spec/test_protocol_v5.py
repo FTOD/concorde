@@ -14,7 +14,7 @@ from concorde.spec.repository import SpecRepository, SpecError, digest
 from concorde.spec.typed_data import typed, validate_typed, TypedDataError
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
-from tests.concorde.spec.support import project, PACKAGE, CONFIGURATION, ModelProcessDouble, block
+from tests.concorde.spec.support import project, PACKAGE, CONFIGURATION, ModelProcessDouble, block, add_binding, source_pairs
 
 
 class ProtocolFiveTests(unittest.TestCase):
@@ -61,8 +61,8 @@ class ProtocolFiveTests(unittest.TestCase):
         self.reference('scope.bank', 'document', 'document.transfer.promises')
         r = self.repository()
         with patch.object(r, 'document', side_effect=AssertionError('body read')):
-            self.assertEqual(('specs/bank/module.md', 'specs/transfer/promises.md'), r.spec_files('scope.bank'))
-            self.assertEqual(('specs/transfer/module.md', 'specs/transfer/promises.md'), r.spec_files('scenario.transfer.debit'))
+            self.assertEqual(tuple(source_pairs(['specs/bank/module.md', 'specs/transfer/promises.md'])), r.spec_files('scope.bank'))
+            self.assertEqual(tuple(source_pairs(['specs/transfer/module.md', 'specs/transfer/promises.md'])), r.spec_files('scenario.transfer.debit'))
 
     def test_reference_changes_with_identical_files_invalidate_snapshot_discovery_and_revision(self):
         self.reference('scope.bank', 'module', 'service.transfer')
@@ -74,14 +74,14 @@ class ProtocolFiveTests(unittest.TestCase):
         new = self.repository()
         self.assertEqual(old.spec_files('scope.bank'), new.spec_files('scope.bank'))
         self.assertNotEqual(revision, _target_revision(new, new.select('scope.bank')))
-        for check, snapshot in ((recheck_context, snap), (recheck_discovery_context, discovery)):
+        for check in (lambda: recheck_context(new, snap), lambda: recheck_discovery_context(new, discovery)):
             with self.assertRaisesRegex(SpecError, 'changed'):
-                check(new, snapshot)
+                check()
         self.registry['targets'][0]['references'] = [{'kind': 'document', 'id': 'document.missing'}]
         self.save()
-        for check, snapshot in ((recheck_context, snap), (recheck_discovery_context, discovery)):
+        for check in (lambda: recheck_context(old, snap), lambda: recheck_discovery_context(old, discovery)):
             with self.assertRaises(SpecError) as failure:
-                check(old, snapshot)
+                check()
             self.assertEqual('stale_context', failure.exception.code)
 
     def test_source_bytes_are_exact_and_discovery_indexes_each_document_once(self):
@@ -117,7 +117,7 @@ class ProtocolFiveTests(unittest.TestCase):
         self.reference('scope.bank', 'document', 'document.transfer.promises')
         path = self.root / 'specs/transfer/promises.md'
         raw = path.read_bytes()
-        for replacement in (None, raw + b'\xff', raw.replace(b'service.transfer', b'module.ledger')):
+        for replacement in (None, raw + b'\xff'):
             with self.subTest(replacement=replacement):
                 if replacement is None:
                     path.unlink()
@@ -126,6 +126,12 @@ class ProtocolFiveTests(unittest.TestCase):
                 with self.assertRaises((SpecError, UnicodeError)):
                     self.repository().spec_context('scope.bank')
                 path.write_bytes(raw)
+        metadata = Path(str(path) + '.json')
+        value = json.loads(metadata.read_text())
+        value['document']['owner'] = 'module.ledger'
+        metadata.write_text(json.dumps(value))
+        with self.assertRaises(SpecError):
+            self.repository().spec_context('scope.bank')
 
     def test_foreign_documents_never_add_definitions_files_or_write_authority(self):
         self.reference('service.transfer', 'module', 'module.ledger')
@@ -211,7 +217,7 @@ class ProtocolFiveTests(unittest.TestCase):
                        'relied_upon_guarantees': ['Return the balance.'], 'obligations': ['Handle unknown accounts.']}
             with (self.root / path).open('a') as stream:
                 if role == 'provided': stream.write('\n' + block('concorde-contract', definition))
-                stream.write('\n' + block('concorde-contract-binding', binding))
+            add_binding(self.root, path, binding)
         r = self.repository()
         self.assertEqual((), r.contracts(r.select('service.transfer')))
         self.assertEqual('module.ledger', r.context_contracts(r.select('service.transfer'))[0]['owner'])
@@ -222,9 +228,9 @@ class ProtocolFiveTests(unittest.TestCase):
 
     def test_old_wire_payloads_are_not_reinterpreted(self):
         value = typed('concorde-context-snapshot', resolve_context(self.repository(), 'scope.bank').value)
-        self.assertEqual(4, value['schema_version'])
-        self.assertEqual(4, value['data']['schema_version'])
-        for old in (1, 2, 3):
+        self.assertEqual(5, value['schema_version'])
+        self.assertEqual(5, value['data']['schema_version'])
+        for old in (1, 2, 3, 4):
             stale = {**value, 'schema_version': old}
             with self.assertRaises(TypedDataError): validate_typed(stale)
 
@@ -249,10 +255,10 @@ class ProtocolFiveTests(unittest.TestCase):
 
     def test_required_binding_links_report_excluded_definition_without_adding_context(self):
         path = self.root / 'specs/transfer/module.md'
-        path.write_text(path.read_text() + '\n' + block('concorde-contract-binding', {
+        add_binding(self.root, 'specs/transfer/module.md', {
             'id': 'contract.missing', 'version': 1, 'role': 'required', 'peer': 'module.ledger',
             'selection_condition': 'When reading.', 'relied_upon_guarantees': [
-                '[Read](../ledger/module.md#scenario.ledger.read)'], 'obligations': ['Handle missing accounts.']}))
+                '[Read](../ledger/module.md#scenario.ledger.read)'], 'obligations': ['Handle missing accounts.']})
         result = validate_repository(self.root, package_root=PACKAGE)
         gap = next(f for f in result.findings if f.rule_id == 'CONCORDE-CONTEXT-001')
         self.assertIn('module.ledger', gap.message)
@@ -277,7 +283,7 @@ class ProtocolFiveTests(unittest.TestCase):
         old.context_identities()
         self.registry['targets'][2]['documents'].remove('specs/transfer/promises.md')
         self.registry['targets'][1]['documents'].append('specs/transfer/promises.md')
-        path = self.root / 'specs/transfer/promises.md'
+        path = self.root / 'specs/transfer/promises.md.json'
         path.write_bytes(path.read_bytes().replace(b'"service.transfer"', b'"scope.audit"'))
         self.save()
         self.assertEqual(('module.ledger', 'scope.audit', 'scope.bank', 'service.transfer'),

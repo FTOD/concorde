@@ -13,7 +13,9 @@ export default function ContentProvenance({page}: {page: Page}) {
         <div>Document: <code>{page.documentId}</code></div>
         <div>Owner: <code>{page.owner}</code></div>
         <div>Included by: {page.includedBy.map(m => <span key={m.targetId}><code>{m.targetId}</code> ({m.reasons.map(r => `${r.kind}: ${r.id}`).join(', ')}) </span>)}</div>
-        <div>Main visibility: {page.mainVisible ? 'visible' : 'private'}</div>
+        <div>Reading digest: <code>{page.contentDigest}</code></div>
+        <div>Metadata source: <code>{page.metadataPath}</code></div>
+        <div>Metadata digest: <code>{page.metadataDigest}</code></div>
       </details>
     </aside>
   );

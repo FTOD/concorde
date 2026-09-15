@@ -70,7 +70,8 @@ def apply_author_changes(repository: DocumentUnitRepository, module_id: str, cha
 def pending_changes(repository: DocumentUnitRepository) -> tuple[list[dict], list[dict], list[str]]:
     """Plan metadata-only removal of confirmed pending markers; malformed units fail closed."""
     changes, confirmed, missing = [], [], []
-    repository.validate()
+    for target in repository.targets.values():
+        repository.definitions(target)
     for path in sorted(repository.document_targets):
         unit = repository.unit(path)
         value = unit.declarations

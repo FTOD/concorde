@@ -17,20 +17,16 @@ capability: validate
 @include prompts/workflow-host/target-identity-opener.md
 @include prompts/workflow-host/worktree-handoff.md
 
-Validation checks every Module's `module.md` for Usage & Contract (Purpose, Usage, Requirements,
-Scenarios) followed by Architecture & Realization (Design, Entities, Relationships), and each
-companion document for its applicable reading parts. It also checks the
-syntax of its requirement sections (one SHALL statement each), scenario sections (steps only) and
-`concorde-entities` declarations, unique stable IDs, that a local link whose fragment is a
-scenario, requirement or entity ID points at the document defining it, and that the registry's
-`files` for a Module equal the sorted union of its entities' `files`, entry for entry. A listing
-entry is an exact file or a directory prefix ending in `/` that binds every regular file below it,
-so the registry repeats the prefix rather than its expanded names. It also checks that the
-Relationships flowchart's node labels are exactly the declared entity titles and that every edge
-carries a label. It reads the `verifies` declarations of the listed Python tests without running
-them: a declaration naming an unknown scenario or an unreadable Python file is an error, while a
-scenario that no test declares and a declaration in a file the scenario's Module does not list are
-warnings. An entry an entity lists whose file or directory does not exist and is not marked
-`pending` is an error; an entry still marked `pending` after it exists on disk is a warning, and so
-is a regular file that no Module's entries cover. Warnings are reported alongside errors but never
-by themselves turn a successful validation into a failure; only errors do.
+Validation checks document-unit identity and ownership, the paired reading/metadata sources,
+Purpose/Usage/Design/Relationships reading structure, requirement and scenario syntax, local readable
+meaning references, unique stable IDs and canonical identity links. Registry files equal the exact
+union of entity metadata entries; file/directory kinds, pending markers, implementation exclusions,
+provider sets and complementary interface bindings remain checked. A scoped Relationships diagram
+uses declared local entities and labeled edges, without needing to reproduce the whole inventory.
+Metadata-only edits affect complete-context identity and evidence just as reading edits do.
+
+Tests declare verified scenario IDs in their own source. Unknown IDs and unreadable tests are errors;
+uncovered scenarios and tests outside their scenario owner's listing are warnings. Missing unmarked
+implementation entries are errors; stale pending markers and unlisted files are warnings. Warnings
+do not by themselves fail validation. No structural result proves reading completeness, semantic
+completeness or implementation conformance.

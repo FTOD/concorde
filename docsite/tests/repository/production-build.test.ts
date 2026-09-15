@@ -28,16 +28,19 @@ it('scenario.views.publish-candidate: publishes the current exact registry and v
  expect(navbar).toContain('Module Specs');
  expect(navbar).toContain('Agent Flows');
  expect(navbar).not.toContain('>Graph<');
- expect(html).toContain('id="purpose"');expect(html).toContain('id="scenarios"');expect(html).toContain('id="entities"');expect(html).toContain('id="usage--contract"');expect(html).toContain('id="architecture--realization"');expect(html).toContain('id="design"');expect(html).toContain('id="relationships"');expect(html).toContain('id="req.concorde.routing-no-access"');
- expect(html).not.toContain('<iframe');
- expect(html.indexOf('id="usage--contract"')).toBeLessThan(html.indexOf('id="architecture--realization"'));
+ expect(html).toContain('id="purpose"');expect(html).toContain('id="scenarios"');
+ expect(html).toContain('id="req.concorde.routing-no-access"');expect(html).not.toContain('<iframe');
  for(const module of r.targets){
   const page=r.pages.find(p=>p.primaryOf===module.id)!;
   const source=await readFile(resolve(output,page.route.slice(1)+'.html'),'utf8');
-  expect(source.indexOf('id="usage--contract"')).toBeLessThan(source.indexOf('id="architecture--realization"'));
-  if(module.files.length) expect(source.indexOf('id="files"')).toBeGreaterThan(source.indexOf('id="architecture--realization"'));
+  const sections=['purpose','usage','design','relationships'];
+  for(const name of sections)expect(source).toContain(`id="${name}"`);
+  for(let i=1;i<sections.length;i++)expect(source.indexOf(`id="${sections[i-1]}"`)).toBeLessThan(source.indexOf(`id="${sections[i]}"`));
+  for(const removed of ['usage--contract','architecture--realization','entities','files'])expect(source).not.toContain(`id="${removed}"`);
+  expect(source).toContain(page.metadataPath);expect(source).toContain(page.metadataDigest);
  }
 });
+
 it('scenario.views.agent-flows: publishes executable flows with keyboard navigation and source fingerprints',async()=>{
  const html=await readFile(resolve(output,'agent-flows.html'),'utf8');
  expect(html).toContain('The development loop');

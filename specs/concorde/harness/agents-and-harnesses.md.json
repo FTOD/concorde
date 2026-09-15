@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.harness.agents-and-harnesses",
+    "owner": "module.harness"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": [],
+  "extensions": {
+    "concorde.agents": [
+      {
+        "id": "answerer",
+        "workspace": "capsule",
+        "capabilities": [
+          "main"
+        ],
+        "tools": [
+          "find",
+          "grep",
+          "ls",
+          "read"
+        ],
+        "children": []
+      },
+      {
+        "id": "code-reviewer",
+        "workspace": "project",
+        "capabilities": [
+          "review"
+        ],
+        "tools": [
+          "find",
+          "grep",
+          "ls",
+          "read"
+        ],
+        "children": [
+          "scout",
+          "verifier"
+        ]
+      },
+      {
+        "id": "context-assessor",
+        "workspace": "capsule",
+        "capabilities": [
+          "context-solve",
+          "plan"
+        ],
+        "tools": [
+          "find",
+          "grep",
+          "ls",
+          "read"
+        ],
+        "children": []
+      },
+      {
+        "id": "investigator",
+        "workspace": "project",
+        "capabilities": [
+          "reflections-triage"
+        ],
+        "tools": [
+          "bash",
+          "find",
+          "grep",
+          "ls",
+          "read"
+        ],
+        "children": [
+          "scout"
+        ]
+      },
+      {
+        "id": "planner",
+        "workspace": "capsule",
+        "capabilities": [
+          "plan"
+        ],
+        "tools": [
+          "find",
+          "grep",
+          "ls",
+          "read"
+        ],
+        "children": [
+          "scout"
+        ]
+      },
+      {
+        "id": "programmer",
+        "workspace": "project",
+        "capabilities": [
+          "implement"
+        ],
+        "tools": [
+          "bash",
+          "edit",
+          "find",
+          "grep",
+          "ls",
+          "read",
+          "run_checks",
+          "write"
+        ],
+        "children": [
+          "planner",
+          "scout",
+          "verifier"
+        ]
+      },
+      {
+        "id": "router",
+        "workspace": "capsule",
+        "capabilities": [
+          "dev-loop",
+          "main",
+          "review",
+          "specify-loop"
+        ],
+        "tools": [
+          "find",
+          "grep",
+          "ls",
+          "read"
+        ],
+        "children": []
+      },
+      {
+        "id": "spec-author",
+        "workspace": "capsule",
+        "capabilities": [
+          "specify"
+        ],
+        "tools": [
+          "find",
+          "grep",
+          "ls",
+          "read"
+        ],
+        "children": []
+      },
+      {
+        "id": "spec-reviewer",
+        "workspace": "capsule",
+        "capabilities": [
+          "review"
+        ],
+        "tools": [
+          "find",
+          "grep",
+          "ls",
+          "read"
+        ],
+        "children": [
+          "consistency",
+          "fact-check"
+        ]
+      },
+      {
+        "id": "task-author",
+        "workspace": "capsule",
+        "capabilities": [
+          "tasks"
+        ],
+        "tools": [
+          "find",
+          "grep",
+          "ls",
+          "read"
+        ],
+        "children": []
+      },
+      {
+        "id": "topology-author",
+        "workspace": "capsule",
+        "capabilities": [
+          "main"
+        ],
+        "tools": [
+          "find",
+          "grep",
+          "ls",
+          "read"
+        ],
+        "children": []
+      },
+      {
+        "id": "topology-designer",
+        "workspace": "capsule",
+        "capabilities": [
+          "main"
+        ],
+        "tools": [
+          "find",
+          "grep",
+          "ls",
+          "read"
+        ],
+        "children": []
+      }
+    ]
+  }
+}

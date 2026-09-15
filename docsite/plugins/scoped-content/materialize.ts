@@ -28,21 +28,12 @@ export async function materializeScoped(registry:ScopedRegistry) {
   await rm(identity,{force:true});
   await rm(resolve(generated,'content'),{recursive:true,force:true});
   await rm(resolve(generated,'static'),{recursive:true,force:true});
-  const filesByTargetId=new Map(registry.targets.map(t=>[t.id,t.files]));
   for(const page of registry.pages){
     const path=resolve(generated,'content/specs',page.stagedPath);await mkdir(dirname(path),{recursive:true});
-    // A Module's declared listing entries, exact files and directory prefixes alike, listed on its
-    // own primary Spec page; the complete inventory stays in the registered `concorde-entities`
-    // blocks, this is a reading convenience only.
-    const files=page.primaryOf?filesByTargetId.get(page.primaryOf):undefined;
-    const filesSection=files?.length?`\n\n### Files\n\n${files.map(f=>`- \`${f}\``).join('\n')}\n`:'';
-    // Identity is displayed by ContentProvenance; keep machine-readable metadata out of the
-    // reading flow while leaving the authored source and its digest intact. Scenario, requirement
-    // and entity IDs become anchors so that `path#id` links reach their definitions.
-    const content=injectAnchors(rewriteLinks(registry,page).replace(/^```concorde-document\s*\n[\s\S]*?^```\s*$/m,'').trimStart())+filesSection;
+    const content=injectAnchors(rewriteLinks(registry,page));
     const title=page.primaryOf?registry.targets.find(target=>target.id===page.primaryOf)!.title:posix.basename(page.sourcePath,'.md');
     await writeFile(path,matter.stringify(content,{format:'md',slug:page.route.slice('/specs'.length),title,sidebar_label:title,
-      displayed_sidebar:'moduleSpecsSidebar'}));
+      displayed_sidebar:'moduleSpecsSidebar',toc_max_heading_level:page.primaryOf?2:3}));
   }
   await writeFile(resolve(generated,'specs-sidebar.json'),JSON.stringify({moduleSpecsSidebar:publicationSidebar(registry)},null,2)+'\n');
   await writeFile(identity,JSON.stringify({schema_version:1,sourceDigest:registry.sourceDigest})+'\n');

@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.delivery.module",
+    "owner": "module.delivery"
+  },
+  "entities": [
+    {
+      "id": "entity.delivery.adapter",
+      "title": "Delivery adapter",
+      "kind": "shared program",
+      "files": [
+        "capabilities/deliver.py",
+        "tests/concorde/harness/test_worktree_lifecycle.py"
+      ],
+      "meaning": "#entity.delivery.adapter"
+    },
+    {
+      "id": "entity.delivery.development",
+      "title": "Development",
+      "kind": "used module",
+      "target_id": "module.development",
+      "meaning": "#entity.delivery.development"
+    },
+    {
+      "id": "entity.delivery.harness",
+      "title": "Harness",
+      "kind": "used module",
+      "target_id": "module.harness",
+      "meaning": "#entity.delivery.harness"
+    },
+    {
+      "id": "entity.delivery.spec",
+      "title": "Spec",
+      "kind": "used module",
+      "target_id": "module.spec",
+      "meaning": "#entity.delivery.spec"
+    },
+    {
+      "id": "entity.delivery.distribution",
+      "title": "Distribution",
+      "kind": "used module",
+      "target_id": "module.distribution",
+      "meaning": "#entity.delivery.distribution"
+    },
+    {
+      "id": "entity.delivery.receipt",
+      "title": "Delivery receipt",
+      "kind": "record",
+      "meaning": "#entity.delivery.receipt"
+    }
+  ],
+  "dependencies": [
+    {
+      "target_id": "module.development",
+      "meaning": "#agreement.document.delivery.module.1"
+    },
+    {
+      "target_id": "module.harness",
+      "meaning": "#agreement.document.delivery.module.2"
+    },
+    {
+      "target_id": "module.spec",
+      "meaning": "#agreement.document.delivery.module.3"
+    },
+    {
+      "target_id": "module.distribution",
+      "meaning": "#agreement.document.delivery.module.4"
+    }
+  ],
+  "bindings": []
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.views.publication",
+    "owner": "module.views"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": [
+    {
+      "id": "contract.views.scaffold-proposal",
+      "version": 2,
+      "role": "provided",
+      "peer": "external:docsite-caller",
+      "meaning": "#participation.document.views.publication.1"
+    }
+  ]
+}

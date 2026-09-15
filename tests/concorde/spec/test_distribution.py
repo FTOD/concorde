@@ -41,7 +41,7 @@ class DistributionTests(unittest.TestCase):
                              {t.id for t in repo.affected_modules([path])})
         self.assertEqual({'module.development', 'module.dev-loop', 'module.specify-loop'},
                          {t.id for t in repo.affected_modules(['tests/concorde/development/test_specify_loop.py'])})
-        text='\n'.join(repo.document(path).body for path in repo.spec_files('module.development'))
+        text='\n'.join(repo.source_bytes(path).decode() for path in repo.spec_files('module.development'))
         for op in CAPABILITY_NAMES:self.assertIn(op+'-request',text)
     def test_launcher_refuses_a_nonpublic_capability_name_and_accepts_a_public_skill(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -61,7 +61,9 @@ class DistributionTests(unittest.TestCase):
             result=subprocess.run(public_command+['--feature-path','specs/transfer/module.md'],input=json.dumps(public_value),capture_output=True,text=True,cwd=root)
             self.assertEqual(3,result.returncode);self.assertEqual('blocked',json.loads(result.stdout)['status'])
     def test_installed_framework_runs_complete_real_graph_and_checks_for_both_integrations(self):
-        spec=importlib.util.spec_from_file_location('profile8_installer',PACKAGE/'scripts/install-concorde.py');module=importlib.util.module_from_spec(spec);sys.modules[spec.name]=module;spec.loader.exec_module(module)
+        spec=importlib.util.spec_from_file_location('protocol7_installer',PACKAGE/'scripts/install-concorde.py')
+        assert spec is not None and spec.loader is not None
+        module=importlib.util.module_from_spec(spec);sys.modules[spec.name]=module;spec.loader.exec_module(module)
         package=module.load_package(PACKAGE)
         for integration in ('claude','codex'):
             with self.subTest(integration=integration),tempfile.TemporaryDirectory() as directory:

@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.review.module",
+    "owner": "module.review"
+  },
+  "entities": [
+    {
+      "id": "entity.review.adapter",
+      "title": "Review adapter",
+      "kind": "shared program",
+      "files": [
+        "capabilities/review.py",
+        "tests/concorde/development/test_review.py",
+        "tests/concorde/development/test_run_capability.py",
+        "tests/concorde/development/test_standalone_review.py"
+      ],
+      "meaning": "#entity.review.adapter"
+    },
+    {
+      "id": "entity.review.development",
+      "title": "Development",
+      "kind": "used module",
+      "target_id": "module.development",
+      "meaning": "#entity.review.development"
+    },
+    {
+      "id": "entity.review.harness",
+      "title": "Harness",
+      "kind": "used module",
+      "target_id": "module.harness",
+      "meaning": "#entity.review.harness"
+    },
+    {
+      "id": "entity.review.spec",
+      "title": "Spec",
+      "kind": "used module",
+      "target_id": "module.spec",
+      "meaning": "#entity.review.spec"
+    },
+    {
+      "id": "entity.review.query-routing",
+      "title": "Query and Routing",
+      "kind": "used module",
+      "target_id": "module.query-routing",
+      "meaning": "#entity.review.query-routing"
+    },
+    {
+      "id": "entity.review.review-input",
+      "title": "Review input",
+      "kind": "record",
+      "meaning": "#entity.review.review-input"
+    },
+    {
+      "id": "entity.review.result",
+      "title": "Review result",
+      "kind": "record",
+      "meaning": "#entity.review.result"
+    }
+  ],
+  "dependencies": [
+    {
+      "target_id": "module.development",
+      "meaning": "#agreement.document.review.module.1"
+    },
+    {
+      "target_id": "module.harness",
+      "meaning": "#agreement.document.review.module.2"
+    },
+    {
+      "target_id": "module.spec",
+      "meaning": "#agreement.document.review.module.3"
+    },
+    {
+      "target_id": "module.query-routing",
+      "meaning": "#agreement.document.review.module.4"
+    }
+  ],
+  "bindings": []
+}

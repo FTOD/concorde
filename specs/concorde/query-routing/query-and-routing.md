@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.development.query-and-routing",
-  "owner": "module.query-routing",
-  "main_visible": true
-}
-```
 # Query and routing Agent Flow
-
-## Usage & Contract
 
 `concorde-main` accepts a question or task with optional routing hints. Main starts with the entry
 Module's complete collection, then explicitly expands other Module collections
@@ -42,7 +33,7 @@ unbounded context expansion. The loop records its configured limits and returns 
 outcome if additional discovery cannot be admitted. Human clarification creates a revised task or
 context and starts fresh invocations under the Flow and Loop contract.
 
-## Architecture & Realization
+## Design
 
 ### Discovery Flow (`discovery_flow`)
 
@@ -78,7 +69,6 @@ flowchart TB
     bind_routes --> __end__
     finish --> __end__
 ```
-
 
 ### Query Flow (`query_flow`)
 

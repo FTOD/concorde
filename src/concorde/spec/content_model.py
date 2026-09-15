@@ -1,4 +1,4 @@
-"""Protocol 7 document-unit primitives, not yet wired into the active Profile 13 runtime.
+"""Protocol 7 document-unit primitives shared by runtime admission and publishing checks.
 
 A registered reading document and its deterministic metadata companion are one owned unit.
 Reading is a subset of content, not a summary generated from an inventory. Machine records point
@@ -12,25 +12,25 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-from .repository import HEADING, IDENTITY, check_entry, digest, read_file, walk_lines
+from .repository_base import HEADING, IDENTITY, SpecError, check_entry, digest, read_file, walk_lines
 from .typed_data import decode, safe_path
 
 METADATA_VERSION = 1
 READING_SECTIONS = ("Purpose", "Usage", "Design", "Relationships")
 RETIRED_FENCES = frozenset({"concorde-document", "concorde-entities", "concorde-dependencies",
-                           "concorde-contract-binding"})
+                           "concorde-contract-binding", "concorde-capabilities", "concorde-agents"})
 _OLD_PARTS = frozenset({"Usage & Contract", "Architecture & Realization"})
-_HTML_ANCHOR = re.compile(r'^\s*<a id="([^"]+)"></a>\s*$')
+_HTML_ANCHOR = re.compile(r'^\s*(?:<a id="[^"]+"></a>\s*)+$')
 _HEADING_ANCHOR = re.compile(r"\s+\{#([^{}]+)\}\s*$")
 _DEFINITION = re.compile(r"^((?:req|scenario)\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)\s+[—–-]\s+\S")
 
 
-class ContentModelError(ValueError):
+class ContentModelError(SpecError):
     """A source-local admission error; never a claim about semantic completeness."""
 
     def __init__(self, path: str, message: str):
         self.path = path
-        super().__init__(f"{path}: {message}")
+        super().__init__(f"{path}: {message}", "invalid_spec", path)
 
 
 def metadata_path(reading_path: str) -> str:
@@ -161,18 +161,17 @@ def reading_meanings(text: str, path: str) -> tuple[ReadingMeaning, ...]:
         # A requirement/scenario heading cannot be redirected to a different definition ID.
         if explicit and definition and explicit.group(1) != definition.group(1):
             raise ContentModelError(path, f"definition anchor differs from its identity at line {number}")
-        anchor = (explicit.group(1) if explicit else definition.group(1) if definition
-                  else html.group(1) if html else None)
-        if anchor is None:
-            continue
-        _identity(anchor, path)
-        if anchor in seen:
-            raise ContentModelError(path, f"duplicate reading anchor: {anchor}")
-        seen.add(anchor)
-        anchors.append((anchor, number, len(heading.group(1)) if heading else None))
+        names = ([explicit.group(1)] if explicit else [definition.group(1)] if definition
+                 else re.findall(r'<a id="([^"]+)"></a>', line) if html else [])
+        for anchor in names:
+            _identity(anchor, path)
+            if anchor in seen:
+                raise ContentModelError(path, f"duplicate reading anchor: {anchor}")
+            seen.add(anchor)
+            anchors.append((anchor, number, len(heading.group(1)) if heading else None))
     result = []
     for index, (anchor, start, level) in enumerate(anchors):
-        next_anchor = anchors[index + 1][1] if index + 1 < len(anchors) else len(lines) + 1
+        next_anchor = next((number for _, number, _ in anchors[index + 1:] if number > start), len(lines) + 1)
         end = min([next_anchor, *(number for number, next_level in headings.items()
                                  if number > start and (level is None or next_level <= level))])
         # Only readable text can supply the meaning. A bare code block or heading is not prose.
@@ -211,6 +210,21 @@ def reading_problems(text: str, *, primary: bool) -> tuple[str, ...]:
                        and not _HTML_ANCHOR.fullmatch(line)
                        and not re.match(r"\s*(?:\||[-*+] |\d+[.)] )", line) for kind, line in section):
                 problems.append(f"{title} requires explanatory prose")
+            if title == "Relationships":
+                in_mermaid = False
+                first_line = None
+                has_flowchart = False
+                for kind, line in section:
+                    if kind == "fence-open":
+                        in_mermaid = bool(re.fullmatch(r" {0,3}(?:`{3,}|~{3,})mermaid\s*", line))
+                        first_line = None
+                    elif kind == "fenced" and in_mermaid and first_line is None and line.strip():
+                        first_line = line.strip()
+                    elif kind == "fence-close" and in_mermaid:
+                        has_flowchart |= bool(first_line and re.match(r"^(flowchart|graph)\b", first_line))
+                        in_mermaid = False
+                if not has_flowchart:
+                    problems.append("Relationships requires a Mermaid flowchart fence")
             if title == "Purpose" and any(kind != "prose" or HEADING.match(line)
                     or re.match(r"\s*(?:\||[-*+] |\d+[.)] )", line) for kind, line in section):
                 problems.append("Purpose must be plain prose without headings, lists, tables or fences")
@@ -245,7 +259,13 @@ def metadata_identity(path: str, raw: bytes, *, expected_owner: str) -> tuple[st
         value = decode(raw.decode("utf-8"))
     except (ValueError, UnicodeError) as error:
         raise ContentModelError(path, f"invalid metadata UTF-8 or JSON: {error}") from error
-    _object(value, {"schema_version", "document", "entities", "dependencies", "bindings"}, set(), path)
+    _object(value, {"schema_version", "document", "entities", "dependencies", "bindings"}, {"extensions"}, path)
+    if "extensions" in value:
+        extensions = value["extensions"]
+        if not isinstance(extensions, dict) or not extensions:
+            raise ContentModelError(path, "extensions must be a nonempty named object")
+        for name in extensions:
+            _identity(name, path)
     if type(value["schema_version"]) is not int or value["schema_version"] != METADATA_VERSION:
         raise ContentModelError(path, "unsupported document metadata version")
     document = _object(value["document"], {"id", "owner"}, set(), path)

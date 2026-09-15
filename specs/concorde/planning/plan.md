@@ -1,14 +1,4 @@
-```concorde-document
-{
-  "id": "document.planning.plan",
-  "owner": "module.planning",
-  "main_visible": true
-}
-```
-
 # Planning capability
-
-## Usage & Contract
 
 The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
@@ -42,7 +32,6 @@ having to explain its purpose by reference to dev-loop.
 
 Planning SHALL leave the previously accepted plan unchanged when a returned plan is empty, invalid or bound to stale inputs.
 
-
 ### Scenarios
 
 #### scenario.planning.plan-current — Assessment admits a revision-bound plan
@@ -67,7 +56,7 @@ Planning SHALL leave the previously accepted plan unchanged when a returned plan
 - THEN it rejects stale output without replacing the previously accepted plan
 - AND preserving old bytes does not make the old plan current; reuse requires current admission
 
-## Architecture & Realization
+## Design
 
 ### Planning Flow (`plan_flow`)
 

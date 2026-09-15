@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.planning.module",
+    "owner": "module.planning"
+  },
+  "entities": [
+    {
+      "id": "entity.planning.adapter",
+      "title": "Planning adapter",
+      "kind": "shared program",
+      "files": [
+        "capabilities/context_solve.py",
+        "capabilities/plan.py",
+        "capabilities/tasks.py",
+        "tests/concorde/development/test_review.py"
+      ],
+      "meaning": "#entity.planning.adapter"
+    },
+    {
+      "id": "entity.planning.development",
+      "title": "Development",
+      "kind": "used module",
+      "target_id": "module.development",
+      "meaning": "#entity.planning.development"
+    },
+    {
+      "id": "entity.planning.harness",
+      "title": "Harness",
+      "kind": "used module",
+      "target_id": "module.harness",
+      "meaning": "#entity.planning.harness"
+    },
+    {
+      "id": "entity.planning.spec",
+      "title": "Spec",
+      "kind": "used module",
+      "target_id": "module.spec",
+      "meaning": "#entity.planning.spec"
+    },
+    {
+      "id": "entity.planning.assessment",
+      "title": "Context assessment",
+      "kind": "record",
+      "meaning": "#entity.planning.assessment"
+    },
+    {
+      "id": "entity.planning.plan",
+      "title": "Accepted plan",
+      "kind": "record",
+      "meaning": "#entity.planning.plan"
+    },
+    {
+      "id": "entity.planning.tasks",
+      "title": "Acceptance tasks",
+      "kind": "record",
+      "meaning": "#entity.planning.tasks"
+    }
+  ],
+  "dependencies": [
+    {
+      "target_id": "module.development",
+      "meaning": "#agreement.document.planning.module.1"
+    },
+    {
+      "target_id": "module.harness",
+      "meaning": "#agreement.document.planning.module.2"
+    },
+    {
+      "target_id": "module.spec",
+      "meaning": "#agreement.document.planning.module.3"
+    }
+  ],
+  "bindings": []
+}

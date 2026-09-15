@@ -21,8 +21,8 @@ class ManifestContractTests(unittest.TestCase):
     def test_one_manifest_declares_native_identity_profile_and_install_layout(self):
         manifest = self.manifest
         self.assertEqual(manifest["schema_version"], 3)
-        self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "6.0.0"))
-        self.assertEqual((manifest["architecture_profile"], manifest["workspace_protocol"]), (13, 15))
+        self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "7.0.0"))
+        self.assertEqual((manifest["architecture_profile"], manifest["workspace_protocol"]), (14, 15))
         self.assertEqual(manifest["integrations"], ["claude", "codex"])
         self.assertEqual(manifest["install"], {
             "framework_root": ".concorde/framework",

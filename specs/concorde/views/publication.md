@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.views.publication",
-  "owner": "module.views",
-  "main_visible": true
-}
-```
 # Publication service
-
-## Usage & Contract
 
 ### Scaffolding a project's docsite
 
@@ -32,7 +23,6 @@
 - WHEN `--apply` is requested
 - THEN the application is rejected
 - AND any already-staged files are restored to their original bytes
-
 
 ### Scaffold proposal exchange and ownership
 
@@ -153,22 +143,16 @@ warnings do not install dependencies or change proposal bytes.
   }
 }
 ```
-```concorde-contract-binding
-{
-  "id": "contract.views.scaffold-proposal",
-  "version": 2,
-  "role": "provided",
-  "peer": "external:docsite-caller",
-  "selection_condition": "When a caller proposes or applies a docsite scaffold.",
-  "relied_upon_guarantees": [
-    "[Canonical agreement](#contract.views.scaffold-proposal) defines the exchanged value for this operation."
-  ],
-  "obligations": [
-    "Preserve unrelated files and enforce exact proposal digests before applying any scaffold change."
-  ]
-}
-```
 
+<a id="participation.document.views.publication.1"></a>
+
+**Interface participation.** This Module has the provided role for `contract.views.scaffold-proposal` version 2 with `external:docsite-caller`.
+
+**When this applies.** When a caller proposes or applies a docsite scaffold.
+
+**Relied-upon guarantee.** [Canonical agreement](#contract.views.scaffold-proposal) defines the exchanged value for this operation.
+
+**Local obligation.** Preserve unrelated files and enforce exact proposal digests before applying any scaffold change.
 
 Version 2 excludes project-owned custom docs and the retired projection publisher from the template.
 Version-1 proposals are rejected with instructions to regenerate using `docsite --propose`;
@@ -219,7 +203,6 @@ created paths. Repeating an unchanged proposal is idempotent. No accepted propos
 delete existing files, including project Specs.
 
 For a Module, its unique local `module.md` is the source entry, independent of collection order.
-
 
 ### Publishing registered Specs
 
@@ -300,7 +283,6 @@ or ambiguous destinations and missing anchors fail validation.
 - AND a subsequent successful build retains that absence and the registered-document reading and navigation behavior
 - BUT a failed candidate leaves the previous published build unchanged under the normal promotion rules
 
-
 ### Retired unregistered projections
 
 Publication ignores `generated/docs/instructions.json` and `generated/docs/wire.json`, even when
@@ -308,7 +290,6 @@ stale files exist. It emits no Projections navigation or instruction/wire readin
 whole-directory promotion removes previously published projection pages; failed builds preserve
 the previous output. Runtime schema generation and APIs remain Distribution/Development facilities.
 Registered Specs are not restricted by the formerly reserved `projections/` source-path prefix.
-
 
 ### Project introduction
 
@@ -348,7 +329,6 @@ a nonempty `tables` array. Each table has nonempty `title` and `description` str
 `columns` array of nonempty strings and a nonempty `rows` array. Every row contains exactly one
 nonempty string per column. These values also render as plain text. Invalid reference content
 fails with its field path; omitting the object preserves the homepage without a reference section.
-
 
 ### Project-owned custom documentation
 
@@ -396,7 +376,6 @@ remains available in registered and custom documentation.
 These generated views are human navigation, not agent context grants. The publication Tool may read
 multiple registered collections deterministically; an agent still receives one host-bound target
 snapshot.
-
 
 ### Main routing view
 

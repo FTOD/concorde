@@ -1,16 +1,6 @@
-```concorde-document
-{
-  "id": "document.views.module",
-  "owner": "module.views",
-  "main_visible": true
-}
-```
-
 # Views
 
-## Usage & Contract
-
-### Purpose
+## Purpose
 
 Views turns the project's explicit Spec registry into a documentation site that developers and
 reviewers read, deterministically projects that same registry into a skeleton Understand Anything
@@ -24,7 +14,7 @@ declared ownership scope. Its viewer promises stop at admission and launch: the 
 the graph it opens, does not judge whether that graph still agrees with the code, and does not grant
 an agent any access beyond its own host-bound Spec context.
 
-### Usage
+## Usage
 
 Choose among three independent uses: publish registered Specs as a docsite, export or overlay a
 registry-derived UA graph, or open an existing graph in the installed viewer. For a new site, propose
@@ -34,17 +24,125 @@ link, invalid document or stale input prevents promotion and preserves the previ
 [Publication](publication.md) explains scaffolding, custom documentation and reading behavior;
 [pipeline](pipeline.md) defines the build API and records.
 
-The Spec reader presents Usage & Contract before Architecture & Realization, so using a Module
-does not require first reading its entity/file inventory. Both parts remain canonical source text.
+The Spec reader presents Usage before Design, so using a Module
+does not require first reading its entity/file inventory. Both explanations remain canonical reading content.
 Custom docs are separate human documentation and grant no Spec context. For graphs, use
 [UA export](ua-graph.md) to derive or overlay declared structure and `--check` for drift without
 writes. Use the [viewer launcher](viewer.md) only with an existing valid graph and verified runtime.
 The launcher neither generates a graph nor verifies agreement with code; no rendered view proves
 semantic completeness or authorizes a change.
 
-### Requirements
+## Design
 
-#### req.views.registry-derived-pages — Pages and navigation derive from the registry
+<a id="entity.views.publication-docsite"></a><a id="entity.views.docsite-build-interface"></a><a id="entity.views.markdown-documents"></a><a id="entity.views.canonical-page"></a><a id="entity.views.navigation"></a><a id="entity.views.candidate-site"></a><a id="entity.views.published-site"></a>
+
+Publication docsite reads Registered Markdown documents and their paired metadata as one source
+model, but produces one Canonical page per reading document. Spec navigation follows registered
+Module parentage rather than directory structure. The Docsite build interface separates admission,
+materialization, candidate build, source/link validation and promotion. Only a current validated
+Candidate site replaces the Published site; a failure preserves the last successful build.
+Metadata participates in source identity and auxiliary provenance, not an appended file inventory.
+The [pipeline design](pipeline.md#design) defines these identities and promotion mechanics.
+
+<a id="entity.views.publication-scaffold"></a><a id="entity.views.docsite-scaffold-command"></a><a id="entity.views.file-transactions"></a>
+
+Docsite scaffold command uses Publication scaffold and File transactions to create only the exact
+accepted site files. Scaffolding does not rewrite project Specs or overwrite existing consumer
+files. Provider definitions stay at their canonical pages: ordinary links never transclude a
+second copy of a shared contract.
+
+<a id="entity.views.ua-graph-exporter"></a><a id="entity.views.ua-graph-command"></a><a id="entity.views.viewer-launcher"></a><a id="entity.views.viewer-launch-command"></a><a id="entity.views.viewer-request"></a><a id="entity.views.code-graph"></a><a id="entity.views.verified-viewer-runtime"></a><a id="entity.views.viewer-process"></a>
+
+UA graph export command uses UA graph exporter to derive or overlay declared structure without
+judging implementation conformance. A Raw code graph can also be an observation produced elsewhere.
+Viewer launch command passes a Viewer launch request to Viewer launcher, which admits the existing
+graph and the Verified installed viewer supplied by Distribution before starting the Viewer process.
+Launch neither regenerates the graph nor checks its freshness against source. Export and launch are
+independent of reading publication and grant no additional agent context.
+
+## Relationships
+
+Publication scaffold and Publication docsite touch disjoint files and never edit each other's
+output: the scaffold's own exact-file transaction creates or updates project structure, and
+rendering project Specs never authorizes editing them. A candidate is promoted only when complete
+and current; any invalid link, diagram or stale source during generation leaves the published site
+exactly as it was. Registry composition still supplies navigation, and dependency and interface
+agreements still undergo validation; none creates a standalone docsite graph projection.
+
+The UA graph exporter derives and writes a skeleton from the registry without judging agreement
+with code. The viewer launcher independently admits an existing graph and verified runtime and
+launches a process; it neither generates nor verifies the freshness of that graph.
+
+### Publication and scaffolding
+
+This view covers reading publication and its creation-only scaffold, not graph generation or viewer
+processes. Concorde-only Flow inspection additionally uses Harness under the local agreement below.
+
+```mermaid
+flowchart TB
+    accTitle: Publication admission and promotion
+    accDescr: Spec supplies registered reading and metadata. Publication derives canonical pages and navigation, validates a candidate and promotes it. Scaffolding separately creates accepted site files through file transactions.
+    spec["Spec"]
+    site["Publication docsite"]
+    documents["Registered Markdown documents"]
+    page["Canonical page"]
+    navigation["Spec navigation"]
+    candidate["Candidate site"]
+    published["Published site"]
+    scaffold["Publication scaffold"]
+    transaction["File transactions"]
+    spec -->|supplies registered sources to| site
+    site -->|reads| documents
+    documents -->|render as| page
+    site -->|derives| navigation
+    page -->|contributes to| candidate
+    navigation -->|contributes to| candidate
+    candidate -->|validated current output replaces| published
+    scaffold -->|creates scaffold for| site
+    scaffold -->|applies accepted creation through| transaction
+```
+
+### Independent graph export
+
+Export derives or overlays the registry's declared structure; it is not a source-code analysis or a
+replacement for a Module's authored relationship view.
+
+```mermaid
+flowchart LR
+    accTitle: Registry-derived graph export
+    accDescr: Spec supplies declared structure to the UA exporter, which writes or overlays a raw graph without judging code conformance.
+    spec["Spec"]
+    exporter["UA graph exporter"]
+    rawGraph["Raw code graph"]
+    spec -->|supplies declared structure to| exporter
+    exporter -->|writes or overlays| rawGraph
+```
+
+### Existing-graph viewing
+
+Launch selects an already-existing graph and a verified viewer. It neither generates that graph
+nor verifies its agreement with current implementation.
+
+```mermaid
+flowchart LR
+    accTitle: Existing graph viewer launch
+    accDescr: Distribution provisions the verified viewer. The launcher admits a request, an existing raw graph and the verified runtime before starting the viewer process.
+    distribution["Distribution"]
+    runtime["Verified installed viewer"]
+    request["Viewer launch request"]
+    rawGraph["Raw code graph"]
+    launcher["Viewer launcher"]
+    process["Viewer process"]
+    distribution -->|provisions| runtime
+    request -->|is admitted by| launcher
+    runtime -->|is verified by| launcher
+    rawGraph -->|is admitted by| launcher
+    launcher -->|starts| process
+```
+
+## Requirements
+
+### req.views.registry-derived-pages — Pages and navigation derive from the registry
 
 Publication SHALL derive Module Spec pages and their navigation only from the explicit registry.
 
@@ -53,22 +151,22 @@ and project-owned custom docs are presentation surfaces outside that membership.
 The Module Specs sidebar follows registry parentage alone; custom docs use independent tabs. See
 [req.views.no-directory-scanning](#req.views.no-directory-scanning).
 
-#### req.views.custom-docs — Separate project documentation
+### req.views.custom-docs — Separate project documentation
 
 Publication SHALL support project-owned custom docs through independent tabs outside Module Spec registration and agent Spec context.
 
 The generic template defaults to Module Specs alone and publishes no unregistered Projections
 section. See [custom docs](publication.md#scenario.views.custom-docs) for configuration and migration.
 
-#### req.views.no-directory-scanning — No directory scanning or link-based discovery
+### req.views.no-directory-scanning — No directory scanning or link-based discovery
 
 Publication SHALL NOT discover Spec documents by scanning directories or following links.
 
-#### req.views.one-page-per-document — One canonical page per registered document
+### req.views.one-page-per-document — One canonical page per registered document
 
 A physical Spec document SHALL publish at exactly one canonical page regardless of how many Modules reference it.
 
-#### req.views.current-internal-links — Published internal links resolve
+### req.views.current-internal-links — Published internal links resolve
 
 Publication SHALL promote only a candidate in which every internal navigation link retained in its published documents resolves to an available destination and, when specified, an existing anchor.
 
@@ -79,21 +177,21 @@ the continued availability of another website. Current-owner legacy aliases and 
 behavior are defined in [publication](publication.md#scenario.views.publish-legacy-redirect)
 and [pipeline](pipeline.md#scenario.views.validate-candidate-mismatch).
 
-#### req.views.no-agent-context-grant — No extra agent context from a rendered view
+### req.views.no-agent-context-grant — No extra agent context from a rendered view
 
 A rendered page or generated view SHALL NOT itself grant an agent invocation additional Spec context beyond its own host-bound target snapshot.
 
-#### req.views.diagram-source-identity — Mermaid fence is the sole diagram source
+### req.views.diagram-source-identity — Mermaid fence is the sole diagram source
 
 An inline Mermaid fence in a Module's Relationships subsection SHALL be its sole authored diagram source.
 
-#### req.views.no-external-diagram-record — No external diagram record or output
+### req.views.no-external-diagram-record — No external diagram record or output
 
 Publication SHALL create no external diagram record or `generated/diagrams` output.
 
 The authored fence is the sole source; publication produces no external record derived from it.
 
-#### req.views.no-docsite-graph-view — No docsite graph view
+### req.views.no-docsite-graph-view — No docsite graph view
 
 Publication SHALL NOT expose the former Module, Scenario or entity-relationship graph view.
 
@@ -107,53 +205,53 @@ Concorde's own source-checkout site has an independent Agent Flows page describi
 execution. It is excluded from the consumer template and does not derive a graph from the Spec
 registry. See [Agent execution publication](pipeline.md#scenario.views.agent-flows).
 
-#### req.views.agent-flows — Concorde-only execution diagrams
+### req.views.agent-flows — Concorde-only execution diagrams
 
 Concorde's own docsite SHALL publish an Agent Flows tab whose LangGraph nodes and edges come from
 the current executable factories and whose explanations distinguish execution, wrappers and
 unimplemented design.
 
-#### req.views.production-preview-isolation — Production builds preserve preview output
+### req.views.production-preview-isolation — Production builds preserve preview output
 
 A production build SHALL NOT clear or overwrite the development preview's generated directory.
 
-#### req.views.hash-format — Digests use the sha256 hex format
+### req.views.hash-format — Digests use the sha256 hex format
 
 Every content or source digest SHALL be `sha256:` followed by 64 lowercase hexadecimal digits.
 
-#### req.views.safe-relative-paths — Member paths are safe relative POSIX paths
+### req.views.safe-relative-paths — Member paths are safe relative POSIX paths
 
 Every member path SHALL use POSIX separators without absolute paths, backslashes, empty, dot or traversal components, or symlinks.
 
-#### req.views.promote-atomic — Promotion restores the prior destination on failure
+### req.views.promote-atomic — Promotion restores the prior destination on failure
 
 `promoteCandidate` SHALL attempt to restore the prior destination on a failed move or removal.
 
-#### req.views.promote-requires-checked-candidate — Promotion runs only on checked candidates
+### req.views.promote-requires-checked-candidate — Promotion runs only on checked candidates
 
 `promoteCandidate` SHALL NOT be called on unchecked or stale output.
 
-#### req.views.no-contract-context-expansion — Contract edges do not expand loaded context
+### req.views.no-contract-context-expansion — Contract edges do not expand loaded context
 
 The registry loader SHALL NOT follow a `concorde-contract` edge to import additional Module context.
 
-#### req.views.no-graph-generation — Launcher leaves graph contents unchanged
+### req.views.no-graph-generation — Launcher leaves graph contents unchanged
 
 The viewer launcher SHALL NOT modify graph contents, including generating or rewriting the graph it opens.
 
-#### req.views.no-graph-freshness-verification — Launcher never verifies graph freshness
+### req.views.no-graph-freshness-verification — Launcher never verifies graph freshness
 
 The viewer launcher SHALL NOT verify the freshness of the graph it opens against source.
 
-#### req.views.no-dependency-install — Launcher resolves no dependencies or network access
+### req.views.no-dependency-install — Launcher resolves no dependencies or network access
 
 The viewer launcher SHALL NOT resolve dependencies or perform network acquisition.
 
-#### req.views.cli-syntax-errors — Argument errors exit separately from launch failures
+### req.views.cli-syntax-errors — Argument errors exit separately from launch failures
 
 Invalid launch syntax or a port outside 0-65535 SHALL exit through argument parsing with code 2, distinct from a failed launch's exit code 3.
 
-#### req.views.ua-graph-registry-only — Exported skeleton derives only from the registry
+### req.views.ua-graph-registry-only — Exported skeleton derives only from the registry
 
 The UA graph exporter SHALL limit derivation inputs to the explicit registry, registered documents, declared implementation listings and an admitted existing graph.
 
@@ -162,290 +260,60 @@ rules; it does not authorize discovery of additional project files or Spec membe
 skeletons derive their structure solely from registered inputs, with initial project metadata as
 defined in the local serialized graph contract.
 
-#### req.views.ua-graph-idempotent — Re-export replaces only Concorde-owned elements
+### req.views.ua-graph-idempotent — Re-export replaces only Concorde-owned elements
 
 A repeated export SHALL replace only the nodes, edges and layers in the ownership scope defined by scenario.views.ua-graph-overlay, leaving every other element of an existing graph unchanged.
 
-### Scenarios
+## Scenarios
 
 Scaffold and top-level publication scenarios are defined in [publication](publication.md).
 Registry loading, materialization and build/promotion scenarios are defined in
 [pipeline](pipeline.md). Viewer launch scenarios are defined in [viewer](viewer.md), and UA graph
 export scenarios in [ua-graph](ua-graph.md).
 
-## Architecture & Realization
+## Dependencies and composition
 
-### Design
+### Spec
 
-Publication uses registry admission, materialization, candidate build, link/source validation and
-promotion as distinct stages. Keeping the previous successful site until candidate validation
-supports the preservation guarantee. The [pipeline design](pipeline.md#architecture--realization)
-records build identities and promotion mechanics. Rendering keeps the two reading parts in source
-order and puts derived file listings in the internal part; it never transcludes provider contracts.
+<a id="entity.views.spec"></a><a id="agreement.document.views.module.1"></a>
 
-Scaffolding owns only proposed site files. UA export independently overlays declared structure onto
-a graph under its reserved ownership selectors; viewer launch independently validates graph and
-runtime identity. Neither operation supplies a new Spec authority. The entities below bind these
-separate responsibilities and the shared file-transaction implementation.
+Supplies the explicit registry, document ownership and references, relationships and file bindings used by publication and UA export, without recursive filename discovery.
 
-### Entities
+Supply the explicit registry, document ownership and references, relationships and entity file bindings consumed by publication and UA export.
 
-Entity file declarations retain their exact registered entries. A more specific entry takes
-precedence over a containing directory entry.
+This collaboration applies when loading publication inputs, materializing pages or navigation, or exporting the UA graph skeleton.
 
-```concorde-entities
-[
-  {
-    "id": "entity.views.publication-docsite",
-    "title": "Publication docsite",
-    "kind": "program",
-    "responsibility": "Realizes registry-driven Markdown publication: materializes one canonical page and inline Mermaid rendering per physical document, derives navigation, binds a candidate to exact source digests and route coverage, and promotes only a complete current candidate while preserving the previous successful build on failure.",
-    "files": [
-      "docsite/"
-    ]
-  },
-  {
-    "id": "entity.views.publication-scaffold",
-    "title": "Publication scaffold",
-    "kind": "program",
-    "responsibility": "Realizes exact docsite scaffold proposals and deploys the current publishing template without a standalone graph view for a registered project, without reading code to infer architecture.",
-    "files": [
-      "src/concorde/views/",
-      "tests/concorde/views/"
-    ]
-  },
-  {
-    "id": "entity.views.viewer-launcher",
-    "title": "Viewer launcher",
-    "kind": "program",
-    "responsibility": "Realizes the deterministic admission and process-launch boundary that selects the first existing raw graph, verifies the installed runtime and launches the official viewer without generating the graph or installing dependencies.",
-    "files": [
-      "scripts/run-ua-graph-viewer.py",
-      "tests/concorde/views/test_viewer_launcher.py"
-    ]
-  },
-  {
-    "id": "entity.views.ua-graph-exporter",
-    "title": "UA graph exporter",
-    "kind": "program",
-    "responsibility": "Realizes the deterministic export or overlay of a skeleton Understand Anything graph from the registry's Module identities, relationships, documents and entity file listings, replacing on re-export only the nodes, edges and layers in its declared ownership scope.",
-    "files": [
-      "src/concorde/views/ua_graph.py",
-      "tests/concorde/views/test_ua_graph.py"
-    ]
-  },
-  {
-    "id": "entity.views.file-transactions",
-    "title": "File transactions",
-    "kind": "shared program",
-    "responsibility": "Realizes exact replacement proposals as staged filesystem operations with before-digest checks and original-byte recovery, for every Module that applies an accepted proposal.",
-    "files": [
-      "src/concorde/spec/changes.py"
-    ]
-  },
-  {
-    "id": "entity.views.spec",
-    "title": "Spec",
-    "kind": "used module",
-    "target_id": "module.spec",
-    "responsibility": "Supplies the explicit registry, document ownership and references, relationships and file bindings used by publication and UA export, without recursive filename discovery."
-  },
-  {
-    "id": "entity.views.distribution",
-    "title": "Distribution",
-    "kind": "used module",
-    "target_id": "module.distribution",
-    "responsibility": "Provisions and verifies the official viewer package inside the managed runtime that the viewer launcher checks before starting a launch."
-  },
-  {
-    "id": "entity.views.docsite-scaffold-command",
-    "title": "Docsite scaffold command",
-    "kind": "interface",
-    "responsibility": "The deterministic `concorde docsite --propose`/`--apply` command that creates and applies an accepted project-relative scaffold proposal under the host's worktree policy, checking before-digests and owning only scaffold files."
-  },
-  {
-    "id": "entity.views.docsite-build-interface",
-    "title": "Docsite build interface",
-    "kind": "interface",
-    "responsibility": "The TypeScript requireScoped/loadScopedRegistry/materializeScoped/buildSite/promoteCandidate functions and Docusaurus plugin hooks, plus the project-local npm run validate/npm run build commands, that admit only a Profile 13 project, load the registry, stage Markdown and navigation, build and validate a candidate and promote only a checked result."
-  },
-  {
-    "id": "entity.views.viewer-launch-command",
-    "title": "Viewer launch command",
-    "kind": "interface",
-    "responsibility": "The `python3 .../scripts/run-ua-graph-viewer.py --project-root PATH [--port N] [--no-open]` command that admits an existing raw graph and a verified runtime and launches the official viewer, returning its process exit code."
-  },
-  {
-    "id": "entity.views.ua-graph-command",
-    "title": "UA graph export command",
-    "kind": "interface",
-    "responsibility": "The `python -m concorde ua-graph [--check]` command that derives a skeleton Understand Anything graph from the registry, overlays it onto an existing raw graph when one is present, and reports drift without writing under `--check`."
-  },
-  {
-    "id": "entity.views.markdown-documents",
-    "title": "Registered Markdown documents",
-    "kind": "concept",
-    "responsibility": "Every physical Spec document explicitly registered in the project's Spec registry, including solely owned documents referenced by several Modules, which publication renders without directory scanning."
-  },
-  {
-    "id": "entity.views.canonical-page",
-    "title": "Canonical page",
-    "kind": "record",
-    "responsibility": "The one rendered page a registered physical document publishes at its readable derived route, carrying its sole owner, inclusion provenance, aliases and content digest even when several Modules reference it."
-  },
-  {
-    "id": "entity.views.navigation",
-    "title": "Spec navigation",
-    "kind": "concept",
-    "responsibility": "One Module Specs sidebar derived only from registered Module parent relationships, with root Modules shown directly, each Module opening its reading entry and expanding to its owned supplemental documents and child Modules; registered paths remain source provenance and do not create directory navigation, an outer composition category or a standalone graph view."
-  },
-  {
-    "id": "entity.views.candidate-site",
-    "title": "Candidate site",
-    "kind": "record",
-    "responsibility": "The staged build whose exact source digest, route inventory and diagram rendering are validated against the current registry before promotion is considered."
-  },
-  {
-    "id": "entity.views.published-site",
-    "title": "Published site",
-    "kind": "concept",
-    "responsibility": "The previously promoted build that a validation failure or a source change during generation leaves untouched, so only a complete current candidate ever replaces it."
-  },
-  {
-    "id": "entity.views.viewer-request",
-    "title": "Viewer launch request",
-    "kind": "concept",
-    "responsibility": "One invocation of the viewer launch command with its project root and optional port/no-open flags."
-  },
-  {
-    "id": "entity.views.code-graph",
-    "title": "Raw code graph",
-    "kind": "external observation",
-    "responsibility": "The first existing knowledge-graph JSON file in the manifest's ordered graph_paths, an observation produced by another tool that the launcher admits by shape but does not generate, rewrite or check for freshness against source."
-  },
-  {
-    "id": "entity.views.verified-viewer-runtime",
-    "title": "Verified installed viewer",
-    "kind": "concept",
-    "responsibility": "The runtime marker and viewer package identity that Distribution's managed runtime provisions and that the launcher checks before starting the official viewer."
-  },
-  {
-    "id": "entity.views.viewer-process",
-    "title": "Viewer process",
-    "kind": "concept",
-    "responsibility": "The launched official-viewer child process, run from the project directory with the requested flags, whose exit code (or 130 on interruption) the launcher returns."
-  },
-  {
-    "id": "entity.views.harness",
-    "title": "Harness",
-    "kind": "used module",
-    "target_id": "module.harness",
-    "responsibility": "Supply inspectable executable Flows without invoking nodes."
-  }
-]
-```
+- [Derive pages and graph structure from explicit unique ownership, references and entity listings](../spec/structure.md#registry-shape)
+- [Resolve inclusion provenance without recursive reads](../spec/registry.md#stable-id-spec-context-queries)
 
-### Relationships
+### Distribution
 
-Publication scaffold and Publication docsite touch disjoint files and never edit each other's
-output: the scaffold's own exact-file transaction creates or updates project structure, and
-rendering project Specs never authorizes editing them. A candidate is promoted only when complete
-and current; any invalid link, diagram or stale source during generation leaves the published site
-exactly as it was. Registry composition still supplies navigation, and dependency and interface
-agreements still undergo validation; none creates a standalone docsite graph projection.
+<a id="entity.views.distribution"></a><a id="agreement.document.views.module.2"></a>
 
-The UA graph exporter derives and writes a skeleton from the registry without judging agreement
-with code. The viewer launcher independently admits an existing graph and verified runtime and
-launches a process; it neither generates nor verifies the freshness of that graph.
+Provisions and verifies the official viewer package inside the managed runtime that the viewer launcher checks before starting a launch.
 
-```mermaid
-flowchart TB
-    accTitle: Views entities and relationships
-    accDescr: Spec supplies publication inputs and UA export inputs. Publication docsite renders registered documents into canonical pages and derives Spec navigation for a checked candidate site. Publication scaffold applies accepted scaffold proposals through File transactions. Independently, UA graph exporter writes or overlays the raw graph, and Viewer launcher admits a graph and the installed viewer provisioned by Distribution to launch a viewer process.
-    spec["Spec"]
-    distribution["Distribution"]
-    publicationDocsite["Publication docsite"]
-    publicationScaffold["Publication scaffold"]
-    viewerLauncher["Viewer launcher"]
-    uaGraphExporter["UA graph exporter"]
-    fileTransactions["File transactions"]
-    docsiteScaffoldCommand["Docsite scaffold command"]
-    docsiteBuildInterface["Docsite build interface"]
-    viewerLaunchCommand["Viewer launch command"]
-    uaGraphCommand["UA graph export command"]
-    markdownDocuments["Registered Markdown documents"]
-    canonicalPage["Canonical page"]
-    navigation["Spec navigation"]
-    candidateSite["Candidate site"]
-    publishedSite["Published site"]
-    viewerRequest["Viewer launch request"]
-    codeGraph["Raw code graph"]
-    verifiedViewer["Verified installed viewer"]
-    viewerProcess["Viewer process"]
-    spec -->|supplies registered documents and relationships to| publicationDocsite
-    publicationDocsite -->|selects| markdownDocuments
-    markdownDocuments -->|is rendered as| canonicalPage
-    publicationDocsite -->|derives| navigation
-    canonicalPage -->|contributes to| candidateSite
-    navigation -->|contributes to| candidateSite
-    docsiteBuildInterface -->|builds and validates| candidateSite
-    candidateSite -->|current and complete validation promotes to| publishedSite
-    docsiteScaffoldCommand -->|is realized by| publicationScaffold
-    publicationScaffold -->|creates or updates the scaffold consumed by| publicationDocsite
-    publicationScaffold -->|stages accepted proposals through| fileTransactions
-    viewerLaunchCommand -->|is realized by| viewerLauncher
-    viewerRequest -->|selects| codeGraph
-    codeGraph -->|valid input permits launch of| viewerProcess
-    verifiedViewer -->|supplies the official entrypoint to| viewerProcess
-    distribution -->|provisions and verifies| verifiedViewer
-    uaGraphCommand -->|is realized by| uaGraphExporter
-    spec -->|supplies ownership, references and file bindings to| uaGraphExporter
-    uaGraphExporter -->|writes or overlays| codeGraph
-    module_harness["Harness"]
-    publicationDocsite -->|uses| module_harness
-```
+Provision and verify the official viewer package inside the managed runtime.
 
+This collaboration applies when launching the viewer.
 
-### Dependencies and composition
+- [Launch only the exact verified viewer entrypoint and stop on an absent receipt](../distribution/runtime.md)
 
-```concorde-dependencies
-[
-  {
-    "target_id": "module.spec",
-    "responsibility": "Supply the explicit registry, document ownership and references, relationships and entity file bindings consumed by publication and UA export.",
-    "selection_condition": "When loading publication inputs, materializing pages or navigation, or exporting the UA graph skeleton.",
-    "relied_upon_promises": [
-      "[Derive pages and graph structure from explicit unique ownership, references and entity listings](../spec/structure.md#registry-shape)",
-      "[Resolve inclusion provenance without recursive reads](../spec/registry.md#stable-id-spec-context-queries)"
-    ]
-  },
-  {
-    "target_id": "module.distribution",
-    "responsibility": "Provision and verify the official viewer package inside the managed runtime.",
-    "selection_condition": "When launching the viewer.",
-    "relied_upon_promises": [
-      "[Launch only the exact verified viewer entrypoint and stop on an absent receipt](../distribution/runtime.md)"
-    ]
-  },
-  {
-    "target_id": "module.harness",
-    "responsibility": "Supply inspectable executable Flows without invoking nodes.",
-    "selection_condition": "When compiling Agent execution views without running nodes.",
-    "relied_upon_promises": [
-      "[Harness contract](../harness/graphs-and-loops.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
-    ]
-  }
-]
-```
+### Harness
 
+<a id="entity.views.harness"></a><a id="agreement.document.views.module.3"></a>
 
-### Unresolved information
+Supply inspectable executable Flows without invoking nodes.
 
-Publication accepts Profile 13 projects only. `requireScoped` refuses any other `profile_version`
+This collaboration applies when compiling Agent execution views without running nodes.
+
+- [Harness contract](../harness/graphs-and-loops.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
+
+## Unresolved information
+
+Publication accepts Profile 14 projects only. `requireScoped` refuses any other `profile_version`
 with an explicit error, and no compatibility rendering path exists for an older profile: migrating
 such a project is a separate, explicit topology change that this Module does not perform.
 
+## Ownership, context and implementation status
 
-### Ownership, context and implementation status
-
-The loaders and exporters implement publication schema 19, unique owners, reference provenance, canonical contract anchors and UA reference edges. Reference inclusion creates no transclusion, implementation grant or new page authority.
+The loaders and exporters implement publication schema 20, unique owners, reference provenance, canonical contract anchors and UA reference edges. Reference inclusion creates no transclusion, implementation grant or new page authority.

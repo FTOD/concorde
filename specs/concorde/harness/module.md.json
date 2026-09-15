@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.harness.module",
+    "owner": "module.harness"
+  },
+  "entities": [
+    {
+      "id": "entity.harness.context",
+      "title": "Context resolution",
+      "kind": "program",
+      "files": [
+        "scripts/development/check-reference-versions.py",
+        "src/concorde/harness/context.py",
+        "tests/concorde/harness/test_boundaries.py",
+        "tests/concorde/harness/test_scoped_protocol.py"
+      ],
+      "meaning": "#entity.harness.context"
+    },
+    {
+      "id": "entity.harness.agent-model",
+      "title": "Agent and Harness model",
+      "kind": "program",
+      "files": [
+        "src/concorde/harness/",
+        "tests/concorde/harness/"
+      ],
+      "meaning": "#entity.harness.agent-model"
+    },
+    {
+      "id": "entity.harness.agent-definitions",
+      "title": "Agent definitions",
+      "kind": "program",
+      "files": [
+        "agents/",
+        "prompts/workers/common.md",
+        "tests/concorde/fixtures/build/golden/agents/"
+      ],
+      "meaning": "#entity.harness.agent-definitions"
+    },
+    {
+      "id": "entity.harness.permissions",
+      "title": "Permissions",
+      "kind": "program",
+      "files": [
+        "src/concorde/harness/permissions.py",
+        "tests/concorde/harness/test_permissions.py"
+      ],
+      "meaning": "#entity.harness.permissions"
+    },
+    {
+      "id": "entity.harness.agent-execution",
+      "title": "Worker execution",
+      "kind": "program",
+      "files": [
+        "src/concorde/harness/worker_executor.py",
+        "tests/concorde/development/test_review.py",
+        "tests/concorde/harness/test_worker_executor.py"
+      ],
+      "meaning": "#entity.harness.agent-execution"
+    },
+    {
+      "id": "entity.harness.typed-values",
+      "title": "Typed values",
+      "kind": "shared program",
+      "files": [
+        "src/concorde/spec/contract_shapes.py",
+        "src/concorde/spec/contracts.py",
+        "src/concorde/spec/frontmatter.py",
+        "src/concorde/spec/schema.py",
+        "src/concorde/spec/typed_data.py",
+        "src/concorde/spec/wire_shapes.py",
+        "tests/concorde/spec/test_typed_data.py"
+      ],
+      "meaning": "#entity.harness.typed-values"
+    },
+    {
+      "id": "entity.harness.studio",
+      "title": "Studio",
+      "kind": "program",
+      "files": [
+        "scripts/development/STUDIO.md",
+        "scripts/development/studio.py",
+        "src/concorde/harness/studio.py",
+        "src/concorde/harness/studio_client.py",
+        "tests/concorde/harness/test_studio.py",
+        "tests/concorde/harness/test_studio_client.py",
+        "tests/concorde/harness/test_studio_server.py"
+      ],
+      "meaning": "#entity.harness.studio"
+    },
+    {
+      "id": "entity.harness.worktree-lifecycle",
+      "title": "Worktree lifecycle",
+      "kind": "shared program",
+      "files": [
+        "src/concorde/harness/change_worktree.py",
+        "src/concorde/harness/session_handoff.py",
+        "src/concorde/harness/worktree.py",
+        "src/concorde/harness/worktree_delivery.py",
+        "tests/concorde/harness/test_change_worktree.py",
+        "tests/concorde/harness/test_session_handoff.py",
+        "tests/concorde/harness/test_worktree_boundary.py",
+        "tests/concorde/harness/test_worktree_lifecycle.py"
+      ],
+      "meaning": "#entity.harness.worktree-lifecycle"
+    },
+    {
+      "id": "entity.harness.pi-worker-runtime",
+      "title": "Pi worker runtime",
+      "kind": "program",
+      "files": [
+        "pi/",
+        "src/concorde/harness/pi_rpc.py",
+        "src/concorde/harness/pi_worker.py",
+        "tests/concorde/harness/test_pi_worker.py",
+        "tests/concorde/support/fake_openai_provider.py",
+        "tests/concorde/support/fake_pi_rpc.py"
+      ],
+      "meaning": "#entity.harness.pi-worker-runtime"
+    },
+    {
+      "id": "entity.harness.pi",
+      "title": "Pi",
+      "kind": "external actor",
+      "meaning": "#entity.harness.pi"
+    },
+    {
+      "id": "entity.harness.pi-subagents",
+      "title": "pi-subagents",
+      "kind": "external library",
+      "meaning": "#entity.harness.pi-subagents"
+    },
+    {
+      "id": "entity.harness.spec",
+      "title": "Spec",
+      "kind": "used module",
+      "target_id": "module.spec",
+      "meaning": "#entity.harness.spec"
+    },
+    {
+      "id": "entity.harness.distribution",
+      "title": "Distribution",
+      "kind": "used module",
+      "target_id": "module.distribution",
+      "meaning": "#entity.harness.distribution"
+    },
+    {
+      "id": "entity.harness.langgraph",
+      "title": "LangGraph",
+      "kind": "external library",
+      "meaning": "#entity.harness.langgraph"
+    }
+  ],
+  "dependencies": [
+    {
+      "target_id": "module.spec",
+      "meaning": "#agreement.document.harness.module.1"
+    },
+    {
+      "target_id": "module.distribution",
+      "meaning": "#agreement.document.harness.module.2"
+    }
+  ],
+  "bindings": []
+}

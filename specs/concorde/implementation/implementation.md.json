@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.implementation.implementation",
+    "owner": "module.implementation"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": []
+}

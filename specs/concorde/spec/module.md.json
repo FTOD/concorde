@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.spec.module",
+    "owner": "module.spec"
+  },
+  "entities": [
+    {
+      "id": "entity.spec.registry",
+      "title": "Registry",
+      "kind": "concept",
+      "meaning": "#entity.spec.registry"
+    },
+    {
+      "id": "entity.spec.protocol-binding",
+      "title": "Protocol binding",
+      "kind": "concept",
+      "meaning": "#entity.spec.protocol-binding"
+    },
+    {
+      "id": "entity.spec.repository-api",
+      "title": "SpecRepository API",
+      "kind": "interface",
+      "meaning": "#entity.spec.repository-api"
+    },
+    {
+      "id": "entity.spec.validator",
+      "title": "Validator",
+      "kind": "interface",
+      "meaning": "#entity.spec.validator"
+    },
+    {
+      "id": "entity.spec.init-capability",
+      "title": "Initialization capability",
+      "kind": "interface",
+      "meaning": "#entity.spec.init-capability"
+    },
+    {
+      "id": "entity.spec.spec-model",
+      "title": "Spec model",
+      "kind": "program",
+      "files": [
+        "capabilities/init.py",
+        "scripts/development/check-spec-v5.py",
+        "src/concorde/__init__.py",
+        "src/concorde/__main__.py",
+        "src/concorde/spec/",
+        "tests/__init__.py",
+        "tests/concorde/__init__.py",
+        "tests/concorde/spec/",
+        "tests/concorde/support/__init__.py",
+        "tests/concorde/support/paths.py"
+      ],
+      "meaning": "#entity.spec.spec-model"
+    },
+    {
+      "id": "entity.spec.typed-values",
+      "title": "Typed values",
+      "kind": "shared program",
+      "files": [
+        "src/concorde/spec/contract_shapes.py",
+        "src/concorde/spec/contracts.py",
+        "src/concorde/spec/frontmatter.py",
+        "src/concorde/spec/schema.py",
+        "src/concorde/spec/typed_data.py",
+        "src/concorde/spec/wire_shapes.py",
+        "tests/concorde/spec/test_typed_data.py"
+      ],
+      "meaning": "#entity.spec.typed-values"
+    },
+    {
+      "id": "entity.spec.file-transactions",
+      "title": "File transactions",
+      "kind": "shared program",
+      "files": [
+        "src/concorde/spec/changes.py"
+      ],
+      "meaning": "#entity.spec.file-transactions"
+    },
+    {
+      "id": "entity.spec.protocol-text",
+      "title": "Protocol text",
+      "kind": "authored standard",
+      "files": [
+        "protocol/"
+      ],
+      "meaning": "#entity.spec.protocol-text"
+    },
+    {
+      "id": "entity.spec.protocol-assets",
+      "title": "Protocol assets",
+      "kind": "program",
+      "files": [
+        "prompts/protocol/",
+        "protocol/manifest.json"
+      ],
+      "meaning": "#entity.spec.protocol-assets"
+    }
+  ],
+  "dependencies": [],
+  "bindings": []
+}

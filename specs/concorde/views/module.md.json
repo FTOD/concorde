@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.views.module",
+    "owner": "module.views"
+  },
+  "entities": [
+    {
+      "id": "entity.views.publication-docsite",
+      "title": "Publication docsite",
+      "kind": "program",
+      "files": [
+        "docsite/"
+      ],
+      "meaning": "#entity.views.publication-docsite"
+    },
+    {
+      "id": "entity.views.publication-scaffold",
+      "title": "Publication scaffold",
+      "kind": "program",
+      "files": [
+        "src/concorde/views/",
+        "tests/concorde/views/"
+      ],
+      "meaning": "#entity.views.publication-scaffold"
+    },
+    {
+      "id": "entity.views.viewer-launcher",
+      "title": "Viewer launcher",
+      "kind": "program",
+      "files": [
+        "scripts/run-ua-graph-viewer.py",
+        "tests/concorde/views/test_viewer_launcher.py"
+      ],
+      "meaning": "#entity.views.viewer-launcher"
+    },
+    {
+      "id": "entity.views.ua-graph-exporter",
+      "title": "UA graph exporter",
+      "kind": "program",
+      "files": [
+        "src/concorde/views/ua_graph.py",
+        "tests/concorde/views/test_ua_graph.py"
+      ],
+      "meaning": "#entity.views.ua-graph-exporter"
+    },
+    {
+      "id": "entity.views.file-transactions",
+      "title": "File transactions",
+      "kind": "shared program",
+      "files": [
+        "src/concorde/spec/changes.py"
+      ],
+      "meaning": "#entity.views.file-transactions"
+    },
+    {
+      "id": "entity.views.spec",
+      "title": "Spec",
+      "kind": "used module",
+      "target_id": "module.spec",
+      "meaning": "#entity.views.spec"
+    },
+    {
+      "id": "entity.views.distribution",
+      "title": "Distribution",
+      "kind": "used module",
+      "target_id": "module.distribution",
+      "meaning": "#entity.views.distribution"
+    },
+    {
+      "id": "entity.views.docsite-scaffold-command",
+      "title": "Docsite scaffold command",
+      "kind": "interface",
+      "meaning": "#entity.views.docsite-scaffold-command"
+    },
+    {
+      "id": "entity.views.docsite-build-interface",
+      "title": "Docsite build interface",
+      "kind": "interface",
+      "meaning": "#entity.views.docsite-build-interface"
+    },
+    {
+      "id": "entity.views.viewer-launch-command",
+      "title": "Viewer launch command",
+      "kind": "interface",
+      "meaning": "#entity.views.viewer-launch-command"
+    },
+    {
+      "id": "entity.views.ua-graph-command",
+      "title": "UA graph export command",
+      "kind": "interface",
+      "meaning": "#entity.views.ua-graph-command"
+    },
+    {
+      "id": "entity.views.markdown-documents",
+      "title": "Registered Markdown documents",
+      "kind": "concept",
+      "meaning": "#entity.views.markdown-documents"
+    },
+    {
+      "id": "entity.views.canonical-page",
+      "title": "Canonical page",
+      "kind": "record",
+      "meaning": "#entity.views.canonical-page"
+    },
+    {
+      "id": "entity.views.navigation",
+      "title": "Spec navigation",
+      "kind": "concept",
+      "meaning": "#entity.views.navigation"
+    },
+    {
+      "id": "entity.views.candidate-site",
+      "title": "Candidate site",
+      "kind": "record",
+      "meaning": "#entity.views.candidate-site"
+    },
+    {
+      "id": "entity.views.published-site",
+      "title": "Published site",
+      "kind": "concept",
+      "meaning": "#entity.views.published-site"
+    },
+    {
+      "id": "entity.views.viewer-request",
+      "title": "Viewer launch request",
+      "kind": "concept",
+      "meaning": "#entity.views.viewer-request"
+    },
+    {
+      "id": "entity.views.code-graph",
+      "title": "Raw code graph",
+      "kind": "external observation",
+      "meaning": "#entity.views.code-graph"
+    },
+    {
+      "id": "entity.views.verified-viewer-runtime",
+      "title": "Verified installed viewer",
+      "kind": "concept",
+      "meaning": "#entity.views.verified-viewer-runtime"
+    },
+    {
+      "id": "entity.views.viewer-process",
+      "title": "Viewer process",
+      "kind": "concept",
+      "meaning": "#entity.views.viewer-process"
+    },
+    {
+      "id": "entity.views.harness",
+      "title": "Harness",
+      "kind": "used module",
+      "target_id": "module.harness",
+      "meaning": "#entity.views.harness"
+    }
+  ],
+  "dependencies": [
+    {
+      "target_id": "module.spec",
+      "meaning": "#agreement.document.views.module.1"
+    },
+    {
+      "target_id": "module.distribution",
+      "meaning": "#agreement.document.views.module.2"
+    },
+    {
+      "target_id": "module.harness",
+      "meaning": "#agreement.document.views.module.3"
+    }
+  ],
+  "bindings": []
+}

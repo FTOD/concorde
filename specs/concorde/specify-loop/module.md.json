@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.specify-loop.module",
+    "owner": "module.specify-loop"
+  },
+  "entities": [
+    {
+      "id": "entity.specify-loop.adapter",
+      "title": "Specification Flow adapter",
+      "kind": "shared program",
+      "files": [
+        "capabilities/specify_loop.py",
+        "tests/concorde/development/test_specify_loop.py",
+        "tests/concorde/harness/test_worktree_lifecycle.py"
+      ],
+      "meaning": "#entity.specify-loop.adapter"
+    },
+    {
+      "id": "entity.specify-loop.development",
+      "title": "Development",
+      "kind": "used module",
+      "target_id": "module.development",
+      "meaning": "#entity.specify-loop.development"
+    },
+    {
+      "id": "entity.specify-loop.harness",
+      "title": "Harness",
+      "kind": "used module",
+      "target_id": "module.harness",
+      "meaning": "#entity.specify-loop.harness"
+    },
+    {
+      "id": "entity.specify-loop.spec",
+      "title": "Spec",
+      "kind": "used module",
+      "target_id": "module.spec",
+      "meaning": "#entity.specify-loop.spec"
+    },
+    {
+      "id": "entity.specify-loop.query-routing",
+      "title": "Query and Routing",
+      "kind": "used module",
+      "target_id": "module.query-routing",
+      "meaning": "#entity.specify-loop.query-routing"
+    },
+    {
+      "id": "entity.specify-loop.spec-authoring",
+      "title": "Spec Authoring",
+      "kind": "used module",
+      "target_id": "module.spec-authoring",
+      "meaning": "#entity.specify-loop.spec-authoring"
+    },
+    {
+      "id": "entity.specify-loop.review",
+      "title": "Review",
+      "kind": "used module",
+      "target_id": "module.review",
+      "meaning": "#entity.specify-loop.review"
+    },
+    {
+      "id": "entity.specify-loop.completion",
+      "title": "Spec completion",
+      "kind": "record",
+      "meaning": "#entity.specify-loop.completion"
+    }
+  ],
+  "dependencies": [
+    {
+      "target_id": "module.development",
+      "meaning": "#agreement.document.specify-loop.module.1"
+    },
+    {
+      "target_id": "module.harness",
+      "meaning": "#agreement.document.specify-loop.module.2"
+    },
+    {
+      "target_id": "module.spec",
+      "meaning": "#agreement.document.specify-loop.module.3"
+    },
+    {
+      "target_id": "module.query-routing",
+      "meaning": "#agreement.document.specify-loop.module.4"
+    },
+    {
+      "target_id": "module.spec-authoring",
+      "meaning": "#agreement.document.specify-loop.module.5"
+    },
+    {
+      "target_id": "module.review",
+      "meaning": "#agreement.document.specify-loop.module.6"
+    }
+  ],
+  "bindings": []
+}

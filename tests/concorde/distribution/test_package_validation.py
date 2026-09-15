@@ -585,27 +585,39 @@ class BuildOutputRuleTests(unittest.TestCase):
         self.assertTrue(any(f.rule_id == "CONCORDE-BUILD-DRIFT-001" for f in findings), findings)
 
 
+def _required_documents(root: Path) -> dict[str, str]:
+    documents = package_validation._registered_documents(root)
+    assert documents is not None, "fixture must have an explicit registry"
+    return documents
+
+
 def _registry(root: Path, *, documents: list[str]) -> None:
-    registry = {
-        "schema_version": 1, "project_id": "project.fixture", "entry_target": "service.alpha",
-        "targets": [{
-            "id": "service.alpha", "kind": "service", "title": "Alpha",
-            "documents": documents, "scope_parent": None, "component_parent": None,
-            "participates_in": [], "implementation": [], "features": [], "apis": [],
-            "checks": [], "diagrams": [],
-        }],
-        "checks": [],
-    }
-    registry_path = root / ".concorde/specs.json"
-    registry_path.parent.mkdir(parents=True, exist_ok=True)
-    registry_path.write_text(json.dumps(registry), encoding="utf-8")
+    registry = {'schema_version':5,'project_id':'project.fixture','entry_target':'service.alpha',
+        'targets':[{'id':'service.alpha','kind':'module','title':'Alpha','documents':documents,
+                    'parent':None,'uses':[],'references':[],'files':[],'checks':[]}], 'checks':[]}
+    path = root / '.concorde/specs.json'
+    path.parent.mkdir(parents=True,exist_ok=True)
+    path.write_text(json.dumps(registry))
 
 
 def _document(root: Path, relative: str, document_id: str, body: str) -> None:
+    """Create a native paired unit for isolated package-inventory tests."""
+    import re
     path = root / relative
     path.parent.mkdir(parents=True, exist_ok=True)
-    header = json.dumps({"id": document_id, "targets": ["service.alpha"], "main_visible": True})
-    path.write_text(f"```concorde-document\n{header}\n```\n\n# Fixture\n\n{body}\n", encoding="utf-8")
+    metadata = {'schema_version':1,'document':{'id':document_id,'owner':'service.alpha'},
+                'entities':[],'dependencies':[],'bindings':[]}
+    for language, key in [('concorde-capabilities','concorde.capabilities'),('concorde-agents','concorde.agents')]:
+        pattern = re.compile(r'```'+language+r'\n(.*?)\n```',re.S)
+        for match in pattern.finditer(body):
+            try:
+                value = json.loads(match.group(1))
+            except ValueError:
+                value = match.group(1)  # Invalid inventory shape must still reach the rule under test.
+            metadata.setdefault('extensions',{})[key] = value
+        body = pattern.sub('Machine inventory is in the associated metadata.',body)
+    path.write_text('# Fixture\n\n'+body+'\n')
+    (root / (relative+'.json')).write_text(json.dumps(metadata))
 
 
 class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
@@ -629,6 +641,7 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
                 if value != "missing":
                     entry["deterministic"] = value
                 body = "```concorde-capabilities\n" + json.dumps([entry]) + "\n```"
+                _document(self.root, "specs/one.md", "document.one", body)
                 findings = package_validation._validate_spec_capabilities_block(self.root, {"specs/one.md": body})
                 if value is False:
                     self.assertEqual([], findings)
@@ -640,7 +653,7 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
         _document(self.root, "specs/doc.md", "document.doc", "No block here.")
         _registry(self.root, documents=["specs/doc.md"])
         findings = package_validation._validate_spec_capabilities_block(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
 
     def test_two_capabilities_blocks_is_reported(self) -> None:
@@ -650,7 +663,7 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
         _document(self.root, "specs/two.md", "document.two", block)
         _registry(self.root, documents=["specs/one.md", "specs/two.md"])
         findings = package_validation._validate_spec_capabilities_block(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
 
     def test_malformed_json_is_reported(self) -> None:
@@ -658,7 +671,7 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
         _document(self.root, "specs/one.md", "document.one", "```concorde-capabilities\nnot json\n```")
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_capabilities_block(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
 
     def test_matching_capabilities_block_has_no_findings(self) -> None:
@@ -670,7 +683,7 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_capabilities_block(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertEqual([], findings)
 
     def test_mismatched_context_selection_is_reported(self) -> None:
@@ -682,7 +695,7 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_capabilities_block(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
 
     def test_missing_capability_entry_is_reported(self) -> None:
@@ -690,7 +703,7 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
         _document(self.root, "specs/one.md", "document.one", "```concorde-capabilities\n[]\n```")
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_capabilities_block(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any("missing capability" in f.message for f in findings), findings)
 
     def test_extra_capability_entry_is_reported(self) -> None:
@@ -702,7 +715,7 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_capabilities_block(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any("unknown capability" in f.message for f in findings), findings)
 
 
@@ -728,7 +741,7 @@ class SpecAlignmentAgentsRuleTests(unittest.TestCase):
         _document(self.root, "specs/doc.md", "document.doc", "No block here.")
         _registry(self.root, documents=["specs/doc.md"])
         findings = package_validation._validate_spec_agents_block(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-AGENTS-001" for f in findings), findings)
 
     def test_two_agents_blocks_is_reported(self) -> None:
@@ -738,7 +751,7 @@ class SpecAlignmentAgentsRuleTests(unittest.TestCase):
         _document(self.root, "specs/two.md", "document.two", block)
         _registry(self.root, documents=["specs/one.md", "specs/two.md"])
         findings = package_validation._validate_spec_agents_block(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-AGENTS-001" for f in findings), findings)
 
     def test_malformed_json_is_reported(self) -> None:
@@ -746,7 +759,7 @@ class SpecAlignmentAgentsRuleTests(unittest.TestCase):
         _document(self.root, "specs/one.md", "document.one", "```concorde-agents\nnot json\n```")
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_agents_block(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-AGENTS-001" for f in findings), findings)
 
     def test_matching_agents_block_has_no_findings(self) -> None:
@@ -755,7 +768,7 @@ class SpecAlignmentAgentsRuleTests(unittest.TestCase):
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_agents_block(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertEqual([], findings)
 
     @verifies("scenario.distribution.build-check")
@@ -773,7 +786,7 @@ class SpecAlignmentAgentsRuleTests(unittest.TestCase):
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_agents_block(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-AGENTS-001" for f in findings), findings)
 
     def test_missing_agent_entry_is_reported(self) -> None:
@@ -781,7 +794,7 @@ class SpecAlignmentAgentsRuleTests(unittest.TestCase):
         _document(self.root, "specs/one.md", "document.one", "```concorde-agents\n[]\n```")
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_agents_block(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any("missing agent" in f.message for f in findings), findings)
 
     def test_extra_agent_entry_is_reported(self) -> None:
@@ -793,7 +806,7 @@ class SpecAlignmentAgentsRuleTests(unittest.TestCase):
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_agents_block(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any("unknown agent" in f.message for f in findings), findings)
 
 
@@ -810,7 +823,7 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
         _document(self.root, "specs/other.md", "document.other", "Nothing relevant.")
         _registry(self.root, documents=["specs/other.md"])
         findings = package_validation._validate_spec_types(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-TYPES-001" for f in findings), findings)
 
     def test_unknown_type_token_is_reported(self) -> None:
@@ -818,7 +831,7 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
             "Mentions `concorde-not-a-real-type@1` here.")
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_types(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any("names no exported identity" in f.message for f in findings), findings)
 
     def test_wrong_version_is_reported(self) -> None:
@@ -826,19 +839,19 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
             "Mentions `concorde-capability-invocation@2` here.")
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_types(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any("does not match its exported version" in f.message for f in findings), findings)
 
     def test_missing_exported_identity_is_reported(self) -> None:
         _document(self.root, "specs/boundary.md", "document.development.interfaces", "Nothing about types here.")
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_types(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any("does not appear in this document" in f.message for f in findings), findings)
 
     def test_the_real_boundary_document_has_no_findings(self) -> None:
         findings = package_validation._validate_spec_types(
-            REPOSITORY_ROOT, package_validation._registered_documents(REPOSITORY_ROOT))
+            REPOSITORY_ROOT, _required_documents(REPOSITORY_ROOT))
         self.assertEqual([], findings)
 
 
@@ -863,7 +876,7 @@ class SpecAlignmentErrorsRuleTests(unittest.TestCase):
         _document(self.root, "specs/boundary.md", "document.development.interfaces", "No error table here.")
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_errors(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-ERRORS-001" and "fixture_missing_code" in f.message
                             and f.severity == "advisory" for f in findings), findings)
 
@@ -874,7 +887,7 @@ class SpecAlignmentErrorsRuleTests(unittest.TestCase):
         _document(self.root, "specs/boundary.md", "document.development.interfaces", "No error table here.")
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_errors(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertEqual([], findings)
 
     def test_documented_error_code_has_no_findings(self) -> None:
@@ -885,14 +898,14 @@ class SpecAlignmentErrorsRuleTests(unittest.TestCase):
             "| Error code | Meaning |\n| --- | --- |\n| `fixture_code` | Something. |")
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_errors(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertEqual([], findings)
 
     def test_missing_boundary_document_has_no_findings(self) -> None:
         _document(self.root, "specs/other.md", "document.other", "Nothing relevant.")
         _registry(self.root, documents=["specs/other.md"])
         findings = package_validation._validate_spec_errors(
-            self.root, package_validation._registered_documents(self.root))
+            self.root, _required_documents(self.root))
         self.assertEqual([], findings)
 
 

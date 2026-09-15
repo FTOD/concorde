@@ -1,14 +1,4 @@
-```concorde-document
-{
-  "id": "document.harness.host",
-  "owner": "module.harness",
-  "main_visible": true
-}
-```
-
 # Invocation host
-
-## Usage & Contract
 
 This document defines how the Harness binds and runs one worker invocation, the LangGraph substrate
 every control flow uses, and the optional Studio view. Value records are defined in
@@ -33,7 +23,7 @@ worktree lifecycle, and replay may execute effects again. Ordinary local CLI and
 require a Studio server. The source-checkout setup and debugging guide is scripts/development/STUDIO.md.
 This execution view participates in Developer view and feedback through the Development host.
 
-## Architecture & Realization
+## Design
 
 ### Invocation binding
 
@@ -53,7 +43,6 @@ exposing context bodies: the worker, its binding, profile and instructions diges
 kind, tools and children, the read and write paths and policy digest, and the resolved model,
 thinking level and timeout.
 
-
 ### Control-flow substrate
 
 Every capability Flow, including the global discovery loop, the development loop, topology
@@ -62,7 +51,6 @@ with the Graph API, never with the Functional API. Its nodes are deterministic s
 model call, or worker invocations, which do. These Flows are the Studio surface; no capability runs
 its control flow outside them. Flow structure alone proves nothing about semantics: transitions,
 limits and evidence still follow G1–G4.
-
 
 ### Agent invocation node (`agent_node`)
 
@@ -90,7 +78,6 @@ flowchart TB
     __start__ --> planner
     planner --> __end__
 ```
-
 
 ### Sequential work items Flow (`batch_flow`)
 

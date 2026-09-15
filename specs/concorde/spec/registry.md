@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.spec.registry",
-  "owner": "module.spec",
-  "main_visible": true
-}
-```
 # Registry
-
-## Usage & Contract
 
 This document defines `SpecRepository`'s selection and query behavior: what a caller receives when it selects a Module, reads its documents and structured declarations, or resolves a stable ID to its complete Spec file set. [values](values.md) defines the exact returned records and Framework configuration versions; [structure](structure.md) defines validation; [initialize](initialize.md) defines project initialization.
 
@@ -41,7 +32,6 @@ This document defines `SpecRepository`'s selection and query behavior: what a ca
 - THEN the query returns the owning Module's complete resolved document context, deduplicated and sorted by canonical path
 - BUT it neither follows uses, parentage nor entity listing entries, and it never reads the returned files' contents
 
-
 ### Requirements
 
 #### req.spec.no-writes — No writes during construction or queries
@@ -68,7 +58,6 @@ contracts(target) SHALL return only canonical definitions in documents owned by 
 
 contracts(target) SHALL leave canonical-definition uniqueness and cross-Module binding checks to the
 repository validator.
-
 
 ### Interface signatures
 
@@ -129,7 +118,6 @@ entirely.
 
 No call above writes project files. Host candidate overlays stay in memory. A repository is a snapshot-oriented reader with document caching; reconstruct it after source changes. Selection returns the full target descriptor even with a scenario focus. Ownership and references are explicit; context expands references once. Paths, links and entity file listings do not add files.
 
-
 ### Required collaborator promises
 
 The wire boundary's `decode(text: str) -> Any` rejects duplicate JSON keys and non-finite numbers;
@@ -166,12 +154,11 @@ empty tuple when no blocks exist, and leaves canonical-definition uniqueness and
 separate repository validator. This is the canonical offline schema and path boundary used by interface definitions; consumers
 include this document explicitly and link to it without copying its vocabulary.
 
-
 ### Stable-ID Spec context queries
 
 `spec_files(entity_id: str) -> tuple[str, ...]` is the metadata-only locator query. Module and
 scenario identities resolve to the selected owner's full context, sorted by canonical path:
-owned documents plus one-level Module/document references. It does not read those files' bodies.
+owned document units plus one-level Module/document references, each expanded to its reading and metadata member. Identity resolution reads declared metadata, not unselected reading bodies.
 A scenario's defining document never trims the result or transfers the scenario to a consumer.
 Document IDs, requirements, entities and paths are unsupported query kinds (`SpecError/invalid_target`).
 Unknown references, wrong kinds, ambiguous ownership and unsafe aliases reject the selection.
@@ -182,13 +169,13 @@ than returning a partial success. Reconstruct the repository after source change
 read-only, offline and deterministic. Neither follows links, parentage, uses, referenced Modules'
 references or implementation listings.
 
-`SpecResolution` is a closed record with `query_id`, `query_kind` (`module` or `scenario`),
+`SpecResolution` is a closed version-1 record with `schema_version`, `registration` (the selecting Module descriptor), `query_id`, `query_kind` (`module` or `scenario`),
 `module_id`, `reading_entry` (the selected owner's `module.md` path), `documents` (the selected
 owner's ordered registered paths), `references` (its typed reference pairs) and `sources` (sorted
-index records). Each source has `document_id`, `path`, `owner`, `digest`, `main_visible` and
+index records). Each source has `document_id`, `path`, `owner`, `digest`, `role` (`reading` or `metadata`) and
 `reasons`; no source carries its body, which a consumer reads from the file the record identifies. A reason is `{kind, id}`: kind `owned`
 names the selected Module, kind `module` names a direct referenced Module, and kind `document`
-names a direct referenced document. Reasons are unique and sorted by kind then ID. Digests hash
+names a direct referenced document unit. Both members have identical ownership and provenance. Reasons are unique and sorted by kind then ID. Digests hash
 exact bytes before UTF-8 decoding; invalid UTF-8 rejects resolution. The record is bound into
 the Harness snapshot, not independently authored as another context inventory.
 
@@ -203,6 +190,6 @@ reverse index. Ownership or reference edits compare both old and candidate users
 resulting file set is unchanged. A Module reference tracks additions/removals to the provider's
 owned documents; changes only to the provider's references do not expand the consumer.
 
-The runtime implements these resolution and binding interfaces under Protocol 6.0.0/Profile 13/
-schema 4. Older profiles and membership-based declarations fail admission. Owned-definition and
+The runtime implements these resolution and binding interfaces under Protocol 7.0.0/Profile 14/
+schema 5. Older profiles and membership-based declarations fail admission. Owned-definition and
 implementation queries remain separate from the explicit context resolver.

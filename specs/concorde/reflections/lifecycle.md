@@ -1,14 +1,4 @@
-```concorde-document
-{
-  "id": "document.reflections.lifecycle",
-  "owner": "module.reflections",
-  "main_visible": true
-}
-```
-
 # Reflection investigation, implementation and disposition
-
-## Usage & Contract
 
 A Reflection retains a problem, its observed effects, evidence, investigation and developer
 comments. Investigation runs as read-only implementation with selected record bytes and HEAD; it
@@ -54,7 +44,6 @@ A Module with no entity file listings is an unsupported code-investigation targe
 ownership of the needed code is unclear, a separately bound context-solving task can identify the
 missing facts before investigation is retried.
 
-
 ### Implementation
 
 #### scenario.reflections.implement-approved-plan — Implementation composes a fresh development task
@@ -71,7 +60,6 @@ missing facts before investigation is retried.
 - WHEN implement is invoked without a fresh approval
 - THEN the call is rejected
 - AND the previous approval is not reused for the changed resolution
-
 
 ### Disposition and merge
 
@@ -104,7 +92,7 @@ the Reflection.
 
 Approved implementation consumes [Development Flow](../dev-loop/development.md), a sibling provider; it supplies only approved intended behavior, requires current approval and retains ready-only completion without automatic delivery.
 
-## Architecture & Realization
+## Design
 
 ### Triage Flow (`triage_flow`)
 

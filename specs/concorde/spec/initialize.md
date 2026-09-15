@@ -1,14 +1,4 @@
-```concorde-document
-{
-  "id": "document.spec.initialize",
-  "owner": "module.spec",
-  "main_visible": true
-}
-```
-
 # Project initialization
-
-## Usage & Contract
 
 This document defines `concorde-init`'s propose/apply behavior. [module](module.md) introduces the Module; [registry](registry.md) and [values](values.md) define the general query and value records this capability builds on.
 
@@ -36,8 +26,8 @@ topology-artifact ignore file, is the installer's output and is never created he
 `action: "propose"` additionally requires `name` and `configuration` and optionally a `target_id`
 (default `module.project`); `action: "apply"` requires the returned typed project proposal. A
 proposal records `action: "initialize"`, a nullable `base_digest` and `files: {path, before_digest,
-content}`. It creates `specs/project/module.md` with Usage & Contract (Purpose, Usage, Requirements,
-Scenarios) and Architecture & Realization (Design, Entities, Relationships), and
+content}`. It creates `specs/project/module.md` with Usage (Purpose, Usage, Requirements,
+Scenarios) and Design (Design, Entities, Relationships), and
 an inline Mermaid diagram in Relationships with accessible title and description text; no external
 diagram file is created. The stub models only known participants, the project Spec and the external
 Framework; unknown business requirements, scenarios and architecture are explicit gaps recorded in
@@ -48,7 +38,6 @@ Success returns `concorde-init-response@1` with closed data
 `{status: "proposed"|"applied", proposal: TypedValue<concorde-project-proposal>|null,
 files: list[path]}`. Propose returns the exact typed proposal and its ordered paths, without
 changing project files; apply returns `status: "applied"`, `proposal: null` and the applied paths.
-
 
 ### Scenarios
 
@@ -87,7 +76,6 @@ changing project files; apply returns `status: "applied"`, `proposal: null` and 
 - WHEN a filesystem or transaction failure occurs after some files were staged
 - THEN the capability restores the original bytes and cannot report applied
 - BUT a failure during that recovery itself is reported as a failure, never as a successful rollback
-
 
 ### Requirements
 
@@ -153,7 +141,6 @@ initialization.
 
 The host SHALL NOT silently retry a rejected proposal against different bytes.
 
-
 ### Executable boundary
 
 At the executable boundary these typed values travel inside a
@@ -164,11 +151,10 @@ workspace/output, status and `errors: list[{code, field, message}]`. Successful 
 `status: "succeeded"` and the typed output above; admission failures are blocked and execution
 failures are failed, with no successful output.
 
-
 ### Protocol compatibility and initialization
 
-New registries use schema 4 with explicit empty `references` on the initial Module; the stub's
-document metadata names its single `owner`. Initialization pins Protocol 6.0.0/Profile 13 and
+New registries use schema 5 with explicit empty `references` on the initial Module; the stub's
+document metadata names its single `owner`. Initialization pins Protocol 7.0.0/Profile 14 and
 the exact manifest digest of the Protocol copy the installer placed under `.concorde/protocol/`;
 it creates no Protocol file itself and fails with `not_installed` when that copy is absent. Later
 installations update the copy but never the binding, which the developer moves explicitly with

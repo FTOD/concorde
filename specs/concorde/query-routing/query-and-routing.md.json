@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.development.query-and-routing",
+    "owner": "module.query-routing"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": []
+}

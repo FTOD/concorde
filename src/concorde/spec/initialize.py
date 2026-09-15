@@ -1,4 +1,4 @@
-"""Initialize the two-part Module profile (Profile 13) with an honest, self-contained Module stub."""
+"""Initialize the document-unit profile (Profile 14) with an honest, self-contained Module stub."""
 from __future__ import annotations
 
 import json
@@ -41,58 +41,37 @@ def empty_target(target_id: str, kind: str, title: str, documents: list[str]) ->
             "references": [], "parent": None, "uses": [], "files": [], "checks": []}
 
 
-def initial_module_text(target_id: str, name: str) -> str:
-    """An honest two-part stub of the known authoring boundary, not invented business design."""
-    declaration = {"id": "document." + target_id, "owner": target_id, "main_visible": True}
+def initial_module_metadata(target_id: str) -> dict:
     local = target_id.split(".")[-1]
-    entities = [
-        {"id": f"entity.{local}.project-spec", "title": "Project Spec", "kind": "document collection",
-         "responsibility": "Records the intended behavior and architecture the developer supplies."},
-        {"id": f"entity.{local}.developer", "title": "Developer", "kind": "external actor",
-         "responsibility": "Supplies the intended behavior, entities and relationships."},
-        {"id": f"entity.{local}.framework", "title": "Concorde Framework", "kind": "external software",
-         "responsibility": "Checks the Project Spec for Concorde Spec Protocol conformance."},
-    ]
-    return ("```concorde-document\n" + json.dumps(declaration, indent=2) + "\n```\n\n"
-        f"# {name}\n\n## Usage & Contract\n\n### Purpose\n\n"
-        "This Module identifies the initialized project. Its only supported use is to identify the\n"
-        "project and author its intended behavior; business purpose has not yet been supplied.\n\n"
-        "### Usage\n\n"
-        "Use this draft to supply the project's intended responsibility and its consumer-facing\n"
-        "behavior before planning implementation. No business entry points, inputs, results, effects,\n"
-        "errors, repeat, cancellation or compatibility behavior have been supplied. Do not infer them\n"
-        "from this authoring example or from existing code.\n\n"
-        "### Requirements\n\n"
-        "No Module-level requirement has been supplied. Each requirement, once known, is one decidable\n"
-        "SHALL statement in its own section; initialization does not infer requirements from\n"
-        "implementation code.\n\n"
-        "### Scenarios\n\n"
-        "No business scenario has been supplied. A task that requires business behavior must report\n"
-        "Spec incomplete and name the missing scenario. Tests, once written, declare the scenario they\n"
-        "verify; no Spec section lists tests.\n\n"
-        "## Architecture & Realization\n\n"
-        "### Design\n\n"
-        "Business responsibility decomposition, state, control/data flow, dependencies and internal\n"
-        "constraints are unknown. The authoring boundary below explains only how the developer\n"
-        "supplies a Spec and the Framework checks it; it is not an invented business design.\n\n"
-        "### Entities\n\n"
-        "The known entities are the Project Spec (a document collection), the Developer (its external\n"
-        "author) and Concorde Framework (the external software that validates it). No entity lists\n"
-        "implementation files yet.\n\n"
-        "```concorde-entities\n" + json.dumps(entities, indent=2) + "\n```\n\n"
-        "### Relationships\n\n"
-        "The Developer specifies intended behavior in the Project Spec; the Framework checks its\n"
-        "Concorde Spec Protocol conformance. This authoring relationship is not the project's unknown\n"
-        "business architecture. Replace it with the Module's actual entities and relationships when\n"
-        "those facts have been supplied.\n\n"
+    return {"schema_version": 1, "document": {"id": "document." + target_id, "owner": target_id},
+        "entities": [
+            {"id": f"entity.{local}.project-spec", "title": "Project Spec", "kind": "document collection", "meaning": f"#entity.{local}.project-spec"},
+            {"id": f"entity.{local}.developer", "title": "Developer", "kind": "external actor", "meaning": f"#entity.{local}.developer"},
+            {"id": f"entity.{local}.framework", "title": "Concorde Framework", "kind": "external software", "meaning": f"#entity.{local}.framework"}],
+        "dependencies": [], "bindings": []}
+
+
+def initial_module_text(target_id: str, name: str) -> str:
+    local = target_id.split(".")[-1]
+    return (f"# {name}\n\n## Purpose\n\n"
+        "This Module identifies the initialized project. Its business purpose has not yet been supplied.\n\n"
+        "## Usage\n\nUse this draft to supply intended responsibility before planning implementation.\n"
+        "Business entry points, inputs, results, effects, errors, repeat, cancellation and compatibility\n"
+        "behavior are unknown; do not infer them from existing code or this authoring example.\n\n"
+        "## Design\n\nBusiness responsibility decomposition, state, flow, dependencies and internal constraints\n"
+        "remain unknown. The known authoring boundary is not an invented business design.\n\n"
+        f'<a id="entity.{local}.project-spec"></a><a id="entity.{local}.developer"></a><a id="entity.{local}.framework"></a>\n\n'
+        "The Developer supplies intended behavior in the Project Spec; Concorde Framework checks its\n"
+        "Protocol conformance. No entity binds implementation files yet.\n\n"
+        "## Relationships\n\nThis diagram covers authoring only, not the project's unknown business architecture.\n\n"
         "```mermaid\nflowchart TB\n"
         f"    accTitle: {name} authoring boundary\n"
-        "    accDescr: The Developer specifies the Project Spec and Concorde Framework validates it. Business entities are not yet known.\n"
-        "    developer[\"Developer\"]\n    spec[\"Project Spec\"]\n    framework[\"Concorde Framework\"]\n"
+        "    accDescr: The Developer specifies the Project Spec and Concorde Framework validates it. Business entities remain unknown.\n"
+        '    developer["Developer"]\n    spec["Project Spec"]\n    framework["Concorde Framework"]\n'
         "    developer -->|specifies| spec\n    framework -->|validates| spec\n```\n\n"
-        "### Unresolved information\n\n"
-        "Business scenarios, requirements, entities, relationships and implementation files remain\n"
-        "unspecified until the developer supplies them.\n")
+        "## Requirements\n\nNo Module-level business requirement has been supplied.\n\n"
+        "## Scenarios\n\nNo business scenario has been supplied. A task needing that behavior reports Spec incomplete.\n\n"
+        "## Unresolved information\n\nBusiness scenarios, requirements, design and implementation remain unspecified.\n")
 
 
 def project_proposal(root: Path, package: Path, name: str, configuration: dict,
@@ -111,7 +90,8 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
         "protocol": installed_protocol_binding(root), "capability_configuration": configuration}
     files = [file_change(root, ".concorde/config.json", json.dumps(config, indent=2) + "\n"),
              file_change(root, ".concorde/specs.json", json.dumps(registry, indent=2) + "\n"),
-             file_change(root, path, initial_module_text(target_id, name))]
+             file_change(root, path, initial_module_text(target_id, name)),
+             file_change(root, path + ".json", json.dumps(initial_module_metadata(target_id), indent=2) + "\n")]
     # Initialization creates only what the user's project generates through Concorde. Everything
     # that exists because Concorde is installed (the Protocol copy, Reflection defaults, the
     # topology-artifact ignore file) is the installer's output.
@@ -133,7 +113,7 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
     if config.get("registry") != ".concorde/specs.json" or config.get("protocol") != installed_protocol_binding(root):
         raise SpecError("project proposal has a mismatched registry or Protocol binding", "invalid_proposal")
     allowed = {".concorde/config.json", ".concorde/specs.json",
-               *(p for target in registry["targets"] for p in target["documents"])}
+               *(member for target in registry["targets"] for p in target["documents"] for member in (p, p + ".json"))}
     if proposal["base_digest"] is not None or any(item["before_digest"] is not None for item in files):
         raise SpecError("initialization cannot replace existing files", "invalid_proposal")
     def verify():

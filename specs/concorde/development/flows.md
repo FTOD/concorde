@@ -1,14 +1,6 @@
-```concorde-document
-{
-  "id": "document.development.flows",
-  "owner": "module.development",
-  "main_visible": true
-}
-```
-
 # Development host Flows
 
-## Architecture & Realization
+## Design
 
 The Development host executes every capability invocation as LangGraph Flows. The six Flows
 below are its own: admission, dispatch, target admission, project initialization and

@@ -23,7 +23,7 @@ class ReviewTests(unittest.TestCase):
         from concorde.harness.worker_executor import CapabilityExecutionError
 
         ensure_change(self.root, task=self.task, allow_primary=True)
-        before = read_change(self.root)
+        before = read_change(self.root, required=True)
         double = self.double()
         execute = double.executor
 
@@ -49,7 +49,7 @@ class ReviewTests(unittest.TestCase):
         self.assertIn("cannot save", execution["failure"]["persistence"])
         self.assertIn("state_persistence_failed", [item["code"] for item in result["errors"]])
         self.assertIn("execution_cancelled", [item["code"] for item in result["errors"]])
-        self.assertEqual(before["status"], read_change(self.root)["status"])
+        self.assertEqual(before["status"], read_change(self.root, required=True)["status"])
 
     @verifies("scenario.development.flow-execution")
     def test_fresh_review_reconciles_removed_members_and_restores_required_currentness(self):
@@ -57,7 +57,7 @@ class ReviewTests(unittest.TestCase):
         from concorde.harness.worker_executor import CapabilityExecutionError
         from concorde.spec.initialize import empty_target
         from concorde.spec.repository import SpecError
-        from tests.concorde.spec.support import module_document
+        from tests.concorde.spec.support import module_document, write_document
         for mode in ("code", "spec"):
             with self.subTest(mode=mode):
                 fixture = ReviewTests()
@@ -75,7 +75,7 @@ class ReviewTests(unittest.TestCase):
                         registry['targets'].append(peer)
                         file = fixture.root / document
                         file.parent.mkdir()
-                        file.write_text(module_document('document.' + name, target_id, name,
+                        write_document(fixture.root, document, module_document('document.' + name, target_id, name,
                             'Observe the shared transfer calculation.',
                             '### scenario.' + name + '.read — Read the result\n\n'
                             '- GIVEN a valid transfer\n- WHEN its result is read\n- THEN the remaining balance is returned\n',
@@ -92,7 +92,7 @@ class ReviewTests(unittest.TestCase):
                     self.assertEqual('succeeded', first['status'], first)
                     verify_required(fixture.invocation())
                     field = 'shared_spec_reviews' if mode == 'spec' else 'shared_implementation_reviews'
-                    original = read_change(fixture.root)[field]['service.transfer']
+                    original = read_change(fixture.root, required=True)[field]['service.transfer']
                     self.assertEqual({'module.first', 'module.second'}, set(original))
                     artifacts = {r['artifact']['path']: (fixture.root / r['artifact']['path']).read_bytes()
                                  for r in original.values()}
@@ -106,14 +106,19 @@ class ReviewTests(unittest.TestCase):
                         if mode == 'spec':
                             registry['targets'].remove(peer)
                             document.unlink()
+                            Path(str(document) + ".json").unlink()
                         else:
                             peer['files'] = []
-                            document.write_text(document.read_text().replace(
-                                ',\n    "files": [\n      "app/transfer.py"\n    ]', ''))
+                            metadata_path = Path(str(document) + '.json')
+                            metadata = json.loads(metadata_path.read_text())
+                            for entity in metadata['entities']:
+                                entity.pop('files', None)
+                                entity.pop('pending', None)
+                            metadata_path.write_text(json.dumps(metadata))
                         path.write_text(json.dumps(registry))
                         with self.assertRaises(SpecError):
                             verify_required(fixture.invocation())
-                        before = read_change(fixture.root)[field]['service.transfer']
+                        before = read_change(fixture.root, required=True)[field]['service.transfer']
                         double = fixture.double()
                         execute = double.executor
                         def interrupt(invocation, **options):
@@ -123,7 +128,7 @@ class ReviewTests(unittest.TestCase):
                         double.executor = interrupt
                         stopped = fixture.review(mode, double=double)
                         self.assertEqual('failed', stopped['status'], stopped)
-                        retained = read_change(fixture.root)[field]['service.transfer']
+                        retained = read_change(fixture.root, required=True)[field]['service.transfer']
                         self.assertEqual(remaining, set(retained))
                         for key in remaining:
                             self.assertEqual(before[key], retained[key])
@@ -132,7 +137,7 @@ class ReviewTests(unittest.TestCase):
                         fresh = fixture.review(mode)
                         self.assertEqual('succeeded', fresh['status'], fresh)
                         verify_required(fixture.invocation())
-                        self.assertEqual(remaining, set(read_change(fixture.root)[field]['service.transfer']))
+                        self.assertEqual(remaining, set(read_change(fixture.root, required=True)[field]['service.transfer']))
                         self.assertTrue(all((fixture.root / p).read_bytes() == data for p, data in artifacts.items()))
                 finally:
                     fixture.doCleanups()
@@ -184,10 +189,13 @@ class ReviewTests(unittest.TestCase):
     @verifies("scenario.development.flow-execution")
     def test_reviewer_interruptions_survive_enclosing_flows_and_final_events(self):
         from concorde.harness.worker_executor import CapabilityExecutionError
+        from typing import Literal
+        outcomes: tuple[Literal['cancelled', 'limit_exhausted', 'failed'], ...] = ('cancelled', 'limit_exhausted', 'failed')
+        outcome: Literal['cancelled', 'limit_exhausted', 'failed']
         for capability, review_stage in (("concorde-specify-loop", "spec-review"),
                                          ("concorde-dev-loop", "spec-review"),
                                          ("concorde-dev-loop", "code-review")):
-            for outcome in ("cancelled", "limit_exhausted", "failed"):
+            for outcome in outcomes:
                 with self.subTest(capability=capability, review_stage=review_stage, outcome=outcome):
                     fixture = ReviewTests()
                     fixture.setUp()
@@ -207,7 +215,7 @@ class ReviewTests(unittest.TestCase):
                         def interrupted(invocation, **options):
                             stages.append(invocation.stage)
                             if invocation.stage == review_stage:
-                                prior.update(read_change(fixture.root))
+                                prior.update(read_change(fixture.root, required=True))
                                 for relative in ("app/transfer.py", "specs/transfer/module.md"):
                                     candidate_bytes[relative] = (fixture.root / relative).read_bytes()
                                 raise CapabilityExecutionError("controlled reviewer failure", outcome=outcome)
@@ -221,7 +229,7 @@ class ReviewTests(unittest.TestCase):
                                 {**fixture.task, "specify": False, "run_reviews": True}, double=double)
                         self.assertEqual("failed", result["status"], result)
                         self.assertEqual("failed", result["output"]["data"]["outcome"])
-                        state = read_change(fixture.root)
+                        state = read_change(fixture.root, required=True)
                         self.assertEqual(outcome, state["status"])
                         self.assertEqual("failed", review_outputs[-1]["outcome"])
                         self.assertEqual("incomplete", review_outputs[-1]["reviews"][0]["data"]["status"])
@@ -292,7 +300,7 @@ class ReviewTests(unittest.TestCase):
                 self.missing("spec-review")(stage, snapshot, data, cwd)
         first = self.call_capability("concorde-dev-loop", task, callback=initial)
         self.assertEqual("blocked", first["status"], first)
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         before = state["targets"]["scope.bank"]
         cached = before["coordination"]["scope.audit"]
         child = state["targets"]["scope.audit"]
@@ -308,11 +316,11 @@ class ReviewTests(unittest.TestCase):
             if stage == "tasks" and snapshot["target_id"] == "scope.bank":
                 data["tasks"][0]["id"] = "task.audit.scope-repair"
         def rejected():
-            prior = read_change(self.root)
+            prior = read_change(self.root, required=True)
             result = self.call_capability("concorde-dev-loop", request, callback=repair)
             self.assertNotEqual("succeeded", result["status"], result)
             self.assertIn("contract gaps before repairing its task boundary", str(result))
-            after = read_change(self.root)
+            after = read_change(self.root, required=True)
             for target_id in ("scope.bank", "scope.audit"):
                 for field in ("tasks", "task_history", "coordination"):
                     self.assertEqual(prior["targets"][target_id].get(field),
@@ -325,17 +333,17 @@ class ReviewTests(unittest.TestCase):
         reviewed = self.call_capability("concorde-review", {
             "target_id": "service.transfer", "task": nested["task"], "review_mode": "spec"})
         self.assertEqual("succeeded", reviewed["status"], reviewed)
-        resolved = read_change(self.root)["gap_history"]
+        resolved = read_change(self.root, required=True)["gap_history"]
         self.assertTrue(resolved)
         self.assertTrue(all(item["status"] == "resolved" for item in resolved))
         self.assertEqual(cached["gaps"],
-                         read_change(self.root)["targets"]["scope.bank"]["coordination"]["scope.audit"]["gaps"])
+                         read_change(self.root, required=True)["targets"]["scope.bank"]["coordination"]["scope.audit"]["gaps"])
         # Alter only isolated fixture evidence; neither unrelated history nor a broken
         # coordination chain can authorize replacement of the parent's accepted tasks.
         for mismatch in ("missing", "target_id", "task", "context", "reopened",
                          "child-intent", "nested-intent", "missing-coordination", "legacy-cache"):
             with self.subTest(provenance=mismatch):
-                state = read_change(self.root)
+                state = read_change(self.root, required=True)
                 state["gap_history"] = deepcopy(resolved)
                 state["targets"]["scope.audit"] = deepcopy(child)
                 state["targets"]["scope.bank"]["coordination"] = deepcopy(before["coordination"])
@@ -357,7 +365,7 @@ class ReviewTests(unittest.TestCase):
                     state["targets"]["scope.bank"]["coordination"]["scope.audit"]["gaps"][0].pop("context_id")
                 save_change(self.root, state)
                 rejected()
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         state["gap_history"] = resolved
         state["targets"]["scope.audit"] = child
         state["targets"]["scope.bank"]["coordination"] = before["coordination"]
@@ -365,7 +373,7 @@ class ReviewTests(unittest.TestCase):
         result = self.call_capability("concorde-dev-loop", request, callback=repair)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"])
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         parent = state["targets"]["scope.bank"]
         self.assertEqual(before["tasks"], parent["task_history"][-1]["tasks"])
         self.assertEqual(before["coordination"], parent["task_history"][-1]["coordination"])
@@ -387,7 +395,7 @@ class ReviewTests(unittest.TestCase):
                 self.missing("spec-review")(stage, snapshot, data, cwd)
         first = self.call_capability("concorde-dev-loop", task, callback=initial)
         self.assertEqual("blocked", first["status"], first)
-        before = read_change(self.root)["targets"]["scope.bank"]
+        before = read_change(self.root, required=True)["targets"]["scope.bank"]
         cached = before["coordination"]["service.transfer"]
         self.assertTrue(cached["gaps"])
         request = {**task, "repair_task_scope": {"tasks_digest": digest(before["tasks"])}}
@@ -395,11 +403,11 @@ class ReviewTests(unittest.TestCase):
             if stage == "tasks" and snapshot["target_id"] == "scope.bank":
                 data["tasks"][0]["id"] = "task.transfer.scope-repair"
         def rejected():
-            history = read_change(self.root)["gap_history"]
+            history = read_change(self.root, required=True)["gap_history"]
             result = self.call_capability("concorde-dev-loop", request, callback=repair)
             self.assertNotEqual("succeeded", result["status"], result)
             self.assertIn("contract gaps before repairing its task boundary", str(result))
-            state = read_change(self.root)
+            state = read_change(self.root, required=True)
             parent = state["targets"]["scope.bank"]
             self.assertEqual(before["tasks"], parent["tasks"])
             self.assertEqual(before["coordination"], parent["coordination"])
@@ -412,17 +420,17 @@ class ReviewTests(unittest.TestCase):
         reviewed = self.call_capability("concorde-review", {
             "target_id": "service.transfer", "task": cached["task"], "review_mode": "spec"})
         self.assertEqual("succeeded", reviewed["status"], reviewed)
-        resolved = read_change(self.root)["gap_history"]
+        resolved = read_change(self.root, required=True)["gap_history"]
         self.assertTrue(resolved)
         self.assertTrue(all(item["status"] == "resolved" for item in resolved))
         self.assertEqual(cached["gaps"],
-                         read_change(self.root)["targets"]["scope.bank"]["coordination"]["service.transfer"]["gaps"])
+                         read_change(self.root, required=True)["targets"]["scope.bank"]["coordination"]["service.transfer"]["gaps"])
 
         # Corrupt only isolated fixture history to prove unknown or unrelated evidence
         # cannot erase the real cached blocker. Restore the accepted Host history below.
         for mismatch in ("missing", "target_id", "task", "question", "context", "reopened"):
             with self.subTest(history=mismatch):
-                state = read_change(self.root)
+                state = read_change(self.root, required=True)
                 history = deepcopy(resolved)
                 if mismatch == "missing":
                     history = []
@@ -437,13 +445,13 @@ class ReviewTests(unittest.TestCase):
                 state["gap_history"] = history
                 save_change(self.root, state)
                 rejected()
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         state["gap_history"] = resolved
         save_change(self.root, state)
         result = self.call_capability("concorde-dev-loop", request, callback=repair)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"])
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         parent = state["targets"]["scope.bank"]
         self.assertEqual(before["tasks"], parent["task_history"][-1]["tasks"])
         self.assertEqual(request["repair_task_scope"]["tasks_digest"], parent["task_history"][-1]["tasks_digest"])
@@ -467,14 +475,14 @@ class ReviewTests(unittest.TestCase):
                 for item in data["tasks"]:
                     item["complete"] = False
         self.call_capability("concorde-dev-loop", task, callback=incomplete)
-        before = read_change(self.root)["targets"]["scope.bank"]
+        before = read_change(self.root, required=True)["targets"]["scope.bank"]
         request = {**task, "repair_task_scope": {"tasks_digest": digest(before["tasks"])}}
         def reroute(stage, snapshot, data, cwd):
             if stage == "tasks" and snapshot["target_id"] == "scope.bank":
                 data["tasks"][0].update(id="task.repaired", target_id="module.ledger")
         failed = self.call_capability("concorde-dev-loop", request, callback=reroute)
         self.assertNotEqual("succeeded", failed["status"], failed)
-        after = read_change(self.root)["targets"]["scope.bank"]
+        after = read_change(self.root, required=True)["targets"]["scope.bank"]
         self.assertEqual(before["tasks"], after["tasks"])
         self.assertEqual(before["coordination"], after["coordination"])
         self.assertFalse(after.get("task_history"))
@@ -487,24 +495,24 @@ class ReviewTests(unittest.TestCase):
                 data["tasks"][0]["id"] = "task.repaired"
         failed = self.call_capability("concorde-dev-loop", request, callback=repair)
         self.assertNotEqual("succeeded", failed["status"], failed)
-        after = read_change(self.root)["targets"]["scope.bank"]
+        after = read_change(self.root, required=True)["targets"]["scope.bank"]
         self.assertEqual(before["tasks"], after["tasks"])
         self.assertEqual(before["coordination"], after["coordination"])
         self.assertFalse(after.get("task_history"))
-        self.assertEqual("open", read_change(self.root)["gap_history"][-1]["status"])
+        self.assertEqual("open", read_change(self.root, required=True)["gap_history"][-1]["status"])
 
     @verifies("scenario.development.dev-loop-spec-gap", "scenario.development.standalone-review")
     def test_lifecycle_only_standalone_review_cannot_resolve_a_required_gap(self):
         first = self.call_capability("concorde-dev-loop", callback=self.missing("spec-review"))
         self.assertEqual("blocked", first["status"], first)
-        original = read_change(self.root)["gap_history"][0]
+        original = read_change(self.root, required=True)["gap_history"][0]
         self.assertIn("review_input_digest", original)
         reviewed = self.review()
         self.assertEqual("succeeded", reviewed["status"], reviewed)
         actual = reviewed["output"]["data"]["reviews"][0]["data"]
         self.assertEqual(original["review_input_digest"], actual["input_digest"])
         self.assertNotEqual(original["gap"]["context_id"], actual["context_id"])
-        self.assertEqual(original, read_change(self.root)["gap_history"][0])
+        self.assertEqual(original, read_change(self.root, required=True)["gap_history"][0])
         resumed = self.call_capability("concorde-dev-loop")
         self.assertNotEqual("succeeded", resumed["status"], resumed)
         self.assertFalse(any(call["stage"] == "spec-review" for call in self.model.calls))
@@ -512,17 +520,17 @@ class ReviewTests(unittest.TestCase):
     @verifies("scenario.development.dev-loop-spec-gap")
     def test_legacy_gap_identity_is_not_inferred_from_a_later_review(self):
         self.call_capability("concorde-dev-loop", callback=self.missing("spec-review"))
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         state["gap_history"][0].pop("review_input_digest")
         save_change(self.root, state)  # legacy fixture, not a production migration
-        original = read_change(self.root)["gap_history"][0]
+        original = read_change(self.root, required=True)["gap_history"][0]
         self.review()
-        self.assertEqual(original, read_change(self.root)["gap_history"][0])
+        self.assertEqual(original, read_change(self.root, required=True)["gap_history"][0])
         document = self.root / "specs/transfer/module.md"
         document.write_text(document.read_text() + "\nTransfer owns the requested admission rule.\n")
         result = self.call_capability("concorde-dev-loop")
         self.assertEqual("succeeded", result["status"], result)
-        self.assertEqual("resolved", read_change(self.root)["gap_history"][0]["status"])
+        self.assertEqual("resolved", read_change(self.root, required=True)["gap_history"][0]["status"])
 
     @verifies("scenario.development.task-scope-repair", "scenario.development.dev-loop-coordinated")
     def test_coordinated_scope_repair_rebinds_changed_intent_without_redoing_unchanged_component(self):
@@ -539,7 +547,7 @@ class ReviewTests(unittest.TestCase):
                     item["complete"] = False
         first = self.call_capability("concorde-dev-loop", task, callback=initial)
         self.assertNotEqual("succeeded", first["status"], first)
-        before = read_change(self.root)["targets"]["scope.bank"]
+        before = read_change(self.root, required=True)["targets"]["scope.bank"]
         self.assertEqual("completed", before["coordination"]["module.ledger"]["implementation_status"])
         child_intent = before["coordination"]["service.transfer"]["task"]
         source_bytes = {p: (self.root / p).read_bytes() for p in (
@@ -552,7 +560,7 @@ class ReviewTests(unittest.TestCase):
             "repair_task_scope": {"tasks_digest": digest(before["tasks"])}}, callback=repair)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"])
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         parent = state["targets"]["scope.bank"]
         self.assertEqual(before["coordination"], parent["task_history"][-1]["coordination"])
         self.assertNotEqual(child_intent, parent["coordination"]["service.transfer"]["task"])
@@ -584,10 +592,10 @@ class ReviewTests(unittest.TestCase):
                     task["complete"] = False
         self.call_capability("concorde-dev-loop", callback=author)
         for _ in range(2):
-            tasks = read_change(self.root)["targets"]["service.transfer"]["tasks"]
+            tasks = read_change(self.root, required=True)["targets"]["service.transfer"]["tasks"]
             self.call_capability("concorde-dev-loop", {**self.task,
                 "repair_task_scope": {"tasks_digest": digest(tasks)}}, callback=author)
-        history = read_change(self.root)["targets"]["service.transfer"]["task_history"]
+        history = read_change(self.root, required=True)["targets"]["service.transfer"]["task_history"]
         self.assertEqual(2, len(history))
         self.assertEqual(3, len(observed))
         self.assertEqual(3, len({s["context_id"] for s in observed}))
@@ -614,7 +622,7 @@ class ReviewTests(unittest.TestCase):
         self.assertIn("task.round.0", errors[0]["message"])
         self.assertEqual(1, len(replanned))
         self.assertIn("plan", [c["stage"] for c in self.model.calls])
-        state = read_change(self.root)["targets"]["service.transfer"]
+        state = read_change(self.root, required=True)["targets"]["service.transfer"]
         self.assertEqual([], state["tasks"])
         self.assertEqual(history, state["task_history"])
         self.assertIsNone(state["implementation_digest"])
@@ -628,7 +636,7 @@ class ReviewTests(unittest.TestCase):
         accepted = self.call_capability("concorde-dev-loop", callback=accept)
         self.assertEqual("succeeded", accepted["status"], accepted)
         self.assertEqual("ready", accepted["output"]["data"]["outcome"])
-        state = read_change(self.root)["targets"]["service.transfer"]
+        state = read_change(self.root, required=True)["targets"]["service.transfer"]
         self.assertEqual("task.round.2.replanned", state["tasks"][0]["id"])
         self.assertEqual(history, state["task_history"])
 
@@ -644,7 +652,7 @@ class ReviewTests(unittest.TestCase):
                 self.assertNotIn("host_regression.py", [item["path"] for item in snapshot["implementation_files"]])
         result = self.call_capability("concorde-dev-loop", callback=deferred)
         self.assertNotEqual("succeeded", result["status"], result)
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         target = state["targets"]["service.transfer"]
         self.assertTrue(all(task["complete"] for task in target["tasks"]))
         self.assertIsNotNone(target["implementation_digest"])
@@ -706,7 +714,7 @@ class ReviewTests(unittest.TestCase):
                 for task in data["tasks"]:
                     task["complete"] = False
         self.call_capability("concorde-dev-loop", callback=incomplete)
-        original = read_change(self.root)["targets"]["service.transfer"]["tasks"]
+        original = read_change(self.root, required=True)["targets"]["service.transfer"]["tasks"]
         request = {**self.task, "repair_task_scope": {"tasks_digest": digest(original)}}
         for invalid in ("completed", "reused_id"):
             def reject(stage, snapshot, data, cwd):
@@ -714,7 +722,7 @@ class ReviewTests(unittest.TestCase):
                     data["tasks"][0]["complete"] = True
             result = self.call_capability("concorde-dev-loop", request, callback=reject)
             self.assertNotEqual("succeeded", result["status"], result)
-            state = read_change(self.root)["targets"]["service.transfer"]
+            state = read_change(self.root, required=True)["targets"]["service.transfer"]
             self.assertEqual(original, state["tasks"])
             self.assertEqual([], state.get("task_history", []))
             self.assertIsNone(state.get("implementation_digest"))
@@ -730,7 +738,7 @@ class ReviewTests(unittest.TestCase):
                     task["complete"] = False
         first = self.call_capability("concorde-dev-loop", callback=incomplete)
         self.assertNotEqual("succeeded", first["status"])
-        original = read_change(self.root)["targets"]["service.transfer"]["tasks"]
+        original = read_change(self.root, required=True)["targets"]["service.transfer"]["tasks"]
         # A new Framework binding also changes this revision. Exercise fresh review
         # and task revalidation with a meaning-preserving contract revision.
         document = self.root / "specs/transfer/module.md"
@@ -749,7 +757,7 @@ class ReviewTests(unittest.TestCase):
         stages = [call["stage"] for call in self.model.calls]
         self.assertLess(stages.index("tasks"), stages.index("implementation"))
         self.assertLess(stages.index("implementation"), stages.index("code-review"))
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         history = state["targets"]["service.transfer"]["task_history"]
         self.assertEqual(original, history[0]["tasks"])
         self.assertTrue(all(not t["complete"] for t in history[0]["tasks"]))
@@ -830,7 +838,7 @@ class ReviewTests(unittest.TestCase):
             self.assertFalse(policy["network"])
             self.assertTrue(policy["fresh_session"])
             snapshot = calls[-1]["snapshot"]
-            self.assertEqual(["specs/transfer/module.md", "specs/transfer/promises.md"], [source["path"] for source in snapshot["spec_resolution"]["sources"]])
+            self.assertEqual(["specs/transfer/module.md", "specs/transfer/module.md.json", "specs/transfer/promises.md", "specs/transfer/promises.md.json"], [source["path"] for source in snapshot["spec_resolution"]["sources"]])
             self.assertEqual(["specs/transfer/promises.md"], [x["path"] for x in snapshot["spec_resolution"]["sources"] if x["path"].endswith("promises.md")])
             self.assertNotIn("# Ledger API", calls[-1]["prompt"])
             self.assertNotIn("PRIVATE_CODE", calls[-1]["prompt"])
@@ -872,16 +880,12 @@ class ReviewTests(unittest.TestCase):
 
     def relist_checks_directory(self):
         """List the transfer check entity as the whole `checks/` directory instead of one file."""
-        document = self.root / "specs/transfer/module.md"
-        text = document.read_text()
-        prefix, rest = text.split("```concorde-entities\n", 1)
-        payload, suffix = rest.split("\n```", 1)
-        entities = json.loads(payload)
-        for entity in entities:
-            if entity["id"] == "entity.transfer.check":
-                entity["files"] = ["checks/"]
-        document.write_text(prefix + "```concorde-entities\n" + json.dumps(entities, indent=2)
-                            + "\n```" + suffix)
+        document = self.root / 'specs/transfer/module.md.json'
+        metadata = json.loads(document.read_text())
+        for entity in metadata['entities']:
+            if entity['id'] == 'entity.transfer.check':
+                entity['files'] = ['checks/']
+        document.write_text(json.dumps(metadata, indent=2) + '\n')
         self.registry["targets"][2]["files"] = ["app/transfer.py", "checks/"]
         (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
 
@@ -1031,7 +1035,7 @@ class ReviewTests(unittest.TestCase):
         observed = []
         def inspect(stage, snapshot, data, cwd):
             if stage == "code-review":
-                state = read_change(self.root)
+                state = read_change(self.root, required=True)
                 observed.append(state["status"])
                 self.assertEqual("passed", state["targets"][self.task["target_id"]]["checks"][0]["status"])
         result = self.call_capability("concorde-dev-loop", callback=inspect)
@@ -1041,7 +1045,7 @@ class ReviewTests(unittest.TestCase):
         self.assertLess(stages.index("spec-review"), stages.index("plan"))
         self.assertLess(stages.index("implementation"), stages.index("code-review"))
         self.assertNotIn("ready", observed)
-        self.assertEqual("ready", read_change(self.root)["status"])
+        self.assertEqual("ready", read_change(self.root, required=True)["status"])
         self.assertIsNotNone(current(self.invocation(), "spec"))
         self.assertIsNotNone(current(self.invocation(), "code"))
 
@@ -1054,7 +1058,7 @@ class ReviewTests(unittest.TestCase):
         code.write_text(code.read_text() + "\n# changed reviewed code\n")
         self.assertIsNotNone(current(self.invocation(), "spec"))
         self.assertIsNone(current(self.invocation(), "code"))
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         reference = state["reviews"][self.task["target_id"]]["spec"]["artifact"]
         path = self.root / reference["path"]
         before = path.read_text()
@@ -1079,7 +1083,7 @@ class ReviewTests(unittest.TestCase):
         from concorde.distribution.build import load_agent
         first = self.call_capability("concorde-dev-loop", callback=self.missing("spec-review"))
         self.assertEqual("blocked", first["status"], first)
-        original = read_change(self.root)["gap_history"][0]
+        original = read_change(self.root, required=True)["gap_history"][0]
         self.call_capability("concorde-dev-loop")
         self.assertFalse(any(c["stage"] == "spec-review" for c in self.model.calls))
         rendered = Path(tempfile.mkdtemp())
@@ -1119,7 +1123,7 @@ class ReviewTests(unittest.TestCase):
             result = self.call_capability("concorde-dev-loop", callback=incomplete)
             self.assertEqual("failed", result["status"], result)
             self.assertTrue(any(c["stage"] == "spec-review" for c in self.model.calls))
-            self.assertEqual(original, read_change(self.root)["gap_history"][0])
+            self.assertEqual(original, read_change(self.root, required=True)["gap_history"][0])
 
         # Another actual instruction revision permits a completed reassessment.
         # The Host preserves the reviewer's independent finding and old history.
@@ -1133,7 +1137,7 @@ class ReviewTests(unittest.TestCase):
         with instructions(changed_again):
             result = self.call_capability("concorde-dev-loop", callback=advisory)
         self.assertEqual("succeeded", result["status"], result)
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         self.assertEqual("resolved", state["gap_history"][0]["status"])
         self.assertEqual(original["gap"], state["gap_history"][0]["gap"])
         self.assertEqual([], state["gaps"])
@@ -1143,19 +1147,19 @@ class ReviewTests(unittest.TestCase):
         result = self.call_capability("concorde-dev-loop", callback=self.missing("spec-review"))
         self.assertEqual("blocked", result["status"], result)
         self.assertNotIn("plan", [x["stage"] for x in self.model.calls])
-        before = read_change(self.root)
+        before = read_change(self.root, required=True)
         self.assertEqual(1, len(before["gap_history"]))
         retry = self.call_capability("concorde-dev-loop")
         self.assertEqual("blocked", retry["status"], retry)
-        self.assertEqual(1, len(read_change(self.root)["gap_history"]))
-        self.assertEqual(1, len(read_change(self.root)["gaps"]))
+        self.assertEqual(1, len(read_change(self.root, required=True)["gap_history"]))
+        self.assertEqual(1, len(read_change(self.root, required=True)["gaps"]))
         self.assertEqual(before["gaps"][0]["context_id"], retry["output"]["data"]["gaps"][0]["context_id"])
         self.assertNotIn("plan", [x["stage"] for x in self.model.calls])
         spec = self.root / "specs/transfer/module.md"
         spec.write_text(spec.read_text() + "\nThe transfer capability owns a daily limit of 1000 units.\n")
         resumed = self.call_capability("concorde-dev-loop")
         self.assertEqual("succeeded", resumed["status"], resumed)
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         self.assertEqual([], state["gaps"])
         self.assertEqual("resolved", state["gap_history"][0]["status"])
         self.assertEqual("ready", state["status"])
@@ -1170,18 +1174,18 @@ class ReviewTests(unittest.TestCase):
                 project(self.root)
                 result = self.call_capability("concorde-dev-loop", callback=self.missing(phase))
                 self.assertEqual("blocked", result["status"], result)
-                self.assertEqual(phase, read_change(self.root)["gap_history"][0]["phase"])
+                self.assertEqual(phase, read_change(self.root, required=True)["gap_history"][0]["phase"])
                 spec = self.root / "specs/transfer/module.md"
                 spec.write_text(spec.read_text() + "\nThe transfer capability owns the necessary daily limit.\n")
                 resumed = self.call_capability("concorde-dev-loop")
                 self.assertEqual("succeeded", resumed["status"], resumed)
-                self.assertEqual([], read_change(self.root)["gaps"])
+                self.assertEqual([], read_change(self.root, required=True)["gaps"])
                 self.root = original_root
 
     def test_fast_loop_records_skips_and_cannot_downgrade_required_review(self):
         result = self.call_capability("concorde-dev-loop", {**self.task, "specify": False, "run_reviews": False})
         self.assertEqual("succeeded", result["status"], result)
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         self.assertEqual({"skipped"}, {x["status"] for x in state["reviews"][self.task["target_id"]].values()})
         self.assertIn("spec=skipped", result["output"]["data"]["answer"])
         self.assertIn("code=skipped", result["output"]["data"]["answer"])
@@ -1191,7 +1195,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("blocked", result["status"], result)
         retried = self.call_capability("concorde-dev-loop", {**self.task, "specify": False, "run_reviews": False})
         self.assertEqual("blocked", retried["status"], retried)
-        self.assertTrue(read_change(self.root)["review_requirements"][self.task["target_id"]]["spec"])
+        self.assertTrue(read_change(self.root, required=True)["review_requirements"][self.task["target_id"]]["spec"])
 
     @verifies("scenario.development.standalone-review")
     def test_independent_contract_findings_remain_visible_without_claiming_completeness(self):
@@ -1225,7 +1229,7 @@ class ReviewTests(unittest.TestCase):
                     "location": {"path": "app/transfer.py", "line": 1}, "problem": "An example could be clearer.",
                     "affected_task": "Read the implementation"}])
         self.assertEqual("succeeded", self.call_capability("concorde-dev-loop", callback=advisory)["status"])
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         state["reviews"][self.task["target_id"]].pop("code")
         save_change(self.root, state)
         def incomplete(stage, snapshot, data, cwd):
@@ -1233,8 +1237,8 @@ class ReviewTests(unittest.TestCase):
                 data.update(status="incomplete", answer="Required review could not complete.")
         result = self.call_capability("concorde-dev-loop", {**self.task, "specify": False, "run_reviews": False}, callback=incomplete)
         self.assertEqual("failed", result["status"], result)
-        self.assertNotEqual("ready", read_change(self.root)["status"])
-        self.assertIsNone(read_change(self.root)["validated_tree"])
+        self.assertNotEqual("ready", read_change(self.root, required=True)["status"])
+        self.assertIsNone(read_change(self.root, required=True)["validated_tree"])
 
     @verifies("scenario.harness.execute-success")
     def test_reviewer_result_parameters_are_the_self_contained_wire_schema(self):
@@ -1263,13 +1267,13 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("succeeded", self.call_capability("concorde-dev-loop")["status"])
         blocked = self.review(callback=self.missing("spec-review"))
         self.assertEqual("blocked", blocked["status"], blocked)
-        tasks = read_change(self.root)["targets"][self.task["target_id"]]["tasks"]
+        tasks = read_change(self.root, required=True)["targets"][self.task["target_id"]]["tasks"]
         for capability in ("concorde-tasks", "concorde-implement"):
             result = self.call_capability(capability)
             self.assertEqual("blocked", result["status"], result)
             self.assertEqual("review_required", result["errors"][0]["code"])
             self.assertEqual([], self.model.calls)
-            self.assertEqual(tasks, read_change(self.root)["targets"][self.task["target_id"]]["tasks"])
+            self.assertEqual(tasks, read_change(self.root, required=True)["targets"][self.task["target_id"]]["tasks"])
 
     @verifies("scenario.development.dev-loop-spec-gap")
     def test_upstream_task_gaps_block_standalone_dependents_but_allow_independent_queries(self):
@@ -1281,18 +1285,18 @@ class ReviewTests(unittest.TestCase):
                     project(self.root)
                     self.assertEqual("succeeded", self.call_capability("concorde-dev-loop")["status"])
                     self.assertEqual("blocked", self.call_capability("concorde-plan", callback=self.missing(phase))["status"])
-                    gap = read_change(self.root)["gaps"][0]
+                    gap = read_change(self.root, required=True)["gaps"][0]
                     for capability in ("concorde-tasks", "concorde-implement"):
                         result = self.call_capability(capability)
                         self.assertEqual("blocked", result["status"], result)
                         self.assertEqual([gap], result["output"]["data"]["gaps"])
                         self.assertEqual([], self.model.calls)
                     self.assertEqual("succeeded", self.call_capability("concorde-context-solve")["status"])
-                    self.assertEqual("open", read_change(self.root)["gap_history"][0]["status"])
+                    self.assertEqual("open", read_change(self.root, required=True)["gap_history"][0]["status"])
                     spec = self.root / "specs/transfer/module.md"
                     spec.write_text(spec.read_text() + "\nThe daily-limit owner is transfer.\n")
                     self.assertEqual("succeeded", self.call_capability("concorde-dev-loop")["status"])
-                    self.assertEqual("resolved", read_change(self.root)["gap_history"][0]["status"])
+                    self.assertEqual("resolved", read_change(self.root, required=True)["gap_history"][0]["status"])
                 finally:
                     self.root = previous_root
 
@@ -1343,7 +1347,7 @@ class ReviewTests(unittest.TestCase):
                 self.missing("spec-review")(stage, snapshot, data, cwd)
         result = self.call_capability("concorde-dev-loop", {**task, "specify": False, "run_reviews": True}, callback=component_gap)
         self.assertEqual("blocked", result["status"], result)
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         self.assertTrue(state["review_requirements"]["service.transfer"]["spec"])
         self.assertNotEqual("ready", state["status"])
         spec = self.root / "specs/transfer/module.md"
@@ -1366,19 +1370,19 @@ class ReviewTests(unittest.TestCase):
         result = self.call_capability("concorde-specify", callback=self.missing("specify"))
         self.assertEqual("blocked", result["status"], result)
         original = (self.root / "specs/transfer/module.md").read_bytes()
-        gap = read_change(self.root)["gap_history"][0]
+        gap = read_change(self.root, required=True)["gap_history"][0]
         def invalid(stage, snapshot, data, cwd):
             data["documents"] = [{"path": "specs/transfer/module.md", "content": "Missing document declaration"}]
         result = self.call_capability("concorde-specify", callback=invalid)
         self.assertNotEqual("succeeded", result["status"], result)
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         self.assertEqual(gap, state["gap_history"][0])
         self.assertEqual([gap["gap"]], state["gaps"])
         self.assertEqual(original, (self.root / "specs/transfer/module.md").read_bytes())
         def repair(stage, snapshot, data, cwd):
             data["documents"] = [{"path": "specs/transfer/module.md", "content": original.decode() + "\nThe daily-limit owner is transfer.\n"}]
         self.assertEqual("succeeded", self.call_capability("concorde-specify", callback=repair)["status"])
-        self.assertEqual("resolved", read_change(self.root)["gap_history"][0]["status"])
+        self.assertEqual("resolved", read_change(self.root, required=True)["gap_history"][0]["status"])
 
     @verifies("scenario.development.dev-loop-spec-gap")
     def test_rejected_plan_tasks_and_implementation_cannot_resolve_previous_gaps(self):
@@ -1397,10 +1401,10 @@ class ReviewTests(unittest.TestCase):
                             data["plan" if phase == "plan" else "tasks"] = "" if phase == "plan" else []
                     result = self.call_capability("concorde-dev-loop", callback=invalid)
                     self.assertNotEqual("succeeded", result["status"], result)
-                    self.assertEqual("open", read_change(self.root)["gap_history"][0]["status"])
-                    self.assertTrue(read_change(self.root)["gaps"])
+                    self.assertEqual("open", read_change(self.root, required=True)["gap_history"][0]["status"])
+                    self.assertTrue(read_change(self.root, required=True)["gaps"])
                     self.assertEqual("succeeded", self.call_capability("concorde-dev-loop")["status"])
-                    self.assertEqual("resolved", read_change(self.root)["gap_history"][0]["status"])
+                    self.assertEqual("resolved", read_change(self.root, required=True)["gap_history"][0]["status"])
                 finally:
                     self.root = previous_root
 
@@ -1418,11 +1422,11 @@ class ReviewTests(unittest.TestCase):
             return original_apply(root, changes, allowed, **kwargs)
         with patch.object(capability_host, "apply_files", side_effect=reject_plan):
             self.assertNotEqual("succeeded", self.call_capability("concorde-dev-loop")["status"])
-        self.assertEqual("open", read_change(self.root)["gap_history"][0]["status"])
+        self.assertEqual("open", read_change(self.root, required=True)["gap_history"][0]["status"])
         resumed = self.call_capability("concorde-dev-loop")
         self.assertEqual("succeeded", resumed["status"], resumed)
         self.assertIn("plan", [call["stage"] for call in self.model.calls])
-        self.assertEqual("resolved", read_change(self.root)["gap_history"][0]["status"])
+        self.assertEqual("resolved", read_change(self.root, required=True)["gap_history"][0]["status"])
 
     def test_gap_capture_is_explicit_deduplicated_and_keeps_owner_and_blocker(self):
         result = self.call_capability("concorde-plan", callback=self.missing("context-solve"))
@@ -1437,7 +1441,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("succeeded", result["status"], result)
         reflection = result["output"]["data"]["reflections"][0]
         self.assertEqual("service.transfer", reflection["target_id"])
-        self.assertEqual("open", read_change(self.root)["gap_history"][0]["status"])
+        self.assertEqual("open", read_change(self.root, required=True)["gap_history"][0]["status"])
         self.assertEqual([], self.model.calls)
         repeated = self.call_capability("concorde-reflections-triage", request)
         self.assertEqual(reflection["id"], repeated["output"]["data"]["reflections"][0]["id"])
@@ -1500,7 +1504,7 @@ class RepairLoopTests(unittest.TestCase):
         errors = json.loads(rejected["errors"][0]["message"].split("concorde-tasks blocked: ", 1)[1])
         self.assertEqual("invalid_completion", errors[0]["code"])
         self.assertIn("task.transfer", errors[0]["message"])
-        change = read_change(self.root)
+        change = read_change(self.root, required=True)
         state = change["targets"]["service.transfer"]
         self.assertEqual([], state.get("task_history", []))
         self.assertTrue(all(t["complete"] for t in state["tasks"]))
@@ -1514,7 +1518,7 @@ class RepairLoopTests(unittest.TestCase):
         checked_rounds = []
         def callback(stage, snapshot, data, cwd):
             if stage == "code-review":
-                candidate = read_change(self.root)
+                candidate = read_change(self.root, required=True)
                 target = candidate["targets"]["service.transfer"]
                 self.assertTrue(target["checks"])
                 self.assertTrue(all(check["status"] == "passed" for check in target["checks"]))
@@ -1555,7 +1559,7 @@ class RepairLoopTests(unittest.TestCase):
         self.assertEqual([["task.transfer"], ["task.transfer.repair.2"]], checked_rounds)
         self.assertEqual(["tasks", "implementation", "code-review"] * 2,
                          [stage for stage in stages if stage in {"tasks", "implementation", "code-review"}])
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         self.assertEqual(1, state["graph"]["service.transfer"]["repair_iteration"])
         self.assertEqual(2, state["graph"]["service.transfer"]["policy"]["max_repair_iterations"])
         transitions = state["graph"]["service.transfer"]["transitions"]
@@ -1581,7 +1585,7 @@ class RepairLoopTests(unittest.TestCase):
         self.assertEqual(self.last_review_bytes, (self.root / "app/transfer.py").read_bytes())
 
     def _capture_review_progress(self):
-        self.last_review_progress = read_change(self.root)["targets"]["service.transfer"]
+        self.last_review_progress = read_change(self.root, required=True)["targets"]["service.transfer"]
         self.last_review_bytes = (self.root / "app/transfer.py").read_bytes()
 
     def _reach_unchanged_feedback_waiting(self):
@@ -1601,7 +1605,7 @@ class RepairLoopTests(unittest.TestCase):
     def test_unchanged_blocking_feedback_stops_waiting_after_one_repair(self):
         result = self._reach_unchanged_feedback_waiting()
         self.assertEqual("conflicting", result["output"]["data"]["outcome"])
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         self.assertEqual("waiting", state["status"])
         self._assert_stopped_repair_progress(state, rounds=1)
         stages = [c["stage"] for c in self.model.calls]
@@ -1625,7 +1629,7 @@ class RepairLoopTests(unittest.TestCase):
         result = self.call_capability("concorde-dev-loop", callback=callback)
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("conflicting", result["output"]["data"]["outcome"])
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         self.assertEqual("limit_exhausted", state["status"])
         self._assert_stopped_repair_progress(state, rounds=2)
         stages = [c["stage"] for c in self.model.calls]
@@ -1650,7 +1654,7 @@ class RepairLoopTests(unittest.TestCase):
         result = self.call_capability("concorde-dev-loop", callback=callback)
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("spec_incomplete", result["output"]["data"]["outcome"])
-        self.assertEqual("waiting", read_change(self.root)["status"])
+        self.assertEqual("waiting", read_change(self.root, required=True)["status"])
         self.assertNotIn("plan", [c["stage"] for c in self.model.calls])
 
     def test_admitted_specify_spec_change_does_not_spuriously_reset_the_graph_record(self):
@@ -1664,20 +1668,20 @@ class RepairLoopTests(unittest.TestCase):
         self.assertEqual("ready", result["output"]["data"]["outcome"])
         self.assertIn("The transfer capability documents an additional promise.",
                       (self.root / "specs/transfer/module.md").read_text())
-        self.assertEqual([], read_change(self.root)["graph"]["service.transfer"]["transitions"])
+        self.assertEqual([], read_change(self.root, required=True)["graph"]["service.transfer"]["transitions"])
         # A second dev-loop resumes without re-authoring; the first run's own admitted Spec change
         # must not be mistaken for an out-of-band human edit and spuriously reset the record.
         second = self.call_capability("concorde-dev-loop")
         self.assertEqual("succeeded", second["status"], second)
         self.assertNotIn("specify", [c["stage"] for c in self.model.calls])
-        record = read_change(self.root)["graph"]["service.transfer"]
+        record = read_change(self.root, required=True)["graph"]["service.transfer"]
         self.assertEqual([], [t for t in record["transitions"] if t["trigger"] == "human"])
         # A genuinely human Spec edit between runs still resets the record.
         spec = self.root / "specs/transfer/module.md"
         spec.write_text(spec.read_text() + "\nA human directly edited this Spec.\n")
         third = self.call_capability("concorde-dev-loop")
         self.assertEqual("succeeded", third["status"], third)
-        record = read_change(self.root)["graph"]["service.transfer"]
+        record = read_change(self.root, required=True)["graph"]["service.transfer"]
         human_transitions = [t for t in record["transitions"] if t["trigger"] == "human"]
         self.assertEqual(1, len(human_transitions))
         self.assertEqual("spec_changed", human_transitions[0]["outcome"])
@@ -1685,7 +1689,7 @@ class RepairLoopTests(unittest.TestCase):
     @verifies("scenario.development.dev-loop-repair-exhausted")
     def test_human_implementation_edit_resets_the_repair_record(self):
         self._reach_unchanged_feedback_waiting()
-        before = read_change(self.root)
+        before = read_change(self.root, required=True)
         self.assertEqual(1, before["graph"]["service.transfer"]["repair_iteration"])
         code = self.root / "app/transfer.py"
         code.write_text(code.read_text() + "\n# a human edited this directly\n")
@@ -1693,7 +1697,7 @@ class RepairLoopTests(unittest.TestCase):
         def callback(stage, snapshot, data, cwd):
             if stage == "code-review":
                 review_count[0] += 1
-                candidate = read_change(self.root)
+                candidate = read_change(self.root, required=True)
                 if review_count[0] == 1:
                     # The same feedback must be eligible again only after admission resets
                     # the old count and fingerprint for the intervening implementation edit.
@@ -1710,7 +1714,7 @@ class RepairLoopTests(unittest.TestCase):
         self.assertNotIn("plan", stages)
         self.assertEqual(1, stages.count("tasks"))
         self.assertEqual(2, stages.count("code-review"))
-        state = read_change(self.root)
+        state = read_change(self.root, required=True)
         record = state["graph"]["service.transfer"]
         self.assertEqual(1, record["repair_iteration"])
         self.assertEqual(2, len(state["targets"]["service.transfer"]["task_history"]))
@@ -1734,4 +1738,4 @@ class RepairLoopTests(unittest.TestCase):
         private = json.loads((self.root / reference["path"]).with_suffix(".execution.json").read_text())
         self.assertEqual("execution_limit", private["failure"]["code"])
         self.assertIsNone(private["usage"])
-        self.assertEqual("limit_exhausted", read_change(self.root)["status"])
+        self.assertEqual("limit_exhausted", read_change(self.root, required=True)["status"])

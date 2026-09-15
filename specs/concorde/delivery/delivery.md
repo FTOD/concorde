@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.development.delivery",
-  "owner": "module.delivery",
-  "main_visible": true
-}
-```
 # Delivery capability
-
-## Usage & Contract
 
 Delivery consumes host-recorded candidate identity, progress and current validation/review evidence.
 The [common worktree metadata](../development/interfaces.md#worktree-awareness) supplies those
@@ -59,7 +50,7 @@ identities even when the implementation reverse index is unchanged. Each consume
 own context and code grant; no delivery check transfers provider ownership or authority. The
 evidence collector binds complete resolutions and separately retained consumer review artifacts.
 
-## Architecture & Realization
+## Design
 
 ### Integration verification
 
@@ -68,6 +59,5 @@ contains `concorde.json`, it is a Concorde package checkout: the host calls `wri
 checkout's own merged sources before Spec/package validation and configured checks. Untracked
 build outputs do not alter the deliverable tree. Build or validation failure preserves both
 participants and prevents the primary update; no stale-output gate is disabled or bypassed.
-
 
 The producer flow need not be dev-loop. A directly authored verified candidate is admitted under the same completion, current review, pending-entry confirmation and integration gates. Missing, stale or incomplete evidence rejects delivery; no plan is invented to make evidence appear valid.

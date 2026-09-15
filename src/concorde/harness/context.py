@@ -7,6 +7,7 @@ from typing import Any
 from .agent_model import Agent, validate_agent_artifacts
 
 from ..spec.typed_data import canonical
+from ..spec.repository_base import RepositoryCore
 from ..spec.repository import (REFERENCE_SKIPPED_SUFFIXES, SpecError, SpecRepository, digest, entry_base,
                                expand_entry, is_directory_entry, most_specific, read_file)
 
@@ -67,7 +68,7 @@ class TopologyAuthorContext:
         return self.value["context_id"]
 
 
-def _protocol(repository: SpecRepository) -> list[dict]:
+def _protocol(repository: RepositoryCore) -> list[dict]:
     protocol = []
     for path in PROTOCOL_PATHS:
         raw = repository.protocol_assets[path]
@@ -155,8 +156,8 @@ def context_grants(value: dict) -> tuple[str, ...]:
                          *(item["path"] for item in _index_documents(value))}))
 
 
-def context_documents(repository: SpecRepository, value: dict, *,
-                      candidate_repository: SpecRepository | None = None) -> dict[str, bytes]:
+def context_documents(repository: RepositoryCore, value: dict, *,
+                      candidate_repository: RepositoryCore | None = None) -> dict[str, bytes]:
     """The exact bytes of every granted context file, keyed by path and verified by digest.
 
     A capsule receives these bytes at the same paths; a project workspace is granted the paths in
@@ -219,7 +220,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
     resolution = repository.spec_context(focus_id or target.id).value
     # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
     from .change_worktree import workspace_context
-    manifest = {"schema_version": 4, "target_id": target.id, "kind": target.kind,
+    manifest = {"schema_version": 5, "target_id": target.id, "kind": target.kind,
         "focus_id": focus_id, "phase": phase, "task": task, "constraints": list(constraints),
         "protocol_binding": repository.config["protocol"], "protocol": _protocol(repository),
         "spec_resolution": resolution, "instructions": instructions,
@@ -280,7 +281,7 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
     # File contents are deliberately absent from non-code cognition.
     from .change_worktree import workspace_context
     manifest = {
-        "schema_version": 3,
+        "schema_version": 4,
         "capability": capability,
         "phase": phase,
         "action": action,
@@ -301,11 +302,11 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
     return DiscoveryContext(canonical({**manifest, "context_id": digest(manifest)}))
 
 
-def resolve_topology_author_context(repository: SpecRepository, target: dict, *, task: str,
+def resolve_topology_author_context(repository: RepositoryCore, target: dict, *, task: str,
                                     instructions: str,
                                     candidate_document_references: tuple[dict, ...] = (),
                                     workspace: dict | None = None,
-                                    candidate_repository: SpecRepository | None = None) -> TopologyAuthorContext:
+                                    candidate_repository: RepositoryCore | None = None) -> TopologyAuthorContext:
     """Build a private authoring context without exposing the target body to main."""
 
     if target.get("kind") != "module":
@@ -329,7 +330,7 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
         sources.extend(source_repository.source_records(path, reasons))
     # The reading entry comes from the accepted descriptor: a new Module's module.md may not exist yet.
     reading_entry = next(path for path in target["documents"] if Path(path).name == "module.md")
-    resolution = {"query_id": target["id"], "query_kind": "module", "module_id": target["id"],
+    resolution = {"schema_version": 1, "registration": target, "query_id": target["id"], "query_kind": "module", "module_id": target["id"],
         "reading_entry": reading_entry, "documents": list(target["documents"]),
         "references": target["references"], "sources": sources}
     from .change_worktree import workspace_context

@@ -49,7 +49,7 @@ def _purpose_summary(body: str) -> str:
         if match and match.group(2).strip() == "Purpose" and len(match.group(1)) <= 3:
             start, level = index + 1, len(match.group(1))
             break
-    if start is None:
+    if start is None or level is None:
         return ""
     paragraph: list[str] = []
     for _number, kind, line in lines[start:]:
@@ -159,7 +159,7 @@ def _build_elements(repository: SpecRepository, *,
             edges.append(_edge(f"module:{target.parent}", f"module:{target.id}", "contains", 1.0, "composes"))
 
     for target in targets:
-        responsibilities = {dep["target_id"]: dep["responsibility"] for dep in repository.dependencies(target)}
+        responsibilities = {dep["target_id"]: dep["explanation"] for dep in repository.dependencies(target)}
         for peer in target.uses:
             edges.append(_edge(f"module:{target.id}", f"module:{peer}", "depends_on", 0.8,
                                 responsibilities.get(peer, "uses")))

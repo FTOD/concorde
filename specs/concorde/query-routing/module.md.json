@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.query-routing.module",
+    "owner": "module.query-routing"
+  },
+  "entities": [
+    {
+      "id": "entity.query-routing.adapter",
+      "title": "Query and Routing adapter",
+      "kind": "shared program",
+      "files": [
+        "capabilities/main.py",
+        "tests/concorde/harness/test_scoped_protocol.py",
+        "tests/concorde/harness/test_worktree_lifecycle.py"
+      ],
+      "meaning": "#entity.query-routing.adapter"
+    },
+    {
+      "id": "entity.query-routing.development",
+      "title": "Development",
+      "kind": "used module",
+      "target_id": "module.development",
+      "meaning": "#entity.query-routing.development"
+    },
+    {
+      "id": "entity.query-routing.harness",
+      "title": "Harness",
+      "kind": "used module",
+      "target_id": "module.harness",
+      "meaning": "#entity.query-routing.harness"
+    },
+    {
+      "id": "entity.query-routing.spec",
+      "title": "Spec",
+      "kind": "used module",
+      "target_id": "module.spec",
+      "meaning": "#entity.query-routing.spec"
+    },
+    {
+      "id": "entity.query-routing.selection",
+      "title": "Admitted selection",
+      "kind": "record",
+      "meaning": "#entity.query-routing.selection"
+    }
+  ],
+  "dependencies": [
+    {
+      "target_id": "module.development",
+      "meaning": "#agreement.document.query-routing.module.1"
+    },
+    {
+      "target_id": "module.harness",
+      "meaning": "#agreement.document.query-routing.module.2"
+    },
+    {
+      "target_id": "module.spec",
+      "meaning": "#agreement.document.query-routing.module.3"
+    }
+  ],
+  "bindings": []
+}

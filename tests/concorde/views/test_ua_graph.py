@@ -15,7 +15,7 @@ from concorde.distribution.cli import main  # noqa: E402
 from concorde.spec.initialize import apply_project_proposal, project_proposal  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
 from concorde.views.ua_graph import export_ua_graph  # noqa: E402
-from tests.concorde.spec.support import CONFIGURATION, block, module_document  # noqa: E402
+from tests.concorde.spec.support import CONFIGURATION, block, module_document, write_document  # noqa: E402
 
 
 ROOT_DOC = module_document(
@@ -113,7 +113,7 @@ def build_project(root: Path) -> None:
         _target("module.beta", "Beta", ["specs/beta/module.md"], parent="module.root",
                 files=["src/beta/service.py", "src/shared/util.py"]),
     ]
-    registry = {"schema_version": 4, "project_id": "project.fixture", "entry_target": "module.root",
+    registry = {"schema_version": 5, "project_id": "project.fixture", "entry_target": "module.root",
                 "targets": targets, "checks": []}
     (root / ".concorde/specs.json").write_text(json.dumps(registry))
     files = {
@@ -126,9 +126,7 @@ def build_project(root: Path) -> None:
         "src/beta/service.py": "# service\n",
     }
     for path, content in files.items():
-        target = root / path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content)
+        write_document(root, path, content)
 
 
 def node(graph, node_id):
@@ -144,6 +142,12 @@ def layer(graph, layer_id):
     return next((item for item in graph["layers"] if item["id"] == layer_id), None)
 
 
+def required_layer(graph, layer_id):
+    found = layer(graph, layer_id)
+    assert found is not None, f"Missing layer {layer_id}"
+    return found
+
+
 class UaGraphSkeletonTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -157,7 +161,8 @@ class UaGraphSkeletonTests(unittest.TestCase):
     @verifies("scenario.views.ua-graph-overlay")
     def test_layer_replacement_does_not_require_a_module_id_prefix(self):
         for relative in (".concorde/specs.json", "specs/root/module.md",
-                         "specs/alpha/module.md", "specs/beta/module.md"):
+                         "specs/alpha/module.md", "specs/beta/module.md", "specs/root/module.md.json",
+                         "specs/alpha/module.md.json", "specs/beta/module.md.json"):
             path = self.root / relative
             path.write_text(path.read_text().replace("module.alpha", "alpha"))
         self.assertEqual("success", export_ua_graph(self.root).status)
@@ -187,7 +192,7 @@ class UaGraphSkeletonTests(unittest.TestCase):
         self.assertEqual(1, len(edges(graph, "module:module.root", "module:module.beta", "contains")))
         depends = edges(graph, "module:module.alpha", "module:module.beta", "depends_on")
         self.assertEqual(1, len(depends))
-        self.assertEqual("Supplies the beta service that alpha reads through.", depends[0]["description"])
+        self.assertIn("Supplies the beta service that alpha reads through.", depends[0]["description"])
 
         core_edges = edges(graph, "module:module.alpha", kind="contains")
         core_target_ids = {e["target"] for e in core_edges}
@@ -209,7 +214,7 @@ class UaGraphSkeletonTests(unittest.TestCase):
         self.assertEqual(1, len(edges(graph, "document:specs/alpha/module.md", "module:module.alpha", "documents")))
 
         # Alpha's own registered document joins Alpha's layer, not layer:unlisted.
-        self.assertIn("document:specs/alpha/module.md", layer(graph, "layer:module.alpha")["nodeIds"])
+        self.assertIn("document:specs/alpha/module.md", required_layer(graph, "layer:module.alpha")["nodeIds"])
 
 
 class UaGraphOverlayTests(unittest.TestCase):
@@ -293,16 +298,16 @@ class UaGraphOverlayTests(unittest.TestCase):
         # for Alpha's own registered document, and it joins Alpha's layer.
         self.assertEqual(self.base_graph["nodes"][4], node(graph, "doc:55"))
         self.assertFalse(any(n["id"] == "document:specs/alpha/module.md" for n in graph["nodes"]))
-        self.assertIn("doc:55", layer(graph, "layer:module.alpha")["nodeIds"])
+        self.assertIn("doc:55", required_layer(graph, "layer:module.alpha")["nodeIds"])
 
         # Module nodes are freshly added; the unlisted layer holds only file-like nodes (not the
         # "class" node, and not the reused registered document) that no Module's entities bind.
         self.assertIsNotNone(node(graph, "module:module.alpha"))
-        unlisted = layer(graph, "layer:unlisted")
+        unlisted = required_layer(graph, "layer:unlisted")
         self.assertIsNotNone(unlisted)
         self.assertEqual(["config:42", "file:77"], unlisted["nodeIds"])
         self.assertNotIn("doc:55", unlisted["nodeIds"])
-        self.assertIn("file:99", layer(graph, "layer:module.alpha")["nodeIds"])
+        self.assertIn("file:99", required_layer(graph, "layer:module.alpha")["nodeIds"])
 
     def test_overlay_export_is_idempotent(self):
         export_ua_graph(self.root)
@@ -350,8 +355,8 @@ class UaGraphSharedFileTests(unittest.TestCase):
         self.assertEqual(1, len([n for n in graph["nodes"] if n["id"] == shared_id]))
 
         # Alpha is registered before Beta, so Alpha's layer claims the shared file.
-        self.assertIn(shared_id, layer(graph, "layer:module.alpha")["nodeIds"])
-        self.assertNotIn(shared_id, layer(graph, "layer:module.beta")["nodeIds"])
+        self.assertIn(shared_id, required_layer(graph, "layer:module.alpha")["nodeIds"])
+        self.assertNotIn(shared_id, required_layer(graph, "layer:module.beta")["nodeIds"])
 
         # Both Modules still get their own "contains" edge from their own entity.
         alpha_edge = edges(graph, "module:module.alpha", shared_id, "contains")

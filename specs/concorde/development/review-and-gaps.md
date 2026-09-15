@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.development.review-and-gaps",
-  "owner": "module.development",
-  "main_visible": true
-}
-```
 # Attributed gaps and host history
-
-## Usage & Contract
 
 Review owns [independent review and task relevance](../review/review.md).
 Development Flow owns its [review ordering and repair](../dev-loop/development.md);

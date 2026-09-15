@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
-  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-6.0.0-6264e8" alt="Spec Protocol 6.0.0" /></a>
+  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-7.0.0-6264e8" alt="Spec Protocol 7.0.0" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/agents-Codex_%C2%B7_Claude-273449" alt="Integrations: Codex and Claude" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
 </p>
@@ -42,8 +42,8 @@ tracking which Module contracts are affected as shared code changes.
 
 ### 2. Understand the project and observe agent execution
 
-The **[docsite](docsite/README.md)** publishes Specs with Module navigation, composition and
-dependency graphs, and inline architecture diagrams. The **[Understand Anything graph
+The **[docsite](docsite/README.md)** publishes reading content with Module navigation and scoped inline relationship diagrams, while keeping
+metadata in an auxiliary provenance view. The **[Understand Anything graph
 view](viewer/README.md)** lets you explore an existing code graph; Concorde can export a graph
 from its Spec registry or overlay Module structure onto an existing graph. Opening the viewer
 does not itself analyze code or generate a graph.
@@ -145,8 +145,8 @@ to the selected root instruction file. It preserves user content outside its own
 Use concorde-init to initialize this project. Propose the setup for my review.
 ```
 
-Apply the reviewed proposal, then write the root Module's Usage & Contract and Architecture &
-Realization. Initialization creates an honest stub; unresolved behavior still needs to be specified.
+Apply the reviewed proposal, then write the root Module's Purpose, Usage, Design and Relationships,
+with precise requirements/scenarios and the paired metadata declarations. Initialization creates an honest stub; unresolved behavior still needs to be specified.
 Commit the installed framework and root guidance so candidate worktrees inherit them.
 
 **4. Explore and evolve your project.**
@@ -193,12 +193,10 @@ then run the same npm commands from that project's root. Its URL follows `docsit
 
 ### Use the graph views
 
-**Module architecture:** open the docsite's **[Graph tab](https://ftod.github.io/concorde/graph)**.
-Search by Module name or ID, filter relationships with **composes**, **uses** or **requires**, and
-select a node to inspect its declared files and follow the link to its Spec. Drag nodes and zoom
-to explore.
-
-![Concorde's Module composition graph, with the composes filter selected](docs/assets/concorde-module-graph.png)
+**Module architecture:** open a Module's reading entry in **Module Specs**. Purpose and Usage
+introduce the responsibility, Design explains its realization, and Relationships shows scoped
+collaboration diagrams. The sidebar follows Module parentage. There is no separate docsite Graph
+tab; the independent Understand Anything export/viewer below provides code-graph exploration.
 
 **Code relationships:** open the Understand Anything viewer. In this source checkout, install
 the pinned viewer and export a graph from Concorde's Spec registry:
@@ -295,14 +293,14 @@ See the [Studio guide](scripts/development/STUDIO.md) for debugging, results and
 
 ## The contract at the center
 
-Concorde's independent **Spec Protocol 6.0.0** defines one specification category: a **Module Spec**.
+Concorde's independent **Spec Protocol 7.0.0** defines one specification category: a **Module Spec**.
 A Module describes a cohesive software responsibility; its implementation may span packages,
 services or shared files. Each Spec document has one owning Module. A Module's explicit
 `references` includes other Module-owned documents or one registered document, expanded once;
 Markdown links remain navigation. Shared interfaces have one definition and local participant bindings.
 
 The repository's Specs, runtime admission, context serialization and publication support
-Protocol 6/Profile 13/registry schema 4. Resolved contexts retain unique owners, one-level reference
+Protocol 7/Profile 14/registry schema 5. Resolved contexts retain unique owners, one-level reference
 provenance and exact byte digests without granting provider implementation access; see
 [Spec context queries](specs/concorde/spec/registry.md#stable-id-spec-context-queries).
 Runtime and publication tests verify these boundaries separately from the rule build.
@@ -312,16 +310,24 @@ executable LangGraph Flows, expanded Studio entries and routing handoffs with li
 is excluded from consumer site templates. Build the checkout with the development Python
 environment (`.venv`, or `CONCORDE_PYTHON` for a source copy) and `npm --prefix docsite run build`.
 
-| Part | The question it answers |
-| :--- | :--- |
-| **Usage & Contract** | Who should use this responsibility, when and how? Explains concepts, prerequisites, entry points, results, effects and failure behavior, with precise requirements and scenarios. |
-| **Architecture & Realization** | How does the design fulfill those promises? Explains responsibilities, state, flow, dependencies, internal constraints, entities, relationships and file bindings. |
+The Protocol defines **complete content** and its **human-readable subset**. A registered
+`module.md` and `module.md.json` form one document unit with one identity and owner. The Markdown
+explains meaning; metadata records identity, ownership and implementation mappings and points to
+local readable explanations rather than copying them. Both members enter complete agent context,
+and a metadata-only edit invalidates affected context/review identities.
 
-The first part is usable documentation and the canonical consumer contract, not a summary to keep
-in sync with another authority. The second is intended design, not a transcript of current code.
-Requirements and scenarios can express internal obligations too; each definition appears once with
-its stable ID. A logical Module need not invent a public API. Companion documents use one or both
-parts, while explicit references still include complete files without filtering by reading part.
+| Reading section | The question it answers |
+| :--- | :--- |
+| **Purpose** | What responsibility does this Module own, for whom and within which scope? |
+| **Usage** | When and how should a consumer use it, with which inputs, outcomes and limits? |
+| **Design** | How do responsibilities, state, flow and constraints fulfill its guarantees? |
+| **Relationships** | Which entities collaborate, under which conditions, and how does dependency differ from composition? |
+
+Requirements, scenarios and interface agreements remain precise readable obligations, placed later
+or in registered companions. Internal constraints are not weakened by their location. Diagrams
+may show a scoped subset of entities; there is no separate entity-inventory reading chapter.
+A logical Module need not invent a public API. The Protocol defines reading membership and
+completeness, not docsite pages, sidebars, folding or interactions.
 
 Tests declare the scenarios they verify. Concorde derives coverage from those declarations;
 structural validation and declared coverage provide evidence, without proving semantic completeness.
@@ -358,7 +364,7 @@ those capabilities from the developer's agent client.
 | :--- | :--- | :--- |
 | `answerer` | route / ask | Answer questions from selected complete Module Specs; read-only, no routes or writes. |
 | `router` | route / route | Select the one owning Module route; no implementation contents or writes. |
-| `topology-designer` | route / design-topology | Design candidate topology from selected complete Specs and the explicit inventory; no document bodies or writes. |
+| `topology-designer` | route / design-topology | Design candidate topology from selected complete Specs and the explicit inventory; no implementation contents or writes. |
 | `spec-author` | specify | Author structured Spec document replacements; the host applies them. |
 | `topology-author` | topology-author | Produce candidate-owned topology documents for host application. |
 | `spec-reviewer` | spec-review | Independent Spec review findings; read-only. |

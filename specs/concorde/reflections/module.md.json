@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.reflections.module",
+    "owner": "module.reflections"
+  },
+  "entities": [
+    {
+      "id": "entity.reflections.triage-engine",
+      "title": "Triage engine",
+      "kind": "program",
+      "files": [
+        "capabilities/reflections_triage.py",
+        "scripts/reflections_queue.py",
+        "src/concorde/reflections/",
+        "tests/concorde/fixtures/interfaces/reflections/",
+        "tests/concorde/reflections/",
+        "tests/concorde/support/reflection_triage.py"
+      ],
+      "meaning": "#entity.reflections.triage-engine"
+    },
+    {
+      "id": "entity.reflections.file-transactions",
+      "title": "File transactions",
+      "kind": "shared program",
+      "files": [
+        "src/concorde/spec/changes.py"
+      ],
+      "meaning": "#entity.reflections.file-transactions"
+    },
+    {
+      "id": "entity.reflections.development",
+      "title": "Development",
+      "kind": "used module",
+      "target_id": "module.development",
+      "meaning": "#entity.reflections.development"
+    },
+    {
+      "id": "entity.reflections.spec",
+      "title": "Spec",
+      "kind": "used module",
+      "target_id": "module.spec",
+      "meaning": "#entity.reflections.spec"
+    },
+    {
+      "id": "entity.reflections.triage-boundary",
+      "title": "Triage boundary",
+      "kind": "interface",
+      "meaning": "#entity.reflections.triage-boundary"
+    },
+    {
+      "id": "entity.reflections.record",
+      "title": "Reflection record",
+      "kind": "record",
+      "meaning": "#entity.reflections.record"
+    },
+    {
+      "id": "entity.reflections.gap",
+      "title": "Captured development gap",
+      "kind": "concept",
+      "meaning": "#entity.reflections.gap"
+    },
+    {
+      "id": "entity.reflections.evidence",
+      "title": "Bound record evidence",
+      "kind": "concept",
+      "meaning": "#entity.reflections.evidence"
+    },
+    {
+      "id": "entity.reflections.plan",
+      "title": "Investigation plan",
+      "kind": "record",
+      "meaning": "#entity.reflections.plan"
+    },
+    {
+      "id": "entity.reflections.task",
+      "title": "Development task",
+      "kind": "concept",
+      "meaning": "#entity.reflections.task"
+    },
+    {
+      "id": "entity.reflections.disposition",
+      "title": "Human disposition",
+      "kind": "concept",
+      "meaning": "#entity.reflections.disposition"
+    },
+    {
+      "id": "entity.reflections.dev-loop",
+      "title": "Development Flow",
+      "kind": "used module",
+      "target_id": "module.dev-loop",
+      "meaning": "#entity.reflections.dev-loop"
+    },
+    {
+      "id": "entity.reflections.langgraph",
+      "title": "LangGraph",
+      "kind": "external library",
+      "meaning": "#entity.reflections.langgraph"
+    }
+  ],
+  "dependencies": [
+    {
+      "target_id": "module.development",
+      "meaning": "#agreement.document.reflections.module.1"
+    },
+    {
+      "target_id": "module.spec",
+      "meaning": "#agreement.document.reflections.module.2"
+    },
+    {
+      "target_id": "module.dev-loop",
+      "meaning": "#agreement.document.reflections.module.3"
+    }
+  ],
+  "bindings": []
+}

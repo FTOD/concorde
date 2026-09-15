@@ -12,8 +12,8 @@ under `.concorde/` is excluded from published prose.
 
 ## Navigation
 
-The adapter publishes Profile 13 projects only: it reads `plugins/scoped-content` and registry
-schema 4, and refuses any other `profile_version` with an explicit error. Every registered document
+The adapter publishes Profile 14 projects only: it reads `plugins/scoped-content` and registry
+schema 5, and refuses any other `profile_version` with an explicit error. Every registered document
 publishes once at a readable source-derived route: `specs/project/module.md` becomes
 `/specs/project/module`. The navbar exposes a single `Module Specs` tab;
 there is no separate Implementation Specs tab, because Implementation Specs no longer exist. A
@@ -24,18 +24,23 @@ remain visible in provenance. Supplementary documents appear under their sole ow
 page and do not duplicate it in the sidebar. Registry `parent` alone determines nesting; root
 Modules appear directly, without a directory tree or Module composition wrapper.
 
-Publication validates composition, dependencies and matched provided/required structured
-contracts. Shared capability Modules are siblings of their consumers. Implementation entries may be listed by several Modules. Each Module's Files
-section repeats its declared entries as written: an exact file, or a directory prefix ending in `/`
-that binds the regular files below it. Publication validates that an existing exact entry is a file
-and an existing directory entry a directory, and that no listed directory contains a registered Spec
-document; it does not read or publish implementation file bytes, and it never expands a directory
-entry into file names. Each Module is read as Usage & Contract followed by Architecture &
-Realization; the derived Files subsection stays inside the latter. Companion documents cover one
-or both parts. Part headings do not filter complete context. Every Module's Architecture &
-Realization / Relationships subsection renders its own inline Mermaid flowchart directly from the registered Markdown, with node
-labels equal to the declared entity titles and every edge labeled; there is no separate diagram
-source or build step.
+Publication validates complete document units: each registered Markdown reading file and its
+`.md.json` companion share identity and ownership. It checks entity bindings, provider declarations,
+local readable meaning anchors, scoped relationship diagrams and complementary interface bindings.
+The Markdown is the Protocol-defined reading subset, not an independently generated summary.
+
+The entry reads Purpose, Usage, Design and Relationships before precise requirements/scenarios.
+The publisher creates one page per reading document and does not append a duplicate Files inventory
+or publish metadata as a second page. An auxiliary Spec metadata disclosure shows document identity,
+owner, inclusion provenance and the separate reading/metadata source digests. Both members participate
+in build identity and source watching; metadata-only changes invalidate a candidate.
+
+Directory implementation entries stay in metadata as declared. Publication checks their kind and
+exclusion from document units but never reads implementation contents or expands directories into a
+reading inventory. Relationship diagrams render in their authored position with labeled edges and
+a nonempty subset of declared local entity titles. Their surrounding prose explains the scope.
+These conventions are this publisher's presentation of Protocol reading, not additional Protocol
+page, sidebar or interaction requirements.
 
 Stable target/path-hash aliases redirect to current canonical document routes. Changed source
 paths require deliberate migration of external links. Human navigation does not widen agent context.
@@ -51,7 +56,7 @@ The adapter reads `docsite/site.json` (site identity schema 1). Project-specific
 without custom docs or a homepage the only documentation tab is **Module Specs**.
 
 | Field | Type | Rule |
-|---|---|---|
+| --- | --- | --- |
 | `schema_version` | integer | Exactly `1`. |
 | `title` | string | Non-empty; site and navbar title. |
 | `url` | string | Absolute `http(s)://` URL without path. |
@@ -92,7 +97,7 @@ the registered-page manifest; it grants no agent context and does not replace an
 Keep human-authored guides outside the Spec registry and publish them in independent tabs. They
 will not enter a Module's agent Spec context or its registered-page manifest. This is the recommended
 extension path for general project guides. Module-specific usage documentation belongs in the
-Module's own Usage & Contract and should not be copied into a competing external manual.
+Module's own Usage reading and should not be copied into a competing external manual.
 
 1. Create `docsite/custom-docs/guides/index.md`:
 
@@ -190,7 +195,7 @@ and `build/` are disposable.
 Run commands from `docsite/`:
 
 | Command | Purpose |
-|---|---|
+| --- | --- |
 | `npm run validate` | Validate registered sources, identities, relations, routes, provenance and links. |
 | `npm run start` | Materialize the current registered content, then start Docusaurus preview. |
 | `npm test` | Run unit, contract, fixture, and integration evidence. |
@@ -198,7 +203,7 @@ Run commands from `docsite/`:
 | `npm run typecheck` | Type-check maintained TypeScript. |
 | `npm run check` | Run typechecking, all tests, source validation, and a production build. |
 
-Successful builds emit `build/build-manifest.json` using Build Manifest 19. It records registered
+Successful builds emit `build/build-manifest.json` using Build Manifest 20. It records registered
 document routes, aliases and exact source identities. It neither emits nor requires
 `architecture-graph.json`; older manifest versions require a fresh build. A stale
 materialization or changed source prevents candidate promotion. The manifest stores no claim that

@@ -1,20 +1,10 @@
-```concorde-document
-{
-  "id": "document.implementation.module",
-  "owner": "module.implementation",
-  "main_visible": true
-}
-```
-
 # Implementation
 
-## Usage & Contract
-
-### Purpose
+## Purpose
 
 Implementation fulfills an admitted task list within the selected Module implementation grant and reports exact task completion. It serves composing capabilities that supply current plans and tasks, and distinguishes local code writing from separately admitted component coordination.
 
-### Usage
+## Usage
 
 A declared composing capability calls `implement` with a current accepted plan and nonempty task
 list for one selected Module. This is a private bound provider, not a directly invocable Skill.
@@ -30,26 +20,9 @@ Coordination with other Modules requires their separate contexts and the existin
 adapter; no arbitrary scheduler is accepted. See [implementation](implementation.md) for writable
 boundaries, deferred checks, component limits and recovery.
 
-### Requirements
+## Design
 
-#### req.implementation.admitted-contract — Preserve task identity and acceptance
-
-Implementation SHALL preserve every admitted task identity and acceptance condition when reporting completion.
-
-### Scenarios
-
-#### scenario.implementation.admitted-work — Return complete fulfillment of the admitted tasks
-
-- GIVEN a current accepted plan and nonempty task list bound to a selected Module
-- WHEN the worker fulfills every task's acceptance within that Module's implementation grant and returns the complete task list
-- THEN the host accepts completion only for those same tasks with their IDs and acceptance preserved and all complete flags true
-- AND the host records accepted progress without declaring ready or changing Specs
-
-The detailed contract is [Exact tasks and bounded code effects](implementation.md).
-
-## Architecture & Realization
-
-### Design
+<a id="entity.implementation.adapter"></a><a id="entity.implementation.task-input"></a><a id="entity.implementation.completion"></a>
 
 The implementation adapter admits current plan/task artifacts, launches one programmer under the
 selected Module's implementation grant, and validates exact returned task identities and acceptance
@@ -62,56 +35,7 @@ separates local tasks from participant work and delegates scheduling/final share
 to the existing enclosing Flow. This shared realization does not transfer those Flow completion
 conditions to the reusable local task contract.
 
-### Entities
-
-```concorde-entities
-[
-  {
-    "id": "entity.implementation.adapter",
-    "title": "Implementation adapter",
-    "kind": "shared program",
-    "responsibility": "Implementation fulfills an admitted task list within the selected Module implementation grant and reports exact task completion. It serves composing capabilities that supply current plans and tasks, and distinguishes local code writing from separately admitted component coordination.",
-    "files": [
-      "capabilities/implement.py"
-    ]
-  },
-  {
-    "id": "entity.implementation.development",
-    "title": "Development",
-    "kind": "used module",
-    "target_id": "module.development",
-    "responsibility": "Admit the current implementation task and permitted repair feedback, persist exact task progress and preserve the candidate on failure."
-  },
-  {
-    "id": "entity.implementation.harness",
-    "title": "Harness",
-    "kind": "used module",
-    "target_id": "module.harness",
-    "responsibility": "Bind a fresh programmer to the complete selected contract and enforce writes only to that Module's granted implementation paths."
-  },
-  {
-    "id": "entity.implementation.spec",
-    "title": "Spec",
-    "kind": "used module",
-    "target_id": "module.spec",
-    "responsibility": "Resolve the selected Module's implementation entries, current files, contract and direct component relationships."
-  },
-  {
-    "id": "entity.implementation.task-input",
-    "title": "Implementation task",
-    "kind": "record",
-    "responsibility": "Admitted plan and exact task list under the selected Module grant."
-  },
-  {
-    "id": "entity.implementation.completion",
-    "title": "Task completion",
-    "kind": "record",
-    "responsibility": "Accepted exact task fulfillment, distinct from readiness and delivery."
-  }
-]
-```
-
-### Relationships
+## Relationships
 
 This view follows an admitted Implementation task to Task completion. Spec determines the selected
 Module's implementation boundary, Harness enforces the programmer's grant, and Development admits
@@ -136,40 +60,56 @@ flowchart TB
     e0 -->|reports fulfilled acceptance as| domain_completion
 ```
 
+## Requirements
 
-### Dependencies and composition
+### req.implementation.admitted-contract — Preserve task identity and acceptance
 
-```concorde-dependencies
-[
-  {
-    "target_id": "module.development",
-    "responsibility": "Admit the current implementation task and permitted repair feedback, persist exact task progress and preserve the candidate on failure.",
-    "selection_condition": "Before implementation starts and when its returned task completion or execution failure is recorded.",
-    "relied_upon_promises": [
-      "[Host admission](../development/interfaces.md#capability-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step."
-    ]
-  },
-  {
-    "target_id": "module.harness",
-    "responsibility": "Bind a fresh programmer to the complete selected contract and enforce writes only to that Module's granted implementation paths.",
-    "selection_condition": "When launching the programmer or admitting its matching completion under the current grant.",
-    "relied_upon_promises": [
-      "[Complete context selection](../harness/context.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant."
-    ]
-  },
-  {
-    "target_id": "module.spec",
-    "responsibility": "Resolve the selected Module's implementation entries, current files, contract and direct component relationships.",
-    "selection_condition": "When deriving a local code grant or admitting separately bound component work and rechecking revisions.",
-    "relied_upon_promises": [
-      "[Owner and context resolution](../spec/registry.md#stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use."
-    ]
-  }
-]
-```
+Implementation SHALL preserve every admitted task identity and acceptance condition when reporting completion.
 
+## Scenarios
 
-### Realization and reuse limits
+### scenario.implementation.admitted-work — Return complete fulfillment of the admitted tasks
+
+- GIVEN a current accepted plan and nonempty task list bound to a selected Module
+- WHEN the worker fulfills every task's acceptance within that Module's implementation grant and returns the complete task list
+- THEN the host accepts completion only for those same tasks with their IDs and acceptance preserved and all complete flags true
+- AND the host records accepted progress without declaring ready or changing Specs
+
+The detailed contract is [Exact tasks and bounded code effects](implementation.md).
+
+## Dependencies and composition
+
+### Development
+
+<a id="entity.implementation.development"></a><a id="agreement.document.implementation.module.1"></a>
+
+Admit the current implementation task and permitted repair feedback, persist exact task progress and preserve the candidate on failure.
+
+This collaboration applies before implementation starts and when its returned task completion or execution failure is recorded.
+
+- [Host admission](../development/interfaces.md#capability-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
+
+### Harness
+
+<a id="entity.implementation.harness"></a><a id="agreement.document.implementation.module.2"></a>
+
+Bind a fresh programmer to the complete selected contract and enforce writes only to that Module's granted implementation paths.
+
+This collaboration applies when launching the programmer or admitting its matching completion under the current grant.
+
+- [Complete context selection](../harness/context.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+
+### Spec
+
+<a id="entity.implementation.spec"></a><a id="agreement.document.implementation.module.3"></a>
+
+Resolve the selected Module's implementation entries, current files, contract and direct component relationships.
+
+This collaboration applies when deriving a local code grant or admitting separately bound component work and rechecking revisions.
+
+- [Owner and context resolution](../spec/registry.md#stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
+
+## Realization and reuse limits
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,

@@ -11,6 +11,22 @@ import importlib
 import json
 import re
 from pathlib import Path
+from types import ModuleType
+from typing import TypedDict
+
+
+class CapabilityInventoryEntry(TypedDict):
+    public: bool
+    context_selection: str | None
+    deterministic: bool | None
+    skill: str | None
+
+
+class AgentInventoryEntry(TypedDict):
+    workspace: str
+    capabilities: list[str]
+    tools: list[str]
+    children: list[str]
 
 from ..spec.frontmatter import FrontMatterError, parse_document
 from ..spec.model import Finding
@@ -147,11 +163,11 @@ def _load_capabilities_package(root: Path):
     return module
 
 
-def _capability_modules(root: Path) -> tuple[object | None, dict[str, object]]:
+def _capability_modules(root: Path) -> tuple[ModuleType | None, dict[str, ModuleType | None]]:
     inventory = _load_capabilities_package(root)
     if inventory is None or not isinstance(getattr(inventory, "CAPABILITIES", None), tuple):
         return None, {}
-    modules: dict[str, object] = {}
+    modules: dict[str, ModuleType | None] = {}
     for name in inventory.CAPABILITIES:
         try:
             modules[name] = importlib.import_module(f"{inventory.__name__}.{name}")
@@ -200,7 +216,7 @@ def _validate_capability_modules(root: Path) -> list[Finding]:
     declared = set(inventory.CAPABILITIES)
     actual = {
         path.stem
-        for path in (Path(inventory.__file__).parent).glob("*.py")
+        for path in (root / "capabilities").glob("*.py")
         if path.stem != "__init__"
     }
     if declared != actual:
@@ -211,7 +227,7 @@ def _validate_capability_modules(root: Path) -> list[Finding]:
         ))
 
     skill_capabilities = _skill_capabilities(root)
-    valid_modules: dict[str, object] = {}
+    valid_modules: dict[str, ModuleType] = {}
     for name in sorted(declared):
         module = modules.get(name)
         source = f"capabilities/{name}.py"
@@ -347,11 +363,11 @@ def _load_agents_package(root: Path):
     return module
 
 
-def _agent_modules(root: Path) -> tuple[object | None, dict[str, object]]:
+def _agent_modules(root: Path) -> tuple[ModuleType | None, dict[str, ModuleType | None]]:
     inventory = _load_agents_package(root)
     if inventory is None or not isinstance(getattr(inventory, "AGENTS", None), tuple):
         return None, {}
-    modules: dict[str, object] = {}
+    modules: dict[str, ModuleType | None] = {}
     for name in inventory.AGENTS:
         try:
             modules[name] = importlib.import_module(f"{inventory.__name__}.{name}")
@@ -408,7 +424,7 @@ def _validate_agents(root: Path) -> list[Finding]:
             f"AGENTS {list(declared)} must not contain duplicates.",
             "List each agents/<name>/ directory exactly once."))
     declared_set = set(declared)
-    actual = {path.parent.name for path in (Path(inventory.__file__).parent).glob("*/__init__.py")}
+    actual = {path.parent.name for path in (root / "agents").glob("*/__init__.py")}
     if declared_set != actual:
         findings.append(_finding("CONCORDE-AGENT-INVENTORY-001", "agents/__init__.py",
             f"Declared AGENTS {sorted(declared_set)} differs from agent directories {sorted(actual)}.",
@@ -505,9 +521,6 @@ def _validate_contracts(root: Path) -> list[Finding]:
     return findings
 
 
-_CAPABILITIES_BLOCK = re.compile(r"^```concorde-capabilities\s*\n(.*?)^```\s*$", re.M | re.S)
-_AGENTS_BLOCK = re.compile(r"^```concorde-agents\s*\n(.*?)^```\s*$", re.M | re.S)
-_DOCUMENT_HEADER_BLOCK = re.compile(r"^```concorde-document\s*\n(.*?)^```\s*$", re.M | re.S)
 _SPEC_TYPE_TOKEN = re.compile(r"concorde-[a-z][a-z0-9-]*@[0-9]+")
 _ERROR_TABLE_ROW = re.compile(r"^\|\s*`([a-z][a-z0-9_]*)`\s*\|", re.M)
 _CODE_SHAPE = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -557,25 +570,41 @@ def _registered_documents(root: Path) -> dict[str, str] | None:
     return documents
 
 
-def _document_header_id(text: str) -> str | None:
-    match = _DOCUMENT_HEADER_BLOCK.search(text)
-    if not match:
-        return None
+def _document_header_id(root: Path, path: str) -> str | None:
+    from ..spec.repository_base import read_file
     try:
-        value = json.loads(match.group(1))
-    except json.JSONDecodeError:
+        return json.loads(read_file(root, path + ".json").decode())["document"]["id"]
+    except (ValueError, OSError, KeyError, TypeError):
         return None
-    return value.get("id") if isinstance(value, dict) else None
 
 
-def _find_boundary_document(documents: dict[str, str]) -> tuple[str, str] | None:
+def _find_boundary_document(root: Path, documents: dict[str, str]) -> tuple[str, str] | None:
     for path, text in documents.items():
-        if _document_header_id(text) == _WORKFLOW_HOST_BOUNDARY_ID:
+        if _document_header_id(root, path) == _WORKFLOW_HOST_BOUNDARY_ID:
             return path, text
     return None
 
 
-def _capability_code_inventory(root: Path) -> dict[str, dict[str, object]] | None:
+def _metadata_inventories(root: Path, documents: dict[str, str], key: str) -> list[tuple[str, str]]:
+    from ..spec.repository_base import read_file
+    from ..spec.typed_data import decode
+    result = []
+    for path in documents:
+        try:
+            value = decode(read_file(root, path + ".json").decode())
+        except (ValueError, OSError):
+            continue  # The document-unit validator reports invalid/missing metadata.
+        if not isinstance(value, dict):
+            continue
+        extensions = value.get("extensions", {})
+        if not isinstance(extensions, dict):
+            continue
+        if key in extensions:
+            result.append((path + ".json", json.dumps(extensions[key])))
+    return result
+
+
+def _capability_code_inventory(root: Path) -> dict[str, CapabilityInventoryEntry] | None:
     """``{external-id-without-prefix: {"public": ..., "context_selection": ..., "deterministic": ..., "skill": ...}}`` from code.
 
     Mirrors ``_validate_capability_modules``'s own reads of the capability package and the skill
@@ -587,7 +616,7 @@ def _capability_code_inventory(root: Path) -> dict[str, dict[str, object]] | Non
     if inventory is None:
         return None
     skill_capabilities = _skill_capabilities(root)
-    result: dict[str, dict[str, object]] = {}
+    result: dict[str, CapabilityInventoryEntry] = {}
     for name in inventory.CAPABILITIES:
         module = modules.get(name)
         if module is None or not hasattr(module, "PUBLIC"):
@@ -606,19 +635,18 @@ def _validate_spec_capabilities_block(root: Path, documents: dict[str, str]) -> 
     """Rule 4a: exactly one registered ``concorde-capabilities`` block, equal to the code inventory."""
 
     findings: list[Finding] = []
-    matches = [(path, match.group(1)) for path, text in documents.items()
-               for match in _CAPABILITIES_BLOCK.finditer(text)]
+    matches = _metadata_inventories(root, documents, "concorde.capabilities")
     if len(matches) != 1:
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", ".concorde/specs.json",
-            f"exactly one registered document must contain a concorde-capabilities block; found {len(matches)}.",
-            "Keep the machine-readable capability inventory in exactly one registered Spec document."))
+            f"exactly one registered document must contain a concorde.capabilities metadata inventory; found {len(matches)}.",
+            "Keep the machine-readable capability inventory in exactly one registered document metadata companion."))
         return findings
     path, raw = matches[0]
     try:
         entries = json.loads(raw)
     except json.JSONDecodeError as error:
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
-            f"concorde-capabilities block is not valid JSON: {error}",
+            f"concorde.capabilities metadata inventory is not valid JSON: {error}",
             "Fix the JSON array of {id, public, context_selection, deterministic, skill} entries."))
         return findings
     valid_shape = (isinstance(entries, list)
@@ -630,7 +658,7 @@ def _validate_spec_capabilities_block(root: Path, documents: dict[str, str]) -> 
                 and (item["skill"] is None or isinstance(item["skill"], str)) for item in entries))
     if not valid_shape:
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
-            "concorde-capabilities block must be a JSON array of {id, public, context_selection, deterministic, skill} objects.",
+            "concorde.capabilities metadata inventory must be a JSON array of {id, public, context_selection, deterministic, skill} objects.",
             "Match exactly id/public/context_selection/deterministic/skill, with boolean public and deterministic values."))
         return findings
     declared: dict[str, tuple[object, ...]] = {}
@@ -649,11 +677,11 @@ def _validate_spec_capabilities_block(root: Path, documents: dict[str, str]) -> 
     expected = {capability_id: (data["public"], data["context_selection"], data["deterministic"], data["skill"]) for capability_id, data in code.items()}
     for capability_id in sorted(set(expected) - set(declared)):
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
-            f"concorde-capabilities block is missing capability {capability_id!r}.",
+            f"concorde.capabilities metadata inventory is missing capability {capability_id!r}.",
             "Add its {id, public, context_selection, deterministic, skill} entry to the block."))
     for capability_id in sorted(set(declared) - set(expected)):
         findings.append(_finding("CONCORDE-SPEC-CAPABILITIES-001", path,
-            f"concorde-capabilities block declares unknown capability {capability_id!r}.",
+            f"concorde.capabilities metadata inventory declares unknown capability {capability_id!r}.",
             "Remove the entry, or add the matching capabilities/<name>.py module."))
     for capability_id in sorted(set(declared) & set(expected)):
         if declared[capability_id] != expected[capability_id]:
@@ -664,7 +692,7 @@ def _validate_spec_capabilities_block(root: Path, documents: dict[str, str]) -> 
     return findings
 
 
-def _agent_code_inventory(root: Path) -> dict[str, dict[str, object]] | None:
+def _agent_code_inventory(root: Path) -> dict[str, AgentInventoryEntry] | None:
     """``{hyphenated-agent-id: {"workspace", "capabilities", "tools", "children"}}`` from the actual code.
 
     Mirrors ``_validate_agents``'s own reads of the Agent package, and ``_capability_modules``'s
@@ -677,7 +705,7 @@ def _agent_code_inventory(root: Path) -> dict[str, dict[str, object]] | None:
     if inventory is None:
         return None
     capability_inventory, capability_modules = _capability_modules(root)
-    result: dict[str, dict[str, object]] = {}
+    result: dict[str, AgentInventoryEntry] = {}
     for name in inventory.AGENTS:
         module = modules.get(name)
         if module is None or not hasattr(module, "AGENT"):
@@ -706,19 +734,18 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
     to the code inventory (mirrors ``_validate_spec_capabilities_block``)."""
 
     findings: list[Finding] = []
-    matches = [(path, match.group(1)) for path, text in documents.items()
-               for match in _AGENTS_BLOCK.finditer(text)]
+    matches = _metadata_inventories(root, documents, "concorde.agents")
     if len(matches) != 1:
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", ".concorde/specs.json",
-            f"exactly one registered document must contain a concorde-agents block; found {len(matches)}.",
-            "Keep the machine-readable Agent inventory in exactly one registered Spec document."))
+            f"exactly one registered document must contain a concorde.agents metadata inventory; found {len(matches)}.",
+            "Keep the machine-readable Agent inventory in exactly one registered document metadata companion."))
         return findings
     path, raw = matches[0]
     try:
         entries = json.loads(raw)
     except json.JSONDecodeError as error:
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
-            f"concorde-agents block is not valid JSON: {error}",
+            f"concorde.agents metadata inventory is not valid JSON: {error}",
             "Fix the JSON array of {id, workspace, capabilities, tools, children} entries."))
         return findings
     valid_shape = (isinstance(entries, list)
@@ -727,10 +754,10 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
                 for item in entries))
     if not valid_shape:
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
-            "concorde-agents block must be a JSON array of {id, workspace, capabilities, tools, children} objects.",
+            "concorde.agents metadata inventory must be a JSON array of {id, workspace, capabilities, tools, children} objects.",
             "Match exactly the five fields id/workspace/capabilities/tools/children for every entry."))
         return findings
-    declared: dict[str, tuple[object, tuple]] = {}
+    declared: dict[str, tuple[object, tuple, tuple, tuple]] = {}
     for entry in entries:
         declared[entry["id"]] = (entry["workspace"], tuple(entry["capabilities"]), tuple(entry["tools"]),
                                  tuple(entry["children"]))
@@ -748,11 +775,11 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
                 for agent_id, data in code.items()}
     for agent_id in sorted(set(expected) - set(declared)):
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
-            f"concorde-agents block is missing agent {agent_id!r}.",
+            f"concorde.agents metadata inventory is missing agent {agent_id!r}.",
             "Add its {id, workspace, capabilities, tools, children} entry to the block."))
     for agent_id in sorted(set(declared) - set(expected)):
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
-            f"concorde-agents block declares unknown agent {agent_id!r}.",
+            f"concorde.agents metadata inventory declares unknown agent {agent_id!r}.",
             "Remove the entry, or add the matching agents/<name>/ package."))
     for agent_id in sorted(set(declared) & set(expected)):
         if declared[agent_id] != expected[agent_id]:
@@ -767,7 +794,7 @@ def _validate_spec_types(root: Path, documents: dict[str, str]) -> list[Finding]
     """Rule 4b: every ``concorde-…@N`` token in the boundary document is an exported identity with
     that exact version, and every exported identity appears there at least once."""
 
-    boundary = _find_boundary_document(documents)
+    boundary = _find_boundary_document(root, documents)
     if boundary is None:
         return [_finding("CONCORDE-SPEC-TYPES-001", ".concorde/specs.json",
             f"no registered document declares id {_WORKFLOW_HOST_BOUNDARY_ID}.",
@@ -780,7 +807,13 @@ def _validate_spec_types(root: Path, documents: dict[str, str]) -> list[Finding]
     found: dict[str, set[int]] = {}
     for token in _SPEC_TYPE_TOKEN.findall(text):
         name, _, version_text = token.rpartition("@")
-        found.setdefault(name, set()).add(int(version_text))
+        try:
+            version = int(version_text)
+        except ValueError:
+            findings.append(_finding("CONCORDE-SPEC-TYPES-001", path,
+                "type version exceeds the supported integer representation", "Use the exported type version."))
+            continue
+        found.setdefault(name, set()).add(version)
     for name in sorted(found):
         for version in sorted(found[name]):
             if name not in expected:
@@ -836,7 +869,7 @@ def _raised_error_codes(root: Path) -> set[str]:
 def _validate_spec_errors(root: Path, documents: dict[str, str]) -> list[Finding]:
     """Advisory rule 4c: every package error code literal appears in the boundary's error table."""
 
-    boundary = _find_boundary_document(documents)
+    boundary = _find_boundary_document(root, documents)
     if boundary is None:
         return []
     path, text = boundary

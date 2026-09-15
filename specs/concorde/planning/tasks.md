@@ -1,14 +1,4 @@
-```concorde-document
-{
-  "id": "document.planning.tasks",
-  "owner": "module.planning",
-  "main_visible": true
-}
-```
-
 # Task authoring capability
-
-## Usage & Contract
 
 The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
@@ -39,7 +29,6 @@ replanning through the retained history. It reserves identities without adding h
 obligations. The Host rejects a collision with the specific IDs before accepting the new list;
 it never rewrites author output or clears history to admit it.
 
-
 The result is a nonempty list of internally unique, initially incomplete tasks, disjoint from
 reserved IDs, each carrying id, target_id, description, acceptance and complete. The host accepts
 and persists the list as a concorde-implementation-task@1 with its plan; it returns artifact
@@ -66,7 +55,6 @@ Planning SHALL accept only nonempty, internally unique, initially incomplete tas
 #### req.planning.task-collision-preserves — Identity collisions preserve task history
 
 Planning SHALL preserve the prior task list and retained history when it rejects colliding task IDs.
-
 
 ### Scenarios
 

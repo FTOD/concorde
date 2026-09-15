@@ -21,10 +21,11 @@ class BoundaryTests(unittest.TestCase):
         self.registry=project(self.root);self.task={'target_id':'service.transfer','task':'Implement the specified transfer'}
     def save(self): (self.root/'.concorde/specs.json').write_text(json.dumps(self.registry))
     def entities(self,path):
-        document=self.root/path;text=document.read_text()
-        prefix,rest=text.split('```concorde-entities\n',1);payload,suffix=rest.split('\n```',1)
-        return json.loads(payload),(lambda value: document.write_text(
-            prefix+'```concorde-entities\n'+json.dumps(value,indent=2)+'\n```'+suffix))
+        document=self.root/(path+'.json');metadata=json.loads(document.read_text())
+        def save(value):
+            metadata['entities']=value
+            document.write_text(json.dumps(metadata,indent=2)+'\n')
+        return metadata['entities'],save
     def call_capability(self,name,data=None,callback=None,mode='execute'):
         double=ModelProcessDouble(callback);self.double=double
         self.host=CapabilityHost(self.root,PACKAGE,executor=double.executor,allow_primary_worktree=True,mode=mode)
@@ -43,8 +44,8 @@ class BoundaryTests(unittest.TestCase):
         service=resolve_context(repo,'service.transfer').value
         module=resolve_context(repo,'module.ledger').value
         self.assertEqual(['specs/transfer/promises.md'],[item['path'] for item in service['spec_resolution']['sources'] if item['path'].endswith('promises.md')])
-        self.assertEqual(['specs/transfer/promises.md'],[item['path'] for item in module['spec_resolution']['sources'] if item['owner'] != 'module.ledger'])
-        self.assertEqual(['specs/ledger/module.md'],[item['path'] for item in module['spec_resolution']['sources'] if item['owner'] == 'module.ledger'])
+        self.assertEqual(['specs/transfer/promises.md','specs/transfer/promises.md.json'],[item['path'] for item in module['spec_resolution']['sources'] if item['owner'] != 'module.ledger'])
+        self.assertEqual(['specs/ledger/module.md','specs/ledger/module.md.json'],[item['path'] for item in module['spec_resolution']['sources'] if item['owner'] == 'module.ledger'])
         self.assertNotIn('specs/transfer/module.md',json.dumps(module))
     def test_consumer_author_cannot_change_provider_truth(self):
         self.registry['targets'][3]['references'].append({'kind':'document','id':'document.transfer.promises'});self.save()
@@ -58,14 +59,14 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual('blocked',result['status'],result);self.assertEqual(before,path.read_bytes())
         self.assertEqual('permission_denied',result['errors'][0]['code'])
     def test_target_author_cannot_persist_duplicate_document_identity(self):
-        path=self.root/'specs/transfer/module.md';before=path.read_bytes()
+        path=self.root/'specs/transfer/module.md.json';before=path.read_bytes()
         replacement=path.read_text().replace('"id": "document.transfer.feature"',
                                              '"id": "document.ledger.api"')
         def cb(stage,snap,data,cwd):
-            if stage=='specify':data['documents']=[{'path':'specs/transfer/module.md','content':replacement}]
+            if stage=='specify':data['documents']=[{'path':'specs/transfer/module.md.json','content':replacement}]
         result=self.call_capability('concorde-specify',callback=cb)
         self.assertEqual('blocked',result['status'],result);self.assertEqual(before,path.read_bytes())
-        self.assertIn('require a topology change',result['errors'][0]['message'])
+        self.assertIn('identity',result['errors'][0]['message'])
     def test_target_author_can_change_local_truth_without_changing_its_declaration(self):
         path=self.root/'specs/transfer/module.md';replacement=path.read_text()+'\nA clarified local promise.\n'
         def cb(stage,snap,data,cwd):
@@ -84,7 +85,8 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(('app/',),repo.implementation_entries(ledger))
         self.assertEqual(('app',),repo.implementation_paths(ledger))
         self.assertEqual(('app/ledger.py','app/transfer.py'),repo.implementation_files(ledger))
-        self.assertEqual('entity.ledger.store',repo.entity_for_path(ledger,'app/transfer.py').id)
+        entity=repo.entity_for_path(ledger,'app/transfer.py');assert entity is not None
+        self.assertEqual('entity.ledger.store',entity.id)
         self.assertEqual(('service.transfer','module.ledger'),
                          tuple(t.id for t in repo.affected_modules(['app/transfer.py'])))
     def test_control_and_spec_paths_cannot_be_listed_implementation_entries(self):
@@ -169,11 +171,10 @@ class BoundaryTests(unittest.TestCase):
         old=(self.root/'specs/ledger/module.md').read_bytes();result=self.call_capability('concorde-specify',callback=cb)
         self.assertEqual('blocked',result['status']);self.assertEqual(old,(self.root/'specs/ledger/module.md').read_bytes())
     def test_domain_author_cannot_persist_missing_participant_routing(self):
-        path=self.root/'specs/bank/module.md';old=path.read_bytes()
-        declaration=path.read_text().split('# Banking',1)[0]
+        path=self.root/'specs/bank/module.md.json';old=path.read_bytes()
+        metadata=json.loads(old);metadata['dependencies']=[]
         def cb(stage,snap,data,cwd):
-            if stage=='specify':data['documents']=[{'path':'specs/bank/module.md',
-                'content':declaration+'# Banking\nThe participant declarations were accidentally omitted.\n'}]
+            if stage=='specify':data['documents']=[{'path':'specs/bank/module.md.json','content':json.dumps(metadata)}]
         result=self.call_capability('concorde-specify',{'target_id':'scope.bank','task':'Edit banking rules'},cb)
         self.assertEqual('blocked',result['status'],result);self.assertEqual(old,path.read_bytes())
         self.assertIn('dependency promises',result['errors'][0]['message'])

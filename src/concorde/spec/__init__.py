@@ -1,1 +1,1 @@
-"""Profile 13: reader-oriented two-part Modules whose entities list implementation files."""
+"""Profile 14: complete Module content with a defined reading subset whose entities list implementation files."""

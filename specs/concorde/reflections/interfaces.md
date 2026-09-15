@@ -1,14 +1,4 @@
-```concorde-document
-{
-  "id": "document.reflections.interfaces",
-  "owner": "module.reflections",
-  "main_visible": true
-}
-```
-
 # Reflection triage boundary
-
-## Usage & Contract
 
 A Reflection records a problem and human comments independently of implementation. Its stable
 R-NNN identity is allocated monotonically by `.concorde/reflections/index.json`
@@ -45,7 +35,6 @@ containing `target_id`, `action status|record-gaps|investigate|implement|merge|c
 - THEN the response includes `gap_records`, each with `id` (a digest), `target_id`, `task`, `phase`, the existing structured gap, `status open|resolved`, and nullable `reflection_id`
 - AND status without a managed change returns an empty `gap_records` list
 
-
 ### Capturing development gaps
 
 #### scenario.reflections.capture-gap — record-gaps promotes a selected open gap into a pending Reflection
@@ -80,7 +69,6 @@ containing that component may capture a gap; foreign or resolved gaps are reject
 read/assessment requests never trigger capture. Existing scenario-owned records are selected with
 the current owning `target_id` and optional `focus_id`, preserving their historical `feature`
 field. The public metadata above is sufficient for selection without reading control files.
-
 
 ### Included provider definitions
 

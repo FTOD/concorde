@@ -16,8 +16,8 @@ disable-model-invocation: true
 
 This is Concorde's public main entry. It replaces the former ask capability. Its internal discovery workers (answerer, router and
 topology designer) start from the project's entry Module and may expand only registered Module
-complete Target Spec and explicitly registered Shared Specs. Shared membership never expands another entity's remaining
-documents. It understands the Module contract and never reads implementation files.
+complete document units and their explicit one-level references. Inclusion never expands a
+provider's own references or transfers ownership. It understands the Module contract and never reads implementation files.
 
 Action `ask` (the default when action is omitted) answers directly from complete Spec contexts
 resolved by Python and granted to the answerer as read-only files beside an index. Each source
@@ -43,17 +43,18 @@ Initialization uses its typed propose/apply request; use the published request s
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
 Discovery expands complete Module collections only as needed and records the exact
-Target Spec/Shared Specs membership and digests in every discovery identity.
+document-unit membership, source roles, owners and byte digests in every discovery identity.
 The answerer can reason across all admitted complete contexts and answer without a reader or
 intermediate summaries. A mutation route selects a Module from admitted responsibilities; the fresh worker receives only its own
-complete Module collection. Main visibility metadata does not trim that collection or admit implementation files.
+complete Module context, including both reading and metadata members. A publisher's presentation
+does not trim that context or admit implementation files.
 Topology design receives exact registry metadata and explicitly admits affected Module contracts. Target authors' complete output
 is never returned through this capability; it stays in the ignored host application artifact. Report
 Spec gaps or blocked execution as returned and do not work around the boundary. Non-implementation
 agents never receive implementation code or raw test logs.
 
 A topology proposal that adds, removes or changes a component's `uses` relationship must
-also task every retained affected Module to reconcile its local `concorde-dependencies` declaration.
+also task every retained affected Module to reconcile its dependency metadata and local readable collaboration agreement.
 The Module task carries the exact ID, local responsibility, selection condition and relied-upon
 promises. Candidate overlay validation rejects a registry edge without that self-contained Module
 routing view.
@@ -66,11 +67,11 @@ Module's entity entries, entry for entry. An entry is an exact file or a directo
 owns, a file bound by several Modules stays an exact entry in each of them, and a listed directory
 must not contain a registered Spec document.
 
-Every physical Spec document declares stable ID, exact target references and main visibility.
-Changing document references tasks every retained current/candidate target. Shared truth has no
-unique owner: ordinary single-target authoring cannot change it, and topology preparation accepts a
-replacement only when every candidate referencing target author returns identical exact bytes.
-
+Every document unit has one stable ID and one owner, with reading Markdown and paired metadata.
+Module registration alone declares context references. A shared definition is authored once by its
+sole owner; consumers receive it read-only and contribute separate compatibility evidence, never
+duplicate replacement bytes. Topology authors return both source members of every candidate-owned
+unit in registration order. Reference and ownership changes reconcile all affected contexts.
 
 Every main invocation receives host-supplied workspace metadata. In the primary worktree it lists
 all live linked worktrees and their basic change status, so ongoing work is visible without loading
@@ -608,7 +609,7 @@ This complete schema is the invocation's input field. It does not grant project 
           "type": "object",
           "properties": {
             "schema_version": {
-              "const": 4
+              "const": 5
             },
             "project_id": {
               "type": "string",

@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.implementation.module",
+    "owner": "module.implementation"
+  },
+  "entities": [
+    {
+      "id": "entity.implementation.adapter",
+      "title": "Implementation adapter",
+      "kind": "shared program",
+      "files": [
+        "capabilities/implement.py"
+      ],
+      "meaning": "#entity.implementation.adapter"
+    },
+    {
+      "id": "entity.implementation.development",
+      "title": "Development",
+      "kind": "used module",
+      "target_id": "module.development",
+      "meaning": "#entity.implementation.development"
+    },
+    {
+      "id": "entity.implementation.harness",
+      "title": "Harness",
+      "kind": "used module",
+      "target_id": "module.harness",
+      "meaning": "#entity.implementation.harness"
+    },
+    {
+      "id": "entity.implementation.spec",
+      "title": "Spec",
+      "kind": "used module",
+      "target_id": "module.spec",
+      "meaning": "#entity.implementation.spec"
+    },
+    {
+      "id": "entity.implementation.task-input",
+      "title": "Implementation task",
+      "kind": "record",
+      "meaning": "#entity.implementation.task-input"
+    },
+    {
+      "id": "entity.implementation.completion",
+      "title": "Task completion",
+      "kind": "record",
+      "meaning": "#entity.implementation.completion"
+    }
+  ],
+  "dependencies": [
+    {
+      "target_id": "module.development",
+      "meaning": "#agreement.document.implementation.module.1"
+    },
+    {
+      "target_id": "module.harness",
+      "meaning": "#agreement.document.implementation.module.2"
+    },
+    {
+      "target_id": "module.spec",
+      "meaning": "#agreement.document.implementation.module.3"
+    }
+  ],
+  "bindings": []
+}

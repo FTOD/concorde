@@ -1,14 +1,4 @@
-```concorde-document
-{
-  "id": "document.development.review-result",
-  "owner": "module.review",
-  "main_visible": true
-}
-```
-
 # Review-result interface
-
-## Usage & Contract
 
 `concorde-review-result@1` has exactly the typed envelope fields `type_id`, integer
 `schema_version: 1` (not boolean), and `data`. Its closed payload has all these required fields.
@@ -17,16 +7,16 @@ hexadecimal digits:
 
 | Field | Type or allowed values |
 | --- | --- |
-| `context_id` | `D|null` |
+| `context_id` | `D | null` |
 | `input_digest` | `D` |
-| `review_mode` | `"spec"|"code"` |
-| `status` | `"no_findings"|"findings"|"incomplete"|"skipped"|"not_run"` |
+| `review_mode` | `"spec" | "code"` |
+| `status` | `"no_findings" | "findings" | "incomplete" | "skipped" | "not_run"` |
 | `representative_tasks` | unique `S[]` |
 | `findings` | `Finding[]` |
 | `gaps` | `ReviewGap[]` |
 | `answer`, `target_id` | `S` |
 | `focus_id` | `N` |
-| `revision` | closed object with `spec_digest: D`, `implementation_digest: D|null`, `baseline: N`, `head: N`, all required |
+| `revision` | closed object with `spec_digest: D`, `implementation_digest: D | null`,`baseline: N`,`head: N`, all required |
 | `semantic_completeness` | exactly `"not_proven"` |
 
 A closed `Finding` requires `id: S`, `severity: "blocking"|"advisory"`, `target_id: S`,
@@ -51,7 +41,7 @@ provider. `document` must be in the selected context; `affected_task` and gaps r
 consumer's blocked step and snapshot. Repairing the provider definition requires its owner's
 separate authoring boundary. A gap's `needed_contract` identifies that definition/owner when known;
 capture never transfers ownership. The existing version-1 payload shape is retained, but acceptance
-and freshness must use Protocol 5 ownership/reference semantics under a version-2 context wrapper;
+and freshness must use Protocol 7 document-unit ownership/reference semantics under a version-3 context wrapper;
 old review evidence cannot be reused across the Protocol binding change.
 
 This record is an output of Review and an input to Harness repair admission. It has

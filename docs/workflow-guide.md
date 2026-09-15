@@ -16,23 +16,18 @@ implementation, code review and investigation — support this work through inst
 reflection system retains feedback and persistent
 Spec gaps, coordinates investigation and routes approved resolutions into new development tasks.
 
-The development and delivery workflows below build on these foundations. The **Spec Protocol
-6.0.0** defines one specification category:
-
-- **Module Spec:** one contract with two reader-oriented parts. **Usage & Contract** explains the
-  responsibility, its consumers, when and how to use it, and the results, effects and failures they
-  can rely on. **Architecture & Realization** explains the design, responsibilities, state, flow,
-  dependencies and constraints that fulfill those promises. Requirements (one decidable SHALL
-  each) and scenarios (testable GIVEN/WHEN/THEN situations) make external and internal obligations
-  precise without duplicating them. Entity declarations bind exact files or directory prefixes;
-  tests declare the scenarios they verify. A logical Module need not have a public executable API.
+The development and delivery workflows below use **Spec Protocol 7.0.0**. It defines one Module
+Spec content model and the human-readable subset of that content. Reading begins with Purpose,
+Usage, Design and Relationships; requirements, scenarios and interface definitions remain precise
+readable obligations. Identity, mappings and file bindings live in paired `.md.json` metadata,
+which points to canonical readable meaning. Neither an inventory nor a summary replaces design.
 
 Each Module has one structural parent at most. Shared capabilities are independent siblings;
 `uses` does not create another parent. Module composition and file reuse are separate
 relationships: several Modules may bind the same implementation file. Within one Module the most
 specific entry owns a file, an exact path before a directory prefix, so a directory prefix can list a
 whole package while a shared file keeps its own entry. Every Module registers its
-complete Markdown collection and one local `module.md` reading entry. A dependency link does not
+complete document-unit collection and one local `module.md` reading entry. A dependency link does not
 import the provider's Spec or source.
 
 Readers, planners and task authors determine behavior from their selected Module Spec alone; its
@@ -47,12 +42,12 @@ The Protocol standard is independent of the software Specs that implement it:
 ```text
 protocol/                 Independent standard, organized as ordinary chapters
 specs/concorde/           Module contracts, entities and architectures
-.concorde/specs.json       Registry schema 4: Modules and their relationships
+.concorde/specs.json       Registry schema 5: Modules and their relationships
 ```
 
 Start with the [Concorde Module](../specs/concorde/module.md), its
-[Usage & Contract](../specs/concorde/module.md#usage--contract) and
-[Architecture & Realization](../specs/concorde/module.md#architecture--realization), and the
+[Usage](../specs/concorde/module.md#usage) and
+[Design](../specs/concorde/module.md#design), and the
 [Spec Protocol](../protocol/README.md). The
 [authored Protocol rules](../protocol/principles.md) define the standard. Protocol documents are
 outside the project Spec registry and do not need to satisfy their own Module format.
@@ -86,9 +81,9 @@ The originating session does not follow the task into a different checkout.
 
 Send the JSON on stdin to `python .concorde/framework/scripts/run-capability.py concorde-init`.
 Review the returned proposal, then send action apply and that complete proposal. Initialization creates
-an honest Module stub; supply its consumer usage/contract and intended architecture/realization
-before implementation. The reading entry introduces both parts; topic documents can cover either
-or both without repeating the whole template.
+an honest reading/metadata pair. Supply Purpose, Usage, Design and Relationships before precise
+requirements/scenarios and implementation. Topic documents have their own metadata companions and
+need not repeat the entry template. All selected pairs enter context whole.
 `.concorde/config.json` pins the Protocol and references `.concorde/specs.json`; that registry explicitly
 records document members, parent/uses relationships, each Module's `files` and deterministic checks.
 Local dependency declarations state the promises needed for routing and planning; validation keeps
@@ -174,7 +169,6 @@ Conflicts, failed checks or local primary edits block final merging and preserve
 branch. Receipts distinguish staging, cleanup and final merging, allowing retries without duplicate
 merges; after source removal, use the primary session to retry.
 
-
 Reflection investigation is a separate, read-only implementation invocation; human
 approval/disposition remains governed by project settings.
 
@@ -204,10 +198,10 @@ stores exact registry/document bytes in an ignored application artifact, returni
 digest. Review that artifact outside agent cognition, then send its ArtifactRef with
 `action:apply-topology`. Stale inputs or invalid target state prevent writes; successful application
 updates the registry and documents atomically. The former standalone ask capability does not exist.
-An explicitly shared Module document has collective authority and cannot be changed by an ordinary
-single-Module author. An implementation file may be listed by several Modules; a topology change to
-it tasks every listing Module, and proceeds only when all candidate referencing document authors
-return identical shared bytes.
+A shared document unit has one owner. Only that owner proposes its source replacements; each
+consumer contributes separate compatibility evidence from its own complete context, never duplicate
+replacement bytes. An implementation file may be listed by several Modules; a topology change to
+its bindings reconciles every listing Module without transferring ownership or widening grants.
 
 [Capability registry](../specs/concorde/development/capabilities.md) ·
 [Development host boundary](../specs/concorde/development/interfaces.md)
@@ -216,7 +210,7 @@ return identical shared bytes.
 
 The [Developer experience](../specs/concorde/module.md#developer-entry-points) covers the
 Spec docsite, interactive diagrams, the Understand Anything code viewer and feedback into the
-Framework's existing workflows. [Spec publication](../specs/concorde/views/module.md#architecture--realization) provides the authored-Spec view in this experience.
+Framework's existing workflows. [Spec publication](../specs/concorde/views/module.md#design) provides the authored-Spec view in this experience.
 
 The [viewer service](../specs/concorde/views/viewer.md) opens an existing raw Understand
 Anything graph using the installer-owned runtime. Starting it does not generate a code graph or
@@ -231,32 +225,29 @@ file permissions. An approved resolution becomes a fresh development task; resol
 the report remains an explicit developer decision independent of repair completion. See the
 [reflection lifecycle](../specs/concorde/reflections/lifecycle.md) for investigation and disposition.
 
-Concorde 5 uses Package Manifest 3, Architecture Profile 11, Workspace Protocol 15 and Delivery
-Proposal 10. Earlier profiles are rejected for normal agent execution and require explicit
-migration. Legacy readers remain deterministic diagnostic utilities only.
+Concorde 7 uses Package Manifest 3, Architecture Profile 14, registry schema 5, Workspace Protocol
+15 and Delivery Proposal 10. Older profiles require an explicit migration; normal execution never
+reinterprets old formats. The offline migration planner is not a second supported runtime.
 
-The docsite publishes explicit registry members with a Module composition tree and a typed
-relationship graph. Selecting a Module opens its registered `module.md`, independently of member
-order. Each Module's Relationships subsection renders its own inline Mermaid flowchart directly from
-the registered Markdown, with no separate diagram source or build step. It also publishes "Agent
-instructions" and "Wire contracts" pages under a Projections group, rendered directly from the
-current build's `generated/docs/*.json` outputs; both are explicitly labelled projections, never
-agent context authority, and `npm run validate` fails when the Concorde build behind them is stale.
-Run the docsite's validate/build scripts to create a candidate whose routes and source digests are
-checked before promotion. Human navigation does not grant agent context access.
+The docsite publishes one canonical reading page per document unit, with a Module-parent sidebar,
+inline scoped diagrams and optional source-provenance disclosure. Reading and metadata both bind
+build identity, but machine inventories do not appear in the main reading flow. Spec Protocol and
+Concorde-only Agent Flows use independent custom-document tabs. There is no docsite Graph page or
+unregistered Projections group. The separate UA exporter/viewer is unchanged. Source and link
+validation precede candidate promotion; human navigation grants no extra agent context.
 
 ## Concorde Spec Protocol entry and upgrades
 
 The Framework execution profile defines session handoffs in [P10](../prompts/protocol/framework-profile.md#p10-explicit-session-handoffs).
-Concorde Spec Protocol 6.0.0 defines two-part reader-oriented Module Specs whose entities list the
+Concorde Spec Protocol 7.0.0 defines readable Module Specs with paired metadata whose entities bind the
 files that realize them, as exact paths or directory prefixes, and whose scenarios are declared by
 the tests that verify them. Root instructions and runtime drafts refer to that rule; public Skills do
 not carry another copy.
 The installer adds a receipt-owned `concorde-protocol` block at the start of the selected root file:
 
 - Codex: `AGENTS.md` explicitly tells the outer session to read
-  `.concorde/framework/generated/protocol/principles.md`. A Markdown link is not treated as an automatic import.
-- Claude: `CLAUDE.md` uses the native `@.concorde/framework/generated/protocol/principles.md` import outside a
+  `.concorde/protocol/principles.md`. A Markdown link is not treated as an automatic import.
+- Claude: `CLAUDE.md` uses the native `@.concorde/protocol/principles.md` import outside a
   code span or fence. The path is relative to that root file.
 
 These loading choices follow the [Codex instruction discovery documentation](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
@@ -286,9 +277,10 @@ Remove the entry before separately removing the framework; do not delete whole u
 Installing an updated package never rewrites `.concorde/config.json`. Existing projects remain bound
 to their accepted version/digest; execution rejects a mismatch with `protocol_mismatch`. The outer
 entry points at the installed rules, but does not accept them for project execution. After reviewing and explicitly accepting new Protocol assets for the same profile, a consumer
-developer can update that binding from the project root. A Profile 9 or earlier project must first
-explicitly redesign its registry and Specs for Profile 11; changing the version or digest alone is
-not a migration. For a structurally compatible project:
+developer can update that binding from the project root. A project older than Profile 14 must first migrate its complete registered collection to
+reading/metadata document units and registry schema 5; changing a version or digest alone is not
+migration. The explicit offline conversion planner reports preserved definitions and remaining
+editorial work and does not enable an old-format runtime. For a structurally compatible project:
 
 ```python
 import hashlib
@@ -336,12 +328,12 @@ python3 scripts/concorde.py build --check
 python3 scripts/concorde.py validate
 ```
 
-`build` renders every role, Skill, Protocol and docs-projection output deterministically from
+`build` renders every worker, Skill, Protocol asset and runtime schema deterministically from
 `protocol/`, `prompts/`, `skills/` and `capabilities/`; `build --check` verifies those outputs and
 `protocol/manifest.json` are current without writing anything; `validate` runs the complete Spec,
-capability-module, contract, Spec-alignment and build-output checks. The host refuses to run any
-capability on a stale build; a freshly created worktree must be built once before an agent can load
-Concorde Skills. After changing the standard chapters under `protocol/` or their runtime adapters, accept the
+capability-module, contract, Spec-alignment and build-output checks. Top-level model-backed capabilities and every Agent launch require a fresh build; deterministic
+lifecycle entry points retain their separate admission/evidence checks. A freshly created worktree
+must be built once before an agent can load Concorde Skills. After changing the standard chapters under `protocol/` or their runtime adapters, accept the
 new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-project` (see above).
 
 Each of the twelve workers is defined under `agents/<name>/`: an authored role `spec.md` plus a

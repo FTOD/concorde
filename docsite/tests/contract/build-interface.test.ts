@@ -48,12 +48,12 @@ describe('build interface', () => {
     expect(`${result.stdout}${result.stderr}`).toContain('.concorde/config.json');
   });
 
-  it('refuses to publish a project that does not declare Profile 13', async () => {
+  it('refuses to publish a project that does not declare Profile 14', async () => {
     const root = await temporaryRoot('concorde-legacy-profile-');
     await mkdir(resolve(root, '.concorde'), {recursive: true});
     await writeFile(resolve(root, '.concorde/config.json'), JSON.stringify({profile_version: 7}), 'utf8');
     const result = validate(root);
     expect(result.status).toBe(1);
-    expect(`${result.stdout}${result.stderr}`).toContain('Profile 13 is required');
+    expect(`${result.stdout}${result.stderr}`).toContain('Profile 14 is required');
   });
 });

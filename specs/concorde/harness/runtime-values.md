@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.harness.runtime-values",
-  "owner": "module.harness",
-  "main_visible": true
-}
-```
 # Agent runtime value and collaborator contracts
-
-## Usage & Contract
 
 This registered local companion document defines the exact public value records used by the
 capability host, permission compiler and worker executor. These are Python in-process contracts;
@@ -41,7 +32,7 @@ ArtifactRef into authority.
 `NormalizedPolicy` is a frozen record with these attributes:
 
 | Attribute | Type and meaning |
-|---|---|
+| --- | --- |
 | capability, stage, role, agent | str; the exact bound capability and worker identities |
 | occurrence | int; this stage occurrence |
 | read_paths, write_paths, deny_paths | tuple[str, ...]; sorted, deduplicated concrete grants/denies |
@@ -54,7 +45,6 @@ ArtifactRef into authority.
 Spec-only workers receive only their context role. The programmer additionally receives
 `implementation` with writes. Code review and investigation receive the current target's enumerated
 implementation files for reading, with an empty write-role tuple.
-
 
 ### Agent definition and binding
 
@@ -110,7 +100,6 @@ a policy no wider than the contract recompiles. `validate_agent_output` checks t
 outcome and permitted populated fields; disallowed authored fields use code `permission_denied`,
 other violations `invalid_completion`.
 
-
 ### Worker invocation and outcome
 
 ```python
@@ -156,13 +145,13 @@ an invalid submitted result); `code` preserves a contract rejection class. None 
 `ExecutionUsage` is diagnostic evidence about cost: a figure Pi did not report is `None`, and usage
 gates nothing.
 
-## Architecture & Realization
+## Design
 
 ### Relationships diagrams
 
 A Module's architecture diagram is an inline `mermaid` flowchart fence inside its `module.md`
 Relationships subsection, or another registered document, with `accTitle` and `accDescr` accessible
-text beside it. Its node labels are exactly the Module's declared entity titles and every edge
+text beside it. Its node labels form a nonempty subset of the Module's declared entity titles and every edge
 carries a relationship label. Each Module's main diagram describes its principal entities and
 directed relationships. The entire containing Markdown document is the diagram's only authored
 source; there is no separate diagram source record or field.

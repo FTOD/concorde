@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.harness.typed-values",
-  "owner": "module.harness",
-  "main_visible": true
-}
-```
 # Typed values
-
-## Usage & Contract
 
 ### Typed value and schema validation
 
@@ -18,7 +9,6 @@ JSON keys and non-finite numeric constants. `json_schema(type_id)` exports self-
 with local definitions. Contract IDs are stable independent of paths. Canonical interface definitions
 admit only the supported offline subset: remote references and unknown keywords fail.
 Structural validation is not a claim of semantic completeness.
-
 
 ### Canonical serialization
 
@@ -40,7 +30,6 @@ excessive nesting can raise `RecursionError`. These encoder exceptions propagate
 are not wrapped as `TypedDataError`. Successful serialization has no filesystem effects and
 normalizes only the encoding choices stated above.
 
-
 ### Typed values and recursive dispatch
 
 A TypedValue is exactly `{type_id: str, schema_version: int, data: object}`. This API constructs
@@ -55,7 +44,7 @@ those three fields. Codes include `unknown_type`, `unsupported_version`, `incomp
 
 `contracts()` returns the installed capability-name mapping to `(request_type_id, response_type_id)`;
 names use `concorde-` and their types use `-request` and `-response`. `schemas()` returns the installed
-Profile 13 type-ID-to-payload-schema mapping. `exported_types()` enumerates its public capability
+Profile 14 type-ID-to-payload-schema mapping. `exported_types()` enumerates its public capability
 request/response types followed by internal stage types; callers can use each ID with `json_schema`
 to obtain its exact envelope and recursively referenced payload schemas. These returned schemas
 are the supported machine-readable discovery interface, not a grant to inspect implementation.
@@ -73,7 +62,7 @@ unknown properties are rejected, `S` means a nonblank string and `N` means `S | 
 | `concorde-agent-answer` | `answer: S` |
 | `concorde-agent-interruption` | `gaps: Gap[]`, `decision: N` |
 | `concorde-agent-loop-context` | `invocation_id: S`, `parent_id: N`, `agent_id: S`, `input_json: S`, `context_json: S`, `feedback: Feedback[]`, `children: Child[]`, `result_schema_json: S` |
-| `concorde-agent-loop-step` | `source: "code-driven" | "model-driven"`, `action: "delegate" | "complete"`, `agent_id: N`, `value_json: N`, `outcome: Outcome`, `details: TypedValue<concorde-agent-interruption> | null` |
+| `concorde-agent-loop-step` | `source: "code-driven" | "model-driven"`,`action: "delegate" | "complete"`,`agent_id: N`,`value_json: N`,`outcome: Outcome`,`details: TypedValue<concorde-agent-interruption> | null` |
 
 `Gap` has `question`, `blocked_step`, `needed_contract`, `target_id` and `context_id`, all `S`;
 `context_id` additionally must be `sha256:` followed by exactly 64 lowercase hexadecimal digits.
@@ -96,7 +85,6 @@ definitions under `$defs` and local references. An unknown ID raises `KeyError`;
 admission instead reports `TypedDataError/unknown_type`. Export strips internal format annotations,
 so callers must still use typed validation for project-path and contextual admission rules.
 
-
 ### Offline schema and artifact contracts
 
 Harness relies on the [canonical offline schema and path boundary](../spec/registry.md#required-collaborator-promises),
@@ -114,7 +102,6 @@ raises `stale_reference`; filesystem I/O errors may propagate. It does not creat
 key set `{id, path, digest}`, validates their shape and recomputes each artifact. Missing or changed
 bytes fail with `stale_reference`; unsafe paths fail with `invalid_field`. It returns `None` on
 success, ignores scalar leaves, and creates no read authority beyond the caller's trusted root.
-
 
 ### Interface signatures
 

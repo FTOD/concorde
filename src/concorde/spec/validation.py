@@ -7,10 +7,11 @@ from collections import Counter
 from pathlib import Path
 
 from .model import Finding, ToolResult
-from .repository import (ANCHOR_PREFIXES, HEADING, IDENTITY, LIST_ITEM, MANDATORY_SECTIONS,
-                         USAGE_SECTIONS, ARCHITECTURE_SECTIONS, ENTITIES_BLOCK, BINDING_BLOCK, DEPENDENCIES_BLOCK, SKIPPED_DIRECTORIES, SKIPPED_SUFFIXES, SpecError,
-                         SpecRepository, SpecTarget, digest, entry_exists, is_directory_entry, read_file,
-                         walk_lines)
+from .repository_base import (ANCHOR_PREFIXES, HEADING, IDENTITY, LIST_ITEM, SKIPPED_DIRECTORIES,
+    SKIPPED_SUFFIXES, RepositoryCore, SpecError, SpecTarget, digest, entry_exists, is_directory_entry, read_file, walk_lines)
+from .repository import SpecRepository
+from .content_model import reading_problems
+
 from .typed_data import checked_path
 from .verification import DeclarationError, scan_declarations
 
@@ -46,6 +47,8 @@ def _scan_node(line: str, position: int) -> tuple[str, str | None, int]:
     if not match:
         raise DiagramError(f"cannot interpret diagram text near {line[position:position + 20]!r}")
     node_id = match.group("id")
+    if node_id in DIAGRAM_KEYWORDS:
+        raise DiagramError(f"reserved Mermaid keyword cannot be a node identifier: {node_id}")
     position = match.end()
     rest = line[position:]
     for opener in OPENERS:
@@ -71,7 +74,10 @@ def _scan_node(line: str, position: int) -> tuple[str, str | None, int]:
             else:
                 raise DiagramError("node shape is not closed")
             if line.startswith(":::", after):
-                after = re.compile(r":::\w+").match(line, after).end()
+                style = re.compile(r":::\w+").match(line, after)
+                if style is None:
+                    raise DiagramError("node style name is missing")
+                after = style.end()
             return node_id, label, after
     return node_id, None, position
 
@@ -153,62 +159,11 @@ def _section_ranges(body: str) -> tuple[list[tuple[str, int, int, int]], list[tu
     return sections, lines
 
 
-def _part_subsections(sections, part: str):
-    """Direct level-3 subsections of a level-2 reading part, retaining duplicates."""
-    parent = next((s for s in sections if s[0] == part and s[1] == 2), None)
-    if parent is None:
-        return []
-    return [s for s in sections if s[1] == 3 and parent[2] < s[2] <= parent[3]]
 
 
 def reading_part_problems(body: str, *, primary: bool = False) -> list[str]:
-    """Check reader-part syntax, not whether prose supplies sufficient domain meaning."""
-    sections, lines = _section_ranges(body)
-    parts = [s for s in sections if s[0] in MANDATORY_SECTIONS]
-    expected = list(MANDATORY_SECTIONS) if primary else [p for p in MANDATORY_SECTIONS
-                                                       if any(s[0] == p for s in parts)]
-    problems = []
-    if not parts or [s[0] for s in parts] != expected or any(s[1] != 2 for s in parts):
-        problems.append("Spec requires Usage & Contract and Architecture & Realization as unique "
-                        "level-2 reading parts in order (a companion may contain only one)")
-    # Titles and navigation may precede the parts, but substantive headings cannot escape them.
-    first = min((s[2] for s in parts), default=0)
-    if any((s[1] <= 2 and s[0] not in MANDATORY_SECTIONS and s[2] > first)
-           or (s[1] >= 2 and s[2] < first) for s in sections):
-        problems.append("substantive sections must be nested inside a reader-oriented part")
-    for number, kind, line in lines:
-        if kind == "fence-open" and line.strip() == "```concorde-entities":
-            if not any(s[0] == MANDATORY_SECTIONS[1] and s[1] == 2 and s[2] < number <= s[3]
-                       for s in parts):
-                problems.append("entity declarations belong in Architecture & Realization")
-    if not primary:
-        return problems
-    for part, required in ((MANDATORY_SECTIONS[0], USAGE_SECTIONS),
-                           (MANDATORY_SECTIONS[1], ARCHITECTURE_SECTIONS)):
-        subsections = _part_subsections(sections, part)
-        parent = next((s for s in sections if s[0] == part and s[1] == 2), None)
-        named = [s for s in sections if parent and parent[2] < s[2] <= parent[3] and s[0] in required]
-        found = [s[0] for s in named]
-        if found != list(required) or any(s[1] != 3 for s in named):
-            problems.append(f"{part} requires {', '.join(required)} exactly once, in order, "
-                            f"as direct level-3 subsections; found {found}")
-            continue
-        for section in subsections:
-            name, _, start, end = section
-            content = [(kind, line) for n, kind, line in lines if start < n <= end]
-            if name in {"Purpose", "Usage", "Design"}:
-                if not any(kind == "prose" and line.strip() and not HEADING.match(line)
-                           and not LIST_ITEM.match(line) and not line.lstrip().startswith("|")
-                           for kind, line in content):
-                    problems.append(f"the {name} section must contain explanatory prose")
-            if name == "Purpose" and any(kind != "prose" or HEADING.match(line)
-                    or LIST_ITEM.match(line) or line.lstrip().startswith("|") for kind, line in content):
-                problems.append("the Purpose section must contain plain prose only, without headings, fences, lists or tables")
-            if name == "Entities" and not _fences_in_range(lines, start, end, "concorde-entities"):
-                problems.append("the Entities subsection must declare at least one concorde-entities block")
-            if name == "Relationships" and not _fences_in_range(lines, start, end, "mermaid"):
-                problems.append("the Relationships subsection must contain a Mermaid flowchart fence")
-    return problems
+    """Protocol reading completeness has a structural subset, independent of publication layout."""
+    return list(reading_problems(body, primary=primary))
 
 
 def _fences_in_range(lines, start: int, end: int, language: str) -> list[str]:
@@ -228,15 +183,11 @@ def _fences_in_range(lines, start: int, end: int, language: str) -> list[str]:
 
 
 def _relationship_fences(body: str) -> list[str]:
-    """Mermaid fences in Architecture & Realization / Relationships of the reading entry."""
     sections, lines = _section_ranges(body)
-    relationships = next((s for s in _part_subsections(sections, MANDATORY_SECTIONS[1])
-                          if s[0] == "Relationships"), None)
-    if relationships is None:
-        return []
-    return _fences_in_range(lines, relationships[2], relationships[3], "mermaid")
+    relationships = next((s for s in sections if s[0] == "Relationships" and s[1] == 2), None)
+    return _fences_in_range(lines, relationships[2], relationships[3], "mermaid") if relationships else []
 
-def module_findings(repository: SpecRepository, target_id: str | None = None) -> tuple[Finding, ...]:
+def module_findings(repository: RepositoryCore, target_id: str | None = None) -> tuple[Finding, ...]:
     """Check the reading entry and companion reading parts, not semantic sufficiency."""
     findings = []
     for target in repository.targets.values():
@@ -257,12 +208,11 @@ def module_findings(repository: SpecRepository, target_id: str | None = None) ->
                 problems = [str(problem)]
             for problem in problems:
                 findings.append(Finding("CONCORDE-MODULE-001", "error", owned_path, problem,
-                    "Organize consumer usage and guarantees under Usage & Contract, and design, "
-                    "constraints and bindings under Architecture & Realization; preserve required subsections.",
+                    "Start the reading entry with Purpose, Usage, Design and Relationships; keep machine declarations in its metadata companion.",
                     subject_id=target.id))
     return tuple(findings)
 
-def definition_findings(repository: SpecRepository, target_id: str | None = None) -> tuple[Finding, ...]:
+def definition_findings(repository: RepositoryCore, target_id: str | None = None) -> tuple[Finding, ...]:
     """Parse scenarios, requirements and entities; check listings, identities and diagrams."""
     findings = []
     identities: dict[str, tuple[str, str]] = {}
@@ -342,7 +292,7 @@ def definition_findings(repository: SpecRepository, target_id: str | None = None
     return tuple(findings)
 
 
-def architecture_findings(repository: SpecRepository, target: SpecTarget, entities) -> tuple[Finding, ...]:
+def architecture_findings(repository: RepositoryCore, target: SpecTarget, entities) -> tuple[Finding, ...]:
     findings = []
     path = target.primary_document
     try:
@@ -367,14 +317,14 @@ def architecture_findings(repository: SpecRepository, target: SpecTarget, entiti
                     f"relationship {source} -> {destination} has no label",
                     "Label every edge with its relationship verb.", subject_id=target.id))
     titles = {entity.title for entity in entities}
-    if labels != titles:
+    if not labels or not labels <= titles:
         findings.append(Finding("CONCORDE-ARCHITECTURE-001", "error", path,
-            f"diagram nodes differ from entity titles: diagram-only {sorted(labels - titles)}, entities-only {sorted(titles - labels)}",
-            "Make the Relationships flowchart nodes exactly the declared entity titles.", subject_id=target.id))
+            f"diagram contains unknown or no local entities: {sorted(labels - titles)}",
+            "Use declared local entities within the stated diagram scope; label every edge.", subject_id=target.id))
     return tuple(findings)
 
 
-def unlisted_file_findings(repository: SpecRepository) -> tuple[Finding, ...]:
+def unlisted_file_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
     """Warn about regular files under listed roots that no Module's entries cover."""
     roots = sorted({entry.split("/", 1)[0] for entry in repository.file_users if "/" in entry})
     findings = []
@@ -396,7 +346,7 @@ def unlisted_file_findings(repository: SpecRepository) -> tuple[Finding, ...]:
     return tuple(findings)
 
 
-def document_context_findings(repository: SpecRepository) -> tuple[Finding, ...]:
+def document_context_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
     """Validate physical Spec truth identities, memberships, and main visibility."""
 
     findings = []
@@ -409,7 +359,7 @@ def document_context_findings(repository: SpecRepository) -> tuple[Finding, ...]
             findings.append(Finding(
                 "CONCORDE-DOCUMENT-001", "error", path,
                 f"invalid Spec document context declaration: {problem}",
-                "Add exactly one valid concorde-document block whose target set matches the registry.",
+                "Provide the matching metadata companion with the registered document identity and owner.",
             ))
             continue
         previous = identifiers.get(document.document_id)
@@ -432,7 +382,7 @@ def document_context_findings(repository: SpecRepository) -> tuple[Finding, ...]
     return tuple(findings)
 
 
-def module_dependency_findings(repository: SpecRepository,
+def module_dependency_findings(repository: RepositoryCore,
                                target_id: str | None = None) -> tuple[Finding, ...]:
     """Match local relied-upon promises to Module dependencies and direct children."""
     findings = []
@@ -460,7 +410,7 @@ def module_dependency_findings(repository: SpecRepository,
     return tuple(findings)
 
 
-def link_findings(repository: SpecRepository) -> tuple[Finding, ...]:
+def link_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
     """A local link whose fragment is a scenario, requirement or entity ID must reach its definition."""
     findings = []
     anchors: dict[str, str] = {}
@@ -477,9 +427,10 @@ def link_findings(repository: SpecRepository) -> tuple[Finding, ...]:
             continue
         from urllib.parse import urlsplit, unquote
         lines = [(number, False, line) for number, kind, line in walk_lines(document.body) if kind == "prose"]
-        for pattern in (BINDING_BLOCK, DEPENDENCIES_BLOCK):
-            lines.extend((document.body[:match.start()].count("\n") + 1, True, match.group(1))
-                         for match in pattern.finditer(document.body))
+        unit = repository.unit(path)
+        for entry in (*unit.declarations["dependencies"], *unit.declarations["bindings"]):
+            meaning = unit.meaning(entry["meaning"])
+            lines.append((meaning.line, True, meaning.text))
         for number, required, line in lines:
             for match in LINK.finditer(line):
                 url = match.group(1)
@@ -509,7 +460,7 @@ def link_findings(repository: SpecRepository) -> tuple[Finding, ...]:
     return tuple(findings)
 
 
-def verification_findings(repository: SpecRepository) -> tuple[Finding, ...]:
+def verification_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
     """Tests declare the scenarios they verify; report unknown declarations and undeclared scenarios."""
     findings = []
     scenarios: dict[str, tuple[str, str]] = {}
@@ -552,7 +503,7 @@ def verification_findings(repository: SpecRepository) -> tuple[Finding, ...]:
     return tuple(findings)
 
 
-def definition_ids(repository: SpecRepository) -> set[str]:
+def definition_ids(repository: RepositoryCore) -> set[str]:
     """Every Module and scenario identity a reflection may be attributed to."""
     ids = set(repository.targets)
     for target in repository.targets.values():
@@ -582,8 +533,9 @@ def validate_repository(root: str | Path, target_id: str | None = None,
         for target in repository.targets.values():
             try:
                 documents = repository.documents(target)
-                artifacts.extend(doc.path for doc in documents)
-                inputs.extend((doc.path, doc.digest) for doc in documents)
+                artifacts.extend(target.sources)
+                inputs.extend((record["path"], record["digest"]) for path in target.documents
+                              for record in repository.source_records(path, []))
                 contexts[target.id] = set(repository.spec_files(target.id))
                 for contract in repository.contracts(target):
                     if contract["id"] in definitions:
@@ -641,10 +593,10 @@ def validate_repository(root: str | Path, target_id: str | None = None,
         tuple(sorted(set(artifacts))), tuple(findings), {"summary": {
             "errors": counts["error"], "warnings": counts["warning"], "infos": counts["info"]},
             "source_digest": digest(sorted(inputs)),
-            "claims": ["registry structure", "Spec document identity/membership/main visibility",
-                       "two reader-oriented Module parts and their required subsections", "requirement, scenario and entity syntax",
+            "claims": ["registry structure", "document-unit identity/ownership and complete source members",
+                       "Protocol-defined reading subset and reading-entry structure", "requirement, scenario and entity syntax",
                        "ID anchors in local links", "entity file listings and registry files",
-                       "relationship diagram entities and labeled edges", "contract examples",
+                       "scoped relationship diagram entities and labeled edges", "contract examples",
                        "canonical definitions and complementary participant bindings", "Module dependency promises",
                        "scenario verification declarations"],
             "semantic_completeness": "not_proven"})

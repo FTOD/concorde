@@ -1,32 +1,27 @@
 # Scenario fragment
 
-Use this fragment within a Module's registered collection to describe one external usage scenario
-under Usage & Contract, or one internal verification scenario under Architecture & Realization. A scenario
-belongs to the Module that solely owns its defining document; it is not an independent Spec kind. If
-the fragment occupies a separate physical document, add the required `concorde-document` block with
-that single Module as its owner, the appropriate level-2 reader-part heading, and register the
-document in the Module's collection. The [required
-format](../format.md) still applies.
+A scenario belongs to the Module owning its defining document unit. It can describe boundary use or
+an internal verification situation. It is not another Spec kind, document owner or context filter.
+If saved in a companion, register its Markdown reading path and author the paired metadata file
+with the owner's identity and explicit declaration arrays. No enclosing usage/architecture parts
+are required. The [required format](../format.md) applies.
 
 ````markdown
-### scenario.[module].[name] — [Scenario title]
+### scenario.example.situation — [Scenario title]
 
-- GIVEN [the precondition or state of the world]
-- AND [a further precondition]
-- WHEN [the trigger: what an actor or collaborator does]
-- THEN [the observable outcome this Module promises]
-- AND [a further outcome]
-- BUT [an outcome that explicitly does not happen]
+- GIVEN [the precondition or state]
+- AND [another precondition]
+- WHEN [the trigger]
+- THEN [the promised outcome]
+- AND [another outcome]
+- BUT [an outcome that explicitly must not occur]
 
-[Optional prose that explains the scenario, names the interface entity that triggers it, states a
-limit or invariant that must hold in this situation, or identifies unresolved facts.]
+[Explain relevant limits, the triggering interface or unresolved facts in ordinary prose.]
 ````
 
-Write one scenario per situation: the successful path, each defined failure and each repeated or
-concurrent invocation whose outcome the Module promises. Everything the situation guarantees goes
-into its steps or its prose; a promise that holds across situations is a Module requirement and is
-defined once as a requirement in the appropriate reader-oriented part instead. Keep the scenario ID stable when moving the fragment or
-changing its title; the ID is also the anchor by which links and tests refer to the scenario. Naming
-the scenario does not trim the Module's complete contract context: a query for the scenario selects
-every document owned by its Module plus the full files included by that Module's explicit
-references, including less-visible documents. Ownership of the scenario never transfers.
+Write separate scenarios for situations with distinct successful, failed, repeated or concurrent
+outcomes. Put a situation's guarantees in its steps or explanation; define Module-wide obligations
+once as requirements and link to them. Keep identities stable across title or path changes. Tests
+name the scenario identity, and publication exposes it as an anchor. Querying the scenario selects
+its owner's entire complete context, including both source members of every explicitly included
+unit, not just this fragment or the human-readable subset.

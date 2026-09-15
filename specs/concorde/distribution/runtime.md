@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.distribution.runtime",
-  "owner": "module.distribution",
-  "main_visible": true
-}
-```
 # Managed runtime
-
-## Usage & Contract
 
 A caller supplies package/project roots and a reviewed runtime plan; this Module does not select
 business requirements or agent context.
@@ -36,7 +27,6 @@ business requirements or agent context.
 - AND a create destination that appears after planning is rejected rather than adopted
 - AND the returned result carries no successful runtime metadata, so a caller cannot infer recovery from its absence
 
-
 ### Interface signatures
 
 These signatures identify public call shapes; bodies and private helpers are outside this Spec.
@@ -49,7 +39,6 @@ runtime_python(venv: Path) -> Path
 plan_runtime(target: Path, spec: ManagedRuntimeSpec, receipt: Mapping[str, Any]) -> dict[str, str]
 provision_runtime(target: Path, framework: Path, spec: ManagedRuntimeSpec, action: Mapping[str, str], *, bootstrap_python: str | None=None) -> dict[str, Any]
 ```
-
 
 ### Values and completion
 
@@ -85,7 +74,6 @@ versions, viewer version/entrypoint, Pi worker lock digest and pi-subagents vers
 Skill inventory. The Pi worker extensions are installed with `npm ci` from the package's own lock
 into `share/concorde/pi` inside the runtime, where a worker with children loads pi-subagents; a
 changed Pi lock plans a rebuild.
-
 
 ### Effects, failures and retries
 

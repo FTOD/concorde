@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.harness.permissions",
-  "owner": "module.harness",
-  "main_visible": true
-}
-```
 # Permissions
-
-## Usage & Contract
 
 ### Required worker authority boundary
 
@@ -26,7 +17,6 @@ and caller task JSON cannot add paths or operations. The executor recompiles the
 worker's contract before launch and rejects a policy that is wider, that grants writes to a worker
 without a write effect, or that grants network or credential effects to any worker.
 
-
 ### Enforcement
 
 The compiled policy becomes the Concorde worker extension's policy for the invocation. The extension
@@ -44,7 +34,6 @@ process inside an operating-system sandbox that mounts only the granted paths is
 boundary. Configured deterministic checks already run under the host's OS-enforced read-only executor
 ([execution](execution.md)).
 
-
 ### Policy compilation
 
 `compile_policy(effects, binding, role_paths, deny_paths=())` intersects declared role paths with
@@ -52,7 +41,6 @@ explicit host authority, producing a digest-bound policy. `verify_effective_subs
 effective)` rejects an effective policy that widens a declared one. `require_isolated_worktree(project_root,
 allow_primary_worktree=False)` rejects unsafe mutation environments unless the trusted host grants the
 explicit exception. Task JSON cannot override any permission.
-
 
 ### Interface signatures
 

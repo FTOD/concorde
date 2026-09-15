@@ -1,14 +1,15 @@
-"""Consumer fixture and explicit Pi worker double for the Profile 13 boundary."""
+"""Consumer fixture and explicit Pi worker double for the Profile 14 boundary."""
 import json
 import re
 import tempfile
 import hashlib
 from pathlib import Path
+from typing import Callable
 from concorde.spec.typed_data import typed
 from concorde.harness.agent_model import agent_definition, external_agent_name
 from concorde.harness.pi_rpc import PiRun
 from concorde.harness.pi_worker import WorkerResult
-from concorde.harness.worker_executor import WorkerExecutor
+from concorde.harness.worker_executor import WorkerExecutor, WorkerOutcome
 from concorde.spec.initialize import project_proposal, apply_project_proposal, empty_target
 from concorde.distribution.project_defaults import install_project_defaults
 
@@ -17,33 +18,83 @@ CONFIGURATION = typed('concorde-capability-configuration', {'model':'openai-code
 USAGE = {'input_tokens':1200,'cached_input_tokens':200,'output_tokens':300,'total_tokens':1500,
          'cost_usd':0.01,'turns':2,'wall_seconds':0.05}
 
+class DocumentSource(str):
+    """Native Protocol-7 fixture reading with its explicitly paired metadata."""
+    metadata: dict
+
+    def __new__(cls, reading, metadata):
+        value = super().__new__(cls, reading)
+        value.metadata = metadata
+        return value
+
+
+def write_document(root, path, source):
+    file = root / path
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text(str(source))
+    if isinstance(source, DocumentSource):
+        (root / (path + '.json')).write_text(json.dumps(source.metadata, indent=2) + '\n')
+
+
+def source_pairs(paths):
+    return sorted(member for path in paths for member in (path, path + '.json'))
+
+
+def add_binding(root, path, binding):
+    metadata_path = root / (path + '.json')
+    metadata = json.loads(metadata_path.read_text())
+    anchor = 'participation.' + metadata['document']['id'] + '.' + str(len(metadata['bindings']))
+    metadata['bindings'].append({key: binding[key] for key in ('id', 'version', 'role', 'peer')} |
+                                {'meaning': '#' + anchor})
+    body = (root / path).read_text()
+    body += (f'\n### Participation\n\n<a id="{anchor}"></a>\n\n' + binding['selection_condition'] + '\n\n'
+             + '\n\n'.join(binding['relied_upon_guarantees']) + '\n\n' + '\n\n'.join(binding['obligations']) + '\n')
+    metadata_path.write_text(json.dumps(metadata, indent=2) + '\n')
+    (root / path).write_text(body)
+
+
+def update_entities(root, path, update):
+    metadata_path = root / (path + '.json')
+    metadata = json.loads(metadata_path.read_text())
+    metadata['entities'] = update(metadata['entities'])
+    metadata_path.write_text(json.dumps(metadata, indent=2) + '\n')
+
+
 def update_document_declaration(root, path, **updates):
-    document=root/path;text=document.read_text()
-    match=re.search(r'```concorde-document\s*\n(.*?)^```',text,re.M|re.S)
-    if match is None:raise AssertionError(f'missing concorde-document block: {path}')
-    value=json.loads(match.group(1));value.update(updates)
-    document.write_text(text[:match.start()]+'```concorde-document\n'+json.dumps(value,indent=2)+
-                        '\n```'+text[match.end():])
+    document = root / (path + '.json')
+    value = json.loads(document.read_text())
+    value['document'].update(updates)
+    document.write_text(json.dumps(value, indent=2) + '\n')
+
 
 def block(name, value):
-    return '```'+name+'\n'+json.dumps(value,indent=2)+'\n```\n'
+    return '```' + name + '\n' + json.dumps(value, indent=2) + '\n```\n'
+
 
 def module_document(document_id, target_id, title, purpose, scenarios, entities, architecture,
                     diagram, dependencies=(), trailer='', requirements='No Module-level requirement is stated here.'):
-    """One two-part reading entry with consumer prose and a separate realization model."""
-    requirements = re.sub(r'(?m)^(#{2,4}) ', r'#\1 ', requirements)
-    scenarios = re.sub(r'(?m)^(#{2,4}) ', r'#\1 ', scenarios)
-    text = (block('concorde-document', {'id':document_id,'owner': target_id,'main_visible':True})
-        + f'\n# {title}\n\n## Usage & Contract\n\n### Purpose\n\n{purpose}\n\n'
-          '### Usage\n\nUse the declared boundary for the cases below; rejected input has no implicit retry.\n\n'
-        + f'### Requirements\n\n{requirements}\n\n### Scenarios\n\n{scenarios}\n\n'
-          f'## Architecture & Realization\n\n### Design\n\n{architecture}\n\n### Entities\n\n{entities[0]}\n\n'
-        + block('concorde-entities', entities[1])
-        + f'\n### Relationships\n\n```mermaid\n{diagram}\n```\n')
+    metadata = {'schema_version': 1, 'document': {'id': document_id, 'owner': target_id},
+                'entities': [], 'dependencies': [], 'bindings': []}
+    entity_prose = []
+    for entity in entities[1]:
+        metadata['entities'].append({**{k:v for k,v in entity.items() if k != 'responsibility'},
+                                     'meaning': '#' + entity['id']})
+        entity_prose.append(f'<a id="{entity["id"]}"></a>\n\n{entity["responsibility"]}')
+    text = (f'# {title}\n\n## Purpose\n\n{purpose}\n\n## Usage\n\n'
+            'Use the declared boundary for the cases below; rejected input has no implicit retry.\n\n'
+            f'## Design\n\n{architecture}\n\n' + '\n\n'.join(entity_prose)
+            + '\n\n## Relationships\n\nThis view shows the declared local collaboration.\n\n'
+            f'```mermaid\n{diagram}\n```\n\n## Requirements\n\n{requirements}\n\n## Scenarios\n\n{scenarios}\n')
     if dependencies:
-        text += '\n### Collaborators\n\nEach collaborator below is described from this Module\'s own perspective.\n\n'
-        text += block('concorde-dependencies', list(dependencies))
-    return text + trailer
+        text += '\n## Collaborators\n'
+        for index, dependency in enumerate(dependencies):
+            anchor = f'agreement.{document_id}.{index}'
+            metadata['dependencies'].append({'target_id':dependency['target_id'],'meaning':'#'+anchor})
+            text += (f'\n<a id="{anchor}"></a>\n\n' + dependency['responsibility'] + '\n\n'
+                     + dependency['selection_condition'] + '\n\n'
+                     + '\n'.join('- '+promise for promise in dependency['relied_upon_promises']) + '\n')
+    return DocumentSource(text + trailer, metadata)
+
 
 def promise(peer):
     return {'target_id':peer,'responsibility':'Provide the locally described '+peer+' responsibility.',
@@ -162,11 +213,10 @@ LEDGER = module_document('document.ledger.api','module.ledger','Ledger API',
     '    account["Account"]\n    store["Balance store"]\n'
     '    account -->|indexes| store')
 
-PROMISES = (block('concorde-document', {'id':'document.transfer.promises',
-    'owner': 'service.transfer','main_visible':True})
-    + '\n# Local promises\n\n## Usage & Contract\n\nBalance and amount are integers. No network, persistence or implicit\n'
-      'retry is performed by transfer. This complete collection defines all facts required to\n'
-      'implement and test transfer.\n')
+PROMISES = DocumentSource('# Local promises\n\nBalance and amount are integers. No network, persistence or implicit\n'
+    'retry is performed by transfer. This complete collection defines all facts required to\n'
+    'implement and test transfer.\n', {'schema_version':1,
+    'document':{'id':'document.transfer.promises','owner':'service.transfer'},'entities':[], 'dependencies':[], 'bindings':[]})
 
 
 def project(root):
@@ -181,7 +231,7 @@ def project(root):
     targets[2].update(uses=['module.ledger'], files=['app/transfer.py','checks/transfer_check.py'],
                       checks=['check.transfer'])
     targets[3].update(files=['app/ledger.py'])
-    registry={'schema_version':4,'project_id':'project.bank','entry_target':'scope.bank','targets':targets,
+    registry={'schema_version':5,'project_id':'project.bank','entry_target':'scope.bank','targets':targets,
       'checks':[{'id':'check.transfer','target_id':'service.transfer',
                  'argv':['{python}','checks/transfer_check.py'],'timeout_seconds':10}]}
     (root/'.concorde/specs.json').write_text(json.dumps(registry))
@@ -195,18 +245,33 @@ def project(root):
       'checks/transfer_check.py':'import sys\nfrom pathlib import Path\nsys.path.insert(0,str(Path.cwd()))\nfrom app.transfer import transfer\nassert transfer(100,20)==80\nfor balance,amount in [(10,20),(10,0),(10,-1)]:\n    try: transfer(balance,amount)\n    except ValueError: pass\n    else: raise AssertionError("invalid transfer accepted")\n',
       'secret.py':'PRIVATE_CODE_MUST_NOT_ENTER_SPEC_CONTEXT = True\n'}
     for path,content in files.items():
-        file=root/path;file.parent.mkdir(parents=True,exist_ok=True);file.write_text(content)
+        write_document(root, path, content)
     return registry
 
 
 class ModelProcessDouble:
     """Stands in for the Pi worker process only: the worker executor, its preflight, the contract
     checks and every host admission stay real. ``run`` has the Pi worker runtime's signature."""
+    executor: Callable[..., WorkerOutcome]
+
     def __init__(self, callback=None):
         self.calls=[]; self.callback=callback
         self.executor=WorkerExecutor(PACKAGE, runtime=self.run)
     def result(self, data):
-        return WorkerResult(value=data, run=PiRun(exit_code=0), usage=dict(USAGE))
+        # DocumentSource explicitly carries a paired fixture proposal; serialize both members
+        # into the worker's ordinary path/content list before the JSON transport round trip.
+        documents = data.get('documents', [])
+        for item in list(documents):
+            source = item['content']
+            if isinstance(source, DocumentSource):
+                item['content'] = str(source)
+                path = item['path'] + '.json'
+                partner = next((entry for entry in documents if entry['path'] == path), None)
+                if partner is None:
+                    partner = {'path': path, 'content': ''}
+                    documents.insert(documents.index(item) + 1, partner)
+                partner['content'] = json.dumps(source.metadata, indent=2) + '\n'
+        return WorkerResult(value=json.loads(json.dumps(data)), run=PiRun(exit_code=0), usage=dict(USAGE))
     def run(self, launch, *, checks=None):
         agent=agent_definition(launch.worker)
         stage=agent.contract.phase; capability=external_agent_name(agent.name); cwd=launch.workspace
@@ -246,6 +311,8 @@ class ModelProcessDouble:
                            'responsibility':'Holds the provisional responsibility of '+target['id']+'.'},
                           {'id':f'entity.{local}.developer','title':'Developer','kind':'external actor',
                            'responsibility':'Supplies the intended behavior of '+target['id']+'.'}]
+                if target['files']:
+                    entities[0].update(files=target['files'], pending=target['files'])
                 entities.extend({'id':f'entity.{local}.uses-'+peer.split('.')[-1],'title':peer,
                     'kind':'module','responsibility':'Supplies the capability '+target['id']+' relies on.',
                     'target_id':peer} for peer in target['uses'])
@@ -268,11 +335,17 @@ class ModelProcessDouble:
                     '- THEN its provisional boundary is recorded without inventing behavior\n',
                     ('The provisional boundary and its declared providers are the only known entities.', entities),
                     'The developer specifies the provisional boundary; declared providers remain external.',
-                    diagram, dependencies).replace(
-                        json.dumps({'id':document_id,'owner':target['id'],'main_visible':True},indent=2),
-                        json.dumps({'id':document_id,'owner':candidate[path],'main_visible':True},indent=2))
-            documents=[{'path':path,'content':current.get(path,initial(path))}
-                       for path in target['documents']]
+                    diagram, dependencies)
+            documents = []
+            for path in target['documents']:
+                if path in current:
+                    reading = current[path]
+                    metadata = current[path + '.json']
+                else:
+                    source = initial(path)
+                    reading = str(source)
+                    metadata = json.dumps(source.metadata, indent=2) + '\n'
+                documents.extend([{'path':path,'content':reading}, {'path':path+'.json','content':metadata}])
             data={'context_id':snapshot['context_id'],'target_id':target['id'],'outcome':'completed',
                   'answer':'Target-local Spec authored.','gaps':[],'documents':documents}
             if self.callback:self.callback(stage,snapshot,data,Path(cwd))
@@ -307,11 +380,11 @@ class ModelProcessDouble:
         if stage=='tasks':
             task_target=snapshot['target_id']
             if snapshot['target_id'] in {'scope.bank','scope.audit'}:
-                body='\n'.join((Path(cwd)/item['path']).read_text()
-                    for item in snapshot['spec_resolution']['sources'])
-                dependencies=re.search(r'```concorde-dependencies\s*\n(.*?)^```',body,re.M|re.S)
-                if dependencies is None:raise AssertionError('Module task fixture requires local participant declarations')
-                task_target=json.loads(dependencies.group(1))[0]['target_id']
+                declarations = [json.loads((Path(cwd)/item['path']).read_text())
+                                for item in snapshot['spec_resolution']['sources'] if item['role']=='metadata']
+                dependencies = [d for value in declarations for d in value['dependencies']]
+                if not dependencies: raise AssertionError('Module task fixture requires local participant declarations')
+                task_target = dependencies[0]['target_id']
             data['tasks']=[{'id':'task.transfer','target_id':task_target,
             'description':'Implement the transfer promise.','acceptance':'Valid transfer subtracts; invalid amount or insufficient funds raises ValueError.','complete':False}]
         if stage=='implementation' and snapshot['stage_inputs'][0]['type_id']=='concorde-implementation-task':

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.harness.context",
+    "owner": "module.harness"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": [
+    {
+      "id": "contract.context.selection",
+      "version": 3,
+      "role": "provided",
+      "peer": "module.development",
+      "meaning": "#participation.document.harness.context.1"
+    }
+  ]
+}

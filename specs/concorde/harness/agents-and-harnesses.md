@@ -1,14 +1,4 @@
-```concorde-document
-{
-  "id": "document.harness.agents-and-harnesses",
-  "owner": "module.harness",
-  "main_visible": true
-}
-```
-
 # Agents and Harnesses
-
-## Usage & Contract
 
 This document defines the required Agent model for Concorde Framework. The requirements below are
 the standard for implementation review; an existing role prompt or launcher is not evidence that
@@ -50,7 +40,6 @@ contracts. Loading an instruction or mentioning a tool does not itself grant aut
 not worker context: a Skill is the installed projection of a public Capability for the developer's
 own agent runtime. The four context kinds an invocation receives are defined in [context](context.md).
 
-
 ### A1. Agent Spec and Python definition
 
 Every named Agent MUST have an identifiable authored role `spec.md` under `agents/<name>/`. It MUST
@@ -72,7 +61,6 @@ An Agent's `spec.md` is its responsibility contract. The project task's Spec con
 implementation context are separate admitted inputs about the work to perform. Neither set
 implicitly grants access to the other's neighboring files. This filename convention adds no filename
 requirement to ordinary Module Specs.
-
 
 ### A2. Worker profile and Harness
 
@@ -97,7 +85,6 @@ required by [Agent Flows, Agent Loops and feedback](graphs-and-loops.md). Execut
 distinguish model reasoning, tool execution and human decisions. A model adapter, virtual
 environment or bag of tools alone is not the complete Harness.
 
-
 ### A3. Capability use and composition
 
 A Capability MUST declare its identity, purpose, inputs, results, effects, constraints and relevant
@@ -117,7 +104,6 @@ compose an operation does not make it callable by every worker. Existing `capabi
 and their exposure and context-selection properties describe Concorde's current host adapter; the
 Development Module registers that inventory.
 
-
 ### A4. Constraints, context and invocation
 
 Constraints/Permissions MUST cover applicable context access, tool calls, file and process effects,
@@ -136,7 +122,6 @@ decision, cancellation, an execution failure and exhaustion of the configured ex
 Failure MUST NOT cause an automatic retry with broader permissions. Feedback that requests a new
 goal, different context or additional authority MUST pass admission again before dependent work.
 
-
 ### A5. One-level delegation
 
 A worker MAY delegate a focused subtask only to a child its own profile declares, and only through
@@ -153,7 +138,6 @@ granted files, and only the worker's single submitted result leaves the process.
 workers does not exist: Flows compose workers, and one worker never starts another. The capability
 ceiling that bounds delegation, and its enforcement, are defined in [execution](execution.md).
 
-
 ### Common worker rules
 
 Worker instructions have two tiers. The first tier is common to every worker: the rules in
@@ -163,7 +147,6 @@ Protocol rule bundle, which the host appends to every system prompt. The second 
 own profile and role Spec, managed with the Flow that launches it; its static model selection is
 exposed in project configuration.
 
-
 ### Registered workers
 
 The twelve workers are each one Python module under the top-level `agents/` package, declared in
@@ -172,94 +155,7 @@ The twelve workers are each one Python module under the top-level `agents/` pack
 Each rendered `generated/agents/<hyphenated>.md` holds the common worker rules followed by that
 worker's role Spec, and the child definitions are build sources of that output.
 
-```concorde-agents
-[
-  {
-    "id": "answerer",
-    "workspace": "capsule",
-    "capabilities": ["main"],
-    "tools": ["find", "grep", "ls", "read"],
-    "children": []
-  },
-  {
-    "id": "code-reviewer",
-    "workspace": "project",
-    "capabilities": ["review"],
-    "tools": ["find", "grep", "ls", "read"],
-    "children": ["scout", "verifier"]
-  },
-  {
-    "id": "context-assessor",
-    "workspace": "capsule",
-    "capabilities": ["context-solve", "plan"],
-    "tools": ["find", "grep", "ls", "read"],
-    "children": []
-  },
-  {
-    "id": "investigator",
-    "workspace": "project",
-    "capabilities": ["reflections-triage"],
-    "tools": ["bash", "find", "grep", "ls", "read"],
-    "children": ["scout"]
-  },
-  {
-    "id": "planner",
-    "workspace": "capsule",
-    "capabilities": ["plan"],
-    "tools": ["find", "grep", "ls", "read"],
-    "children": ["scout"]
-  },
-  {
-    "id": "programmer",
-    "workspace": "project",
-    "capabilities": ["implement"],
-    "tools": ["bash", "edit", "find", "grep", "ls", "read", "run_checks", "write"],
-    "children": ["planner", "scout", "verifier"]
-  },
-  {
-    "id": "router",
-    "workspace": "capsule",
-    "capabilities": ["dev-loop", "main", "review", "specify-loop"],
-    "tools": ["find", "grep", "ls", "read"],
-    "children": []
-  },
-  {
-    "id": "spec-author",
-    "workspace": "capsule",
-    "capabilities": ["specify"],
-    "tools": ["find", "grep", "ls", "read"],
-    "children": []
-  },
-  {
-    "id": "spec-reviewer",
-    "workspace": "capsule",
-    "capabilities": ["review"],
-    "tools": ["find", "grep", "ls", "read"],
-    "children": ["consistency", "fact-check"]
-  },
-  {
-    "id": "task-author",
-    "workspace": "capsule",
-    "capabilities": ["tasks"],
-    "tools": ["find", "grep", "ls", "read"],
-    "children": []
-  },
-  {
-    "id": "topology-author",
-    "workspace": "capsule",
-    "capabilities": ["main"],
-    "tools": ["find", "grep", "ls", "read"],
-    "children": []
-  },
-  {
-    "id": "topology-designer",
-    "workspace": "capsule",
-    "capabilities": ["main"],
-    "tools": ["find", "grep", "ls", "read"],
-    "children": []
-  }
-]
-```
+The associated metadata records the machine-checked implementation inventory. The reading explanations here define its responsibilities and use.
 
 Deterministic validation requires this block to equal the Agent inventory declared in code: the
 same identifiers, workspace kinds, sorted profile tools, sorted child names and the sorted hyphenated
@@ -267,7 +163,6 @@ names of every capability module whose `AGENTS` includes that worker. The block 
 redundancy so that this Spec explains the catalog without reading Python; it never adds a worker
 that code does not implement. `capabilities` records which Development capabilities launch the
 worker; it is not the worker's capability context.
-
 
 ### Task contracts
 
@@ -313,7 +208,7 @@ Every phase, target, repair and review has a fresh invocation identity and froze
 role never shares a conversation, private reasoning, stage inputs or write grant between workers.
 Only explicitly admitted structured artifacts cross stages.
 
-## Architecture & Realization
+## Design
 
 ### Responsibilities and implementation boundaries
 

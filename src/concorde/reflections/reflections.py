@@ -161,7 +161,10 @@ def reflection_number(value: str, *, allow_zero: bool = False) -> int | None:
         return 0 if allow_zero else None
     if not REFLECTION_ID.fullmatch(value):
         return None
-    number = int(value[2:])
+    try:
+        number = int(value[2:])
+    except ValueError:
+        return None
     return number if number > 0 and format_reflection_id(number) == value else None
 
 
@@ -185,7 +188,7 @@ class ReflectionEntry:
     def feature(self) -> str:
         """The recorded attribution identity: a Module ID or one of its scenario IDs.
 
-        The record field keeps its historical ``feature`` name; Profile 13 has no registered
+        The record field keeps its historical ``feature`` name; Profile 14 has no registered
         Feature entity, so the value is validated against Module and scenario identities.
         """
         return self.fields.get("Feature", "")
@@ -318,8 +321,9 @@ def _sections(body: str, path: str) -> tuple[dict[str, str], dict[str, int], lis
         match = None if fenced else H2.fullmatch(line)
         if match:
             finish()
-            current = match.group(1).strip()
-            if current in sections or current in lines_by_name:
+            name = match.group(1).strip()
+            current = name
+            if name in sections or name in lines_by_name:
                 problems.append(
                     ReflectionProblem(
                         "shape",
@@ -330,7 +334,7 @@ def _sections(body: str, path: str) -> tuple[dict[str, str], dict[str, int], lis
                         "Keep exactly one copy of every required level-two section.",
                     )
                 )
-            lines_by_name[current] = number
+            lines_by_name[name] = number
         elif current is not None:
             content.append(line)
     finish()
@@ -343,7 +347,7 @@ def parse_reflection_document(text: str, path: str) -> tuple[ReflectionEntry | N
     try:
         metadata, body = parse_document(text, path)
     except FrontMatterError as error:
-        line = error.line or 1
+        line = error.line if error.line else 1
         return None, (
             ReflectionProblem("shape", path, line, None, str(error), "Use the Reflection Document v2 template."),
         )

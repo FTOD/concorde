@@ -1,158 +1,117 @@
 # Spec and Context
 
-Module is the core unit of Spec context resolution. Ownership determines definitions; registered
-Module references determine additional reading. Implementation context is resolved separately.
-Neither context inclusion nor inventory metadata grants write, command or network authority.
-Usage & Contract and Architecture & Realization are reading parts of the same Module Spec, not
-new query kinds or grants. A Module-bound implementation task still receives its complete selected
-Spec context. A consumer can reference an independently registered interface document when that
-supplies its needed provider contract; a section heading never causes implicit excerpting.
+A Module is the unit of complete Spec context selection. A scenario query first resolves its sole
+owner and selects that Module. Reading is the Protocol-defined human-readable subset of content,
+not an additional query kind, a summary substitute or an execution grant.
 
-## Queryable entities
+## Exact source selection
 
-| Entity kind | Resolution |
-| --- | --- |
-| Module | Its own complete context. |
-| Scenario | Find the sole owner of its defining document, then resolve that Module's context. |
-
-The requested scenario remains the focus, but never trims files. Ownership comes from registration
-and document metadata, not prefixes, paths or the Module in whose context a definition was seen.
-Requirements, entities, documents and headings are addressable artifacts, not additional Spec query
-kinds. A document reference is an inclusion instruction, not a document-scoped task.
-
-## Deterministic single-level resolution
-
-Let `D(M)` be the documents owned by M and `R(M)` its registered references. Let `include(r)` be
-`D(r.id)` for a Module reference, or the singleton registered document for a document reference.
+Let `D(M)` be the document units owned by M, `R(M)` its explicit references, and `members(U)` the
+reading and metadata files of unit U. A Module reference includes its owned units; a document
+reference includes exactly the identified unit. External material is selected separately.
 
 ```text
-Context(M) = D(M) union (union of include(r) for r in R(M))
-Context(scenario S) = Context(owner(defining_document(S)))
+Units(M) = D(M) union (union of include(r) for r in R(M) when r is a context reference)
+Context(M) = union of members(U) for U in Units(M)
+ReadingContext(M) = the reading member of each U in Units(M)
+Context(scenario S) = Context(owner(defining_unit(S)))
 ```
 
-Only `R(M)` is consulted. Never resolve `Context(r.id)` during expansion. Links, directory
-neighbors, parentage, uses, file bindings and included document metadata do not expand context. All
-included files are complete, even with `main_visible: false`; no excerpt or summary replaces them.
-Completeness is a property of admission: every included file is admitted whole, whatever mechanism
-a tool uses to deliver it to a reader. Cycles in references terminate immediately because the
-algorithm is not recursive.
+Only `R(M)` expands. Never recursively resolve a provider's context. Neither links, parentage,
+uses, directory neighbors, entity target IDs nor implementation bindings add sources. Each selected
+unit contributes both exact members, even when a publisher puts its reading on an auxiliary page.
+No excerpt, summary, diagram export or reading-only projection replaces a complete unit.
 
 ```text
-resolve(inventory, query_id):
-    M = registered Module or unique owner of registered scenario(query_id)
-    validate ownership, paths, reference kinds and availability
-    include every document in D(M), reason = owned(M.id)
-    for r in R(M):
-        include every document in include(r), reason = reference(r.kind, r.id)
-    deduplicate by canonical physical document identity and path
-    return complete records sorted by canonical project-relative POSIX path
+resolve(registry, query):
+    find the unique selected Module or scenario owner
+    validate registration, ownership, paths, kinds and source availability
+    include each owned unit, reason = owned(Module ID)
+    include each directly referenced unit, retaining its typed reference reason
+    expand each included unit to its exact reading and metadata source members
+    deduplicate sources and retain all sorted inclusion reasons
+    return source records sorted by canonical project-relative path
 ```
 
-Aliases, symlinks, duplicate paths/IDs, missing files, ambiguous owners, wrong kinds and unknown
-identities fail resolution without a partial successful context. Distinct routes to the same file
-retain every reason, sorted by kind and ID, but supply its bytes once. A reading entry and authored
-document order aid navigation and do not change this reproducible file order.
+Every record contains document ID, sole owner, path, source role (`reading` or `metadata`), exact-byte
+SHA-256 digest and inclusion reasons. The selecting registration, including owned collection and
+explicit references, is bound to context identity. Both members have the same owner, document ID
+and inclusion provenance. Changing only whitespace, metadata, reference declarations or provenance
+invalidates dependent byte-bound evidence even if the set of paths is unchanged.
 
-Every resolution MUST record query ID/kind, selected Module ID, scenario owner when applicable, the
-selecting Module's ownership and reference declarations, and for each included file its stable
-document ID, canonical path, sole owner, byte digest and inclusion reasons. A byte digest is SHA-256
-of the exact source bytes, before decoding or rendering. The resolver MUST bind these declarations
-and source identities to the snapshot so unchanged file sets with changed references also invalidate
-reuse. Inventory metadata can resolve identities without admitting unrelated source bodies.
+Unknown IDs, wrong kinds, duplicate identities, unsafe or aliased paths, ambiguous ownership and
+missing members fail without partial successful resolution. Identity lookup may inspect registered
+metadata without reading unselected human bodies. Requirement, entity, contract, document and
+heading anchors are addressable artifacts, not separate task-context query kinds.
 
-## Visibility scope
+## Visibility and delivery
 
-A resolved context is the **visibility scope** of a Module-bound reader: the files that reader may
-see. The Protocol defines that scope, not the mechanism that delivers it. Whether a tool places file
-bodies in the reader's instructions, grants read access to the files at their paths, copies them
-into a private workspace or combines these is the tool's implementation choice. Whatever the
-mechanism, a tool MUST make every file in the scope available to the reader whole, and it MUST NOT
-make any file outside the scope visible. A copy delivered to the reader MUST be byte-identical to
-the file the resolution record identifies. Keeping files outside the scope from the reader is the
-tool's obligation rather than a request left to the reader's judgment; how the tool meets it is
-likewise its implementation choice.
+The resolved context is the exact Spec visibility scope of a bounded reader. The tool must make
+every selected source available whole and no unselected source visible. It may grant paths in place,
+copy byte-identical members into a capsule, provide their bodies, or combine these mechanisms.
+Delivery mechanism does not change membership, ownership, source identity or authority.
 
-A tool MAY also give a reader task material derived from files inside the scope, such as the
-changes to those files since a baseline revision under review. Such material adds no file to the
-scope and does not replace the complete files it is derived from.
+A tool may also provide task material derived from in-scope files, such as their changes since a
+baseline. Such material adds no file and cannot replace complete sources. An agent that reads only
+some granted files still received the complete context; missing meaning is judged against the full
+scope, not against what that reader happened to open.
 
-Delivery changes neither membership nor identity. The context identity covers every included file's
-bytes through its digest, and a reader that reads only part of the available set has still received
-the complete context. Whether a definition is missing is judged against the scope, never against
-what the reader chose to read.
+## Example: overlapping references
 
-## Example: overlapping references without recursion
-
-Checkout owns `checkout/module.md` and `checkout/scenarios.md`. It references Module Inventory and
-document `document.inventory.interface`, which Inventory owns alongside `inventory/module.md`.
-Inventory references Tax. Checkout's context has four full files: its two own files and Inventory's
-two files. The interface has two reference reasons and one body. No Tax file is included. Querying a
-scenario defined in the Inventory interface selects Inventory, whose own context includes Tax; it
-does not select Checkout. Removing Checkout's redundant document reference preserves the file set
-but changes provenance and the context identity.
+Checkout owns its entry and scenario units. It references Inventory's entire collection and also
+Inventory's interface unit. Inventory owns its entry and interface and references Tax. Checkout
+therefore receives four units, eight source members, with two reference reasons on both interface
+members. Tax is absent. Querying an Inventory scenario selects Inventory's own context, including
+Tax. Removing Checkout's redundant interface reference changes provenance and invalidates its
+context identity even though its source paths are unchanged.
 
 ## Implementation context
 
-
-**Implementation context** is the Protocol term for the implementation knowledge that belongs to a
-Module: the files its entities bind, each identified as existing or pending. Let `F(E)` be the
-files bound by entity `E`, that is its exact entries together with every regular file below its
-directory prefixes that the tool's explicit exclusion rule does not remove, and `entities(M)` the
-entities defined in documents owned by Module `M`, excluding referenced definitions. Then:
+Implementation context is derived only from local entity file bindings. Exact entries and files
+below directory prefixes are resolved under an explicit deterministic exclusion rule. Metadata
+records pending intent without pretending missing file contents exist.
 
 ```text
-ImplementationContext(M) = union over E in entities(M) of F(E)
+ImplementationContext(M) = union of bound files of locally owned entities
 ImplementationContext(scenario S) = ImplementationContext(owner(S))
 ```
 
-Implementation context is determined from the entity declarations alone, without model judgment or
-interpretation of prose links; expanding a directory prefix is a deterministic listing of the files
-below it, not a judgment about them. The scenario verification index is likewise derived from the
-tests in that context and adds no file to it. It is disjoint from `Context(M)`: neither owned nor
-referenced Spec documents are part of it, and a file shared with another Module never adds that
-Module's contract. Those other users remain metadata identified by the reverse index. Declared files
-pending creation are identified as pending rather than represented as available contents. A Module
-whose entities bind no files has an empty implementation context; that is a statement about the
-declarations, not evidence that no realization exists.
+Neither reading nor metadata members belong to implementation context. A file shared with another
+Module adds that Module to reverse-use metadata, not its Spec or implementation to the selected
+reader's context. A Module with no bindings has an empty implementation context; this does not
+prove it has no realization.
 
-The file names in a Module's implementation context are visible wherever the Module's entity
-declarations are visible, because those declarations are part of the Spec context. File contents are
-a separate grant. A tool MAY authorize a phase-specific subset of the implementation context, such
-as file names without contents for planning or read-only contents for review, but MUST NOT add files
-outside it. The union of `Context(M)` and `ImplementationContext(M)` is the maximal file set a
-Module-bound task may receive without a new explicit selection. The development environment defines
-which phases receive which subset and the applicable permissions; a Spec query never includes file
-contents implicitly.
+Implementation names and pending status are visible through admitted metadata. Contents are a
+separate phase-specific grant. A tool may grant names for planning, read-only contents for review,
+or writable contents for implementation, but never add unlisted files implicitly. Context inclusion
+alone grants no write, command, credential or network authority. Test-to-scenario coverage is derived
+from tests in implementation context, not from a second Spec-authored test list.
 
-## External references
+## External reference material
 
-**External references** are the Protocol term for the external knowledge a Module declares it
-relies on: the vendored documentation and source of libraries, services or tools named by its
-`references` of kind `external`. Let `X(M)` be those entries and `files(x)` the readable regular
-files below entry `x` under the tool's explicit exclusion rule, which MAY additionally exclude media
-and archives. Then:
+External references declare existing project-relative vendored library, service or tool material,
+pinned at a known revision. They are neither specification promises nor implementation files and
+cannot overlap a document unit or the selecting Module's implementation listing. They are never
+pending. Only the selected Module's external references are considered.
 
 ```text
-References(M) = union over x in X(M) of files(x)
+References(M) = union of readable files selected by M's external entries
 References(scenario S) = References(owner(S))
 ```
 
-External references are disjoint from `Context(M)` and from `ImplementationContext(M)`: they are
-neither promises of the Module nor files that realize it, and a change to them changes no contract.
-The resolver identifies each entry by one digest over its readable files rather than listing them,
-because such material is large. Its entry names are visible wherever the
-registration is, and its contents are a separate grant that a tool MAY give phase by phase,
-read-only. A tool MUST NOT substitute an undeclared network fetch or an installed dependency's
-sources for the declared references, and MUST NOT grant material outside them without a new
-explicit declaration. A reference that does not cover a needed fact is reported as a gap in the
-ordinary way, not repaired by wider reading.
+A tool may exclude media and archives by a documented deterministic rule and record one tree digest
+per external entry. The entries are metadata; their contents are separately authorized read-only.
+An undeclared network fetch or installed dependency's sources must not substitute for declared
+material. Missing necessary external knowledge is a gap, not permission to widen the grant.
 
-## Completeness and gaps
+## Changes and gaps
 
-A missing necessary definition is a semantic gap even when the declared file set resolved fully.
-Name the required definition, its owner when known, selected Module, snapshot and blocked step. Do
-not silently follow an included link or a referenced Module's references to repair the gap. An
-explicit additional Module selection is a new bounded context, never a retrospective claim that the
-old one was complete. Included definitions retain their owner; they confer no authority to edit
-provider Specs or read provider implementation. A consumer's main diagram covers only its own
-entities, including its local collaborator entities, not every included provider entity.
+Source members stay paired for ownership, context and review. An owner-only authoring proposal may
+change either or both members, but must be checked as one complete overlay before application.
+Referenced units remain read-only. A metadata-only ownership or binding edit cannot evade affected
+context review, stale-input checks or the prohibition on code writers changing Specs.
+
+A missing definition is a semantic gap, even after successful structural resolution. Record the
+needed promise, its owner when known, selected Module, context identity and blocked step. Do not
+follow an included Module's references or a prose link to repair it. An additional explicit Module
+selection is a new bounded context, not a retrospective claim that the old one was complete.

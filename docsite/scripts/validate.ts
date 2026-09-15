@@ -12,7 +12,7 @@ async function main() {
   requireScoped(root);
   const registry = loadScopedRegistry(root);
   registry.pages.forEach((page) => rewriteLinks(registry, page));
-  process.stdout.write(`Validated Profile 13: ${registry.targets.length} targets, ${registry.pages.length} owned documents.\n`);
+  process.stdout.write(`Validated Profile 14: ${registry.targets.length} targets, ${registry.pages.length} owned documents.\n`);
 }
 
 void main().catch((error: unknown) => { console.error(error); process.exitCode = 1; });

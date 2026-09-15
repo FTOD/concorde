@@ -126,8 +126,8 @@ def load_package(root: Path) -> Package:
         raise InstallError(f"Concorde manifest is missing fields: {sorted(required - set(manifest))}")
     if manifest.get("schema_version") != 3 or manifest.get("name") != "concorde":
         raise InstallError("Concorde manifest must declare schema_version 3 and name 'concorde'")
-    if manifest.get("architecture_profile") != 13 or manifest.get("workspace_protocol") != 15:
-        raise InstallError("Concorde package must declare Architecture Profile 13 and Workspace Protocol 15")
+    if manifest.get("architecture_profile") != 14 or manifest.get("workspace_protocol") != 15:
+        raise InstallError("Concorde package must declare Architecture Profile 14 and Workspace Protocol 15")
     if manifest.get("delivery_proposal") != 10 or manifest.get("skill_namespace") != "concorde":
         raise InstallError("Concorde package must declare Delivery Proposal 10 and the concorde Skill namespace")
     install = manifest.get("install")
@@ -536,8 +536,9 @@ def apply_plan(
             staged.unlink(missing_ok=True)
         for relative in reversed(created):
             path = target / relative
-            if path.exists() and not path.is_symlink() and path.is_file():
-                path.unlink()
+            if not path.is_symlink():
+                if path.is_file():
+                    path.unlink()
         for relative, (content, mode) in backups.items():
             path = target / relative
             path.parent.mkdir(parents=True, exist_ok=True)

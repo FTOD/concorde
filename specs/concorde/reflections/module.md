@@ -1,16 +1,6 @@
-```concorde-document
-{
-  "id": "document.reflections.module",
-  "owner": "module.reflections",
-  "main_visible": true
-}
-```
-
 # Reflections
 
-## Usage & Contract
-
-### Purpose
+## Purpose
 
 Reflections retains, investigates and resolves project feedback and persistent development gaps
 that are explicitly attributed to one Module or scenario. Developers triaging a problem and the
@@ -21,7 +11,7 @@ that target rather than granting Reflections access to the target's Spec. A reco
 independently of whether any repair is ever attempted, and closing it always remains an explicit
 human decision rather than an automatic consequence of investigation.
 
-### Usage
+## Usage
 
 Use `concorde-reflections-triage` to inspect or act on explicitly selected feedback attributed to
 a Module or one of its scenarios. A Reflection retains a report and human comments independently
@@ -37,190 +27,31 @@ foreign selection stops the action without borrowing another Module's access. Re
 [selection and capture](interfaces.md) and [investigation and disposition](lifecycle.md) for the
 request fields and outcomes. A code-free Module is not a supported code-investigation target.
 
-### Requirements
+## Design
 
-#### req.reflections.no-implicit-capture — No mutation from read-only requests
+<a id="entity.reflections.triage-engine"></a><a id="entity.reflections.triage-boundary"></a><a id="entity.reflections.file-transactions"></a><a id="entity.reflections.langgraph"></a>
 
-A status or other read-only assessment request SHALL NOT create or modify a Reflection record.
+The Triage boundary admits explicit record selections and actions to the Triage engine. Its
+LangGraph [triage Flow](lifecycle.md#design) separates parsing, investigation, approved development
+and disposition; File transactions applies accepted record changes with before-digest checks and
+recovery. Status requests do not create records or begin repairs.
 
-#### req.reflections.mutation-attribution — Explicit id attribution required for mutations
+<a id="entity.reflections.record"></a><a id="entity.reflections.gap"></a><a id="entity.reflections.evidence"></a><a id="entity.reflections.plan"></a>
 
-A report or gap mutation request SHALL require an explicit nonempty `reflection_ids` or `gap_ids`
-list, with every id attributed to the selected target or one of its local scenario ids.
+A Captured development gap links a blocked task to a persistent Reflection record without
+resolving either one. Bound record evidence identifies the selected record bytes and HEAD for an
+Investigation plan; changed evidence makes that plan stale. Attribution remains with the original
+Module or scenario, and the record survives whether or not a repair is attempted.
 
-#### req.reflections.stable-gap-ids — Gap record ids stay stable across retries
+<a id="entity.reflections.task"></a><a id="entity.reflections.disposition"></a>
 
-A `gap_records` id SHALL remain stable across context-only retries.
+Only approved intended behavior becomes a fresh Development task. The investigation transcript
+and another Module's code access are not inherited. Human disposition independently resolves or
+dismisses the Reflection record: capture, non-reproduction and successful implementation cannot
+silently close it. Repeated capture reuses its explicit gap link instead of creating duplicate
+reports.
 
-#### req.reflections.host-assigned-gap-ids — Gap ids are host-assigned, not caller-supplied
-
-A `gap_records` id SHALL NOT be calculated by the caller.
-
-The id is allocated and returned by the host; a caller that computes its own id and expects it to
-match is relying on an implementation detail, not a promise.
-
-#### req.reflections.no-borrowed-access — Resolution routing grants no target Spec access
-
-Routing an approved resolution to its named target SHALL NOT grant this Module access to that
-target's Spec.
-
-#### req.reflections.explicit-gap-selection — Gap capture requires an explicit nonempty selection
-
-record-gaps SHALL require a nonempty explicit `gap_ids` list and `reflection_ids=[]`.
-
-See the [gap-capture scenario](interfaces.md#scenario.reflections.capture-gap).
-
-#### req.reflections.no-implicit-gap-selection — No implicit select-all for gap capture
-
-record-gaps SHALL NOT treat an omitted or empty `gap_ids` list as selecting every gap.
-
-See the [rejection scenario](interfaces.md#scenario.reflections.reject-invalid-gap-selection).
-
-#### req.reflections.bucket-triage-agreement — Bucket assignment must match triage state
-
-A record whose triage sections contradict its bucket, or that lies outside every bucket, SHALL be
-rejected.
-
-#### req.reflections.non-reproduced-disposition — Non-reproduction requires human intervention
-
-A non-reproduced investigation outcome SHALL recommend dismissal and require human intervention.
-
-#### req.reflections.fast-loop-effort — Fast-loop route requires small effort
-
-A fast-loop route SHALL only be recommended together with small effort.
-
-#### req.reflections.no-heading-injection — No document heading injection in section values
-
-An investigation section value SHALL NOT inject a document-level Markdown heading.
-
-#### req.reflections.investigation-file-boundary — Investigation reads only the target Module's files
-
-Investigation SHALL read only the files listed by the selected Module's own entities.
-
-### Scenarios
-
-Scenario definitions for the public triage boundary — status, gap capture and their rejection
-paths — are registered in [interfaces](interfaces.md). Scenario definitions for investigation,
-implementation and disposition are registered in [lifecycle](lifecycle.md).
-
-## Architecture & Realization
-
-### Design
-
-The triage engine uses explicit record attribution and bucket state to retain feedback independently
-of a repair. Evidence binds record bytes and HEAD before investigation; the [triage Flow](lifecycle.md#architecture--realization)
-separates read-only investigation, persisted findings, approved development and human disposition.
-This prevents capture, non-reproduction or successful implementation from silently closing a report.
-
-Only approved intended behavior crosses into Development Flow. The source record, its selected
-consumer context and any defective provider's identity stay distinct. File transactions preserve
-record updates, and explicit gap links make repeated capture reusable without duplicate reports.
-
-### Entities
-
-The triage engine and its collaborators below realize triage; the concept and record entities
-describe the domain vocabulary the registered scenarios rely on. The triage engine lists the
-`src/concorde/reflections/` and `tests/concorde/reflections/` package directories and its own
-fixture directory; the shared file-transaction entry stays exact.
-
-```concorde-entities
-[
-  {
-    "id": "entity.reflections.triage-engine",
-    "title": "Triage engine",
-    "kind": "program",
-    "responsibility": "Parses Reflection records, allocates and maintains stable R-NNN identities and bucket state, resolves current Module or scenario attribution, binds investigation to exact record bytes and HEAD, and turns an approved plan into a fresh development task while keeping evidence historical when attribution changes.",
-    "files": [
-      "capabilities/reflections_triage.py",
-      "scripts/reflections_queue.py",
-      "src/concorde/reflections/",
-      "tests/concorde/fixtures/interfaces/reflections/",
-      "tests/concorde/reflections/",
-      "tests/concorde/support/reflection_triage.py"
-    ]
-  },
-  {
-    "id": "entity.reflections.file-transactions",
-    "title": "File transactions",
-    "kind": "shared program",
-    "responsibility": "Realizes exact replacement proposals as staged filesystem operations with before-digest checks and original-byte recovery, for every Module that applies an accepted proposal.",
-    "files": [
-      "src/concorde/spec/changes.py"
-    ]
-  },
-  {
-    "id": "entity.reflections.development",
-    "title": "Development",
-    "kind": "used module",
-    "target_id": "module.development",
-    "responsibility": "Supply common admission, investigation dispatch and explicit gap-history linkage."
-  },
-  {
-    "id": "entity.reflections.spec",
-    "title": "Spec",
-    "kind": "used module",
-    "target_id": "module.spec",
-    "responsibility": "Owns the project Spec model: the pinned Protocol binding, the explicit registry, structural validation, stable-ID file-set queries and honest initialization, and resolves Module and scenario identities for attribution."
-  },
-  {
-    "id": "entity.reflections.triage-boundary",
-    "title": "Triage boundary",
-    "kind": "interface",
-    "responsibility": "The versioned concorde-reflections-triage request boundary that exposes read-only status and performs capture, investigation, approved implementation or human-disposition transitions for explicit Module- or scenario-owned records, exposing no record body, source code or log."
-  },
-  {
-    "id": "entity.reflections.record",
-    "title": "Reflection record",
-    "kind": "record",
-    "responsibility": "Retains one problem's report and original human comments independently of implementation, together with a stable monotonically allocated identity, its Module-or-scenario attribution, its status and the triage bucket that is the sole record of its triage progress."
-  },
-  {
-    "id": "entity.reflections.gap",
-    "title": "Captured development gap",
-    "kind": "concept",
-    "responsibility": "An explicitly selected blocked step from the current change's open gap history that record-gaps turns into a pending Reflection using the existing allocator, parser and buckets, without resolving the gap or starting work."
-  },
-  {
-    "id": "entity.reflections.evidence",
-    "title": "Bound record evidence",
-    "kind": "concept",
-    "responsibility": "The exact selected record bytes and HEAD commit that investigation binds before reading, so that changed bytes or a moved HEAD are rejected as stale rather than reinterpreted."
-  },
-  {
-    "id": "entity.reflections.plan",
-    "title": "Investigation plan",
-    "kind": "record",
-    "responsibility": "The findings, reproduction verdict, route, effort and evidence-bound resolution that investigation writes under the configured plans_dir, gated by the configured approval requirement."
-  },
-  {
-    "id": "entity.reflections.task",
-    "title": "Development task",
-    "kind": "concept",
-    "responsibility": "The fresh concorde-dev-loop invocation, composed with only the approved intended behavior, that turns a verified plan into a candidate change while excluding investigation text, code and logs from its Spec-stage inputs."
-  },
-  {
-    "id": "entity.reflections.disposition",
-    "title": "Human disposition",
-    "kind": "concept",
-    "responsibility": "The explicit developer decision that resolves or dismisses a record with a resolution_note; implementation completion or a non-reproduced finding alone never supplies it."
-  },
-  {
-    "id": "entity.reflections.dev-loop",
-    "title": "Development Flow",
-    "kind": "used module",
-    "target_id": "module.dev-loop",
-    "responsibility": "Development Flow composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract."
-  },
-  {
-    "id": "entity.reflections.langgraph",
-    "title": "LangGraph",
-    "kind": "external library",
-    "responsibility": "Executes the triage Flow as a LangGraph StateGraph. Its documentation and source are this Module's external references, the admitted source of LangGraph facts for the phases that plan, task, write or review this Module's code."
-  }
-]
-```
-
-### Relationships
+## Relationships
 
 The triage boundary is the only entry point; it is realized by the triage engine, which owns every
 deterministic parsing, allocation and bucket transition. A captured development gap and an
@@ -260,42 +91,111 @@ flowchart TB
     triageEngine -->|runs the triage Flow with| langgraph
 ```
 
+## Requirements
 
-### Dependencies and composition
+### req.reflections.no-implicit-capture — No mutation from read-only requests
+
+A status or other read-only assessment request SHALL NOT create or modify a Reflection record.
+
+### req.reflections.mutation-attribution — Explicit id attribution required for mutations
+
+A report or gap mutation request SHALL require an explicit nonempty `reflection_ids` or `gap_ids`
+list, with every id attributed to the selected target or one of its local scenario ids.
+
+### req.reflections.stable-gap-ids — Gap record ids stay stable across retries
+
+A `gap_records` id SHALL remain stable across context-only retries.
+
+### req.reflections.host-assigned-gap-ids — Gap ids are host-assigned, not caller-supplied
+
+A `gap_records` id SHALL NOT be calculated by the caller.
+
+The id is allocated and returned by the host; a caller that computes its own id and expects it to
+match is relying on an implementation detail, not a promise.
+
+### req.reflections.no-borrowed-access — Resolution routing grants no target Spec access
+
+Routing an approved resolution to its named target SHALL NOT grant this Module access to that
+target's Spec.
+
+### req.reflections.explicit-gap-selection — Gap capture requires an explicit nonempty selection
+
+record-gaps SHALL require a nonempty explicit `gap_ids` list and `reflection_ids=[]`.
+
+See the [gap-capture scenario](interfaces.md#scenario.reflections.capture-gap).
+
+### req.reflections.no-implicit-gap-selection — No implicit select-all for gap capture
+
+record-gaps SHALL NOT treat an omitted or empty `gap_ids` list as selecting every gap.
+
+See the [rejection scenario](interfaces.md#scenario.reflections.reject-invalid-gap-selection).
+
+### req.reflections.bucket-triage-agreement — Bucket assignment must match triage state
+
+A record whose triage sections contradict its bucket, or that lies outside every bucket, SHALL be
+rejected.
+
+### req.reflections.non-reproduced-disposition — Non-reproduction requires human intervention
+
+A non-reproduced investigation outcome SHALL recommend dismissal and require human intervention.
+
+### req.reflections.fast-loop-effort — Fast-loop route requires small effort
+
+A fast-loop route SHALL only be recommended together with small effort.
+
+### req.reflections.no-heading-injection — No document heading injection in section values
+
+An investigation section value SHALL NOT inject a document-level Markdown heading.
+
+### req.reflections.investigation-file-boundary — Investigation reads only the target Module's files
+
+Investigation SHALL read only the files listed by the selected Module's own entities.
+
+## Scenarios
+
+Scenario definitions for the public triage boundary — status, gap capture and their rejection
+paths — are registered in [interfaces](interfaces.md). Scenario definitions for investigation,
+implementation and disposition are registered in [lifecycle](lifecycle.md).
+
+## Dependencies and composition
 
 Development supplies common admission and gap history; Development Flow executes approved intended behavior as a fresh task. Investigation remains this Module's separately bound read-only invocation.
 
-```concorde-dependencies
-[
-  {
-    "target_id": "module.development",
-    "responsibility": "Supply common admission, investigation dispatch and gap-history linkage.",
-    "selection_condition": "When admitting investigation or selecting recorded gaps.",
-    "relied_upon_promises": [
-      "[Preserve invocation scope and typed results](../development/interfaces.md#capability-execution-boundary)",
-      "[Capture only explicit attributed gaps](../development/review-and-gaps.md)"
-    ]
-  },
-  {
-    "target_id": "module.spec",
-    "responsibility": "Resolve Module and scenario identities for attribution.",
-    "selection_condition": "When admitting a record's owner or a selected local scenario identity.",
-    "relied_upon_promises": [
-      "[Resolve the record to its unique scenario owner and reject foreign selection](../spec/registry.md#stable-id-spec-context-queries)"
-    ]
-  },
-  {
-    "target_id": "module.dev-loop",
-    "responsibility": "Development Flow composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract.",
-    "selection_condition": "Only after reproduction, no outstanding human intervention and current configured approval for the selected resolution.",
-    "relied_upon_promises": [
-      "[Development Flow contract](../dev-loop/development.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition."
-    ]
-  }
-]
-```
+### Development
 
+<a id="entity.reflections.development"></a><a id="agreement.document.reflections.module.1"></a>
 
-### Ownership, context and implementation status
+Supply common admission, investigation dispatch and explicit gap-history linkage.
+
+Supply common admission, investigation dispatch and gap-history linkage.
+
+This collaboration applies when admitting investigation or selecting recorded gaps.
+
+- [Preserve invocation scope and typed results](../development/interfaces.md#capability-execution-boundary)
+- [Capture only explicit attributed gaps](../development/review-and-gaps.md)
+
+### Spec
+
+<a id="entity.reflections.spec"></a><a id="agreement.document.reflections.module.2"></a>
+
+Owns the project Spec model: the pinned Protocol binding, the explicit registry, structural validation, stable-ID file-set queries and honest initialization, and resolves Module and scenario identities for attribution.
+
+Resolve Module and scenario identities for attribution.
+
+This collaboration applies when admitting a record's owner or a selected local scenario identity.
+
+- [Resolve the record to its unique scenario owner and reject foreign selection](../spec/registry.md#stable-id-spec-context-queries)
+
+### Development Flow
+
+<a id="entity.reflections.dev-loop"></a><a id="agreement.document.reflections.module.3"></a>
+
+Development Flow composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract.
+
+Only after reproduction, no outstanding human intervention and current configured approval for the selected resolution.
+
+- [Development Flow contract](../dev-loop/development.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
+
+## Ownership, context and implementation status
 
 Reference inclusion does not change a Reflection's definition owner or grant provider write/code access. An included provider defect retains the provider identity while evidence records the affected consumer and snapshot. Repair routes to the sole owner; dependent consumer gaps remain open until fresh assessment. Gap history and capture retain the complete source ownership and inclusion evidence for the consumer snapshot.

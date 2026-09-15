@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.views.viewer",
-  "owner": "module.views",
-  "main_visible": true
-}
-```
 # Understand Anything viewer service
-
-## Usage & Contract
 
 This deterministic service opens an existing raw Understand Anything knowledge graph with the
 installer-owned official viewer. Its entry is `scripts/run-ua-graph-viewer.py` in the Framework package. It
@@ -66,7 +57,6 @@ After admission, the launcher checks Node.js >=18 and runs Node with the install
 project directory, forwarding the optional flags. The child runs from the project directory. The
 launcher prints which graph it selected and returns the child exit code.
 
-
 ### Required installed-runtime contract
 
 The project contains `.concorde/framework/concorde.json`. Its `runtime.venv` is `.concorde/.venv`,
@@ -85,7 +75,6 @@ under `share/concorde/understand-anything-viewer` inside the managed runtime. It
 runtime entity supply this state through the reviewed install path. Missing or stale state
 requires that installation path to repair it; launch does not provision a replacement runtime
 itself.
-
 
 ### Relationships and routing
 

@@ -7,7 +7,7 @@ import {materializeScoped} from '../plugins/scoped-content/materialize';
 export const productionGeneratedDirectory = '.generated/docusaurus-production';
 
 /**
- * Stage the registered Markdown and navigation this build publishes. Registry schema 4 declares no
+ * Stage the registered Markdown and navigation this build publishes. Registry schema 5 declares no
  * external diagram sources: every Architecture section is an inline Mermaid fence, so publication
  * renders the registered documents. Checkout-only extensions register their own independent routes.
  */

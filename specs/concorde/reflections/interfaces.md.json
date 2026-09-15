@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.reflections.interfaces",
+    "owner": "module.reflections"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": []
+}

@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.distribution.installation",
-  "owner": "module.distribution",
-  "main_visible": true
-}
-```
 # Installation service
-
-## Usage & Contract
 
 ### Configuration compatibility
 
@@ -16,14 +7,13 @@ authored under `protocol/` and distributed with the independent standard. The `t
 links to those sources. Plan, task and reflection starters remain Framework workflow assets; they
 are not additional Protocol Spec kinds.
 
-The Framework identifies its supported project configuration as Profile 13. Initialization writes
-`.concorde/config.json` with `profile_version: 13`, the `registry` path, an accepted Protocol
+The Framework identifies its supported project configuration as Profile 14. Initialization writes
+`.concorde/config.json` with `profile_version: 14`, the `registry` path, an accepted Protocol
 `version` and manifest `digest` under `protocol`, and the typed `capability_configuration` for the
 project's Pi worker model, thinking level, timeout and per-worker overrides; the `protocol` binding names the Protocol copy the installer placed
-under `.concorde/protocol/`, which initialization never creates. Its registry uses JSON schema version 4. Profile 13 and registry
-schema 4 are Framework compatibility and storage versions; Spec Protocol 6.0.0 identifies the
+under `.concorde/protocol/`, which initialization never creates. Its registry uses JSON schema version 4. Profile 14 and registry
+schema 5 are Framework compatibility and storage versions; Spec Protocol 7.0.0 identifies the
 independent specification standard. Installation and initialization preserve these separate roles.
-
 
 ### Installing and updating a target project
 
@@ -95,7 +85,6 @@ This is the root-entry cleanup step for uninstall, not a full-package removal co
 - AND the new integration's entry is installed
 - AND old receipts without root entries can upgrade by adding them without adopting arbitrary preexisting marked content
 
-
 ### Configuring an initialized project
 
 #### scenario.distribution.configure-apply — Configuration changes an initialized project's Pi worker selection atomically
@@ -120,7 +109,7 @@ separate and versioned. Check verifies receipt hashes and required runtime ident
 changing project behavior.
 
 The distributable manifest is `concorde.json` schema_version 3, Concorde 6.0.0, Architecture
-Profile 13, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 12 Agents, each one
+Profile 14, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 12 Agents, each one
 Pi worker with a single task contract, and 14 Capabilities: 9 are public through Skills and 5 are available through declared
 composition. It also declares package roots including `prompts`/`capabilities`/`protocol`, and 5
 templates. Codex `.agents/skills` and Claude `.claude/skills` expose the same 9 Skills; canonical
@@ -129,7 +118,6 @@ Agent definitions and non-public Capabilities remain private. Every Skill sends 
 
 Project initialization and Protocol-binding decisions are a distinct typed `concorde-init`
 capability owned by `module.spec`, not by this Module.
-
 
 ### Worktree guard
 
@@ -164,7 +152,6 @@ are unaffected: each Pi worker process starts with sessions, project settings an
 extensions disabled and its own configuration directory holding only what the host placed there,
 so it never reads this checkout's `.claude/` or `.codex/` layer and never creates a worktree itself.
 
-
 ### Source-checkout type check
 
 #### scenario.distribution.check-docsite-external — Type-check preparation uses disposable external files
@@ -181,7 +168,6 @@ environment. Configured invocation supplies external scratch through TMPDIR. Exi
 dependencies are linked for reads; otherwise `npm ci --ignore-scripts` installs into the temporary
 copy. It never updates a dependency marker or `.generated` files in the actual checkout. Checks
 that need persistent source or dependency changes must prepare them in the implementation phase.
-
 
 ### Main routing view
 

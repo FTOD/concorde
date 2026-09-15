@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.development.development",
-  "owner": "module.dev-loop",
-  "main_visible": true
-}
-```
 # Development Agent Flow and revision loops
-
-## Usage & Contract
 
 A developer supplies intended behavior and constraints for one top-level candidate change.
 `concorde-specify-loop` independently routes, authors or revises, and reviews the Spec. It ends
@@ -50,7 +41,6 @@ as complete. Existing component contract gaps must be resolved before rebinding,
 component routing is rejected without replacing the list. Ordinary intent changes outside this
 explicit recovery still fail their original stale-context checks.
 
-
 ### Failure and recovery
 
 Candidate creation precedes routing. A change ID identifies a worktree, not a completed route.
@@ -69,7 +59,7 @@ Context solving diagnoses from the exact existing collection and never expands p
 
 A Module task may coordinate its own code, direct submodules and explicitly used Modules.
 The Module planner sees only the Module collection and derives exact component IDs from its local
-`concorde-dependencies` declarations. Before planning, deterministic context solving rejects any
+dependency metadata and local readable agreements. Before planning, deterministic context solving rejects any
 missing direct registry relationship as a Module-owned Spec gap and reports inconsistent entries as
 conflicting. Each component
 receives its own explicit task, local authoring invocation and fast loop. All affected
@@ -84,7 +74,6 @@ raw logs stay out of later Spec-only sessions. A stale Spec, changed task intent
 code, failed check or missing completion blocks delivery and preserves the candidate worktree. Resuming a
 change reuses its target records and typed artifacts but starts a fresh agent session. The host does not copy unrelated
 conversation or free-form predecessor output into context.
-
 
 ### Candidate lifecycle and review policy
 
@@ -121,8 +110,6 @@ remain in the candidate when a later component blocks. Cross-component validatio
 affected local author finishes; it cannot prevent resuming an incomplete reconciliation. No component
 code changes before this agreement. Component development loops report completion to the same owning change.
 
-
-
 `concorde-specify-loop` (including when called by `concorde-dev-loop`) skips Spec authoring only after a host-accepted authoring result for
 the same target, task, focus and constraints. Standalone review records, including failed or
 unrelated reviews, cannot substitute for authoring. A completed Module still revisits its recorded
@@ -157,7 +144,7 @@ code-review feedback that repeats unchanged across a bounded repair attempt, rec
 Spec/code change is needed before the loop can usefully resume.
 During dev-loop, the initial Module Spec review is local. Component reviews occur in separately coordinated component loops after reconciliation, and all writers finish before final shared-consumer checks.
 
-## Architecture & Realization
+## Design
 
 ### Development Flow (`development_flow`)
 
@@ -237,7 +224,6 @@ flowchart TB
     summarize --> __end__
 ```
 
-
 ### AI and human feedback
 
 Author, assessor, planner, task author, implementation and reviewer invocations MUST resolve their
@@ -251,7 +237,6 @@ blocking feedback waits for new information or stops at the declared limit. Huma
 create a revised task and invalidate dependent plans and evidence. Human acceptance required for
 another transition remains explicit; a reviewer cannot grant it. `ready` ends this Flow, while
 user-authorized delivery remains a separate capability.
-
 
 ### Coordinated implementation and final consumer checks
 

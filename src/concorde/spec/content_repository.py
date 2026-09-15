@@ -1,8 +1,6 @@
-"""Schema-5 document-unit backend for the staged Protocol 7 cutover.
+"""Protocol-7 document-unit source backend.
 
-This backend is not an alternate capability entry or a profile auto-detector. The active host
-still constructs SpecRepository. We reuse its format-independent registry/file/definition
-operations, replacing every inline metadata and context-source operation here. Protocol binding,
+This backend is not an alternate capability entry or a profile auto-detector. The bound SpecRepository adds installed Protocol admission to these shared source operations. Protocol binding,
 worker wire envelopes and lifecycle activation remain the host's separate admission boundary.
 """
 from __future__ import annotations
@@ -11,14 +9,14 @@ from dataclasses import asdict
 from pathlib import Path
 
 from .content_model import DocumentUnit, admit_document_unit, json_declarations, metadata_identity, metadata_path
-from .repository import (ModuleDefinitions, SpecDocument, SpecEntity, SpecError, SpecRepository,
+from .repository_base import (ModuleDefinitions, SpecDocument, SpecEntity, SpecError, RepositoryCore,
                          SpecResolution, SpecTarget, _parse_definitions, covers, digest, entry_exists,
                          identifier, read_file)
 from .typed_data import canonical, check_schema, checked_path, decode, safe_path
 
 
 def unit_resolution_schema() -> dict:
-    """Closed next-format resolution shape, not an alternate active worker envelope."""
+    """Closed Protocol-7 resolution shape shared by all worker envelopes."""
     from .contracts import REFERENCE, TARGET_DESCRIPTOR
     from .wire_shapes import DIGEST, PATH, STRING, array, obj
     reason = obj({"kind": {"enum": ["owned", "module", "document"]}, "id": STRING})
@@ -31,11 +29,12 @@ def unit_resolution_schema() -> dict:
         "sources": array(source, unique=True)})
 
 
-class DocumentUnitRepository(SpecRepository):
+class DocumentUnitRepository(RepositoryCore):
     """Explicit new-format source backend; no Protocol-6 fallback and no worker launch authority."""
 
     def __init__(self, project_root: Path | str, *, registry_path: str = ".concorde/specs.json",
-                 registry_bytes: bytes | None = None, document_overrides: dict[str, bytes] | None = None):
+                 registry_bytes: bytes | None = None, document_overrides: dict[str, bytes] | None = None,
+                 _defer_document_admission: bool = False):
         root = Path(project_root)
         if root.is_symlink() or not root.is_dir():
             raise SpecError("project root must be a real directory")
@@ -57,7 +56,7 @@ class DocumentUnitRepository(SpecRepository):
         self._definition_cache: dict[str, ModuleDefinitions] = {}
         self._reference_digest_cache: dict[str, str] = {}
         self._unit_cache: dict[str, DocumentUnit] = {}
-        self._draft_admission = False
+        self._draft_admission = _defer_document_admission
         self.document_overrides = {}
         for path, raw in (document_overrides or {}).items():
             if not isinstance(raw, bytes):
@@ -79,9 +78,10 @@ class DocumentUnitRepository(SpecRepository):
             for kind, entry in target.references:
                 if kind == "external" and any(covers(entry, member) for member in self.source_documents):
                     raise SpecError(f"external reference cannot include a document-unit member: {entry}")
-        self._document_index()
-        for target in self.targets.values():
-            self._context_paths(target)
+        if not _defer_document_admission:
+            self._document_index()
+            for target in self.targets.values():
+                self._context_paths(target)
         # Source materialization can reuse the host helper without introducing an unbound Protocol.
         # This is empty deliberately; the backend does not implement host Protocol installation.
         self.protocol_assets: dict[str, bytes] = {}
@@ -93,13 +93,27 @@ class DocumentUnitRepository(SpecRepository):
         if hasattr(self, "_identity_paths"):
             return dict(self._identity_paths)
         index = {}
+        physical: dict[tuple[int, int], str] = {}
         for path, owners in self.document_targets.items():
             # Verify availability without reading unselected human bodies. An overlay supplies
             # a new member explicitly; it never repairs a missing partner by directory discovery.
+            missing = [member for member in (path, metadata_path(path))
+                       if member not in self.document_overrides and not checked_path(self.root, member).is_file()]
+            if missing:
+                if self._draft_admission:
+                    continue
+                raise SpecError(f"required document-unit member is missing: {missing[0]}", "missing_source", missing[0])
             for member in (path, metadata_path(path)):
-                if member not in self.document_overrides and not checked_path(self.root, member).is_file():
-                    raise SpecError(f"required document-unit member is missing: {member}", "missing_source", member)
-            identity, _ = metadata_identity(metadata_path(path), self._raw(metadata_path(path)), expected_owner=owners[0])
+                if member not in self.document_overrides:
+                    stat = checked_path(self.root, member).stat()
+                    key = (stat.st_dev, stat.st_ino)
+                    if key in physical:
+                        raise SpecError(f"physical source alias: {member} and {physical[key]}", "invalid_owner")
+                    physical[key] = member
+            expected_owner = owners[0]
+            if self._draft_admission and not self.source_is_overridden(path):
+                expected_owner = decode(self._raw(metadata_path(path)).decode())["document"]["owner"]
+            identity, _ = metadata_identity(metadata_path(path), self._raw(metadata_path(path)), expected_owner=expected_owner)
             if identity in index or identity in self.targets:
                 raise SpecError(f"duplicate document identity: {identity}", "invalid_owner", path)
             index[identity] = path
@@ -113,17 +127,18 @@ class DocumentUnitRepository(SpecRepository):
             owner = self.document_targets[path][0]
             unit = admit_document_unit(path, self._raw(path), self._raw(metadata_path(path)),
                 expected_owner=owner, primary=path == self.targets[owner].primary_document)
-            if self._identity_paths.get(unit.document_id) != path:
+            admitted_index = getattr(self, "_identity_paths", None)
+            if admitted_index is not None and admitted_index.get(unit.document_id) != path:
                 raise SpecError(f"document identity changed after admission: {path}", "stale_context")
             self._unit_cache[path] = unit
         return self._unit_cache[path]
 
     def document(self, path: str) -> SpecDocument:
-        """Reading view for shared Markdown parsers; main_visible is not emitted in new records."""
+        """Reading view for shared Markdown parsers; source roles are represented separately."""
         unit = self.unit(path)
         text = unit.reading.content.decode("utf-8")
         return SpecDocument(path, text, unit.reading.digest, unit.document_id, unit.owner,
-                            True, unit.declarations, text)
+                            unit.declarations, text)
 
     def source_bytes(self, path: str) -> bytes:
         reading = self.source_documents.get(path)
@@ -238,6 +253,22 @@ class DocumentUnitRepository(SpecRepository):
         result = ModuleDefinitions(tuple(scenarios), tuple(requirements), tuple(entities))
         self._definition_cache[target.id] = result
         return result
+
+    def _check_implementation_listing(self, target: SpecTarget) -> None:
+        if set(self.entity_files(target)) != set(target.files):
+            raise SpecError(f"entity implementation entries differ from registration: {target.id}", "invalid_spec")
+
+    def implementation_entries(self, target: SpecTarget) -> tuple[str, ...]:
+        self._check_implementation_listing(target)
+        return super().implementation_entries(target)
+
+    def implementation_paths(self, target: SpecTarget) -> tuple[str, ...]:
+        self._check_implementation_listing(target)
+        return super().implementation_paths(target)
+
+    def implementation_files(self, target: SpecTarget) -> tuple[str, ...]:
+        self._check_implementation_listing(target)
+        return super().implementation_files(target)
 
     def dependencies(self, target: SpecTarget) -> tuple[dict, ...]:
         return self._declarations(target, "dependencies")

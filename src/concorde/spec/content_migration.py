@@ -12,12 +12,72 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .content_model import ContentModelError, DocumentUnit, admit_document_unit
-from .repository import HEADING, SpecDocument, _parse_definitions, digest, read_file, walk_lines
+from .repository_base import HEADING, SpecDocument, _parse_definitions, digest, read_file, walk_lines
 from .typed_data import decode, safe_path
-from .validation import reading_part_problems
+from .validation import _section_ranges, _fences_in_range
+from .repository_base import LIST_ITEM
+
+MANDATORY_SECTIONS = ("Usage & Contract", "Architecture & Realization")
+USAGE_SECTIONS = ("Purpose", "Usage", "Requirements", "Scenarios")
+ARCHITECTURE_SECTIONS = ("Design", "Entities", "Relationships")
+
+def _part_subsections(sections, part: str):
+    """Direct level-3 subsections of a level-2 reading part, retaining duplicates."""
+    parent = next((s for s in sections if s[0] == part and s[1] == 2), None)
+    if parent is None:
+        return []
+    return [s for s in sections if s[1] == 3 and parent[2] < s[2] <= parent[3]]
+def legacy_reading_problems(body: str, *, primary: bool = False) -> list[str]:
+    """Check reader-part syntax, not whether prose supplies sufficient domain meaning."""
+    sections, lines = _section_ranges(body)
+    parts = [s for s in sections if s[0] in MANDATORY_SECTIONS]
+    expected = list(MANDATORY_SECTIONS) if primary else [p for p in MANDATORY_SECTIONS
+                                                       if any(s[0] == p for s in parts)]
+    problems = []
+    if not parts or [s[0] for s in parts] != expected or any(s[1] != 2 for s in parts):
+        problems.append("Spec requires Usage & Contract and Architecture & Realization as unique "
+                        "level-2 reading parts in order (a companion may contain only one)")
+    # Titles and navigation may precede the parts, but substantive headings cannot escape them.
+    first = min((s[2] for s in parts), default=0)
+    if any((s[1] <= 2 and s[0] not in MANDATORY_SECTIONS and s[2] > first)
+           or (s[1] >= 2 and s[2] < first) for s in sections):
+        problems.append("substantive sections must be nested inside a reader-oriented part")
+    for number, kind, line in lines:
+        if kind == "fence-open" and line.strip() == "```concorde-entities":
+            if not any(s[0] == MANDATORY_SECTIONS[1] and s[1] == 2 and s[2] < number <= s[3]
+                       for s in parts):
+                problems.append("entity declarations belong in Architecture & Realization")
+    if not primary:
+        return problems
+    for part, required in ((MANDATORY_SECTIONS[0], USAGE_SECTIONS),
+                           (MANDATORY_SECTIONS[1], ARCHITECTURE_SECTIONS)):
+        subsections = _part_subsections(sections, part)
+        parent = next((s for s in sections if s[0] == part and s[1] == 2), None)
+        named = [s for s in sections if parent and parent[2] < s[2] <= parent[3] and s[0] in required]
+        found = [s[0] for s in named]
+        if found != list(required) or any(s[1] != 3 for s in named):
+            problems.append(f"{part} requires {', '.join(required)} exactly once, in order, "
+                            f"as direct level-3 subsections; found {found}")
+            continue
+        for section in subsections:
+            name, _, start, end = section
+            content = [(kind, line) for n, kind, line in lines if start < n <= end]
+            if name in {"Purpose", "Usage", "Design"}:
+                if not any(kind == "prose" and line.strip() and not HEADING.match(line)
+                           and not LIST_ITEM.match(line) and not line.lstrip().startswith("|")
+                           for kind, line in content):
+                    problems.append(f"the {name} section must contain explanatory prose")
+            if name == "Purpose" and any(kind != "prose" or HEADING.match(line)
+                    or LIST_ITEM.match(line) or line.lstrip().startswith("|") for kind, line in content):
+                problems.append("the Purpose section must contain plain prose only, without headings, fences, lists or tables")
+            if name == "Entities" and not _fences_in_range(lines, start, end, "concorde-entities"):
+                problems.append("the Entities subsection must declare at least one concorde-entities block")
+            if name == "Relationships" and not _fences_in_range(lines, start, end, "mermaid"):
+                problems.append("the Relationships subsection must contain a Mermaid flowchart fence")
+    return problems
 
 _MOVED_BLOCKS = frozenset({"concorde-document", "concorde-entities", "concorde-dependencies",
-                            "concorde-contract-binding"})
+                            "concorde-contract-binding", "concorde-capabilities", "concorde-agents"})
 _PARTS = frozenset({"Usage & Contract", "Architecture & Realization"})
 
 
@@ -121,7 +181,7 @@ def _layout(text: str, primary: bool) -> str:
 
 
 def _definition_signature(path: str, text: str, owner: str, document_id: str) -> tuple:
-    document = SpecDocument(path, text, digest(text.encode()), document_id, owner, True, {}, text)
+    document = SpecDocument(path, text, digest(text.encode()), document_id, owner, {}, text)
     scenarios, requirements = _parse_definitions(document, owner)
     return (sorted((s.id, s.title, s.steps) for s in scenarios),
             sorted((r.id, r.title, r.statement) for r in requirements))
@@ -135,7 +195,7 @@ def plan_document_migration(path: str, raw: bytes, *, expected_owner: str,
     consistency and semantic editing are the caller's responsibility before atomic activation.
     """
     source = raw.decode("utf-8")
-    problems = reading_part_problems(source, primary=primary)
+    problems = legacy_reading_problems(source, primary=primary)
     if problems:
         raise ContentModelError(path, "invalid migration source: " + "; ".join(problems))
     blocks = _blocks(source)
@@ -162,7 +222,14 @@ def plan_document_migration(path: str, raw: bytes, *, expected_owner: str,
             continue
         value = decode(payload)
         prose = []
-        if name == "concorde-entities":
+        if name in {"concorde-capabilities", "concorde-agents"}:
+            key = name.replace("concorde-", "concorde.", 1)
+            if key in metadata.get("extensions", {}):
+                raise ContentModelError(path, "duplicate profile inventory cannot be migrated implicitly")
+            metadata.setdefault("extensions", {})[key] = value
+            prose.append("The associated metadata records the machine-checked implementation inventory. "
+                         "Its behavioral responsibilities must be explained in this reading collection.")
+        elif name == "concorde-entities":
             if not isinstance(value, list) or not value:
                 raise ContentModelError(path, "legacy entity declaration must be a nonempty array")
             for entity in value:

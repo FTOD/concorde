@@ -336,8 +336,11 @@ def spec_consumers(run) -> set[str]:
         if raw.returncode == 0:
             from ..spec.typed_data import decode
             registry = decode(raw.stdout)
+            if registry.get("schema_version") != 5:
+                raise SpecError("review baseline uses a retired Spec format; migrate the candidate explicitly", "unsupported_profile")
             overrides = {}
-            for path in {path for target in registry["targets"] for path in target["documents"]}:
+            for path in {member for target in registry["targets"] for path in target["documents"]
+                         for member in (path, path + ".json") }:
                 result = subprocess.run(("git", "show", f"{baseline}:{path}"), cwd=run.repository.root,
                     capture_output=True, check=True)
                 overrides[path] = result.stdout

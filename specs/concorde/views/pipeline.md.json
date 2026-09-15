@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.views.pipeline",
+    "owner": "module.views"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": []
+}

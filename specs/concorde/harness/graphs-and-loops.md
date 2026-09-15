@@ -1,13 +1,4 @@
-```concorde-document
-{
-  "id": "document.harness.graphs-and-loops",
-  "owner": "module.harness",
-  "main_visible": true
-}
-```
 # Agent Flows, Agent Loops and feedback
-
-## Usage & Contract
 
 Agent orchestration coordinates Agent invocations, Capability calls and control decisions toward
 a declared goal. A Flow describes the structure of that coordination; a Loop describes feedback
@@ -56,7 +47,6 @@ separate, explicit inputs. Code-driven control does not guarantee reproducible o
 models, tools and external state may still vary. Determinism is a property to document where it
 applies, not the primary classification of Agents or dispatch.
 
-
 ### G1. Agent Flow
 
 An Agent Flow MUST declare its participating Agent definitions, Capability calls, control nodes,
@@ -72,7 +62,6 @@ Agent does not grant access to that Agent's complete private context.
 
 A Flow MAY be exposed as a Capability with a complete external contract. Invoking that Capability
 does not expose its internal Agents or grant authority to call arbitrary internal nodes.
-
 
 ### G2. Agent Loop
 
@@ -91,7 +80,6 @@ A retry or revision MUST identify what changed or what recovery condition permit
 Unchanged blocking feedback MUST not cause endless retries. Stale task, context, policy or result
 identity requires re-admission before execution continues. Completion of an inner loop does not
 automatically complete the enclosing Flow or authorize delivery.
-
 
 ### G3. AI and human feedback
 
@@ -113,7 +101,6 @@ Tool or broader context is not an automatic permission grant. Every transition M
 applicable task, context and authority checks. A graph receiving no answer to a required decision
 remains waiting; elapsed time is not acceptance.
 
-
 ### G4. State, recovery and evidence
 
 Execution evidence MUST identify the Flow and loop policy, participating Agent invocations,
@@ -130,7 +117,6 @@ Review and check results are evidence about the bound revision. They do not rema
 relevant Agent Specs, Harness configurations, capability contracts, project inputs or policies
 change. Raw logs and native transcripts remain diagnostics unless explicitly admitted as typed
 downstream inputs.
-
 
 ### Flow Specs
 
@@ -161,7 +147,7 @@ routing conditions are right, which the scenarios and tests of the owning Module
 reading entry remains the entity diagram the Protocol defines; Flow Specs live in other sections
 or documents.
 
-## Architecture & Realization
+## Design
 
 ### Concorde Flow responsibilities
 

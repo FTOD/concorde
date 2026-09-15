@@ -1,14 +1,4 @@
-```concorde-document
-{
-  "id": "document.review.review",
-  "owner": "module.review",
-  "main_visible": true
-}
-```
-
 # Independent review capability
-
-## Usage & Contract
 
 The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
@@ -35,7 +25,7 @@ supplies content. Deleted files under a current grant appear as scoped changes; 
 grants never expose their old contents. Full admitted current documents always accompany Spec review,
 even when a focus or patch names only a small portion.
 
-Private `concorde-review-stage-context@2` contains a full context snapshot and a
+Private `concorde-review-stage-context@3` contains a full context snapshot and a
 `concorde-review-input@1` with review_mode, input_digest, revision and changes. Each change is
 `{path, patch}`; binary changes carry only digest markers. The revision has spec_digest,
 nullable implementation_digest, nullable baseline and nullable head. spec_digest binds the selected
@@ -67,7 +57,7 @@ semantic_completeness=not_proven. Public response `reviews` contains these typed
 reference saved review reports. Native receipts and failure diagnostics remain separate host records.
 
 | Review state | Skill outcome and progression |
-|---|---|
+| --- | --- |
 | no_findings with nonempty coverage | completed; bounded review succeeded |
 | findings, all advisory and no gaps | completed; findings retained for the consumer |
 | concrete necessary gaps | spec_incomplete; dependent steps pause |

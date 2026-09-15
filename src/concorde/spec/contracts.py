@@ -1,4 +1,4 @@
-"""Profile 13 capability registry and versioned JSON contracts.
+"""Profile 14 capability registry and versioned JSON contracts.
 
 Public capabilities are each paired with exactly one Skill; non-public capabilities require
 declared composition. Internal Skills describe only one host-bound agent role. Per-capability
@@ -30,7 +30,7 @@ TARGET_DESCRIPTOR = obj({"id": STRING, "kind": {"const": "module"},
 IMPLEMENTATION_FILE = obj({"path": PATH, "entity_id": NULLABLE_ID, "pending": {"type": "boolean"}})
 IMPLEMENTATION_ENTRY = obj({"path": LISTING_ENTRY, "entity_id": NULLABLE_ID, "pending": {"type": "boolean"},
                             "directory": {"type": "boolean"}})
-REGISTRY = obj({"schema_version": {"const": 4}, "project_id": STRING,
+REGISTRY = obj({"schema_version": {"const": 5}, "project_id": STRING,
     "entry_target": STRING, "targets": {**array(TARGET_DESCRIPTOR), "minItems": 1},
     "checks": array(CHECK)})
 SPEC_TASK = obj({"target_id": STRING, "task": STRING})
@@ -154,13 +154,14 @@ def schemas() -> dict:
     result = {}
     document_ref = obj({"document_id": STRING, "path": PATH, "digest": DIGEST,
         "owner": STRING,
-        "main_visible": {"type": "boolean"}})
+        "role": {"enum": ["reading", "metadata"]}})
     # Context index records (Framework profile P5, Spec context grant): a document is identified, owned
     # and digested, never embedded. Its bytes reach an Agent through the read-only grant of the path.
     reason = obj({"kind": {"enum": ["owned", "module", "document"]}, "id": STRING})
     source = obj({**document_ref["properties"], "reasons": array(reason, unique=True)})
     def resolution(source_shape):
-        return obj({"query_id": STRING, "query_kind": {"enum": ["module", "scenario"]},
+        return obj({"schema_version": {"const": 1}, "registration": TARGET_DESCRIPTOR,
+            "query_id": STRING, "query_kind": {"enum": ["module", "scenario"]},
             "module_id": STRING, "reading_entry": PATH, "documents": array(PATH, unique=True),
             "references": array(REFERENCE, unique=True), "sources": array(source_shape)})
     protocol_document = obj({"path": PATH, "digest": DIGEST})
@@ -173,7 +174,7 @@ def schemas() -> dict:
         "reason": {"const": "implementation_boundary"}})
     result["concorde-reflection-selection"] = obj({"head": STRING, "records": array(obj({"id":STRING,"path":PATH,"digest":DIGEST,"content":STRING}))})
     stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-task-identity-constraints","concorde-implementation-task","concorde-task-scope-feedback","concorde-reflection-selection","concorde-review-result")]}
-    result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 4},
+    result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 5},
         "target_id": STRING, "kind": {"const": "module"}, "focus_id": NULLABLE_ID,
         "phase": STRING, "task": STRING, "constraints": array(STRING),
         "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
@@ -238,7 +239,7 @@ def schemas() -> dict:
         "files": {**array(PROPOSAL_FILE), "minItems": 1}})
     discovery_target = obj({"target_id": STRING, "kind": {"const": "module"},
                             "spec_resolution": resolution(source)})
-    result["concorde-discovery-context"] = obj({"context_id": DIGEST, "schema_version": {"const": 3},
+    result["concorde-discovery-context"] = obj({"context_id": DIGEST, "schema_version": {"const": 4},
         "capability": {"enum": sorted(DISCOVERY_CAPABILITIES)}, "phase": {"const": "route"},
         "action": {"enum": ["route", "ask", "design-topology"]},
         "task": STRING, "constraints": array(STRING), "target_hint": NULLABLE_ID,

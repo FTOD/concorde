@@ -233,6 +233,13 @@ class DocumentUnitRepositoryTests(unittest.TestCase):
         path.symlink_to(self.root / 'specs/a/module.md.json')
         with self.assertRaisesRegex(ValueError, 'symlink'):
             self.repository()
+        path.unlink()
+        path.write_bytes(before)
+        reading = self.root / 'specs/b/interface.md'
+        reading.unlink()
+        reading.hardlink_to(self.root / 'specs/a/module.md')
+        with self.assertRaisesRegex(ValueError, 'physical source alias'):
+            self.repository()
 
     def test_both_members_are_excluded_from_implementation_and_external_material(self):
         for member in ('specs/b/interface.md', 'specs/b/interface.md.json'):
@@ -244,6 +251,15 @@ class DocumentUnitRepositoryTests(unittest.TestCase):
                     value['targets'][0]['references'].append({'kind': 'external', 'path': member})
                 with self.subTest(member=member, field=field), self.assertRaises(ValueError):
                     DocumentUnitRepository(self.root, registry_bytes=encoded(value))
+
+    def test_registry_only_files_cannot_widen_an_implementation_grant(self):
+        registry = copy.deepcopy(self.registry)
+        registry['targets'][0]['files'] = ['secret.py']
+        repository = DocumentUnitRepository(self.root, registry_bytes=encoded(registry))
+        target = repository.select('module.a')
+        for query in (repository.implementation_entries, repository.implementation_paths, repository.implementation_files):
+            with self.subTest(query=query.__name__), self.assertRaisesRegex(SpecError, 'entries differ'):
+                query(target)
 
     def test_metadata_only_changes_invalidate_owner_and_direct_consumers(self):
         repository = self.repository()
@@ -358,23 +374,16 @@ class DocumentUnitRepositoryTests(unittest.TestCase):
         self.assertEqual(1, sum(path == 'specs/b/interface.md.json' for path in granted))
         self.assertIn('specs/c/module.md.json', granted, 'B explicitly selected C in its own context')
 
-    def test_entire_checkout_migrates_into_an_admitted_in_memory_repository(self):
-        from concorde.spec.content_migration import plan_document_migration
+    def test_entire_checkout_is_admitted_through_the_bound_document_unit_repository(self):
         root = Path(__file__).resolve().parents[3]
-        registry = json.loads((root / '.concorde/specs.json').read_bytes())
-        registry['schema_version'] = 5
-        overrides = {}
-        for target in registry['targets']:
-            for path in target['documents']:
-                plan = plan_document_migration(path, (root / path).read_bytes(), expected_owner=target['id'],
-                                               primary=Path(path).name == 'module.md')
-                overrides.update({member.path: member.content for member in plan.unit.sources})
-        repository = DocumentUnitRepository(root, registry_bytes=encoded(registry), document_overrides=overrides)
+        repository = SpecRepository(root)
         repository.validate()
-        self.assertEqual(len(registry['targets']), len(repository.context_identities()))
-        self.assertEqual(2 * len(repository.document_targets), len(overrides))
+        self.assertEqual(14, repository.config['profile_version'])
+        self.assertEqual('7.0.0', repository.config['protocol']['version'])
+        self.assertEqual(len(repository.targets), len(repository.context_identities()))
+        self.assertEqual(2 * len(repository.document_targets), len(repository.source_documents))
         for path in repository.document_targets:
-            self.assertFalse((root / metadata_path(path)).exists(), 'admission must not write migrated files')
+            self.assertTrue((root / metadata_path(path)).is_file())
 
     def test_old_registry_is_not_an_automatic_compatibility_input(self):
         self.registry['schema_version'] = 4
