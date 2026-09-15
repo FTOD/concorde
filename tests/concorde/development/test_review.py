@@ -840,8 +840,8 @@ class ReviewTests(unittest.TestCase):
             else:
                 self.assertNotEqual(self.root, calls[-1]["cwd"])
                 # The index plus the granted Spec documents and Protocol files, never code.
-                self.assertEqual("context.json", policy["read_paths"][0])
-                self.assertTrue(all(p.startswith(("specs/", "generated/protocol/")) for p in policy["read_paths"][1:]), policy["read_paths"])
+                self.assertIn("context.json", policy["read_paths"])
+                self.assertTrue(all(p == "context.json" or p.startswith(("specs/", ".concorde/protocol/")) for p in policy["read_paths"]), policy["read_paths"])
                 self.assertEqual([], snapshot["implementation_artifacts"])
                 self.assertNotIn("def transfer", calls[-1]["prompt"])
                 # The listed file names are Spec facts; only code review reads their bytes.

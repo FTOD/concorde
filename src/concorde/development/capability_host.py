@@ -14,7 +14,7 @@ import sys
 import tempfile
 import uuid
 from dataclasses import dataclass, field, replace, asdict
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 from ..spec.typed_data import (CAPABILITY_CONTRACTS, TypedDataError, canonical, checked_path,
@@ -1319,12 +1319,10 @@ class Invocation:
                 context_file.parent.mkdir(parents=True, exist_ok=True)
                 context_file.write_text(snapshot.serialized + "\n")
             # Spec context is the index above plus the read-only grant of every document and Protocol
-            # file it lists: all copied byte for byte into a capsule; in a workspace the documents
-            # are granted in place and the Protocol copies are written beside the index.
-            index_dir = str(PurePosixPath(relative).parent) if project_workspace else ""
-            granted = context_documents(self.repository, snapshot.value, index_dir=index_dir)
-            if self.host.mode != "describe-policy":
-                materialize_documents(project, granted, below=index_dir)
+            # file it lists: copied byte for byte into a capsule, granted in place in a workspace.
+            granted = context_documents(self.repository, snapshot.value)
+            if not project_workspace and self.host.mode != "describe-policy":
+                materialize_documents(capsule, granted)
             roles = {"spec-context": (relative, *sorted(granted))}
             if project_workspace:
                 roles["implementation"] = (self.repository.implementation_files(self.target) if readonly
@@ -2444,11 +2442,22 @@ def _project_nodes(capability, configuration, task, host):
                 "apply" if task["action"] == "apply" else "propose"}
 
     def configure(state):
-        SpecRepository(host.project_root, host.package_root)
+        from ..spec.initialize import protocol_binding, protocol_changes
+        accept = bool(task.get("accept_protocol"))
+        if not accept:
+            SpecRepository(host.project_root, host.package_root)
         value = decode(read_file(host.project_root, ".concorde/config.json").decode())
+        changes = []
+        if accept:
+            # Explicit acceptance of the installed Protocol: refresh the project's accepted copy
+            # under .concorde/protocol/ and rebind the configuration to it, in one transaction that
+            # the repository admission verifies before it is kept.
+            changes.extend(protocol_changes(host.project_root, host.package_root))
+            value["protocol"] = protocol_binding(host.package_root)
         value["capability_configuration"] = task["configuration"]
-        changed = file_change(host.project_root, ".concorde/config.json", canonical(value) + "\n")
-        apply_files(host.project_root, [changed], {changed["path"]})
+        changes.append(file_change(host.project_root, ".concorde/config.json", canonical(value) + "\n"))
+        apply_files(host.project_root, changes, {item["path"] for item in changes},
+                    verify=lambda: SpecRepository(host.project_root, host.package_root))
         return {"output": typed("concorde-configure-response", {"status": "applied", "configuration": task["configuration"]}), "route": END}
 
     def apply(state):

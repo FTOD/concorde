@@ -1,6 +1,6 @@
 ---
 name: concorde-configure
-description: "Capability: apply the initialized integration and enforcement configuration."
+description: "Capability: apply the initialized integration and enforcement configuration; with accept_protocol, adopt the installed Protocol as the project's accepted copy."
 argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
@@ -88,6 +88,9 @@ This complete schema is the invocation's input field. It does not grant project 
             "data"
           ],
           "additionalProperties": false
+        },
+        "accept_protocol": {
+          "type": "boolean"
         }
       },
       "required": [

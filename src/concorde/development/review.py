@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 import uuid
 from dataclasses import asdict, replace
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from ..harness.change_worktree import git, git_value, progress, read_change, save_change, workspace_identity
 from ..spec.typed_data import artifact, canonical, checked_path, typed, validate_typed, verify_artifacts
@@ -221,10 +221,9 @@ def review(run, mode: str) -> dict:
             if run.host.mode != "describe-policy":
                 capsule.parent.mkdir(parents=True, exist_ok=True)
                 capsule.write_text(serialized)
-            index_dir = str(PurePosixPath(relative).parent) if project_workspace else ""
-            granted = context_documents(run.repository, snapshot.value, index_dir=index_dir)
-            if run.host.mode != "describe-policy":
-                materialize_documents(project, granted, below=index_dir)
+            granted = context_documents(run.repository, snapshot.value)
+            if not project_workspace and run.host.mode != "describe-policy":
+                materialize_documents(project, granted)
             roles = {"spec-context": (relative, *sorted(granted))}
             if project_workspace:
                 roles["implementation"] = tuple(run.repository.implementation_files(run.target))

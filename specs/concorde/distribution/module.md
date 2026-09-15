@@ -259,7 +259,7 @@ directory prefixes; the capability providers retain their own executable contrac
     "id": "entity.distribution.integration-configuration",
     "title": "Integration configuration",
     "kind": "concept",
-    "responsibility": "The typed, supported integration and enforcement setting that `concorde-configure` applies atomically to an initialized project, leaving the previous configuration in place on any failure."
+    "responsibility": "The typed, supported integration and enforcement setting that `concorde-configure` applies atomically to an initialized project, leaving the previous configuration in place on any failure; with `accept_protocol` the same capability adopts the installed Protocol as the project's accepted copy under `.concorde/protocol/`."
   },
   {
     "id": "entity.distribution.developer-session",

@@ -31,7 +31,7 @@ class ScopedProtocolTests(unittest.TestCase):
         context=resolve_context(repo,target.id,focus_id='scenario.transfer.debit').value
         self.assertEqual(list(target.documents),[source['path'] for source in context['spec_resolution']['sources']])
         self.assertEqual(list(target.documents),[d['path'] for d in context['spec_resolution']['sources']])
-        self.assertEqual(['generated/protocol/principles.md','generated/protocol/kinds/module.md'],[d['path'] for d in context['protocol']])
+        self.assertEqual(['.concorde/protocol/principles.md','.concorde/protocol/kinds/module.md'],[d['path'] for d in context['protocol']])
         text=json.dumps(context)
         self.assertNotIn('PRIVATE_CODE',text)
         self.assertNotIn('specs/audit/module.md',text)
@@ -136,7 +136,7 @@ class ScopedProtocolTests(unittest.TestCase):
             self.assertIn(path,second['granted'])
         self.assertNotIn('# Transfer money',json.dumps(second['snapshot']))
         self.assertEqual(2,len({str(call['cwd']) for call in double.calls}))
-        self.assertEqual(['generated/protocol/principles.md','generated/protocol/kinds/module.md'],
+        self.assertEqual(['.concorde/protocol/principles.md','.concorde/protocol/kinds/module.md'],
             [item['path'] for item in first['snapshot']['protocol']])
         invocation_ids=[item.completion.invocation_id for item in self.host.evidence]
         self.assertEqual(2,len(invocation_ids));self.assertEqual(2,len(set(invocation_ids)))

@@ -120,8 +120,11 @@ class BoundaryTests(unittest.TestCase):
         shutil.copytree(PACKAGE/'agents',package/'agents')
         shutil.copytree(PACKAGE/'protocol',package/'protocol')
         write_build(package,'all')
-        (package/'generated/protocol/kinds/module.md').write_text('changed')
-        with self.assertRaises(SpecError):SpecRepository(self.root,package)
+        SpecRepository(self.root,package)
+        # The project's accepted copy is what is admitted and granted; tampering with it is a mismatch.
+        (self.root/'.concorde/protocol/kinds/module.md').write_text('changed')
+        with self.assertRaises(SpecError) as raised:SpecRepository(self.root,package)
+        self.assertEqual('protocol_mismatch',raised.exception.code)
     def test_configuration_cannot_replace_initialized_authority(self):
         other=typed('concorde-capability-configuration',{'integration':'codex','enforcement':'native'})
         result=run_capability('concorde-main',other,typed('concorde-main-request',self.task),host_context=CapabilityHost(self.root,PACKAGE))
@@ -136,11 +139,12 @@ class BoundaryTests(unittest.TestCase):
         result=self.call_capability('concorde-plan',callback=cb)
         self.assertEqual('unsupported',result['output']['data']['outcome']);self.assertEqual([],result['output']['data']['gaps']);self.assertFalse((self.root/'.concorde/attempts').exists())
     def assertSpecOnlyReads(self,read_paths):
-        # A Spec-only phase reads the frozen index plus the granted Spec documents and Protocol
-        # files it lists, and no implementation file.
-        self.assertEqual('context.json',read_paths[0])
-        self.assertTrue(read_paths[1:],read_paths)
-        self.assertTrue(all(p.startswith(('specs/','generated/protocol/')) for p in read_paths[1:]),read_paths)
+        # A Spec-only phase reads the frozen index plus the granted Spec documents and the accepted
+        # Protocol copy it lists, and no implementation file.
+        self.assertIn('context.json',[Path(p).name for p in read_paths])
+        others=[p for p in read_paths if Path(p).name!='context.json']
+        self.assertTrue(others,read_paths)
+        self.assertTrue(all(p.startswith(('specs/','.concorde/protocol/')) for p in others),read_paths)
     def test_describe_policy_launches_no_model_and_lists_exact_capsule(self):
         result=self.call_capability('concorde-dev-loop',mode='describe-policy')
         self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)

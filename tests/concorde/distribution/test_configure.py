@@ -15,6 +15,12 @@ from concorde.development.configuration import apply_configuration, load_configu
 from concorde.spec.typed_data import TypedDataError, validate_typed  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
 from tests.concorde.support.capability_json import CONFIGURATION  # noqa: E402
+from concorde.development.capability_host import CapabilityHost  # noqa: E402
+from concorde.development.capability_service import run_capability  # noqa: E402
+from concorde.spec.initialize import PROTOCOL_MANIFEST_PATH, protocol_binding, protocol_files  # noqa: E402
+from concorde.spec.repository import SpecError, SpecRepository, digest as digest_bytes  # noqa: E402
+from concorde.spec.typed_data import typed  # noqa: E402
+from tests.concorde.spec.support import PACKAGE, ModelProcessDouble, project  # noqa: E402
 
 
 def configuration(integration: str = "claude", enforcement: str = "native") -> dict:
@@ -67,6 +73,46 @@ class ConfigureTests(unittest.TestCase):
         self.write(configuration(enforcement="outer"))
         with self.assertRaises(TypedDataError):
             load_configuration(self.root)
+
+
+class AcceptProtocolTests(unittest.TestCase):
+    """The accepted Protocol copy under .concorde/protocol/ changes only on explicit acceptance."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        project(self.root)
+
+    def configure(self, data: dict) -> dict:
+        host = CapabilityHost(self.root, PACKAGE, executor=ModelProcessDouble().executor, allow_primary_worktree=True)
+        return run_capability("concorde-configure", CONFIGURATION, typed("concorde-configure-request", data), host_context=host)
+
+    @verifies("scenario.distribution.accept-protocol")
+    def test_configure_accepts_an_upgraded_protocol_only_on_explicit_request(self):
+        # A project whose accepted copy lags behind the installed package: the binding still matches
+        # the copy, but the installed manifest differs.
+        manifest = self.root / PROTOCOL_MANIFEST_PATH
+        stale = json.loads(manifest.read_text())
+        stale["assets"][0]["digest"] = "sha256:" + "0" * 64
+        manifest.write_text(json.dumps(stale, indent=2) + "\n")
+        config = self.root / ".concorde/config.json"
+        value = json.loads(config.read_text())
+        value["protocol"] = {"version": stale["version"], "digest": digest_bytes(manifest.read_bytes())}
+        config.write_text(json.dumps(value))
+        with self.assertRaises(SpecError) as raised:
+            SpecRepository(self.root, PACKAGE)
+        self.assertEqual("protocol_mismatch", raised.exception.code)
+        result = self.configure({"configuration": CONFIGURATION})
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual("protocol_mismatch", result["errors"][0]["code"])
+        self.assertEqual(stale, json.loads(manifest.read_text()))
+        result = self.configure({"configuration": CONFIGURATION, "accept_protocol": True})
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual(protocol_binding(PACKAGE), json.loads(config.read_text())["protocol"])
+        for path, content in protocol_files(PACKAGE).items():
+            self.assertEqual(content, (self.root / path).read_bytes())
+        SpecRepository(self.root, PACKAGE)
 
 
 if __name__ == "__main__":

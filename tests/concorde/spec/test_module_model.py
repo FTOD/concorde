@@ -12,7 +12,7 @@ from unittest.mock import patch
 from concorde.development.capability_host import Invocation, _implementation_digest, _target_revision
 from concorde.spec.changes import confirm_pending_files
 from concorde.harness.context import resolve_context, recheck_context
-from concorde.spec.initialize import protocol_binding
+from concorde.spec.initialize import protocol_binding, write_protocol_copy
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
@@ -48,6 +48,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.write(".concorde/config.json", json.dumps({"profile_version": 12,
             "registry": ".concorde/specs.json", "protocol": protocol_binding(PACKAGE),
             "capability_configuration": self.configuration}))
+        write_protocol_copy(self.root, PACKAGE)
         self.write("source/shared.py", "def value():\n    return 42\n# PRIVATE_SOURCE_MARKER\n")
         self.write("source/a.py", "def adapt(value):\n    return value\n")
         self.write("specs/root/module.md", reading_entry("module.root", "root",

@@ -132,7 +132,7 @@ Keep this user comment intact.
         self.assertNotIn('TRANSFER_IMPLEMENTATION_CODE',json.dumps(snapshot))
         # Reads are the frozen index and Protocol copies beside it, the granted Spec documents
         # and the listed implementation files; nothing else.
-        self.assertTrue(all(path.startswith(('.concorde/runs/','specs/')) or path in {'app/transfer.py','checks/transfer_check.py'}
+        self.assertTrue(all(path.startswith(('.concorde/runs/','.concorde/protocol/','specs/')) or path in {'app/transfer.py','checks/transfer_check.py'}
                             for description in self.host.descriptions for path in description['read_paths']),self.host.descriptions)
         self.assertEqual([[]],[d['write_paths'] for d in self.host.descriptions]);text=(self.root/'.concorde/reflections/planned/R-001.md').read_text()
         self.assertIn('Keep this user comment intact.',text);self.assertIn('PRIVATE_REFLECTION_DETAIL_FOR_IMPLEMENTATION',text)

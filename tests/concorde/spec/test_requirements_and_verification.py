@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.spec.initialize import protocol_binding
+from concorde.spec.initialize import protocol_binding, write_protocol_copy
 from concorde.spec.repository import SpecError, SpecRepository
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import scan_declarations, verifies
@@ -45,6 +45,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
                          "data": {"integration": "claude", "enforcement": "native"}}
         self.write(".concorde/config.json", json.dumps({"profile_version": 12, "registry": ".concorde/specs.json",
             "protocol": protocol_binding(PACKAGE), "capability_configuration": configuration}))
+        write_protocol_copy(self.root, PACKAGE)
         self.write(".concorde/specs.json", json.dumps({"schema_version": 4, "project_id": "project.shop",
             "entry_target": "module.shop", "checks": [], "targets": [
                 {"id": "module.shop", "kind": "module", "title": "Shop", "documents": ["specs/shop/module.md", "specs/shop/notes.md"],

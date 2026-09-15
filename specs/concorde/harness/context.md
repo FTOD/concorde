@@ -127,14 +127,12 @@ at typed host admission. The digest covers the complete canonical dictionary exc
 Every launch delivers the Spec context as the Protocol's context index and grant. The snapshot is
 the index, written to `context.json`; the `spec-context` role path list names that file together
 with every path in `spec_resolution.sources` and `protocol`, and the compiled policy grants
-exactly those paths read-only. Spec documents are granted at their project-relative paths and the
-Protocol files at their bundle paths below the directory holding the index, because the rule bundle
-is a Framework asset the project tree does not contain. In a capsule the index sits at the root, so
-the host copies every granted file to its path there, byte-identical to the digest the index
-records, before launch; in a project workspace the Spec documents are granted in place after the
-host verifies that their current bytes still match the index, and the Protocol copies are written
-beside the index under `.concorde/runs/<invocation>/<uuid>/`. No document or Protocol body is
-embedded in the invocation input or prompt: the
+exactly those paths read-only. Every grant is a project-relative path: Spec documents where they
+live and the accepted Protocol copy under `.concorde/protocol/`. In a capsule the host copies every
+granted file to that path, byte-identical to the digest the index records, before launch; in a
+project workspace the files are granted in place after the host verifies that their current bytes
+still match the index. No document or Protocol body is embedded in the invocation input or
+prompt: the
 agent opens the granted files with its own tools, starting from `spec_resolution.reading_entry`,
 and reads what its task needs. `context_grants` derives that path set from any of the three
 context kinds, `context_documents` produces the verified bytes and raises `stale_context` when a
@@ -196,11 +194,12 @@ not classify all runtime rules as Spec organization rules.
 Concorde Spec Protocol 5.2.0 defines the Spec context, implementation context and external
 references this service resolves. The distributed rule bundle also includes the separately authored Framework execution
 profile, including P10 handoffs. The resolver verifies the build is
-fresh, then admits Protocol assets rendered into `generated/protocol/` from the exact project-bound
+fresh, then admits the project's accepted Protocol copy under `.concorde/protocol/`, the manifest
+the configuration binds and its rendered assets, cross-checked against the installed package's
 manifest, without discovering root AGENTS.md/CLAUDE.md. The installed root entry serves
-outer user sessions only. Package update leaves an old binding unchanged and resolution rejects
-`protocol_mismatch` until the developer explicitly accepts the installed version and manifest
-digest in `.concorde/config.json`. Changed bindings require new contexts.
+outer user sessions only. Package update leaves the accepted copy and binding unchanged and
+resolution rejects `protocol_mismatch` until the developer explicitly accepts the installed
+version through `concorde-configure` with `accept_protocol`. Changed bindings require new contexts.
 Stage inputs must be versioned plan, implementation-task, task-identity-constraints,
 task-scope-feedback, reflection-selection or review-result
 values (the last only accompanies a bounded dev-loop code-review repair round: see

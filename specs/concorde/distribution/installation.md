@@ -17,7 +17,8 @@ are not additional Protocol Spec kinds.
 The Framework identifies its supported project configuration as Profile 12. Initialization writes
 `.concorde/config.json` with `profile_version: 12`, the `registry` path, an accepted Protocol
 `version` and manifest `digest` under `protocol`, and the typed `capability_configuration` for
-integration and enforcement. Its registry uses JSON schema version 4. Profile 12 and registry
+integration and enforcement, and installs the bound Protocol bundle under `.concorde/protocol/`
+as the project's accepted copy. Its registry uses JSON schema version 4. Profile 12 and registry
 schema 4 are Framework compatibility and storage versions; Spec Protocol 5.2.0 identifies the
 independent specification standard. Installation and initialization preserve these separate roles.
 
@@ -93,6 +94,13 @@ This is the root-entry cleanup step for uninstall, not a full-package removal co
 - WHEN concorde-configure is applied
 - THEN the new configuration is written atomically
 - AND unsupported values, an uninitialized project or a failed write leave the previous configuration in place
+
+### scenario.distribution.accept-protocol — Accepting an upgraded installed Protocol is explicit
+
+- GIVEN an initialized project whose accepted Protocol copy under `.concorde/protocol/` differs from the installed package's Protocol manifest
+- WHEN concorde-configure is applied without `accept_protocol`
+- THEN it fails with protocol_mismatch and leaves the accepted copy and binding unchanged
+- BUT when it is applied with `accept_protocol: true`, it rewrites the accepted copy from the installed package, rebinds the configuration to that manifest and admits the repository, in one transaction that is rolled back if admission fails
 
 Owned content is hashed in the installation receipt. A local modification conflicts unless an
 explicit supported ownership transition authorizes replacement. Staging, provisioning and

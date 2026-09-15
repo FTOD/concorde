@@ -16,7 +16,9 @@ PHASES = frozenset({"ask", "specify", "plan", "tasks", "implementation", "spec-r
 CODE_PHASES = frozenset({"implementation", "code-review"})
 DISCOVERY_PHASES = frozenset({"route"})
 DISCOVERY_KINDS = frozenset({"module"})
-PROTOCOL_PATHS = ("generated/protocol/principles.md", "generated/protocol/kinds/module.md")
+# The project's accepted Protocol copy (installed by initialization and explicit acceptance), granted
+# in place like any other project file.
+PROTOCOL_PATHS = (".concorde/protocol/principles.md", ".concorde/protocol/kinds/module.md")
 
 
 @dataclass(frozen=True)
@@ -141,45 +143,31 @@ def _index_documents(value: dict) -> list[dict]:
     return value["spec_resolution"]["sources"] if "spec_resolution" in value else value["documents"]
 
 
-def protocol_grant_path(index_dir: str, path: str) -> str:
-    """Where a Protocol file is granted: at its bundle path below the directory holding the index.
-
-    In a capsule the index sits at the root, so the grant path equals the bundle path; in a project
-    workspace the index lives under ``.concorde/runs/...`` and the Protocol copies sit beside it,
-    because the rule bundle is a Framework asset that the project tree does not contain.
-    """
-    return f"{index_dir}/{path}" if index_dir else path
-
-
-def context_grants(value: dict, index_dir: str = "") -> tuple[str, ...]:
+def context_grants(value: dict) -> tuple[str, ...]:
     """The read-only paths a context index grants: every listed document and the Protocol files.
 
     Accepts a context snapshot or a topology author context (both carry ``spec_resolution``) or a
-    discovery context (which carries the deduplicated ``documents`` pool). Spec documents are
-    granted at their project-relative paths and Protocol files beside the index (``index_dir`` is
-    the project-relative directory holding ``context.json``). The bodies are never embedded
-    (Protocol, Context index and grant).
+    discovery context (which carries the deduplicated ``documents`` pool). Every grant is a
+    project-relative path: Spec documents where they live and the accepted Protocol copy under
+    ``.concorde/protocol/``. The bodies are never embedded (Protocol, Context index and grant).
     """
-    return tuple(sorted({*(protocol_grant_path(index_dir, item["path"]) for item in value["protocol"]),
+    return tuple(sorted({*(item["path"] for item in value["protocol"]),
                          *(item["path"] for item in _index_documents(value))}))
 
 
-def context_documents(repository: SpecRepository, value: dict, *, index_dir: str = "",
+def context_documents(repository: SpecRepository, value: dict, *,
                       candidate_repository: SpecRepository | None = None) -> dict[str, bytes]:
-    """The exact bytes of every granted context file, keyed by grant path and verified by digest.
+    """The exact bytes of every granted context file, keyed by path and verified by digest.
 
-    A capsule receives these bytes at the same paths; a project workspace is granted its Spec
-    documents in place, which this verification proves still hold the frozen bytes, and receives
-    the Protocol copies beside the index. A candidate repository supplies the bytes of documents
-    it overrides, as topology authoring does.
+    A capsule receives these bytes at the same paths; a project workspace is granted the paths in
+    place, and this verification proves they still hold the frozen bytes. A candidate repository
+    supplies the bytes of documents it overrides, as topology authoring does.
     """
-    expected = {protocol_grant_path(index_dir, item["path"]): item["digest"] for item in value["protocol"]}
-    expected.update({item["path"]: item["digest"] for item in _index_documents(value)})
-    bundle = {protocol_grant_path(index_dir, path): path for path in repository.protocol_assets}
+    expected = {item["path"]: item["digest"] for item in (*value["protocol"], *_index_documents(value))}
     result: dict[str, bytes] = {}
     for path, expected_digest in expected.items():
-        if path in bundle:
-            raw = repository.protocol_assets[bundle[path]]
+        if path in repository.protocol_assets:
+            raw = repository.protocol_assets[path]
         else:
             source = (candidate_repository if candidate_repository is not None
                       and path in candidate_repository.document_overrides else repository)
@@ -193,17 +181,10 @@ def context_documents(repository: SpecRepository, value: dict, *, index_dir: str
     return result
 
 
-def materialize_documents(destination: Path, documents: dict[str, bytes], *, below: str = "") -> None:
-    """Copy granted context files to their grant paths below ``destination``, byte for byte.
-
-    A capsule receives every granted file; a project workspace passes ``below`` (the directory
-    holding the index) so that only the Protocol copies beside the index are written, because its
-    Spec documents are granted in place.
-    """
+def materialize_documents(destination: Path, documents: dict[str, bytes]) -> None:
+    """Copy granted context files into a capsule at their project-relative paths, byte for byte."""
     from ..spec.typed_data import checked_path
     for path, raw in documents.items():
-        if below and not path.startswith(below + "/"):
-            continue
         copy = checked_path(destination, path)
         copy.parent.mkdir(parents=True, exist_ok=True)
         copy.write_bytes(raw)

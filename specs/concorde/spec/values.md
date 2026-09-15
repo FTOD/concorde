@@ -11,7 +11,7 @@
 
 `Profile 12` is the Framework's project-configuration compatibility version for the four-part Module model (Purpose, Requirements, Scenarios, Ontology). It is distinct from Spec Protocol 5.2.0 and from registry schema 4, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
 
-The Framework reads `.concorde/config.json` with exactly `profile_version: 12`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest) and `capability_configuration` (the typed integration/enforcement configuration, with an optional project-wide `model` and `reasoning_effort` for every Agent launch). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
+The Framework reads `.concorde/config.json` with exactly `profile_version: 12`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest, whose bundle the project carries under `.concorde/protocol/`) and `capability_configuration` (the typed integration/enforcement configuration, with an optional project-wide `model` and `reasoning_effort` for every Agent launch). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
 
 Registry schema 4 stores exactly `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. `targets` holds Module descriptors; there is no separate Implementation Spec collection, because every entity file binding is declared inside its owning Module's own documents. The separate check records configure executable verification; they are Framework execution metadata. Their serialized shape does not replace the Protocol's meaning of identity, membership, composition, dependency, entity or file binding.
 
@@ -19,7 +19,7 @@ Registry schema 4 stores exactly `schema_version`, `project_id`, `entry_target`,
 
 ### scenario.spec.reject-unsupported-profile — Rejecting an unsupported configuration profile
 
-- GIVEN a project configuration whose profile_version is not 12, or whose Protocol binding does not match the installed Protocol assets
+- GIVEN a project configuration whose profile_version is not 12, or whose Protocol binding does not match the project's accepted Protocol copy under `.concorde/protocol/`, or whose accepted copy differs from the installed package's Protocol
 - WHEN the repository is constructed
 - THEN construction fails with unsupported_profile or protocol_mismatch
 - BUT a matching Profile 12 configuration with a current Protocol binding admits normally

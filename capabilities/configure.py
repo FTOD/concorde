@@ -1,5 +1,6 @@
-"""Capability: apply the initialized integration and enforcement configuration. Deterministic;
-runs no agent cognition and selects no context."""
+"""Capability: apply the initialized integration and enforcement configuration and, on explicit
+request, accept the installed Protocol as the project's copy under .concorde/protocol/.
+Deterministic; runs no agent cognition and selects no context."""
 from concorde.spec import contract_shapes as shapes
 
 from . import external_name
@@ -13,7 +14,10 @@ EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 
 _CONFIGURATION = shapes.typed_schema("concorde-capability-configuration")
 
-REQUEST = shapes.obj({"configuration": _CONFIGURATION})
+# ``accept_protocol`` is the only way an upgraded installed Protocol becomes the project's accepted
+# copy: install and update never rewrite the binding silently.
+REQUEST = shapes.obj({"configuration": _CONFIGURATION, "accept_protocol": {"type": "boolean"}},
+                     ("accept_protocol",))
 RESPONSE = shapes.obj({"configuration": _CONFIGURATION, "status": {"const": "applied"}})
 
 

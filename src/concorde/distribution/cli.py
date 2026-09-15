@@ -171,11 +171,15 @@ def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
         manifest_path.write_text(json_module.dumps(updated, indent=2) + "\n")
         artifacts += (PROTOCOL_MANIFEST_PATH,)
     if arguments.bind_project:
+        # The source checkout is its own consumer: bind the configuration to the current manifest
+        # and refresh its accepted Protocol copy under .concorde/protocol/ from the current build.
+        from ..spec.initialize import PROTOCOL_DIR, write_protocol_copy
         config_path = root / ".concorde/config.json"
         config = json_module.loads(config_path.read_text(encoding="utf-8"))
         config["protocol"] = {"version": updated["version"], "digest": digest_bytes(manifest_path.read_bytes())}
         config_path.write_text(json_module.dumps(config, indent=2) + "\n")
-        artifacts += (".concorde/config.json",)
+        write_protocol_copy(root, root)
+        artifacts += (".concorde/config.json", PROTOCOL_DIR + "/")
     if differences and not arguments.write:
         return ToolResult("protocol-manifest", ".", "invalid", artifacts=artifacts, findings=(
             Finding("CONCORDE-PROTOCOL-MANIFEST-001", "error", PROTOCOL_MANIFEST_PATH,

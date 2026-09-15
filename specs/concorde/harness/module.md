@@ -61,9 +61,9 @@ Every launch SHALL deliver the selected Module's Spec context and the Protocol r
 index of the included files plus a read-only grant of exactly those files, without embedding any
 document body in the invocation input.
 
-The index is the frozen snapshot; the grant places Spec documents at their project-relative paths
-and Protocol files beside the index, as byte-identical copies in a capsule or, in a project
-workspace, the verified documents in place and the Protocol copies beside the index. An agent opens what its task needs, starting from the reading
+The index is the frozen snapshot; the grant names project-relative paths, Spec documents where they
+live and the accepted Protocol copy under `.concorde/protocol/`, as byte-identical copies in a
+capsule or the verified files in place in a project workspace. An agent opens what its task needs, starting from the reading
 entry, and nothing outside the grant is readable. This realizes the Protocol's Context index and
 grant rule; see [Spec context grant](context.md#spec-context-grant).
 

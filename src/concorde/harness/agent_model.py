@@ -194,9 +194,7 @@ def validate_mode_policy(mode: Mode, value: dict, policy, receipt: dict) -> None
     snapshot = value["data"].get("snapshot", {}).get("data", value["data"])
     indexes = [path for path in capsule_paths if Path(path).name == "context.json"]
     from .context import context_grants
-    index_dir = Path(indexes[0]).parent.as_posix() if indexes else ""
-    if (len(indexes) != 1 or set(capsule_paths) - {indexes[0]}
-            != set(context_grants(snapshot, "" if index_dir == "." else index_dir))):
+    if len(indexes) != 1 or set(capsule_paths) - {indexes[0]} != set(context_grants(snapshot)):
         raise ValueError("mode requires one frozen context index and the grant of exactly its listed files")
     entries = [item["path"].rstrip("/") for item in snapshot.get("implementation_entries", [])]
     names = [item["path"] for item in snapshot.get("implementation_files", [])]

@@ -216,11 +216,8 @@ class ModelProcessDouble:
         # its workspace, so the double proves each one is present there with the frozen bytes.
         receipt=json.JSONDecoder().raw_decode(input_text.split('Host workspace grant:\n',1)[1])[0] if 'Host workspace grant:\n' in input_text else json.JSONDecoder().raw_decode(input_text.split('Capability workspace receipt (trusted host result):\n',1)[1])[0]
         role_paths=[path for paths in receipt['role_paths'].values() for path in paths]
-        index={item['path']:item['digest'] for item in
-            (snapshot['spec_resolution']['sources'] if 'spec_resolution' in snapshot else snapshot['documents'])}
-        # Protocol files are granted at their bundle paths below the directory holding the index.
-        index.update({next(path for path in role_paths if path.endswith(item['path'])):item['digest']
-                      for item in snapshot['protocol']})
+        index={item['path']:item['digest'] for item in (*snapshot['protocol'],
+            *(snapshot['spec_resolution']['sources'] if 'spec_resolution' in snapshot else snapshot['documents']))}
         for path,expected in index.items():
             granted=Path(cwd)/path
             if path not in role_paths or not granted.is_file() or 'sha256:'+hashlib.sha256(granted.read_bytes()).hexdigest()!=expected:

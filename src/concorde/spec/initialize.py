@@ -25,6 +25,57 @@ def protocol_binding(package: Path) -> dict:
     return {"version": decode(raw.decode())["version"], "digest": digest(raw)}
 
 
+PROTOCOL_DIR = ".concorde/protocol"
+PROTOCOL_MANIFEST_PATH = PROTOCOL_DIR + "/manifest.json"
+RENDERED_PROTOCOL_PREFIX = "generated/protocol/"
+
+
+def protocol_asset_path(asset_path: str) -> str:
+    """Where a rendered Protocol asset is installed: ``generated/protocol/<name>`` becomes
+    ``.concorde/protocol/<name>`` in the project."""
+    if not asset_path.startswith(RENDERED_PROTOCOL_PREFIX):
+        raise SpecError(f"unexpected Protocol asset path: {asset_path}", "protocol_mismatch")
+    return PROTOCOL_DIR + "/" + asset_path[len(RENDERED_PROTOCOL_PREFIX):]
+
+
+def protocol_files(package: Path) -> dict[str, bytes]:
+    """The accepted Protocol bundle a project carries under ``.concorde/protocol/``.
+
+    It is the package manifest verbatim, whose digest is the configuration binding, and every
+    rendered asset the manifest lists. Agents are granted the Protocol as these project files, and
+    the project stays self-describing after the installed package moves on.
+    """
+    from ..distribution.build import BuildError, verify_fresh
+    try:
+        verify_fresh(package)
+    except BuildError as error:
+        raise SpecError(str(error), error.code) from error
+    raw = read_file(package, "protocol/manifest.json")
+    files = {PROTOCOL_MANIFEST_PATH: raw}
+    for item in decode(raw.decode())["assets"]:
+        content = read_file(package, item["path"])
+        if digest(content) != item["digest"]:
+            raise SpecError(f"Protocol asset has changed: {item['path']}", "protocol_mismatch")
+        files[protocol_asset_path(item["path"])] = content
+    return files
+
+
+def protocol_changes(root: Path, package: Path) -> list[dict]:
+    """The file changes that install the package's Protocol bundle as the project's accepted copy."""
+    return [file_change(root, path, content.decode("utf-8")) for path, content in protocol_files(package).items()]
+
+
+def write_protocol_copy(root: Path, package: Path) -> list[str]:
+    """Write the accepted Protocol copy directly (developer tooling and fixtures; no transaction)."""
+    written = []
+    for path, content in protocol_files(package).items():
+        target = checked_path(root, path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+        written.append(path)
+    return written
+
+
 def empty_target(target_id: str, kind: str, title: str, documents: list[str]) -> dict:
     return {"id": target_id, "kind": kind, "title": title, "documents": documents,
             "references": [], "parent": None, "uses": [], "files": [], "checks": []}
@@ -93,7 +144,9 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
         "protocol": protocol_binding(package), "capability_configuration": configuration}
     files = [file_change(root, ".concorde/config.json", json.dumps(config, indent=2) + "\n"),
              file_change(root, ".concorde/specs.json", json.dumps(registry, indent=2) + "\n"),
-             file_change(root, path, initial_module_text(target_id, name))]
+             file_change(root, path, initial_module_text(target_id, name)),
+             # The accepted Protocol bundle is installed with the project, under .concorde/protocol/.
+             *protocol_changes(root, package)]
     # Reflection defaults remain independently owned, and are never overwritten on init.
     index = ".concorde/reflections/index.json"
     if not checked_path(root, index).exists():
@@ -122,6 +175,7 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
         raise SpecError("project proposal has a mismatched registry or Protocol binding", "invalid_proposal")
     allowed = {".concorde/config.json", ".concorde/specs.json", TOPOLOGY_IGNORE_PATH,
                ".concorde/reflections/index.json", ".concorde/reflections/config.json",
+               *protocol_files(package),
                *(p for target in registry["targets"] for p in target["documents"])}
     if proposal["base_digest"] is not None or any(item["before_digest"] is not None for item in files):
         raise SpecError("initialization cannot replace existing files", "invalid_proposal")

@@ -39,7 +39,7 @@ interface agreement. It neither loads Skills into its workers nor owns their dis
 | specify-loop | `true` | `discover` | `false` | concorde-specify-loop | coordinator | specify, review | Route one change, author or revise its Spec unless `specify=false`, independently review it, and return completed before planning or implementation; `run_reviews=false` records a Spec-only skip without cancelling an existing requirement |
 | reflections-triage | `true` | `bound` | `false` | concorde-reflections-triage | programmer | dev-loop | Report status, capture recorded gaps, investigate read-only, implement through the development loop, merge or close owned reflections |
 | init | `true` | `none` | `true` | concorde-init | — | — | Propose and apply explicit project initialization with a pinned Protocol |
-| configure | `true` | `none` | `true` | concorde-configure | — | — | Apply the initialized integration and enforcement configuration |
+| configure | `true` | `none` | `true` | concorde-configure | — | — | Apply the initialized integration and enforcement configuration; with `accept_protocol`, adopt the installed Protocol as the project's accepted copy |
 | validate | `true` | `none` | `true` | concorde-validate | — | — | Run deterministic Spec and configured code checks and record readiness |
 | deliver | `true` | `none` | `true` | concorde-deliver | — | — | Stage a ready candidate on its own branch and clean up; explicitly merge later from the sole primary writer |
 | specify | `false` | `bound` | `false` | — | spec-engineer | — | Author the bound target's Spec replacements |

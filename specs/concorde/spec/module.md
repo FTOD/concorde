@@ -107,7 +107,7 @@ the exact entries they realize, and the most specific entry decides which entity
     "id": "entity.spec.protocol-binding",
     "title": "Protocol binding",
     "kind": "concept",
-    "responsibility": "The pinned accepted Protocol version and exact manifest digest recorded in .concorde/config.json and cross-checked against installed Protocol assets before any Spec is admitted."
+    "responsibility": "The pinned accepted Protocol version and exact manifest digest recorded in .concorde/config.json, matched against the project's accepted Protocol copy under .concorde/protocol/ and cross-checked against the installed package before any Spec is admitted."
   },
   {
     "id": "entity.spec.repository-api",
