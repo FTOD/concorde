@@ -21,7 +21,7 @@ The reflection system retains feedback and persistent gaps attributed to Modules
 supports investigation within their declared boundaries, and routes approved resolutions into
 fresh development tasks while preserving explicit developer control of report disposition.
 
-It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 5.2.0; its complete context is derived from the owned documents and references registered for `module.concorde` in `.concorde/specs.json`. It owns this reading entry and the definition migration ledger. This root Module owns no implementation files of its own; its promises are realized entirely by its sixteen child Modules.
+It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 5.3.0; its complete context is derived from the owned documents and references registered for `module.concorde` in `.concorde/specs.json`. It owns this reading entry and the definition migration ledger. This root Module owns no implementation files of its own; its promises are realized entirely by its sixteen child Modules.
 
 ## Requirements
 
@@ -167,7 +167,7 @@ Relationships subsection below traces how a request moves between them.
     "id": "entity.concorde.protocol",
     "title": "Spec Protocol",
     "kind": "external standard",
-    "responsibility": "The independent Spec Protocol 5.2.0 that defines what a Module Spec must explain; Spec admits and pins it but does not own its meaning."
+    "responsibility": "The independent Spec Protocol 5.3.0 that defines what a Module Spec must explain; Spec admits and pins it but does not own its meaning."
   },
   {
     "id": "entity.concorde.spec",

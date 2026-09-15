@@ -215,7 +215,7 @@ verify_fresh reject the old build even when a common instruction body is unchang
 
 ## Protocol and runtime support are separate
 
-The package supports Protocol 5.2.0 with source_profile 12. Its tracked manifest binds the exact
+The package supports Protocol 5.3.0 with source_profile 12. Its tracked manifest binds the exact
 generated rule and versioned schema bytes; project configuration binds the exact manifest bytes.
 Context payloads and wrappers export version 2. Build freshness establishes projection integrity;
 structural validation, configured checks and review evidence remain separate. Updates to exported

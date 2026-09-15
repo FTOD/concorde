@@ -8,7 +8,7 @@
 
 # Harness
 
-`module.harness` follows Spec Protocol 5.2.0. Its sole structural parent is `module.concorde`. The
+`module.harness` follows Spec Protocol 5.3.0. Its sole structural parent is `module.concorde`. The
 complete contract is the Markdown collection explicitly registered in `.concorde/specs.json`; links
 and entity file listings do not expand it. This reading entry introduces the collection; the
 registered companion documents explain [Agents and Harnesses](agents-and-harnesses.md), [Agent
@@ -58,14 +58,16 @@ Module's entity-bound files.
 #### req.harness.context-index-and-grant — Spec context is indexed and granted, never embedded
 
 Every launch SHALL deliver the selected Module's Spec context and the Protocol rule bundle as an
-index of the included files plus a read-only grant of exactly those files, without embedding any
-document body in the invocation input.
+index of the included files plus a read-only grant of exactly those files rather than as document
+bodies in the invocation input.
 
 The index is the frozen snapshot; the grant names project-relative paths, Spec documents where they
 live and the installed Protocol copy under `.concorde/protocol/`, as byte-identical copies in a
 capsule or the verified files in place in a project workspace. An agent opens what its task needs, starting from the reading
-entry, and nothing outside the grant is readable. This realizes the Protocol's Context index and
-grant rule; see [Spec context grant](context.md#spec-context-grant).
+entry, and nothing outside the grant is readable. The Protocol fixes only which files are visible;
+this index and grant is the Framework's chosen delivery. Task context stays inline: a review's
+typed changes carry diffs of the reviewed Module's own files, which add no path to the grant and
+replace no granted file. See [Spec context grant](context.md#spec-context-grant).
 
 #### req.harness.context-recheck — Recheck rejects reuse after changes
 

@@ -16,13 +16,15 @@ migration; the runtime must not infer their meaning from paths or names.
 
 A bounded invocation selects one Module and freezes four kinds of context. Its **Spec context** is
 the Protocol's one-level union of owned documents and explicit Module references; scenario focus
-does not trim it. Definitions in included documents retain their original owner. The host delivers
-it as the Protocol's context index and grant: the invocation's frozen record lists every included
-document with its identity, owner, digest, inclusion reasons and the reading entry, and the
-documents themselves are granted read-only at their project-relative paths, copied byte-for-byte
-into a capsule when the phase has no project workspace. No document body is embedded in an
-invocation's input; the agent opens the granted files with its own tools, starting from the
-reading entry, and nothing outside the grant is readable. Its
+does not trim it. Definitions in included documents retain their original owner. The Protocol
+fixes which files are visible, not how they are delivered; this profile chooses the delivery. The
+host delivers the Spec context as a **context index and grant**: the invocation's frozen record
+lists every included document with its identity, owner, digest, inclusion reasons and the reading
+entry, and the documents themselves are granted read-only at their project-relative paths, copied
+byte-for-byte into a capsule when the phase has no project workspace. No Spec document body is
+embedded in an invocation's input, so an invocation pays only for the documents its task opens;
+the agent opens the granted files with its own tools, starting from the reading entry, and nothing
+outside the grant is readable. Its
 **implementation context** is the Protocol-defined set of files bound by the Module's entities:
 their exact entries plus every regular file below their directory prefixes, excluding directories
 named `node_modules`, `__pycache__`, `.venv`, `build` or `dist`, directories and files whose names
@@ -36,7 +38,10 @@ each identified by one tree digest. Every phase sees those entries; planning, ta
 code-writing and code-review phases receive their readable files read-only, copied into a capsule
 when the phase has no project workspace, with media and archives excluded. No phase receives an
 undeclared network or an installed dependency's sources in their place. Its **task context** is the
-task, constraints, admitted stage artifacts and lifecycle metadata. A
+task, constraints, admitted stage artifacts and lifecycle metadata. Task context travels inline in
+the invocation input: stage artifacts and, for a review, the typed changes to the reviewed Module's
+own Spec documents or implementation files since the baseline revision. Those changes are derived
+from files inside the phase's visible scope, add no file to it and replace no granted file. A
 kind may be empty for a phase, but the frozen closure is never empty. Planner and task-author inputs
 contain no implementation file contents. A global coordinator may reason across explicitly selected
 complete Module Spec contexts for questions, routing and topology design. The host deterministically

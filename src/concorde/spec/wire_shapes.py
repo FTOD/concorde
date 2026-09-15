@@ -16,7 +16,7 @@ VERSION_TWO_TYPES = frozenset({
     "concorde-agent-stage-context", "concorde-main-stage-context", "concorde-review-stage-context",
     "concorde-topology-author-context"})
 
-# Context index records (Protocol 5.2): the snapshot and the discovery context list documents
+# Context index records (Framework profile P5): the snapshot and the discovery context list documents
 # and Protocol files by identity and digest instead of embedding their bodies, and the snapshot
 # names the reading entry. Each envelope version follows the data's own schema_version.
 VERSION_THREE_TYPES = frozenset({"concorde-discovery-context"})

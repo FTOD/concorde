@@ -149,7 +149,7 @@ def context_grants(value: dict) -> tuple[str, ...]:
     Accepts a context snapshot or a topology author context (both carry ``spec_resolution``) or a
     discovery context (which carries the deduplicated ``documents`` pool). Every grant is a
     project-relative path: Spec documents where they live and the installed Protocol copy under
-    ``.concorde/protocol/``. The bodies are never embedded (Protocol, Context index and grant).
+    ``.concorde/protocol/``. The bodies are never embedded (Framework profile P5, Spec context grant).
     """
     return tuple(sorted({*(item["path"] for item in value["protocol"]),
                          *(item["path"] for item in _index_documents(value))}))

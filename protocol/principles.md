@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 5.2.0 defines Module Specs and their organization. These requirements apply
+Concorde Spec Protocol 5.3.0 defines Module Specs and their organization. These requirements apply
 to project specifications, including the specifications of software that implements this Protocol.
 They do not require the Protocol text to describe itself as a Module.
 
@@ -100,9 +100,9 @@ the Spec omits: it is neither a Spec document nor an implementation file, it is 
 and a tool that gives an agent knowledge of external capabilities takes that knowledge from these
 declarations rather than from an undeclared network or dependency installation. Only the selected Module's references are expanded, once:
 referenced Modules' references and Markdown links MUST NOT be followed. The complete context is the
-deduplicated union of full owned and directly referenced documents. A tool delivers that context as
-an index of the included documents together with a read-only grant of exactly those documents; it
-does not copy their bodies into the reader's instructions, and the reader opens them on demand.
+deduplicated union of full owned and directly referenced documents. That context is the reader's
+visibility scope: a tool makes all of it available and nothing outside it, and how the tool delivers
+it is the tool's choice rather than part of this Protocol.
 
 That resolved context MUST explain the selected Module's purpose, requirements, scenarios, entities
 and relationships without undeclared reading or source code supplying missing meaning. For each
@@ -136,9 +136,9 @@ completeness. Structural checks can establish particular invariants; they cannot
 every intended behavior has been specified or that an implementation fulfills its contract.
 
 The Protocol defines the meaning to preserve. A tool's configuration version, serialized registry
-version, execution policy or review procedure is a separate agreement. Tools that represent these
-specifications MUST preserve their identities, ownership, context inclusion, relationship meanings
-and contracts.
+version, execution policy, context delivery mechanism or review procedure is a separate agreement.
+Tools that represent these specifications MUST preserve their identities, ownership, context
+inclusion, relationship meanings and contracts.
 
 The Required format chapter defines the mandatory representation of authored Spec documents. The
 Protocol templates demonstrate starting layouts; filling them out does not replace the semantic and

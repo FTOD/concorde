@@ -170,7 +170,7 @@ def schemas() -> dict:
     document_ref = obj({"document_id": STRING, "path": PATH, "digest": DIGEST,
         "owner": STRING,
         "main_visible": {"type": "boolean"}})
-    # Context index records (Protocol 5.2, Context index and grant): a document is identified, owned
+    # Context index records (Framework profile P5, Spec context grant): a document is identified, owned
     # and digested, never embedded. Its bytes reach an Agent through the read-only grant of the path.
     reason = obj({"kind": {"enum": ["owned", "module", "document"]}, "id": STRING})
     source = obj({**document_ref["properties"], "reasons": array(reason, unique=True)})

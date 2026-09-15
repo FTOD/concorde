@@ -16,10 +16,10 @@ implementation context; this Module realizes those definitions and adds the two 
 
 | Kind | Content | Required for |
 | --- | --- | --- |
-| Spec context | The selected Module's complete resolved Markdown context, exactly the Protocol's `Context(M)`; a scenario focus changes the question, not the membership. It is delivered as the Protocol's context index and grant: the snapshot lists every document with identity, owner, digest, inclusion reasons and the reading entry, and the documents are granted read-only at their project-relative paths, byte-identical copies in a capsule. No document body is embedded. | Every Module-bound invocation. |
+| Spec context | The selected Module's complete resolved Markdown context, exactly the Protocol's `Context(M)`; a scenario focus changes the question, not the membership. The Protocol fixes only this visible set; the Framework delivers it as a context index and grant: the snapshot lists every document with identity, owner, digest, inclusion reasons and the reading entry, and the documents are granted read-only at their project-relative paths, byte-identical copies in a capsule. No document body is embedded. | Every Module-bound invocation. |
 | Implementation context | The Protocol's `ImplementationContext(M)`: the listing entries the selected Module's own entities declare, exact files and directory prefixes alike, and the files those entries currently bind. Every phase can see the declared entries and bound file names with their owning entity and pending status; only code-writing and code-review phases receive file contents, in their declared subsets. | Entries and file names: every phase. File contents: code-writing and code-review phases only. |
 | Capability context | The contracts of the Capabilities and Tools the invocation may use, as admitted by its Harness and constraints, together with the Module's Protocol-defined external references: the vendored documentation and source it declares with `references` of kind `external`, one tree digest per entry. Descriptions given to the model and bindings accepted by the executor resolve to the same contracts. | Reference entries and digests: every phase. Reference contents, read-only: the modes that declare the `references` effect (plan, tasks, implementation, code-review). Capability and Tool contracts: none admitted by any current Agent. |
-| Task context | The task and constraints, the stage artifacts admitted for this phase, such as a plan, implementation tasks, a review result or a reflection selection, and the frozen workspace lifecycle metadata. | Every invocation; stage artifacts are optional. |
+| Task context | The task and constraints, the stage artifacts admitted for this phase, such as a plan, implementation tasks, a review result or a reflection selection, and the frozen workspace lifecycle metadata. Task context travels inline in the invocation input, including the review host's typed changes. | Every invocation; stage artifacts are optional. |
 
 A kind may be empty for a phase, but the frozen closure is never empty. Agent instructions, the
 Protocol rule bundle and installed Skills are not context: instructions belong to the Agent
@@ -124,7 +124,9 @@ at typed host admission. The digest covers the complete canonical dictionary exc
 
 ## Spec context grant
 
-Every launch delivers the Spec context as the Protocol's context index and grant. The snapshot is
+The Spec Protocol defines which files a Module-bound reader may see and leaves their delivery to the
+tool. The Framework chooses a context index and grant, so an invocation pays only for the documents
+its task opens, and every launch delivers the Spec context this way. The snapshot is
 the index, written to `context.json`; the `spec-context` role path list names that file together
 with every path in `spec_resolution.sources` and `protocol`, and the compiled policy grants
 exactly those paths read-only. Every grant is a project-relative path: Spec documents where they
@@ -140,6 +142,13 @@ listed file changed, and `validate_mode_policy` rejects a launch whose `spec-con
 are not exactly the index plus its grants. After the process exits the host rereads the index file
 and re-resolves the repository, so a change to a granted project document is rejected as
 `stale_context`. The discovery and topology author contexts are delivered the same way.
+
+Task context is embedded rather than granted. The stage inputs and, for a review, the
+`concorde-review-input` with its `changes` travel inline in the invocation input beside the index.
+Those changes are the unified diffs, since the baseline revision, of the reviewed Module's own Spec
+documents in a Spec review or of its bound implementation files in a code review. They are derived
+from files inside the phase's visible scope, add no path to the grant and replace no granted file: a
+reviewer still reads the complete documents and files, not only the changed lines.
 
 Ordinary `stage_inputs` are version-1 TypedValues with these payloads:
 `concorde-plan-artifact` has `plan: nonblank str`; `concorde-implementation-task` has that same
@@ -191,7 +200,7 @@ The context identity covers all inputs apart from its own identity field. The wi
 contains the distributed principles bundle and Module kind definition. This bundle includes
 both Concorde Spec Protocol requirements and the Framework execution profile; the field name does
 not classify all runtime rules as Spec organization rules.
-Concorde Spec Protocol 5.2.0 defines the Spec context, implementation context and external
+Concorde Spec Protocol 5.3.0 defines the Spec context, implementation context and external
 references this service resolves. The distributed rule bundle also includes the separately authored Framework execution
 profile, including P10 handoffs. The resolver verifies the build is
 fresh, then admits the Protocol copy the installer placed under `.concorde/protocol/`, the manifest

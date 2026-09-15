@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 5.2.0 defines Module Specs and their organization. These requirements apply
+Concorde Spec Protocol 5.3.0 defines Module Specs and their organization. These requirements apply
 to project specifications, including the specifications of software that implements this Protocol.
 They do not require the Protocol text to describe itself as a Module.
 
@@ -100,9 +100,9 @@ the Spec omits: it is neither a Spec document nor an implementation file, it is 
 and a tool that gives an agent knowledge of external capabilities takes that knowledge from these
 declarations rather than from an undeclared network or dependency installation. Only the selected Module's references are expanded, once:
 referenced Modules' references and Markdown links MUST NOT be followed. The complete context is the
-deduplicated union of full owned and directly referenced documents. A tool delivers that context as
-an index of the included documents together with a read-only grant of exactly those documents; it
-does not copy their bodies into the reader's instructions, and the reader opens them on demand.
+deduplicated union of full owned and directly referenced documents. That context is the reader's
+visibility scope: a tool makes all of it available and nothing outside it, and how the tool delivers
+it is the tool's choice rather than part of this Protocol.
 
 That resolved context MUST explain the selected Module's purpose, requirements, scenarios, entities
 and relationships without undeclared reading or source code supplying missing meaning. For each
@@ -136,9 +136,9 @@ completeness. Structural checks can establish particular invariants; they cannot
 every intended behavior has been specified or that an implementation fulfills its contract.
 
 The Protocol defines the meaning to preserve. A tool's configuration version, serialized registry
-version, execution policy or review procedure is a separate agreement. Tools that represent these
-specifications MUST preserve their identities, ownership, context inclusion, relationship meanings
-and contracts.
+version, execution policy, context delivery mechanism or review procedure is a separate agreement.
+Tools that represent these specifications MUST preserve their identities, ownership, context
+inclusion, relationship meanings and contracts.
 
 The Required format chapter defines the mandatory representation of authored Spec documents. The
 Protocol templates demonstrate starting layouts; filling them out does not replace the semantic and
@@ -454,9 +454,9 @@ Context(scenario S) = Context(owner(defining_document(S)))
 Only `R(M)` is consulted. Never resolve `Context(r.id)` during expansion. Links, directory
 neighbors, parentage, uses, file bindings and included document metadata do not expand context. All
 included files are complete, even with `main_visible: false`; no excerpt or summary replaces them.
-Completeness is a property of admission: every included file is admitted whole, and how a tool
-delivers it to a reader is defined under Context index and grant below. Cycles in references
-terminate immediately because the algorithm is not recursive.
+Completeness is a property of admission: every included file is admitted whole, whatever mechanism
+a tool uses to deliver it to a reader. Cycles in references terminate immediately because the
+algorithm is not recursive.
 
 ```text
 resolve(inventory, query_id):
@@ -481,25 +481,25 @@ of the exact source bytes, before decoding or rendering. The resolver MUST bind 
 and source identities to the snapshot so unchanged file sets with changed references also invalidate
 reuse. Inventory metadata can resolve identities without admitting unrelated source bodies.
 
-## Context index and grant
+## Visibility scope
 
-A tool delivers a resolved context to a reader in two parts. The **context index** is the
-resolution record above with the selected Module's reading entry marked: it tells the reader which
-files it may read, who owns each, why each is included and where to start. The **context grant** is
-read-only access to exactly those files at their project-relative paths; the reader opens them on
-demand with its own file tools. A tool MUST supply the index and MUST grant the files. It MUST NOT
-embed the file bodies in the reader's instructions in place of the grant, because embedding
-delivers every byte of every included document to every reader whether or not the task needs it,
-and it MUST NOT grant any file outside the resolved set. A copy of a granted file placed in a
-private workspace MUST be byte-identical to the file the record identifies. What the reader may
-read is bounded by the grant and not by the reader's judgment: a file outside the grant is
-unavailable rather than merely discouraged, and the tool enforces the boundary with the same
-permission mechanism that protects implementation files.
+A resolved context is the **visibility scope** of a Module-bound reader: the files that reader may
+see. The Protocol defines that scope, not the mechanism that delivers it. Whether a tool places file
+bodies in the reader's instructions, grants read access to the files at their paths, copies them
+into a private workspace or combines these is the tool's implementation choice. Whatever the
+mechanism, a tool MUST make every file in the scope available to the reader whole, and it MUST NOT
+make any file outside the scope visible. A copy delivered to the reader MUST be byte-identical to
+the file the resolution record identifies. The boundary is a property of the delivery, not of the
+reader's judgment: a file outside the scope is unavailable rather than merely discouraged.
 
-The grant changes neither membership nor identity. The context identity still covers every
-included file's bytes through its digest, and a reader that opens only part of the granted set has
-still received the complete context. Whether a definition is missing is judged against the granted
-set, never against what the reader chose to open.
+A tool MAY also give a reader task material derived from files inside the scope, such as the
+changes to those files since a baseline revision under review. Such material adds no file to the
+scope and does not replace the complete files it is derived from.
+
+Delivery changes neither membership nor identity. The context identity covers every included file's
+bytes through its digest, and a reader that reads only part of the available set has still received
+the complete context. Whether a definition is missing is judged against the scope, never against
+what the reader chose to read.
 
 ## Example: overlapping references without recursion
 
@@ -560,7 +560,7 @@ References(scenario S) = References(owner(S))
 External references are disjoint from `Context(M)` and from `ImplementationContext(M)`: they are
 neither promises of the Module nor files that realize it, and a change to them changes no contract.
 The resolver identifies each entry by one digest over its readable files rather than listing them,
-because such material is large and read on demand. Its entry names are visible wherever the
+because such material is large. Its entry names are visible wherever the
 registration is, and its contents are a separate grant that a tool MAY give phase by phase,
 read-only. A tool MUST NOT substitute an undeclared network fetch or an installed dependency's
 sources for the declared references, and MUST NOT grant material outside them without a new
@@ -878,13 +878,15 @@ migration; the runtime must not infer their meaning from paths or names.
 
 A bounded invocation selects one Module and freezes four kinds of context. Its **Spec context** is
 the Protocol's one-level union of owned documents and explicit Module references; scenario focus
-does not trim it. Definitions in included documents retain their original owner. The host delivers
-it as the Protocol's context index and grant: the invocation's frozen record lists every included
-document with its identity, owner, digest, inclusion reasons and the reading entry, and the
-documents themselves are granted read-only at their project-relative paths, copied byte-for-byte
-into a capsule when the phase has no project workspace. No document body is embedded in an
-invocation's input; the agent opens the granted files with its own tools, starting from the
-reading entry, and nothing outside the grant is readable. Its
+does not trim it. Definitions in included documents retain their original owner. The Protocol
+fixes which files are visible, not how they are delivered; this profile chooses the delivery. The
+host delivers the Spec context as a **context index and grant**: the invocation's frozen record
+lists every included document with its identity, owner, digest, inclusion reasons and the reading
+entry, and the documents themselves are granted read-only at their project-relative paths, copied
+byte-for-byte into a capsule when the phase has no project workspace. No Spec document body is
+embedded in an invocation's input, so an invocation pays only for the documents its task opens;
+the agent opens the granted files with its own tools, starting from the reading entry, and nothing
+outside the grant is readable. Its
 **implementation context** is the Protocol-defined set of files bound by the Module's entities:
 their exact entries plus every regular file below their directory prefixes, excluding directories
 named `node_modules`, `__pycache__`, `.venv`, `build` or `dist`, directories and files whose names
@@ -898,7 +900,10 @@ each identified by one tree digest. Every phase sees those entries; planning, ta
 code-writing and code-review phases receive their readable files read-only, copied into a capsule
 when the phase has no project workspace, with media and archives excluded. No phase receives an
 undeclared network or an installed dependency's sources in their place. Its **task context** is the
-task, constraints, admitted stage artifacts and lifecycle metadata. A
+task, constraints, admitted stage artifacts and lifecycle metadata. Task context travels inline in
+the invocation input: stage artifacts and, for a review, the typed changes to the reviewed Module's
+own Spec documents or implementation files since the baseline revision. Those changes are derived
+from files inside the phase's visible scope, add no file to it and replace no granted file. A
 kind may be empty for a phase, but the frozen closure is never empty. Planner and task-author inputs
 contain no implementation file contents. A global coordinator may reason across explicitly selected
 complete Module Spec contexts for questions, routing and topology design. The host deterministically

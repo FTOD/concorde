@@ -29,9 +29,9 @@ Context(scenario S) = Context(owner(defining_document(S)))
 Only `R(M)` is consulted. Never resolve `Context(r.id)` during expansion. Links, directory
 neighbors, parentage, uses, file bindings and included document metadata do not expand context. All
 included files are complete, even with `main_visible: false`; no excerpt or summary replaces them.
-Completeness is a property of admission: every included file is admitted whole, and how a tool
-delivers it to a reader is defined under Context index and grant below. Cycles in references
-terminate immediately because the algorithm is not recursive.
+Completeness is a property of admission: every included file is admitted whole, whatever mechanism
+a tool uses to deliver it to a reader. Cycles in references terminate immediately because the
+algorithm is not recursive.
 
 ```text
 resolve(inventory, query_id):
@@ -56,25 +56,25 @@ of the exact source bytes, before decoding or rendering. The resolver MUST bind 
 and source identities to the snapshot so unchanged file sets with changed references also invalidate
 reuse. Inventory metadata can resolve identities without admitting unrelated source bodies.
 
-## Context index and grant
+## Visibility scope
 
-A tool delivers a resolved context to a reader in two parts. The **context index** is the
-resolution record above with the selected Module's reading entry marked: it tells the reader which
-files it may read, who owns each, why each is included and where to start. The **context grant** is
-read-only access to exactly those files at their project-relative paths; the reader opens them on
-demand with its own file tools. A tool MUST supply the index and MUST grant the files. It MUST NOT
-embed the file bodies in the reader's instructions in place of the grant, because embedding
-delivers every byte of every included document to every reader whether or not the task needs it,
-and it MUST NOT grant any file outside the resolved set. A copy of a granted file placed in a
-private workspace MUST be byte-identical to the file the record identifies. What the reader may
-read is bounded by the grant and not by the reader's judgment: a file outside the grant is
-unavailable rather than merely discouraged, and the tool enforces the boundary with the same
-permission mechanism that protects implementation files.
+A resolved context is the **visibility scope** of a Module-bound reader: the files that reader may
+see. The Protocol defines that scope, not the mechanism that delivers it. Whether a tool places file
+bodies in the reader's instructions, grants read access to the files at their paths, copies them
+into a private workspace or combines these is the tool's implementation choice. Whatever the
+mechanism, a tool MUST make every file in the scope available to the reader whole, and it MUST NOT
+make any file outside the scope visible. A copy delivered to the reader MUST be byte-identical to
+the file the resolution record identifies. The boundary is a property of the delivery, not of the
+reader's judgment: a file outside the scope is unavailable rather than merely discouraged.
 
-The grant changes neither membership nor identity. The context identity still covers every
-included file's bytes through its digest, and a reader that opens only part of the granted set has
-still received the complete context. Whether a definition is missing is judged against the granted
-set, never against what the reader chose to open.
+A tool MAY also give a reader task material derived from files inside the scope, such as the
+changes to those files since a baseline revision under review. Such material adds no file to the
+scope and does not replace the complete files it is derived from.
+
+Delivery changes neither membership nor identity. The context identity covers every included file's
+bytes through its digest, and a reader that reads only part of the available set has still received
+the complete context. Whether a definition is missing is judged against the scope, never against
+what the reader chose to read.
 
 ## Example: overlapping references without recursion
 
@@ -135,7 +135,7 @@ References(scenario S) = References(owner(S))
 External references are disjoint from `Context(M)` and from `ImplementationContext(M)`: they are
 neither promises of the Module nor files that realize it, and a change to them changes no contract.
 The resolver identifies each entry by one digest over its readable files rather than listing them,
-because such material is large and read on demand. Its entry names are visible wherever the
+because such material is large. Its entry names are visible wherever the
 registration is, and its contents are a separate grant that a tool MAY give phase by phase,
 read-only. A tool MUST NOT substitute an undeclared network fetch or an installed dependency's
 sources for the declared references, and MUST NOT grant material outside them without a new

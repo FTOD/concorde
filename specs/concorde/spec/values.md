@@ -9,7 +9,7 @@
 
 ## Framework configuration and storage versions
 
-`Profile 12` is the Framework's project-configuration compatibility version for the four-part Module model (Purpose, Requirements, Scenarios, Ontology). It is distinct from Spec Protocol 5.2.0 and from registry schema 4, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
+`Profile 12` is the Framework's project-configuration compatibility version for the four-part Module model (Purpose, Requirements, Scenarios, Ontology). It is distinct from Spec Protocol 5.3.0 and from registry schema 4, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
 
 The Framework reads `.concorde/config.json` with exactly `profile_version: 12`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest, whose bundle the project carries under `.concorde/protocol/`) and `capability_configuration` (the typed integration/enforcement configuration, with an optional project-wide `model` and `reasoning_effort` for every Agent launch). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
 
