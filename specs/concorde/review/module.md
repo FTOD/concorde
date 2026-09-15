@@ -123,6 +123,12 @@ its wire representation does not authorize a repair or override lifecycle gates.
 
 ### Relationships
 
+This view covers selection, review admission and the resulting evidence, not a repair workflow.
+Query and Routing selects the owner of an unbound standalone request; Spec supplies current scope
+and finding ownership; Harness isolates the reviewer with read-only access. Development accepts
+and stores the Review result against the frozen Review input. None of these dependency edges gives
+the reviewer write authority, and the result does not itself advance delivery or repair files.
+
 ```mermaid
 flowchart TB
     accTitle: Review entities and dependencies

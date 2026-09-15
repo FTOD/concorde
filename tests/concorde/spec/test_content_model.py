@@ -173,6 +173,8 @@ class DocumentUnitTests(unittest.TestCase):
             (root / 'real/module.md').write_bytes(READING.encode())
             (root / 'real/module.md.json').write_bytes(encode(METADATA))
             (root / 'alias').symlink_to(root / 'real', target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, 'symlink'):
+                load_document_unit(root / 'alias', 'module.md', expected_owner='module.checkout')
             (root / 'module.md').symlink_to(root / 'real/module.md')
             for path in ('alias/module.md', 'module.md'):
                 with self.subTest(path=path), self.assertRaisesRegex(ValueError, 'symlink'):

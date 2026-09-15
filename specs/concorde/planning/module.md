@@ -123,6 +123,12 @@ grant, supplies their implementations. Existing host repair admission remains an
 
 ### Relationships
 
+The diagram separates Planning's reusable outputs from the providers that admit and produce them.
+Spec resolves the contract and declared participants; Harness isolates each non-code worker;
+Development accepts and persists the returned state. Context assessment, Accepted plan and
+Acceptance tasks are successive, distinct records, not three names for completed implementation.
+A provider dependency does not make that provider a child of Planning or grant its code to a planner.
+
 ```mermaid
 flowchart TB
     accTitle: Planning entities and dependencies

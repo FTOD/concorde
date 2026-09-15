@@ -131,6 +131,12 @@ links and implementation files never become implicit discovery routes.
 
 ### Relationships
 
+The diagram shows how an Admitted selection reaches a discovery worker. Spec resolves complete
+Module contexts and their provenance, Harness binds the fresh worker to that selection, and
+Development admits expansion and returns its typed outcome. Dependency arrows describe provider
+use, not extra context: links, hints and provider implementation files are not implicit expansion
+routes. The selected originals remain the source of the answer rather than generated summaries.
+
 ```mermaid
 flowchart TB
     accTitle: Query and Routing entities and dependencies

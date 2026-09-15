@@ -231,6 +231,14 @@ ready-only, bounded-repair and evidence-preservation promises without importing 
 
 ### Relationships
 
+This is a responsibility and collaboration view; the detailed development Flow defines execution
+order and routing. The adapter composes sibling providers rather than owning copies of their
+contracts: Query and Routing selects the owner, Specification Flow prepares its Spec, Planning
+produces tasks, Implementation fulfills them, and Validation and Review supply current evidence.
+Development retains the candidate and repair state, Harness isolates invocations, and Spec resolves
+participants and affected users. The Repair policy constrains feedback-driven transitions; reaching
+a ready Development candidate does not invoke Delivery.
+
 ```mermaid
 flowchart TB
     accTitle: Development Flow entities and dependencies

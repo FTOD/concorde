@@ -151,3 +151,49 @@ both members, registrations, references and links together.
 
 Verified steps are separate commits. A partially implemented parser is not a completed migration,
 and an explicit skipped or incomplete check is never described as passing.
+
+## Implemented foundation and continuation
+
+`src/concorde/spec/content_model.py` admits an explicitly supplied document pair, checks the new
+reading structure, resolves local readable meanings and binds both members' exact bytes. It does
+not yet replace `SpecRepository`, implement registry-wide checks or change a worker's grants.
+`src/concorde/spec/content_migration.py` plans explicit conversions and checks preservation of
+requirement statements, scenario steps, canonical contract payloads and relocated semantic strings.
+It is not invoked by normal runtime admission and never applies a conversion.
+
+Run the read-only checkout preview with:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m concorde.spec.content_migration
+```
+
+The preview covers all 56 registered documents and preserves 462 responsibility, dependency and
+participant-meaning strings. Its result deliberately remains `ready_to_apply: false` and
+`semantic_rewrite: not_completed`. Ten reading entries previously had a Relationships diagram
+without any scope/collaboration prose. Those explanations have now been supplied from their
+existing contracts, without changing requirement/scenario IDs or weakening behavior.
+
+The next implementation boundary is **complete document-unit context admission**, not website
+reordering: replace the repository's inline declaration reads; carry both exact source members
+through resolution records, wire schemas, discovery, capsules, grants, stale checks, owner-only
+proposals, review changes, topology overlays and pending confirmation. Only after those consumers
+agree should initialization and active source registration switch to the new profile.
+
+Migration notes still requiring explicit resolution include:
+
+- the Framework-specific `concorde-capabilities` and `concorde-agents` inventories;
+- old-version prose and links to the removed enclosing-part headings;
+- narrative rewriting beyond preserved, labeled responsibility paragraphs;
+- publisher-owned presentation preferences formerly stored as `main_visible`;
+- migration of test fixtures and the current-checkout legacy preview regression when the active
+  registry finally switches versions.
+
+Foundation verification ran the full Python suite (798 tests, zero failures/errors, 10 Studio-server
+skips), all 168 docsite tests, docsite typechecking/source validation/production build, Framework
+build and build freshness checks, and the Flow Spec check (zero findings). Structural repository
+validation succeeds with 72 existing coverage and test-listing warnings. Fresh Pyright CLI checks
+and the active LSP probe of all four new Python files report zero diagnostics. The session's own
+language server initially cached missing imports for newly created files; restarting it and
+refreshing analysis resolved them without inline suppressions or import-path workarounds.
+These checks establish the foundation and current-profile regression status, not new-profile
+runtime support, completed semantic rewriting or visual review of a new site.

@@ -109,6 +109,12 @@ independent review ordering belong to the consuming Flow.
 
 ### Relationships
 
+The diagram distinguishes proposing Owned replacements from applying them. Spec supplies document
+ownership and affected-consumer scope; Harness gives the fresh author read-only contract access;
+Development checks and applies accepted proposals. The author itself never gains a project write
+grant. These are dependencies on sibling responsibilities, not structural ownership of providers,
+and a provider reference does not permit a replacement of that provider's documents.
+
 ```mermaid
 flowchart TB
     accTitle: Spec Authoring entities and dependencies

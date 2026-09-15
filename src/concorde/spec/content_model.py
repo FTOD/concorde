@@ -319,6 +319,8 @@ def admit_document_unit(reading_path: str, reading: bytes, metadata: bytes, *,
 def load_document_unit(root: Path, reading_path: str, *, expected_owner: str,
                        primary: bool = False) -> DocumentUnit:
     """Read exactly the explicitly selected pair, rejecting missing members and symlink aliases."""
+    if root.is_symlink() or not root.is_dir():
+        raise ContentModelError(str(root), "project root must be a real directory, not a symlink")
     sidecar = metadata_path(reading_path)
     return admit_document_unit(reading_path, read_file(root, reading_path), read_file(root, sidecar),
                                expected_owner=expected_owner, primary=primary)

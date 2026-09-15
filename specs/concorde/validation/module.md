@@ -118,6 +118,12 @@ previously required review.
 
 ### Relationships
 
+The diagram separates Validation evidence from the Readiness decision that consumes it. Spec
+identifies affected consumers and checks structure, Harness executes admitted commands without
+project writes, and Development records results and evaluates existing gates. A passing command
+is evidence for its checked inputs, not permission to skip required reviews or a proof of semantic
+completeness. These collaborations are capability dependencies; Validation does not own its providers.
+
 ```mermaid
 flowchart TB
     accTitle: Validation entities and dependencies

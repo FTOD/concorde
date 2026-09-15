@@ -139,6 +139,12 @@ application promises; it does not add arbitrary flow configuration or provider w
 
 ### Relationships
 
+This diagram separates preparing a topology change from applying the Prepared application. Query
+and Routing supplies explicit discovery, Spec resolves old and candidate ownership and references,
+and Harness isolates designers, owner-local authors and independent reviewers. Development retains
+the exact proposal and applies only the accepted transaction. These provider collaborations do not
+transfer document ownership to Topology or turn a designer's proposed paths into write authority.
+
 ```mermaid
 flowchart TB
     accTitle: Topology entities and dependencies

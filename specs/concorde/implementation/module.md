@@ -113,6 +113,12 @@ conditions to the reusable local task contract.
 
 ### Relationships
 
+This view follows an admitted Implementation task to Task completion. Spec determines the selected
+Module's implementation boundary, Harness enforces the programmer's grant, and Development admits
+the exact task list and retains its progress. The adapter's use of these sibling providers does not
+merge their ownership or permissions. Task completion reports fulfilled acceptance only; validation,
+review and delivery remain separate decisions of the composing Flow.
+
 ```mermaid
 flowchart TB
     accTitle: Implementation entities and dependencies

@@ -132,6 +132,13 @@ whether to continue into development.
 
 ### Relationships
 
+The diagram shows the sibling capabilities that contribute to Spec completion. Query and Routing
+selects an unbound owner, Spec resolves its contract and affected consumers, and Harness keeps
+routing, authoring and review invocations separate. Spec Authoring supplies owned replacements;
+Review independently assesses current contracts; Development retains accepted progress and review
+requirements. The adapter owns their sequencing and reuse decisions, not their contracts, and
+Spec completion does not imply planning, implementation or readiness.
+
 ```mermaid
 flowchart TB
     accTitle: Specification Flow entities and dependencies
