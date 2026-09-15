@@ -4,7 +4,10 @@
 Each executable Flow (a LangGraph StateGraph built by a factory in the Flow catalog) has exactly
 one Mermaid flowchart in the Specs bound to it with ``%% flow: <name>``. This check compiles the
 catalog with inert nodes and reports every diagram whose nodes, edges, routing labels or state
-labels disagree with the compiled topology, and every Flow that has no diagram.
+labels disagree with the compiled topology, and every Flow that has no diagram. It also holds
+the Graph API rule: a catalog Flow that is not a compiled StateGraph, or a Python file under
+``src/`` or ``scripts/`` that imports LangGraph's Functional API (``langgraph.func``), is an
+error; the files are parsed, never executed.
 """
 from __future__ import annotations
 

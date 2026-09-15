@@ -30,8 +30,8 @@ launching anything or exposing context bodies.
 
 Every capability Flow, including the global discovery loop, the development loop, topology
 evolution, reflection triage and the deterministic capabilities, is a LangGraph
-`StateGraph`. Its nodes are deterministic steps, which make no model call, or Agent invocations,
-which do. The recursive delegation tree below is composed from the same Flows. These Flows are
+`StateGraph` built with the Graph API, never with the Functional API. Its nodes are deterministic
+steps, which make no model call, or Agent invocations, which do. The recursive delegation tree below is composed from the same Flows. These Flows are
 the Studio surface; no capability runs its control flow outside them. Flow structure alone proves
 nothing about semantics: transitions, limits and evidence still follow G1–G4.
 

@@ -1,10 +1,12 @@
 """Flow Specs are node, edge and state diagrams kept equal to the compiled LangGraph Flows."""
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from concorde.development.flow_catalog import catalog, topology
-from concorde.development.flow_specs import FlowSpec, compare, flow_spec_findings, flow_specs
+from concorde.development.flow_specs import (FlowSpec, compare, flow_spec_findings, flow_specs,
+                                             functional_api_imports)
 from concorde.spec.repository import SpecRepository
 from concorde.spec.validation import flowchart_model
 from concorde.spec.verification import verifies
@@ -83,6 +85,41 @@ class FlowSpecTests(unittest.TestCase):
         none = flow_spec_findings(repository, {**limited, "phantom_flow": limited["batch_flow"]})
         self.assertTrue(any("compiled Flow phantom_flow has no Flow Spec diagram" in finding.message for finding in none))
         self.assertTrue((Path(REPOSITORY_ROOT) / "scripts/development/check-flow-specs.py").is_file())
+
+    @verifies("scenario.development.graph-api-only")
+    def test_a_flow_outside_the_graph_api_is_a_finding(self):
+        from langgraph.func import entrypoint
+
+        @entrypoint()
+        def functional_flow(state: dict) -> dict:
+            return state
+
+        repository = SpecRepository(REPOSITORY_ROOT, REPOSITORY_ROOT)
+        findings = flow_spec_findings(repository, {**catalog(), "batch_flow": lambda: functional_flow})
+        self.assertEqual([("CONCORDE-FLOW-004",
+                           "compiled Flow batch_flow is a Pregel, not a StateGraph of the Graph API")],
+                         [(finding.rule_id, finding.message) for finding in findings])
+
+    @verifies("scenario.development.graph-api-only")
+    def test_functional_api_imports_are_found_by_parsing_not_running(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "src" / "pkg" / "__pycache__").mkdir(parents=True)
+            (root / "scripts").mkdir()
+            (root / "src" / "pkg" / "a.py").write_text("import os\nfrom langgraph.func import entrypoint, task\n")
+            (root / "src" / "pkg" / "b.py").write_text("import langgraph.func as func\n")
+            (root / "src" / "pkg" / "broken.py").write_text("def (\n")
+            (root / "src" / "pkg" / "ok.py").write_text(
+                "from langgraph.graph import StateGraph\nNAME = 'langgraph.func'\nraise SystemExit(3)\n")
+            (root / "src" / "pkg" / "__pycache__" / "skip.py").write_text("from langgraph.func import task\n")
+            (root / "scripts" / "c.py").write_text("from langgraph import func\n")
+            self.assertEqual((
+                ("src/pkg/a.py", 2, "from langgraph.func import entrypoint, task"),
+                ("src/pkg/b.py", 1, "import langgraph.func as func"),
+                ("src/pkg/broken.py", 1, "file cannot be parsed"),
+                ("scripts/c.py", 1, "from langgraph import func"),
+            ), functional_api_imports(root))
+        self.assertEqual((), functional_api_imports(REPOSITORY_ROOT))
 
 
 if __name__ == "__main__":

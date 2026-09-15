@@ -9,10 +9,8 @@
       ],
       "timeout_seconds": 120,
       "inputs": [
-        "scripts/development/check-flow-specs.py",
-        "src/concorde/development",
-        "src/concorde/harness",
-        "src/concorde/reflections",
+        "scripts",
+        "src/concorde",
         "specs/concorde"
       ]
     },

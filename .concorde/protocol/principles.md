@@ -955,9 +955,13 @@ closed. An outer developer-authorized maintenance session may read and modify th
 its explicit authorization does not silently widen normal worker permissions or become a project
 business contract.
 
-Every Framework capability's control flow is a LangGraph graph. Its nodes are deterministic
-capabilities, which make no model call, or Agents, which do; a leaf node may be either. The same
-graphs are the inspectable Studio surface, and no capability runs control flow outside them.
+Every Framework capability's control flow is a LangGraph graph built with the Graph API: a
+`StateGraph` whose nodes and edges are declared before it is compiled. The Functional API,
+`entrypoint` and `task` from `langgraph.func`, MUST NOT be used, because it keeps control flow
+inside ordinary Python where neither a Flow Spec nor Studio can inspect it; a deterministic check
+refuses it. The graph's nodes are deterministic capabilities, which make no model call, or
+Agents, which do; a leaf node may be either. The same graphs are the inspectable Studio surface,
+and no capability runs control flow outside them.
 
 Agent instructions, Skills, schemas and rule assets are deterministic projections of authored
 sources. Generated output is not edited as source. Builds distribute the Module kind definition and

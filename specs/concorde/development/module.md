@@ -75,6 +75,14 @@ composition.
 - AND every compiled Flow has exactly one bound diagram and every bound name is a compiled Flow
 - BUT a passing check proves only that the Spec and the executed topology agree, not that the routing is right
 
+### scenario.development.graph-api-only — Every Flow is built with the Graph API
+
+- GIVEN the Flow catalog compiles every executable Flow with inert nodes
+- WHEN the Flow Spec check inspects each compiled Flow and parses every Python file under `src/` and `scripts/` without executing it
+- THEN each compiled Flow is a compiled `StateGraph` of LangGraph's Graph API
+- AND no file imports LangGraph's Functional API, `langgraph.func` or its `entrypoint` and `task` decorators
+- AND a Flow of any other kind, an import of the Functional API and a file that cannot be parsed are each an error finding naming the Flow or the file and line
+
 ### scenario.development.flow-execution — Execute the inspected Flow
 
 - GIVEN an admitted capability request through a local or Studio entry

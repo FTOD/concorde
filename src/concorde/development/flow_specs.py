@@ -13,13 +13,20 @@ compares each bound diagram with the Flow the catalog compiles from the executab
   and an edge leaving a node with one successor carries none;
 - every executing node's label names its input and output state.
 
+It also holds the Graph API rule of the Framework profile: every catalog Flow is a compiled
+``StateGraph``, and no Python file under ``src/`` or ``scripts/`` imports LangGraph's Functional
+API (``langgraph.func``), which would hide control flow inside ordinary Python. Source files are
+parsed for that, never executed.
+
 The findings are deterministic evidence that the authored Flow Spec and the executed topology
 agree; they say nothing about whether either is semantically right.
 """
 from __future__ import annotations
 
+import ast
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 from ..spec.model import Finding
 from ..spec.repository import SpecRepository
@@ -28,6 +35,9 @@ from ..spec.validation import DiagramError, flowchart_model
 BINDING = re.compile(r"^\s*%%\s*flow:\s*([A-Za-z0-9_.-]+)\s*$", re.M)
 FENCE = re.compile(r"^```mermaid[ \t]*\n(.*?)^```[ \t]*$", re.M | re.S)
 BOUNDARY = {"__start__", "__end__"}
+FUNCTIONAL_API = "langgraph.func"
+SOURCE_ROOTS = ("src", "scripts")
+EXCLUDED_DIRS = {"node_modules", "__pycache__", ".venv", "build", "dist"}
 
 
 @dataclass(frozen=True)
@@ -102,16 +112,78 @@ def compare(spec: FlowSpec, topology: dict) -> list[str]:
     return problems
 
 
+def _imports_functional_api(node: ast.AST) -> bool:
+    """Whether one import statement names ``langgraph.func`` or a member of it."""
+    if isinstance(node, ast.Import):
+        return any(alias.name == FUNCTIONAL_API or alias.name.startswith(FUNCTIONAL_API + ".")
+                   for alias in node.names)
+    if isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+        if node.module == FUNCTIONAL_API or node.module.startswith(FUNCTIONAL_API + "."):
+            return True
+        return node.module == "langgraph" and any(alias.name == "func" for alias in node.names)
+    return False
+
+
+def functional_api_imports(root: Path | str, roots: tuple[str, ...] = SOURCE_ROOTS) -> tuple[tuple[str, int, str], ...]:
+    """Every import of LangGraph's Functional API below the source roots, found by parsing alone.
+
+    Each hit is ``(path, line, statement)`` with the path relative to ``root``, in root order and
+    then path order. Files are parsed, never executed; directories of the Framework's exclusion
+    rule and dot-prefixed entries are skipped. A file that cannot be parsed is a hit at the
+    failing line, because a check that cannot read a file must not vouch for it.
+    """
+    root = Path(root)
+    hits: list[tuple[str, int, str]] = []
+    for relative in roots:
+        base = root / relative
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*.py")):
+            parts = path.relative_to(root).parts
+            if any(part in EXCLUDED_DIRS or part.startswith(".") for part in parts):
+                continue
+            posix = path.relative_to(root).as_posix()
+            try:
+                tree = ast.parse(path.read_bytes(), filename=posix)
+            except SyntaxError as problem:
+                hits.append((posix, problem.lineno or 0, "file cannot be parsed"))
+                continue
+            for node in ast.walk(tree):
+                if _imports_functional_api(node):
+                    hits.append((posix, node.lineno, ast.unparse(node)))
+    return tuple(hits)
+
+
 def flow_spec_findings(repository: SpecRepository, catalog: dict | None = None) -> tuple[Finding, ...]:
-    """Compare every bound Flow diagram with its compiled Flow; every catalog Flow needs one Spec."""
+    """Compare every bound Flow diagram with its compiled Flow; every catalog Flow needs one Spec.
+
+    The same pass refuses every catalog Flow that is not a compiled ``StateGraph`` and every
+    source file that imports the Functional API.
+    """
+    from langgraph.graph.state import CompiledStateGraph
+
     from .flow_catalog import catalog as default_catalog, topology as compiled_topology
     catalog = default_catalog() if catalog is None else catalog
     findings: list[Finding] = []
+    compiled: dict[str, object] = {}
+    for name, build in sorted(catalog.items()):
+        flow = build()
+        if isinstance(flow, CompiledStateGraph):
+            compiled[name] = flow
+        else:
+            findings.append(Finding("CONCORDE-FLOW-004", "error", ".concorde/specs.json",
+                f"compiled Flow {name} is a {type(flow).__name__}, not a StateGraph of the Graph API",
+                "Build every Flow with StateGraph; the Functional API (entrypoint, task) is not admitted."))
+    for path, line, statement in functional_api_imports(repository.root):
+        findings.append(Finding("CONCORDE-FLOW-005", "error", path,
+            f"imports LangGraph's Functional API: {statement}",
+            "Express control flow as StateGraph nodes and edges; langgraph.func is not admitted.",
+            line=line))
     try:
         specs = flow_specs(repository)
     except DiagramError as problem:
-        return (Finding("CONCORDE-FLOW-002", "error", ".concorde/specs.json", str(problem),
-                        "Use the Mermaid flowchart node and edge forms the Flow Spec convention defines."),)
+        return (*findings, Finding("CONCORDE-FLOW-002", "error", ".concorde/specs.json", str(problem),
+                        "Use the Mermaid flowchart node and edge forms the Flow Spec convention defines."))
     bound: dict[str, list[FlowSpec]] = {}
     for spec in specs:
         bound.setdefault(spec.flow, []).append(spec)
@@ -129,7 +201,9 @@ def flow_spec_findings(repository: SpecRepository, catalog: dict | None = None) 
                     "Keep exactly one Flow Spec diagram per compiled Flow."))
             continue
         spec = entries[0]
-        for problem in compare(spec, compiled_topology(catalog[name]())):
+        if name not in compiled:
+            continue
+        for problem in compare(spec, compiled_topology(compiled[name])):
             findings.append(Finding("CONCORDE-FLOW-003", "error", spec.path,
                 f"Flow Spec {name}: {problem}",
                 "Make the diagram's nodes, edges, conditions and state labels match the compiled Flow."))

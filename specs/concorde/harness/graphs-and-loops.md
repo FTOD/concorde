@@ -11,10 +11,14 @@ Agent orchestration coordinates Agent invocations, Capability calls and control 
 a declared goal. A Flow describes the structure of that coordination; a Loop describes feedback
 driven execution. They are related concepts, not interchangeable names.
 
-**Flow** is Concorde's name for an executable LangGraph `StateGraph`. Authored descriptions and
-new Python factories use Flow and `build_*_flow`; LangGraph API names such as `StateGraph`,
-`get_graph()` and the `graphs` configuration key keep their library spelling. Existing stable
-Spec identities, import aliases and persisted `graph` records remain compatible.
+**Flow** is Concorde's name for an executable LangGraph `StateGraph`. Every Flow is built with
+LangGraph's Graph API, which declares nodes and edges before compilation; the Functional API
+(`entrypoint` and `task` from `langgraph.func`) is not used anywhere in Concorde's source or
+scripts, because a Flow whose control flow lives inside ordinary Python compiles to a single
+opaque node with nothing for a Flow Spec, the Flow Spec check or Studio to inspect. Authored
+descriptions and new Python factories use Flow and `build_*_flow`; LangGraph API names such as
+`StateGraph`, `get_graph()` and the `graphs` configuration key keep their library spelling.
+Existing stable Spec identities, import aliases and persisted `graph` records remain compatible.
 
 A Flow's state is a typed LangGraph state schema: the development and specification Flows carry
 the last stage's typed response in `output`, a terminal failure envelope in `result` and the
@@ -142,9 +146,11 @@ has three parts:
 The Flow Spec check (`scripts/development/check-flow-specs.py`, the configured
 `check.development.flow-specs`) compiles every catalog Flow with inert nodes and reports each
 diagram whose nodes, edges, routing labels or state labels disagree with the compiled topology,
-and every compiled Flow without a diagram. A diagram that passes proves the Spec and the
-executed topology agree; it proves nothing about whether the routing conditions are right, which
-the scenarios and tests of the owning Module cover. The Relationships diagram of a Module's
+and every compiled Flow without a diagram. It also enforces the Graph API rule: a catalog Flow
+that is not a compiled `StateGraph`, and any Python file under `src/` or `scripts/` that imports
+`langgraph.func`, found by parsing the file rather than running it, are errors. A diagram that
+passes proves the Spec and the executed topology agree; it proves nothing about whether the
+routing conditions are right, which the scenarios and tests of the owning Module cover. The Relationships diagram of a Module's
 reading entry remains the entity diagram the Protocol defines; Flow Specs live in other sections
 or documents.
 
