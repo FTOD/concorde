@@ -76,13 +76,15 @@ class ModelSelectionTests(unittest.TestCase):
         self.assertNotIn('model=', " ".join(plain.argv))
 
     @verifies("scenario.harness.project-configured-model")
-    def test_claude_launch_selects_only_the_model(self):
+    def test_claude_launch_carries_the_model_and_effort_in_argv_and_digest(self):
         selected = render_claude_configuration(_policy(), native_enforcement=True,
                                                model="claude-sonnet-5", reasoning_effort="medium")
         self.assertEqual("claude-sonnet-5", selected.argv[selected.argv.index("--model") + 1])
+        self.assertEqual("medium", selected.argv[selected.argv.index("--effort") + 1])
         self.assertEqual(("claude-sonnet-5", "medium"), (selected.model, selected.reasoning_effort))
         plain = render_claude_configuration(_policy(), native_enforcement=True)
         self.assertNotIn("--model", plain.argv)
+        self.assertNotIn("--effort", plain.argv)
         self.assertNotEqual(plain.digest, selected.digest)
 
 

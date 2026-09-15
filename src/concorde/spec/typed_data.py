@@ -54,14 +54,19 @@ COMMIT = {**STRING, "pattern": r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$"}
 CAPABILITY_CONTRACTS: dict[str, tuple[str, str]] = {}
 
 
+# The model selection of an Agent launch; an absent value keeps the client's own default. The
+# effort enum is the union across integrations; harness.model_selection checks it per integration.
+_SELECTION = {"integration": {"enum": ["codex", "claude"]}, "model": STRING,
+              "reasoning_effort": {"enum": ["minimal", "low", "medium", "high", "xhigh", "max", "ultra"]}}
+
+
 DATA_SCHEMAS = {
-    "concorde-capability-configuration": obj({"integration": {"enum": ["codex", "claude"]},
-                                            "enforcement": {"enum": ["native"]},
-                                            # Project-configured model selection for every Agent
-                                            # launch; absent means the client's own default.
-                                            "model": STRING,
-                                            "reasoning_effort": {"enum": ["minimal", "low", "medium", "high"]}},
-                                           ("model", "reasoning_effort")),
+    "concorde-capability-configuration": obj({**_SELECTION, "enforcement": {"enum": ["native"]},
+                                            # Overrides keyed by an Agent or by one Agent node
+                                            # (agent/mode); the most specific entry wins.
+                                            "agents": {"type": "object", "properties": {},
+                                                       "additionalProperties": obj(_SELECTION, tuple(_SELECTION))}},
+                                           ("model", "reasoning_effort", "agents")),
     "concorde-reflection-investigation-result": obj({
         "findings": array(obj({
             "reflection_id": REFLECTION_ID, "verified_commit": COMMIT,
@@ -107,13 +112,16 @@ def check_schema(value: Any, schema: dict, field: str = "") -> None:
         validate_typed(value, field=field)
     elif expected == "object":
         properties = schema.get("properties", {})
-        for key in value.keys() - properties.keys():
-            raise TypedDataError("invalid_field", _pointer(field, key), "unknown field")
+        # A schema-valued additionalProperties admits a keyed map whose values share one schema.
+        extra = schema.get("additionalProperties")
+        if not isinstance(extra, dict):
+            for key in value.keys() - properties.keys():
+                raise TypedDataError("invalid_field", _pointer(field, key), "unknown field")
         for key in schema.get("required", ()):
             if key not in value:
                 raise TypedDataError("invalid_field", _pointer(field, key), "required field is missing")
         for key, item in value.items():
-            check_schema(item, properties[key], _pointer(field, key))
+            check_schema(item, properties.get(key, extra), _pointer(field, key))
     elif expected == "array":
         if len(value) < schema.get("minItems", 0):
             raise TypedDataError("invalid_field", field, "too few items")

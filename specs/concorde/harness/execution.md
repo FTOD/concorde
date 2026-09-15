@@ -286,9 +286,9 @@ file bytes, registry digest or document digests changed during execution with `s
 ### Codex
 
 Native Codex runs `codex exec --ephemeral --ignore-user-config --strict-config` with
-`approval_policy = "never"`, `project_doc_max_bytes = 0`, `multi_agent` disabled, the
-project-configured `model` and `model_reasoning_effort` passed as `-c` overrides when the
-capability configuration names them (the ignored user configuration cannot supply a model), and a
+`approval_policy = "never"`, `project_doc_max_bytes = 0`, `multi_agent` disabled, the `model` and
+`model_reasoning_effort` selected for the Agent node passed as `-c` overrides when the capability
+configuration names them (the ignored user configuration cannot supply a model), and a
 named permission profile passed on the command line: `:root` denied, the `:minimal` system paths
 readable and, under the workspace root, exactly the policy's read, write and deny paths. Codex's
 own sandbox applies that profile to every command the model runs, and on Linux it is an
@@ -300,7 +300,8 @@ connection is refused (see [the Codex scenario](#scenario.harness.native-boundar
 ### Claude
 
 Native Claude runs `claude -p --restricted --no-session-persistence --permission-mode dontAsk
---settings <json>`. The host passes no `--tools`, and restricted mode removes the built-in tools
+--settings <json>`, followed by `--model` and `--effort` when the Agent node's selection names a
+model and a reasoning effort. The host passes no `--tools`, and restricted mode removes the built-in tools
 that run commands or code (Bash, PowerShell, REPL and the other code-running tools) and WebFetch
 unless `--tools` names them. An Agent under Claude therefore has no shell and starts no
 subprocess. Its remaining file tools are bounded twice inside the Claude Code process: restricted

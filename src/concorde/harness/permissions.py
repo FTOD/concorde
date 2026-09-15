@@ -721,8 +721,8 @@ def render_claude_configuration(
         "dontAsk",
         "--settings",
         settings_json,
-        # Claude Code exposes no per-launch reasoning-effort flag; only the model is selected.
         *(("--model", model) if model is not None else ()),
+        *(("--effort", reasoning_effort) if reasoning_effort is not None else ()),
     )
     bootstrap: tuple[RuntimeBootstrapFile, ...] = ()
     bootstrap_digest = runtime_bootstrap_digest(bootstrap)

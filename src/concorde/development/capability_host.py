@@ -25,6 +25,7 @@ from ..harness.agent_model import (ModeContractError, agent_definition, binding_
 from ..harness.agent_executor import CapabilityExecutionError
 from ..harness.usage import record_usage, read_usage, summarize_usage
 from ..harness.check_executor import CHECK_POLICY, CheckSandboxError, execute_check
+from ..harness.model_selection import agent_selection
 from ..harness.permissions import (PolicyBinding, PermissionPolicyError, compile_policy, render_codex_configuration,
     render_claude_configuration, build_launch_specification, CapabilityExecutionResult)
 from ..distribution.build import BuildError, load_role_prompt, verify_fresh
@@ -102,12 +103,6 @@ class CapabilityHost:
 
 def _capability_key(capability: str) -> str:
     return capability[len("concorde-"):].replace("-", "_")
-
-
-def model_selection(configuration: dict) -> dict:
-    """The project-configured model for every Agent launch; absent keys keep the client default."""
-    data = configuration["data"]
-    return {"model": data.get("model"), "reasoning_effort": data.get("reasoning_effort")}
 
 
 def resolve_child_capability(parent_capability: str, child_capability: str):
@@ -365,13 +360,14 @@ class MainInvocation:
                 )
             except PermissionPolicyError as error:
                 raise SpecError(str(error), "permission_denied") from error
-            integration = self.configuration["data"]["integration"]
+            selection = agent_selection(self.configuration, prompt.binding.agent, prompt.binding.mode)
+            integration = selection.integration
             renderer = render_codex_configuration if integration == "codex" else render_claude_configuration
             native = renderer(
                 policy,
                 native_enforcement=self.configuration["data"]["enforcement"] == "native",
                 outer_sandbox=self.host.outer_sandbox,
-                **model_selection(self.configuration),
+                **selection.model_arguments(),
             )
             receipt = {
                 "schema_version": 15,
@@ -423,6 +419,7 @@ class MainInvocation:
                 "agent_binding_digest": prompt.binding.digest, "mode": prompt.binding.mode,
                 "instructions_digest": prompt.binding.instructions_digest,
                 "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds,
+                **selection.wire(),
             })
             if self.host.mode == "describe-policy":
                 return {"context_id": snapshot.id, "outcome": "described", "answer": "",
@@ -807,11 +804,12 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
             )
         except PermissionPolicyError as error:
             raise SpecError(str(error), "permission_denied") from error
-        integration = configuration["data"]["integration"]
+        selection = agent_selection(configuration, prompt.binding.agent, prompt.binding.mode)
+        integration = selection.integration
         renderer = render_codex_configuration if integration == "codex" else render_claude_configuration
         native = renderer(policy,
             native_enforcement=configuration["data"]["enforcement"] == "native",
-            outer_sandbox=host.outer_sandbox, **model_selection(configuration))
+            outer_sandbox=host.outer_sandbox, **selection.model_arguments())
         receipt = {"schema_version": 15, "target_id": target["id"], "phase": "topology-author",
             "context_id": snapshot.id, "source_digest": snapshot.id,
             "registry_digest": digest(before_registry), "role_paths": {k: list(v) for k, v in roles.items()}}
@@ -831,7 +829,7 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
             "agent": external_agent_name(prompt.binding.agent), "harness": prompt.binding.harness,
             "agent_binding_digest": prompt.binding.digest, "mode": prompt.binding.mode,
             "instructions_digest": prompt.binding.instructions_digest,
-            "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds})
+            "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds, **selection.wire()})
         if host.mode == "describe-policy":
             return {"context_id": snapshot.id, "target_id": target["id"], "outcome": "completed",
                     "answer": "", "gaps": [], "documents": []}
@@ -1341,10 +1339,11 @@ class Invocation:
                     outer_sandbox_required=self.configuration["data"]["enforcement"] == "outer")
             except PermissionPolicyError as error:
                 raise SpecError(str(error), "permission_denied") from error
-            integration = self.configuration["data"]["integration"]
+            selection = agent_selection(self.configuration, prompt.binding.agent, prompt.binding.mode)
+            integration = selection.integration
             renderer = render_codex_configuration if integration == "codex" else render_claude_configuration
             native = renderer(policy, native_enforcement=self.configuration["data"]["enforcement"] == "native",
-                              outer_sandbox=self.host.outer_sandbox, **model_selection(self.configuration))
+                              outer_sandbox=self.host.outer_sandbox, **selection.model_arguments())
             receipt = {"schema_version": 15, "target_id": self.target.id, "phase": phase,
                 "context_id": snapshot.id, "source_digest": snapshot.id,
                 "registry_digest": digest(before_registry), "role_paths": {k: list(v) for k, v in roles.items()}}
@@ -1358,7 +1357,7 @@ class Invocation:
                 "agent": external_agent_name(prompt.binding.agent), "harness": prompt.binding.harness,
                 "agent_binding_digest": prompt.binding.digest, "mode": prompt.binding.mode,
                 "instructions_digest": prompt.binding.instructions_digest,
-                "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds})
+                "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds, **selection.wire()})
             if self.host.mode == "describe-policy":
                 return {"context_id": snapshot.id, "outcome": "completed", "answer": "", "gaps": [],
                         "documents": [], "plan": "", "tasks": []}

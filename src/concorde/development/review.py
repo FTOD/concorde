@@ -193,7 +193,7 @@ def _validate(run, snapshot, info, data):
 
 def review(run, mode: str) -> dict:
     """Run exactly one reviewer; no prior review, transcript or code crosses modes."""
-    from .capability_host import model_selection
+    from ..harness.model_selection import agent_selection
     info, prompt = inputs(run, mode)
     phase, role = REVIEW_STAGES[mode]
     snapshot = resolve_context(run.repository, run.target.id, phase=phase, task=run.task["task"],
@@ -240,10 +240,11 @@ def review(run, mode: str) -> dict:
                 raise SpecError(str(error), "permission_denied") from error
             if policy.write_paths:
                 raise SpecError("review role must have no write authority", "permission_denied")
-            integration = run.configuration["data"]["integration"]
+            selection = agent_selection(run.configuration, prompt.binding.agent, prompt.binding.mode)
+            integration = selection.integration
             renderer = render_codex_configuration if integration == "codex" else render_claude_configuration
             native = renderer(policy, native_enforcement=run.configuration["data"]["enforcement"] == "native",
-                              outer_sandbox=run.host.outer_sandbox, **model_selection(run.configuration))
+                              outer_sandbox=run.host.outer_sandbox, **selection.model_arguments())
             invocation_id = str(uuid.uuid4())
             receipt = {"schema_version": 15, "target_id": run.target.id, "phase": phase,
                 "context_id": snapshot.id, "source_digest": snapshot.id, "input_digest": info["input_digest"],
@@ -262,7 +263,7 @@ def review(run, mode: str) -> dict:
                 "agent": external_agent_name(prompt.binding.agent), "harness": prompt.binding.harness,
                 "agent_binding_digest": prompt.binding.digest, "mode": prompt.binding.mode,
                 "instructions_digest": prompt.binding.instructions_digest,
-                "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds})
+                "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds, **selection.wire()})
             if run.host.mode == "describe-policy":
                 return run.response("described", reviews=[_empty(run, info, "not_run", "Policy described; review not run.")])
             from ..harness.agent_executor import AgentProcessExecutor

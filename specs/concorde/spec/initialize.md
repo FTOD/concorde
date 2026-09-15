@@ -16,8 +16,8 @@ The public input is `concorde-init-request@1`, an ordinary
 `{type_id, schema_version: 1, data}` envelope. `data` is a closed object with required
 `action: "propose"|"apply"` and optional `name`, `target_id`, `configuration` and `proposal`.
 `name` and `target_id`, when supplied, are nonblank strings. `configuration` is
-`concorde-capability-configuration@1` with exactly
-`{integration: "codex"|"claude", enforcement: "native"}` in its data. Only native enforcement is
+`concorde-capability-configuration@1` with `{integration: "codex"|"claude", enforcement: "native"}`
+and the optional `model`, `reasoning_effort` and `agents` selection in its data. Only native enforcement is
 admitted: the distributed launchers supply no outer-sandbox attestation, so a configuration naming
 any other enforcement is rejected here instead of being accepted and failing at the first Agent
 launch.

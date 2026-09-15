@@ -107,11 +107,6 @@ This complete schema is the invocation's input field. It does not grant project 
             "claude"
           ]
         },
-        "enforcement": {
-          "enum": [
-            "native"
-          ]
-        },
         "model": {
           "type": "string",
           "minLength": 1
@@ -121,8 +116,48 @@ This complete schema is the invocation's input field. It does not grant project 
             "minimal",
             "low",
             "medium",
-            "high"
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
           ]
+        },
+        "enforcement": {
+          "enum": [
+            "native"
+          ]
+        },
+        "agents": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "integration": {
+                "enum": [
+                  "codex",
+                  "claude"
+                ]
+              },
+              "model": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reasoning_effort": {
+                "enum": [
+                  "minimal",
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh",
+                  "max",
+                  "ultra"
+                ]
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          }
         }
       },
       "required": [

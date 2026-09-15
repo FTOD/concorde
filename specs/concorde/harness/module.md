@@ -128,6 +128,12 @@ project, removed after its process tree has terminated.
 An Agent process SHALL run only under the selected integration's native enforcement configured
 exactly from its compiled policy, or under a host-attested outer sandbox.
 
+#### req.harness.agent-selection-per-node — Each Agent node runs on its own configured selection
+
+Every Agent launch SHALL use the integration, model and reasoning effort resolved for its Agent
+node from the project capability configuration, preferring the node entry, then the Agent entry,
+then the project default.
+
 #### req.harness.capsule-closed — A capsule grants only its own snapshot
 
 A capsule-workspace invocation SHALL be granted read access to its own snapshot file and to no
@@ -359,13 +365,23 @@ exit-code-is-not-completion bound](#req.harness.execute-exit-insufficient).
 - AND the host observer receives the same record as an `agent_usage` event, and the `usage` Tool and the executable boundary summarize those lines per step, stage, target and Agent
 - BUT a figure the client did not report is recorded as unknown rather than zero, and a persistence failure never fails the launch or changes any receipt
 
-#### scenario.harness.project-configured-model — Launch every Agent on the project-configured model
+#### scenario.harness.project-configured-model — Launch each Agent node on its configured integration, model and reasoning effort
 
-- GIVEN `.concorde/config.json` capability configuration names a `model` and a `reasoning_effort`
-- WHEN the host renders a Codex or Claude launch configuration for any Agent
-- THEN the rendered argv selects that model, and for Codex also that reasoning effort, overriding the client's user configuration, which workers ignore
-- AND the selection is part of the native configuration digest bound into the launch receipt
-- BUT an absent field keeps the client's own default, and Claude receives only the model because its command line exposes no effort setting
+- GIVEN `.concorde/config.json` capability configuration names a default `integration`, `model` and `reasoning_effort` and, under `agents`, entries keyed by an Agent such as `programmer` or by an Agent node such as `programmer/implementation`
+- WHEN the host renders the native launch configuration of any Agent node
+- THEN each of the three values comes from the node entry, else the Agent entry, else the project default, and an entry that switches integration inherits no model or effort chosen for the other client
+- AND the rendered argv selects that model and effort, as `-c model` and `-c model_reasoning_effort` for Codex and as `--model` and `--effort` for Claude, overriding the client's user configuration, which workers ignore
+- AND the selection is part of the native configuration digest bound into the launch receipt, and a describe-policy run reports it for every Agent node it describes
+- BUT an absent value keeps the client's own default
+
+See [each Agent node runs on its own configured selection](#req.harness.agent-selection-per-node).
+
+#### scenario.harness.agent-selection-reject — Reject a selection that no Agent node can run
+
+- GIVEN a capability configuration whose `agents` map has a key naming no Agent or Agent node, or whose resolved selection for some Agent node names an integration outside that Agent's Harness or a reasoning effort its integration does not admit
+- WHEN the configuration is proposed, applied or loaded
+- THEN it is rejected with a typed field error naming the offending entry
+- AND a rejected proposal or application leaves the stored configuration unchanged
 
 #### scenario.harness.recursive-delegate — Run an explicitly assembled recursive Agent graph
 

@@ -9,10 +9,18 @@ import tempfile
 from pathlib import Path
 
 from ..spec.model import Finding, ToolResult
+from ..harness.model_selection import validate_agent_selections
 from ..spec.typed_data import TypedDataError, checked_path, decode, validate_typed
 
 CONFIG_PATH = ".concorde/config.json"
 CONFIG_TYPE = "concorde-capability-configuration"
+
+
+def admit_configuration(value, field: str = "/configuration") -> dict:
+    """The typed shape plus a runnable integration, model and effort for every Agent node."""
+    configuration = validate_typed(value, CONFIG_TYPE, field)
+    validate_agent_selections(configuration, field)
+    return configuration
 
 
 def _project_root(project_root: str | Path) -> Path:
@@ -31,7 +39,7 @@ def load_configuration(project_root: str | Path) -> dict:
         value = document.get("capability_configuration") if isinstance(document, dict) else None
         if value is None:
             raise TypedDataError("configuration_mismatch", "/configuration", "project capability settings are missing; apply an explicit configure proposal")
-        return validate_typed(value, CONFIG_TYPE, "/configuration")
+        return admit_configuration(value)
     except OSError as error:
         raise TypedDataError("configuration_mismatch", "/configuration", f"cannot load project configuration: {error}") from error
 
@@ -45,7 +53,7 @@ def _failure(error: Exception) -> ToolResult:
 def propose_configuration(project_root: str | Path, configuration: dict) -> ToolResult:
     try:
         project = _project_root(project_root)
-        configuration = validate_typed(configuration, CONFIG_TYPE, "/configuration")
+        configuration = admit_configuration(configuration)
         source = checked_path(project, CONFIG_PATH).read_bytes()
         document = decode(source.decode("utf-8"))
         if not isinstance(document, dict):
@@ -70,7 +78,7 @@ def apply_configuration(project_root: str | Path, proposal_path: str) -> ToolRes
                 or type(proposal["proposal_version"]) is not int or proposal["proposal_version"] != 1
                 or proposal["path"] != CONFIG_PATH):
             raise ValueError("unsupported configuration proposal")
-        configuration = validate_typed(proposal["configuration"], CONFIG_TYPE)
+        configuration = admit_configuration(proposal["configuration"], "")
         path = checked_path(project, CONFIG_PATH)
         source = path.read_bytes()
         document = decode(source.decode("utf-8"))

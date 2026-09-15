@@ -2108,6 +2108,38 @@
       "concorde-capability-configuration": {
         "additionalProperties": false,
         "properties": {
+          "agents": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "integration": {
+                  "enum": [
+                    "codex",
+                    "claude"
+                  ]
+                },
+                "model": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "reasoning_effort": {
+                  "enum": [
+                    "minimal",
+                    "low",
+                    "medium",
+                    "high",
+                    "xhigh",
+                    "max",
+                    "ultra"
+                  ]
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "properties": {},
+            "type": "object"
+          },
           "enforcement": {
             "enum": [
               "native"
@@ -2128,7 +2160,10 @@
               "minimal",
               "low",
               "medium",
-              "high"
+              "high",
+              "xhigh",
+              "max",
+              "ultra"
             ]
           }
         },
@@ -2198,6 +2233,38 @@
       "concorde-capability-configuration": {
         "additionalProperties": false,
         "properties": {
+          "agents": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "integration": {
+                  "enum": [
+                    "codex",
+                    "claude"
+                  ]
+                },
+                "model": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "reasoning_effort": {
+                  "enum": [
+                    "minimal",
+                    "low",
+                    "medium",
+                    "high",
+                    "xhigh",
+                    "max",
+                    "ultra"
+                  ]
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "properties": {},
+            "type": "object"
+          },
           "enforcement": {
             "enum": [
               "native"
@@ -2218,7 +2285,10 @@
               "minimal",
               "low",
               "medium",
-              "high"
+              "high",
+              "xhigh",
+              "max",
+              "ultra"
             ]
           }
         },
@@ -5429,6 +5499,38 @@
       "concorde-capability-configuration": {
         "additionalProperties": false,
         "properties": {
+          "agents": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "integration": {
+                  "enum": [
+                    "codex",
+                    "claude"
+                  ]
+                },
+                "model": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "reasoning_effort": {
+                  "enum": [
+                    "minimal",
+                    "low",
+                    "medium",
+                    "high",
+                    "xhigh",
+                    "max",
+                    "ultra"
+                  ]
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "properties": {},
+            "type": "object"
+          },
           "enforcement": {
             "enum": [
               "native"
@@ -5449,7 +5551,10 @@
               "minimal",
               "low",
               "medium",
-              "high"
+              "high",
+              "xhigh",
+              "max",
+              "ultra"
             ]
           }
         },

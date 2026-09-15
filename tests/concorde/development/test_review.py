@@ -694,6 +694,40 @@ class ReviewTests(unittest.TestCase):
                 self.assertNotIn("shell_environment_policy", settings)
                 self.assertNotIn(str(node), json.dumps(settings))
 
+    @verifies("scenario.harness.project-configured-model")
+    def test_each_agent_node_launches_on_its_own_integration_model_and_effort(self):
+        import tomllib
+
+        self.configuration = typed("concorde-capability-configuration", {
+            "integration": "claude", "enforcement": "native", "model": "claude-sonnet-5", "reasoning_effort": "medium",
+            "agents": {"spec_engineer": {"reasoning_effort": "high"},
+                       "spec_engineer/plan": {"integration": "codex", "model": "gpt-6-astra", "reasoning_effort": "ultra"},
+                       "programmer/implementation": {"model": "claude-haiku-4-5", "reasoning_effort": "low"}}})
+        config_path = self.root / ".concorde/config.json"
+        config = json.loads(config_path.read_text())
+        config["capability_configuration"] = self.configuration
+        config_path.write_text(json.dumps(config))
+        result = self.call_capability("concorde-dev-loop")
+        self.assertEqual("succeeded", result["status"], result)
+        launched = {}
+        for call in self.model.calls:
+            argv = call["argv"]
+            if "--output-schema" in argv:
+                settings = {}
+                for index, argument in enumerate(argv):
+                    if argument == "-c":
+                        settings.update(tomllib.loads(argv[index + 1]))
+                launched[call["stage"]] = ("codex", settings["model"], settings["model_reasoning_effort"])
+            else:
+                launched[call["stage"]] = ("claude", argv[argv.index("--model") + 1], argv[argv.index("--effort") + 1])
+        expected = {"plan": ("codex", "gpt-6-astra", "ultra"), "tasks": ("claude", "claude-sonnet-5", "high"),
+                    "implementation": ("claude", "claude-haiku-4-5", "low"),
+                    "code-review": ("claude", "claude-sonnet-5", "medium")}
+        self.assertEqual(expected, {stage: launched[stage] for stage in expected})
+        described = {item["phase"]: (item["integration"], item["model"], item["reasoning_effort"])
+                     for item in self.host.descriptions}
+        self.assertEqual(expected, {stage: described[stage] for stage in expected})
+
     @verifies("scenario.development.task-scope-repair")
     def test_invalid_scope_repair_cannot_replace_or_complete_original_tasks(self):
         from concorde.spec.repository import digest
