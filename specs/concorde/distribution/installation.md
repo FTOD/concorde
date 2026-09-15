@@ -142,8 +142,10 @@ The guard's decision procedure and its checkout-only scope are Module-wide requi
 The source checkout refuses native worktree creation in developer agent sessions because its
 project-local Skills are worktree-owned build output: a session that loaded them in one worktree
 and then created or entered another would act on the second worktree with the first worktree's
-instructions. Worktrees for changes come only from the Concorde host, which creates the candidate
-worktree from the committed base, builds it, and returns a P10 handoff for a fresh session there.
+instructions. A developer session therefore makes its change in the worktree it started in, as
+direct developer-authorized maintenance; a further worktree exists only when the developer
+explicitly asks for a Concorde flow, whose host creates the candidate worktree from the committed
+base, builds it, and returns a P10 handoff for a fresh session there.
 
 Unreadable hook input exits 1, a visible non-blocking hook error rather than a refusal of every
 tool call. `--check "<command>"` decides one command text and `--explain` prints the policy for

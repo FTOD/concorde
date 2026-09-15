@@ -2,12 +2,13 @@
 """Refuse native worktree creation inside agent sessions of Concorde's own source checkout.
 
 Concorde's project-local Skills are worktree-owned build output (see AGENTS.md). A session that
-loaded them in one worktree must not create, move or enter another worktree; the only supported
-way to obtain a worktree is a Concorde capability, whose host creates the candidate worktree and
-hands off a fresh session under Framework profile P10. This script is the command hook that the
-checkout registers in ``.claude/settings.json`` (Claude Code ``PreToolUse`` and ``WorktreeCreate``)
-and ``.codex/hooks.json`` (Codex ``PreToolUse``). It reads one hook payload from stdin and either
-stays silent (allow) or refuses with a reason.
+loaded them in one worktree must not create, move or enter another worktree. Developing the
+checkout is direct maintenance in the worktree the session started in; a further worktree exists
+only when the developer explicitly asks for a Concorde flow, whose host creates the candidate
+worktree and hands off a fresh session under Framework profile P10. This script is the command
+hook that the checkout registers in ``.claude/settings.json`` (Claude Code ``PreToolUse`` and
+``WorktreeCreate``) and ``.codex/hooks.json`` (Codex ``PreToolUse``). It reads one hook payload
+from stdin and either stays silent (allow) or refuses with a reason.
 
 Decisions:
 
@@ -44,9 +45,10 @@ from typing import Any, Mapping, NamedTuple
 REASON = (
     "Concorde source checkout: agent sessions may not create, move or enter git worktrees. "
     "Concorde Skills are worktree-owned build output, so this session stays in the worktree that "
-    "supplied its Skills. To work on a change in its own worktree, invoke a Concorde capability "
-    "(for example concorde-dev-loop): its host creates the candidate worktree and hands off a "
-    "fresh session under P10. Details: python3 scripts/worktree-guard.py --explain"
+    "supplied its Skills. Make the change here as developer-authorized direct maintenance; a further "
+    "worktree exists only when the developer explicitly asks for a Concorde flow, whose host creates "
+    "the candidate worktree and hands off a fresh session under P10. "
+    "Details: python3 scripts/worktree-guard.py --explain"
 )
 
 EXPLANATION = """Concorde source-checkout worktree guard
@@ -54,16 +56,18 @@ EXPLANATION = """Concorde source-checkout worktree guard
 Why: `.claude/skills/concorde-*` and `.agents/skills/concorde-*` are untracked build output owned
 by the worktree that built them. A session that loaded those Skills in worktree A and then
 created or entered worktree B would keep A's instructions while acting on B, whose Skills may
-differ. Concorde's host avoids this by creating candidate worktrees itself and handing off a fresh
-session there (Framework profile P10), so native worktree creation is refused in developer
-sessions of this checkout.
+differ. Developer sessions of this checkout therefore work in the worktree they started in, as
+direct developer-authorized maintenance, and native worktree creation is refused. When the
+developer explicitly asks for a Concorde flow, its host creates the candidate worktree itself and
+hands off a fresh session there (Framework profile P10).
 
 Refused: the Claude Code EnterWorktree tool, subagents with isolation "worktree", Claude Code
 worktree creation (`claude --worktree`, background-session worktrees), and shell commands that
 run `git worktree add`, `git worktree move` or `claude --worktree` / `claude -w`.
 
 Allowed: everything else, including `git worktree list`, starting a session in an existing
-host-created worktree, and Concorde capabilities, whose host creates worktrees in its own process.
+host-created worktree, and explicitly requested Concorde flows, whose host creates worktrees in its
+own process.
 
 Registered in: .claude/settings.json (permissions.deny, hooks PreToolUse and WorktreeCreate) and
 .codex/hooks.json (PreToolUse) plus .codex/rules/worktree.rules (execpolicy). Codex loads the

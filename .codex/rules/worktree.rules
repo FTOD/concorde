@@ -5,7 +5,7 @@
 prefix_rule(
     pattern = ["git", "worktree", "add"],
     decision = "forbidden",
-    justification = "Concorde source checkout: only the Concorde host creates worktrees (invoke concorde-dev-loop); Skills are worktree-owned build output.",
+    justification = "Concorde source checkout: make the change in this worktree; only the Concorde host creates worktrees, and only for a Concorde flow the developer explicitly asked for. Skills are worktree-owned build output.",
 )
 prefix_rule(
     pattern = ["git", "worktree", "move"],

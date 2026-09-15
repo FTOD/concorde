@@ -431,6 +431,9 @@ python3 scripts/development/run-tests.py
 ```
 
 See [development details](docs/workflow-guide.md#development) for targeted tests and docsite checks.
+Concorde itself is developed by direct maintenance in this checkout; its own flows run on this
+repository only when you explicitly ask for one, so the `concorde-*` Skills built here are
+user-invoked only. See the [source-checkout policy](AGENTS.md).
 
 ---
 

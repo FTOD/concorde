@@ -12,6 +12,23 @@ follow `.concorde/protocol/principles.md`, the tracked Protocol copy that
 change, as the canonical Concorde Spec Protocol and Framework rule bundle, including P10 for
 all session handoffs below. This file adds only source-checkout worktree and maintenance boundaries.
 
+## Direct maintenance is the default
+
+Developing this checkout is direct developer-authorized maintenance in the current worktree: read
+the Specs and the code, make the change, run the build and the deterministic checks below, and land
+each verified step as its own commit. Concorde's own flows run on this checkout only when the user
+explicitly asks for one, by invoking its slash command or by naming the flow in the request; that
+covers the global Skills (`concorde-main`, `concorde-dev-loop`, `concorde-specify-loop`,
+`concorde-review`, `concorde-reflections-triage`) and the lifecycle Skills (`concorde-init`,
+`concorde-configure`, `concorde-validate`, `concorde-deliver`) alike. Never select one because a
+task looks like a development change, and verify direct maintenance with
+`python3 scripts/concorde.py validate` and the test commands rather than with `concorde-validate`.
+The build renders this checkout's Claude Skills with `disable-model-invocation: true`, so they stay
+hidden from the model until the user types `/concorde-<name>`; when the user names a flow in prose
+instead, read its rendered file under `.claude/skills/<name>/SKILL.md` and submit the typed request
+it describes through `scripts/run-capability.py`. An explicitly requested flow keeps every rule of
+this policy, including the worktree ownership and handoff rules below.
+
 ## Spec language
 
 Concorde's own Specs under `specs/` MUST use English, including diagram labels, descriptions,
@@ -21,9 +38,11 @@ the Concorde Spec Protocol; it does not prescribe the language of consumer proje
 ## Worktree ownership
 
 A session works in the worktree that supplied its Skills and never creates, moves or enters
-another worktree itself. Worktrees for changes are created only by the Concorde host: invoke a
-Concorde capability (for example `concorde-dev-loop`), let the host prepare the candidate worktree
-from the committed base, and continue there in a fresh session under P10. That successor session
+another worktree itself. Direct maintenance needs no other worktree: the change is made, verified
+and committed here. Worktrees for changes are created only by the Concorde host, and only for a
+Concorde flow the user explicitly asked for (for example `concorde-dev-loop`): the host prepares
+the candidate worktree from the committed base, and the work continues there in a fresh session
+under P10. That successor session
 starts with the target worktree as its initial working directory, fresh context and that worktree's
 own Skills; changing cwd or spawning a native subagent that inherits this conversation or its Skill
 bodies does not satisfy the handoff. Never switch the current worktree in place to another branch
@@ -90,10 +109,11 @@ does not waive Protocol, input, permission or evidence checks. A freshly created
 built once before an agent can load Concorde Skills; the host builds the worktrees it creates for
 candidate changes, and any other fresh worktree has no Concorde Skills until it is built.
 
-Do not invoke a project-local `concorde-*` Skill to govern a task that changes its own `prompts/`,
-`skills/`, `capabilities/`, or generated Skill surface. If such a Skill body is already loaded as
-instructions, stop before the first edit and initiate a fresh maintenance session in this same
-worktree under P10, automatically by default, without loading the affected Skill bodies. Use the
-manual fallback above only when necessary. Skill discovery metadata alone is not a loaded Skill body.
-A maintenance agent that has not invoked a project-local Skill may update sources, run the build,
-run `build --check`, and test normally.
+A project-local `concorde-*` Skill never governs a task that changes its own `prompts/`,
+`skills/`, `capabilities/`, or generated Skill surface, even when the user asked for a flow: such a
+change is direct maintenance. If such a Skill body is already loaded as instructions, stop before
+the first edit and initiate a fresh maintenance session in this same worktree under P10,
+automatically by default, without loading the affected Skill bodies. Use the manual fallback above
+only when necessary. Skill discovery metadata alone is not a loaded Skill body. A maintenance agent
+that has not invoked a project-local Skill may update sources, run the build, run `build --check`,
+and test normally.

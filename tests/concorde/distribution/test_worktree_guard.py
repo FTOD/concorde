@@ -84,7 +84,8 @@ class GuardDecisionTests(unittest.TestCase):
                 verdict = guard.evaluate(payload("Bash", {"command": command}))
                 self.assertTrue(verdict.blocked)
                 self.assertIn(verdict.kind, {"git-worktree", "claude-worktree"})
-                self.assertIn("concorde-dev-loop", verdict.reason)
+                self.assertIn("direct maintenance", verdict.reason)
+                self.assertIn("explicitly asks for a Concorde flow", verdict.reason)
 
     @verifies("scenario.distribution.worktree-guard-refuses")
     def test_ordinary_commands_including_worktree_inspection_are_allowed(self):

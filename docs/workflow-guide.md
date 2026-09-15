@@ -367,12 +367,20 @@ runtime reads those Skills and submits typed capability requests to Development.
 part of a Concorde Agent's Harness. See [Agents and Harnesses](../specs/concorde/harness/agents-and-harnesses.md)
 and the [Capability registry](../specs/concorde/development/capabilities.md) for definitions and mappings.
 
+Developing this checkout is direct developer-authorized maintenance in the current worktree,
+verified with the commands above and landed as one commit per verified step. Concorde's own flows
+run on this checkout only when the developer explicitly asks for one. The build therefore renders
+the checkout's Claude Skills with `disable-model-invocation: true`, so the model never selects
+`concorde-dev-loop` on its own and the developer invokes a flow with its slash command or by naming
+it; installed consumer projections keep model-initiated invocation.
+
 Root `AGENTS.md`/`CLAUDE.md` bind an agent to the worktree that supplied its project Skills. Agent
 sessions never create or enter worktrees themselves: the checkout's `.claude/settings.json`,
 `.codex/hooks.json` and `.codex/rules/worktree.rules` refuse `EnterWorktree`, worktree-isolated
 subagents, `git worktree add` and `claude --worktree`, with `scripts/worktree-guard.py` as the hook
-behind them. Worktrees for changes come from Concorde capabilities, whose host creates the candidate
-worktree and hands off a fresh session there under P10. The policy and a one-command check:
+behind them. A further worktree exists only when the developer explicitly asks for a Concorde flow,
+whose host creates the candidate worktree and hands off a fresh session there under P10. The policy
+and a one-command check:
 
 ```bash
 python3 scripts/worktree-guard.py --explain
