@@ -84,7 +84,7 @@ class ProtocolFiveTests(unittest.TestCase):
                 check(old, snapshot)
             self.assertEqual('stale_context', failure.exception.code)
 
-    def test_source_bytes_are_exact_and_discovery_injects_each_body_once(self):
+    def test_source_bytes_are_exact_and_discovery_indexes_each_document_once(self):
         path = self.root / 'specs/transfer/promises.md'
         raw = path.read_bytes().replace(b'\n', b'\r\n')
         path.write_bytes(raw)
@@ -92,7 +92,7 @@ class ProtocolFiveTests(unittest.TestCase):
         r = self.repository()
         source = next(s for s in r.spec_context('module.ledger').sources if s['path'].endswith('promises.md'))
         self.assertEqual(digest(raw), source['digest'])
-        self.assertEqual(raw, source['content'].encode())
+        self.assertNotIn('content', source)
         snap = resolve_discovery_context(r, ('service.transfer', 'module.ledger'), capability='concorde-main', phase='route', task='Read').value
         self.assertEqual(1, sum(s['path'].endswith('promises.md') for s in snap['documents']))
         self.assertTrue(all('content' not in s for t in snap['targets'] for s in t['spec_resolution']['sources']))
@@ -177,7 +177,7 @@ class ProtocolFiveTests(unittest.TestCase):
                 result['documents'] = [{'path': 'specs/transfer/promises.md', 'content': proposed}]
             if stage == 'spec-review':
                 self.assertEqual(before, path.read_bytes())
-                self.assertIn('Clarified canonical promise.', json.dumps(snapshot))
+                self.assertIn('Clarified canonical promise.', (cwd / 'specs/transfer/promises.md').read_text())
                 if block_consumer and snapshot['target_id'] == 'module.ledger':
                     result.update(status='findings', gaps=[{'question': 'Which limit applies?',
                         'needed_contract': 'service.transfer canonical limit', 'blocked_step': 'Rely on the proposed limit'}])
@@ -222,9 +222,9 @@ class ProtocolFiveTests(unittest.TestCase):
 
     def test_old_wire_payloads_are_not_reinterpreted(self):
         value = typed('concorde-context-snapshot', resolve_context(self.repository(), 'scope.bank').value)
-        self.assertEqual(3, value['schema_version'])
-        self.assertEqual(3, value['data']['schema_version'])
-        for old in (1, 2):
+        self.assertEqual(4, value['schema_version'])
+        self.assertEqual(4, value['data']['schema_version'])
+        for old in (1, 2, 3):
             stale = {**value, 'schema_version': old}
             with self.assertRaises(TypedDataError): validate_typed(stale)
 

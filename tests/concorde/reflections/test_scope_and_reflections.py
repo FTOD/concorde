@@ -21,7 +21,7 @@ class ScopeReflectionTests(unittest.TestCase):
         self.assertEqual('succeeded',result['status'],result)
         task_call=next(call for call in self.double.calls if call['stage']=='tasks')
         self.assertIn('"target_id": "service.transfer"',
-                      '\n'.join(item['content'] for item in task_call['snapshot']['spec_resolution']['sources']))
+                      '\n'.join((self.root/item['path']).read_text() for item in task_call['snapshot']['spec_resolution']['sources']))
         domain=[c for c in self.double.calls if c['capability']!='concorde-coordinator' and c['snapshot']['target_id']=='scope.bank']
         self.assertTrue(domain);self.assertTrue(any(c['capability']!='concorde-coordinator' and
             c['snapshot']['target_id']=='service.transfer' for c in self.double.calls))
@@ -130,8 +130,10 @@ Keep this user comment intact.
         self.assertEqual(['app/transfer.py','checks/transfer_check.py'],
                          [item['path'] for item in snapshot['implementation_files']])
         self.assertNotIn('TRANSFER_IMPLEMENTATION_CODE',json.dumps(snapshot))
-        self.assertFalse(any('specs/' in path for description in self.host.descriptions
-                             for path in description['read_paths']))
+        # Reads are the frozen index and Protocol copies beside it, the granted Spec documents
+        # and the listed implementation files; nothing else.
+        self.assertTrue(all(path.startswith(('.concorde/runs/','specs/')) or path in {'app/transfer.py','checks/transfer_check.py'}
+                            for description in self.host.descriptions for path in description['read_paths']),self.host.descriptions)
         self.assertEqual([[]],[d['write_paths'] for d in self.host.descriptions]);text=(self.root/'.concorde/reflections/planned/R-001.md').read_text()
         self.assertIn('Keep this user comment intact.',text);self.assertIn('PRIVATE_REFLECTION_DETAIL_FOR_IMPLEMENTATION',text)
     @verifies("scenario.reflections.investigate-stale-evidence")

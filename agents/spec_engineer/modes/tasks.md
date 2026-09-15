@@ -67,7 +67,7 @@ component the local `concorde-dependencies` declarations actually identify.
 ## Accepted input and feedback
 
 Consume the exact supplied `concorde-agent-stage-context@2` snapshot: the target's
-`concorde-context-snapshot@3`, with `spec_resolution` with complete owned and directly referenced sources, original owners and inclusion reasons, the declared
+`concorde-context-snapshot@4`, whose `spec_resolution` indexes the owned and directly referenced documents with original owners, inclusion reasons and the reading entry (those documents and the listed Protocol files are granted read-only at their paths, never supplied inline: open the ones the task needs), the declared
 `implementation_entries` and the `implementation_files` they bind, the declared `external_references` (the vendored
 documentation and source of the external capabilities the Module relies on, granted read-only at the same
 project-relative paths, the only admitted source of third-party API facts), the task and phase, and `stage_inputs` carrying the accepted

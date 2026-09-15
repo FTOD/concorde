@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "5.1.0",
+  "version": "5.2.0",
   "source_profile": 12,
   "workspace_protocol": 15,
   "assets": [
@@ -10,11 +10,11 @@
     },
     {
       "path": "generated/protocol/principles.md",
-      "digest": "sha256:403941ffe2dcc6262b06f226584a71bb0473833ca1012e6567d436826a87512f"
+      "digest": "sha256:c733683aef5eee18bcf5fb0f3621bee6f7e587b13896f9d339613197f16768dc"
     },
     {
       "path": "generated/protocol/schemas.json",
-      "digest": "sha256:b52b36596f4b4a4655be3a5791cc277cb6800e917384daec0511b614ee89ad96"
+      "digest": "sha256:5970d8c912aa2fcec5dbb6293c3a2a8d3fed4301dbc45aec9b7d31b83193c6c8"
     }
   ]
 }

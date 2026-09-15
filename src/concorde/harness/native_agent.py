@@ -23,6 +23,9 @@ class NativeAgentAdapter:
     requires_binding = True
     integration: str = "codex"
     executor: object = None
+    # The repository whose documents the frozen snapshot indexes; when supplied, the decision
+    # capsule receives byte-identical copies of every granted document beside the index.
+    repository: object = None
 
     def __post_init__(self):
         if self.integration not in {"codex", "claude"}:
@@ -62,16 +65,22 @@ class NativeAgentAdapter:
             root = Path(directory)
             serialized = canonical(runtime) + "\n"
             (root / "context.json").write_text(serialized, encoding="utf-8")
+            granted: dict[str, bytes] = {}
+            if self.repository is not None:
+                from .context import context_documents, materialize_documents
+                granted = context_documents(self.repository, decode(frame.context_json)["data"])
+                materialize_documents(root, granted)
+            spec_paths = ("context.json", *sorted(granted))
             policy = compile_policy(EffectDeclaration(("spec-context",), (), False, "none"),
                 PolicyBinding("concorde-agent-loop", "ask", len(frame.feedback), native_agent, native_agent),
-                {"spec-context": ("context.json",)})
+                {"spec-context": spec_paths})
             renderer = render_codex_configuration if self.integration == "codex" else render_claude_configuration
             native = renderer(policy, native_enforcement=True)
             launch = build_launch_specification(capability="concorde-agent-loop", stage="ask",
                 occurrence=len(frame.feedback), role=native_agent, integration=self.integration,
                 agent=native_agent, project_root=str(root), request="Choose one bounded Agent loop action.",
                 prompt=frame.spec, prior_results=(), workspace_receipt_json=canonical({
-                    "context_id": context_digest, "source_digest": context_digest, "role_paths": {"spec-context": ["context.json"]}}),
+                    "context_id": context_digest, "source_digest": context_digest, "role_paths": {"spec-context": list(spec_paths)}}),
                 workspace_digest=context_digest, policy=policy, native_configuration=native,
                 runtime_input_json=canonical(runtime), invocation_id=decision_id,
                 capability_configuration_json=canonical(typed("concorde-capability-configuration",

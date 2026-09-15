@@ -175,13 +175,13 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-context-snapshot@3` | Every bound worker invocation's frozen input | [Canonical snapshot](../harness/context.md#context-snapshot-resolution); preserve its resolution provenance and reject stale inputs. |
+| `concorde-context-snapshot@4` | Every bound worker invocation's frozen input | [Canonical snapshot](../harness/context.md#context-snapshot-resolution); preserve its resolution provenance and reject stale inputs. |
 | `concorde-agent-task@1` | Host or admitted parent to Agent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
 | `concorde-agent-answer@1` | Generic Agent to parent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
 | `concorde-agent-interruption@1` | Agent to parent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
 | `concorde-agent-loop-context@1` | Host to fresh native decision | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
 | `concorde-agent-loop-step@1` | Native decision to host | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
-| `concorde-agent-stage-context@2` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@3, change_id, expected_artifacts}`. |
+| `concorde-agent-stage-context@2` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@4, change_id, expected_artifacts}`. |
 | `concorde-agent-stage-result@1` | Worker to host, the completion | `{context_id, outcome, answer, gaps, documents, plan, tasks, reflection_findings?}`; `documents`/`plan`/`tasks`/`reflection_findings` are populated only by the phase that produces them. A mismatched `context_id` is rejected as `incompatible_handoff`. |
 
 ### Review types
@@ -189,7 +189,7 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | Type | Carried by | Promise |
 | --- | --- | --- |
 | `concorde-review-input@1` | Host-produced, inside the review stage context | `{review_mode, input_digest, revision, changes: [{path,patch}]}`; binds the exact Spec/code revision under review. |
-| `concorde-review-stage-context@2` | Host to reviewer, the launch | `{snapshot: concorde-context-snapshot@3, review: concorde-review-input@1}`. |
+| `concorde-review-stage-context@2` | Host to reviewer, the launch | `{snapshot: concorde-context-snapshot@4, review: concorde-review-input@1}`. |
 | `concorde-review-stage-result@1` | Reviewer to host, the completion | `{context_id, input_digest, review_mode, status: no_findings\|findings\|incomplete, representative_tasks, findings, gaps, answer}`. |
 | `concorde-review-result@1` | Published in `concorde-review-response@1.reviews` | The stage result plus `target_id`, `focus_id`, `revision`, a nullable `context_id`, `status` extended with skipped\|not_run, and `semantic_completeness: "not_proven"`. |
 
@@ -197,8 +197,8 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-discovery-context@2` | Host to coordinator | [Canonical discovery context](../harness/context.md#global-spec-context-assembly); only explicit selections may expand discovery. |
-| `concorde-main-stage-context@2` | Wraps the discovery context for launch | `{snapshot: concorde-discovery-context@2}`. |
+| `concorde-discovery-context@3` | Host to coordinator | [Canonical discovery context](../harness/context.md#global-spec-context-assembly); only explicit selections may expand discovery. |
+| `concorde-main-stage-context@2` | Wraps the discovery context for launch | `{snapshot: concorde-discovery-context@3}`. |
 | `concorde-main-stage-result@1` | Coordinator to host, the completion | `{context_id, outcome, answer, expand_targets, routes, gaps, topology_design (nullable)}`. |
 | `concorde-topology-design@1` | design-topology's output, embedded in the main stage result | `{summary, registry, spec_tasks (nonempty), migration_constraints, acceptance (nonempty)}`. |
 | `concorde-topology-proposal@1` | design-topology's response, and accept-topology's request | `{proposal_id, base_registry_digest, protocol_binding, context_id, discovered_targets (nonempty), task, constraints, target_hint, focus_hint, design: concorde-topology-design@1, workspace}`; a stale `base_registry_digest` or `protocol_binding` is rejected as `stale_proposal`. |

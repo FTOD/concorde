@@ -12,8 +12,9 @@ complete Target Spec and explicitly registered Shared Specs. Shared membership n
 documents. It understands the Module contract and never reads implementation files.
 
 Action `ask` (the default when action is omitted) answers directly from complete Spec contexts
-resolved by Python and injected into the coordinator. Each source body is included once, with
-explicit per-Module membership; additional contexts are loaded only on explicit selection.
+resolved by Python and granted to the coordinator as read-only files beside an index. Each source
+is granted once, with explicit per-Module membership; additional contexts are loaded only on
+explicit selection.
 Action `design-topology` returns a digest-bound architecture
 proposal without changing files. Action `accept-topology` explicitly accepts that design, launches
 private target-local Spec authors and stores the resulting exact application as a host artifact;

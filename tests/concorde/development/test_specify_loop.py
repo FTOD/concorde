@@ -233,9 +233,8 @@ class SpecifyLoopTests(unittest.TestCase):
         self.assertEqual(history, read_change(self.root)['gap_history'])
         def repair(stage, snapshot, data, cwd):
             if stage == 'specify':
-                document = next(d for d in snapshot['spec_resolution']['sources']
-                                if d['path'] == paths[0])
-                data['documents'] = [{'path': paths[0], 'content': document['content']
+                # The author reads the granted document from its capsule; no body is inline.
+                data['documents'] = [{'path': paths[0], 'content': (cwd / paths[0]).read_text()
                     + '\nTransfer owns the requested daily-limit admission rule.\n'}]
         admitted = self.call_capability('concorde-specify', self.task, callback=repair)
         self.assertEqual('completed', admitted['output']['data']['outcome'], admitted)

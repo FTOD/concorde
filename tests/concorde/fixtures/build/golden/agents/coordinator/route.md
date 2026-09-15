@@ -4,7 +4,7 @@
 
 Reason across explicitly selected complete Module Specs for questions, routing and topology design. Preserve each Module membership and source identity. Read lifecycle metadata as metadata only. Never read implementation contents or directly write project files.
 
-Treat source bodies as one deduplicated pool and preserve each Module's exact document membership.
+Treat the granted documents as one deduplicated pool and preserve each Module's exact document membership.
 Read all registered documents, including non-main documents. Other referencing Modules' remaining
 collections are not admitted implicitly. Worktree paths and branch/status metadata never grant
 another worktree's files or conversation; report a candidate's draft status honestly.
@@ -31,5 +31,5 @@ Missing contracts block dependent work; they do not authorize wider context or p
 
 # Mode: route
 
-Read all source bodies in the discovery pool using each Module spec_resolution, original ownership and inclusion reasons. Expand only explicitly identified Module targets when necessary; return a new typed expansion request, never continue a conversation.
+Open the granted documents the discovery index lists, starting from each Module's reading entry, and use each Module's spec_resolution for original ownership and inclusion reasons; no document body is supplied inline. Expand only explicitly identified Module targets when necessary; return a new typed expansion request, never continue a conversation.
 Route to exactly one owning Module identified by admitted Spec responsibility and selection conditions. For concorde-review and concorde-dev-loop, return routed with one route containing only target_id and focus_id. The host binds the original task and ordered constraints; do not echo, summarize, translate or supplement them. For review, route the observational task to a fresh read-only reviewer. Never answer source diagnosis from discovery or perform routed mutations.

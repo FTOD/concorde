@@ -584,7 +584,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
             effect,
             PolicyBinding(capability="concorde-plan", stage="plan", occurrence=0,
                           role=role, agent=role, write_roles=write_roles),
-            {"spec-context": ("context.json",)},
+            {"spec-context": ("context.json", "specs/fixture.md")},
         )
         native = render_claude_configuration(policy, native_enforcement=True)
         agent_binding_json = binding_override if binding_override is not None else binding_json(binding)
@@ -601,7 +601,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
              "data": {"integration": "claude", "enforcement": "native"}},
             sort_keys=True, separators=(",", ":"),
         )
-        receipt_json = json.dumps({"source_digest": "sha256:" + "1" * 64, "role_paths": {"spec-context": ["context.json"]}}, sort_keys=True, separators=(",", ":"))
+        receipt_json = json.dumps({"source_digest": "sha256:" + "1" * 64, "role_paths": {"spec-context": ["context.json", "specs/fixture.md"]}}, sort_keys=True, separators=(",", ":"))
         return LaunchSpecification(
             capability="concorde-plan", stage="plan", occurrence=0, role=role,
             integration="claude", agent=role, project_root="/fixture/project",
@@ -630,7 +630,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
 
         snapshot_data = {
             "context_id": "sha256:" + "3" * 64,
-            "schema_version": 3,
+            "schema_version": 4,
             "target_id": "service.fixture",
             "kind": "module",
             "focus_id": None,
@@ -640,10 +640,11 @@ class AgentBindingPreflightTests(unittest.TestCase):
             "protocol_binding": {"version": PROTOCOL_VERSION, "digest": "sha256:" + "4" * 64},
             "protocol": [],
             "spec_resolution": {"query_id": "service.fixture", "query_kind": "module",
-                "module_id": "service.fixture", "documents": ["specs/fixture.md"], "references": [],
+                "module_id": "service.fixture", "reading_entry": "specs/fixture.md",
+                "documents": ["specs/fixture.md"], "references": [],
                 "sources": [{"document_id": "document.fixture", "path": "specs/fixture.md",
                     "digest": "sha256:" + "5" * 64, "owner": "service.fixture",
-                    "main_visible": True, "content": "# Fixture\n",
+                    "main_visible": True,
                     "reasons": [{"kind": "owned", "id": "service.fixture"}]}]},
             "instructions": "Fixture role instructions.",
             "stage_inputs": [],
@@ -664,7 +665,7 @@ class AgentBindingPreflightTests(unittest.TestCase):
         runtime_value = {
             "type_id": "concorde-agent-stage-context", "schema_version": 2,
             "data": {
-                "snapshot": {"type_id": "concorde-context-snapshot", "schema_version": 3, "data": snapshot_data},
+                "snapshot": {"type_id": "concorde-context-snapshot", "schema_version": 4, "data": snapshot_data},
                 "change_id": None, "expected_artifacts": [],
             },
         }

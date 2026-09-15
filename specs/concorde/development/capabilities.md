@@ -34,7 +34,7 @@ interface agreement. It neither loads Skills into its workers nor owns their dis
 
 | Capability | Public | Context selection | Deterministic | Skill | Launches | Uses | Behavior |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| main | `true` | `discover` | `false` | concorde-main | coordinator, spec-engineer | — | Answer directly from complete injected Spec contexts, or design, prepare and atomically apply an explicitly accepted topology |
+| main | `true` | `discover` | `false` | concorde-main | coordinator, spec-engineer | — | Answer directly from complete indexed and granted Spec contexts, or design, prepare and atomically apply an explicitly accepted topology |
 | dev-loop | `true` | `discover` | `false` | concorde-dev-loop | coordinator | specify-loop, review, plan, tasks, implement, validate | Route one change, call specify-loop, then plan, task, implement, validate and review code to ready; `run_reviews=false` records explicit skips and cannot cancel a recorded requirement |
 | specify-loop | `true` | `discover` | `false` | concorde-specify-loop | coordinator | specify, review | Route one change, author or revise its Spec unless `specify=false`, independently review it, and return completed before planning or implementation; `run_reviews=false` records a Spec-only skip without cancelling an existing requirement |
 | reflections-triage | `true` | `bound` | `false` | concorde-reflections-triage | programmer | dev-loop | Report status, capture recorded gaps, investigate read-only, implement through the development loop, merge or close owned reflections |
@@ -115,7 +115,7 @@ separate registered type identities. Fresh snapshots accompany every handoff. De
 carry identities and digests, never non-visible Module collections, code or logs into main or
 unrelated cognition.
 
-Reviewers use `concorde-review-stage-context@2` containing a full `concorde-context-snapshot@3`
+Reviewers use `concorde-review-stage-context@2` containing a full `concorde-context-snapshot@4`
 and host-produced `concorde-review-input@1`; they return `concorde-review-stage-result@1`. The host
 publishes `concorde-review-result@1` with target/focus/revision identity and
 `semantic_completeness=not_proven`. Spec and code modes use different fresh roles, with no writes in

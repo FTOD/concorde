@@ -150,7 +150,8 @@ class StandaloneReviewTests(unittest.TestCase):
                     self.assertFalse(policy["network"])
                     self.assertTrue(policy["fresh_session"])
                 for policy in actual["policies"][:-1]:
-                    self.assertEqual(["context.json"], policy["read_paths"])
+                    self.assertEqual("context.json", policy["read_paths"][0])
+                    self.assertTrue(all(p.startswith(("specs/", "generated/protocol/")) for p in policy["read_paths"][1:]), policy["read_paths"])
                 review_policy = actual["policies"][-1]
                 self.assertEqual(mode == "code", "app/transfer.py" in review_policy["read_paths"])
                 self.assertNotIn("app/ledger.py", review_policy["read_paths"])

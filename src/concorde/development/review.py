@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 import uuid
 from dataclasses import asdict, replace
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from ..harness.change_worktree import git, git_value, progress, read_change, save_change, workspace_identity
 from ..spec.typed_data import artifact, canonical, checked_path, typed, validate_typed, verify_artifacts
@@ -24,7 +24,8 @@ from ..harness.permissions import (EnforcementReceipt, CapabilityExecutionResult
     build_launch_specification, compile_policy, render_claude_configuration, render_codex_configuration)
 from ..spec.contracts import REVIEW_STAGES
 from ..distribution.build import load_role_prompt
-from ..harness.context import materialize_references, recheck_context, reference_grants, resolve_context
+from ..harness.context import (context_documents, materialize_documents, materialize_references,
+                               recheck_context, reference_grants, resolve_context)
 from ..harness.usage import record_usage
 from ..spec.repository import SpecError, SpecRepository, bound_by, digest, read_file
 
@@ -220,9 +221,13 @@ def review(run, mode: str) -> dict:
             if run.host.mode != "describe-policy":
                 capsule.parent.mkdir(parents=True, exist_ok=True)
                 capsule.write_text(serialized)
-            roles = ({"spec-context": (relative,),
-                      "implementation": tuple(run.repository.implementation_files(run.target))}
-                     if project_workspace else {"spec-context": (relative,)})
+            index_dir = str(PurePosixPath(relative).parent) if project_workspace else ""
+            granted = context_documents(run.repository, snapshot.value, index_dir=index_dir)
+            if run.host.mode != "describe-policy":
+                materialize_documents(project, granted, below=index_dir)
+            roles = {"spec-context": (relative, *sorted(granted))}
+            if project_workspace:
+                roles["implementation"] = tuple(run.repository.implementation_files(run.target))
             if "references" in prompt.effects.reads:
                 records = snapshot.value["external_references"]
                 if not project_workspace and run.host.mode != "describe-policy":

@@ -16,7 +16,13 @@ migration; the runtime must not infer their meaning from paths or names.
 
 A bounded invocation selects one Module and freezes four kinds of context. Its **Spec context** is
 the Protocol's one-level union of owned documents and explicit Module references; scenario focus
-does not trim it. Definitions in included documents retain their original owner. Its
+does not trim it. Definitions in included documents retain their original owner. The host delivers
+it as the Protocol's context index and grant: the invocation's frozen record lists every included
+document with its identity, owner, digest, inclusion reasons and the reading entry, and the
+documents themselves are granted read-only at their project-relative paths, copied byte-for-byte
+into a capsule when the phase has no project workspace. No document body is embedded in an
+invocation's input; the agent opens the granted files with its own tools, starting from the
+reading entry, and nothing outside the grant is readable. Its
 **implementation context** is the Protocol-defined set of files bound by the Module's entities:
 their exact entries plus every regular file below their directory prefixes, excluding directories
 named `node_modules`, `__pycache__`, `.venv`, `build` or `dist`, directories and files whose names
@@ -32,10 +38,10 @@ when the phase has no project workspace, with media and archives excluded. No ph
 undeclared network or an installed dependency's sources in their place. Its **task context** is the
 task, constraints, admitted stage artifacts and lifecycle metadata. A
 kind may be empty for a phase, but the frozen closure is never empty. Planner and task-author inputs
-contain no file contents. A global coordinator may reason across explicitly selected complete Module
-Spec contexts for questions, routing and topology design. The host deterministically resolves their
-registered documents, injects each source body once, and preserves unique ownership, per-Module
-inclusion provenance and source byte digests. Questions are answered directly from these original
+contain no implementation file contents. A global coordinator may reason across explicitly selected
+complete Module Spec contexts for questions, routing and topology design. The host deterministically
+resolves their registered documents, grants each source once as a read-only file listed in the
+index, and preserves unique ownership, per-Module inclusion provenance and source byte digests. Questions are answered directly from these original
 sources; additional Module contexts require explicit selection. For mutations, each selected worker
 is a fresh invocation with only its own complete Module context. Routing metadata is an explicit
 input, not permission to inspect implementation. Coordinator discovery never loads implementation
@@ -47,7 +53,9 @@ They MUST NOT read source code to supply missing Module meaning. Only the
 code-writing phase receives the complete implementation context; code review receives its separately
 declared read-only subset. Agent instructions, the Protocol rule bundle and Skills are not context:
 instructions belong to the Agent definition, and a Skill is the installed projection of a public
-Capability for the developer's own agent runtime.
+Capability for the developer's own agent runtime. The Protocol rule bundle reaches an invocation
+the same way as Spec documents: its rendered files are listed in the index with their digests and
+granted read-only, never embedded.
 
 Context identities cover ownership, explicit references, inclusion reasons and document bytes,
 Protocol and instructions, declared stage artifacts, declared listing entries and lifecycle

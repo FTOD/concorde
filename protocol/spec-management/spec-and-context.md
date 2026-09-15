@@ -29,7 +29,9 @@ Context(scenario S) = Context(owner(defining_document(S)))
 Only `R(M)` is consulted. Never resolve `Context(r.id)` during expansion. Links, directory
 neighbors, parentage, uses, file bindings and included document metadata do not expand context. All
 included files are complete, even with `main_visible: false`; no excerpt or summary replaces them.
-Cycles in references terminate immediately because the algorithm is not recursive.
+Completeness is a property of admission: every included file is admitted whole, and how a tool
+delivers it to a reader is defined under Context index and grant below. Cycles in references
+terminate immediately because the algorithm is not recursive.
 
 ```text
 resolve(inventory, query_id):
@@ -53,6 +55,26 @@ document ID, canonical path, sole owner, byte digest and inclusion reasons. A by
 of the exact source bytes, before decoding or rendering. The resolver MUST bind these declarations
 and source identities to the snapshot so unchanged file sets with changed references also invalidate
 reuse. Inventory metadata can resolve identities without admitting unrelated source bodies.
+
+## Context index and grant
+
+A tool delivers a resolved context to a reader in two parts. The **context index** is the
+resolution record above with the selected Module's reading entry marked: it tells the reader which
+files it may read, who owns each, why each is included and where to start. The **context grant** is
+read-only access to exactly those files at their project-relative paths; the reader opens them on
+demand with its own file tools. A tool MUST supply the index and MUST grant the files. It MUST NOT
+embed the file bodies in the reader's instructions in place of the grant, because embedding
+delivers every byte of every included document to every reader whether or not the task needs it,
+and it MUST NOT grant any file outside the resolved set. A copy of a granted file placed in a
+private workspace MUST be byte-identical to the file the record identifies. What the reader may
+read is bounded by the grant and not by the reader's judgment: a file outside the grant is
+unavailable rather than merely discouraged, and the tool enforces the boundary with the same
+permission mechanism that protects implementation files.
+
+The grant changes neither membership nor identity. The context identity still covers every
+included file's bytes through its digest, and a reader that opens only part of the granted set has
+still received the complete context. Whether a definition is missing is judged against the granted
+set, never against what the reader chose to open.
 
 ## Example: overlapping references without recursion
 

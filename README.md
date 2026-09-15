@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
-  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-5.1.0-6264e8" alt="Spec Protocol 5.1.0" /></a>
+  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-5.2.0-6264e8" alt="Spec Protocol 5.2.0" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/agents-Codex_%C2%B7_Claude-273449" alt="Integrations: Codex and Claude" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
 </p>
@@ -284,7 +284,7 @@ See the [Studio guide](scripts/development/STUDIO.md) for debugging, results and
 
 ## The contract at the center
 
-Concorde's independent **Spec Protocol 5.1.0** defines one specification category: a **Module Spec**.
+Concorde's independent **Spec Protocol 5.2.0** defines one specification category: a **Module Spec**.
 A Module describes a cohesive software responsibility; its implementation may span packages,
 services or shared files. Each Spec document has one owning Module. A Module's explicit
 `references` includes other Module-owned documents or one registered document, expanded once;

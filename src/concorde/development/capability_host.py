@@ -14,7 +14,7 @@ import sys
 import tempfile
 import uuid
 from dataclasses import dataclass, field, replace, asdict
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from ..spec.typed_data import (CAPABILITY_CONTRACTS, TypedDataError, canonical, checked_path,
@@ -35,7 +35,8 @@ from ..harness.change_worktree import (STATE_PATH, WORK_PATH, bind_owner, create
     save_change, save_target_state, snapshot_tree, target_state, work_path, workspace_context, resume_owner,
     workspace_identity)
 from ..spec.repository import SpecRepository, SpecError, digest, read_file, identifier
-from ..harness.context import (DiscoveryContext, materialize_references, reference_grants, resolve_context,
+from ..harness.context import (DiscoveryContext, context_documents, materialize_documents,
+                               materialize_references, reference_grants, resolve_context,
     recheck_context, resolve_discovery_context,
     recheck_discovery_context, resolve_topology_author_context,
     recheck_topology_author_context)
@@ -347,9 +348,14 @@ class MainInvocation:
             project_workspace = agent_definition(prompt.binding.agent).harness.workspace == "project"
             project = self.host.project_root if project_workspace else capsule
             context_file = capsule / "context.json"
+            # The index is written beside byte-identical copies of every document it lists; the
+            # coordinator opens them on demand instead of receiving their bodies in its input.
+            granted = context_documents(self.repository, snapshot.value)
             if self.host.mode != "describe-policy":
                 context_file.write_text(snapshot.serialized + "\n")
-            roles = {prompt.effects.reads[0]: ("context.json",)}
+                if not project_workspace:
+                    materialize_documents(capsule, granted)
+            roles = {prompt.effects.reads[0]: ("context.json", *sorted(granted))}
             try:
                 policy = compile_policy(
                     prompt.effects,
@@ -577,7 +583,8 @@ class MainInvocation:
         if decision["context_id"] != self.last_context or self.last_snapshot is None:
             raise SpecError("main route no longer matches its discovery context", "stale_context")
         value = self.last_snapshot.value
-        return "\n".join(source["content"] for source in value["documents"])
+        granted = context_documents(self.repository, value)
+        return "\n".join(granted[source["path"]].decode("utf-8") for source in value["documents"])
 
     def select_one(self) -> tuple[dict | None, dict | None]:
         return self.select_discovered(*self.discover_routes())
@@ -785,9 +792,12 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
         project_workspace = agent_definition(prompt.binding.agent).harness.workspace == "project"
         project = host.project_root if project_workspace else capsule
         context_file = capsule / "context.json"
+        granted = context_documents(repository, snapshot.value, candidate_repository=candidate_repository)
         if host.mode != "describe-policy":
             context_file.write_text(snapshot.serialized + "\n")
-        roles = {prompt.effects.reads[0]: ("context.json",)}
+            if not project_workspace:
+                materialize_documents(capsule, granted)
+        roles = {prompt.effects.reads[0]: ("context.json", *sorted(granted))}
         try:
             policy = compile_policy(
                 prompt.effects,
@@ -804,7 +814,7 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
             outer_sandbox=host.outer_sandbox, **model_selection(configuration))
         receipt = {"schema_version": 15, "target_id": target["id"], "phase": "topology-author",
             "context_id": snapshot.id, "source_digest": snapshot.id,
-            "registry_digest": digest(before_registry), "role_paths": {"spec-context": ["context.json"]}}
+            "registry_digest": digest(before_registry), "role_paths": {k: list(v) for k, v in roles.items()}}
         runtime = typed("concorde-topology-author-context", snapshot.value)
         invocation_id = str(uuid.uuid4())
         launch = build_launch_specification(capability=MAIN_CAPABILITY, stage="topology-author",
@@ -1308,10 +1318,17 @@ class Invocation:
             if self.host.mode != "describe-policy":
                 context_file.parent.mkdir(parents=True, exist_ok=True)
                 context_file.write_text(snapshot.serialized + "\n")
-            roles = ({"spec-context": (relative,),
-                      "implementation": (self.repository.implementation_files(self.target) if readonly
-                                         else self.repository.implementation_paths(self.target))}
-                     if project_workspace else {"spec-context": (relative,)})
+            # Spec context is the index above plus the read-only grant of every document and Protocol
+            # file it lists: all copied byte for byte into a capsule; in a workspace the documents
+            # are granted in place and the Protocol copies are written beside the index.
+            index_dir = str(PurePosixPath(relative).parent) if project_workspace else ""
+            granted = context_documents(self.repository, snapshot.value, index_dir=index_dir)
+            if self.host.mode != "describe-policy":
+                materialize_documents(project, granted, below=index_dir)
+            roles = {"spec-context": (relative, *sorted(granted))}
+            if project_workspace:
+                roles["implementation"] = (self.repository.implementation_files(self.target) if readonly
+                                           else self.repository.implementation_paths(self.target))
             if "references" in prompt.effects.reads:
                 # Capability context: the Module's external references, read-only. A capsule
                 # receives byte-identical copies of their readable files at the same paths.

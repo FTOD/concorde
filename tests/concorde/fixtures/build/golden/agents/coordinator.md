@@ -4,7 +4,7 @@
 
 Reason across explicitly selected complete Module Specs for questions, routing and topology design. Preserve each Module membership and source identity. Read lifecycle metadata as metadata only. Never read implementation contents or directly write project files.
 
-Treat source bodies as one deduplicated pool and preserve each Module's exact document membership.
+Treat the granted documents as one deduplicated pool and preserve each Module's exact document membership.
 Read all registered documents, including non-main documents. Other referencing Modules' remaining
 collections are not admitted implicitly. Worktree paths and branch/status metadata never grant
 another worktree's files or conversation; report a candidate's draft status honestly.

@@ -8,7 +8,7 @@
 
 # Harness
 
-`module.harness` follows Spec Protocol 5.1.0. Its sole structural parent is `module.concorde`. The
+`module.harness` follows Spec Protocol 5.2.0. Its sole structural parent is `module.concorde`. The
 complete contract is the Markdown collection explicitly registered in `.concorde/specs.json`; links
 and entity file listings do not expand it. This reading entry introduces the collection; the
 registered companion documents explain [Agents and Harnesses](agents-and-harnesses.md), [Agent
@@ -54,6 +54,18 @@ entity-bound files.
 
 Only the implementation and code-review phases SHALL also receive the contents of the selected
 Module's entity-bound files.
+
+#### req.harness.context-index-and-grant — Spec context is indexed and granted, never embedded
+
+Every launch SHALL deliver the selected Module's Spec context and the Protocol rule bundle as an
+index of the included files plus a read-only grant of exactly those files, without embedding any
+document body in the invocation input.
+
+The index is the frozen snapshot; the grant places Spec documents at their project-relative paths
+and Protocol files beside the index, as byte-identical copies in a capsule or, in a project
+workspace, the verified documents in place and the Protocol copies beside the index. An agent opens what its task needs, starting from the reading
+entry, and nothing outside the grant is readable. This realizes the Protocol's Context index and
+grant rule; see [Spec context grant](context.md#spec-context-grant).
 
 #### req.harness.context-recheck — Recheck rejects reuse after changes
 
@@ -174,11 +186,13 @@ Realized by `resolve_context`, `resolve_discovery_context` and their rechecks; s
 - AND a phase, a task, and optional focus_id, constraints, instructions, stage_inputs and workspace
 - WHEN resolve_context is called
 - THEN the host returns an immutable concorde-context-snapshot identified by a content digest
-- AND the snapshot always includes the Module's complete Spec context and its task context
+- AND the snapshot always indexes the Module's complete Spec context, every document with its identity, owner, digest, inclusion reasons and the reading entry, and carries its task context
+- AND a launch under that snapshot grants the indexed documents and the Protocol files read-only at their paths, as byte-identical copies in a capsule, instead of embedding their bodies
 - AND the snapshot includes implementation file contents only when the phase is implementation or code-review
 
-See [the non-empty closure bound](#req.harness.context-closure-nonempty) and
-[the focus bound](#req.harness.context-focus-no-trim). File visibility follows a fixed per-phase
+See [the non-empty closure bound](#req.harness.context-closure-nonempty),
+[the focus bound](#req.harness.context-focus-no-trim) and
+[index and grant](#req.harness.context-index-and-grant). File visibility follows a fixed per-phase
 rule: see [names for every phase](#req.harness.context-file-names-every-phase) and
 [contents for code phases only](#req.harness.context-contents-code-phases-only).
 
@@ -222,7 +236,7 @@ See [the changed-input recheck bound](#req.harness.context-recheck).
 
 - GIVEN a nonempty, duplicate-free ordered tuple of registered Module IDs, a capability, a phase of route, and an action of route, ask or design-topology
 - WHEN resolve_discovery_context is called
-- THEN the host returns a DiscoveryContext whose documents pool contains the one-level union for every selected Module, deduplicated with ownership and inclusion reasons
+- THEN the host returns a DiscoveryContext whose documents pool indexes the one-level union for every selected Module, deduplicated with ownership and inclusion reasons, and the coordinator launch grants those documents and the Protocol files read-only in its capsule
 - AND a focus hint is admitted only when it names a scenario of the target hint's own Module
 - AND the returned topology equals the exact registry only for the design-topology action, and is null for every other action
 

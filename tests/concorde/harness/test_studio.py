@@ -133,7 +133,8 @@ class StudioTests(unittest.TestCase):
         started = [e for e in custom if e["event"] == "agent_started"]
         self.assertEqual(["route", "route"], [e["stage"] for e in started])
         self.assertEqual(2, len({e["invocation_id"] for e in started}))
-        self.assertTrue(all(p["read_paths"] == ["context.json"] for p in actual["policies"]))
+        self.assertTrue(all(p["read_paths"][0] == "context.json" and all(
+            path.startswith(("specs/", "generated/protocol/")) for path in p["read_paths"][1:]) for p in actual["policies"]))
         second = graph.invoke({"invocation": value})
         self.assertEqual(len(actual["events"]), len(second["events"]))
         self.assertNotEqual(actual["result"]["invocation_id"], second["result"]["invocation_id"])

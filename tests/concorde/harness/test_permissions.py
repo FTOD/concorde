@@ -586,7 +586,7 @@ class AgentBindingLaunchTests(unittest.TestCase):
     def setUp(self) -> None:
         self.binding = resolve_agent(REPOSITORY_ROOT, "spec_engineer", "specify")
         self.effect = EffectDeclaration(reads=("spec-context",), writes=(), network=False, credentials="none")
-        self.roles = {"spec-context": ("context.json",)}
+        self.roles = {"spec-context": ("context.json", "specs/fixture.md")}
         self.policy = compile_policy(
             self.effect,
             PolicyBinding(

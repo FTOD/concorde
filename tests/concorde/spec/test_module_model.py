@@ -131,10 +131,16 @@ class ModuleImplementationTests(unittest.TestCase):
     def test_non_code_agents_receive_the_whole_module_and_only_file_names(self):
         for phase in ("ask", "specify", "plan", "tasks", "context-solve", "spec-review"):
             with self.subTest(phase=phase):
+                from concorde.harness.context import context_documents
                 snapshot = resolve_context(self.repository(), "module.a", phase=phase,
                                            focus_id="scenario.a.value")
-                self.assertIn("A_MODULE_CONTRACT", snapshot.serialized)
-                self.assertIn("A_OWN_ADDITIONAL_CONTRACT", snapshot.serialized)
+                # The snapshot indexes the documents; their bodies reach the agent only as granted files.
+                granted = "\n".join(raw.decode() for raw in context_documents(self.repository(), snapshot.value).values())
+                self.assertIn("A_MODULE_CONTRACT", granted)
+                self.assertIn("A_OWN_ADDITIONAL_CONTRACT", granted)
+                self.assertNotIn("B_PRIVATE_SPEC", granted)
+                self.assertNotIn("PRIVATE_SOURCE_MARKER", granted)
+                self.assertNotIn("A_MODULE_CONTRACT", snapshot.serialized)
                 self.assertNotIn("B_PRIVATE_SPEC", snapshot.serialized)
                 self.assertNotIn("PRIVATE_SOURCE_MARKER", snapshot.serialized)
                 # The listed file names are Spec facts; their contents never are.

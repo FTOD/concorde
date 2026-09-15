@@ -626,7 +626,9 @@ def _prompt(specification: LaunchSpecification) -> str:
 def _role_prompt(specification: LaunchSpecification) -> str:
     if _domain_type(specification) == "concorde-agent-loop-step":
         return (
-            "Execute one fresh model-driven Agent decision. Use only the admitted context below.\n"
+            "Execute one fresh model-driven Agent decision. Use only the admitted context below; the Spec "
+            "documents and Protocol files its index lists are granted read-only in the working directory, "
+            "so open them with your file tools instead of expecting their bodies here.\n"
             f"{specification.runtime_input_json}\nAgent responsibility Spec:\n{specification.prompt}\n"
             "Return Completion Envelope 3 with concorde-agent-loop-step as domain_output. "
             "Set source=model-driven. Delegate only through that typed action, never native sub-agent tools. "
@@ -640,7 +642,12 @@ def _role_prompt(specification: LaunchSpecification) -> str:
             f"Capability: {specification.capability}\nStage: {specification.stage}\n"
             f"Host workspace grant:\n{specification.workspace_receipt_json}\n"
             f"Configuration snapshot:\n{specification.capability_configuration_json}\n"
-            f"Complete admitted context and task:\n{specification.runtime_input_json}\n"
+            "The Spec documents and Protocol files the context index lists are granted read-only at the "
+            "paths the host workspace grant names: Spec documents at their project-relative paths and "
+            "Protocol files at their bundle paths below the directory holding the index. Open them with "
+            "your file tools, starting from the selected Module's reading entry, and read what the task "
+            "needs. Nothing outside the grant is readable, and no document body is supplied inline.\n"
+            f"Context index and task:\n{specification.runtime_input_json}\n"
             f"Bound instructions:\n{specification.prompt}\n"
             "Return Capability Completion Envelope 3 with the selected mode's typed domain_output. "
             "For a valid bounded result, including gaps or findings, set envelope status=success, "

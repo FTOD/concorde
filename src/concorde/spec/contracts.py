@@ -170,15 +170,15 @@ def schemas() -> dict:
     document_ref = obj({"document_id": STRING, "path": PATH, "digest": DIGEST,
         "owner": STRING,
         "main_visible": {"type": "boolean"}})
-    document = obj({**document_ref["properties"], "content": {"type": "string"}})
+    # Context index records (Protocol 5.2, Context index and grant): a document is identified, owned
+    # and digested, never embedded. Its bytes reach an Agent through the read-only grant of the path.
     reason = obj({"kind": {"enum": ["owned", "module", "document"]}, "id": STRING})
-    source_ref = obj({**document_ref["properties"], "reasons": array(reason, unique=True)})
-    source = obj({**source_ref["properties"], "content": {"type": "string"}})
+    source = obj({**document_ref["properties"], "reasons": array(reason, unique=True)})
     def resolution(source_shape):
         return obj({"query_id": STRING, "query_kind": {"enum": ["module", "scenario"]},
-            "module_id": STRING, "documents": array(PATH, unique=True),
+            "module_id": STRING, "reading_entry": PATH, "documents": array(PATH, unique=True),
             "references": array(REFERENCE, unique=True), "sources": array(source_shape)})
-    protocol_document = obj({"path": PATH, "digest": DIGEST, "content": {"type": "string"}})
+    protocol_document = obj({"path": PATH, "digest": DIGEST})
     result["concorde-project-proposal"] = obj({"action": {"enum": ["initialize"]},
         "base_digest": {"anyOf": [DIGEST, {"type": "null"}]}, "files": array(PROPOSAL_FILE)})
     result["concorde-plan-artifact"] = obj({"plan": STRING})
@@ -188,7 +188,7 @@ def schemas() -> dict:
         "reason": {"const": "implementation_boundary"}})
     result["concorde-reflection-selection"] = obj({"head": STRING, "records": array(obj({"id":STRING,"path":PATH,"digest":DIGEST,"content":STRING}))})
     stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-task-identity-constraints","concorde-implementation-task","concorde-task-scope-feedback","concorde-reflection-selection","concorde-review-result")]}
-    result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 3},
+    result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 4},
         "target_id": STRING, "kind": {"const": "module"}, "focus_id": NULLABLE_ID,
         "phase": STRING, "task": STRING, "constraints": array(STRING),
         "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
@@ -252,15 +252,15 @@ def schemas() -> dict:
         "base_registry_digest": DIGEST, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
         "files": {**array(PROPOSAL_FILE), "minItems": 1}})
     discovery_target = obj({"target_id": STRING, "kind": {"const": "module"},
-                            "spec_resolution": resolution(source_ref)})
-    result["concorde-discovery-context"] = obj({"context_id": DIGEST, "schema_version": {"const": 2},
+                            "spec_resolution": resolution(source)})
+    result["concorde-discovery-context"] = obj({"context_id": DIGEST, "schema_version": {"const": 3},
         "capability": {"enum": sorted(DISCOVERY_CAPABILITIES)}, "phase": {"const": "route"},
         "action": {"enum": ["route", "ask", "design-topology"]},
         "task": STRING, "constraints": array(STRING), "target_hint": NULLABLE_ID,
         "focus_hint": NULLABLE_ID, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
         "protocol": array(protocol_document), "topology": {"anyOf": [REGISTRY, {"type": "null"}]},
         "targets": array(discovery_target),
-        "documents": array(document),
+        "documents": array(document_ref),
         "instructions": {"type": "string"},
         "workspace": WORKSPACE_CONTEXT})
     result["concorde-main-stage-context"] = obj({

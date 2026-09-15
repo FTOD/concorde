@@ -32,7 +32,8 @@ contracts; report concrete behavior defects.
 
 ## Responsibilities
 
-Read the full admitted document collection, not only the changed lines, and compare the granted
+Read the full admitted document collection (granted read-only at the paths the snapshot's
+`spec_resolution` and `protocol` list, never supplied inline), not only the changed lines, and compare the granted
 target implementation files against those contracts. Identify concrete behavior defects, the
 affected task, owning target, contract document and location. A test that declares a scenario
 of this admitted context with `verifies` but does not exercise that scenario's steps is a defect;
@@ -48,7 +49,7 @@ completeness claims.
 
 ## Accepted input and feedback
 
-Consume the exact supplied `concorde-review-stage-context@2`: a complete `concorde-context-snapshot@3`
+Consume the exact supplied `concorde-review-stage-context@2`: a complete `concorde-context-snapshot@4`
 (Target Spec, Shared Specs, the granted `implementation_artifacts` for the reviewed target, and the
 declared `external_references`, the read-only vendored documentation and source of the external
 capabilities the Module relies on, which is the admitted source for judging third-party API use)

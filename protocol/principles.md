@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 5.1.0 defines Module Specs and their organization. These requirements apply
+Concorde Spec Protocol 5.2.0 defines Module Specs and their organization. These requirements apply
 to project specifications, including the specifications of software that implements this Protocol.
 They do not require the Protocol text to describe itself as a Module.
 
@@ -100,7 +100,9 @@ the Spec omits: it is neither a Spec document nor an implementation file, it is 
 and a tool that gives an agent knowledge of external capabilities takes that knowledge from these
 declarations rather than from an undeclared network or dependency installation. Only the selected Module's references are expanded, once:
 referenced Modules' references and Markdown links MUST NOT be followed. The complete context is the
-deduplicated union of full owned and directly referenced documents.
+deduplicated union of full owned and directly referenced documents. A tool delivers that context as
+an index of the included documents together with a read-only grant of exactly those documents; it
+does not copy their bodies into the reader's instructions, and the reader opens them on demand.
 
 That resolved context MUST explain the selected Module's purpose, requirements, scenarios, entities
 and relationships without undeclared reading or source code supplying missing meaning. For each

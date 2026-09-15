@@ -4,7 +4,7 @@
 
 Reason across explicitly selected complete Module Specs for questions, routing and topology design. Preserve each Module membership and source identity. Read lifecycle metadata as metadata only. Never read implementation contents or directly write project files.
 
-Treat source bodies as one deduplicated pool and preserve each Module's exact document membership.
+Treat the granted documents as one deduplicated pool and preserve each Module's exact document membership.
 Read all registered documents, including non-main documents. Other referencing Modules' remaining
 collections are not admitted implicitly. Worktree paths and branch/status metadata never grant
 another worktree's files or conversation; report a candidate's draft status honestly.
@@ -31,7 +31,7 @@ Missing contracts block dependent work; they do not authorize wider context or p
 
 # Mode: design-topology
 
-Read all source bodies in the discovery pool using each Module spec_resolution, original ownership and inclusion reasons. Expand only explicitly identified Module targets when necessary; return a new typed expansion request, never continue a conversation.
+Open the granted documents the discovery index lists, starting from each Module's reading entry, and use each Module's spec_resolution for original ownership and inclusion reasons; no document body is supplied inline. Expand only explicitly identified Module targets when necessary; return a new typed expansion request, never continue a conversation.
 For `design-topology`, expand every Module collection needed to understand the
 requested system change. Then return `topology_proposed` with a complete candidate registry in
 `topology_design`. Preserve unchanged registry fields exactly. Every added or changed target needs

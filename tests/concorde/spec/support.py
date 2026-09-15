@@ -206,13 +206,26 @@ class ModelProcessDouble:
     def run(self, argv, *, cwd, env, input_text, timeout=None):
         schema=json.loads(argv[argv.index('--json-schema')+1]) if '--json-schema' in argv else json.loads(Path(argv[argv.index('--output-schema')+1]).read_text()); properties=schema['properties']
         stage=properties['stage']['const']
-        markers=('Complete admitted discovery context and task:\n','Complete provisional target context:\n','Complete admitted context and task:\n')
+        markers=('Context index and task:\n',)
         marker=next(item for item in markers if item in input_text)
         value=json.JSONDecoder().raw_decode(input_text.split(marker,1)[1])[0]
         snapshot=(value['data']['snapshot']['data'] if value['type_id'] in {
             'concorde-main-stage-context','concorde-agent-stage-context','concorde-review-stage-context'} else value['data'])
         capability=properties['role']['const']
-        self.calls.append({'stage':stage,'capability':capability,'snapshot':snapshot,'cwd':Path(cwd),'prompt':input_text,'argv':argv,'timeout':timeout})
+        # The index lists every granted Spec document and Protocol file; a real agent opens them from
+        # its workspace, so the double proves each one is present there with the frozen bytes.
+        receipt=json.JSONDecoder().raw_decode(input_text.split('Host workspace grant:\n',1)[1])[0] if 'Host workspace grant:\n' in input_text else json.JSONDecoder().raw_decode(input_text.split('Capability workspace receipt (trusted host result):\n',1)[1])[0]
+        role_paths=[path for paths in receipt['role_paths'].values() for path in paths]
+        index={item['path']:item['digest'] for item in
+            (snapshot['spec_resolution']['sources'] if 'spec_resolution' in snapshot else snapshot['documents'])}
+        # Protocol files are granted at their bundle paths below the directory holding the index.
+        index.update({next(path for path in role_paths if path.endswith(item['path'])):item['digest']
+                      for item in snapshot['protocol']})
+        for path,expected in index.items():
+            granted=Path(cwd)/path
+            if path not in role_paths or not granted.is_file() or 'sha256:'+hashlib.sha256(granted.read_bytes()).hexdigest()!=expected:
+                raise AssertionError(f'granted context file missing, ungranted or changed in the workspace: {path}')
+        self.calls.append({'stage':stage,'capability':capability,'snapshot':snapshot,'cwd':Path(cwd),'prompt':input_text,'argv':argv,'timeout':timeout,'granted':sorted(index)})
         if value['type_id']=='concorde-review-stage-context':
             review=value['data']['review']['data']
             self.calls[-1]['review']=review
@@ -228,7 +241,8 @@ class ModelProcessDouble:
             stdout=json.dumps({'structured_output':payload}) if '--json-schema' in argv else '\n'.join(json.dumps(event) for event in [{'type':'item.completed','item':{'type':'agent_message','text':json.dumps(payload)}},{'type':'turn.completed'}])
             return subprocess.CompletedProcess(argv,0,stdout,'')
         if value['type_id']=='concorde-topology-author-context':
-            current={item['path']:item['content']
+            # Granted documents are read from the capsule, as a real author would; no body is inline.
+            current={item['path']:(Path(cwd)/item['path']).read_text()
                      for item in snapshot['spec_resolution']['sources']}
             target=snapshot['target']
             candidate={path:target['id'] for path in target['documents']}
@@ -310,7 +324,7 @@ class ModelProcessDouble:
         if stage=='tasks':
             task_target=snapshot['target_id']
             if snapshot['target_id'] in {'scope.bank','scope.audit'}:
-                body='\n'.join(item['content']
+                body='\n'.join((Path(cwd)/item['path']).read_text()
                     for item in snapshot['spec_resolution']['sources'])
                 dependencies=re.search(r'```concorde-dependencies\s*\n(.*?)^```',body,re.M|re.S)
                 if dependencies is None:raise AssertionError('Module task fixture requires local participant declarations')

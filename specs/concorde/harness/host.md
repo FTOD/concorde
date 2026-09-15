@@ -110,7 +110,7 @@ This host entry accepts that runtime instance; it does not accept raw Agent defi
 Python modules or construct arbitrary Harnesses from task fields. Trusted Python code constructs
 RuntimeAgent nodes and an explicit complete-context resolver under the execution provider's
 admission contract. No built-in question-reading factory is provided. The normal main question
-flow directly injects resolved Spec contexts into the coordinator.
+flow indexes resolved Spec contexts and grants their documents to the coordinator.
 
 ### Recursive decision Flow (`agent_flow`)
 

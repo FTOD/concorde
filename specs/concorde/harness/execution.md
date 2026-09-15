@@ -245,16 +245,19 @@ their kinds are listed in [Agents and Harnesses](agents-and-harnesses.md).
 
 - A **capsule** is a host-created temporary directory outside the project root, created for one
   invocation immediately before launch and removed after the host has verified it. It contains
-  exactly one file, `context.json`, holding the frozen snapshot bytes. It is the process's working
-  directory and its workspace root for policy rendering, so the compiled policy grants reading that
-  one file and nothing else: the project root, the candidate worktree, other worktrees and the
+  `context.json`, holding the frozen snapshot bytes, beside byte-identical copies of every Spec
+  document and Protocol file that index lists, at their project-relative paths, plus the copied
+  external references a mode with the `references` effect receives. It is the process's working
+  directory and its workspace root for policy rendering, so the compiled policy grants reading
+  exactly those files and nothing else: the project root, the candidate worktree, other worktrees and the
   developer's home directory are outside the grant. The same snapshot travels on stdin. The
   `discovery-capsule` and `spec-capsule` Harnesses use this kind, and a recursive Agent decision
   receives a fresh capsule per decision.
 - A **project** workspace is the candidate worktree itself: it is the process's working directory
   and its workspace root for policy rendering. The snapshot is written below
   `.concorde/runs/<invocation>/<uuid>/context.json` inside that worktree; the policy grants reading
-  it together with the selected Module's listed implementation entries, and only a code-writing
+  it, the Spec documents it indexes at their project paths, the Protocol copies written beside it,
+  and the selected Module's listed implementation entries, and only a code-writing
   invocation additionally receives write authority over those entries. The
   `implementation-workspace` Harness uses this kind.
 
@@ -476,7 +479,7 @@ Each invocation's deadline is also bounded by its canonical Agent/Harness timeou
 ancestor deadline. Descendants and continuations cannot extend those deadlines.
 
 The resolver receives `(node: RuntimeAgent, validated_input: dict, effective_grant: AgentGrant)`
-and returns a complete typed `concorde-context-snapshot@3`. Its target must be admitted, its phase
+and returns a complete typed `concorde-context-snapshot@4`. Its target must be admitted, its phase
 must be `ask`, its context ID must match its bytes and implementation artifacts must be empty.
 For `concorde-agent-task`, the task target must also match the snapshot. The host uses the existing
 context service to resolve the complete collection; task text and paths are not authority.
@@ -560,4 +563,4 @@ remains an execution failure. Existing single-process runner and executor interf
 
 A trusted host composes RuntimeAgent records and a resolver callback explicitly, then invokes
 the graph through CapabilityHost.invoke_agent. The generic runtime provides no question-reading
-factory. Ordinary question answering uses the coordinator's directly injected Spec contexts.
+factory. Ordinary question answering uses the coordinator's indexed and granted Spec contexts.

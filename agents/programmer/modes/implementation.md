@@ -1,8 +1,10 @@
 # Mode: implementation
 
 
-Inspect only granted code and the complete Spec context. Fulfil the supplied task acceptance
-conditions.
+Inspect only granted code and the complete Spec context, whose documents and Protocol files are
+granted read-only at the paths the snapshot's `spec_resolution` and `protocol` list; open them with
+your file tools, starting from the reading entry, because no document body is supplied inline.
+Fulfil the supplied task acceptance conditions.
 
 ## Responsibilities
 

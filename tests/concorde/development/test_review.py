@@ -839,7 +839,9 @@ class ReviewTests(unittest.TestCase):
                 self.assertIn("def transfer", calls[-1]["prompt"])
             else:
                 self.assertNotEqual(self.root, calls[-1]["cwd"])
-                self.assertEqual(["context.json"], policy["read_paths"])
+                # The index plus the granted Spec documents and Protocol files, never code.
+                self.assertEqual("context.json", policy["read_paths"][0])
+                self.assertTrue(all(p.startswith(("specs/", "generated/protocol/")) for p in policy["read_paths"][1:]), policy["read_paths"])
                 self.assertEqual([], snapshot["implementation_artifacts"])
                 self.assertNotIn("def transfer", calls[-1]["prompt"])
                 # The listed file names are Spec facts; only code review reads their bytes.
@@ -1672,7 +1674,7 @@ class RepairLoopTests(unittest.TestCase):
             if stage == "specify" and snapshot["target_id"] == "service.transfer":
                 document = next(d for d in snapshot["spec_resolution"]["sources"] if d["path"] == "specs/transfer/module.md")
                 data["documents"] = [{"path": "specs/transfer/module.md",
-                    "content": document["content"] + "\nThe transfer capability documents an additional promise.\n"}]
+                    "content": (cwd / document["path"]).read_text() + "\nThe transfer capability documents an additional promise.\n"}]
         result = self.call_capability("concorde-dev-loop", callback=callback)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"])

@@ -15,7 +15,7 @@ support this work through installable Skills. The reflection system retains feed
 Spec gaps, coordinates investigation and routes approved resolutions into new development tasks.
 
 The development and delivery workflows below build on these foundations. The **Spec Protocol
-5.1.0** defines one specification category:
+5.2.0** defines one specification category:
 
 - **Module Spec:** a self-contained contract in four mandatory parts. Purpose, Requirements (one
   decidable SHALL statement each, about the Module) and Scenarios (testable GIVEN/WHEN/THEN
@@ -105,8 +105,9 @@ Send this invocation on stdin to `scripts/run-capability.py concorde-dev-loop` (
 
 Null configuration asks the trusted host to load initialized settings. The `ask` action of
 `concorde-main` may omit target_id: the coordinator selects needed Module Spec contexts, Python
-resolves their complete documents, and the coordinator answers directly from the injected
-originals. Shared source bodies are deduplicated while preserving each Module's membership. A supplied target_id is a routing hint,
+resolves their complete documents, grants them read-only beside an index, and the coordinator
+opens the originals it needs and answers directly from them. Shared documents are granted once
+while preserving each Module's membership. A supplied target_id is a routing hint,
 not a context grant. The loop executes specification,
 context assessment, plan, tasks, implementation and checks, ending at a ready candidate.
 

@@ -16,7 +16,7 @@ implementation context; this Module realizes those definitions and adds the two 
 
 | Kind | Content | Required for |
 | --- | --- | --- |
-| Spec context | The selected Module's complete resolved Markdown context, exactly the Protocol's `Context(M)`; a scenario focus changes the question, not the membership. | Every Module-bound invocation. |
+| Spec context | The selected Module's complete resolved Markdown context, exactly the Protocol's `Context(M)`; a scenario focus changes the question, not the membership. It is delivered as the Protocol's context index and grant: the snapshot lists every document with identity, owner, digest, inclusion reasons and the reading entry, and the documents are granted read-only at their project-relative paths, byte-identical copies in a capsule. No document body is embedded. | Every Module-bound invocation. |
 | Implementation context | The Protocol's `ImplementationContext(M)`: the listing entries the selected Module's own entities declare, exact files and directory prefixes alike, and the files those entries currently bind. Every phase can see the declared entries and bound file names with their owning entity and pending status; only code-writing and code-review phases receive file contents, in their declared subsets. | Entries and file names: every phase. File contents: code-writing and code-review phases only. |
 | Capability context | The contracts of the Capabilities and Tools the invocation may use, as admitted by its Harness and constraints, together with the Module's Protocol-defined external references: the vendored documentation and source it declares with `references` of kind `external`, one tree digest per entry. Descriptions given to the model and bindings accepted by the executor resolve to the same contracts. | Reference entries and digests: every phase. Reference contents, read-only: the modes that declare the `references` effect (plan, tasks, implementation, code-review). Capability and Tool contracts: none admitted by any current Agent. |
 | Task context | The task and constraints, the stage artifacts admitted for this phase, such as a plan, implementation tasks, a review result or a reflection selection, and the frozen workspace lifecycle metadata. | Every invocation; stage artifacts are optional. |
@@ -30,7 +30,7 @@ a public Capability. The snapshot identity covers every admitted byte of every k
 
 `resolve_context` freezes one Module's Spec context with its task context, its external
 references, and, for code phases, its implementation context, into a private
-`concorde-context-snapshot@3`. `resolve_discovery_context`
+`concorde-context-snapshot@4`. `resolve_discovery_context`
 freezes several explicitly selected complete Spec contexts for the global coordinator.
 `recheck_context` and `recheck_discovery_context` reject reuse after any admitted input changed.
 The sections below define the exact inputs, records, phases and errors.
@@ -74,18 +74,21 @@ trusted-host frozen observation, not a caller task field or replacement authorit
 
 `ContextSnapshot(serialized: str)` is frozen; `.serialized` is canonical JSON, `.value` decodes a
 new dictionary and `.id` returns its `context_id`. The dictionary is the data of the private
-`concorde-context-snapshot@3` TypedValue; wrapping it adds the ordinary
-`{type_id, schema_version: 3, data}` envelope. Its exact fields are:
+`concorde-context-snapshot@4` TypedValue; wrapping it adds the ordinary
+`{type_id, schema_version: 4, data}` envelope. Its exact fields are:
 
-- `schema_version: 3`, `context_id: sha256`, `target_id: str`, `kind: module`,
+- `schema_version: 4`, `context_id: sha256`, `target_id: str`, `kind: module`,
   `focus_id: str|null` (a scenario ID when present), `phase: str`, `task: str`,
   `constraints: list[str]` and `instructions: str`.
 - `protocol_binding: {version: str, digest: sha256}` and
-  `protocol: list[{path, digest, content}]`, with the principles and Module kind documents in that order.
+  `protocol: list[{path, digest}]`, with the principles and Module kind documents in that order;
+  the rendered files are granted read-only at those paths beside the Spec documents.
 - `spec_resolution: SpecResolution`, the canonical record defined by
-  [Spec resolution](../spec/registry.md#stable-id-spec-context-queries). Its sources include full
-  content, sole owners, byte digests and all inclusion reasons. There are no target/shared partitions.
-  Inline diagrams already occur in those source bytes and add no separate field.
+  [Spec resolution](../spec/registry.md#stable-id-spec-context-queries). Its sources are index
+  records: document identity, path, sole owner, byte digest, main visibility and all inclusion
+  reasons, with the Module's `reading_entry` named; no source body is embedded. The listed
+  documents are granted read-only at their paths (see the Spec context grant below). There are no
+  target/shared partitions. Inline diagrams occur in the granted bytes and add no separate field.
 
 - `implementation_entries: list[{path: str, entity_id: str, pending: bool, directory: bool}]`,
   present for every phase: the listing entries the selected Module's own entities declare, in
@@ -115,9 +118,30 @@ new dictionary and `.id` returns its `context_id`. The dictionary is the data of
 Spec and artifact paths are canonical project-relative POSIX paths; workspace locations are
 absolute host identity paths. Sha256 values use the `sha256:` prefix and 64
 lowercase hexadecimal digits. Arrays may be empty except the admitted nonempty document closure
-and the phase-appropriate Protocol records, which supply the principles and Module kind documents
-to every phase alike. Every listed snapshot field is required; unknown fields are rejected
+and the phase-appropriate Protocol records, which name the principles and Module kind documents
+granted to every phase alike. Every listed snapshot field is required; unknown fields are rejected
 at typed host admission. The digest covers the complete canonical dictionary except `context_id`.
+
+## Spec context grant
+
+Every launch delivers the Spec context as the Protocol's context index and grant. The snapshot is
+the index, written to `context.json`; the `spec-context` role path list names that file together
+with every path in `spec_resolution.sources` and `protocol`, and the compiled policy grants
+exactly those paths read-only. Spec documents are granted at their project-relative paths and the
+Protocol files at their bundle paths below the directory holding the index, because the rule bundle
+is a Framework asset the project tree does not contain. In a capsule the index sits at the root, so
+the host copies every granted file to its path there, byte-identical to the digest the index
+records, before launch; in a project workspace the Spec documents are granted in place after the
+host verifies that their current bytes still match the index, and the Protocol copies are written
+beside the index under `.concorde/runs/<invocation>/<uuid>/`. No document or Protocol body is
+embedded in the invocation input or prompt: the
+agent opens the granted files with its own tools, starting from `spec_resolution.reading_entry`,
+and reads what its task needs. `context_grants` derives that path set from any of the three
+context kinds, `context_documents` produces the verified bytes and raises `stale_context` when a
+listed file changed, and `validate_mode_policy` rejects a launch whose `spec-context` role paths
+are not exactly the index plus its grants. After the process exits the host rereads the index file
+and re-resolves the repository, so a change to a granted project document is rejected as
+`stale_context`. The discovery and topology author contexts are delivered the same way.
 
 Ordinary `stage_inputs` are version-1 TypedValues with these payloads:
 `concorde-plan-artifact` has `plan: nonblank str`; `concorde-implementation-task` has that same
@@ -169,7 +193,7 @@ The context identity covers all inputs apart from its own identity field. The wi
 contains the distributed principles bundle and Module kind definition. This bundle includes
 both Concorde Spec Protocol requirements and the Framework execution profile; the field name does
 not classify all runtime rules as Spec organization rules.
-Concorde Spec Protocol 5.1.0 defines the Spec context, implementation context and external
+Concorde Spec Protocol 5.2.0 defines the Spec context, implementation context and external
 references this service resolves. The distributed rule bundle also includes the separately authored Framework execution
 profile, including P10 handoffs. The resolver verifies the build is
 fresh, then admits Protocol assets rendered into `generated/protocol/` from the exact project-bound
@@ -189,9 +213,10 @@ Membership, configuration, Protocol or admitted bytes changing after resolution 
 
 Main discovery admits explicitly selected complete Module collections for global reasoning,
 questions and routing. A new admitted collection produces a new context identity and a fresh
-coordinator invocation. Python injects deduplicated original documents, already carrying their
-inline Mermaid fences, with per-Module resolution provenance and original owners. The coordinator answers directly from those
-complete contexts. Implementation source bodies never enter this context.
+coordinator invocation. Python indexes the deduplicated original documents once, with per-Module
+resolution provenance and original owners, and grants them read-only in the coordinator's capsule
+together with the Protocol files. The coordinator opens them on demand and answers directly from
+those complete contexts. Implementation source bodies never enter this context.
 During design-topology, exact registry metadata additionally describes Module composition,
 dependencies and entity listing entries. It supplies structure, not hidden behavioral meaning.
 After the design is accepted, each fresh Module author receives the proposed descriptor and its
@@ -296,19 +321,21 @@ phases/actions, invalid selections, unavailable required files and inconsistent 
 resolution; no partial context is returned. Hints do not themselves add a Module's documents.
 
 DiscoveryContext has serialized, value and id accessors like ContextSnapshot. Its canonical
-concorde-discovery-context@2 payload contains context_id, schema_version, capability, phase,
+concorde-discovery-context@3 payload contains context_id, schema_version, capability, phase,
 action, task, constraints, target_hint, focus_hint, protocol_binding, protocol, topology,
 targets, documents, instructions and workspace. Topology is the exact registry
 only for design-topology; otherwise it is null.
 
-Each target has `target_id`, `kind: module` and `spec_resolution`. This resolution uses the
-[Spec record](../spec/registry.md#stable-id-spec-context-queries) with source metadata/reasons but
-without `content`. The top-level `documents` pool contains each complete source record once,
-without per-selection reasons, sorted by path; per-target reasons remain in the target resolutions.
-Every pooled document has exactly one owner. Overlapping selections preserve all attribution and
-include its bytes once. No provider references are recursively followed and no diagram pool exists.
+Each target has `target_id`, `kind: module` and `spec_resolution`, the
+[Spec record](../spec/registry.md#stable-id-spec-context-queries) with its source index records and
+reasons. The top-level `documents` pool contains each document's index record once, without
+per-selection reasons, sorted by path; per-target reasons remain in the target resolutions. Every
+pooled document has exactly one owner. Overlapping selections preserve all attribution and grant
+the file once: the coordinator launch copies every pooled document and Protocol file into its
+capsule and grants exactly those paths read-only, as the Spec context grant above describes. No
+provider references are recursively followed and no diagram pool exists.
 
-The coordinator reads these original pools directly, combines facts across selected contexts,
+The coordinator opens these granted originals directly, combines facts across selected contexts,
 and returns an answer or an attributed Spec gap. No separate reading Agent, recursive reading
 factory or worker-result synthesis is provided. Mutating workers retain their single-Module
 context and separately bound permissions.

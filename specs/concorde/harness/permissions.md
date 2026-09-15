@@ -25,7 +25,8 @@ local steps, cancellation and typed input/result contracts outside model discret
 must produce a rejected child result before context resolution or native launch. This prerequisite
 does not authorize mutation or general-purpose tools.
 
-After that admission, the native adapter supplies an explicit private `context.json` role path,
+After that admission, the native adapter supplies an explicit private `spec-context` role path
+list, `context.json` and the granted documents it indexes,
 read-only effects, no network and no credentials to these policy APIs. The compiler binds that
 host-issued path authority; the renderer restricts native process/tool access to the resulting
 policy and disables provider-native delegation. Context descriptions, installed resources and

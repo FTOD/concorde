@@ -20,7 +20,7 @@ from .schema import ContractError, admit, validate
 
 
 PROFILE_VERSION = 12
-PROTOCOL_VERSION = "5.1.0"
+PROTOCOL_VERSION = "5.2.0"
 REGISTRY_SCHEMA = 4
 KINDS = frozenset({"module"})
 SPEC_KINDS = frozenset({"module"})
@@ -576,12 +576,13 @@ class SpecRepository:
         sources = []
         for path, reasons in self._context_paths(target).items():
             document = self.document(path)
+            # An index record: identity, owner, digest and provenance. The bytes are granted, not embedded.
             sources.append({"document_id": document.document_id, "path": path,
                             "owner": document.owner, "digest": document.digest,
-                            "main_visible": document.main_visible, "content": document.content,
-                            "reasons": reasons})
+                            "main_visible": document.main_visible, "reasons": reasons})
         return SpecResolution(canonical({"query_id": entity_id, "query_kind": kind,
-            "module_id": target.id, "documents": list(target.documents),
+            "module_id": target.id, "reading_entry": target.primary_document,
+            "documents": list(target.documents),
             "references": [{"kind": "external", "path": i} if k == "external" else {"kind": k, "id": i}
                            for k, i in target.references], "sources": sources}))
 

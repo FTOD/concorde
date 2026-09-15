@@ -135,16 +135,22 @@ class BoundaryTests(unittest.TestCase):
             if stage=='context-solve':data.update(outcome='unsupported',answer='The Spec prohibits this use.')
         result=self.call_capability('concorde-plan',callback=cb)
         self.assertEqual('unsupported',result['output']['data']['outcome']);self.assertEqual([],result['output']['data']['gaps']);self.assertFalse((self.root/'.concorde/attempts').exists())
+    def assertSpecOnlyReads(self,read_paths):
+        # A Spec-only phase reads the frozen index plus the granted Spec documents and Protocol
+        # files it lists, and no implementation file.
+        self.assertEqual('context.json',read_paths[0])
+        self.assertTrue(read_paths[1:],read_paths)
+        self.assertTrue(all(p.startswith(('specs/','generated/protocol/')) for p in read_paths[1:]),read_paths)
     def test_describe_policy_launches_no_model_and_lists_exact_capsule(self):
         result=self.call_capability('concorde-dev-loop',mode='describe-policy')
         self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
         for policy in self.host.descriptions:
-            if policy['phase'] not in {'implementation','code-review'}:self.assertEqual(['context.json'],policy['read_paths']);self.assertEqual([],policy['write_paths'])
+            if policy['phase'] not in {'implementation','code-review'}:self.assertSpecOnlyReads(policy['read_paths']);self.assertEqual([],policy['write_paths'])
     def test_ask_policy_describes_only_coordinator_without_launching(self):
         result=self.call_capability('concorde-main',{'task':'Explain transfer','target_id':'service.transfer'},mode='describe-policy')
         self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
         self.assertEqual(['route'],[item['phase'] for item in self.host.descriptions])
-        self.assertEqual(['context.json'],self.host.descriptions[0]['read_paths'])
+        self.assertSpecOnlyReads(self.host.descriptions[0]['read_paths'])
         self.assertEqual(['scope.bank'],self.host.descriptions[0]['discovered_targets'])
         self.assertTrue(all(item['write_paths']==[] for item in self.host.descriptions))
     def test_changed_spec_requires_replanning_the_change(self):

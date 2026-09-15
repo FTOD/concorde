@@ -76,7 +76,9 @@ class AgentModeTests(unittest.TestCase):
         value = value or self.input(agent_name, mode_name)
         snapshot = value["data"].get("snapshot", {}).get("data", value["data"])
         role = prompt.name
-        roles = {"discovery-context" if agent_name == "coordinator" else "spec-context": ("context.json",)}
+        from concorde.harness.context import context_grants
+        roles = {"discovery-context" if agent_name == "coordinator" else "spec-context":
+                 ("context.json", *context_grants(snapshot))}
         if agent_name == "programmer":
             roles["implementation"] = ("app/transfer.py", "checks/transfer_check.py")
         policy = compile_policy(prompt.effects,

@@ -18,7 +18,7 @@ The Framework identifies its supported project configuration as Profile 12. Init
 `.concorde/config.json` with `profile_version: 12`, the `registry` path, an accepted Protocol
 `version` and manifest `digest` under `protocol`, and the typed `capability_configuration` for
 integration and enforcement. Its registry uses JSON schema version 4. Profile 12 and registry
-schema 4 are Framework compatibility and storage versions; Spec Protocol 5.1.0 identifies the
+schema 4 are Framework compatibility and storage versions; Spec Protocol 5.2.0 identifies the
 independent specification standard. Installation and initialization preserve these separate roles.
 
 ## Installing and updating a target project
@@ -101,7 +101,7 @@ receipts. The locked managed Python runtime runs actual capabilities; viewer pro
 separate and versioned. Check verifies receipt hashes and required runtime identity without
 changing project behavior.
 
-The distributable manifest is `concorde.json` schema_version 3, Concorde 5.1.0, Architecture
+The distributable manifest is `concorde.json` schema_version 3, Concorde 5.2.0, Architecture
 Profile 12, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 3 Agents with 12
 explicit modes and 14 Capabilities: 9 are public through Skills and 5 are available through declared
 composition. It also declares package roots including `prompts`/`capabilities`/`protocol`, and 5

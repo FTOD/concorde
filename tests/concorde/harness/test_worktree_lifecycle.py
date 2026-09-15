@@ -115,13 +115,19 @@ class WorktreeLifecycleTests(unittest.TestCase):
         candidate = self.last_double.calls[0]["snapshot"]
         self.assertEqual("change", candidate["workspace"]["kind"])
         self.assertEqual(str(self.change), candidate["workspace"]["current_worktree"])
-        self.assertIn(marker, json.dumps(candidate))
+        # The index carries the candidate document's digest; the double verified the granted copy.
+        from concorde.spec.repository import digest as digest_bytes
+        candidate_bank = next(d for d in candidate["documents"] if d["path"] == "specs/bank/module.md")
+        self.assertEqual(digest_bytes(entry.read_bytes()), candidate_bank["digest"])
+        self.assertNotIn(marker, json.dumps(candidate))
         result = self.call_capability(self.primary, "concorde-main", {"task": "Explain transfer"})
         self.assertEqual("succeeded", result["status"], result)
         primary = self.last_double.calls[0]["snapshot"]
         self.assertEqual("primary", primary["workspace"]["kind"])
         self.assertEqual(str(self.primary), primary["workspace"]["current_worktree"])
-        self.assertNotIn(marker, json.dumps(primary))
+        primary_bank = next(d for d in primary["documents"] if d["path"] == "specs/bank/module.md")
+        self.assertEqual(digest_bytes((self.primary / "specs/bank/module.md").read_bytes()), primary_bank["digest"])
+        self.assertNotEqual(candidate_bank["digest"], primary_bank["digest"])
         result = self.call_capability(self.primary / "app", "concorde-main", {"task": "Explain transfer"})
         self.assertNotEqual("succeeded", result["status"], result)
         self.assertEqual(["workspace_mismatch"], [error["code"] for error in result["errors"]])
@@ -425,7 +431,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                     "description": "Implement the ledger API", "acceptance": "Read a known balance", "complete": False})
             if stage == "specify" and snapshot["target_id"] == "service.transfer":
                 document = next(s for s in snapshot["spec_resolution"]["sources"] if s["owner"] == snapshot["target_id"])
-                replacement = document["content"].replace('"version": 1', '"version": 2').replace('"type": "integer"', '"type": "string"').replace('"example": 7', '"example": "new"')
+                replacement = (cwd / document["path"]).read_text().replace('"version": 1', '"version": 2').replace('"type": "integer"', '"type": "string"').replace('"example": 7', '"example": "new"')
                 data["documents"] = [{"path": document["path"], "content": replacement + "\nClarified candidate promise.\n"}]
             if stage == "specify" and snapshot["target_id"] == "module.ledger":
                 data.update(outcome="spec_incomplete", gaps=[{"question": "Which account is known?",
@@ -445,7 +451,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         def finish_provider(stage, snapshot, data, cwd):
             if stage == "specify" and snapshot["target_id"] == "module.ledger":
                 document = next(s for s in snapshot["spec_resolution"]["sources"] if s["owner"] == snapshot["target_id"])
-                replacement = document["content"].replace('"version": 1', '"version": 2').replace('"type": "integer"', '"type": "string"').replace('"example": 7', '"example": "new"')
+                replacement = (cwd / document["path"]).read_text().replace('"version": 1', '"version": 2').replace('"type": "integer"', '"type": "string"').replace('"example": 7', '"example": "new"')
                 data["documents"] = [{"path": document["path"], "content": replacement}]
         result = self.call_capability(self.change, "concorde-dev-loop", task, finish_provider)
         self.assertEqual("succeeded", result["status"], result)

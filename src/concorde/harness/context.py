@@ -35,7 +35,7 @@ class ContextSnapshot:
 
 @dataclass(frozen=True)
 class DiscoveryContext:
-    """Complete Module contexts for global reasoning, with each source body included once."""
+    """Complete Module contexts for global reasoning, with each source indexed and granted once."""
 
     serialized: str
 
@@ -69,7 +69,7 @@ def _protocol(repository: SpecRepository) -> list[dict]:
     protocol = []
     for path in PROTOCOL_PATHS:
         raw = repository.protocol_assets[path]
-        protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
+        protocol.append({"path": path, "digest": digest(raw)})
     return protocol
 
 
@@ -136,6 +136,79 @@ def materialize_references(repository: SpecRepository, destination: Path, record
             copy.write_bytes(read_file(repository.root, path))
 
 
+def _index_documents(value: dict) -> list[dict]:
+    """The document records of a context index, whichever of the three context kinds it is."""
+    return value["spec_resolution"]["sources"] if "spec_resolution" in value else value["documents"]
+
+
+def protocol_grant_path(index_dir: str, path: str) -> str:
+    """Where a Protocol file is granted: at its bundle path below the directory holding the index.
+
+    In a capsule the index sits at the root, so the grant path equals the bundle path; in a project
+    workspace the index lives under ``.concorde/runs/...`` and the Protocol copies sit beside it,
+    because the rule bundle is a Framework asset that the project tree does not contain.
+    """
+    return f"{index_dir}/{path}" if index_dir else path
+
+
+def context_grants(value: dict, index_dir: str = "") -> tuple[str, ...]:
+    """The read-only paths a context index grants: every listed document and the Protocol files.
+
+    Accepts a context snapshot or a topology author context (both carry ``spec_resolution``) or a
+    discovery context (which carries the deduplicated ``documents`` pool). Spec documents are
+    granted at their project-relative paths and Protocol files beside the index (``index_dir`` is
+    the project-relative directory holding ``context.json``). The bodies are never embedded
+    (Protocol, Context index and grant).
+    """
+    return tuple(sorted({*(protocol_grant_path(index_dir, item["path"]) for item in value["protocol"]),
+                         *(item["path"] for item in _index_documents(value))}))
+
+
+def context_documents(repository: SpecRepository, value: dict, *, index_dir: str = "",
+                      candidate_repository: SpecRepository | None = None) -> dict[str, bytes]:
+    """The exact bytes of every granted context file, keyed by grant path and verified by digest.
+
+    A capsule receives these bytes at the same paths; a project workspace is granted its Spec
+    documents in place, which this verification proves still hold the frozen bytes, and receives
+    the Protocol copies beside the index. A candidate repository supplies the bytes of documents
+    it overrides, as topology authoring does.
+    """
+    expected = {protocol_grant_path(index_dir, item["path"]): item["digest"] for item in value["protocol"]}
+    expected.update({item["path"]: item["digest"] for item in _index_documents(value)})
+    bundle = {protocol_grant_path(index_dir, path): path for path in repository.protocol_assets}
+    result: dict[str, bytes] = {}
+    for path, expected_digest in expected.items():
+        if path in bundle:
+            raw = repository.protocol_assets[bundle[path]]
+        else:
+            source = (candidate_repository if candidate_repository is not None
+                      and path in candidate_repository.document_overrides else repository)
+            source.document(path)
+            raw = source.document_overrides.get(path)
+            if raw is None:
+                raw = read_file(source.root, path)
+        if digest(raw) != expected_digest:
+            raise SpecError(f"granted context file changed: {path}", "stale_context")
+        result[path] = raw
+    return result
+
+
+def materialize_documents(destination: Path, documents: dict[str, bytes], *, below: str = "") -> None:
+    """Copy granted context files to their grant paths below ``destination``, byte for byte.
+
+    A capsule receives every granted file; a project workspace passes ``below`` (the directory
+    holding the index) so that only the Protocol copies beside the index are written, because its
+    Spec documents are granted in place.
+    """
+    from ..spec.typed_data import checked_path
+    for path, raw in documents.items():
+        if below and not path.startswith(below + "/"):
+            continue
+        copy = checked_path(destination, path)
+        copy.parent.mkdir(parents=True, exist_ok=True)
+        copy.write_bytes(raw)
+
+
 def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = "ask",
                     task: str = "Understand this Spec", focus_id: str | None = None,
                     constraints: tuple[str, ...] = (), instructions: str = "",
@@ -166,7 +239,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
     resolution = repository.spec_context(focus_id or target.id).value
     # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
     from .change_worktree import workspace_context
-    manifest = {"schema_version": 3, "target_id": target.id, "kind": target.kind,
+    manifest = {"schema_version": 4, "target_id": target.id, "kind": target.kind,
         "focus_id": focus_id, "phase": phase, "task": task, "constraints": list(constraints),
         "protocol_binding": repository.config["protocol"], "protocol": _protocol(repository),
         "spec_resolution": resolution, "instructions": instructions,
@@ -227,7 +300,7 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
     # File contents are deliberately absent from non-code cognition.
     from .change_worktree import workspace_context
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "capability": capability,
         "phase": phase,
         "action": action,
@@ -275,10 +348,12 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
             continue
         document = source_repository.document(path)
         sources.append({"document_id": document.document_id, "path": path, "owner": document.owner,
-            "digest": document.digest, "main_visible": document.main_visible,
-            "content": document.content, "reasons": reasons})
+            "digest": document.digest, "main_visible": document.main_visible, "reasons": reasons})
+    # The reading entry comes from the accepted descriptor: a new Module's module.md may not exist yet.
+    reading_entry = next(path for path in target["documents"] if Path(path).name == "module.md")
     resolution = {"query_id": target["id"], "query_kind": "module", "module_id": target["id"],
-        "documents": list(target["documents"]), "references": target["references"], "sources": sources}
+        "reading_entry": reading_entry, "documents": list(target["documents"]),
+        "references": target["references"], "sources": sources}
     from .change_worktree import workspace_context
     manifest = {
         "base_registry_digest": digest(repository.registry_bytes),

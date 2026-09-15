@@ -173,7 +173,7 @@ the exact entries they realize, and the most specific entry decides which entity
     "id": "entity.spec.protocol-text",
     "title": "Protocol text",
     "kind": "authored standard",
-    "responsibility": "Authors the independent Spec Protocol 5.1.0 chapters and templates: principles, Module specifications, Spec management, Spec and Context, Required format, and the Module and Scenario templates.",
+    "responsibility": "Authors the independent Spec Protocol 5.2.0 chapters and templates: principles, Module specifications, Spec management, Spec and Context, Required format, and the Module and Scenario templates.",
     "files": [
       "protocol/"
     ]

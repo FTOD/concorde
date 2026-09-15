@@ -32,7 +32,7 @@ A target or focus hint SHALL NOT itself grant context or replace explicit resolu
 
 - GIVEN a question with an optional target or focus routing hint
 - WHEN `concorde-main` runs with `action: ask`
-- THEN the host deterministically resolves the explicitly selected Modules' complete Spec contexts, injects each selected Module's original document bodies once into the coordinator, and the coordinator returns a direct answer
+- THEN the host deterministically resolves the explicitly selected Modules' complete Spec contexts, indexes each selected Module's original documents once and grants them read-only to the coordinator, and the coordinator opens them on demand and returns a direct answer
 - AND the response contains no authored project file changes
 
 See [routing hints only steer selection](#req.development.routing-hint-not-context) and

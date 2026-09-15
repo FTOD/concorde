@@ -54,7 +54,7 @@ state.
 ## Accepted input and feedback
 
 Consume the exact supplied `concorde-agent-stage-context@2` snapshot: the target's
-`concorde-context-snapshot@3`, with `spec_resolution` with complete owned and directly referenced sources, original owners and inclusion reasons, the declared
+`concorde-context-snapshot@4`, whose `spec_resolution` indexes the owned and directly referenced documents with original owners, inclusion reasons and the reading entry (those documents and the listed Protocol files are granted read-only at their paths, never supplied inline: open the ones the task needs), the declared
 `implementation_entries` (exact files and directory prefixes, their entity and pending status) and
 the `implementation_files` those entries bind (paths, their entity and pending status, never
 contents), the task and phase, and any `stage_inputs` (for example a prior `concorde-plan-artifact` under revision).

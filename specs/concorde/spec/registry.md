@@ -177,9 +177,10 @@ read-only, offline and deterministic. Neither follows links, parentage, uses, re
 references or implementation listings.
 
 `SpecResolution` is a closed record with `query_id`, `query_kind` (`module` or `scenario`),
-`module_id`, `documents` (the selected owner's ordered registered paths), `references` (its typed
-reference pairs) and `sources` (sorted complete records). Each source has `document_id`, `path`,
-`owner`, `digest`, `main_visible`, `content` and `reasons`. A reason is `{kind, id}`: kind `owned`
+`module_id`, `reading_entry` (the selected owner's `module.md` path), `documents` (the selected
+owner's ordered registered paths), `references` (its typed reference pairs) and `sources` (sorted
+index records). Each source has `document_id`, `path`, `owner`, `digest`, `main_visible` and
+`reasons`; no source carries its body, which a consumer reads from the file the record identifies. A reason is `{kind, id}`: kind `owned`
 names the selected Module, kind `module` names a direct referenced Module, and kind `document`
 names a direct referenced document. Reasons are unique and sorted by kind then ID. Digests hash
 exact bytes before UTF-8 decoding; invalid UTF-8 rejects resolution. The record is bound into
@@ -196,6 +197,6 @@ reverse index. Ownership or reference edits compare both old and candidate users
 resulting file set is unchanged. A Module reference tracks additions/removals to the provider's
 owned documents; changes only to the provider's references do not expand the consumer.
 
-The runtime implements these resolution and binding interfaces under Protocol 5.1.0/Profile 12/
+The runtime implements these resolution and binding interfaces under Protocol 5.2.0/Profile 12/
 schema 4. Older profiles and membership-based declarations fail admission. Owned-definition and
 implementation queries remain separate from the explicit context resolver.

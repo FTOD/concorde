@@ -191,9 +191,13 @@ def validate_mode_policy(mode: Mode, value: dict, policy, receipt: dict) -> None
     role_paths = {key: tuple(paths) for key, paths in receipt["role_paths"].items()}
     context_role = "discovery-context" if mode.action is not None else "spec-context"
     capsule_paths = role_paths.get(context_role, ())
-    if len(capsule_paths) != 1 or Path(capsule_paths[0]).name != "context.json":
-        raise ValueError("mode requires exactly one frozen context capsule")
     snapshot = value["data"].get("snapshot", {}).get("data", value["data"])
+    indexes = [path for path in capsule_paths if Path(path).name == "context.json"]
+    from .context import context_grants
+    index_dir = Path(indexes[0]).parent.as_posix() if indexes else ""
+    if (len(indexes) != 1 or set(capsule_paths) - {indexes[0]}
+            != set(context_grants(snapshot, "" if index_dir == "." else index_dir))):
+        raise ValueError("mode requires one frozen context index and the grant of exactly its listed files")
     entries = [item["path"].rstrip("/") for item in snapshot.get("implementation_entries", [])]
     names = [item["path"] for item in snapshot.get("implementation_files", [])]
     directories = [item["path"] for item in snapshot.get("implementation_entries", []) if item["directory"]]

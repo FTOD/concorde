@@ -43,8 +43,12 @@ class ScopedProtocolTests(unittest.TestCase):
     def test_protocol_handoff_rules_are_bound_context_and_old_binding_is_rejected(self):
         (self.root / 'AGENTS.md').write_text('UNTRUSTED_AMBIENT_GUIDANCE')
         (self.root / 'CLAUDE.md').write_text('UNTRUSTED_AMBIENT_GUIDANCE')
-        context = resolve_context(SpecRepository(self.root), 'service.transfer').value
-        self.assertIn('### P10. Explicit session handoffs', context['protocol'][0]['content'])
+        repository = SpecRepository(self.root)
+        context = resolve_context(repository, 'service.transfer').value
+        # The rule bundle is indexed by path and digest and granted as a file, never embedded.
+        self.assertNotIn('content', context['protocol'][0])
+        self.assertIn('### P10. Explicit session handoffs',
+                      repository.protocol_assets[context['protocol'][0]['path']].decode())
         self.assertNotIn('UNTRUSTED_AMBIENT_GUIDANCE', json.dumps(context))
         path = self.root / '.concorde/config.json'
         config = json.loads(path.read_text())
@@ -125,9 +129,12 @@ class ScopedProtocolTests(unittest.TestCase):
         first,second=double.calls
         self.assertEqual(['scope.bank'],[item['target_id'] for item in first['snapshot']['targets']])
         self.assertEqual(['scope.bank','service.transfer'],[item['target_id'] for item in second['snapshot']['targets']])
-        source={item['path']:item['content'] for item in second['snapshot']['documents']}
+        from concorde.spec.repository import digest as digest_bytes
+        source={item['path']:item['digest'] for item in second['snapshot']['documents']}
         for path in ('specs/transfer/module.md','specs/transfer/promises.md'):
-            self.assertEqual((self.root/path).read_text(),source[path])
+            self.assertEqual(digest_bytes((self.root/path).read_bytes()),source[path])
+            self.assertIn(path,second['granted'])
+        self.assertNotIn('# Transfer money',json.dumps(second['snapshot']))
         self.assertEqual(2,len({str(call['cwd']) for call in double.calls}))
         self.assertEqual(['generated/protocol/principles.md','generated/protocol/kinds/module.md'],
             [item['path'] for item in first['snapshot']['protocol']])
@@ -211,9 +218,10 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual(['scope.audit','module.ledger','service.audit-report'],
                          [call['snapshot']['target']['id'] for call in authors])
         module_author=next(call for call in authors if call['snapshot']['target']['id']=='module.ledger')
-        self.assertIn('# Ledger API',json.dumps(module_author['snapshot']))
+        self.assertIn('specs/ledger/module.md',module_author['granted'])
+        self.assertNotIn('# Ledger API',json.dumps(module_author['snapshot']))
         main=[call for call in double.calls if call['capability']=='concorde-coordinator']
-        self.assertTrue(any('# Ledger API' in json.dumps(call['snapshot']) for call in main))
+        self.assertTrue(any('specs/ledger/module.md' in call['granted'] for call in main))
         self.assertTrue(all('LEDGER_IMPLEMENTATION_CODE' not in json.dumps(call['snapshot']) for call in main))
     @verifies("scenario.development.topology-design", "scenario.development.topology-accept", "scenario.development.topology-apply", "scenario.development.topology-stale")
     def test_canonical_owner_authors_once_and_consumer_reviews_its_context(self):
@@ -237,12 +245,15 @@ class ScopedProtocolTests(unittest.TestCase):
                 next(item for item in data['documents'] if item['path'].endswith('promises.md'))['content']+='\nCanonical clarification.\n'
             if stage=='topology-author' and snapshot['target']['id']=='module.ledger':
                 self.assertEqual(['specs/ledger/module.md'],[d['path'] for d in data['documents']])
+            if stage=='spec-review':
+                # Each consumer reviews the candidate bytes, granted as a file in its capsule.
+                self.assertIn('Canonical clarification.',(cwd/'specs/transfer/promises.md').read_text())
         double=ModelProcessDouble(reconcile)
         prepared=self.call_capability('concorde-main',{'action':'accept-topology','topology_proposal':proposal},double)
         self.assertEqual('succeeded',prepared['status'],prepared)
         reviews=[call for call in double.calls if call['stage']=='spec-review']
         self.assertEqual({'service.transfer','module.ledger'},{c['snapshot']['target_id'] for c in reviews})
-        self.assertTrue(all('Canonical clarification.' in json.dumps(c['snapshot']) for c in reviews))
+        self.assertTrue(all('specs/transfer/promises.md' in c['granted'] for c in reviews))
         application=prepared['output']['data']['application']
         applied=self.call_capability('concorde-main',{'action':'apply-topology','application':application},double)
         self.assertEqual('topology_applied',applied['output']['data']['outcome'])
@@ -344,7 +355,8 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual(['route','route'],[call['stage'] for call in double.calls])
         snapshot=double.calls[-1]['snapshot']
         self.assertEqual('scenario.ledger.read',snapshot['focus_hint'])
-        self.assertIn('# Ledger API',json.dumps(snapshot))
+        self.assertIn('specs/ledger/module.md',double.calls[-1]['granted'])
+        self.assertNotIn('# Ledger API',json.dumps(snapshot))
         self.assertNotIn('LEDGER_IMPLEMENTATION_CODE',json.dumps(snapshot))
         self.assertTrue(all(item['kind']=='module' for call in double.calls
                             for item in call['snapshot']['targets']))
@@ -361,7 +373,7 @@ class ScopedProtocolTests(unittest.TestCase):
             if missing:
                 data.update(outcome='expand',expand_targets=missing,routes=[])
             else:
-                sources={item['path']:item['content'] for item in snapshot['documents']}
+                sources={item['path']:(cwd/item['path']).read_text() for item in snapshot['documents']}
                 self.assertIn('# Ledger API',sources['specs/ledger/module.md'])
                 self.assertEqual((self.root/'specs/transfer/promises.md').read_text(),
                                  sources['specs/transfer/promises.md'])
@@ -458,7 +470,8 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertNotEqual(first.id,second.id)
         self.assertEqual(['scope.bank','service.transfer'],[item['target_id'] for item in second.value['targets']])
         third=resolve_discovery_context(repo,('scope.bank','module.ledger'),capability='concorde-main',phase='route',task='Route ledger')
-        self.assertIn('# Ledger API',third.serialized)
+        self.assertIn('specs/ledger/module.md',[d['path'] for d in third.value['documents']])
+        self.assertNotIn('# Ledger API',third.serialized)
         self.assertNotIn('LEDGER_IMPLEMENTATION_CODE',third.serialized)
         with self.assertRaises(SpecError):
             resolve_discovery_context(repo,('entity.ledger.store',),capability='concorde-main',phase='route',task='Read one entity')
@@ -495,8 +508,10 @@ class ScopedProtocolTests(unittest.TestCase):
         paths=[document['path'] for document in value['documents']]
         self.assertEqual(sorted(set(paths)),paths)
         self.assertEqual(1,paths.count(shared))
+        from concorde.spec.repository import digest as digest_bytes
         for document in value['documents']:
-            self.assertEqual((self.root/document['path']).read_text(),document['content'])
+            self.assertNotIn('content',document)
+            self.assertEqual(digest_bytes((self.root/document['path']).read_bytes()),document['digest'])
         modules={target['target_id']:target for target in value['targets']}
         for target_id in ('service.transfer','module.ledger'):
             refs=[s for s in modules[target_id]['spec_resolution']['sources'] if s['path']==shared]
@@ -533,7 +548,7 @@ class ScopedProtocolTests(unittest.TestCase):
     @verifies("scenario.development.answer-question")
     def test_main_can_answer_from_initial_spec_context_in_one_invocation(self):
         def answer(stage,snapshot,data,cwd):
-            self.assertIn('# Banking',snapshot['documents'][0]['content'])
+            self.assertIn('# Banking',(cwd/snapshot['documents'][0]['path']).read_text())
             data.update(outcome='completed',answer='Banking coordinates transfer, ledger and audit.',
                         expand_targets=[],routes=[])
         double=ModelProcessDouble(answer)
