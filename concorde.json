@@ -1,7 +1,7 @@
 {
   "schema_version": 3,
   "name": "concorde",
-  "version": "5.4.0",
+  "version": "5.5.0",
   "description": "Concorde Framework: architecture-aware Specs, project understanding, agent observability with LangGraph Studio, explicit context and permissions, built-in agents, and a reflection system for tracked improvements",
   "license": "MIT",
   "license_file": "LICENSE",
@@ -46,6 +46,7 @@
     "agents",
     "capabilities",
     "docsite",
+    "pi",
     "prompts",
     "protocol",
     "scripts",

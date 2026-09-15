@@ -1,4 +1,4 @@
-"""An Agent invocation is a LangGraph node whose typed state is the selected Mode's contract."""
+"""A worker invocation is a LangGraph node whose typed state is the worker's task contract."""
 import unittest
 
 from concorde.development.plan_flow import build_plan_flow
@@ -13,7 +13,7 @@ def _stage_context():
     snapshot = {
         "context_id": "sha256:" + "3" * 64, "schema_version": 4, "target_id": "service.fixture",
         "kind": "module", "focus_id": None, "phase": "plan", "task": "Plan", "constraints": [],
-        "protocol_binding": {"version": "5.4.0", "digest": "sha256:" + "4" * 64}, "protocol": [],
+        "protocol_binding": {"version": "5.5.0", "digest": "sha256:" + "4" * 64}, "protocol": [],
         "spec_resolution": {"query_id": "service.fixture", "query_kind": "module", "module_id": "service.fixture",
                             "reading_entry": "specs/fixture.md", "documents": ["specs/fixture.md"],
                             "references": [], "sources": []},
@@ -30,11 +30,12 @@ def _stage_context():
 
 class AgentNodeTests(unittest.TestCase):
     @verifies("scenario.harness.agent-node")
-    def test_node_schemas_are_exactly_the_mode_contract_fields(self):
-        for agent, mode in (("spec_engineer", "plan"), ("programmer", "code-review"), ("coordinator", "route"),
-                            ("spec_engineer", "topology-author")):
-            with self.subTest(agent=agent, mode=mode):
-                node = AgentNode.select(agent_definition(agent), mode)
+    def test_node_schemas_are_exactly_the_contract_fields(self):
+        for name in ("planner", "code_reviewer", "router", "topology_author"):
+            with self.subTest(worker=name):
+                agent = agent_definition(name)
+                node = AgentNode(agent)
+                self.assertEqual((agent.contract.context, agent.contract.result), (node.input_type, node.result_type))
                 self.assertEqual(set(DATA_SCHEMAS[node.input_type]["properties"]),
                                  set(node.input_schema.__annotations__))
                 self.assertEqual(set(DATA_SCHEMAS[node.result_type]["properties"]),
@@ -43,13 +44,13 @@ class AgentNodeTests(unittest.TestCase):
                 self.assertEqual(set(node.input_schema.__annotations__) | set(node.output_schema.__annotations__),
                                  set(union.__annotations__))
                 drawing = node.flow().get_graph()
-                self.assertEqual({"__start__", agent, "__end__"}, set(drawing.nodes))
+                self.assertEqual({"__start__", name, "__end__"}, set(drawing.nodes))
         self.assertEqual({"snapshot", "change_id", "expected_artifacts"},
                          set(typed_state("concorde-agent-stage-context").__annotations__))
 
     @verifies("scenario.harness.agent-node")
     def test_invocation_validates_context_in_and_result_out(self):
-        node = AgentNode.select(agent_definition("spec_engineer"), "plan")
+        node = AgentNode(agent_definition("planner"))
         context = _stage_context()
         seen = []
 
@@ -70,12 +71,12 @@ class AgentNodeTests(unittest.TestCase):
             node.flow().invoke(context["data"])
 
     @verifies("scenario.harness.agent-node", "scenario.harness.flow-inspection")
-    def test_plan_flow_exposes_its_agent_nodes_for_inspection(self):
+    def test_plan_flow_exposes_its_worker_nodes_for_inspection(self):
         flow = build_plan_flow(lambda name: (lambda state: {}))
         drawing = flow.get_graph(xray=True)
         names = set(drawing.nodes)
-        self.assertTrue(any(name.endswith("author_plan:spec_engineer") for name in names), names)
-        self.assertTrue(any(name.endswith("assess_context:spec_engineer") for name in names), names)
+        self.assertTrue(any(name.endswith("author_plan:planner") for name in names), names)
+        self.assertTrue(any(name.endswith("assess_context:context_assessor") for name in names), names)
 
 
 if __name__ == "__main__":

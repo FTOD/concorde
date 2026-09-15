@@ -1,14 +1,14 @@
 """Reflection queue: report status, capture recorded gaps, and investigate, implement,
 merge or close owned reflections."""
 from concorde.spec import contract_shapes as shapes
-from agents import programmer
+from agents import investigator
 
 from . import external_name
 
 PUBLIC = True
 CONTEXT_SELECTION = "bound"
 DETERMINISTIC = False
-AGENTS = (programmer.AGENT,)
+AGENTS = (investigator.AGENT,)
 USES = ("dev_loop",)
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 

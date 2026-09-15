@@ -325,21 +325,20 @@
       "files": [
         "agents/",
         "pi/",
+        "prompts/workers/common.md",
         "scripts/development/STUDIO.md",
         "scripts/development/check-reference-versions.py",
         "scripts/development/studio.py",
         "src/concorde/harness/",
-        "src/concorde/harness/agent_executor.py",
-        "src/concorde/harness/agent_runtime.py",
         "src/concorde/harness/change_worktree.py",
         "src/concorde/harness/context.py",
-        "src/concorde/harness/native_agent.py",
         "src/concorde/harness/permissions.py",
         "src/concorde/harness/pi_rpc.py",
         "src/concorde/harness/pi_worker.py",
         "src/concorde/harness/session_handoff.py",
         "src/concorde/harness/studio.py",
         "src/concorde/harness/studio_client.py",
+        "src/concorde/harness/worker_executor.py",
         "src/concorde/harness/worktree.py",
         "src/concorde/harness/worktree_delivery.py",
         "src/concorde/spec/contract_shapes.py",
@@ -351,8 +350,6 @@
         "tests/concorde/development/test_review.py",
         "tests/concorde/fixtures/build/golden/agents/",
         "tests/concorde/harness/",
-        "tests/concorde/harness/test_agent_executor.py",
-        "tests/concorde/harness/test_agent_runtime.py",
         "tests/concorde/harness/test_boundaries.py",
         "tests/concorde/harness/test_change_worktree.py",
         "tests/concorde/harness/test_permissions.py",
@@ -362,6 +359,7 @@
         "tests/concorde/harness/test_studio.py",
         "tests/concorde/harness/test_studio_client.py",
         "tests/concorde/harness/test_studio_server.py",
+        "tests/concorde/harness/test_worker_executor.py",
         "tests/concorde/harness/test_worktree_boundary.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
         "tests/concorde/spec/test_typed_data.py",
@@ -403,6 +401,14 @@
         {
           "kind": "external",
           "path": "reference/langgraph/"
+        },
+        {
+          "kind": "external",
+          "path": "reference/pi/"
+        },
+        {
+          "kind": "external",
+          "path": "reference/pi-subagents/"
         }
       ],
       "title": "Harness",

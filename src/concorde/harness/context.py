@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from .agent_model import Mode, validate_mode_artifacts
+from .agent_model import Agent, validate_agent_artifacts
 
 from ..spec.typed_data import canonical
 from ..spec.repository import (REFERENCE_SKIPPED_SUFFIXES, SpecError, SpecRepository, digest, entry_base,
@@ -194,17 +194,18 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
                     task: str = "Understand this Spec", focus_id: str | None = None,
                     constraints: tuple[str, ...] = (), instructions: str = "",
                     stage_inputs: tuple[dict, ...] = (), workspace: dict | None = None,
-                    mode: Mode | None = None) -> ContextSnapshot:
+                    agent: Agent | None = None) -> ContextSnapshot:
     if phase not in PHASES:
         raise SpecError("unsupported context phase", "invalid_phase")
     if not isinstance(task, str) or not task.strip():
         raise SpecError("task intent is required", "invalid_input")
-    if mode is not None:
-        if mode.phase != phase or (phase in CODE_PHASES and "implementation" not in mode.constraints.effects.reads):
-            raise SpecError("context phase exceeds the selected mode", "permission_denied")
+    if agent is not None:
+        contract = agent.contract
+        if contract.phase != phase or (phase in CODE_PHASES and "implementation" not in contract.effects.reads):
+            raise SpecError("context phase exceeds the selected worker's contract", "permission_denied")
         try:
             # Policy previews can omit not-yet-authored prerequisites; launches require them all.
-            validate_mode_artifacts(mode, stage_inputs, require_all=False)
+            validate_agent_artifacts(agent, stage_inputs, require_all=False)
         except ValueError as error:
             raise SpecError(str(error), "incompatible_handoff") from error
     target = repository.select(target_id, focus_id)
@@ -239,7 +240,7 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
                               target_hint: str | None = None,
                               focus_hint: str | None = None,
                               constraints: tuple[str, ...] = (), instructions: str = "",
-                              workspace: dict | None = None, mode: Mode | None = None) -> DiscoveryContext:
+                              workspace: dict | None = None, agent: Agent | None = None) -> DiscoveryContext:
     """Resolve complete selected Module contexts without model interpretation or summaries.
 
     Target sections retain document membership. Sorted source pools carry each physical file's
@@ -247,9 +248,9 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
     select another Module's collection.
     """
 
-    if mode is not None and (mode.phase != phase or mode.action != action
-            or "implementation" in mode.constraints.effects.reads):
-        raise SpecError("discovery selection exceeds the selected mode", "permission_denied")
+    if agent is not None and (agent.contract.phase != phase or agent.contract.action != action
+            or "implementation" in agent.contract.effects.reads):
+        raise SpecError("discovery selection exceeds the selected worker's contract", "permission_denied")
     if phase not in DISCOVERY_PHASES:
         raise SpecError("unsupported discovery phase", "invalid_phase")
     if action not in {"route", "ask", "design-topology"}:

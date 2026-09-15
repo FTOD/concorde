@@ -13,7 +13,7 @@ capability: review
 
 The request requires task and review_mode (spec or code). Use code for code review or source
 diagnosis, and spec for contract review. A new task may supply target_id and focus_id (a scenario
-ID) as routing hints, plus constraints. The coordinator selects the owning Module. When resuming
+ID) as routing hints, plus constraints. The router selects the owning Module. When resuming
 a bound review with change_id, supply its target_id and current-worktree change_id.
 No positional task arguments or domain flags are accepted.
 

@@ -48,7 +48,6 @@ class WorktreeLifecycleTests(unittest.TestCase):
 
     def call_capability(self, root, name, data, callback=None, *, host=None, mode="execute"):
         double = ModelProcessDouble(callback)
-        self.addCleanup(double.runtime_directory.cleanup)
         self.last_double = double
         host = host or CapabilityHost(root, PACKAGE, executor=double.executor, mode=mode)
         return run_capability(name, CONFIGURATION, typed(name + "-request", data), host_context=host)
@@ -354,7 +353,6 @@ class WorktreeLifecycleTests(unittest.TestCase):
         change_id = self.ready(task={**self.task, "specify": False, "run_reviews": False})
         owner = read_change(self.change)
         double = ModelProcessDouble()
-        self.addCleanup(double.runtime_directory.cleanup)
         host = CapabilityHost(self.change, PACKAGE, executor=double.executor,
                               routed_target="module.ledger", coordinated=True)
         task = {"target_id": "module.ledger", "task": "Review the admitted ledger component",

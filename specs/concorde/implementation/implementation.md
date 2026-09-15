@@ -20,7 +20,7 @@ file names are visible and implementation contents remain excluded from non-code
 
 `implement` requires current authored tasks and their accepted plan in a
 concorde-implementation-task@1. Missing tasks are missing_tasks; stale artifacts or mismatched
-intent stop admission. A fresh programmer in implementation mode receives the complete selected
+intent stop admission. A fresh programmer receives the complete selected
 Spec and contents of the files its own entities bind. Only those implementation paths are writable;
 registered Specs, registry, entity declarations and configuration are not. Network and credentials
 remain disabled. Optional concorde-review-result@1 is admitted only after the host verifies the

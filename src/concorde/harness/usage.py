@@ -1,8 +1,8 @@
-"""Per-invocation token accounting for every native Agent launch.
+"""Per-invocation token accounting for every worker launch.
 
-Every Agent process the host launches reports what it consumed (see ``ExecutionUsage``). This
-module records that figure once per launch, labelled with the capability, stage, target, Agent
-and mode that spent it, so a whole Flow run can be read back per step. Records are diagnostics:
+Every Pi worker the host launches reports what it consumed (see ``ExecutionUsage``). This module
+records that figure once per launch, labelled with the capability, stage, target and worker that
+spent it, so a whole Flow run can be read back per step. Records are diagnostics:
 they live beside the run's other host records under ``.concorde/runs/<root invocation>/`` and
 change no receipt, evidence or contract. Recording never turns a completed launch into a failure.
 """
@@ -17,8 +17,7 @@ USAGE_FILE = "usage.jsonl"
 RUNS_PATH = ".concorde/runs"
 
 _TOKEN_FIELDS = ("input_tokens", "cached_input_tokens", "output_tokens", "total_tokens")
-_SUM_FIELDS = (*_TOKEN_FIELDS, "cost_usd", "turns", "duration_ms", "wall_seconds",
-               "prompt_bytes", "context_bytes")
+_SUM_FIELDS = (*_TOKEN_FIELDS, "cost_usd", "turns", "wall_seconds", "prompt_bytes", "context_bytes")
 
 
 def usage_path(root_invocation_id: str) -> str:
@@ -26,9 +25,9 @@ def usage_path(root_invocation_id: str) -> str:
 
 
 def usage_record(host, *, capability: str, stage: str, target_id: str | None, agent: str,
-                 mode: str | None, launch, result, change_id: str | None = None,
+                 invocation, result, change_id: str | None = None,
                  iteration: int | None = None) -> dict[str, Any]:
-    """The labelled usage line for one launch; ``usage`` is null when the client reported none."""
+    """The labelled usage line for one worker launch; ``usage`` is null when none was reported."""
     usage = getattr(result, "usage", None)
     return {
         "time": datetime.now(timezone.utc).isoformat(),
@@ -39,12 +38,11 @@ def usage_record(host, *, capability: str, stage: str, target_id: str | None, ag
         "stage": stage,
         "target_id": target_id,
         "agent": agent,
-        "mode": mode,
         "change_id": change_id,
         "iteration": iteration,
-        "launch_invocation_id": getattr(launch, "invocation_id", None),
-        "context_id": getattr(launch, "workspace_digest", None),
-        "integration": getattr(launch, "integration", None),
+        "launch_invocation_id": getattr(invocation, "invocation_id", None),
+        "context_id": getattr(invocation, "context_id", None),
+        "model": getattr(getattr(invocation, "selection", None), "model", None),
         "usage": usage.wire() if usage is not None else None,
     }
 

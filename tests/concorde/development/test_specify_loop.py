@@ -161,7 +161,7 @@ class SpecifyLoopTests(unittest.TestCase):
 
     @verifies('scenario.development.specify-loop')
     def test_failed_consumer_review_is_retried_and_only_success_can_be_reused(self):
-        from concorde.harness.agent_executor import CapabilityExecutionError
+        from concorde.harness.worker_executor import CapabilityExecutionError
         self.add_spec_consumer()
         task = {**self.task, 'specify': False, 'run_reviews': True}
         # Use the fixture callback to fail after the owner has produced its review.

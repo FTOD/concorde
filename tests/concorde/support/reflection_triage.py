@@ -163,7 +163,7 @@ def initialize_project(root: Path) -> Path:
     from concorde.spec.typed_data import typed
 
     configuration = typed("concorde-capability-configuration",
-                          {"integration": "claude", "enforcement": "native"})
+                          {"model": "openai-codex/gpt-6-astra", "thinking": "medium"})
     from concorde.distribution.project_defaults import install_project_defaults
     install_project_defaults(root, REPOSITORY_ROOT)  # what the installer places before initialization
     apply_project_proposal(root, REPOSITORY_ROOT,

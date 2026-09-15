@@ -126,8 +126,7 @@ These signatures identify public call shapes; bodies and private helpers are out
 Public functions of build:
 
 ```text
-render_agent(project_root: Path, agent: str, mode: str | None=None) -> BuildOutput
-render_role(project_root: Path, agent: str, mode: str | None=None) -> BuildOutput
+render_agent(project_root: Path, agent: str) -> BuildOutput
 render_skill(project_root: Path, name: str, integration: str, *, framework_prefix: str='') -> BuildOutput
 render_langgraph(project_root: Path) -> BuildOutput
 render_protocol_principles(project_root: Path) -> BuildOutput
@@ -138,8 +137,7 @@ write_build(project_root: str | Path, integration: str='all', *, framework_prefi
 check_build(project_root: str | Path, integration: str='all') -> tuple[bool, tuple[str, ...]]
 recompute_protocol_manifest(project_root: str | Path) -> dict
 verify_fresh(project_root: str | Path) -> None
-load_agent(package_root: str | Path, name: str, mode: str | None=None) -> SkillPrompt
-load_role_prompt(package_root: str | Path, name: str, mode: str | None=None) -> SkillPrompt
+load_agent(package_root: str | Path, name: str) -> SkillPrompt
 ```
 
 Public functions of prompt_resolver:
@@ -188,12 +186,12 @@ string tuples, `network: bool` and `credentials: "none"|"declared"`; these descr
 the host must narrow for a concrete invocation, not automatically effective permissions.
 
 `AgentBinding` has string fields `agent`, `spec_path`, `spec_digest`, `instructions_path`,
-`instructions_digest`, `harness`, `harness_digest`, `constraints_digest`, `build_manifest_digest`
-and `digest`, nullable string fields `mode` and `mode_digest`, plus `effective_loop`. Its loop has `timeout_seconds: int` and nullable
-`max_turns: int`; effective limits cannot exceed the bound Agent/Harness limits. Digest values
-identify exact admitted bytes/configuration, using `sha256:` and 64 lowercase hex digits. The
-binding digest covers the complete binding except its own digest field. Source locators remain
-provenance; they do not give a caller permission to load additional project context.
+`instructions_digest`, `profile_digest`, `build_manifest_digest` and `digest`, plus
+`timeout_seconds: int`. The profile digest covers the worker's task contract, workspace kind,
+tools, timeout and each declared child definition's bytes. Digest values identify exact admitted
+bytes/configuration, using `sha256:` and 64 lowercase hex digits. The binding digest covers the
+complete binding except its own digest field. Source locators remain provenance; they do not give
+a caller permission to load additional project context.
 
 Build and resolver failures stop the affected render/load and cannot be reinterpreted as an empty
 successful output. `BuildError(ValueError)` carries its declared error code; include-resolution
@@ -204,18 +202,21 @@ repair projections, never edit generated output as a new source. Public aliases 
 inputs, records and failure semantics; unsupported integration or asset identities require explicit
 repair.
 
-Agent builds publish three common responsibility projections and twelve independent mode
-projections. Each mode projection concatenates only its Agent common source and selected mode
-source; the manifest records both source sets. Package validation compares sorted mode names in concorde-agents
-with the Python inventory and rejects mode constraints wider than the owning Agent.
+Agent builds publish twelve independent worker projections and no separate common one. Each
+rendered `generated/agents/<name>.md` concatenates the shared common worker rules
+(`prompts/workers/common.md`) and that worker's own role Spec source; the manifest records both
+sources, together with the bytes of each of that worker's declared child definitions. Package validation compares the `concorde-agents` block's identifiers, workspace
+kinds, sorted profile tools, sorted child names and sorted launching-capability names against the
+Python inventory and rejects any mismatch.
 
-Mode instruction file membership must equal the declared mode inventory. Agent Python bindings,
-mode bodies and available capability/wire sources are recorded build inputs; changing them makes
-verify_fresh reject the old build even when a common instruction body is unchanged.
+Agent instruction file membership must equal the declared worker inventory. Agent Python bindings,
+role Spec bodies, child definitions and available capability/wire sources are recorded build
+inputs; changing them makes verify_fresh reject the old build even when the shared common
+instruction body is unchanged.
 
 ## Protocol and runtime support are separate
 
-The package supports Protocol 5.4.0 with source_profile 12. Its tracked manifest binds the exact
+The package supports Protocol 5.5.0 with source_profile 12. Its tracked manifest binds the exact
 generated rule and versioned schema bytes; project configuration binds the exact manifest bytes.
 Context payloads and wrappers export version 2. Build freshness establishes projection integrity;
 structural validation, configured checks and review evidence remain separate. Updates to exported

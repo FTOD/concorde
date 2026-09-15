@@ -1,12 +1,12 @@
-"""One Agent invocation as a LangGraph node whose state schema is the selected Mode's contract.
+"""One Agent invocation as a LangGraph node whose state schema is the Agent's task contract.
 
-An ``AgentNode`` binds a canonical ``Agent`` and one of its ``Mode``s to LangGraph directly: the
-node's input schema is generated from the Mode's admitted context type and its output schema from
-the Mode's result type, so the graph's state is the typed contract itself rather than an untyped
-routing dictionary. ``flow`` compiles that node into a one-node ``StateGraph`` the host executes
-and Studio can inspect; the ``launcher`` supplied at execution time performs the actual native
-process launch and its evidence checks and stays outside the graph's public state. Inspection
-compiles the same factory with no launcher and never starts a process.
+An ``AgentNode`` binds one Agent to LangGraph directly: the node's input schema is generated from
+the contract's admitted context type and its output schema from the contract's result type, so the
+graph's state is the typed contract itself rather than an untyped routing dictionary. ``flow``
+compiles that node into a one-node ``StateGraph`` the host executes and Studio can inspect; the
+``launcher`` supplied at execution time runs the Pi worker and its admission checks and stays
+outside the graph's public state. Inspection compiles the same factory with no launcher and never
+starts a process.
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from typing import Any, Callable, TypedDict
 from langgraph.graph import END, START, StateGraph
 
 from ..spec.typed_data import DATA_SCHEMAS, typed, validate_typed
-from .agent_model import Agent, Mode, mode_definition
+from .agent_model import Agent
 
 
 def typed_state(type_id: str, *, name: str | None = None) -> type:
@@ -37,26 +37,21 @@ Launcher = Callable[[dict], dict]
 
 @dataclass(frozen=True)
 class AgentNode:
-    """Bind ``agent``/``mode`` to a LangGraph node with the Mode's typed input and output state."""
+    """Bind ``agent`` to a LangGraph node with its contract's typed input and output state."""
 
     agent: Agent
-    mode: Mode
-
-    @classmethod
-    def select(cls, agent: Agent, mode_name: str) -> "AgentNode":
-        return cls(agent, mode_definition(agent, mode_name))
 
     @property
     def name(self) -> str:
-        return f"{self.agent.name}/{self.mode.name}"
+        return self.agent.name
 
     @property
     def input_type(self) -> str:
-        return self.mode.constraints.contexts[0]
+        return self.agent.contract.context
 
     @property
     def result_type(self) -> str:
-        return self.mode.constraints.results[0]
+        return self.agent.contract.result
 
     @property
     def input_schema(self) -> type:
@@ -69,8 +64,8 @@ class AgentNode:
     def flow(self, launcher: Launcher | None = None):
         """Compile the one-node Flow; ``launcher`` maps the typed context to the typed result data.
 
-        The node revalidates its input against the Mode's context type and its output against the
-        Mode's result type, so a launcher can neither admit an unexpected context nor return an
+        The node revalidates its input against the contract's context type and its output against
+        its result type, so a launcher can neither admit an unexpected context nor return an
         unexpected result through the graph. Without a launcher the Flow is inspectable only.
         """
         input_type, result_type = self.input_type, self.result_type
@@ -82,7 +77,7 @@ class AgentNode:
                                          if key in DATA_SCHEMAS[input_type]["properties"]})
             return validate_typed(typed(result_type, launcher(context)), result_type)["data"]
 
-        graph = StateGraph(state_schema(input_type, result_type, name=self.name.replace("/", "_").replace("-", "_")),
+        graph = StateGraph(state_schema(input_type, result_type, name=self.name.replace("-", "_")),
                            input_schema=self.input_schema, output_schema=self.output_schema)
         graph.add_node(self.agent.name, invoke)
         graph.add_edge(START, self.agent.name)

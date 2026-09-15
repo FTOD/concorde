@@ -55,7 +55,7 @@ class AgentFlowTests(unittest.TestCase):
                    and node.func.id == 'StateGraph' for node in ast.walk(tree)):
                 factories.append(path.relative_to(REPOSITORY_ROOT).as_posix())
         self.assertEqual(sorted(factories), self.data['factory_sources'])
-        self.assertIn('Recursive Agent decisions', self.data['flows'])
+        self.assertIn('Agent invocation node', self.data['flows'])
         self.assertIn('Component coordination', self.data['flows'])
 
     @verifies('scenario.views.agent-flows')

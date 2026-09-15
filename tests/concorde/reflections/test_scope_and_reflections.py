@@ -22,8 +22,8 @@ class ScopeReflectionTests(unittest.TestCase):
         task_call=next(call for call in self.double.calls if call['stage']=='tasks')
         self.assertIn('"target_id": "service.transfer"',
                       '\n'.join((self.root/item['path']).read_text() for item in task_call['snapshot']['spec_resolution']['sources']))
-        domain=[c for c in self.double.calls if c['capability']!='concorde-coordinator' and c['snapshot']['target_id']=='scope.bank']
-        self.assertTrue(domain);self.assertTrue(any(c['capability']!='concorde-coordinator' and
+        domain=[c for c in self.double.calls if c['stage']!='route' and c['snapshot']['target_id']=='scope.bank']
+        self.assertTrue(domain);self.assertTrue(any(c['stage']!='route' and
             c['snapshot']['target_id']=='service.transfer' for c in self.double.calls))
         self.assertFalse(any(c['stage']=='implementation' for c in domain))
         self.assertTrue(all('specs/transfer/module.md' not in json.dumps(c['snapshot']) for c in domain))

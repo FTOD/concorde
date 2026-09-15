@@ -171,6 +171,39 @@ def _usage(launch: WorkerLaunch, run: PiRun) -> dict[str, Any]:
             "turns": count(stats.get("assistantMessages")), "wall_seconds": round(run.wall_seconds, 3)}
 
 
+def subagents_entry(package_root: Path) -> Path:
+    """The pi-subagents entry point: a source checkout's ``npm ci --prefix pi`` install, else the one
+    the installer provisioned in the project's managed runtime beside ``.concorde/framework``."""
+    local = package_root / "pi/node_modules/pi-subagents/index.ts"
+    managed = package_root.parent / ".venv/share/concorde/pi/node_modules/pi-subagents/index.ts"
+    return (local if local.is_file() or not managed.is_file() else managed).resolve()
+
+
+def _read_bytes(path: Path) -> bytes | None:
+    return path.read_bytes() if path.is_file() and not path.is_symlink() else None
+
+
+def _return_refreshed_auth(copy: Path, original: Path, issued: bytes | None) -> None:
+    """Carry an OAuth refresh Pi made inside the run back to the developer's credentials.
+
+    A provider may rotate its refresh token, so a refresh left in the discarded copy would strand
+    the developer's own file. The copy is written back only when it changed, is a JSON object, and
+    the developer's file still holds the bytes the run was issued, so a concurrent refresh wins.
+    """
+    refreshed = _read_bytes(copy)
+    if issued is None or refreshed is None or refreshed == issued or _read_bytes(original) != issued:
+        return
+    try:
+        if not isinstance(json.loads(refreshed), dict):
+            return
+    except ValueError:
+        return
+    staged = original.with_name(f".{original.name}.{os.getpid()}.concorde")
+    staged.write_bytes(refreshed)
+    os.chmod(staged, 0o600)
+    os.replace(staged, original)
+
+
 @dataclass(frozen=True)
 class PiWorkerRuntime:
     """Runs worker launches; every injected field is trusted host configuration, never task input."""
@@ -188,7 +221,7 @@ class PiWorkerRuntime:
         if not executable:
             raise WorkerExecutionError("the pi executable is not on PATH")
         extension = (Path(self.package_root) / "pi/extensions/concorde-worker.ts").resolve()
-        subagents = (Path(self.package_root) / "pi/node_modules/pi-subagents/index.ts").resolve()
+        subagents = subagents_entry(Path(self.package_root))
         if not extension.is_file():
             raise WorkerExecutionError(f"the Concorde worker extension is missing: {extension}")
         if launch.children and not subagents.is_file():
@@ -205,6 +238,7 @@ class PiWorkerRuntime:
                 if (credentials / name).is_file():
                     shutil.copyfile(credentials / name, agent_dir / name)
                     os.chmod(agent_dir / name, 0o600)
+            issued_auth = _read_bytes(agent_dir / "auth.json")
             (agent_dir / "settings.json").write_text(json.dumps(PI_SETTINGS), encoding="utf-8")
             (agent_dir / "extensions" / "subagent" / "config.json").write_text(json.dumps(SUBAGENT_CONFIG), encoding="utf-8")
             for child in launch.children:
@@ -250,6 +284,7 @@ class PiWorkerRuntime:
                 if server is not None:
                     server.shutdown()
                     server.server_close()
+                _return_refreshed_auth(agent_dir / "auth.json", credentials / "auth.json", issued_auth)
         submissions = [item for item in run.results_of("submit_result") if not item.get("isError")]
         if len(submissions) != 1:
             raise WorkerExecutionError(

@@ -184,7 +184,7 @@ directory prefixes; the capability providers retain their own executable contrac
     "id": "entity.distribution.managed-runtime",
     "title": "Managed runtime",
     "kind": "program",
-    "responsibility": "Plans, stages and verifies the locked Python interpreter and the official viewer package as versioned, hash-bound artifacts, recording a recoverable identity receipt.",
+    "responsibility": "Plans, stages and verifies the locked Python interpreter, the official viewer package and the pinned Pi worker extensions as versioned, hash-bound artifacts, recording a recoverable identity receipt.",
     "files": [
       "src/concorde/distribution/managed_runtime.py",
       "tests/concorde/support/managed_runtime.py",
@@ -202,7 +202,7 @@ directory prefixes; the capability providers retain their own executable contrac
     "id": "entity.distribution.install-script",
     "title": "Install script",
     "kind": "interface",
-    "responsibility": "The `python3 scripts/concorde.py` and `scripts/install-concorde.py` command surface that previews owned changes by default and applies them only with `--apply`, and the `concorde-configure` capability that changes a supported integration or enforcement setting on an initialized project."
+    "responsibility": "The `python3 scripts/concorde.py` and `scripts/install-concorde.py` command surface that previews owned changes by default and applies them only with `--apply`, and the `concorde-configure` capability that changes the Pi worker model/thinking/timeout selection on an initialized project."
   },
   {
     "id": "entity.distribution.build-command",
@@ -214,7 +214,7 @@ directory prefixes; the capability providers retain their own executable contrac
     "id": "entity.distribution.runtime-provisioning",
     "title": "Runtime provisioning interface",
     "kind": "interface",
-    "responsibility": "The `load_runtime_spec`/`plan_runtime`/`provision_runtime` functions that describe local provisioning state and stage the reviewed action for the locked Python runtime and the official viewer."
+    "responsibility": "The `load_runtime_spec`/`plan_runtime`/`provision_runtime` functions that describe local provisioning state and stage the reviewed action for the locked Python runtime, the official viewer and the Pi worker extensions."
   },
   {
     "id": "entity.distribution.worktree-guard",
@@ -266,9 +266,9 @@ directory prefixes; the capability providers retain their own executable contrac
   },
   {
     "id": "entity.distribution.integration-configuration",
-    "title": "Integration configuration",
+    "title": "Pi worker configuration",
     "kind": "concept",
-    "responsibility": "The typed, supported integration and enforcement setting that `concorde-configure` applies atomically to an initialized project, leaving the previous configuration in place on any failure; with `accept_protocol` the same capability rebinds the configuration to the Protocol copy the installer placed under `.concorde/protocol/`."
+    "responsibility": "The typed, supported Pi worker model, thinking level, timeout and per-worker override selection that `concorde-configure` applies atomically to an initialized project, leaving the previous configuration in place on any failure; with `accept_protocol` the same capability rebinds the configuration to the Protocol copy the installer placed under `.concorde/protocol/`."
   },
   {
     "id": "entity.distribution.developer-session",
@@ -309,7 +309,7 @@ flowchart TB
     proposal["Installation proposal"]
     receipt["Ownership receipt"]
     target["Target project"]
-    config["Integration configuration"]
+    config["Pi worker configuration"]
     runtimeIface["Runtime provisioning interface"]
     managedRuntime["Managed runtime"]
     verifiedRuntime["Verified managed runtime"]

@@ -1,12 +1,8 @@
-"""Concorde's Agent inventory (workflow/agents-and-harnesses.md A1): one Python package per named
-Agent, each binding its authored ``spec.md``, Harness reference and Constraints/Permissions
-(``concorde.harness.agent_model.Agent``) in its own ``agents/<name>/__init__.py``.
+"""Concorde's Agent inventory: one Python package per Pi worker.
 
-This file is the package-owned inventory declaration -- it mirrors ``capabilities/__init__.py`` --
-and belongs to the build (``implementation.build``, referenced by ``module.distribution``). Each
-``agents/<name>/`` directory and its ``spec.md`` belong to ``implementation.agent-definitions``,
-referenced by ``module.harness``, which owns Agent and Harness definitions; a capability that
-launches an Agent does not own its definition.
+Each ``agents/<name>/__init__.py`` declares ``AGENT``, the worker profile of one task contract
+(``concorde.harness.agent_model.Agent``); its role Spec is ``agents/<name>/spec.md`` and its
+lightweight children are pi-subagents Markdown definitions under ``agents/<name>/children/``.
 
 A module named here with no matching ``agents/<name>/__init__.py`` package, or a package present
 with no matching name here, is a validation error (``CONCORDE-AGENT-INVENTORY-001``).
@@ -14,7 +10,20 @@ with no matching name here, is a validation error (``CONCORDE-AGENT-INVENTORY-00
 
 from __future__ import annotations
 
-AGENTS = ("coordinator", "spec_engineer", "programmer")
+AGENTS = (
+    "answerer",
+    "router",
+    "topology_designer",
+    "spec_author",
+    "topology_author",
+    "spec_reviewer",
+    "context_assessor",
+    "planner",
+    "task_author",
+    "programmer",
+    "code_reviewer",
+    "investigator",
+)
 
 
 def external_name(module_name: str) -> str:

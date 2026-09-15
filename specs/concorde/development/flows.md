@@ -72,21 +72,21 @@ capability; the diagram shows the complete dispatch topology every entry compile
 | `prepare_target` | The target admission Flow (below) as a subflow: binds or discovers the owning Module and selects the bound leaf. | admitted task, change | route, bound invocation |
 | `deliver` | Deterministic: worktree delivery under the repository lock. | change, worktrees | delivery receipt |
 | `project` | The project Flow (below): initialization proposal or application, or configuration. | request | proposal or applied files |
-| `answer` | The query Flow with the coordinator's `ask` mode. | question, Module contexts | answer |
-| `design_topology` | The query Flow with the coordinator's `design-topology` mode. | task, Module contexts, registry | topology design |
+| `answer` | The query Flow with the answerer. | question, Module contexts | answer |
+| `design_topology` | The query Flow with the topology-designer. | task, Module contexts, registry | topology design |
 | `prepare_topology` | The topology preparation Flow. | accepted design | prepared application |
 | `apply_topology` | The topology application Flow. | prepared application | applied topology |
 | `review` | Deterministic scope over Review invocations: owner and changed-file peers. | bound target, changes | review results |
 | `describe_policy` | Deterministic: the exact grants each stage would receive, without launching an Agent. | bound target | policy descriptions |
 | `triage` | The reflection triage Flow. | bound target, reflection records | triage result |
-| `specify` | Spec Authoring: one spec-engineer `specify` invocation and the affected-consumer reviews. | bound target, Spec context | replaced Spec documents |
+| `specify` | Spec Authoring: one spec-author invocation and the affected-consumer reviews. | bound target, Spec context | replaced Spec documents |
 | `plan` | The planning Flow. | bound target, Spec context | plan |
-| `tasks` | One spec-engineer `tasks` invocation and task admission. | plan, reserved ids, review feedback | tasks |
+| `tasks` | One task-author invocation and task admission. | plan, reserved ids, review feedback | tasks |
 | `implement` | One programmer `implementation` invocation, or component coordination. | tasks, implementation files | completed tasks |
 | `validate` | Deterministic checks and readiness gates for the candidate. | candidate | checks, readiness |
 | `development_loop` | The development Flow. | bound target, change | ready candidate or stop |
 | `specify_loop` | The specification Flow. | bound target, change | Spec completion |
-| `context_solve` | One spec-engineer `context-solve` invocation. | bound target, Spec context | sufficiency or gaps |
+| `context_solve` | One context-assessor invocation. | bound target, Spec context | sufficiency or gaps |
 
 ```mermaid
 flowchart TB
@@ -162,14 +162,14 @@ routed selection), `output`, `result`.
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `initialize_target` | Deterministic: a recorded change restores its owner and intent; a trusted routed target is checked against the request; an unbound discovering capability enters discovery. | admitted task, change | route, restored task |
-| `discover` | The discovery Flow as a subflow (coordinator `route` mode). | task, entry Module context | routes, decision |
+| `discover` | The discovery Flow as a subflow (the router). | task, entry Module context | routes, decision |
 | `bind_target` | Deterministic: the single route or restored owner binds the candidate, and the bound leaf is selected. | routes, task | bound invocation, route |
 
 ```mermaid
 flowchart TB
     %% flow: target_flow
     accTitle: Target admission Flow
-    accDescr: A request with a bound or recorded owner is bound directly; an unbound request first runs coordinator discovery, and the selected route binds the owner.
+    accDescr: A request with a bound or recorded owner is bound directly; an unbound request first runs router discovery, and the selected route binds the owner.
     __start__["start"]
     initialize_target["initialize_target<br/>in: admitted task, change<br/>out: route, restored task"]
     discover["discover<br/>in: task, entry Module context<br/>out: routes, decision"]

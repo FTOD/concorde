@@ -1,555 +1,4 @@
 {
-  "concorde-agent-answer": {
-    "$defs": {
-      "concorde-agent-answer": {
-        "additionalProperties": false,
-        "properties": {
-          "answer": {
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": [
-          "answer"
-        ],
-        "type": "object"
-      }
-    },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "additionalProperties": false,
-    "properties": {
-      "data": {
-        "$ref": "#/$defs/concorde-agent-answer"
-      },
-      "schema_version": {
-        "const": 1,
-        "type": "integer"
-      },
-      "type_id": {
-        "const": "concorde-agent-answer"
-      }
-    },
-    "required": [
-      "type_id",
-      "schema_version",
-      "data"
-    ],
-    "type": "object"
-  },
-  "concorde-agent-interruption": {
-    "$defs": {
-      "concorde-agent-interruption": {
-        "additionalProperties": false,
-        "properties": {
-          "decision": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract",
-                "target_id",
-                "context_id"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "gaps",
-          "decision"
-        ],
-        "type": "object"
-      }
-    },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "additionalProperties": false,
-    "properties": {
-      "data": {
-        "$ref": "#/$defs/concorde-agent-interruption"
-      },
-      "schema_version": {
-        "const": 1,
-        "type": "integer"
-      },
-      "type_id": {
-        "const": "concorde-agent-interruption"
-      }
-    },
-    "required": [
-      "type_id",
-      "schema_version",
-      "data"
-    ],
-    "type": "object"
-  },
-  "concorde-agent-loop-context": {
-    "$defs": {
-      "concorde-agent-interruption": {
-        "additionalProperties": false,
-        "properties": {
-          "decision": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract",
-                "target_id",
-                "context_id"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "gaps",
-          "decision"
-        ],
-        "type": "object"
-      },
-      "concorde-agent-loop-context": {
-        "additionalProperties": false,
-        "properties": {
-          "agent_id": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "children": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "agent_id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "input_schema_json": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "input_type": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "result_schema_json": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "result_type": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "agent_id",
-                "input_type",
-                "result_type",
-                "input_schema_json",
-                "result_schema_json"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "context_json": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "feedback": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "agent_id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "details": {
-                  "anyOf": [
-                    {
-                      "additionalProperties": false,
-                      "properties": {
-                        "data": {
-                          "$ref": "#/$defs/concorde-agent-interruption"
-                        },
-                        "schema_version": {
-                          "const": 1,
-                          "type": "integer"
-                        },
-                        "type_id": {
-                          "const": "concorde-agent-interruption"
-                        }
-                      },
-                      "required": [
-                        "type_id",
-                        "schema_version",
-                        "data"
-                      ],
-                      "type": "object"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "error": {
-                  "anyOf": [
-                    {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "invocation_id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "outcome": {
-                  "enum": [
-                    "completed",
-                    "spec_incomplete",
-                    "waiting",
-                    "cancelled",
-                    "failed",
-                    "limit_exhausted",
-                    "rejected"
-                  ]
-                },
-                "parent_id": {
-                  "anyOf": [
-                    {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "value_json": {
-                  "anyOf": [
-                    {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                }
-              },
-              "required": [
-                "invocation_id",
-                "parent_id",
-                "agent_id",
-                "outcome",
-                "value_json",
-                "error",
-                "details"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "input_json": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "invocation_id": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "parent_id": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "result_schema_json": {
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": [
-          "invocation_id",
-          "parent_id",
-          "agent_id",
-          "input_json",
-          "context_json",
-          "feedback",
-          "children",
-          "result_schema_json"
-        ],
-        "type": "object"
-      }
-    },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "additionalProperties": false,
-    "properties": {
-      "data": {
-        "$ref": "#/$defs/concorde-agent-loop-context"
-      },
-      "schema_version": {
-        "const": 1,
-        "type": "integer"
-      },
-      "type_id": {
-        "const": "concorde-agent-loop-context"
-      }
-    },
-    "required": [
-      "type_id",
-      "schema_version",
-      "data"
-    ],
-    "type": "object"
-  },
-  "concorde-agent-loop-step": {
-    "$defs": {
-      "concorde-agent-interruption": {
-        "additionalProperties": false,
-        "properties": {
-          "decision": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract",
-                "target_id",
-                "context_id"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "gaps",
-          "decision"
-        ],
-        "type": "object"
-      },
-      "concorde-agent-loop-step": {
-        "additionalProperties": false,
-        "properties": {
-          "action": {
-            "enum": [
-              "delegate",
-              "complete"
-            ]
-          },
-          "agent_id": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "details": {
-            "anyOf": [
-              {
-                "additionalProperties": false,
-                "properties": {
-                  "data": {
-                    "$ref": "#/$defs/concorde-agent-interruption"
-                  },
-                  "schema_version": {
-                    "const": 1,
-                    "type": "integer"
-                  },
-                  "type_id": {
-                    "const": "concorde-agent-interruption"
-                  }
-                },
-                "required": [
-                  "type_id",
-                  "schema_version",
-                  "data"
-                ],
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "outcome": {
-            "enum": [
-              "completed",
-              "spec_incomplete",
-              "waiting",
-              "cancelled",
-              "failed",
-              "limit_exhausted",
-              "rejected"
-            ]
-          },
-          "source": {
-            "enum": [
-              "code-driven",
-              "model-driven"
-            ]
-          },
-          "value_json": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "source",
-          "action",
-          "agent_id",
-          "value_json",
-          "outcome",
-          "details"
-        ],
-        "type": "object"
-      }
-    },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "additionalProperties": false,
-    "properties": {
-      "data": {
-        "$ref": "#/$defs/concorde-agent-loop-step"
-      },
-      "schema_version": {
-        "const": 1,
-        "type": "integer"
-      },
-      "type_id": {
-        "const": "concorde-agent-loop-step"
-      }
-    },
-    "required": [
-      "type_id",
-      "schema_version",
-      "data"
-    ],
-    "type": "object"
-  },
   "concorde-agent-stage-context": {
     "$defs": {
       "concorde-agent-stage-context": {
@@ -2061,77 +1510,50 @@
     ],
     "type": "object"
   },
-  "concorde-agent-task": {
-    "$defs": {
-      "concorde-agent-task": {
-        "additionalProperties": false,
-        "properties": {
-          "target_id": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "task": {
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": [
-          "task",
-          "target_id"
-        ],
-        "type": "object"
-      }
-    },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "additionalProperties": false,
-    "properties": {
-      "data": {
-        "$ref": "#/$defs/concorde-agent-task"
-      },
-      "schema_version": {
-        "const": 1,
-        "type": "integer"
-      },
-      "type_id": {
-        "const": "concorde-agent-task"
-      }
-    },
-    "required": [
-      "type_id",
-      "schema_version",
-      "data"
-    ],
-    "type": "object"
-  },
   "concorde-configure-request": {
     "$defs": {
       "concorde-capability-configuration": {
         "additionalProperties": false,
         "properties": {
-          "agents": {
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "thinking": {
+            "enum": [
+              "off",
+              "minimal",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          },
+          "timeout_seconds": {
+            "type": "integer"
+          },
+          "workers": {
             "additionalProperties": {
               "additionalProperties": false,
               "properties": {
-                "integration": {
-                  "enum": [
-                    "codex",
-                    "claude"
-                  ]
-                },
                 "model": {
                   "minLength": 1,
                   "type": "string"
                 },
-                "reasoning_effort": {
+                "thinking": {
                   "enum": [
+                    "off",
                     "minimal",
                     "low",
                     "medium",
                     "high",
                     "xhigh",
-                    "max",
-                    "ultra"
+                    "max"
                   ]
+                },
+                "timeout_seconds": {
+                  "type": "integer"
                 }
               },
               "required": [],
@@ -2139,38 +1561,9 @@
             },
             "properties": {},
             "type": "object"
-          },
-          "enforcement": {
-            "enum": [
-              "native"
-            ]
-          },
-          "integration": {
-            "enum": [
-              "codex",
-              "claude"
-            ]
-          },
-          "model": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "reasoning_effort": {
-            "enum": [
-              "minimal",
-              "low",
-              "medium",
-              "high",
-              "xhigh",
-              "max",
-              "ultra"
-            ]
           }
         },
-        "required": [
-          "integration",
-          "enforcement"
-        ],
+        "required": [],
         "type": "object"
       },
       "concorde-configure-request": {
@@ -2233,30 +1626,45 @@
       "concorde-capability-configuration": {
         "additionalProperties": false,
         "properties": {
-          "agents": {
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "thinking": {
+            "enum": [
+              "off",
+              "minimal",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          },
+          "timeout_seconds": {
+            "type": "integer"
+          },
+          "workers": {
             "additionalProperties": {
               "additionalProperties": false,
               "properties": {
-                "integration": {
-                  "enum": [
-                    "codex",
-                    "claude"
-                  ]
-                },
                 "model": {
                   "minLength": 1,
                   "type": "string"
                 },
-                "reasoning_effort": {
+                "thinking": {
                   "enum": [
+                    "off",
                     "minimal",
                     "low",
                     "medium",
                     "high",
                     "xhigh",
-                    "max",
-                    "ultra"
+                    "max"
                   ]
+                },
+                "timeout_seconds": {
+                  "type": "integer"
                 }
               },
               "required": [],
@@ -2264,38 +1672,9 @@
             },
             "properties": {},
             "type": "object"
-          },
-          "enforcement": {
-            "enum": [
-              "native"
-            ]
-          },
-          "integration": {
-            "enum": [
-              "codex",
-              "claude"
-            ]
-          },
-          "model": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "reasoning_effort": {
-            "enum": [
-              "minimal",
-              "low",
-              "medium",
-              "high",
-              "xhigh",
-              "max",
-              "ultra"
-            ]
           }
         },
-        "required": [
-          "integration",
-          "enforcement"
-        ],
+        "required": [],
         "type": "object"
       },
       "concorde-configure-response": {
@@ -5499,30 +4878,45 @@
       "concorde-capability-configuration": {
         "additionalProperties": false,
         "properties": {
-          "agents": {
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "thinking": {
+            "enum": [
+              "off",
+              "minimal",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          },
+          "timeout_seconds": {
+            "type": "integer"
+          },
+          "workers": {
             "additionalProperties": {
               "additionalProperties": false,
               "properties": {
-                "integration": {
-                  "enum": [
-                    "codex",
-                    "claude"
-                  ]
-                },
                 "model": {
                   "minLength": 1,
                   "type": "string"
                 },
-                "reasoning_effort": {
+                "thinking": {
                   "enum": [
+                    "off",
                     "minimal",
                     "low",
                     "medium",
                     "high",
                     "xhigh",
-                    "max",
-                    "ultra"
+                    "max"
                   ]
+                },
+                "timeout_seconds": {
+                  "type": "integer"
                 }
               },
               "required": [],
@@ -5530,38 +4924,9 @@
             },
             "properties": {},
             "type": "object"
-          },
-          "enforcement": {
-            "enum": [
-              "native"
-            ]
-          },
-          "integration": {
-            "enum": [
-              "codex",
-              "claude"
-            ]
-          },
-          "model": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "reasoning_effort": {
-            "enum": [
-              "minimal",
-              "low",
-              "medium",
-              "high",
-              "xhigh",
-              "max",
-              "ultra"
-            ]
           }
         },
-        "required": [
-          "integration",
-          "enforcement"
-        ],
+        "required": [],
         "type": "object"
       },
       "concorde-init-request": {

@@ -14,7 +14,7 @@ The [common invocation envelope](../development/interfaces.md#capability-executi
 and exact digests; a valid shape alone does not establish currentness or authority.
 `concorde-review` is a public Capability with discover context selection requiring task and review_mode=spec|code, with
 optional target/focus routing hints, constraints and current-worktree change_id. A new standalone
-request uses Spec-only coordinator discovery to select one owning Module, then starts a fresh
+request uses Spec-only router discovery to select one owning Module, then starts a fresh
 read-only reviewer. A composing capability may supply its trusted bound target without repeating
 discovery; a current-change resumption supplies both target_id and change_id. The public launcher
 and Studio admit this capability directly. Review runs in the current worktree without creating
@@ -77,7 +77,7 @@ reference saved review reports. Native receipts and failure diagnostics remain s
 The table maps review reports to the Review response's domain `outcome`. An interrupted
 reviewer still produces an `incomplete` review report and a `failed` Review domain outcome.
 The trusted host separately preserves the `cancelled` or `limit_exhausted` execution
-classification supplied by [Harness](../harness/execution.md#local-loop-policy-and-outcomes)
+classification supplied by [Harness](../harness/execution.md#outcomes)
 for the enclosing Flow, persisted candidate lifecycle and final events, following the
 [Development boundary](../development/interfaces.md#capability-execution-boundary).
 Ordinary reviewer failures remain `failed`.

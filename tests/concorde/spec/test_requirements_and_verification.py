@@ -43,7 +43,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
         configuration = {"type_id": "concorde-capability-configuration", "schema_version": 1,
-                         "data": {"integration": "claude", "enforcement": "native"}}
+                         "data": {"model": "openai-codex/gpt-6-astra", "thinking": "medium"}}
         self.write(".concorde/config.json", json.dumps({"profile_version": 12, "registry": ".concorde/specs.json",
             "protocol": protocol_binding(PACKAGE), "capability_configuration": configuration}))
         write_protocol_copy(self.root, PACKAGE)

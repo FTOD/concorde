@@ -38,7 +38,7 @@ code change.
 
 - GIVEN the host created a candidate and returned a session handoff before routing or binding an owner
 - WHEN a fresh host in that worktree resumes the development loop with the recorded change identity and original task
-- THEN it validates the worktree identity and preserved intent, restores omitted constraints and focus hints, and performs real coordinator discovery and single-target selection before binding the owner
+- THEN it validates the worktree identity and preserved intent, restores omitted constraints and focus hints, and performs real router discovery and single-target selection before binding the owner
 - AND a supplied target hint never substitutes for routing authority
 - AND both specify modes and both review modes use this same admission, with one successful route selection before the first development stage
 

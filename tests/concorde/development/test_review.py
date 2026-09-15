@@ -20,17 +20,17 @@ from tests.concorde.spec.support import CONFIGURATION, PACKAGE, ModelProcessDoub
 class ReviewTests(unittest.TestCase):
     @verifies("scenario.development.flow-execution")
     def test_interrupted_review_reports_status_persistence_failure(self):
-        from concorde.harness.agent_executor import CapabilityExecutionError
+        from concorde.harness.worker_executor import CapabilityExecutionError
 
         ensure_change(self.root, task=self.task, allow_primary=True)
         before = read_change(self.root)
         double = self.double()
         execute = double.executor
 
-        def interrupted(launch):
-            if launch.stage == "spec-review":
+        def interrupted(invocation, **options):
+            if invocation.stage == "spec-review":
                 raise CapabilityExecutionError("controlled interruption", outcome="cancelled")
-            return execute(launch)
+            return execute(invocation, **options)
 
         double.executor = interrupted
         with patch("concorde.development.review.progress", side_effect=OSError("cannot save")):
@@ -54,7 +54,7 @@ class ReviewTests(unittest.TestCase):
     @verifies("scenario.development.flow-execution")
     def test_fresh_review_reconciles_removed_members_and_restores_required_currentness(self):
         from concorde.development.review import require_reviews, verify_required
-        from concorde.harness.agent_executor import CapabilityExecutionError
+        from concorde.harness.worker_executor import CapabilityExecutionError
         from concorde.spec.initialize import empty_target
         from concorde.spec.repository import SpecError
         from tests.concorde.spec.support import module_document
@@ -116,10 +116,10 @@ class ReviewTests(unittest.TestCase):
                         before = read_change(fixture.root)[field]['service.transfer']
                         double = fixture.double()
                         execute = double.executor
-                        def interrupt(launch):
-                            if launch.stage == mode + '-review':
+                        def interrupt(invocation, **options):
+                            if invocation.stage == mode + '-review':
                                 raise CapabilityExecutionError('controlled stop', outcome='cancelled')
-                            return execute(launch)
+                            return execute(invocation, **options)
                         double.executor = interrupt
                         stopped = fixture.review(mode, double=double)
                         self.assertEqual('failed', stopped['status'], stopped)
@@ -183,7 +183,7 @@ class ReviewTests(unittest.TestCase):
 
     @verifies("scenario.development.flow-execution")
     def test_reviewer_interruptions_survive_enclosing_flows_and_final_events(self):
-        from concorde.harness.agent_executor import CapabilityExecutionError
+        from concorde.harness.worker_executor import CapabilityExecutionError
         for capability, review_stage in (("concorde-specify-loop", "spec-review"),
                                          ("concorde-dev-loop", "spec-review"),
                                          ("concorde-dev-loop", "code-review")):
@@ -204,14 +204,14 @@ class ReviewTests(unittest.TestCase):
                             output = original_review(*args, **kwargs)
                             review_outputs.append(output["data"])
                             return output
-                        def interrupted(launch):
-                            stages.append(launch.stage)
-                            if launch.stage == review_stage:
+                        def interrupted(invocation, **options):
+                            stages.append(invocation.stage)
+                            if invocation.stage == review_stage:
                                 prior.update(read_change(fixture.root))
                                 for relative in ("app/transfer.py", "specs/transfer/module.md"):
                                     candidate_bytes[relative] = (fixture.root / relative).read_bytes()
                                 raise CapabilityExecutionError("controlled reviewer failure", outcome=outcome)
-                            return execute(launch)
+                            return execute(invocation, **options)
                         double.executor = interrupted
                         def observe(host, event, **details):
                             events.append({"event": event, **details})
@@ -653,80 +653,50 @@ class ReviewTests(unittest.TestCase):
         self.assertTrue(any(check["status"] == "failed" for check in target["checks"]))
         self.assertNotIn("code-review", [call["stage"] for call in self.model.calls])
 
-    @verifies("scenario.harness.node-runtime")
-    def test_project_worker_pins_host_node_but_spec_capsule_does_not(self):
-        import os
-        import tomllib
-        from concorde.harness.agent_executor import resolve_runtime_bootstrap
-
+    @verifies("scenario.harness.pi-worker-launch")
+    def test_only_project_workers_receive_the_host_check_service(self):
         model = self.double()
-        node = Path(model.runtime_directory.name) / "node"
-        node.write_bytes(b"\x7fELFfixture-node-runtime")
-        node.chmod(0o755)
-        # This process-double test covers projection of an admitted runtime, not
-        # machine installation trust. In a configured check's user namespace,
-        # host-root ancestors are unmapped, so the real Node resolver must reject
-        # them. Keep that policy in the resolver tests and supply fixture admission
-        # here, just as ModelProcessDouble does for Codex. File rechecks stay real.
-        bootstrap = resolve_runtime_bootstrap("codex", str(node), str(self.root), {})
-        self.configuration = typed("concorde-capability-configuration", {"integration": "codex", "enforcement": "native"})
-        config_path = self.root / ".concorde/config.json"
-        config = json.loads(config_path.read_text())
-        config["capability_configuration"] = self.configuration
-        config_path.write_text(json.dumps(config))
-        with patch("concorde.harness.agent_executor.resolve_node_runtime", return_value=bootstrap) as resolver:
-            result = self.call_capability("concorde-dev-loop", double=model)
+        result = self.call_capability("concorde-dev-loop", double=model)
         self.assertEqual("succeeded", result["status"], result)
-        project_calls = [call for call in self.model.calls if call["stage"] in {"implementation", "code-review"}]
-        self.assertEqual({"implementation", "code-review"}, {call["stage"] for call in project_calls})
-        self.assertEqual(2 * len(project_calls), resolver.call_count)  # admission and pre-launch recheck
-        for call in self.model.calls:
-            settings = {}
-            for i, arg in enumerate(call["argv"]):
-                if arg == "-c":
-                    settings.update(tomllib.loads(call["argv"][i + 1]))
-            if call["stage"] in {"implementation", "code-review"}:
-                self.assertFalse(settings["allow_login_shell"])
-                self.assertEqual(str(node.parent), settings["shell_environment_policy"]["set"]["PATH"].split(os.pathsep)[0])
-                profile = next(iter(settings["permissions"].values()))
-                self.assertEqual("read", profile["filesystem"][str(node)])
-            else:
-                self.assertNotIn("shell_environment_policy", settings)
-                self.assertNotIn(str(node), json.dumps(settings))
+        for call in model.calls:
+            with self.subTest(stage=call["stage"]):
+                if call["stage"] == "implementation":
+                    self.assertIn("run_checks", call["launch"].tools)
+                    report = call["checks"]()
+                    self.assertEqual(["check.transfer"], [item["check_id"] for item in report["checks"]])
+                    self.assertIn("output_tail", report["checks"][0])
+                elif call["stage"] == "code-review":
+                    self.assertNotIn("run_checks", call["launch"].tools)
+                    self.assertIsNotNone(call["checks"])
+                else:
+                    self.assertIsNone(call["checks"])
+                    self.assertNotIn("run_checks", call["launch"].tools)
 
-    @verifies("scenario.harness.project-configured-model")
-    def test_each_agent_node_launches_on_its_own_integration_model_and_effort(self):
-        import tomllib
-
+    @verifies("scenario.harness.worker-selection")
+    def test_each_worker_launches_on_its_own_model_and_thinking_level(self):
         self.configuration = typed("concorde-capability-configuration", {
-            "integration": "claude", "enforcement": "native", "model": "claude-sonnet-5", "reasoning_effort": "medium",
-            "agents": {"spec_engineer": {"reasoning_effort": "high"},
-                       "spec_engineer/plan": {"integration": "codex", "model": "gpt-6-astra", "reasoning_effort": "ultra"},
-                       "programmer/implementation": {"model": "claude-haiku-4-5", "reasoning_effort": "low"}}})
+            "model": "openai-codex/gpt-6-astra", "thinking": "medium",
+            "workers": {"task_author": {"thinking": "high"},
+                        "planner": {"model": "anthropic/claude-sonnet-5", "thinking": "low"},
+                        "programmer": {"model": "openai-codex/gpt-5.6-sol", "timeout_seconds": 5400},
+                        "programmer/verifier": {"thinking": "xhigh"}}})
         config_path = self.root / ".concorde/config.json"
         config = json.loads(config_path.read_text())
         config["capability_configuration"] = self.configuration
         config_path.write_text(json.dumps(config))
         result = self.call_capability("concorde-dev-loop")
         self.assertEqual("succeeded", result["status"], result)
-        launched = {}
-        for call in self.model.calls:
-            argv = call["argv"]
-            if "--output-schema" in argv:
-                settings = {}
-                for index, argument in enumerate(argv):
-                    if argument == "-c":
-                        settings.update(tomllib.loads(argv[index + 1]))
-                launched[call["stage"]] = ("codex", settings["model"], settings["model_reasoning_effort"])
-            else:
-                launched[call["stage"]] = ("claude", argv[argv.index("--model") + 1], argv[argv.index("--effort") + 1])
-        expected = {"plan": ("codex", "gpt-6-astra", "ultra"), "tasks": ("claude", "claude-sonnet-5", "high"),
-                    "implementation": ("claude", "claude-haiku-4-5", "low"),
-                    "code-review": ("claude", "claude-sonnet-5", "medium")}
+        launched = {call["stage"]: (call["launch"].model, call["launch"].thinking) for call in self.model.calls}
+        expected = {"plan": ("anthropic/claude-sonnet-5", "low"), "tasks": ("openai-codex/gpt-6-astra", "high"),
+                    "implementation": ("openai-codex/gpt-5.6-sol", "medium"),
+                    "code-review": ("openai-codex/gpt-6-astra", "medium")}
         self.assertEqual(expected, {stage: launched[stage] for stage in expected})
-        described = {item["phase"]: (item["integration"], item["model"], item["reasoning_effort"])
-                     for item in self.host.descriptions}
-        self.assertEqual(expected, {stage: described[stage] for stage in expected})
+        programmer = next(call["launch"] for call in self.model.calls if call["stage"] == "implementation")
+        self.assertEqual(5400, programmer.timeout_seconds)
+        verifier = next(child for child in programmer.children if child.name == "verifier")
+        self.assertTrue(verifier.definition.startswith("---\nmodel: openai-codex/gpt-5.6-sol\nthinking: xhigh\n"))
+        described = {item["phase"]: (item["model"], item["thinking"]) for item in self.host.descriptions}
+        self.assertEqual(expected, {stage: described[stage] for stage in expected if stage in described})
 
     @verifies("scenario.development.task-scope-repair")
     def test_invalid_scope_repair_cannot_replace_or_complete_original_tasks(self):
@@ -802,7 +772,6 @@ class ReviewTests(unittest.TestCase):
 
     def double(self, callback=None):
         double = ModelProcessDouble(callback)
-        self.addCleanup(double.runtime_directory.cleanup)
         return double
 
     def call_capability(self, capability, data=None, callback=None, *, mode="execute", double=None):
@@ -855,7 +824,7 @@ class ReviewTests(unittest.TestCase):
             result = self.review(mode)
             self.assertEqual("succeeded", result["status"], result)
             calls.append(self.model.calls[0])
-            identities.append(self.host.evidence[0].completion.invocation_id)
+            identities.append(self.host.evidence[0].invocation_digest)
             policy = self.host.descriptions[0]
             self.assertEqual([], policy["write_paths"])
             self.assertFalse(policy["network"])
@@ -958,12 +927,11 @@ class ReviewTests(unittest.TestCase):
 
     @verifies("scenario.development.execute-blocked-launch")
     def test_failed_policy_preview_does_not_persist_artifacts_or_change_state(self):
-        # Configuration admits native enforcement only, so an unenforceable compiled policy is
-        # simulated at the renderer: the integration reports that it cannot enforce the grant.
+        # A reviewer grant the compiler refuses is simulated at policy compilation.
         ensure_change(self.root, task=self.task, allow_primary=True)
         before = read_change(self.root)
-        unenforceable = PermissionPolicyError("simulated: the integration cannot enforce the compiled policy")
-        with patch("concorde.development.review.render_claude_configuration", side_effect=unenforceable):
+        refused = PermissionPolicyError("simulated: the reviewer grant widens its declared effects")
+        with patch("concorde.development.review.compile_policy", side_effect=refused):
             for mode in ("spec", "code"):
                 result = self.review(mode, mode="describe-policy")
                 self.assertNotEqual("described", result["status"], result)
@@ -1006,31 +974,31 @@ class ReviewTests(unittest.TestCase):
             self.assertEqual("incomplete", result["output"]["data"]["reviews"][0]["data"]["status"])
             self.assertNotIn("private process failure diagnostics", json.dumps(result))
 
-    def test_failed_reviews_retain_available_native_attestation_privately(self):
-        from concorde.harness.agent_executor import CapabilityExecutionError
+    def test_failed_reviews_retain_usage_and_failure_privately(self):
+        from concorde.harness.worker_executor import CapabilityExecutionError
         double = self.double()
         executor = double.executor
-        captured = []
-        def fail(launch):
-            executed = executor(launch)
-            receipt = replace(executed.receipt, status="failed", exit_code=17, completion_status="failed")
-            captured.append(receipt)
-            raise CapabilityExecutionError("private failed completion diagnostics", receipt)
+        spent = []
+        def fail(invocation, **options):
+            outcome = executor(invocation, **options)
+            spent.append(outcome.usage)
+            raise CapabilityExecutionError("private failed completion diagnostics", outcome="invalid_completion",
+                                           usage=outcome.usage)
         double.executor = fail
         failed = self.review(double=double)
         self.assertEqual("failed", failed["status"], failed)
         def private(result):
             path = self.root / result["output"]["data"]["artifacts"][0]["path"]
             return json.loads(path.with_suffix(".execution.json").read_text())
-        self.assertEqual(asdict(captured[0]), private(failed)["receipt"])
-        self.assertIsNone(private(failed)["execution"])
+        self.assertEqual(asdict(spent[0]), private(failed)["usage"])
+        self.assertEqual("execution_failed", private(failed)["failure"]["code"])
         rejected = self.review(callback=lambda stage, snapshot, data, cwd:
             data.update(input_digest="sha256:" + "0" * 64))
         self.assertEqual("failed", rejected["status"], rejected)
-        self.assertEqual("success", private(rejected)["execution"]["receipt"]["status"])
+        self.assertEqual(1200, private(rejected)["usage"]["input_tokens"])
         for result in (failed, rejected):
             self.assertNotIn("private failed completion diagnostics", json.dumps(result))
-            self.assertNotIn("client_version", json.dumps(result))
+            self.assertNotIn("input_tokens", json.dumps(result))
 
     def test_spec_query_returns_gaps_without_creating_a_change_or_reflection(self):
         before = {p.relative_to(self.root).as_posix(): p.read_bytes()
@@ -1108,40 +1076,40 @@ class ReviewTests(unittest.TestCase):
         from contextlib import contextmanager
         from concorde.harness import agent_model
         from concorde.harness.agent_model import binding_digest
-        from concorde.development.review import load_role_prompt
+        from concorde.distribution.build import load_agent
         first = self.call_capability("concorde-dev-loop", callback=self.missing("spec-review"))
         self.assertEqual("blocked", first["status"], first)
         original = read_change(self.root)["gap_history"][0]
         self.call_capability("concorde-dev-loop")
         self.assertFalse(any(c["stage"] == "spec-review" for c in self.model.calls))
+        rendered = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(rendered, ignore_errors=True))
 
-        def revised(suffix, *args, **kwargs):
-            prompt = load_role_prompt(*args, **kwargs)
-            if prompt.binding.mode != "spec-review":
+        def revised(suffix, package_root, name):
+            prompt = load_agent(package_root, name)
+            if prompt.binding.agent != "spec_reviewer":
                 return prompt
+            # A rebuilt package's instructions: the rendered file and its binding change together.
             body = prompt.body + suffix
-            binding = replace(prompt.binding,
+            instructions = rendered / f"spec-reviewer-{hashlib.sha256(body.encode()).hexdigest()}.md"
+            instructions.write_text(body, encoding="utf-8")
+            binding = replace(prompt.binding, instructions_path=str(instructions),
                 instructions_digest="sha256:" + hashlib.sha256(body.encode()).hexdigest())
             return replace(prompt, body=body, binding=replace(binding, digest=binding_digest(binding)))
 
-        def changed(*args, **kwargs):
-            return revised("\nClarified task relevance.\n", *args, **kwargs)
+        def changed(package_root, name):
+            return revised("\nClarified task relevance.\n", package_root, name)
 
         @contextmanager
         def instructions(loader):
-            # Admit the test's new instruction binding through the same preflight
-            # as a rebuilt package; all effects and mode contracts stay intact.
+            # Admit the test's new instruction binding through the same preflight as a rebuilt
+            # package; the worker's effects and contract stay intact.
             resolve = agent_model.resolve_agent
-            from concorde.distribution.build import render_agent
-            prompt = loader(PACKAGE, "spec-engineer", "spec-review")
-            def binding(package, name, mode=None):
-                return prompt.binding if mode == "spec-review" else resolve(package, name, mode)
-            def rendered(package, name, mode=None):
-                output = render_agent(package, name, mode)
-                return replace(output, content=prompt.body.encode()) if mode == "spec-review" else output
-            with patch("concorde.development.review.load_role_prompt", side_effect=loader), \
-                    patch("concorde.harness.agent_model.resolve_agent", side_effect=binding), \
-                    patch("concorde.distribution.build.render_agent", side_effect=rendered):
+            prompt = loader(PACKAGE, "concorde-spec-reviewer")
+            def binding(package, name):
+                return prompt.binding if agent_model.agent_key(name) == "spec_reviewer" else resolve(package, name)
+            with patch("concorde.development.review.load_agent", side_effect=loader), \
+                    patch("concorde.harness.agent_model.resolve_agent", side_effect=binding):
                 yield
 
         def incomplete(stage, snapshot, data, cwd):
@@ -1155,8 +1123,8 @@ class ReviewTests(unittest.TestCase):
 
         # Another actual instruction revision permits a completed reassessment.
         # The Host preserves the reviewer's independent finding and old history.
-        def changed_again(*args, **kwargs):
-            return revised("\nReassess coverage.\n", *args, **kwargs)
+        def changed_again(package_root, name):
+            return revised("\nReassess coverage.\n", package_root, name)
         def advisory(stage, snapshot, data, cwd):
             if stage == "spec-review":
                 self.missing(stage)(stage, snapshot, data, cwd)
@@ -1268,36 +1236,19 @@ class ReviewTests(unittest.TestCase):
         self.assertNotEqual("ready", read_change(self.root)["status"])
         self.assertIsNone(read_change(self.root)["validated_tree"])
 
-    def test_codex_generation_schema_is_strict_without_weakening_wire_validation(self):
-        config_path = self.root / ".concorde/config.json"
-        config = json.loads(config_path.read_text())
-        self.configuration = typed("concorde-capability-configuration", {"integration": "codex", "enforcement": "native"})
-        config["capability_configuration"] = self.configuration
-        config_path.write_text(json.dumps(config))
-        double = self.double()
-        captured = []
-        def runner(argv, **kwargs):
-            captured.append(json.loads(Path(argv[argv.index("--output-schema") + 1]).read_text()))
-            return double.run(argv, **kwargs)
-        double.executor = replace(double.executor, runner=runner)
-        result = self.review(double=double)
+    @verifies("scenario.harness.execute-success")
+    def test_reviewer_result_parameters_are_the_self_contained_wire_schema(self):
+        from concorde.harness.worker_executor import result_parameters
+        result = self.review()
         self.assertEqual("succeeded", result["status"], result)
-        def inspect(value):
-            if isinstance(value, dict):
-                self.assertNotIn("uniqueItems", value)
-                if "properties" in value:
-                    self.assertEqual(set(value["properties"]), set(value["required"]))
-                if "const" in value or "enum" in value:
-                    self.assertIn("type", value)
-                for child in value.values():
-                    inspect(child)
-            elif isinstance(value, list):
-                for child in value:
-                    inspect(child)
-        inspect(captured[0])
+        launch = self.model.calls[0]["launch"]
+        self.assertEqual(result_parameters("concorde-review-stage-result"), launch.result_schema)
+        self.assertNotIn("$ref", json.dumps(launch.result_schema))
         wire = DATA_SCHEMAS["concorde-review-stage-result"]["properties"]
         self.assertTrue(wire["representative_tasks"]["uniqueItems"])
+        self.assertTrue(launch.result_schema["properties"]["representative_tasks"]["uniqueItems"])
         self.assertNotIn("context_id", wire["gaps"]["items"]["required"])
+        self.assertEqual({"read", "grep", "find", "ls", "submit_result", "subagent"}, set(launch.tools))
 
     def test_unrelated_review_query_cannot_replace_required_lifecycle_evidence(self):
         self.assertEqual("succeeded", self.call_capability("concorde-dev-loop")["status"])
@@ -1509,7 +1460,6 @@ class RepairLoopTests(unittest.TestCase):
 
     def double(self, callback=None):
         double = ModelProcessDouble(callback)
-        self.addCleanup(double.runtime_directory.cleanup)
         return double
 
     def call_capability(self, capability, data=None, callback=None, *, mode="execute", double=None):
@@ -1769,13 +1719,12 @@ class RepairLoopTests(unittest.TestCase):
         self.assertEqual("implementation_changed", human_transitions[0]["outcome"])
 
     def test_capability_execution_error_during_standalone_code_review_maps_to_execution_limit(self):
-        from concorde.harness.agent_executor import CapabilityExecutionError
+        from concorde.harness.worker_executor import CapabilityExecutionError
         from concorde.harness.change_worktree import ensure_change
         ensure_change(self.root, task=self.task, allow_primary=True)
         double = self.double()
-        def fail(launch):
-            raise CapabilityExecutionError(
-                "codex process exceeded the Harness loop limit of 10s", None, outcome="limit_exhausted")
+        def fail(invocation, **options):
+            raise CapabilityExecutionError("the worker ran past its 10s timeout", outcome="limit_exhausted")
         double.executor = fail
         result = self.call_capability("concorde-review", {**self.task, "review_mode": "code"}, double=double)
         self.assertEqual("failed", result["status"], result)
@@ -1784,5 +1733,5 @@ class RepairLoopTests(unittest.TestCase):
         reference = result["output"]["data"]["artifacts"][0]
         private = json.loads((self.root / reference["path"]).with_suffix(".execution.json").read_text())
         self.assertEqual("execution_limit", private["failure"]["code"])
-        self.assertIsNone(private["execution"])
+        self.assertIsNone(private["usage"])
         self.assertEqual("limit_exhausted", read_change(self.root)["status"])

@@ -16,11 +16,11 @@ The public input is `concorde-init-request@1`, an ordinary
 `{type_id, schema_version: 1, data}` envelope. `data` is a closed object with required
 `action: "propose"|"apply"` and optional `name`, `target_id`, `configuration` and `proposal`.
 `name` and `target_id`, when supplied, are nonblank strings. `configuration` is
-`concorde-capability-configuration@1` with `{integration: "codex"|"claude", enforcement: "native"}`
-and the optional `model`, `reasoning_effort` and `agents` selection in its data. Only native enforcement is
-admitted: the distributed launchers supply no outer-sandbox attestation, so a configuration naming
-any other enforcement is rejected here instead of being accepted and failing at the first Agent
-launch.
+`concorde-capability-configuration@1`, whose data is the Pi worker model selection: an optional
+default `model` (Pi's `provider/id`), `thinking` level and `timeout_seconds`, and optional `workers`
+overrides keyed by a worker or a worker child. A key naming no worker or child, a child timeout, a
+nonpositive timeout or a model that is not a Pi `provider/id` is rejected here instead of failing at
+the first worker launch.
 `proposal` is `concorde-project-proposal@1` with exactly `{action: "initialize", base_digest: sha256|null,
 files: list[{path, before_digest: sha256|null, content: str}]}` in its data. File paths must be
 canonical project-relative paths and distinct; content may be empty. These nested records reject
@@ -162,7 +162,7 @@ failures are failed, with no successful output.
 ## Protocol 5 initialization
 
 New registries use schema 4 with explicit empty `references` on the initial Module; the stub's
-document metadata names its single `owner`. Initialization pins Protocol 5.4.0/Profile 12 and
+document metadata names its single `owner`. Initialization pins Protocol 5.5.0/Profile 12 and
 the exact manifest digest of the Protocol copy the installer placed under `.concorde/protocol/`;
 it creates no Protocol file itself and fails with `not_installed` when that copy is absent. Later
 installations update the copy but never the binding, which the developer moves explicitly with

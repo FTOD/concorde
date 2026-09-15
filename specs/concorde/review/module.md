@@ -25,7 +25,7 @@ Review SHALL return independent findings bound to its exact admitted task and cu
 - GIVEN an initialized project without a managed development change or selected Reflection record
 - AND a task with review_mode spec or code and optional target/focus routing hints
 - WHEN the user invokes the public `concorde-review` Skill or its Studio entry
-- THEN a Spec-only coordinator selects one owning Module and a separate fresh reviewer receives its complete contract and, in code mode, only its admitted implementation files and scoped changes
+- THEN a Spec-only router selects one owning Module and a separate fresh reviewer receives its complete contract and, in code mode, only its admitted implementation files and scoped changes
 - AND neither Agent receives write, network or credential authority
 - AND the host returns typed review coverage, findings, gaps and completion status, persisting the review report without creating a development change or changing project Specs or implementation
 - AND an unmanaged Git checkout uses HEAD as the scoped change baseline

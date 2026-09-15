@@ -14,9 +14,9 @@ Query and Routing answers questions from explicitly selected complete Module con
 
 ## Requirements
 
-### req.development.global-discovery — Coordinator discovers complete Module contexts
+### req.development.global-discovery — Discovery workers discover complete Module contexts
 
-A Capability with discover context selection SHALL use its coordinator to discover complete Module Spec contexts.
+A Capability with discover context selection SHALL use a discovery-phase worker to discover complete Module Spec contexts.
 
 ### req.development.routing-hint-not-context — Routing hints only steer selection
 
@@ -32,7 +32,7 @@ A target or focus hint SHALL NOT itself grant context or replace explicit resolu
 
 - GIVEN a question with an optional target or focus routing hint
 - WHEN `concorde-main` runs with `action: ask`
-- THEN the host deterministically resolves the explicitly selected Modules' complete Spec contexts, indexes each selected Module's original documents once and grants them read-only to the coordinator, and the coordinator opens them on demand and returns a direct answer
+- THEN the host deterministically resolves the explicitly selected Modules' complete Spec contexts, indexes each selected Module's original documents once and grants them read-only to the answerer, and the answerer opens them on demand and returns a direct answer
 - AND the response contains no authored project file changes
 
 See [routing hints only steer selection](#req.development.routing-hint-not-context) and
@@ -40,15 +40,15 @@ See [routing hints only steer selection](#req.development.routing-hint-not-conte
 
 ### scenario.development.answer-gap — Missing promise reported as a Spec gap
 
-- GIVEN the coordinator's selected complete Module contexts do not contain a promise the question needs
-- WHEN the coordinator would otherwise have to guess or consult an unselected source
+- GIVEN the answerer's selected complete Module contexts do not contain a promise the question needs
+- WHEN the answerer would otherwise have to guess or consult an unselected source
 - THEN the response reports a Spec gap naming the blocked question, the owning Module and the current context identity
-- AND the coordinator does not read implementation files or search code to supply the missing meaning
+- AND the answerer does not read implementation files or search code to supply the missing meaning
 
 ### scenario.development.discovery-limit — Discovery stops at its declared limit
 
 - GIVEN repeated context expansion has not resolved the question
-- WHEN the coordinator's bounded expansion-step limit is reached
+- WHEN a discovery worker's bounded expansion-step limit is reached
 - THEN the host returns the `context_limit` outcome instead of expanding context further
 
 
@@ -83,7 +83,7 @@ The detailed contract is [Complete-context question and route](query-and-routing
     "title": "Harness",
     "kind": "used module",
     "target_id": "module.harness",
-    "responsibility": "Freeze explicitly selected complete contexts and run fresh isolated coordinator ask or route invocations without code contents."
+    "responsibility": "Freeze explicitly selected complete contexts and run fresh isolated discovery-worker (answerer, router or topology-designer) invocations without code contents."
   },
   {
     "id": "entity.query-routing.spec",
@@ -106,13 +106,13 @@ The detailed contract is [Complete-context question and route](query-and-routing
 ```mermaid
 flowchart TB
     accTitle: Query and Routing entities and dependencies
-    accDescr: Query and Routing resolves explicit complete Module contexts through Spec, binds fresh coordinators through Harness and returns admitted answers routes or stopping outcomes through the host.
+    accDescr: Query and Routing resolves explicit complete Module contexts through Spec, binds fresh discovery workers through Harness and returns admitted answers routes or stopping outcomes through the host.
     e0["Query and Routing adapter"]
     e1["Development"]
     e2["Harness"]
     e3["Spec"]
     e0 -->|admits discovery and returns typed outcomes through| e1
-    e0 -->|binds isolated coordinators through| e2
+    e0 -->|binds isolated discovery workers through| e2
     e0 -->|resolves complete discovery contexts through| e3
     domain_selection["Admitted selection"]
     e0 -->|expands only explicitly admitted| domain_selection
@@ -132,8 +132,8 @@ flowchart TB
   },
   {
     "target_id": "module.harness",
-    "responsibility": "Freeze explicitly selected complete contexts and run fresh isolated coordinator ask or route invocations without code contents.",
-    "selection_condition": "At the initial coordinator call and each admitted discovery expansion.",
+    "responsibility": "Freeze explicitly selected complete contexts and run fresh isolated discovery-worker (answerer, router or topology-designer) invocations without code contents.",
+    "selection_condition": "At the initial discovery-worker call and each admitted discovery expansion.",
     "relied_upon_promises": [
       "[Explicit complete-context discovery](../harness/context.md#global-spec-context-assembly); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant."
     ]

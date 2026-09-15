@@ -43,13 +43,13 @@ the invocation input: stage artifacts and, for a review, the typed changes to th
 own Spec documents or implementation files since the baseline revision. Those changes are derived
 from files inside the phase's visible scope, add no file to it and replace no granted file. A
 kind may be empty for a phase, but the frozen closure is never empty. Planner and task-author inputs
-contain no implementation file contents. A global coordinator may reason across explicitly selected
+contain no implementation file contents. Global discovery workers may reason across explicitly selected
 complete Module Spec contexts for questions, routing and topology design. The host deterministically
 resolves their registered documents, grants each source once as a read-only file listed in the
 index, and preserves unique ownership, per-Module inclusion provenance and source byte digests. Questions are answered directly from these original
 sources; additional Module contexts require explicit selection. For mutations, each selected worker
 is a fresh invocation with only its own complete Module context. Routing metadata is an explicit
-input, not permission to inspect implementation. Coordinator discovery never loads implementation
+input, not permission to inspect implementation. Discovery never loads implementation
 files.
 
 Spec authors, assessors, planners and task authors use only the selected Module's complete
@@ -58,9 +58,9 @@ They MUST NOT read source code to supply missing Module meaning. Only the
 code-writing phase receives the complete implementation context; code review receives its separately
 declared read-only subset. Agent instructions, the Protocol rule bundle and Skills are not context:
 instructions belong to the Agent definition, and a Skill is the installed projection of a public
-Capability for the developer's own agent runtime. The Protocol rule bundle reaches an invocation
-the same way as Spec documents: its rendered files are listed in the index with their digests and
-granted read-only, never embedded.
+Capability for the developer's own agent runtime. Every worker's system prompt is its common worker
+rules, then its own role instructions, then the Protocol rule bundle; the bundle's files are also
+listed in the index with their digests and readable at their paths.
 
 Context identities cover ownership, explicit references, inclusion reasons and document bytes,
 Protocol and instructions, declared stage artifacts, declared listing entries and lifecycle

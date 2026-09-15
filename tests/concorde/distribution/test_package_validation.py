@@ -29,13 +29,13 @@ def external_name(name):
 '''
 
 VALID_ALPHA = '''from concorde.spec import contract_shapes as shapes
-from agents import coordinator
+from agents import planner
 from . import external_name
 
 PUBLIC = False
 CONTEXT_SELECTION = "bound"
 DETERMINISTIC = False
-AGENTS = (coordinator.AGENT,)
+AGENTS = (planner.AGENT,)
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 REQUEST = shapes.obj({})
@@ -70,16 +70,40 @@ def external_name(name):
     return "concorde-" + name.replace("_", "-")
 '''
 
-VALID_AGENT_ALPHA_MODULE = '''from concorde.harness.agent_model import Agent, Constraints
+VALID_AGENT_ALPHA_MODULE = '''from concorde.harness.agent_model import Agent, Child, Contract
 from concorde.harness.effects import EffectDeclaration
-from concorde.harness.harness import SPEC_CAPSULE
 
 AGENT = Agent(
     name="alpha",
     spec="agents/alpha/spec.md",
-    harness=SPEC_CAPSULE,
-    constraints=Constraints(effects=EffectDeclaration(("spec-context",), (), False, "none")),
+    workspace="capsule",
+    contract=Contract(
+        phase="plan",
+        context="concorde-agent-stage-context",
+        result="concorde-agent-stage-result",
+        effects=EffectDeclaration(("spec-context",), (), False, "none"),
+        output_fields=("plan",),
+    ),
+    tools=("read", "grep", "find", "ls"),
+    children=(),
 )
+'''
+
+VALID_AGENT_ALPHA_MODULE_WITH_CHILD = VALID_AGENT_ALPHA_MODULE.replace(
+    "children=(),", 'children=(Child("scout", "agents/alpha/children/scout.md"),),'
+)
+
+VALID_CHILD_SCOUT = '''---
+name: scout
+description: Searches the granted read-only files for one focused question.
+tools: read, grep
+systemPromptMode: replace
+inheritProjectContext: false
+inheritGlobalContext: false
+inheritSkills: false
+---
+
+You are the scout child of a fixture worker. Search only the granted files.
 '''
 
 VALID_AGENT_ALPHA_SPEC = '''# concorde-alpha
@@ -118,6 +142,7 @@ def _agents_package(
     init_source: str = VALID_AGENT_INIT,
     module_source: str = VALID_AGENT_ALPHA_MODULE,
     spec_source: str = VALID_AGENT_ALPHA_SPEC,
+    children: dict[str, str] | None = None,
 ) -> None:
     package = root / "agents"
     package.mkdir(parents=True, exist_ok=True)
@@ -126,6 +151,11 @@ def _agents_package(
     alpha.mkdir(parents=True, exist_ok=True)
     (alpha / "__init__.py").write_text(module_source, encoding="utf-8")
     (alpha / "spec.md").write_text(spec_source, encoding="utf-8")
+    if children:
+        children_dir = alpha / "children"
+        children_dir.mkdir(parents=True, exist_ok=True)
+        for name, content in children.items():
+            (children_dir / f"{name}.md").write_text(content, encoding="utf-8")
 
 
 class PromptRuleTests(unittest.TestCase):
@@ -165,7 +195,7 @@ class PromptRuleTests(unittest.TestCase):
         self.assertTrue(any(f.rule_id == "CONCORDE-PROMPT-NAME-001" for f in findings), findings)
 
     def test_name_lint_catches_an_unknown_token_in_an_agent_spec(self) -> None:
-        edited = self.root / "agents/coordinator/spec.md"
+        edited = self.root / "agents/planner/spec.md"
         edited.write_text(edited.read_text(encoding="utf-8") + "\nSee concorde-not-a-real-identity.\n", encoding="utf-8")
         findings = package_validation._validate_prompts(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-PROMPT-NAME-001" for f in findings), findings)
@@ -236,7 +266,7 @@ class CapabilityModuleRuleTests(unittest.TestCase):
         self.assertTrue(any("cyclic" in f.message for f in findings), findings)
 
     def test_agents_must_be_agent_objects(self) -> None:
-        broken = VALID_ALPHA.replace("AGENTS = (coordinator.AGENT,)", 'AGENTS = ("not-an-agent",)')
+        broken = VALID_ALPHA.replace("AGENTS = (planner.AGENT,)", 'AGENTS = ("not-an-agent",)')
         _capabilities_package(self.root, alpha_source=broken)
         findings = package_validation._validate_capability_modules(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-AGENTS-001" for f in findings), findings)
@@ -285,10 +315,10 @@ class CapabilityModuleRuleTests(unittest.TestCase):
 
     @verifies("scenario.distribution.capability-determinism")
     def test_deterministic_matches_direct_model_calls_from_direct_model_calls(self) -> None:
-        for agents in ("()", "(coordinator.AGENT,)"):
+        for agents in ("()", "(planner.AGENT,)"):
             for deterministic in (True, False):
                 with self.subTest(agents=agents, deterministic=deterministic):
-                    source = VALID_ALPHA.replace("AGENTS = (coordinator.AGENT,)", f"AGENTS = {agents}")
+                    source = VALID_ALPHA.replace("AGENTS = (planner.AGENT,)", f"AGENTS = {agents}")
                     source = source.replace("DETERMINISTIC = False", f"DETERMINISTIC = {deterministic}")
                     _capabilities_package(self.root, alpha_source=source)
                     findings = package_validation._validate_capability_modules(self.root)
@@ -298,7 +328,7 @@ class CapabilityModuleRuleTests(unittest.TestCase):
     @verifies("scenario.distribution.capability-determinism")
     def test_transitive_model_calls_do_not_trust_a_childs_false_deterministic_claim(self) -> None:
         init = VALID_CAPABILITY_INIT.replace('("alpha",)', '("alpha", "beta", "gamma")')
-        pure = VALID_ALPHA.replace("AGENTS = (coordinator.AGENT,)", "AGENTS = ()")
+        pure = VALID_ALPHA.replace("AGENTS = (planner.AGENT,)", "AGENTS = ()")
         pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
         _capabilities_package(self.root, alpha_source=pure.replace("USES = ()", 'USES = ("beta",)'), init_source=init)
         (self.root / "capabilities/beta.py").write_text(pure.replace("USES = ()", 'USES = ("gamma",)'), encoding="utf-8")
@@ -313,7 +343,7 @@ class CapabilityModuleRuleTests(unittest.TestCase):
     @verifies("scenario.distribution.capability-determinism")
     def test_deterministic_composition_without_agents_is_valid(self) -> None:
         init = VALID_CAPABILITY_INIT.replace('("alpha",)', '("alpha", "beta")')
-        pure = VALID_ALPHA.replace("AGENTS = (coordinator.AGENT,)", "AGENTS = ()")
+        pure = VALID_ALPHA.replace("AGENTS = (planner.AGENT,)", "AGENTS = ()")
         pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
         _capabilities_package(self.root, alpha_source=pure.replace("USES = ()", 'USES = ("beta",)'), init_source=init)
         (self.root / "capabilities/beta.py").write_text(pure, encoding="utf-8")
@@ -321,7 +351,7 @@ class CapabilityModuleRuleTests(unittest.TestCase):
 
     @verifies("scenario.distribution.capability-determinism")
     def test_host_routing_counts_as_a_model_call(self) -> None:
-        pure = VALID_ALPHA.replace("AGENTS = (coordinator.AGENT,)", "AGENTS = ()")
+        pure = VALID_ALPHA.replace("AGENTS = (planner.AGENT,)", "AGENTS = ()")
         pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
         _capabilities_package(self.root, alpha_source=pure)
         pure = pure.replace('CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "discover"')
@@ -339,7 +369,7 @@ class CapabilityModuleRuleTests(unittest.TestCase):
 
 
 class AgentRuleTests(unittest.TestCase):
-    """New rules: Agent inventory, Agent Spec structure, Harness binding."""
+    """New rules: Agent inventory, Agent Spec structure, worker profile and child definitions."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -393,59 +423,58 @@ class AgentRuleTests(unittest.TestCase):
         findings = package_validation._validate_agents(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-SPEC-001" for f in findings), findings)
 
-    def test_unknown_harness_is_reported(self) -> None:
+    def test_network_effect_is_an_invalid_profile(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
-            "from concorde.harness.harness import SPEC_CAPSULE",
-            "from concorde.harness.effects import EffectDeclaration as _E\n"
-            "from concorde.harness.harness import LoopPolicy, harness\n"
-            'SPEC_CAPSULE = harness(name="bogus-harness", workspace="capsule", '
-            'effects=_E(("spec-context",), (), False, "none"), contexts=(), results=(), loop=LoopPolicy(60))',
+            'effects=EffectDeclaration(("spec-context",), (), False, "none"),',
+            'effects=EffectDeclaration(("spec-context",), (), True, "none"),',
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_agents(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-HARNESS-001" for f in findings), findings)
+        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings)
 
-    def test_unknown_capability_reference_is_reported(self) -> None:
+    def test_write_effect_outside_read_effect_is_an_invalid_profile(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
-            'constraints=Constraints(effects=EffectDeclaration(("spec-context",), (), False, "none")),',
-            'constraints=Constraints(effects=EffectDeclaration(("spec-context",), (), False, "none"), '
-            'capabilities=("concorde-not-real",)),',
+            'effects=EffectDeclaration(("spec-context",), (), False, "none"),',
+            'effects=EffectDeclaration(("spec-context",), ("implementation",), False, "none"),',
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_agents(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-HARNESS-001" for f in findings), findings)
+        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings)
 
-    def test_context_outside_harness_is_reported(self) -> None:
+    def test_non_positive_timeout_is_an_invalid_profile(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
-            'constraints=Constraints(effects=EffectDeclaration(("spec-context",), (), False, "none")),',
-            'constraints=Constraints(effects=EffectDeclaration(("spec-context",), (), False, "none"), '
-            'contexts=("concorde-main-stage-context",)),',
+            "children=(),", "children=(),\n    timeout_seconds=0,",
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_agents(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-HARNESS-001" for f in findings), findings)
+        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings)
 
-    def test_widened_effects_is_reported(self) -> None:
-        broken_module = VALID_AGENT_ALPHA_MODULE.replace(
-            'constraints=Constraints(effects=EffectDeclaration(("spec-context",), (), False, "none")),',
-            'constraints=Constraints(effects=EffectDeclaration(("spec-context", "implementation"), (), False, "none")),',
-        )
-        _agents_package(self.root, module_source=broken_module)
+    def test_declared_child_without_a_file_is_reported(self) -> None:
+        _agents_package(self.root, module_source=VALID_AGENT_ALPHA_MODULE_WITH_CHILD)
         findings = package_validation._validate_agents(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-HARNESS-001" for f in findings), findings)
+        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-CHILD-001" for f in findings), findings)
 
-    def test_widened_limits_is_reported(self) -> None:
-        broken_module = VALID_AGENT_ALPHA_MODULE.replace(
-            'from concorde.harness.harness import SPEC_CAPSULE',
-            'from concorde.harness.harness import LoopPolicy, SPEC_CAPSULE',
-        ).replace(
-            'constraints=Constraints(effects=EffectDeclaration(("spec-context",), (), False, "none")),',
-            'constraints=Constraints(effects=EffectDeclaration(("spec-context",), (), False, "none"), '
-            'limits=LoopPolicy(999999)),',
-        )
-        _agents_package(self.root, module_source=broken_module)
+    def test_undeclared_child_file_is_reported(self) -> None:
+        _agents_package(self.root, children={"scout": VALID_CHILD_SCOUT})
         findings = package_validation._validate_agents(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-HARNESS-001" for f in findings), findings)
+        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-CHILD-001" for f in findings), findings)
+
+    def test_matching_child_has_no_findings(self) -> None:
+        _agents_package(
+            self.root, module_source=VALID_AGENT_ALPHA_MODULE_WITH_CHILD, children={"scout": VALID_CHILD_SCOUT}
+        )
+        findings = package_validation._validate_agents(self.root)
+        self.assertEqual([], findings)
+
+    def test_invalid_child_definition_is_reported(self) -> None:
+        broken_child = VALID_CHILD_SCOUT.replace(
+            "description: Searches the granted read-only files for one focused question.\n", ""
+        )
+        _agents_package(
+            self.root, module_source=VALID_AGENT_ALPHA_MODULE_WITH_CHILD, children={"scout": broken_child}
+        )
+        findings = package_validation._validate_agents(self.root)
+        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-CHILD-001" for f in findings), findings)
 
 
 class ContractRuleTests(unittest.TestCase):
@@ -527,7 +556,7 @@ class BuildOutputRuleTests(unittest.TestCase):
     @verifies("scenario.distribution.build-check")
     def test_drifted_output_is_reported(self) -> None:
         write_build(self.root, "all")
-        target = self.root / "generated/agents/coordinator.md"
+        target = self.root / "generated/agents/planner.md"
         target.write_text(target.read_text(encoding="utf-8") + "\ntampered\n", encoding="utf-8")
         findings = package_validation._validate_build_outputs(self.root)
         self.assertTrue(any(f.rule_id == "CONCORDE-BUILD-DRIFT-001" for f in findings), findings)
@@ -677,6 +706,15 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
         self.assertTrue(any("unknown capability" in f.message for f in findings), findings)
 
 
+_ALPHA_AGENT_ENTRY = {
+    "id": "alpha",
+    "workspace": "capsule",
+    "capabilities": [],
+    "tools": ["find", "grep", "ls", "read"],
+    "children": [],
+}
+
+
 class SpecAlignmentAgentsRuleTests(unittest.TestCase):
     """New rule: exactly one registered concorde-agents block, equal to the code inventory."""
 
@@ -695,7 +733,7 @@ class SpecAlignmentAgentsRuleTests(unittest.TestCase):
 
     def test_two_agents_blocks_is_reported(self) -> None:
         _agents_package(self.root)
-        block = '```concorde-agents\n[{"id": "alpha", "harness": "spec-capsule", "capabilities": [], "modes": []}]\n```'
+        block = "```concorde-agents\n" + json.dumps([_ALPHA_AGENT_ENTRY]) + "\n```"
         _document(self.root, "specs/one.md", "document.one", block)
         _document(self.root, "specs/two.md", "document.two", block)
         _registry(self.root, documents=["specs/one.md", "specs/two.md"])
@@ -713,8 +751,7 @@ class SpecAlignmentAgentsRuleTests(unittest.TestCase):
 
     def test_matching_agents_block_has_no_findings(self) -> None:
         _agents_package(self.root)
-        block = "```concorde-agents\n" + json.dumps(
-            [{"id": "alpha", "harness": "spec-capsule", "capabilities": [], "modes": []}]) + "\n```"
+        block = "```concorde-agents\n" + json.dumps([_ALPHA_AGENT_ENTRY]) + "\n```"
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_agents_block(
@@ -722,18 +759,17 @@ class SpecAlignmentAgentsRuleTests(unittest.TestCase):
         self.assertEqual([], findings)
 
     @verifies("scenario.distribution.build-check")
-    def test_spec_mode_inventory_must_match_the_agent_definition(self) -> None:
+    def test_spec_tools_inventory_must_match_the_agent_definition(self) -> None:
         _agents_package(self.root)
-        block = "```concorde-agents\n" + json.dumps([
-            {"id": "alpha", "harness": "spec-capsule", "capabilities": [], "modes": ["invented"]}
-        ]) + "\n```"
+        entry = {**_ALPHA_AGENT_ENTRY, "tools": ["invented"]}
+        block = "```concorde-agents\n" + json.dumps([entry]) + "\n```"
         findings = package_validation._validate_spec_agents_block(self.root, {"specs/one.md": block})
         self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-AGENTS-001" for f in findings), findings)
 
-    def test_mismatched_harness_is_reported(self) -> None:
+    def test_mismatched_workspace_is_reported(self) -> None:
         _agents_package(self.root)
-        block = "```concorde-agents\n" + json.dumps(
-            [{"id": "alpha", "harness": "discovery-capsule", "capabilities": [], "modes": []}]) + "\n```"
+        entry = {**_ALPHA_AGENT_ENTRY, "workspace": "project"}
+        block = "```concorde-agents\n" + json.dumps([entry]) + "\n```"
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_agents_block(
@@ -751,8 +787,8 @@ class SpecAlignmentAgentsRuleTests(unittest.TestCase):
     def test_extra_agent_entry_is_reported(self) -> None:
         _agents_package(self.root)
         block = "```concorde-agents\n" + json.dumps([
-            {"id": "alpha", "harness": "spec-capsule", "capabilities": [], "modes": []},
-            {"id": "ghost", "harness": "spec-capsule", "capabilities": [], "modes": []},
+            _ALPHA_AGENT_ENTRY,
+            {**_ALPHA_AGENT_ENTRY, "id": "ghost"},
         ]) + "\n```"
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])

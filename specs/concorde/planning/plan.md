@@ -19,7 +19,7 @@ where required. It cannot reselect context or forge saved artifacts. Spec contex
 file names are visible and implementation contents remain excluded from non-code phases.
 
 `plan` first obtains the separate [assessment](assessment.md). Only a sufficient result admits a
-fresh spec-engineer plan invocation. Its optional concorde-plan-artifact is an explicitly admitted
+fresh planner invocation. Its optional concorde-plan-artifact is an explicitly admitted
 prior plan, not a predecessor conversation. The accepted output is a nonempty plan bound to the
 selected contract revision and intent. The host stores the target plan and returns artifact references
 in concorde-plan-response@1; the worker has no direct project writes. No task list, implementation,
@@ -41,8 +41,8 @@ accepted plan, its Spec digest and intent.
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
-| `assess_context` | The deterministic dependency-declaration check, then one spec-engineer `context-solve` invocation. | Spec context, task | sufficiency or gaps |
-| `author_plan` | One spec-engineer `plan` invocation with an optional prior plan artifact. | Spec context, task, prior plan | plan |
+| `assess_context` | The deterministic dependency-declaration check, then one context-assessor invocation. | Spec context, task | sufficiency or gaps |
+| `author_plan` | One planner invocation with an optional prior plan artifact. | Spec context, task, prior plan | plan |
 | `persist_plan` | Deterministic: a nonempty plan replaces the target's plan and clears dependent tasks and coordination. | plan, candidate | plan artifact, target record |
 
 ```mermaid

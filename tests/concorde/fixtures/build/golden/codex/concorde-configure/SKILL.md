@@ -1,6 +1,6 @@
 ---
 name: concorde-configure
-description: "Capability: apply the initialized integration and enforcement configuration; with accept_protocol, rebind the project to the installed Protocol copy."
+description: "Capability: apply the Pi worker model selection (model, thinking level, timeout and per-worker overrides); with accept_protocol, rebind the project to the installed Protocol copy."
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
@@ -98,58 +98,47 @@ This complete schema is the invocation's input field. It does not grant project 
     "concorde-capability-configuration": {
       "type": "object",
       "properties": {
-        "integration": {
-          "enum": [
-            "codex",
-            "claude"
-          ]
-        },
         "model": {
           "type": "string",
           "minLength": 1
         },
-        "reasoning_effort": {
+        "thinking": {
           "enum": [
+            "off",
             "minimal",
             "low",
             "medium",
             "high",
             "xhigh",
-            "max",
-            "ultra"
+            "max"
           ]
         },
-        "enforcement": {
-          "enum": [
-            "native"
-          ]
+        "timeout_seconds": {
+          "type": "integer"
         },
-        "agents": {
+        "workers": {
           "type": "object",
           "properties": {},
           "additionalProperties": {
             "type": "object",
             "properties": {
-              "integration": {
-                "enum": [
-                  "codex",
-                  "claude"
-                ]
-              },
               "model": {
                 "type": "string",
                 "minLength": 1
               },
-              "reasoning_effort": {
+              "thinking": {
                 "enum": [
+                  "off",
                   "minimal",
                   "low",
                   "medium",
                   "high",
                   "xhigh",
-                  "max",
-                  "ultra"
+                  "max"
                 ]
+              },
+              "timeout_seconds": {
+                "type": "integer"
               }
             },
             "required": [],
@@ -157,10 +146,7 @@ This complete schema is the invocation's input field. It does not grant project 
           }
         }
       },
-      "required": [
-        "integration",
-        "enforcement"
-      ],
+      "required": [],
       "additionalProperties": false
     }
   }

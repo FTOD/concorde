@@ -1,17 +1,21 @@
-"""Consumer fixture and explicit model-process double for the Profile 12 boundary."""
+"""Consumer fixture and explicit Pi worker double for the Profile 12 boundary."""
 import json
 import re
 import tempfile
 import hashlib
-import subprocess
 from pathlib import Path
 from concorde.spec.typed_data import typed
-from concorde.harness.agent_executor import AgentProcessExecutor
+from concorde.harness.agent_model import agent_definition, external_agent_name
+from concorde.harness.pi_rpc import PiRun
+from concorde.harness.pi_worker import WorkerResult
+from concorde.harness.worker_executor import WorkerExecutor
 from concorde.spec.initialize import project_proposal, apply_project_proposal, empty_target
 from concorde.distribution.project_defaults import install_project_defaults
 
 PACKAGE = Path(__file__).resolve().parents[3]
-CONFIGURATION = typed('concorde-capability-configuration', {'integration':'claude','enforcement':'native'})
+CONFIGURATION = typed('concorde-capability-configuration', {'model':'openai-codex/gpt-6-astra','thinking':'medium'})
+USAGE = {'input_tokens':1200,'cached_input_tokens':200,'output_tokens':300,'total_tokens':1500,
+         'cost_usd':0.01,'turns':2,'wall_seconds':0.05}
 
 def update_document_declaration(root, path, **updates):
     document=root/path;text=document.read_text()
@@ -193,38 +197,30 @@ def project(root):
 
 
 class ModelProcessDouble:
+    """Stands in for the Pi worker process only: the worker executor, its preflight, the contract
+    checks and every host admission stay real. ``run`` has the Pi worker runtime's signature."""
     def __init__(self, callback=None):
         self.calls=[]; self.callback=callback
-        self.runtime_directory=tempfile.TemporaryDirectory()
-        self.runtime_executable=Path(self.runtime_directory.name)/"codex"
-        self.runtime_executable.write_bytes(b"\x7fELFfixture-model-process")
-        self.runtime_executable.chmod(0o755)
-        self.executor=AgentProcessExecutor(runner=self.run, version_probe=lambda *args:'test-client 4.2', runtime_bootstrap_resolver=self.bootstrap)
-    def bootstrap(self,integration,*args):
-        if integration!='codex':return ()
-        from concorde.harness.permissions import runtime_bootstrap_file
-        path=self.runtime_executable;info=path.stat()
-        return (runtime_bootstrap_file(path=str(path),sha256='sha256:'+hashlib.sha256(path.read_bytes()).hexdigest(),size=info.st_size,mode=info.st_mode & 0o777,owner=info.st_uid),)
-    def run(self, argv, *, cwd, env, input_text, timeout=None):
-        schema=json.loads(argv[argv.index('--json-schema')+1]) if '--json-schema' in argv else json.loads(Path(argv[argv.index('--output-schema')+1]).read_text()); properties=schema['properties']
-        stage=properties['stage']['const']
-        markers=('Context index and task:\n',)
-        marker=next(item for item in markers if item in input_text)
-        value=json.JSONDecoder().raw_decode(input_text.split(marker,1)[1])[0]
+        self.executor=WorkerExecutor(PACKAGE, runtime=self.run)
+    def result(self, data):
+        return WorkerResult(value=data, run=PiRun(exit_code=0), usage=dict(USAGE))
+    def run(self, launch, *, checks=None):
+        agent=agent_definition(launch.worker)
+        stage=agent.contract.phase; capability=external_agent_name(agent.name); cwd=launch.workspace
+        value=json.loads(launch.message)
         snapshot=(value['data']['snapshot']['data'] if value['type_id'] in {
             'concorde-main-stage-context','concorde-agent-stage-context','concorde-review-stage-context'} else value['data'])
-        capability=properties['role']['const']
-        # The index lists every granted Spec document and Protocol file; a real agent opens them from
-        # its workspace, so the double proves each one is present there with the frozen bytes.
-        receipt=json.JSONDecoder().raw_decode(input_text.split('Host workspace grant:\n',1)[1])[0] if 'Host workspace grant:\n' in input_text else json.JSONDecoder().raw_decode(input_text.split('Capability workspace receipt (trusted host result):\n',1)[1])[0]
-        role_paths=[path for paths in receipt['role_paths'].values() for path in paths]
+        # The index lists every granted Spec document and Protocol file; a real worker opens them from
+        # its workspace, so the double proves each one is granted and present there with the frozen bytes.
         index={item['path']:item['digest'] for item in (*snapshot['protocol'],
             *(snapshot['spec_resolution']['sources'] if 'spec_resolution' in snapshot else snapshot['documents']))}
         for path,expected in index.items():
             granted=Path(cwd)/path
-            if path not in role_paths or not granted.is_file() or 'sha256:'+hashlib.sha256(granted.read_bytes()).hexdigest()!=expected:
+            if path not in launch.read_paths or not granted.is_file() or 'sha256:'+hashlib.sha256(granted.read_bytes()).hexdigest()!=expected:
                 raise AssertionError(f'granted context file missing, ungranted or changed in the workspace: {path}')
-        self.calls.append({'stage':stage,'capability':capability,'snapshot':snapshot,'cwd':Path(cwd),'prompt':input_text,'argv':argv,'timeout':timeout,'granted':sorted(index)})
+        self.calls.append({'stage':stage,'capability':capability,'agent':agent.name,'snapshot':snapshot,'cwd':Path(cwd),
+            'prompt':launch.system_prompt+'\n'+launch.message,'launch':launch,'timeout':launch.timeout_seconds,
+            'granted':sorted(index),'checks':checks})
         if value['type_id']=='concorde-review-stage-context':
             review=value['data']['review']['data']
             self.calls[-1]['review']=review
@@ -233,12 +229,7 @@ class ModelProcessDouble:
                   'representative_tasks':[snapshot['task']],'findings':[],'gaps':[],
                   'answer':'Explicit process double completed; model effectiveness is not measured.'}
             if self.callback:self.callback(stage,snapshot,data,Path(cwd))
-            payload={key:item['const'] for key,item in properties.items() if 'const' in item}
-            payload.update(status='success',output='Explicit review-process double.',limitations='none',
-              gates=[{'name':'bounded-review','status':'passed','evidence':'Review process is substituted; host admission is real.'}],
-              domain_output=typed('concorde-review-stage-result',data))
-            stdout=json.dumps({'structured_output':payload}) if '--json-schema' in argv else '\n'.join(json.dumps(event) for event in [{'type':'item.completed','item':{'type':'agent_message','text':json.dumps(payload)}},{'type':'turn.completed'}])
-            return subprocess.CompletedProcess(argv,0,stdout,'')
+            return self.result(data)
         if value['type_id']=='concorde-topology-author-context':
             # Granted documents are read from the capsule, as a real author would; no body is inline.
             current={item['path']:(Path(cwd)/item['path']).read_text()
@@ -282,12 +273,7 @@ class ModelProcessDouble:
             data={'context_id':snapshot['context_id'],'target_id':target['id'],'outcome':'completed',
                   'answer':'Target-local Spec authored.','gaps':[],'documents':documents}
             if self.callback:self.callback(stage,snapshot,data,Path(cwd))
-            payload={key:item['const'] for key,item in properties.items() if 'const' in item}
-            payload.update(status='success',output='Explicit topology-author double.',limitations='none',
-              gates=[{'name':'bounded-topology-author','status':'passed','evidence':'Target-local author process is substituted; host validation is real.'}],
-              domain_output=typed('concorde-topology-author-result',data))
-            stdout=json.dumps({'structured_output':payload}) if '--json-schema' in argv else '\n'.join(json.dumps(event) for event in [{'type':'item.completed','item':{'type':'agent_message','text':json.dumps(payload)}},{'type':'turn.completed'}])
-            return subprocess.CompletedProcess(argv,0,stdout,'')
+            return self.result(data)
         if value['type_id']=='concorde-main-stage-context':
             data={'context_id':snapshot['context_id'],'outcome':'completed','answer':'Main answered from complete Spec contexts.',
                   'expand_targets':[],'routes':[],'gaps':[],'topology_design':None}
@@ -310,12 +296,7 @@ class ModelProcessDouble:
                 data['routes'] = [{k: v for k, v in route.items() if k in ('target_id', 'focus_id')}
                                   for route in data['routes']]
             if self.callback:self.callback(stage,snapshot,data,Path(cwd))
-            payload={key:item['const'] for key,item in properties.items() if 'const' in item}
-            payload.update(status='success',output='Explicit main-process double.',limitations='none',
-              gates=[{'name':'bounded-main-role','status':'passed','evidence':'Main process is substituted; discovery admission and host routing are real.'}],
-              domain_output=typed('concorde-main-stage-result',data))
-            stdout=json.dumps({'structured_output':payload}) if '--json-schema' in argv else '\n'.join(json.dumps(event) for event in [{'type':'item.completed','item':{'type':'agent_message','text':json.dumps(payload)}},{'type':'turn.completed'}])
-            return subprocess.CompletedProcess(argv,0,stdout,'')
+            return self.result(data)
         data={'context_id':snapshot['context_id'],'outcome':'completed','answer':'Bounded role completed.',
               'gaps':[],'documents':[],'plan':'','tasks':[]}
         if stage=='context-solve': data['outcome']='sufficient'
@@ -338,9 +319,4 @@ class ModelProcessDouble:
             task_input=snapshot['stage_inputs'][0]['data']
             data['tasks']=[{**task,'complete':True} for task in task_input['tasks']]
         if self.callback: self.callback(stage, snapshot, data, Path(cwd))
-        payload={key:item['const'] for key,item in properties.items() if 'const' in item}
-        payload.update(status='success',output='Explicit model-process double.',limitations='none',
-          gates=[{'name':'bounded-role','status':'passed','evidence':'Model process is substituted; host, checks and completion validation are real.'}],
-          domain_output=typed('concorde-agent-stage-result',data))
-        stdout=json.dumps({'structured_output':payload}) if '--json-schema' in argv else '\n'.join(json.dumps(event) for event in [{'type':'item.completed','item':{'type':'agent_message','text':json.dumps(payload)}},{'type':'turn.completed'}])
-        return subprocess.CompletedProcess(argv,0,stdout,'')
+        return self.result(data)

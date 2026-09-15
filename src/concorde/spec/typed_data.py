@@ -54,19 +54,20 @@ COMMIT = {**STRING, "pattern": r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$"}
 CAPABILITY_CONTRACTS: dict[str, tuple[str, str]] = {}
 
 
-# The model selection of an Agent launch; an absent value keeps the client's own default. The
-# effort enum is the union across integrations; harness.model_selection checks it per integration.
-_SELECTION = {"integration": {"enum": ["codex", "claude"]}, "model": STRING,
-              "reasoning_effort": {"enum": ["minimal", "low", "medium", "high", "xhigh", "max", "ultra"]}}
+# The Pi model selection of a worker: a provider/id model, a thinking level and a timeout. An absent
+# value keeps Pi's default model and thinking level and the worker profile's timeout.
+_SELECTION = {"model": STRING,
+              "thinking": {"enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"]},
+              "timeout_seconds": {"type": "integer"}}
 
 
 DATA_SCHEMAS = {
-    "concorde-capability-configuration": obj({**_SELECTION, "enforcement": {"enum": ["native"]},
-                                            # Overrides keyed by an Agent or by one Agent node
-                                            # (agent/mode); the most specific entry wins.
-                                            "agents": {"type": "object", "properties": {},
-                                                       "additionalProperties": obj(_SELECTION, tuple(_SELECTION))}},
-                                           ("model", "reasoning_effort", "agents")),
+    "concorde-capability-configuration": obj({**_SELECTION,
+                                            # Overrides keyed by a worker or by one of its
+                                            # children (worker/child); the most specific wins.
+                                            "workers": {"type": "object", "properties": {},
+                                                        "additionalProperties": obj(_SELECTION, tuple(_SELECTION))}},
+                                           (*_SELECTION, "workers")),
     "concorde-reflection-investigation-result": obj({
         "findings": array(obj({
             "reflection_id": REFLECTION_ID, "verified_commit": COMMIT,

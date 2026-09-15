@@ -65,7 +65,7 @@ class CapabilityModuleContractTests(unittest.TestCase):
         # identities and (for a composing capability) the external names of the capabilities it
         # composes. A module's own declared (AGENTS, USES) must reconstruct it exactly: the Agents
         # it launches itself, plus the external name of every capability it USES, plus (for a
-        # main-routed capability other than main itself) the coordinator Agent main already grants.
+        # main-routed capability other than main itself) the router Agent main already grants.
         modules = _modules()
         for name, module in modules.items():
             external = module.EXTERNAL_NAME
@@ -73,7 +73,7 @@ class CapabilityModuleContractTests(unittest.TestCase):
             used_names = {capabilities.external_name(used) for used in module.USES}
             expected = declared_agents | used_names
             if external in DISCOVERY_CAPABILITIES and external != "concorde-main":
-                expected = expected | {"concorde-coordinator"}
+                expected = expected | {"concorde-router"}
             self.assertEqual(set(dependencies(external)), expected, f"{external}: (AGENTS, USES) do not reconstruct dependencies()")
 
     def test_uses_matches_the_declared_composition(self):

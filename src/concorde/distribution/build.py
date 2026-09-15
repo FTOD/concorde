@@ -34,7 +34,7 @@ from .prompt_resolver import (
     resolve_role_prompt,
     resolve_skill_source,
 )
-from ..harness.agent_model import agent_definition, load_agents, resolve_agent, mode_definition
+from ..harness.agent_model import agent_definition, load_agents, resolve_agent
 
 if TYPE_CHECKING:
     from ..harness.agent_model import AgentBinding
@@ -74,8 +74,8 @@ INTEGRATION_ROOTS = {"claude": ".claude/skills", "codex": ".agents/skills"}
 AGENT_ROOTS: dict[str, str] = {
     agent.name.replace("_", "-"): agent.spec for agent in load_agents().values()
 }
-# Compatibility alias for one release: new code should read AGENT_ROOTS.
-ROLE_ROOTS: dict[str, str] = AGENT_ROOTS
+# The tier-one rules every worker follows, rendered before each worker's own role Spec.
+WORKER_RULES = "prompts/workers/common.md"
 
 SKILL_SOURCES: dict[str, str] = {name: f"skills/{name}/SKILL.md" for name in SKILL_NAMES}
 
@@ -137,23 +137,19 @@ def _skill_metadata(project_root: Path, name: str) -> dict[str, object]:
     return metadata
 
 
-def render_agent(project_root: Path, agent: str, mode: str | None = None) -> BuildOutput:
+def render_agent(project_root: Path, agent: str) -> BuildOutput:
+    """One worker's instructions: the common worker rules, then its own role Spec.
+
+    Its child definitions are sources too, so a changed child makes the build stale."""
     try:
-        resolved = resolve_agent_spec(project_root, AGENT_ROOTS[agent])
+        rules = resolve_role_prompt(project_root, WORKER_RULES)
+        role = resolve_agent_spec(project_root, AGENT_ROOTS[agent])
     except PromptResolverError as error:
         raise BuildError(f"agent {agent}: {error.rule_id}: {error}") from error
-    content = resolved.body.encode("utf-8")
-    if mode is not None:
-        selected = mode_definition(agent_definition(agent), mode)
-        task = resolve_agent_spec(project_root, selected.instructions)
-        return BuildOutput(path=f"generated/agents/{agent}/{mode}.md",
-            content=content + b"\n" + task.body.encode("utf-8"),
-            sources=tuple(sorted(set(resolved.sources + task.sources))))
-    return BuildOutput(path=f"generated/agents/{agent}.md", content=content, sources=resolved.sources)
-
-
-# Compatibility alias for one release: new code should call render_agent.
-render_role = render_agent
+    children = tuple(child.definition for child in agent_definition(agent).children)
+    content = (rules.body.rstrip("\n") + "\n\n" + role.body).encode("utf-8")
+    return BuildOutput(path=f"generated/agents/{agent}.md", content=content,
+                       sources=tuple(sorted({*rules.sources, *role.sources, *children})))
 
 
 def _skill_frontmatter(
@@ -346,7 +342,7 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
     all_sources: set[str] = set()
     for output in outputs:
         all_sources.update(output.sources)
-    # Mode/Agent declarations and capability wire metadata are authored build inputs too.
+    # Agent declarations and capability wire metadata are authored build inputs too.
     for directory in ("agents", "capabilities"):
         all_sources.update(path.relative_to(project_root).as_posix()
             for path in (project_root / directory).rglob("*.py") if path.is_file())
@@ -378,8 +374,6 @@ def build(project_root: str | Path, integration: str = "all", *, framework_prefi
     outputs: list[BuildOutput] = []
     for agent in sorted(AGENT_ROOTS):
         outputs.append(render_agent(root, agent))
-        for mode in agent_definition(agent).modes:
-            outputs.append(render_agent(root, agent, mode.name))
     for name in SKILL_NAMES:
         for one_integration in integrations:
             outputs.append(render_skill(root, name, one_integration, framework_prefix=framework_prefix))
@@ -389,7 +383,7 @@ def build(project_root: str | Path, integration: str = "all", *, framework_prefi
         outputs.append(render_protocol_kind(root, kind))
     outputs.append(render_protocol_schemas(root))
 
-    roots = (list(AGENT_ROOTS.values()) + [m.instructions for a in load_agents().values() for m in a.modes]
+    roots = (list(AGENT_ROOTS.values()) + [WORKER_RULES]
              + list(SKILL_SOURCES.values()) + ["prompts/protocol/principles.md"]
              + [f"prompts/protocol/kinds/{kind}.md" for kind in PROTOCOL_KINDS])
     unreachable = find_unreachable_prompts(root, roots)
@@ -586,15 +580,15 @@ def verify_fresh(project_root: str | Path) -> None:
             raise BuildError(f"build source changed since the last build: {relative}", "stale_build")
 
 
-def load_agent(package_root: str | Path, name: str, mode: str | None = None) -> SkillPrompt:
-    """Load one Agent's rendered instructions and complete binding from the build.
+def load_agent(package_root: str | Path, name: str) -> SkillPrompt:
+    """Load one worker's rendered instructions and complete binding from the build.
 
     Verifies freshness first (via ``resolve_agent``). ``name`` accepts either the external
     ``concorde-<hyphenated>`` identity used throughout the host (for example
-    ``concorde-spec-engineer``) or the bare hyphenated/underscored Agent name.
+    ``concorde-code-reviewer``) or the bare hyphenated/underscored Agent name.
     """
 
-    binding = resolve_agent(package_root, name, mode)
+    binding = resolve_agent(package_root, name)
     root = Path(package_root)
     try:
         body = (root / binding.instructions_path).read_text(encoding="utf-8")
@@ -607,11 +601,6 @@ def load_agent(package_root: str | Path, name: str, mode: str | None = None) -> 
         source_path=binding.spec_path,
         kind="skill",
         body=body,
-        effects=(mode_definition(agent_definition(binding.agent), mode).constraints.effects if mode
-                 else agent_definition(binding.agent).constraints.effects),
+        effects=agent_definition(binding.agent).contract.effects,
         binding=binding,
     )
-
-
-# Compatibility alias for one release: new code should call load_agent.
-load_role_prompt = load_agent

@@ -125,7 +125,7 @@ See [non-public capabilities have no installed Skill](#req.development.stage-no-
 
 ### scenario.development.execute-blocked-launch — Stale build or unenforceable permission blocks launch
 
-- GIVEN the recorded build manifest no longer matches its sources, or the compiled policy for the bound Agent cannot be enforced by the current integration
+- GIVEN the recorded build manifest no longer matches its sources, or the compiled policy for the bound Agent cannot be enforced by the Pi worker extension gate
 - WHEN the host would otherwise launch an Agent for an admitted request
 - THEN it blocks the request with `stale_build` or the applicable permission error before any process starts
 - AND any existing candidate is preserved unchanged
@@ -241,7 +241,7 @@ Two programs realize this Module's own code: the host adapter and the capability
     "title": "Harness",
     "kind": "used module",
     "target_id": "module.harness",
-    "responsibility": "Configure and run every Agent invocation: freeze context, bind definitions, compile permissions and execute natively; also isolate configured deterministic checks with OS-enforced project read-only access and external scratch."
+    "responsibility": "Configure and run every Agent invocation: freeze context, bind definitions, compile permissions and launch its Pi worker; also isolate configured deterministic checks with OS-enforced project read-only access and external scratch."
   },
   {
     "id": "entity.development.spec",
@@ -358,8 +358,9 @@ Two programs realize this Module's own code: the host adapter and the capability
 ### Relationships
 
 Every entry is a Capability with independent public exposure, context selection, determinism and
-composition properties. Discover context selection uses the coordinator to select complete Module
-contexts; bound context selection consumes an already selected Module without expanding it; none
+composition properties. Discover context selection uses a discovery-phase worker (answerer, router
+or topology-designer) to select complete Module contexts; bound context selection consumes an
+already selected Module without expanding it; none
 performs deterministic host work without Agent context selection. Public capabilities have Skills,
 while non-public capabilities require declared in-process composition. Development capabilities is the code inventory of capability contracts and composition. Distribution supplies installed Skills to the external developer runtime, which reads their instructions and submits requests. Development host admits, dispatches, coordinates and completes those requests, and prepares, evolves and finalizes the candidate worktree that carries one change's progress, gaps and evidence.
 

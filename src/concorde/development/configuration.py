@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 
 from ..spec.model import Finding, ToolResult
-from ..harness.model_selection import validate_agent_selections
+from ..harness.model_selection import validate_worker_selections
 from ..spec.typed_data import TypedDataError, checked_path, decode, validate_typed
 
 CONFIG_PATH = ".concorde/config.json"
@@ -17,9 +17,9 @@ CONFIG_TYPE = "concorde-capability-configuration"
 
 
 def admit_configuration(value, field: str = "/configuration") -> dict:
-    """The typed shape plus a runnable integration, model and effort for every Agent node."""
+    """The typed shape plus a Pi model selection every worker and child can run with."""
     configuration = validate_typed(value, CONFIG_TYPE, field)
-    validate_agent_selections(configuration, field)
+    validate_worker_selections(configuration, field)
     return configuration
 
 

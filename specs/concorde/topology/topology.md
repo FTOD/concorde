@@ -15,7 +15,7 @@ A second acceptance binds the exact prepared transaction before application.
 Human acceptance is a Flow control input tied to the exact design or prepared application. A
 rejection may select another design or authoring loop, but cannot authorize the rejected effects.
 The loop waits for a required decision and re-admits revised intent and current source identity.
-Coordinator and target-author invocations retain separate Agent definitions and Harness bindings.
+Topology-designer and target-author invocations retain separate Agent definitions and Harness bindings.
 
 ## Topology preparation Flow (`topology_flow`)
 
@@ -25,7 +25,7 @@ The accepted design supplies the candidate registry and one Spec task per new or
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `prepare_authors` | Deterministic: validates the accepted design against the current registry and orders the target-local authors so providers precede consumers. | accepted design, registry | ordered authors |
-| `author_module` | One spec-engineer `topology-author` invocation for the current author; its replacements join the candidate overlay. | Module descriptor, candidate context | candidate documents |
+| `author_module` | One topology-author invocation for the current author; its replacements join the candidate overlay. | Module descriptor, candidate context | candidate documents |
 | `validate_candidate` | Deterministic repository validation of the complete candidate overlay. | candidate registry, candidate documents | validated candidate |
 | `review_contexts` | Sequential work items: every affected old or candidate context receives an independent Spec compatibility review. | candidate, affected contexts | review evidence |
 | `persist_application` | Deterministic: the exact prepared application (registry and document bytes with before-digests) is written for the second acceptance. | validated candidate | prepared application |
@@ -90,7 +90,7 @@ flowchart TB
 
 No target author writes project files. A gap or unresolved consumer compatibility leaves the
 pre-design project unchanged. Prepared
-artifacts contain full proposed bytes, but only their path/digest enters coordinator cognition.
+artifacts contain full proposed bytes, but only their path/digest enters the topology designer's cognition.
 Application is one host transaction with current before-digests and final repository validation.
 
 

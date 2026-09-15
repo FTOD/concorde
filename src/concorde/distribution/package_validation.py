@@ -15,9 +15,8 @@ from pathlib import Path
 from ..spec.frontmatter import FrontMatterError, parse_document
 from ..spec.model import Finding
 from . import build
-from ..harness.agent_model import Agent
+from ..harness.agent_model import Agent, child_definitions, validate_agent
 from .build import BuildError, check_build, verify_fresh
-from ..harness.harness import HARNESSES
 from .prompt_resolver import (
     PromptResolverError,
     find_unreachable_prompts,
@@ -56,8 +55,7 @@ def _finding(rule: str, source: str, message: str, remediation: str, *, severity
 
 def _prompt_roots() -> tuple[str, ...]:
     return (tuple(build.SKILL_SOURCES.values()) + tuple(build.AGENT_ROOTS.values())
-            + tuple(m.instructions for a in build.load_agents().values() for m in a.modes)
-            + ("prompts/protocol/principles.md",)
+            + (build.WORKER_RULES, "prompts/protocol/principles.md")
             + tuple(f"prompts/protocol/kinds/{kind}.md" for kind in build.PROTOCOL_KINDS))
 
 
@@ -257,7 +255,7 @@ def _validate_capability_modules(root: Path) -> list[Finding]:
         if not all(isinstance(agent, Agent) for agent in module.AGENTS):
             findings.append(_finding("CONCORDE-CAPABILITY-AGENTS-001", source,
                 f"capability {name!r} AGENTS must contain only agent_model.Agent objects.",
-                "Reference Agents by their AGENT constant, e.g. coordinator.AGENT."))
+                "Reference Agents by their AGENT constant, e.g. router.AGENT."))
         expected_external = "concorde-" + name.replace("_", "-")
         if module.EXTERNAL_NAME != expected_external:
             findings.append(_finding("CONCORDE-CAPABILITY-EXTERNALNAME-001", source,
@@ -291,7 +289,7 @@ def _validate_capability_modules(root: Path) -> list[Finding]:
             return None
         visiting.add(name)
         children = [visit(used, (*chain, name)) for used in module.USES]
-        # Routing may call the coordinator even when it is not in this module's AGENTS.
+        # Routing may call the router even when it is not in this module's AGENTS.
         calls_model = bool(module.AGENTS) or module.CONTEXT_SELECTION == "discover" or any(children)
         resolved = all(child is not None for child in children) and all(
             isinstance(agent, Agent) for agent in module.AGENTS)
@@ -362,68 +360,35 @@ def _agent_modules(root: Path) -> tuple[object | None, dict[str, object]]:
     return inventory, modules
 
 
-def _validate_agent_harness(agent: Agent, source: str) -> list[Finding]:
-    """Rule CONCORDE-AGENT-HARNESS-001: the bound Harness is registered and every declared
-    capability/context/result/effect/limit is a subset of what it admits."""
+def _validate_agent_profile(root: Path, agent: Agent, source: str) -> list[Finding]:
+    """Rules CONCORDE-AGENT-PROFILE-001 and CONCORDE-AGENT-CHILD-001: a consistent worker profile
+    whose contract types are exported and whose declared children are exactly its child files."""
 
     findings: list[Finding] = []
-    declared_harness = agent.harness
-    registered = HARNESSES.get(declared_harness.name)
-    if registered is None or registered.digest != declared_harness.digest:
-        return [_finding("CONCORDE-AGENT-HARNESS-001", source,
-            f"agent {agent.name!r} references an unregistered harness: {declared_harness.name!r}.",
-            "Reference one of the registered harness.HARNESSES constants unchanged.")]
-
-    unknown_capabilities = sorted(set(agent.constraints.capabilities) - frozenset(CAPABILITY_NAMES))
-    if unknown_capabilities:
-        findings.append(_finding("CONCORDE-AGENT-HARNESS-001", source,
-            f"agent {agent.name!r} references unknown capabilities: {unknown_capabilities}.",
-            "Reference only capabilities in contracts.CAPABILITY_NAMES."))
-
+    try:
+        validate_agent(agent)
+    except ValueError as error:
+        findings.append(_finding("CONCORDE-AGENT-PROFILE-001", source, str(error),
+            "Declare a consistent worker profile: contract, workspace, tools, children and timeout."))
     exported = frozenset(exported_types())
-    for field_name, declared_values in (("contexts", agent.constraints.contexts), ("results", agent.constraints.results)):
-        unknown_types = sorted(set(declared_values) - exported)
-        if unknown_types:
-            findings.append(_finding("CONCORDE-AGENT-HARNESS-001", source,
-                f"agent {agent.name!r} {field_name} reference unexported types: {unknown_types}.",
-                "Reference only types in contracts.exported_types()."))
-        outside_harness = sorted(set(declared_values) - set(getattr(declared_harness, field_name)))
-        if outside_harness:
-            findings.append(_finding("CONCORDE-AGENT-HARNESS-001", source,
-                f"agent {agent.name!r} {field_name} exceed its harness {declared_harness.name!r}: {outside_harness}.",
-                "Declare only contexts/results the bound harness itself admits."))
-
-    effects = agent.constraints.effects
-    harness_effects = declared_harness.effects
-    if (
-        set(effects.reads) - set(harness_effects.reads)
-        or set(effects.writes) - set(harness_effects.writes)
-        or (effects.network and not harness_effects.network)
-        or (effects.credentials == "declared" and harness_effects.credentials != "declared")
-    ):
-        findings.append(_finding("CONCORDE-AGENT-HARNESS-001", source,
-            f"agent {agent.name!r} constraints widen its harness {declared_harness.name!r} effects.",
-            "Keep Constraints.effects a subset of the bound Harness effects."))
-
-    from ..harness.agent_model import mode_definition
-    for mode in agent.modes:
-        try:
-            mode_definition(agent, mode.name)
-        except ValueError as error:
-            findings.append(_finding("CONCORDE-AGENT-MODE-001", source, str(error),
-                "Declare unique modes that narrow the Agent context, result and authority ceiling."))
-
-    limits = agent.constraints.limits
-    if limits is not None:
-        if limits.timeout_seconds > declared_harness.loop.timeout_seconds:
-            findings.append(_finding("CONCORDE-AGENT-HARNESS-001", source,
-                f"agent {agent.name!r} limits exceed its harness {declared_harness.name!r} loop timeout.",
-                "Keep Constraints.limits.timeout_seconds <= the harness loop timeout."))
-        if (limits.max_turns is not None and declared_harness.loop.max_turns is not None
-                and limits.max_turns > declared_harness.loop.max_turns):
-            findings.append(_finding("CONCORDE-AGENT-HARNESS-001", source,
-                f"agent {agent.name!r} limits exceed its harness {declared_harness.name!r} loop max_turns.",
-                "Keep Constraints.limits.max_turns <= the harness loop max_turns when attested."))
+    unknown = sorted({agent.contract.context, agent.contract.result} - exported)
+    if unknown:
+        findings.append(_finding("CONCORDE-AGENT-PROFILE-001", source,
+            f"agent {agent.name!r} contract references unexported types: {unknown}.",
+            "Reference only types in contracts.exported_types()."))
+    declared = {child.definition for child in agent.children}
+    directory = root / "agents" / agent.name / "children"
+    actual = {path.relative_to(root).as_posix() for path in directory.glob("*.md")} if directory.is_dir() else set()
+    if declared != actual:
+        findings.append(_finding("CONCORDE-AGENT-CHILD-001", source,
+            f"agent {agent.name!r} declares children {sorted(declared)} but has child files {sorted(actual)}.",
+            "Declare exactly the agents/<name>/children/<child>.md definitions as Child entries."))
+    try:
+        child_definitions(root, agent)
+    except ValueError as error:
+        findings.append(_finding("CONCORDE-AGENT-CHILD-001", source, str(error),
+            "Author each child as a pi-subagents definition with its name, description, read or check tools "
+            "and replaced, context-free prompt settings."))
     return findings
 
 
@@ -462,7 +427,7 @@ def _validate_agents(root: Path) -> list[Finding]:
         if not isinstance(agent, Agent) or agent.name != name:
             findings.append(_finding("CONCORDE-AGENT-SPEC-001", source,
                 f"agent module {name!r} must declare AGENT with name={name!r}.",
-                "Declare AGENT = Agent(name=..., spec=..., harness=..., constraints=...)."))
+                "Declare AGENT = Agent(name=..., spec=..., workspace=..., contract=..., tools=...)."))
             continue
 
         expected_spec = f"agents/{name}/spec.md"
@@ -503,20 +468,7 @@ def _validate_agents(root: Path) -> list[Finding]:
                                 f"expected {list(_AGENT_SPEC_HEADINGS)}.",
                                 "Use exactly the six required `## ` headings, in order."))
 
-        findings.extend(_validate_agent_harness(agent, source))
-        declared_modes = {mode.instructions for mode in agent.modes}
-        actual_modes = {path.relative_to(root).as_posix()
-                        for path in (root / "agents" / name / "modes").glob("*.md")}
-        if declared_modes != actual_modes:
-            findings.append(_finding("CONCORDE-AGENT-MODE-001", source,
-                "Mode instruction files differ from the declared mode inventory.",
-                "Keep exactly the declared modes/<mode>.md authoring sources."))
-        for mode in agent.modes:
-            try:
-                resolve_agent_spec(root, mode.instructions)
-            except PromptResolverError as error:
-                findings.append(_finding("CONCORDE-AGENT-MODE-001", mode.instructions, str(error),
-                    "Repair the selected mode instruction source."))
+        findings.extend(_validate_agent_profile(root, agent, source))
     return findings
 
 
@@ -713,7 +665,7 @@ def _validate_spec_capabilities_block(root: Path, documents: dict[str, str]) -> 
 
 
 def _agent_code_inventory(root: Path) -> dict[str, dict[str, object]] | None:
-    """``{hyphenated-agent-id: {"harness": ..., "capabilities": [...]}}`` from the actual code.
+    """``{hyphenated-agent-id: {"workspace", "capabilities", "tools", "children"}}`` from the actual code.
 
     Mirrors ``_validate_agents``'s own reads of the Agent package, and ``_capability_modules``'s
     read of the capability package, so this rule agrees with those rules on what "the code"
@@ -741,9 +693,10 @@ def _agent_code_inventory(root: Path) -> dict[str, dict[str, object]] | None:
                 if any(getattr(declared, "name", None) == name for declared in declared_agents):
                     capability_names.append(capability_name.replace("_", "-"))
         result[name.replace("_", "-")] = {
-            "harness": agent.harness.name,
+            "workspace": agent.workspace,
             "capabilities": sorted(capability_names),
-            "modes": sorted(mode.name for mode in agent.modes),
+            "tools": sorted(agent.tools),
+            "children": sorted(child.name for child in agent.children),
         }
     return result
 
@@ -766,20 +719,21 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
     except json.JSONDecodeError as error:
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
             f"concorde-agents block is not valid JSON: {error}",
-            "Fix the JSON array of {id, harness, capabilities, modes} entries."))
+            "Fix the JSON array of {id, workspace, capabilities, tools, children} entries."))
         return findings
     valid_shape = (isinstance(entries, list)
-        and all(isinstance(item, dict) and set(item) == {"id", "harness", "capabilities", "modes"}
-                and isinstance(item.get("capabilities"), list)
-                and isinstance(item.get("modes"), list) for item in entries))
+        and all(isinstance(item, dict) and set(item) == {"id", "workspace", "capabilities", "tools", "children"}
+                and all(isinstance(item.get(key), list) for key in ("capabilities", "tools", "children"))
+                for item in entries))
     if not valid_shape:
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
-            "concorde-agents block must be a JSON array of {id, harness, capabilities, modes} objects.",
-            "Match exactly the four fields id/harness/capabilities/modes for every entry."))
+            "concorde-agents block must be a JSON array of {id, workspace, capabilities, tools, children} objects.",
+            "Match exactly the five fields id/workspace/capabilities/tools/children for every entry."))
         return findings
     declared: dict[str, tuple[object, tuple]] = {}
     for entry in entries:
-        declared[entry["id"]] = (entry["harness"], tuple(entry["capabilities"]), tuple(entry["modes"]))
+        declared[entry["id"]] = (entry["workspace"], tuple(entry["capabilities"]), tuple(entry["tools"]),
+                                 tuple(entry["children"]))
     if len(declared) != len(entries):
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
             "concorde-agents entries must have unique id values.",
@@ -790,11 +744,12 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
             "agents/__init__.py is missing, unsafe, or declares no AGENTS tuple.",
             "Add agents/__init__.py with an explicit AGENTS inventory."))
         return findings
-    expected = {agent_id: (data["harness"], tuple(data["capabilities"]), tuple(data["modes"])) for agent_id, data in code.items()}
+    expected = {agent_id: (data["workspace"], tuple(data["capabilities"]), tuple(data["tools"]), tuple(data["children"]))
+                for agent_id, data in code.items()}
     for agent_id in sorted(set(expected) - set(declared)):
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
             f"concorde-agents block is missing agent {agent_id!r}.",
-            "Add its {id, harness, capabilities, modes} entry to the block."))
+            "Add its {id, workspace, capabilities, tools, children} entry to the block."))
     for agent_id in sorted(set(declared) - set(expected)):
         findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
             f"concorde-agents block declares unknown agent {agent_id!r}.",
@@ -804,7 +759,7 @@ def _validate_spec_agents_block(root: Path, documents: dict[str, str]) -> list[F
             findings.append(_finding("CONCORDE-SPEC-AGENTS-001", path,
                 f"concorde-agents entry {agent_id!r} is {declared[agent_id]!r}, "
                 f"code declares {expected[agent_id]!r}.",
-                "Match harness and capabilities exactly to the Agent module and its capability callers."))
+                "Match workspace, tools, children and capabilities exactly to the Agent module and its callers."))
     return findings
 
 

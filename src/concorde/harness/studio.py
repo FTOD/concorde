@@ -13,7 +13,7 @@ from langgraph.runtime import Runtime
 
 from ..spec.typed_data import decode
 from ..spec.contracts import SKILL_NAMES
-from .agent_executor import AgentProcessExecutor
+from .worker_executor import WorkerExecutor
 from ..development.capability_host import (CapabilityHost, capability_flow_nodes, finish_failed_capability_flow,
                                            invocation_failure, validate_invocation)
 from ..spec.repository import SpecError
@@ -77,19 +77,19 @@ def build_studio_flow(capability: str, project_root: Path, package_root: Path, *
             return {"result": invocation_failure(capability, error), "policies": [], "events": []}
         events = []
         writer = runtime.context["writer"]
-        process_executor = executor if executor is not None else AgentProcessExecutor()
+        process_executor = executor if executor is not None else WorkerExecutor(package_root)
 
         def emit(event, **details):
             record = {"event": event, "time": datetime.now(timezone.utc).isoformat(), **details}
             events.append(record)
             writer(record)
 
-        def observed_executor(launch):
-            identity = {"capability": launch.capability, "stage": launch.stage,
-                        "role": launch.role, "invocation_id": launch.invocation_id}
+        def observed_executor(invocation, **options):
+            identity = {"capability": invocation.capability, "stage": invocation.stage,
+                        "agent": invocation.agent, "invocation_id": invocation.invocation_id}
             host.observe("agent_started", **identity)
             try:
-                completion = process_executor(launch)
+                completion = process_executor(invocation, **options)
             except Exception:
                 host.observe("agent_failed", **identity)
                 raise

@@ -1,20 +1,14 @@
-"""Explicit process doubles for typed capability integration tests.
-
-Only the external model process is substituted. The real graph, launch policy,
-completion decoder, receipt checks, artifact IO, and delivery tools still run.
-"""
+"""Typed capability invocation helpers for integration tests."""
 
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
 
 from concorde.spec.typed_data import typed
-from concorde.harness.agent_executor import AgentProcessExecutor
 
 
-CONFIGURATION = typed("concorde-capability-configuration", {"integration": "claude", "enforcement": "native"})
+CONFIGURATION = typed("concorde-capability-configuration", {"model": "openai-codex/gpt-6-astra", "thinking": "medium"})
 
 
 def invocation(capability: str, data: dict, *, configuration: dict | None = None,
@@ -34,33 +28,3 @@ def configure(project: Path, configuration: dict | None = None) -> dict:
     document["capability_configuration"] = value
     path.write_text(json.dumps(document) + "\n")
     return value
-
-
-class ScriptedAgent:
-    def __init__(self, callback=None, failure: str | None = None):
-        self.callback = callback
-        self.failure = failure
-        self.calls: list[dict] = []
-        self.executor = AgentProcessExecutor(runner=self.run,
-                                            version_probe=lambda *args: "claude-code 4.2")
-
-    def run(self, argv, *, cwd, env, input_text):
-        schema = json.loads(argv[argv.index("--json-schema") + 1])
-        properties = schema["properties"]
-        capability = properties["role"]["const"]
-        runtime_input = json.JSONDecoder().raw_decode(input_text.split("Typed runtime input (consume only these contracted fields):\n", 1)[1])[0]
-        configuration = json.JSONDecoder().raw_decode(input_text.split("Capability configuration (project snapshot):\n", 1)[1])[0]
-        assert "Prior results:" not in input_text
-        self.calls.append({"capability": capability, "input": runtime_input, "configuration": configuration})
-        failed = capability == self.failure
-        domain_output = None
-        if self.callback is not None and not failed:
-            domain_output = self.callback(capability, runtime_input, Path(cwd))
-        payload = {key: item["const"] for key, item in properties.items() if "const" in item}
-        payload.update(status="failed" if failed else "success", output="fixture audit summary only",
-                       limitations="injected failure" if failed else "none",
-                       gates=[{"name": "fixture-task", "status": "failed" if failed else "passed",
-                               "evidence": "explicit model-process double; host verifies artifacts and receipts"}])
-        if "domain_output" in properties:
-            payload["domain_output"] = domain_output
-        return subprocess.CompletedProcess(argv, 0, json.dumps({"structured_output": payload}), "")

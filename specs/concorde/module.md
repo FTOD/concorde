@@ -13,15 +13,15 @@
 Concorde Framework helps developers author and maintain architecture-aware Module Specs, understand
 their projects through a Spec docsite and Understand Anything graph views, and guide agents with
 explicit context and permissions. Specs describe software responsibilities, behavior, entities and
-relationships together. Built-in coordinator, Spec engineer and programmer agents support
-specification and development. Agent observability covers their working process and results:
+relationships together. Twelve built-in Pi worker agents support specification and development.
+Agent observability covers their working process and results:
 LangGraph Studio exposes execution Flows and live stage and agent-process events, while recorded
 context, permission policies, checks and reviews provide inspectable evidence.
 The reflection system retains feedback and persistent gaps attributed to Modules or scenarios,
 supports investigation within their declared boundaries, and routes approved resolutions into
 fresh development tasks while preserving explicit developer control of report disposition.
 
-It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 5.4.0; its complete context is derived from the owned documents and references registered for `module.concorde` in `.concorde/specs.json`. It owns this reading entry and the definition migration ledger. This root Module owns no implementation files of its own; its promises are realized entirely by its sixteen child Modules.
+It is the project's entry Module: a request enters here and is routed to the child Module that owns the relevant contract. Concorde Framework follows Spec Protocol 5.5.0; its complete context is derived from the owned documents and references registered for `module.concorde` in `.concorde/specs.json`. It owns this reading entry and the definition migration ledger. This root Module owns no implementation files of its own; its promises are realized entirely by its sixteen child Modules.
 
 ## Requirements
 
@@ -119,12 +119,12 @@ agent Spec context; it does not acquire authority as a registered Module contrac
 - AND the Framework recovers previously valid owned state
 - BUT no partially applied owned state is left in place
 
-### scenario.concorde.configure-apply — Applying integration or enforcement configuration
+### scenario.concorde.configure-apply — Applying Pi worker configuration
 
-- GIVEN an initialized project and an explicit, supported integration/enforcement configuration
+- GIVEN an initialized project and an explicit, supported Pi worker model/thinking/timeout configuration
 - WHEN the developer applies it
-- THEN the Framework updates the configured integration accordingly
-- BUT an unsupported integration or enforcement value fails explicitly
+- THEN the Framework updates the configured worker selection accordingly
+- BUT an unsupported configuration value fails explicitly
 
 ### scenario.concorde.validate-record — Recording current deterministic evidence
 
@@ -167,7 +167,7 @@ Relationships subsection below traces how a request moves between them.
     "id": "entity.concorde.protocol",
     "title": "Spec Protocol",
     "kind": "external standard",
-    "responsibility": "The independent Spec Protocol 5.4.0 that defines what a Module Spec must explain; Spec admits and pins it but does not own its meaning."
+    "responsibility": "The independent Spec Protocol 5.5.0 that defines what a Module Spec must explain; Spec admits and pins it but does not own its meaning."
   },
   {
     "id": "entity.concorde.spec",
@@ -181,7 +181,7 @@ Relationships subsection below traces how a request moves between them.
     "title": "Harness",
     "kind": "submodule",
     "target_id": "module.harness",
-    "responsibility": "Configures and runs every Agent invocation: freezes its context kinds, binds its Agent and Harness definition, compiles its effective permissions, executes it natively and coordinates it through LangGraph control flow."
+    "responsibility": "Configures and runs every Agent invocation: freezes its context kinds, binds its Agent and Harness definition, compiles its effective permissions, launches its Pi worker and coordinates it through LangGraph control flow."
   },
   {
     "id": "entity.concorde.development",
@@ -286,7 +286,7 @@ Relationships subsection below traces how a request moves between them.
 
 ### Relationships
 
-Sixteen Modules have this Module as their sole structural parent. The diagram shows entry selection and principal responsibility dependencies; each consumer's local contract states all of its registered uses. **Spec** owns the project's Spec model: the pinned Protocol binding, the registry, structural validation and initialization. **Harness** owns how an Agent is configured and run: the four context kinds it freezes, Agent and Harness definitions, permissions, native execution and the LangGraph control flow. **Development** owns common admission and dispatch. Planning, Implementation, Spec Authoring, Review, Validation, Delivery, Query and Routing, and Topology own cohesive provider contracts. Development Flow and Specification Flow compose them as siblings. **Reflections** retains attributed feedback and gaps, uses Development for admission and hands approved work to Development Flow. **Distribution** builds authored projections, installs them and provisions the managed runtime. **Views** publishes registered Specs and opens an existing code graph.
+Sixteen Modules have this Module as their sole structural parent. The diagram shows entry selection and principal responsibility dependencies; each consumer's local contract states all of its registered uses. **Spec** owns the project's Spec model: the pinned Protocol binding, the registry, structural validation and initialization. **Harness** owns how an Agent is configured and run: the four context kinds it freezes, Agent and Harness definitions, permissions, Pi worker execution and the LangGraph control flow. **Development** owns common admission and dispatch. Planning, Implementation, Spec Authoring, Review, Validation, Delivery, Query and Routing, and Topology own cohesive provider contracts. Development Flow and Specification Flow compose them as siblings. **Reflections** retains attributed feedback and gaps, uses Development for admission and hands approved work to Development Flow. **Distribution** builds authored projections, installs them and provisions the managed runtime. **Views** publishes registered Specs and opens an existing code graph.
 
 A developer request carries intent and constraints. Project Specs supply promised behavior; a candidate worktree holds proposed changes and revision-bound evidence. A ready candidate ends development; only a separately authorized delivery updates the destination.
 
@@ -370,7 +370,7 @@ These entries describe the sixteen children registered for this Module from the 
   },
   {
     "target_id": "module.harness",
-    "responsibility": "Configure and run every Agent invocation: frozen context kinds, Agent and Harness bindings, effective permissions, native execution and LangGraph control flow.",
+    "responsibility": "Configure and run every Agent invocation: frozen context kinds, Agent and Harness bindings, effective permissions, Pi worker execution and LangGraph control flow.",
     "selection_condition": "When an entry needs an Agent to reason or act.",
     "relied_upon_promises": [
       "[Freeze the selected contract before invocation](harness/context.md#contract.context.selection)",
@@ -507,12 +507,12 @@ These entries describe the sixteen children registered for this Module from the 
 | Review a task | `concorde-review` returns independent Spec/code coverage and findings without creating a development change. |
 | Develop a change | `concorde-dev-loop` takes task/constraints and optional authoring/review flags; completion is a ready candidate, with explicit skips where authorized. |
 | Initialize a project | `concorde-init` proposes then applies initial configuration and an honest Module stub; an existing project cannot be overwritten. |
-| Change integration settings | `concorde-configure` applies an explicit supported integration/enforcement configuration to an initialized project. |
+| Change worker configuration | `concorde-configure` applies an explicit supported Pi worker model/thinking/timeout selection to an initialized project. |
 | Check a candidate | `concorde-validate` records current deterministic evidence; a failed or stale check cannot establish readiness. |
 | Deliver a candidate | `concorde-deliver` stages the selected change on an independent branch and removes its worktree by default; only a separate explicitly authorized request by the sole primary writer merges it into the primary branch. |
 | Work with recorded feedback | `concorde-reflections-triage` selects explicit Module-owned reports/gaps; status is read-only and mutations follow their declared evidence and disposition conditions. |
 
-Installed Skills use a single schema-3 capability invocation with `capability_id`, execute or describe-policy mode, configuration and a version-1 typed request. Unsupported versions, malformed requests and integration mismatch fail admission. The result reports succeeded, blocked, failed or described; domain output still distinguishes a ready candidate, gap, conflict or completed answer. Describe-policy reports the bound grant without launching an Agent. Standard execution can create candidate state and invoke separately bounded Agents; only the admitted action can change files.
+Installed Skills use a single schema-3 capability invocation with `capability_id`, execute or describe-policy mode, configuration and a version-1 typed request. Unsupported versions, malformed requests and configuration mismatch fail admission. The result reports succeeded, blocked, failed or described; domain output still distinguishes a ready candidate, gap, conflict or completed answer. Describe-policy reports the bound grant without launching an Agent. Standard execution can create candidate state and invoke separately bounded Agents; only the admitted action can change files.
 
 Human views are complementary entries: Views presents registered contracts and declared relationships and opens a preexisting raw code graph. A view or feedback comment does not itself authorize code changes, claim Spec/code agreement or create a Reflection. The developer's explicit intent and constraints determine a subsequent task.
 

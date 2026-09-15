@@ -20,7 +20,6 @@ def _stub(name: str):
 
 def catalog() -> dict[str, Callable[[], object]]:
     """Compiled-name to factory of the inert compiled Flow; the same factories execution uses."""
-    from ..harness.agent_flow import build_agent_flow
     from ..harness.agent_model import agent_definition
     from ..harness.agent_node import AgentNode
     from ..harness.batch_flow import build_batch_flow
@@ -51,9 +50,8 @@ def catalog() -> dict[str, Callable[[], object]]:
         "coordination_flow": lambda: build_coordination_flow(_stub),
         "stabilization_flow": lambda: build_stabilization_flow(_stub),
         "triage_flow": lambda: build_triage_flow(_stub),
-        "agent_flow": lambda: build_agent_flow(_stub),
         "batch_flow": lambda: build_batch_flow(_stub, name="batch_flow", item_node="execute_item"),
-        "agent_node": lambda: AgentNode.select(agent_definition("spec_engineer"), "plan").flow(),
+        "agent_node": lambda: AgentNode(agent_definition("planner")).flow(),
     }
 
 

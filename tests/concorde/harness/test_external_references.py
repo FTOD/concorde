@@ -19,19 +19,18 @@ class ExternalReferenceTests(unittest.TestCase):
 
     @verifies("scenario.harness.external-references")
     def test_every_phase_sees_the_entries_and_a_byte_change_stales_them(self):
-        from concorde.harness.agent_model import agent_definition, mode_definition
+        from concorde.harness.agent_model import agent_definition
         repository = self.fixture.repository()
         expected = repository.external_reference_records(repository.select("module.a"))
         self.assertEqual(1, len(expected))
-        spec_engineer, programmer = agent_definition("spec_engineer"), agent_definition("programmer")
-        for phase, mode, inputs in (("specify", mode_definition(spec_engineer, "specify"), ()),
-                                    ("plan", mode_definition(spec_engineer, "plan"), ()),
-                                    ("code-review", mode_definition(programmer, "code-review"), ()),
-                                    ("implementation", mode_definition(programmer, "implementation"),
+        for phase, agent, inputs in (("specify", agent_definition("spec-author"), ()),
+                                    ("plan", agent_definition("planner"), ()),
+                                    ("code-review", agent_definition("code-reviewer"), ()),
+                                    ("implementation", agent_definition("programmer"),
                                      ({"type_id": "concorde-implementation-task", "schema_version": 1,
                                        "data": {"plan": "Plan", "tasks": []}},))):
             with self.subTest(phase=phase):
-                snapshot = resolve_context(repository, "module.a", phase=phase, task="Adapt", mode=mode,
+                snapshot = resolve_context(repository, "module.a", phase=phase, task="Adapt", agent=agent,
                                            stage_inputs=inputs).value
                 self.assertEqual(4, snapshot["schema_version"])
                 self.assertEqual(expected, snapshot["external_references"])
@@ -58,7 +57,6 @@ class ExternalReferenceTests(unittest.TestCase):
             if stage == "plan":
                 result["plan"] = "Use connect(url) as documented."
         double = ModelProcessDouble(inspect)
-        self.addCleanup(double.runtime_directory.cleanup)
         host = CapabilityHost(self.fixture.root, PACKAGE, executor=double.executor, allow_primary_worktree=True)
         result = run_capability("concorde-plan", self.fixture.configuration,
                                 typed("concorde-plan-request", {"target_id": "module.a", "task": "Adapt the value"}),

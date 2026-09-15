@@ -194,58 +194,47 @@ This complete schema is the invocation's input field. It does not grant project 
     "concorde-capability-configuration": {
       "type": "object",
       "properties": {
-        "integration": {
-          "enum": [
-            "codex",
-            "claude"
-          ]
-        },
         "model": {
           "type": "string",
           "minLength": 1
         },
-        "reasoning_effort": {
+        "thinking": {
           "enum": [
+            "off",
             "minimal",
             "low",
             "medium",
             "high",
             "xhigh",
-            "max",
-            "ultra"
+            "max"
           ]
         },
-        "enforcement": {
-          "enum": [
-            "native"
-          ]
+        "timeout_seconds": {
+          "type": "integer"
         },
-        "agents": {
+        "workers": {
           "type": "object",
           "properties": {},
           "additionalProperties": {
             "type": "object",
             "properties": {
-              "integration": {
-                "enum": [
-                  "codex",
-                  "claude"
-                ]
-              },
               "model": {
                 "type": "string",
                 "minLength": 1
               },
-              "reasoning_effort": {
+              "thinking": {
                 "enum": [
+                  "off",
                   "minimal",
                   "low",
                   "medium",
                   "high",
                   "xhigh",
-                  "max",
-                  "ultra"
+                  "max"
                 ]
+              },
+              "timeout_seconds": {
+                "type": "integer"
               }
             },
             "required": [],
@@ -253,10 +242,7 @@ This complete schema is the invocation's input field. It does not grant project 
           }
         }
       },
-      "required": [
-        "integration",
-        "enforcement"
-      ],
+      "required": [],
       "additionalProperties": false
     }
   }

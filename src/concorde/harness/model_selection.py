@@ -1,12 +1,12 @@
-"""Per-Agent-node model selection: the integration, model and reasoning effort of every launch.
+"""Per-worker Pi model selection: the model, thinking level and timeout of every worker and child.
 
-The project capability configuration names a default ``integration``, ``model`` and
-``reasoning_effort`` and, under ``agents``, overrides keyed either by an Agent (``programmer``) or
-by one Agent node (``programmer/implementation``, the name ``AgentNode`` compiles and Studio
-shows). A launch resolves the project default, then the Agent entry, then the node entry, each value
-independently, so the most specific entry wins. An entry that switches to another integration
-starts from that client's own defaults instead of inheriting a model or effort chosen for a
-different client.
+The project capability configuration names a default Pi ``model`` (``provider/id``), ``thinking``
+level and ``timeout_seconds`` and, under ``workers``, overrides keyed either by a worker
+(``programmer``) or by one of its children (``programmer/scout``). A worker resolves the default,
+then its own entry; a child resolves its worker's selection, then its own entry, each value
+independently, so the most specific entry wins. A child's timeout is its worker's, so a child entry
+names no timeout. An absent model or thinking level keeps Pi's own default, and an absent timeout
+keeps the worker profile's.
 """
 from __future__ import annotations
 
@@ -14,69 +14,59 @@ from dataclasses import asdict, dataclass
 
 from ..spec.typed_data import TypedDataError
 
-# The effort levels each client's command line admits; a model may support only some of them.
-REASONING_EFFORTS = {
-    "codex": ("minimal", "low", "medium", "high", "xhigh", "max", "ultra"),
-    "claude": ("low", "medium", "high", "xhigh", "max"),
-}
+THINKING_LEVELS = ("off", "minimal", "low", "medium", "high", "xhigh", "max")
 
 
 @dataclass(frozen=True)
-class AgentSelection:
-    integration: str
+class WorkerSelection:
     model: str | None = None
-    reasoning_effort: str | None = None
+    thinking: str | None = None
+    timeout_seconds: int | None = None
 
     def wire(self) -> dict:
         return asdict(self)
 
-    def model_arguments(self) -> dict:
-        """The keyword arguments a Codex or Claude launch renderer takes."""
-        return {"model": self.model, "reasoning_effort": self.reasoning_effort}
+
+def _narrow(selection: WorkerSelection, entry: dict) -> WorkerSelection:
+    return WorkerSelection(entry.get("model", selection.model), entry.get("thinking", selection.thinking),
+                           entry.get("timeout_seconds", selection.timeout_seconds))
 
 
-def _narrow(selection: AgentSelection, entry: dict) -> AgentSelection:
-    integration = entry.get("integration", selection.integration)
-    if integration != selection.integration:
-        selection = AgentSelection(integration)
-    return AgentSelection(integration, entry.get("model", selection.model),
-                          entry.get("reasoning_effort", selection.reasoning_effort))
-
-
-def agent_selection(configuration: dict, agent: str, mode: str | None = None) -> AgentSelection:
-    """Resolve one Agent node's selection; ``agent`` may be bare, hyphenated or ``concorde-`` named."""
+def worker_selection(configuration: dict, agent: str, child: str | None = None) -> WorkerSelection:
+    """Resolve one worker's or one child's selection; ``agent`` may be bare, hyphenated or external."""
     from .agent_model import agent_key
 
     data = configuration["data"]
-    selection = AgentSelection(data["integration"], data.get("model"), data.get("reasoning_effort"))
-    overrides = data.get("agents", {})
+    selection = WorkerSelection(data.get("model"), data.get("thinking"), data.get("timeout_seconds"))
+    workers = data.get("workers", {})
     name = agent_key(agent)
-    for key in (name, f"{name}/{mode}" if mode is not None else None):
-        if key in overrides:
-            selection = _narrow(selection, overrides[key])
+    for key in (name, f"{name}/{child}" if child is not None else None):
+        if key in workers:
+            selection = _narrow(selection, workers[key])
     return selection
 
 
-def validate_agent_selections(configuration: dict, field: str = "/configuration") -> None:
-    """Reject keys naming no Agent or Agent node, and any node whose resolved selection cannot run."""
+def _pointer(field: str, key: str) -> str:
+    return f"{field}/data/workers/" + key.replace("~", "~0").replace("/", "~1")
+
+
+def validate_worker_selections(configuration: dict, field: str = "/configuration") -> None:
+    """Reject keys naming no worker or child, child timeouts, bad timeouts and non-Pi model names."""
     from .agent_model import load_agents
 
     agents = load_agents()
-    nodes = {name: (agent, None) for name, agent in agents.items()}
-    nodes.update({f"{name}/{mode.name}": (agent, mode.name)
-                  for name, agent in agents.items() for mode in agent.modes})
-    for key in configuration["data"].get("agents", {}):
-        if key not in nodes:
-            raise TypedDataError("invalid_field", f"{field}/data/agents/" + key.replace("~", "~0").replace("/", "~1"),
-                                 "names no Agent or Agent node; use an Agent such as programmer or an "
-                                 "Agent node such as programmer/implementation")
-    for key, (agent, mode) in sorted(nodes.items()):
-        selection = agent_selection(configuration, agent.name, mode)
-        if selection.integration not in agent.harness.integrations:
-            raise TypedDataError("invalid_field", f"{field}/data/agents",
-                                 f"{key} selects integration {selection.integration}, outside its Harness")
-        if (selection.reasoning_effort is not None
-                and selection.reasoning_effort not in REASONING_EFFORTS[selection.integration]):
-            raise TypedDataError("invalid_field", f"{field}/data/agents",
-                                 f"{key} selects reasoning effort {selection.reasoning_effort}, which "
-                                 f"{selection.integration} does not admit")
+    children = {f"{name}/{child.name}" for name, agent in agents.items() for child in agent.children}
+    data = configuration["data"]
+    workers = data.get("workers", {})
+    for key, entry in workers.items():
+        if key not in agents and key not in children:
+            raise TypedDataError("invalid_field", _pointer(field, key),
+                                 "names no worker or worker child; use a worker such as programmer or a "
+                                 "child such as programmer/scout")
+        if key in children and "timeout_seconds" in entry:
+            raise TypedDataError("invalid_field", _pointer(field, key), "a child runs within its worker's timeout")
+    for location, entry in ((f"{field}/data", data), *((_pointer(field, key), entry) for key, entry in workers.items())):
+        if "timeout_seconds" in entry and entry["timeout_seconds"] <= 0:
+            raise TypedDataError("invalid_field", f"{location}/timeout_seconds", "a timeout must be positive")
+        if "model" in entry and "/" not in entry["model"].strip("/"):
+            raise TypedDataError("invalid_field", f"{location}/model", "a model is Pi's provider/id, such as openai-codex/gpt-6-astra")

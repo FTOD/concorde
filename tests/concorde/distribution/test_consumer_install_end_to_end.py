@@ -98,7 +98,7 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
             "type_id": "concorde-capability-invocation", "schema_version": 3,
             "capability_id": "concorde-init", "mode": "describe-policy",
             "configuration": {"type_id": "concorde-capability-configuration", "schema_version": 1,
-                              "data": {"integration": "claude", "enforcement": "native"}},
+                              "data": {"model": "openai-codex/gpt-6-astra", "thinking": "medium"}},
             "input": {"type_id": "concorde-init-request", "schema_version": 1,
                       "data": {"action": "propose"}},
         }

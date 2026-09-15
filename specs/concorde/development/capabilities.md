@@ -34,19 +34,19 @@ interface agreement. It neither loads Skills into its workers nor owns their dis
 
 | Capability | Public | Context selection | Deterministic | Skill | Launches | Uses | Behavior |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| main | `true` | `discover` | `false` | concorde-main | coordinator, spec-engineer | — | Answer directly from complete indexed and granted Spec contexts, or design, prepare and atomically apply an explicitly accepted topology |
-| dev-loop | `true` | `discover` | `false` | concorde-dev-loop | coordinator | specify-loop, review, plan, tasks, implement, validate | Route one change, call specify-loop, then plan, task, implement, validate and review code to ready; `run_reviews=false` records explicit skips and cannot cancel a recorded requirement |
-| specify-loop | `true` | `discover` | `false` | concorde-specify-loop | coordinator | specify, review | Route one change, author or revise its Spec unless `specify=false`, independently review it, and return completed before planning or implementation; `run_reviews=false` records a Spec-only skip without cancelling an existing requirement |
-| reflections-triage | `true` | `bound` | `false` | concorde-reflections-triage | programmer | dev-loop | Report status, capture recorded gaps, investigate read-only, implement through the development loop, merge or close owned reflections |
+| main | `true` | `discover` | `false` | concorde-main | answerer, router, topology-designer, topology-author | — | Answer directly from complete indexed and granted Spec contexts, or design, prepare and atomically apply an explicitly accepted topology |
+| dev-loop | `true` | `discover` | `false` | concorde-dev-loop | router | specify-loop, review, plan, tasks, implement, validate | Route one change, call specify-loop, then plan, task, implement, validate and review code to ready; `run_reviews=false` records explicit skips and cannot cancel a recorded requirement |
+| specify-loop | `true` | `discover` | `false` | concorde-specify-loop | router | specify, review | Route one change, author or revise its Spec unless `specify=false`, independently review it, and return completed before planning or implementation; `run_reviews=false` records a Spec-only skip without cancelling an existing requirement |
+| reflections-triage | `true` | `bound` | `false` | concorde-reflections-triage | investigator | dev-loop | Report status, capture recorded gaps, investigate read-only, implement through the development loop, merge or close owned reflections |
 | init | `true` | `none` | `true` | concorde-init | — | — | Propose and apply explicit project initialization with a pinned Protocol |
-| configure | `true` | `none` | `true` | concorde-configure | — | — | Apply the initialized integration and enforcement configuration; with `accept_protocol`, rebind the configuration to the installed Protocol copy |
+| configure | `true` | `none` | `true` | concorde-configure | — | — | Apply the initialized Pi worker model/thinking/timeout configuration; with `accept_protocol`, rebind the configuration to the installed Protocol copy |
 | validate | `true` | `none` | `true` | concorde-validate | — | — | Run deterministic Spec and configured code checks and record readiness |
 | deliver | `true` | `none` | `true` | concorde-deliver | — | — | Stage a ready candidate on its own branch and clean up; explicitly merge later from the sole primary writer |
-| specify | `false` | `bound` | `false` | — | spec-engineer | — | Author the bound target's Spec replacements |
-| review | `true` | `discover` | `false` | concorde-review | coordinator, spec-engineer, programmer | — | Route an observational task, then independently review its Spec or code read-only with version-bound findings and gaps |
-| context-solve | `false` | `bound` | `false` | — | spec-engineer | — | Validate Module participant routing, then assess information sufficiency without expanding the context |
-| plan | `false` | `bound` | `false` | — | spec-engineer | — | Assess sufficiency, then create a revision-bound plan |
-| tasks | `false` | `bound` | `false` | — | spec-engineer | — | Author acceptance tasks from the accepted plan |
+| specify | `false` | `bound` | `false` | — | spec-author | — | Author the bound target's Spec replacements |
+| review | `true` | `discover` | `false` | concorde-review | router, spec-reviewer, code-reviewer | — | Route an observational task, then independently review its Spec or code read-only with version-bound findings and gaps |
+| context-solve | `false` | `bound` | `false` | — | context-assessor | — | Validate Module participant routing, then assess information sufficiency without expanding the context |
+| plan | `false` | `bound` | `false` | — | context-assessor, planner | — | Assess sufficiency, then create a revision-bound plan |
+| tasks | `false` | `bound` | `false` | — | task-author | — | Author acceptance tasks from the accepted plan |
 | implement | `false` | `bound` | `false` | — | programmer | — | Implement component tasks or coordinate participating components |
 
 Request and response types are `concorde-<capability>-request@1` and
@@ -63,10 +63,11 @@ Each Python module MUST declare these independent properties:
 
 - **PUBLIC** is a boolean. True requires exactly one public Skill and launcher entry; false
   admits only declared in-process composition and creates no public Skill.
-- **CONTEXT_SELECTION** is `discover`, `bound` or `none`. Discover admits coordinator discovery of
-  complete Module contexts and one owning target for mutations; a composed invocation may reuse
-  its already bound target. Bound consumes the selected Module and never reselects or expands
-  its frozen context. None performs deterministic host work without Agent context selection.
+- **CONTEXT_SELECTION** is `discover`, `bound` or `none`. Discover admits discovery-phase worker
+  reasoning over complete Module contexts, with the router selecting one owning target for
+  mutations; a composed invocation may reuse its already bound target. Bound consumes the
+  selected Module and never reselects or expands its frozen context. None performs deterministic
+  host work without Agent context selection.
 - **DETERMINISTIC** is a boolean. True means no supported path calls a model, directly, through
   discovery or through transitive `USES`. False means a model call is possible, even when one
   particular invocation skips it. This does not promise identical output or absence of effects.
@@ -107,7 +108,7 @@ Skill names, exactly one Skill for each public capability and none for a non-pub
 without reading Python; it never adds a capability that code does not implement.
 
 Target workers use `concorde-agent-stage-context@2`/`concorde-agent-stage-result@1` with explicit
-document order, owned and directly referenced Specs. Coordinator questions, routing and topology design
+document order, owned and directly referenced Specs. Discovery questions, routing and topology design
 use `concorde-main-stage-context@2`/`concorde-main-stage-result@1` with explicit complete Module contexts, deduplicated original source pools and per-Module resolution provenance. Accepted topology design uses
 `concorde-topology-proposal@1`, `concorde-topology-author-context@2`/`concorde-topology-author-result@1`
 and a host-private `concorde-topology-application@1` artifact; shared replacements require sole-owner authoring and compatibility evidence for each affected consumer. Plan artifacts, implementation tasks and selected reflections have
@@ -124,7 +125,7 @@ review aggregates separately scoped results for its recorded participating compo
 hands a project diff to one reviewer.
 
 Agent identity follows stable capability and context boundaries. Worker, review and topology calls
-select the explicit mode declared in the Harness contract; combining Agent definitions does not
+launch the exact worker its task contract declares; reusing one worker across several capabilities does not
 combine capability names, workflow responsibilities, public Skills or callable authority. Each
 phase and target remains a fresh invocation.
 

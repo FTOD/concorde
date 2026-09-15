@@ -203,5 +203,43 @@ class PiWorkerTests(unittest.TestCase):
                 runtime(self.launch(**changes))
 
 
+class RuntimeHelperTests(unittest.TestCase):
+    @verifies("scenario.harness.pi-worker-launch")
+    def test_pi_subagents_resolves_from_the_checkout_else_the_managed_runtime(self):
+        from concorde.harness.pi_worker import subagents_entry
+        with tempfile.TemporaryDirectory() as temporary:
+            framework = Path(temporary) / ".concorde/framework"
+            managed = Path(temporary) / ".concorde/.venv/share/concorde/pi/node_modules/pi-subagents/index.ts"
+            local = framework / "pi/node_modules/pi-subagents/index.ts"
+            self.assertEqual(local.resolve(), subagents_entry(framework))
+            managed.parent.mkdir(parents=True)
+            managed.write_text("// managed\n")
+            self.assertEqual(managed.resolve(), subagents_entry(framework))
+            local.parent.mkdir(parents=True)
+            local.write_text("// checkout\n")
+            self.assertEqual(local.resolve(), subagents_entry(framework))
+
+    @verifies("scenario.harness.pi-worker-launch")
+    def test_a_refreshed_credential_returns_only_over_the_bytes_the_run_was_issued(self):
+        from concorde.harness.pi_worker import _return_refreshed_auth
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            original, copy = root / "auth.json", root / "run-auth.json"
+            issued = b'{"openai-codex": {"refresh": "r1"}}'
+            for label, refreshed, current, expected in (
+                ("refresh returns", b'{"openai-codex": {"refresh": "r2"}}', issued, b'{"openai-codex": {"refresh": "r2"}}'),
+                ("concurrent refresh wins", b'{"openai-codex": {"refresh": "r2"}}', b'{"openai-codex": {"refresh": "r9"}}',
+                 b'{"openai-codex": {"refresh": "r9"}}'),
+                ("unchanged copy", issued, issued, issued),
+                ("malformed copy", b"not json", issued, issued),
+            ):
+                with self.subTest(label):
+                    original.write_bytes(current)
+                    copy.write_bytes(refreshed)
+                    _return_refreshed_auth(copy, original, issued)
+                    self.assertEqual(expected, original.read_bytes())
+            self.assertEqual(0o600, original.stat().st_mode & 0o777)
+
+
 if __name__ == "__main__":
     unittest.main()

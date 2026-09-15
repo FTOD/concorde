@@ -2,15 +2,13 @@
   "profile_version": 12,
   "registry": ".concorde/specs.json",
   "protocol": {
-    "version": "5.4.0",
-    "digest": "sha256:1e305325f1b1993986ac80c6a07493972d0889def85f8cad9a9d0e3e1f969dc4"
+    "version": "5.5.0",
+    "digest": "sha256:c50554ea22c72ee8cad809cc95350aeb3577445726655295ad24952c12c2dc66"
   },
   "capability_configuration": {
     "data": {
-      "enforcement": "native",
-      "integration": "codex",
-      "model": "gpt-6-astra",
-      "reasoning_effort": "medium"
+      "model": "openai-codex/gpt-6-astra",
+      "thinking": "medium"
     },
     "schema_version": 1,
     "type_id": "concorde-capability-configuration"

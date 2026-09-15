@@ -146,7 +146,7 @@ flowchart TB
     "selection_condition": "When verifying the source and primary participants, integrating their candidate or running configured merge checks.",
     "relied_upon_promises": [
       "[Isolated configured-check execution](../harness/execution.md#configured-deterministic-checks); Supply the registered command and timeout; keep raw diagnostics in host records and refuse checks when isolation is unavailable.",
-      "[Worktree identity](../harness/permissions.md#policy-compilation-and-rendering); reject mismatched participants before integration or cleanup."
+      "[Worktree identity](../harness/permissions.md#policy-compilation); reject mismatched participants before integration or cleanup."
     ]
   },
   {

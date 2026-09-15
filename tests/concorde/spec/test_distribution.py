@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from concorde.spec.contracts import CAPABILITY_NAMES,INTERNAL_SKILLS
 from concorde.distribution.package_validation import validate_package
-from concorde.distribution.build import load_role_prompt
+from concorde.distribution.build import load_agent
 from concorde.spec.typed_data import typed
 from concorde.spec.repository import SpecRepository
 from concorde.spec.validation import validate_repository
@@ -19,11 +19,11 @@ from .support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
 class DistributionTests(unittest.TestCase):
     def test_catalog_roles_and_exported_schemas_are_executable_package_contracts(self):
         self.assertEqual([],validate_package(PACKAGE))
-        self.assertEqual(14,len(CAPABILITY_NAMES));self.assertEqual(3,len(INTERNAL_SKILLS))
+        self.assertEqual(14,len(CAPABILITY_NAMES));self.assertEqual(12,len(INTERNAL_SKILLS))
         self.assertIn('concorde-main',CAPABILITY_NAMES);self.assertNotIn('concorde-ask',CAPABILITY_NAMES)
-        self.assertIn('concorde-coordinator',INTERNAL_SKILLS);self.assertNotIn('concorde-main',INTERNAL_SKILLS)
+        self.assertIn('concorde-planner',INTERNAL_SKILLS);self.assertNotIn('concorde-main',INTERNAL_SKILLS)
         for role in INTERNAL_SKILLS:
-            prompt=load_role_prompt(PACKAGE,role)
+            prompt=load_agent(PACKAGE,role)
             self.assertEqual(role,prompt.name);self.assertTrue(prompt.body.strip());self.assertIsNotNone(prompt.effects)
     @verifies("scenario.spec.admit-inventory", "scenario.spec.shared-file", "scenario.spec.validate-success")
     def test_self_architecture_lists_every_implementation_file_under_an_entity(self):
@@ -74,7 +74,6 @@ root=Path.cwd();framework=root/'.concorde/framework';sys.path.insert(0,str(frame
 spec=importlib.util.spec_from_file_location('model_process_fixture',sys.argv[1]);helper=importlib.util.module_from_spec(spec);spec.loader.exec_module(helper)
 helper.PACKAGE=framework
 from concorde.spec.typed_data import typed
-helper.CONFIGURATION=typed('concorde-capability-configuration',{'integration':sys.argv[2],'enforcement':'native'})
 helper.project(root)
 from concorde.development.capability_service import CapabilityHost,run_capability
 import concorde.development.capability_host as actual_host
@@ -101,9 +100,9 @@ print(json.dumps({'result':result,'spec_result':spec_result,'spec_stages':spec_s
         from concorde.development.capability_service import CapabilityHost,run_capability
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);project(root);model=ModelProcessDouble();saved=[];replay=[False]
-            def executor(launch):
+            def executor(launch,*,checks=None):
                 if replay[0]:return saved[0]
-                result=model.executor(launch)
+                result=model.executor(launch,checks=checks)
                 if not saved:saved.append(result)
                 return result
             host=CapabilityHost(root,PACKAGE,executor=executor,allow_primary_worktree=True)

@@ -44,9 +44,10 @@ Code-writing tasks separately receive the Module's own listed implementation ent
 authority limited to exactly those paths: an exact file, or the whole directory a directory prefix
 names, so a new file below it needs no separate declaration.
 
-The review input identity includes the selected Agent/Mode binding digest. Changes to the mode
-contract, common or selected instructions, authority ceiling or recorded build invalidate review
-evidence. Sharing a definition with an author does not admit the author conversation or artifacts.
+The review input identity includes `review_mode` and the selected reviewer worker's Agent binding
+digest. Changes to that worker's task contract, common or selected instructions, authority ceiling
+or recorded build invalidate review evidence. Sharing a definition with an author does not admit
+the author conversation or artifacts.
 
 Canonical interface edits invalidate review for the owner and each old/candidate context consumer,
 including those that reference the whole provider Module. Each reviewer retains foreign definition

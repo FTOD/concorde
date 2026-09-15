@@ -49,7 +49,7 @@ def task_request(target_required: bool = True) -> dict:
     """The task-selection request shape shared by every capability.
 
     ``target_required=True`` (the target is already bound) requires
-    ``target_id``; ``target_required=False`` (the coordinator still has to route)
+    ``target_id``; ``target_required=False`` (the router still has to route)
     leaves it optional alongside the other task fields.
     """
 

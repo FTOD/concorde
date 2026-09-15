@@ -1,4 +1,0 @@
-# Mode: route
-
-Open the granted documents the discovery index lists, starting from each Module's reading entry, and use each Module's spec_resolution for original ownership and inclusion reasons; no document body is supplied inline. Expand only explicitly identified Module targets when necessary; return a new typed expansion request, never continue a conversation.
-Route to exactly one owning Module identified by admitted Spec responsibility and selection conditions. For concorde-review and concorde-dev-loop, return routed with one route containing only target_id and focus_id. The host binds the original task and ordered constraints; do not echo, summarize, translate or supplement them. For review, route the observational task to a fresh read-only reviewer. Never answer source diagnosis from discovery or perform routed mutations.

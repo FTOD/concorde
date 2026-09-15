@@ -58,15 +58,21 @@ def load_capability_inventory():
     return capabilities
 
 
-CAPABILITY_AGENT_MODES = {
-    "concorde-specify": ("specify", "concorde-spec-engineer"),
-    "concorde-plan": ("plan", "concorde-spec-engineer"),
-    "concorde-tasks": ("tasks", "concorde-spec-engineer"),
+# Each bound capability stage runs the one worker whose contract names that phase.
+CAPABILITY_AGENTS = {
+    "concorde-specify": ("specify", "concorde-spec-author"),
+    "concorde-plan": ("plan", "concorde-planner"),
+    "concorde-tasks": ("tasks", "concorde-task-author"),
     "concorde-implement": ("implementation", "concorde-programmer"),
-    "concorde-context-solve": ("context-solve", "concorde-spec-engineer"),
+    "concorde-context-solve": ("context-solve", "concorde-context-assessor"),
 }
-REVIEW_STAGES = {"spec": ("spec-review", "concorde-spec-engineer"),
-                 "code": ("code-review", "concorde-programmer")}
+INVESTIGATION_AGENT = "concorde-investigator"
+REVIEW_STAGES = {"spec": ("spec-review", "concorde-spec-reviewer"),
+                 "code": ("code-review", "concorde-code-reviewer")}
+# Main discovery runs one worker per action; accepted topologies are authored by fresh authors.
+MAIN_AGENTS = {"ask": "concorde-answerer", "route": "concorde-router",
+               "design-topology": "concorde-topology-designer"}
+TOPOLOGY_AUTHOR_AGENT = "concorde-topology-author"
 MAIN_CAPABILITY = "concorde-main"
 
 
@@ -88,14 +94,10 @@ DISCOVERY_CAPABILITIES = frozenset(name for name in CAPABILITY_NAMES
 DETERMINISTIC_CAPABILITIES = frozenset(name for name in CAPABILITY_NAMES if _MODULES[name].DETERMINISTIC)
 COMPOSITE_CAPABILITIES = tuple(name for name in CAPABILITY_NAMES if _MODULES[name].USES)
 assert len(CAPABILITY_NAMES) == len(load_capability_inventory().CAPABILITIES), "capability identities must be unique"
-INTERNAL_SKILLS = tuple(sorted({"concorde-coordinator", *(role for _, role in CAPABILITY_AGENT_MODES.values()),
+INTERNAL_SKILLS = tuple(sorted({*MAIN_AGENTS.values(), TOPOLOGY_AUTHOR_AGENT, INVESTIGATION_AGENT,
+                                *(role for _, role in CAPABILITY_AGENTS.values()),
                                 *(role for _, role in REVIEW_STAGES.values())}))
 INTERNAL_DATA_TYPES = (
-    "concorde-agent-task",
-    "concorde-agent-answer",
-    "concorde-agent-interruption",
-    "concorde-agent-loop-context",
-    "concorde-agent-loop-step",
     "concorde-agent-stage-context",
     "concorde-agent-stage-result",
     "concorde-review-input",
@@ -118,7 +120,7 @@ def dependencies(capability: str) -> tuple[str, ...]:
     module = _MODULES[capability]
     agents = tuple("concorde-" + agent.name.replace("_", "-") for agent in module.AGENTS)
     children = tuple("concorde-" + name.replace("_", "-") for name in module.USES)
-    routing = ("concorde-coordinator",) if module.CONTEXT_SELECTION == "discover" else ()
+    routing = (MAIN_AGENTS["route"],) if module.CONTEXT_SELECTION == "discover" else ()
     return tuple(dict.fromkeys((*routing, *agents, *children)))
 
 
@@ -150,23 +152,6 @@ def _capability_schemas() -> dict:
 
 def schemas() -> dict:
     result = {}
-    outcomes = {"enum": ["completed", "spec_incomplete", "waiting", "cancelled", "failed", "limit_exhausted", "rejected"]}
-    interruption = obj({"gaps": array(obj(GAP["properties"])), "decision": NULLABLE_ID})
-    result["concorde-agent-task"] = obj({"task": STRING, "target_id": STRING})
-    result["concorde-agent-answer"] = obj({"answer": STRING})
-    result["concorde-agent-interruption"] = interruption
-    details = {"anyOf": [typed_schema("concorde-agent-interruption"), {"type": "null"}]}
-    feedback = obj({"invocation_id": STRING, "parent_id": NULLABLE_ID, "agent_id": STRING,
-        "outcome": outcomes, "value_json": NULLABLE_ID, "error": NULLABLE_ID, "details": details})
-    child = obj({"agent_id": STRING, "input_type": STRING, "result_type": STRING,
-        "input_schema_json": STRING, "result_schema_json": STRING})
-    result["concorde-agent-loop-context"] = obj({"invocation_id": STRING,
-        "parent_id": NULLABLE_ID, "agent_id": STRING, "input_json": STRING,
-        "context_json": STRING, "feedback": array(feedback), "children": array(child),
-        "result_schema_json": STRING})
-    result["concorde-agent-loop-step"] = obj({"source": {"enum": ["code-driven", "model-driven"]},
-        "action": {"enum": ["delegate", "complete"]}, "agent_id": NULLABLE_ID,
-        "value_json": NULLABLE_ID, "outcome": outcomes, "details": details})
     document_ref = obj({"document_id": STRING, "path": PATH, "digest": DIGEST,
         "owner": STRING,
         "main_visible": {"type": "boolean"}})
@@ -268,7 +253,7 @@ def schemas() -> dict:
     result["concorde-main-stage-result"] = obj({"context_id": DIGEST, "outcome": MAIN_OUTCOMES,
         "answer": {"type": "string"}, "expand_targets": array(STRING, unique=True),
         # Selection-only routes keep single-target intent in host-owned input. Full routes
-        # remain readable for existing coordinators, but explicit echoes are checked exactly.
+        # remain readable for existing routers, but explicit echoes are checked exactly.
         "routes": array(obj(ROUTE["properties"], ("task", "constraints"))), "gaps": array(GAP),
         "topology_design": {"anyOf": [typed_schema("concorde-topology-design"), {"type": "null"}]}})
     result["concorde-topology-author-context"] = obj({"context_id": DIGEST,

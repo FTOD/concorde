@@ -16,10 +16,10 @@ are not additional Protocol Spec kinds.
 
 The Framework identifies its supported project configuration as Profile 12. Initialization writes
 `.concorde/config.json` with `profile_version: 12`, the `registry` path, an accepted Protocol
-`version` and manifest `digest` under `protocol`, and the typed `capability_configuration` for
-integration and enforcement; the `protocol` binding names the Protocol copy the installer placed
+`version` and manifest `digest` under `protocol`, and the typed `capability_configuration` for the
+project's Pi worker model, thinking level, timeout and per-worker overrides; the `protocol` binding names the Protocol copy the installer placed
 under `.concorde/protocol/`, which initialization never creates. Its registry uses JSON schema version 4. Profile 12 and registry
-schema 4 are Framework compatibility and storage versions; Spec Protocol 5.4.0 identifies the
+schema 4 are Framework compatibility and storage versions; Spec Protocol 5.5.0 identifies the
 independent specification standard. Installation and initialization preserve these separate roles.
 
 ## Installing and updating a target project
@@ -38,17 +38,17 @@ independent specification standard. Installation and initialization preserve the
 - THEN it writes the accepted receipt-owned Framework, Skill and root-guidance changes
 - AND it deploys the Protocol bundle under `.concorde/protocol/` as receipt-owned output, refreshed on every install and update, without touching the project's Protocol binding
 - AND it preserves project Specs, configuration, reflection history and unrelated user files
-- AND a `node_modules` directory below the package's `viewer/` directory is neither deployed nor inspected
+- AND a `node_modules` directory below the package's `viewer/` or `pi/` directory is neither deployed nor inspected
 
 Installation places rendered Skill entries in the selected project's `.agents/skills/` or
 `.claude/skills/` directory. Framework code, role instructions, rule assets, templates and
 supporting tools are deployed under `.concorde/framework/`; the managed runtime is provisioned
 separately. The Protocol bundle the project binds and grants to agents, the tracked manifest and
 its rendered assets, is deployed at `.concorde/protocol/`, a stable project path independent of
-the Framework layout. A `node_modules` directory below the package's `viewer/` directory, left by a local
-viewer install in a source checkout, is neither deployed nor inspected, because the managed runtime
-provisions the viewer from the package's `viewer/package.json` and its lock; every other entry
-below `viewer/` is deployed like the rest of the package. It also installs the selected root rule entry: `AGENTS.md` explicitly directs Codex to
+the Framework layout. A `node_modules` directory below the package's `viewer/` or `pi/` directory, left by
+a local install in a source checkout, is neither deployed nor inspected, because the managed runtime
+provisions the viewer and the Pi worker extensions from their own `package.json` and lock; every other
+entry below `viewer/` and `pi/` is deployed like the rest of the package. It also installs the selected root rule entry: `AGENTS.md` explicitly directs Codex to
 read `.concorde/protocol/principles.md`; `CLAUDE.md` uses Claude's native relative `@` import of
 the same file. Only the selected integration's entry is installed. It seeds the Concorde-owned
 defaults a project starts from, `.concorde/reflections/config.json`, `index.json` and
@@ -94,7 +94,7 @@ This is the root-entry cleanup step for uninstall, not a full-package removal co
 
 ## Configuring an initialized project
 
-### scenario.distribution.configure-apply — Configuration changes an initialized project's integration or enforcement setting atomically
+### scenario.distribution.configure-apply — Configuration changes an initialized project's Pi worker selection atomically
 
 - GIVEN an initialized project and an explicit supported configuration value
 - WHEN concorde-configure is applied
@@ -115,9 +115,9 @@ receipts. The locked managed Python runtime runs actual capabilities; viewer pro
 separate and versioned. Check verifies receipt hashes and required runtime identity without
 changing project behavior.
 
-The distributable manifest is `concorde.json` schema_version 3, Concorde 5.4.0, Architecture
-Profile 12, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 3 Agents with 12
-explicit modes and 14 Capabilities: 9 are public through Skills and 5 are available through declared
+The distributable manifest is `concorde.json` schema_version 3, Concorde 5.5.0, Architecture
+Profile 12, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 12 Agents, each one
+Pi worker with a single task contract, and 14 Capabilities: 9 are public through Skills and 5 are available through declared
 composition. It also declares package roots including `prompts`/`capabilities`/`protocol`, and 5
 templates. Codex `.agents/skills` and Claude `.claude/skills` expose the same 9 Skills; canonical
 Agent definitions and non-public Capabilities remain private. Every Skill sends a typed `invocation@3` to
@@ -155,8 +155,9 @@ the guard from `PreToolUse` and `WorktreeCreate`; `.codex/rules/worktree.rules` 
 `.codex/hooks.json` provide the matching Codex layer, loaded only for a trusted project. The guard
 inspects the command text an agent submits, so a command that computes `git worktree add` at
 runtime, or input sent to an already running shell, is outside its reach. Concorde's own workers
-are unaffected: Claude workers start with `--restricted`, which ignores project settings, and Codex
-workers start with `--ignore-user-config`, which leaves the project `.codex/` layer untrusted.
+are unaffected: each Pi worker process starts with sessions, project settings and discovered
+extensions disabled and its own configuration directory holding only what the host placed there,
+so it never reads this checkout's `.claude/` or `.codex/` layer and never creates a worktree itself.
 
 ## Source-checkout type check
 

@@ -34,6 +34,7 @@ PACKAGE_ROOTS = [
     "agents",
     "capabilities",
     "docsite",
+    "pi",
     "prompts",
     "protocol",
     "scripts",
@@ -196,15 +197,15 @@ def _package_files(package: Package) -> dict[str, bytes]:
     desired[f"{FRAMEWORK_ROOT}/concorde.json"] = (package.root / "concorde.json").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/LICENSE"] = (package.root / "LICENSE").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/README.md"] = (package.root / "README.md").read_bytes()
-    for directory in ("agents", "capabilities", "prompts", "protocol", "skills", "src", "templates", "viewer"):
+    for directory in ("agents", "capabilities", "pi", "prompts", "protocol", "skills", "src", "templates", "viewer"):
         source_root = package.root / directory
         for path in sorted(source_root.rglob("*")):
             relative = path.relative_to(package.root).as_posix()
             parts = PurePosixPath(relative).parts
-            if directory == "viewer" and "node_modules" in parts:
-                # A local viewer install (`npm --prefix viewer ci`) leaves node_modules below
-                # viewer/. The managed runtime provisions the viewer from viewer/package.json
-                # and its lock separately, so a local install is neither deployed nor inspected.
+            if directory in {"viewer", "pi"} and "node_modules" in parts:
+                # A local install (`npm --prefix viewer ci`, `npm ci --prefix pi`) leaves
+                # node_modules below its directory. The managed runtime provisions both from their
+                # package.json and lock separately, so a local install is neither deployed nor inspected.
                 continue
             if path.is_symlink():
                 raise InstallError(f"Concorde packages may not contain symlinks: {path}")

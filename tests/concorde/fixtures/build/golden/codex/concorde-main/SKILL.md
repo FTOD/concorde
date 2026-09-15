@@ -11,13 +11,13 @@ metadata:
 ---
 # concorde-main
 
-This is Concorde's public main entry. It replaces the former ask capability. The internal coordinator
-starts from the project's entry Module and may expand only registered Module
+This is Concorde's public main entry. It replaces the former ask capability. Its internal discovery workers (answerer, router and
+topology designer) start from the project's entry Module and may expand only registered Module
 complete Target Spec and explicitly registered Shared Specs. Shared membership never expands another entity's remaining
 documents. It understands the Module contract and never reads implementation files.
 
 Action `ask` (the default when action is omitted) answers directly from complete Spec contexts
-resolved by Python and granted to the coordinator as read-only files beside an index. Each source
+resolved by Python and granted to the answerer as read-only files beside an index. Each source
 is granted once, with explicit per-Module membership; additional contexts are loaded only on
 explicit selection.
 Action `design-topology` returns a digest-bound architecture
@@ -32,16 +32,16 @@ configuration (null to load initialized host settings, or a matching concorde-ca
 Ask and design-topology requests require task and accept optional target_id/focus_id (a candidate
 scenario ID) routing hints and constraints. Accept-topology requires the exact topology_proposal returned by design. Apply-
 topology requires only the exact application ArtifactRef returned by accept.
-The hint never grants Spec access to the coordinator. The development loop
+The hint never grants Spec access to a discovery worker. The development loop
 (`concorde-dev-loop`) accepts the same task, with optional target_id, focus_id, constraints, and
 change_id, and uses main's discovery to select one mutation target; its internal
 stages are bound to one target by the loop and are never invoked directly.
 Initialization uses its typed propose/apply request; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
-The coordinator expands complete Module collections only as needed and records the exact
+Discovery expands complete Module collections only as needed and records the exact
 Target Spec/Shared Specs membership and digests in every discovery identity.
-The coordinator can reason across all admitted complete contexts and answer without a reader or
+The answerer can reason across all admitted complete contexts and answer without a reader or
 intermediate summaries. A mutation route selects a Module from admitted responsibilities; the fresh worker receives only its own
 complete Module collection. Main visibility metadata does not trim that collection or admit implementation files.
 Topology design receives exact registry metadata and explicitly admits affected Module contracts. Target authors' complete output

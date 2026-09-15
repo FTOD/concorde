@@ -125,7 +125,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual([],data['routes'])
         self.assertNotIn('worker_results',data)
         self.assertEqual(['route','route'],[call['stage'] for call in double.calls])
-        self.assertEqual(['concorde-coordinator']*2,[call['capability'] for call in double.calls])
+        self.assertEqual(['concorde-answerer']*2,[call['capability'] for call in double.calls])
         first,second=double.calls
         self.assertEqual(['scope.bank'],[item['target_id'] for item in first['snapshot']['targets']])
         self.assertEqual(['scope.bank','service.transfer'],[item['target_id'] for item in second['snapshot']['targets']])
@@ -138,7 +138,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual(2,len({str(call['cwd']) for call in double.calls}))
         self.assertEqual(['.concorde/protocol/principles.md','.concorde/protocol/kinds/module.md'],
             [item['path'] for item in first['snapshot']['protocol']])
-        invocation_ids=[item.completion.invocation_id for item in self.host.evidence]
+        invocation_ids=[item.invocation_digest for item in self.host.evidence]
         self.assertEqual(2,len(invocation_ids));self.assertEqual(2,len(set(invocation_ids)))
         for call in double.calls:
             text=json.dumps(call['snapshot'])
@@ -220,7 +220,7 @@ class ScopedProtocolTests(unittest.TestCase):
         module_author=next(call for call in authors if call['snapshot']['target']['id']=='module.ledger')
         self.assertIn('specs/ledger/module.md',module_author['granted'])
         self.assertNotIn('# Ledger API',json.dumps(module_author['snapshot']))
-        main=[call for call in double.calls if call['capability']=='concorde-coordinator']
+        main=[call for call in double.calls if call['capability']=='concorde-topology-designer']
         self.assertTrue(any('specs/ledger/module.md' in call['granted'] for call in main))
         self.assertTrue(all('LEDGER_IMPLEMENTATION_CODE' not in json.dumps(call['snapshot']) for call in main))
     @verifies("scenario.development.topology-design", "scenario.development.topology-accept", "scenario.development.topology-apply", "scenario.development.topology-stale")
@@ -383,7 +383,7 @@ class ScopedProtocolTests(unittest.TestCase):
         result=self.call_capability('concorde-main',{'task':'Explain transfer and ledger'},double)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual(2,len(double.calls))
-        self.assertTrue(all(call['capability']=='concorde-coordinator' for call in double.calls))
+        self.assertTrue(all(call['capability']=='concorde-answerer' for call in double.calls))
         self.assertEqual(['scope.bank','service.transfer','module.ledger'],
                          result['output']['data']['discovered_targets'])
         self.assertEqual('Transfer and ledger explained from their original Specs.',
@@ -429,9 +429,9 @@ class ScopedProtocolTests(unittest.TestCase):
         result=self.call_capability('concorde-dev-loop',{'task':'Plan the transfer promise','specify':False,'run_reviews':False},double)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual('service.transfer',result['output']['data']['target_id'])
-        self.assertEqual('concorde-coordinator-route',result['output']['data']['completed_capabilities'][0])
+        self.assertEqual('concorde-router-route',result['output']['data']['completed_capabilities'][0])
         self.assertEqual(['route','route','context-solve'],[call['stage'] for call in double.calls][:3])
-        self.assertEqual(['concorde-coordinator','concorde-coordinator','concorde-spec-engineer'],
+        self.assertEqual(['concorde-router','concorde-router','concorde-context-assessor'],
                          [call['capability'] for call in double.calls][:3])
     @verifies("scenario.harness.typed-reject")
     def test_internal_stage_capability_requires_target_id_at_the_top_level(self):

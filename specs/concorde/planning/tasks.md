@@ -19,7 +19,7 @@ where required. It cannot reselect context or forge saved artifacts. Spec contex
 file names are visible and implementation contents remain excluded from non-code phases.
 
 `tasks` requires a current managed change and accepted nonempty plan. Missing state is
-missing_change; an absent plan is missing_plan. A fresh spec-engineer tasks invocation receives
+missing_change; an absent plan is missing_plan. A fresh task author invocation receives
 concorde-plan-artifact@1 and concorde-task-identity-constraints@1, even when the reservation list
 is empty. Optional prior tasks and semantic scope/review feedback require explicit repair admission.
 The [transport shapes](../spec/values.md#task-authoring-transport-values) are canonical there.

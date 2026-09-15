@@ -71,8 +71,8 @@ stop routes to `summarize`, and only `review_code` may select the automatic repa
 | --- | --- | --- | --- |
 | `initialize` | Deterministic: records the graph policy and enters the Flow. | task, candidate | route |
 | `specify_loop` | The specification Flow: Spec authoring (unless `specify=false` or already accepted) and independent Spec review with consumer reuse. Its result also selects where a resumed candidate re-enters. | task, Spec context, candidate | Spec, Spec review evidence, entry stage |
-| `plan` | The planning Flow: context assessment, then one spec-engineer `plan` invocation. | Spec, task | plan |
-| `tasks` | One spec-engineer `tasks` invocation with the plan, reserved task ids and, in a repair round, the blocking review result. | plan, reserved ids, review result | tasks |
+| `plan` | The planning Flow: context assessment, then one planner invocation. | Spec, task | plan |
+| `tasks` | One task-author invocation with the plan, reserved task ids and, in a repair round, the blocking review result. | plan, reserved ids, review result | tasks |
 | `implement` | One programmer `implementation` invocation, or component coordination for a composite. | tasks, implementation files, Spec | completed tasks, changed files |
 | `validate` | Deterministic: Spec validation and configured checks for the owner and every Module sharing a changed file. | candidate | checks, readiness gate |
 | `review_code` | Independent code review of the owner and every changed-file peer, each from its own contract, reusing current evidence. | Spec, changed files, tasks | code review results |
@@ -143,7 +143,7 @@ user-authorized delivery remains a separate capability.
 ## Failure and recovery
 
 Candidate creation precedes routing. A change ID identifies a worktree, not a completed route.
-An unbound handoff resumes coordinator selection using the recorded task and constraints; optional
+An unbound handoff resumes router selection using the recorded task and constraints; optional
 saved target/focus hints only steer that selection. Older records without a saved target hint
 remain valid. Once bound, the recorded owner supplies an omitted target or focus and omitted
 constraints, while explicit incompatible intent is rejected. Standalone reviews without a change

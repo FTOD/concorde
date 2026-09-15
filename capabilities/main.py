@@ -1,13 +1,13 @@
 """Capability: answer questions, route work, and design or apply system topology."""
 from concorde.spec import contract_shapes as shapes
-from agents import coordinator, spec_engineer
+from agents import answerer, router, topology_author, topology_designer
 
 from . import external_name
 
 PUBLIC = True
 CONTEXT_SELECTION = "discover"
 DETERMINISTIC = False
-AGENTS = (coordinator.AGENT, spec_engineer.AGENT)
+AGENTS = (answerer.AGENT, router.AGENT, topology_designer.AGENT, topology_author.AGENT)
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 

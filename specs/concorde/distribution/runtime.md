@@ -23,7 +23,7 @@ business requirements or agent context.
 
 - GIVEN a current reviewed plan_runtime action that is not conflict
 - WHEN provision_runtime runs
-- THEN it stages the locked Python interpreter and official viewer, verifies their identity, and records the resulting receipt
+- THEN it stages the locked Python interpreter, the official viewer and the pinned Pi worker extensions, verifies their identity, and records the resulting receipt
 - AND an unchanged verified runtime may be reused, though even `unchanged` rechecks health and may refresh the marker
 
 ### scenario.distribution.runtime-provision-failure — Failed acquisition or verification does not replace a valid runtime
@@ -51,9 +51,11 @@ provision_runtime(target: Path, framework: Path, spec: ManagedRuntimeSpec, actio
 
 `ManagedRuntimeSpec` is a frozen record with string fields `venv`, `requirements`, `launcher`,
 `python`, `requirements_sha256`, `runtime_sha256`, `langgraph_version` and `concorde_version`, a
-`skills: tuple[str, ...]` inventory, and `viewer: ViewerSpec`. Paths are explicit relative
+`skills: tuple[str, ...]` inventory, `viewer: ViewerSpec`, and the string fields `pi_lock_sha256`
+(the digest of `pi/package.json`, `pi/package-lock.json` and `pi/.npmrc`) and
+`pi_subagents_version` (the exact pi-subagents version `pi/package.json` pins). Paths are explicit relative
 locations; requirements identify the locked input and runtime digests identify the accepted
-combination. `ViewerSpec` has string fields `provider`, `version`, `package`, `asset_url`,
+combination, including the Pi worker lock. `ViewerSpec` has string fields `provider`, `version`, `package`, `asset_url`,
 `asset_sha256`, `node`, `npm_package`, `npm_lock`, `lock_sha256`, `integrity`, `install_relative`,
 `entrypoint`, `launcher`, positive integer `asset_bytes`, and ordered `graph_paths: tuple[str, ...]`.
 The package input binds an immutable official asset, size/hash and npm integrity; it does not
@@ -68,17 +70,21 @@ the returned action to provisioning; a conflict is not an admissible provisionin
 `provision_runtime` takes a trusted target, installed Framework root, loaded specification and
 current reviewed action. Optional `bootstrap_python` chooses the host bootstrap interpreter;
 omission uses the current interpreter. Success returns `path`, `python`, `python_version`,
-`requirements`, `requirements_sha256`, `runtime_sha256`, `launcher`, `verified_skills` and a
+`requirements`, `requirements_sha256`, `runtime_sha256`, `launcher`, `verified_skills`, a `pi`
+object (`install_relative` = `share/concorde/pi`, `lock_sha256`, `pi_subagents`) and a
 `viewer` object. That object carries provider/version/package, asset_url/asset_sha256/asset_bytes,
 integrity/lock_sha256, node/node_version/npm_version, install_relative/entrypoint/launcher and
 ordered graph_paths. All are strings except asset_bytes (integer) and the two string-array fields.
 The result records what was verified, not just requested. Accepted state has a schema-2,
 owner-concorde marker binding its path, Concorde version, lock/runtime digests, observed tool
-versions, viewer version/entrypoint and verified Skill inventory.
+versions, viewer version/entrypoint, Pi worker lock digest and pi-subagents version, and verified
+Skill inventory. The Pi worker extensions are installed with `npm ci` from the package's own lock
+into `share/concorde/pi` inside the runtime, where a worker with children loads pi-subagents; a
+changed Pi lock plans a rebuild.
 
 ## Effects, failures and retries
 
-Provisioning may create the environment, acquire the locked dependencies/viewer, run verification
+Provisioning may create the environment, acquire the locked dependencies, viewer and Pi worker extensions, run verification
 processes and write the owned receipt. Malformed requirements, ownership conflicts, unsupported
 actions, failed processes or mismatched installed identity raise `ManagedRuntimeError(ValueError)`;
 filesystem/process exceptions may also propagate.

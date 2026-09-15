@@ -19,7 +19,7 @@ where required. It cannot reselect context or forge saved artifacts. Spec contex
 file names are visible and implementation contents remain excluded from non-code phases.
 
 `context-solve` returns a task-specific sufficiency assessment without authored artifacts.
-Before its fresh spec-engineer context-solve invocation, the host compares local dependency
+Before its fresh context assessor invocation, the host compares local dependency
 declarations to registered relationships: a missing direct promise is an owned Spec gap;
 malformed, duplicate, unknown or unrelated entries are conflicting. Neither injects an undeclared
 relationship inventory into the worker. The assessor uses only the admitted Spec and never fetches

@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
-  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-5.4.0-6264e8" alt="Spec Protocol 5.4.0" /></a>
+  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-5.5.0-6264e8" alt="Spec Protocol 5.5.0" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/agents-Codex_%C2%B7_Claude-273449" alt="Integrations: Codex and Claude" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
 </p>
@@ -19,7 +19,7 @@
 
 # Concorde
 
-**Architecture-aware Specs, project understanding, and scoped agents for Codex and Claude.**
+**Architecture-aware Specs, project understanding, and scoped Pi worker agents, invoked from Codex or Claude.**
 
 Concorde helps you write and maintain software Specs that explain both behavior and architecture:
 what each Module is responsible for, how its entities relate, what it depends on, and which files
@@ -69,10 +69,13 @@ tests and review still matter. Missing promises are reported as Spec gaps.
 
 ### 4. Use built-in agents for everyday development
 
-Concorde includes three basic agents: a **coordinator** for questions, routing and topology design;
-a **Spec engineer** for authoring, reviewing, planning and task definition; and a **programmer** for
-implementation, code review and investigation. Public Skills compose them into workflows with
-explicit context and permissions for each invocation.
+Concorde defines twelve Pi workers, one per lifecycle role: **answerer**, **router** and
+**topology-designer** for questions, routing and topology design; **spec-author**,
+**topology-author**, **spec-reviewer**, **context-assessor**, **planner** and **task-author** for
+authoring, reviewing, planning and task definition; and **programmer**, **code-reviewer** and
+**investigator** for implementation, code review and investigation. Each worker is one Pi coding
+agent process (`pi --mode rpc`) run for exactly one invocation. Public Skills compose them into
+workflows with explicit context and permissions for each invocation.
 
 ### 5. Turn feedback into tracked improvements
 
@@ -107,7 +110,10 @@ starting a development change.
 ## Get started
 
 You need a Git project, Python **3.11+**, Node.js **18+** and npm for the installer-managed runtime,
-plus your chosen agent client. Configured checks currently require **Linux with bubblewrap**,
+and the [Pi coding agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent)
+(`npm install -g @earendil-works/pi-coding-agent`; Concorde is developed against 0.85.1) on `PATH`,
+logged in with `pi` then `/login` — every Concorde worker runs as one Pi process using that login
+and Pi's own model providers. Configured checks currently require **Linux with bubblewrap**,
 working namespaces and pidfd support. The optional docsite requires Node.js **20+**.
 
 **1. Clone and build Concorde.**
@@ -116,7 +122,11 @@ working namespaces and pidfd support. The optional docsite requires Node.js **20
 git clone https://github.com/FTOD/concorde.git
 cd concorde
 python3 scripts/concorde.py build
+npm ci --prefix pi
 ```
+
+`npm ci --prefix pi` installs pi-subagents, used for one level of worker delegation; the installer
+provisions it into an installed project's managed runtime automatically.
 
 **2. Preview the installation into your project, then apply it.** Replace `/absolute/path/to/project`
 with your existing Git project's path; use `claude` instead of `codex` for Claude.
@@ -258,8 +268,9 @@ submit this policy preview:
 }
 ```
 
-This inspects admitted permissions without starting an agent. Change `mode` to `execute` to run
-the question through the project's configured Codex or Claude runtime. Inspect **result**,
+This inspects admitted permissions without starting a worker. Change `mode` to `execute` to run
+the question through a Pi worker, using the project's configured model and thinking level and the
+developer's own Pi login. Inspect **result**,
 **policies** and **events** in the state; execution emits capability, stage and agent-process
 events, including starts, completions and failures. These are process events, not token-level
 traces of the agent's internal reasoning or tool calls.
@@ -284,7 +295,7 @@ See the [Studio guide](scripts/development/STUDIO.md) for debugging, results and
 
 ## The contract at the center
 
-Concorde's independent **Spec Protocol 5.4.0** defines one specification category: a **Module Spec**.
+Concorde's independent **Spec Protocol 5.5.0** defines one specification category: a **Module Spec**.
 A Module describes a cohesive software responsibility; its implementation may span packages,
 services or shared files. Each Spec document has one owning Module. A Module's explicit
 `references` includes other Module-owned documents or one registered document, expanded once;
@@ -332,20 +343,32 @@ for the full interface.
 
 ## Agents, capabilities and executable entry points
 
-Concorde currently defines **3 Agents with 12 task modes, 14 capabilities, 9 public Skills and
-3 Harnesses**. Capabilities orchestrate execution; Agents perform the steps that need model
-judgment. Public Skills provide instructions for invoking those capabilities from the developer's
-agent client.
+Concorde currently defines **12 Pi workers, 14 capabilities and 9 public Skills**. Capabilities
+orchestrate execution; workers perform the steps that need model judgment, each running as one Pi
+coding agent process for exactly one invocation. Public Skills provide instructions for invoking
+those capabilities from the developer's agent client.
 
-### Agents and task modes
+### Workers
 
-| Agent | Modes | Responsibility and authority |
+| Worker | Phase / action | Responsibility and authority |
 | :--- | :--- | :--- |
-| `coordinator` | `ask`, `route`, `design-topology` | Answer questions, route tasks and design topology from selected complete Module Specs; read-only, with no implementation contents. |
-| `spec-engineer` | `specify`, `context-solve`, `plan`, `tasks`, `spec-review`, `topology-author` | Author and review Specs, assess information sufficiency, and define plans and tasks. Returns structured results; the host applies document changes. |
-| `programmer` | `implementation`, `code-review`, `investigation` | Implement tasks, review code and investigate problems. Only `implementation` may write the selected Module's implementation files. |
+| `answerer` | route / ask | Answer questions from selected complete Module Specs; read-only, no routes or writes. |
+| `router` | route / route | Select the one owning Module route; no implementation contents or writes. |
+| `topology-designer` | route / design-topology | Design candidate topology from selected complete Specs and the explicit inventory; no document bodies or writes. |
+| `spec-author` | specify | Author structured Spec document replacements; the host applies them. |
+| `topology-author` | topology-author | Produce candidate-owned topology documents for host application. |
+| `spec-reviewer` | spec-review | Independent Spec review findings; read-only. |
+| `context-assessor` | context-solve | Assess Module context sufficiency; no authored artifacts. |
+| `planner` | plan | Produce an implementation plan; no source contents or writes. |
+| `task-author` | tasks | Derive implementation acceptance tasks from the accepted plan; no source contents or writes. |
+| `programmer` | implementation | Implement tasks; may write only the selected Module's listed implementation files. |
+| `code-reviewer` | code-review | Independent code review findings; authorized code read-only. |
+| `investigator` | implementation (reflection) | Investigate a reflection selection; authorized code read-only. |
 
-Definitions live in [agents/](agents/__init__.py). Each mode has its own task contract, and each
+Each worker is `agents/<name>/spec.md` (its role Spec) plus `agents/<name>/__init__.py` (its
+profile: task contract, workspace, Pi tools, children, timeout). Definitions live in
+[agents/](agents/__init__.py); the [Agents and Harnesses](specs/concorde/harness/agents-and-harnesses.md)
+Spec is the authoritative catalog. Each worker fulfils exactly one task contract, and each
 invocation receives fresh, explicitly bounded context and permissions.
 
 ### Capability inventory
@@ -358,7 +381,7 @@ invocation receives fresh, explicitly bounded context and permissions.
 | `review` | Run a standalone Spec or code review, including source diagnosis. | `concorde-review` |
 | `reflections-triage` | Inspect feedback, capture gaps, investigate, implement resolutions and manage owned records. | `concorde-reflections-triage` |
 | `init` | Propose and apply project initialization with a pinned Protocol. | `concorde-init` |
-| `configure` | Apply integration and enforcement configuration. | `concorde-configure` |
+| `configure` | Apply the project's Pi worker model/thinking selection and, on request, accept an updated Protocol binding. | `concorde-configure` |
 | `validate` | Run deterministic Spec and configured code checks and record readiness. | `concorde-validate` |
 | `deliver` | Stage a verified candidate on its own branch and clean up; merge into the primary branch on a separate explicit request. | `concorde-deliver` |
 | `specify` | Author Spec replacements for the bound Module. | — |
@@ -369,7 +392,7 @@ invocation receives fresh, explicitly bounded context and permissions.
 
 Four Capabilities make no model calls; the other ten may call a model. The nine public Skills
 each expose one Capability. The five non-public Capabilities have no standalone
-launcher and are reachable only through declared host composition. Current Agents have no admitted
+launcher and are reachable only through declared host composition. Current workers have no admitted
 Capability references of their own; the host composes the workflows.
 
 Each Capability declares public exposure, context selection (`discover`, `bound` or `none`),
@@ -379,17 +402,17 @@ branches and loops; “stage” describes a position in execution, not a type of
 The source inventory is [capabilities/](capabilities/__init__.py); the
 [capability registry](specs/concorde/development/capabilities.md) describes the contracts.
 
-### Harnesses and native tools
+### Harness
 
-| Harness | Agent | Execution environment |
-| :--- | :--- | :--- |
-| `discovery-capsule` | `coordinator` | Frozen discovery and routing context. |
-| `spec-capsule` | `spec-engineer` | Frozen Module Spec context. |
-| `implementation-workspace` | `programmer` | Project implementation workspace with access restricted by the selected mode and host grant. |
-
-All three declare `native.filesystem` and `native.shell` Tool interfaces and support Codex and
-Claude integrations. The Harness and mode define authority ceilings; the host grants concrete
-access for each invocation. See the [Harness definitions](src/concorde/harness/harness.py).
+A Harness is context, control flow, models and per-worker permissions and environment: the shared
+part is the host environment allowlist, the Pi worker runtime and the LangGraph Flows that
+orchestrate workers; the per-worker part is each worker's profile — its workspace kind (`capsule`
+for Spec-only work, `project` for work that reads or writes implementation files), Pi tools,
+children and timeout. The host compiles effective permissions from the worker's contract and its
+own grant for each invocation; a worker's Pi process starts with sessions, project settings, skills
+and discovered extensions disabled. See the
+[shared environment](src/concorde/harness/harness.py) and the
+[Agents and Harnesses](specs/concorde/harness/agents-and-harnesses.md) Spec.
 
 ### Launchers and supporting tools
 
@@ -415,7 +438,7 @@ capabilities as the CLI and Skills.
 ## Explore and contribute
 
 - **[Spec explorer](https://ftod.github.io/concorde/)** — published Protocol, Module contracts and relationship graphs.
-- **[Workflow guide](docs/workflow-guide.md)** — JSON requests, review, delivery, enforcement and Protocol upgrades.
+- **[Workflow guide](docs/workflow-guide.md)** — JSON requests, review, delivery, check sandboxing and Protocol upgrades.
 - **[LangGraph Studio](scripts/development/STUDIO.md)** — execution graphs, live events and debugging.
 - **[Docsite](docsite/README.md) · [Code viewer](viewer/README.md)** — publish Specs and inspect an existing Understand Anything graph. Launching the viewer does not generate or validate that graph.
 - **[Source-checkout policy](AGENTS.md)** — worktree ownership, maintenance and generated-output rules.

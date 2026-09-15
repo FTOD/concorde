@@ -3,7 +3,7 @@
 A capability is the executable unit the host runs. Every module independently declares:
 
 - ``PUBLIC``: a required boolean selecting a developer-facing Skill and launcher entry.
-- ``CONTEXT_SELECTION``: ``"discover"`` for coordinator discovery, ``"bound"`` for an already
+- ``CONTEXT_SELECTION``: ``"discover"`` for discovery-worker selection, ``"bound"`` for an already
   selected Module, or ``"none"`` for deterministic host work without Agent context selection.
 - ``DETERMINISTIC``: a required boolean; true means no supported path calls a model, including
   routing and transitive composition.

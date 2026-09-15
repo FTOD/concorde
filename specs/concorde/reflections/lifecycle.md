@@ -34,7 +34,7 @@ queue records and the candidate's target record carry the durable state.
 | `status` | Deterministic: typed queue metadata for the Module. | queue | status response |
 | `remove_records` | Deterministic: close or merge disposition removes eligible records. | selected records, disposition | removed records |
 | `prepare_investigation` | Deterministic: binds the selected records and HEAD; a Module without code is unsupported. | selected records, HEAD | bound evidence |
-| `investigate` | One programmer `investigation` invocation over the bound evidence, read-only. | bound evidence, Spec context, implementation files | findings |
+| `investigate` | One investigator invocation over the bound evidence, read-only. | bound evidence, Spec context, implementation files | findings |
 | `persist_findings` | Deterministic: writes the investigation result into the records; an implement action requires one consistent route. | findings, records | investigation plans |
 | `implement_resolution` | One development Flow per finding in this candidate. | investigation plan, candidate | component implementation |
 | `validate_candidate` | Deterministic validation of the candidate after every resolution. | candidate | checks |

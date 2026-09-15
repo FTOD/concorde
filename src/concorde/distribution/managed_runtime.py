@@ -20,6 +20,10 @@ MARKER_SCHEMA = 2
 _LOCK_LINE = re.compile(r"^langgraph==([0-9]+(?:\.[0-9]+){2})$")
 _SEMVER = re.compile(r"^v?([0-9]+)\.([0-9]+)\.([0-9]+)(?:[-+].*)?$")
 _SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
+# The Pi worker extensions a worker with children loads, installed from the package's pinned lock.
+PI_SOURCES = ("pi/package.json", "pi/package-lock.json", "pi/.npmrc")
+PI_INSTALL_RELATIVE = "share/concorde/pi"
+PI_SUBAGENTS = "pi-subagents"
 
 
 class ManagedRuntimeError(ValueError):
@@ -57,6 +61,8 @@ class ManagedRuntimeSpec:
     concorde_version: str
     skills: tuple[str, ...]
     viewer: ViewerSpec
+    pi_lock_sha256: str
+    pi_subagents_version: str
 
 
 def _sha256(data: bytes) -> str:
@@ -206,9 +212,20 @@ def load_runtime_spec(
     if not isinstance(version, str) or not version:
         raise ManagedRuntimeError("manifest version must be a non-empty string")
     viewer = _load_viewer_spec(package_root, manifest)
+    pi_contents = []
+    for relative in PI_SOURCES:
+        source = package_root.joinpath(*PurePosixPath(relative).parts)
+        if source.is_symlink() or not source.is_file():
+            raise ManagedRuntimeError(f"Pi worker package source must be one real file: {relative}")
+        pi_contents.append(source.read_bytes())
+    pi_package, _ = _json_object(package_root / PI_SOURCES[0], "Pi worker package")
+    pi_subagents_version = (pi_package.get("dependencies") or {}).get(PI_SUBAGENTS)
+    if not isinstance(pi_subagents_version, str) or not _SEMVER.fullmatch(pi_subagents_version):
+        raise ManagedRuntimeError(f"Pi worker package must pin {PI_SUBAGENTS} to one exact version")
+    pi_lock_sha256 = _sha256(b"\0".join(pi_contents))
     requirements_sha256 = _sha256(content)
     runtime_sha256 = _sha256(
-        (requirements_sha256 + "\n" + viewer.lock_sha256).encode("utf-8")
+        (requirements_sha256 + "\n" + viewer.lock_sha256 + "\n" + pi_lock_sha256).encode("utf-8")
     )
     return ManagedRuntimeSpec(
         venv=venv,
@@ -221,6 +238,8 @@ def load_runtime_spec(
         concorde_version=version,
         skills=SKILL_NAMES,
         viewer=viewer,
+        pi_lock_sha256=pi_lock_sha256,
+        pi_subagents_version=pi_subagents_version,
     )
 
 
@@ -411,6 +430,35 @@ def _install_viewer(
     _checked(result, "official Viewer dependency installation")
 
 
+def _install_pi(runtime: Path, framework: Path, cwd: Path) -> None:
+    """Install the Pi worker extensions from the package's pinned lock into the managed runtime."""
+    root = runtime.joinpath(*PurePosixPath(PI_INSTALL_RELATIVE).parts)
+    root.mkdir(parents=True, exist_ok=False)
+    for relative in PI_SOURCES:
+        source = framework.joinpath(*PurePosixPath(relative).parts)
+        if source.is_symlink() or not source.is_file():
+            raise ManagedRuntimeError(f"installed Pi worker package source is missing: {source}")
+        destination = root / PurePosixPath(relative).name
+        shutil.copyfile(source, destination)
+        destination.chmod(0o644)
+    environment = os.environ.copy()
+    environment.update({"NPM_CONFIG_AUDIT": "false", "NPM_CONFIG_FUND": "false",
+                        "NPM_CONFIG_UPDATE_NOTIFIER": "false"})
+    result = _run(["npm", "--prefix", str(root), "ci", "--ignore-scripts", "--no-audit", "--no-fund"],
+                  cwd=cwd, environment=environment)
+    _checked(result, "Pi worker extension installation")
+
+
+def _verify_pi(runtime: Path, spec: ManagedRuntimeSpec) -> None:
+    package_root = runtime.joinpath(*PurePosixPath(PI_INSTALL_RELATIVE).parts) / "node_modules" / PI_SUBAGENTS
+    package, _ = _json_object(package_root / "package.json", "installed pi-subagents package")
+    if package.get("name") != PI_SUBAGENTS or package.get("version") != spec.pi_subagents_version:
+        raise ManagedRuntimeError("installed pi-subagents package identity is mismatched")
+    entry = package_root / "index.ts"
+    if entry.is_symlink() or not entry.is_file():
+        raise ManagedRuntimeError(f"installed pi-subagents entry point is missing: {entry}")
+
+
 def _healthy(runtime: Path, spec: ManagedRuntimeSpec) -> bool:
     python = runtime_python(runtime)
     if not python.is_file():
@@ -479,6 +527,7 @@ def plan_runtime(
         and marker.get("requirements_sha256") == spec.requirements_sha256
         and marker.get("viewer_lock_sha256") == spec.viewer.lock_sha256
         and marker.get("viewer_version") == spec.viewer.version
+        and marker.get("pi_lock_sha256") == spec.pi_lock_sha256
         and marker.get("verified_skills") == list(spec.skills)
     )
     if matches and _healthy(runtime, spec):
@@ -561,6 +610,8 @@ def _write_marker(
         "viewer_lock_sha256": spec.viewer.lock_sha256,
         "viewer_version": spec.viewer.version,
         "viewer_entrypoint": spec.viewer.entrypoint,
+        "pi_lock_sha256": spec.pi_lock_sha256,
+        "pi_subagents_version": spec.pi_subagents_version,
         "verified_skills": list(spec.skills),
     }
     content = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
@@ -637,12 +688,14 @@ def provision_runtime(
                 "managed runtime dependency installation",
             )
             _install_viewer(runtime, framework, spec, target)
+            _install_pi(runtime, framework, target)
         python = runtime_python(runtime)
         python_version = _python_version(python, target)
         verified = _verify_skills(target, framework, spec, bootstrap)
         if verified != spec.skills:
             raise ManagedRuntimeError("managed runtime did not verify every skill")
         node_version, npm_version = _verify_viewer(runtime, spec, target)
+        _verify_pi(runtime, spec)
         _write_marker(runtime, spec, python_version, node_version, npm_version)
     except Exception:
         if changed and runtime.exists() and not runtime.is_symlink() and runtime.is_dir():
@@ -673,5 +726,10 @@ def provision_runtime(
             "entrypoint": spec.viewer.entrypoint,
             "launcher": spec.viewer.launcher,
             "graph_paths": list(spec.viewer.graph_paths),
+        },
+        "pi": {
+            "install_relative": PI_INSTALL_RELATIVE,
+            "lock_sha256": spec.pi_lock_sha256,
+            "pi_subagents": spec.pi_subagents_version,
         },
     }

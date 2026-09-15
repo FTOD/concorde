@@ -9,3 +9,15 @@
 	shallow = true
 	concorde-sparse = /* !*.gif !*.png !*.jpg !*.jpeg !*.webp !*.mp4 !*.webm !*.ico !*.woff !*.woff2 !*.ttf !*.otf !*.pdf !*.zip
 	branch = 1.2.11
+[submodule "reference/pi-subagents"]
+	path = reference/pi-subagents
+	url = https://github.com/nicobailon/pi-subagents.git
+	shallow = true
+	concorde-sparse = /* !*.gif !*.png !*.jpg !*.jpeg !*.webp !*.mp4 !*.webm !*.ico !*.woff !*.woff2 !*.ttf !*.otf !*.pdf !*.zip
+	branch = v0.68.0
+[submodule "reference/pi"]
+	path = reference/pi
+	url = https://github.com/earendil-works/pi.git
+	shallow = true
+	concorde-sparse = /* !*.gif !*.png !*.jpg !*.jpeg !*.webp !*.mp4 !*.webm !*.ico !*.woff !*.woff2 !*.ttf !*.otf !*.pdf !*.zip
+	branch = v0.85.1

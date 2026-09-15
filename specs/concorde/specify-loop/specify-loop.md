@@ -53,7 +53,7 @@ each consumer's review evidence and the gap history.
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `initialize` | Deterministic: authoring is needed unless `specify=false` or the same intent was already accepted without an open gap. | task, candidate | route |
-| `specify` | Spec Authoring: one spec-engineer `specify` invocation; the owner's and every affected consumer's candidate reviews admit the replacements before they are applied and are recorded for reuse. | task, Spec context | replaced Spec documents, candidate review evidence |
+| `specify` | Spec Authoring: one spec-author invocation; the owner's and every affected consumer's candidate reviews admit the replacements before they are applied and are recorded for reuse. | task, Spec context | replaced Spec documents, candidate review evidence |
 | `review_spec` | Independent Spec review of the owner and every consumer whose evidence is missing or stale; an explicit skip or fully current evidence is recorded instead. | task, Spec, review evidence | Spec review results |
 | `summarize` | Deterministic: the capability response with every artifact reference. | output, artifacts | response |
 
@@ -84,4 +84,4 @@ There is no automatic Spec-repair edge. A necessary gap waits for explicit repai
 blocking reviews, invalid output, failed execution, cancellation and limits preserve inspectable
 progress with their distinct outcomes. Repeated unchanged blockers cannot imply completion.
 The flow composes only the declared specify and review adapters. Its routing is the common
-coordinator service, not an additional callable query capability.
+router service, not an additional callable query capability.

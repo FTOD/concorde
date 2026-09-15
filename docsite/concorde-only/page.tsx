@@ -132,7 +132,7 @@ const capabilityDetails: Record<string, CapabilityDetail> = {
     exchange: 'concorde-init-request@1 → concorde-init-response@1. Propose returns concorde-project-proposal@1; apply consumes the exact proposal and returns applied status and changed paths.',
     stops: 'Missing proposal inputs, malformed or stale proposals, conflicting existing project state or unsuccessful file application block initialization. Preview uses action: propose; describe-policy returns use_proposal.'},
   'concorde-configure': {title: 'Configure',
-    detail: 'Apply the initialized project’s integration and enforcement configuration.',
+    detail: 'Apply the initialized project’s Pi worker model selection.',
     exchange: 'concorde-configure-request@1 carries concorde-capability-configuration@1. concorde-configure-response@1 returns configuration and status: applied, rather than the common stage-response fields.',
     stops: 'Invalid configuration, unavailable initialized project state or a failed configuration write blocks application. Preview through describe-policy is not supported by this project action.'},
   'concorde-validate': {title: 'Validate',

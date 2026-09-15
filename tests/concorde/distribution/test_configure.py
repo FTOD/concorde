@@ -1,4 +1,4 @@
-"""concorde-configure admits only the integration and enforcement values the distributed launchers can enforce."""
+"""concorde-configure applies a Pi worker model selection atomically and rejects any other shape."""
 from __future__ import annotations
 
 import json
@@ -24,9 +24,8 @@ from concorde.spec.typed_data import typed  # noqa: E402
 from tests.concorde.spec.support import PACKAGE, ModelProcessDouble, project  # noqa: E402
 
 
-def configuration(integration: str = "claude", enforcement: str = "native") -> dict:
-    return {"type_id": "concorde-capability-configuration", "schema_version": 1,
-            "data": {"integration": integration, "enforcement": enforcement}}
+def configuration(**data) -> dict:
+    return {"type_id": "concorde-capability-configuration", "schema_version": 1, "data": data}
 
 
 class ConfigureTests(unittest.TestCase):
@@ -47,31 +46,32 @@ class ConfigureTests(unittest.TestCase):
 
     @verifies("scenario.distribution.configure-apply")
     def test_supported_configuration_is_applied_atomically(self):
-        proposed = propose_configuration(self.root, configuration("codex"))
+        selection = configuration(model="anthropic/claude-sonnet-5", thinking="high", timeout_seconds=2400,
+                                  workers={"programmer/verifier": {"thinking": "low"}})
+        proposed = propose_configuration(self.root, selection)
         self.assertEqual("proposal", proposed.status)
         (self.root / "accepted.json").write_text(json.dumps(proposed.result["proposal"]))
         self.assertEqual("success", apply_configuration(self.root, "accepted.json").status)
-        self.assertEqual(configuration("codex"), self.stored())
-        self.assertEqual(configuration("codex"), load_configuration(self.root))
+        self.assertEqual(selection, self.stored())
+        self.assertEqual(selection, load_configuration(self.root))
         self.assertEqual("unchanged", apply_configuration(self.root, "accepted.json").status)
 
     @verifies("scenario.distribution.configure-apply")
-    def test_only_native_enforcement_is_admitted(self):
-        # The distributed launchers attest no outer sandbox, so ``outer`` is rejected at configuration
-        # time rather than accepted and failed at the first Agent launch.
-        self.assertEqual("native", validate_typed(configuration())["data"]["enforcement"])
-        for enforcement in ("outer", "none", ""):
-            with self.subTest(enforcement=enforcement):
+    def test_retired_launcher_fields_and_unknown_shapes_are_rejected(self):
+        self.assertEqual({}, validate_typed(configuration())["data"])
+        for data in ({"integration": "codex", "enforcement": "native"}, {"reasoning_effort": "high"},
+                     {"thinking": "ultra"}, {"workers": {"programmer": {"integration": "claude"}}}):
+            with self.subTest(data=data):
                 with self.assertRaises(TypedDataError):
-                    validate_typed(configuration(enforcement=enforcement))
-                self.assertEqual("invalid", propose_configuration(self.root, configuration(enforcement=enforcement)).status)
+                    validate_typed(configuration(**data))
+                self.assertEqual("invalid", propose_configuration(self.root, configuration(**data)).status)
                 self.assertEqual(CONFIGURATION, self.stored())
-        proposed = propose_configuration(self.root, configuration("codex"))
-        forged = {**proposed.result["proposal"], "configuration": configuration("codex", "outer")}
+        proposed = propose_configuration(self.root, configuration(thinking="low"))
+        forged = {**proposed.result["proposal"], "configuration": configuration(integration="codex")}
         (self.root / "forged.json").write_text(json.dumps(forged))
         self.assertEqual("invalid", apply_configuration(self.root, "forged.json").status)
         self.assertEqual(CONFIGURATION, self.stored())
-        self.write(configuration(enforcement="outer"))
+        self.write(configuration(enforcement="native"))
         with self.assertRaises(TypedDataError):
             load_configuration(self.root)
 

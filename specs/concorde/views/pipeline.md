@@ -21,7 +21,7 @@ of ordinary document rendering.
 
 - GIVEN Concorde's source checkout with the development Python environment and its own docsite extension
 - WHEN the site is built and the reader opens the top-level Agent Flows tab at `/agent-flows`
-- THEN the page shows compiled Spec preparation, development, discovery/query, topology, planning, coordination, reflection and recursive Agent Flows plus expanded public Studio entries without executing Agents
+- THEN the page shows compiled Spec preparation, development, discovery/query, topology, planning, coordination, reflection and Agent invocation node Flows plus expanded public Studio entries without executing Agents
 - AND specify-loop has a directly navigable section showing its actual authoring, review, resume and result transitions, linked from its dev-loop node
 - AND a searchable sidebar lists every Capability and shared Flow family, with a selected detail view and stable fragment links supporting direct access and browser navigation
 - AND the sidebar includes both dev-loop and the specify Capability, keeps the current selection visible, and can be opened or closed on small screens

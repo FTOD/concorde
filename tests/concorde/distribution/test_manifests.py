@@ -21,7 +21,7 @@ class ManifestContractTests(unittest.TestCase):
     def test_one_manifest_declares_native_identity_profile_and_install_layout(self):
         manifest = self.manifest
         self.assertEqual(manifest["schema_version"], 3)
-        self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "5.4.0"))
+        self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "5.5.0"))
         self.assertEqual((manifest["architecture_profile"], manifest["workspace_protocol"]), (12, 15))
         self.assertEqual(manifest["integrations"], ["claude", "codex"])
         self.assertEqual(manifest["install"], {
@@ -55,16 +55,18 @@ class ManifestContractTests(unittest.TestCase):
 
     def test_manifest_inventory_equals_root_capabilities_and_templates(self):
         sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
+        sys.path.insert(0, str(REPOSITORY_ROOT))
         try:
-            from concorde.harness.roles import ROLES
+            import agents
             from concorde.distribution.build import SKILL_NAMES
             from concorde.spec.contracts import load_capability_inventory
         finally:
             sys.path.pop(0)
+            sys.path.pop(0)
         capabilities = load_capability_inventory()
         templates = sorted(path.name for path in (REPOSITORY_ROOT / "templates").glob("*.md"))
         self.assertEqual(sorted(self.manifest["templates"]), templates)
-        self.assertEqual((len(ROLES), len(capabilities.CAPABILITIES), len(SKILL_NAMES), len(templates)), (3, 14, 9, 5))
+        self.assertEqual((len(agents.AGENTS), len(capabilities.CAPABILITIES), len(SKILL_NAMES), len(templates)), (12, 14, 9, 5))
         self.assertEqual(
             (REPOSITORY_ROOT / "scripts/requirements.lock").read_text(),
             "langgraph==1.2.11\n",

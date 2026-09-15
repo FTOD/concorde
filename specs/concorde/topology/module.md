@@ -82,7 +82,7 @@ The detailed contract is [Accepted atomic topology](topology.md).
     "title": "Harness",
     "kind": "used module",
     "target_id": "module.harness",
-    "responsibility": "Run an isolated design coordinator and separate candidate-local Spec authors and compatibility reviewers under their own contexts."
+    "responsibility": "Run an isolated topology designer and separate candidate-local Spec authors and compatibility reviewers under their own contexts."
   },
   {
     "id": "entity.topology.spec",
@@ -140,8 +140,8 @@ flowchart TB
   },
   {
     "target_id": "module.harness",
-    "responsibility": "Run an isolated design coordinator and separate candidate-local Spec authors and compatibility reviewers under their own contexts.",
-    "selection_condition": "During design and accepted preparation, before each fresh coordinator, author or consumer-review invocation.",
+    "responsibility": "Run an isolated topology designer and separate candidate-local Spec authors and compatibility reviewers under their own contexts.",
+    "selection_condition": "During design and accepted preparation, before each fresh topology designer, author or consumer-review invocation.",
     "relied_upon_promises": [
       "[Explicit complete-context discovery](../harness/context.md#global-spec-context-assembly); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant."
     ]

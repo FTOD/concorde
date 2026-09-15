@@ -1,4 +1,4 @@
-"""Capability: apply the initialized integration and enforcement configuration and, on explicit
+"""Capability: apply the project's Pi worker model selection and, on explicit
 request, accept the Protocol the installer placed under .concorde/protocol/ by rebinding to it.
 Deterministic; runs no agent cognition and selects no context."""
 from concorde.spec import contract_shapes as shapes

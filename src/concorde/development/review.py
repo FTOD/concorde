@@ -17,13 +17,11 @@ from pathlib import Path
 from ..harness.change_worktree import git, git_value, progress, read_change, save_change, workspace_identity
 from ..spec.typed_data import artifact, canonical, checked_path, typed, validate_typed, verify_artifacts
 from .configuration import load_configuration
-from ..harness.agent_model import (ModeContractError, agent_definition, binding_json,
-    external_agent_name, mode_definition, validate_mode_output)
-from ..harness.agent_executor import CapabilityExecutionError
-from ..harness.permissions import (EnforcementReceipt, CapabilityExecutionResult, PermissionPolicyError, PolicyBinding,
-    build_launch_specification, compile_policy, render_claude_configuration, render_codex_configuration)
+from ..harness.agent_model import ContractError, agent_definition
+from ..harness.worker_executor import CapabilityExecutionError, WorkerOutcome
+from ..harness.permissions import PermissionPolicyError, PolicyBinding, compile_policy
 from ..spec.contracts import REVIEW_STAGES
-from ..distribution.build import load_role_prompt
+from ..distribution.build import load_agent
 from ..harness.context import (context_documents, materialize_documents, materialize_references,
                                recheck_context, reference_grants, resolve_context)
 from ..harness.usage import record_usage
@@ -81,7 +79,7 @@ def inputs(run, mode: str) -> tuple[dict, object]:
     if mode == "code" and not target.files:
         raise SpecError("code review requires a Module whose entities list implementation files", "unsupported_target")
     phase, role = REVIEW_STAGES[mode]
-    prompt = load_role_prompt(run.host.package_root, role, phase)
+    prompt = load_agent(run.host.package_root, role)
     change = read_change(repository.root)
     _, current = workspace_identity(repository.root)
     head = current["head"] if current else None
@@ -102,7 +100,7 @@ def inputs(run, mode: str) -> tuple[dict, object]:
             "src/concorde/development/discovery_flow.py", "src/concorde/development/target_flow.py",
             "src/concorde/development/coordination_flow.py", "src/concorde/development/loop_flow.py",
             "src/concorde/development/specify_flow.py",
-            "src/concorde/harness/agent_executor.py",
+            "src/concorde/harness/worker_executor.py", "src/concorde/harness/pi_worker.py",
             "src/concorde/harness/permissions.py", "src/concorde/harness/context.py",
             "src/concorde/harness/batch_flow.py")},
         "configuration": run.configuration}
@@ -117,7 +115,7 @@ def _empty(run, info, status, answer) -> dict:
         "semantic_completeness": "not_proven"})
 
 
-def _persist(run, value, *, execution=None, receipt=None, failure=None) -> dict:
+def _persist(run, value, *, execution=None, failure=None) -> dict:
     """Host run records are separate from the reviewer's empty write grant."""
     mode = value["data"]["review_mode"]
     path = f".concorde/runs/{run.host.invocation_id}/review-{run.target.id}-{mode}-{uuid.uuid4()}.json"
@@ -125,10 +123,10 @@ def _persist(run, value, *, execution=None, receipt=None, failure=None) -> dict:
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(canonical(value) + "\n")
     reference = artifact(run.repository.root, f"review.{run.target.id}.{mode}", path)
-    if execution is not None or receipt is not None or failure is not None:
+    if execution is not None or failure is not None:
+        # The worker's reported usage and any execution failure stay host records beside the review.
         private = destination.with_suffix(".execution.json")
-        private.write_text(canonical({"execution": asdict(execution) if execution else None,
-                                      "receipt": asdict(receipt) if receipt else None,
+        private.write_text(canonical({"usage": asdict(execution) if execution else None,
                                       "failure": failure}) + "\n")
     state = None if getattr(run, "candidate_review", False) else read_change(run.repository.root)
     if state is not None:
@@ -193,12 +191,14 @@ def _validate(run, snapshot, info, data):
 
 def review(run, mode: str) -> dict:
     """Run exactly one reviewer; no prior review, transcript or code crosses modes."""
-    from ..harness.model_selection import agent_selection
+    from .capability_host import (_check_service, _protocol_documents, _run_worker, _worker_description,
+                                  _worker_invocation)
     info, prompt = inputs(run, mode)
     phase, role = REVIEW_STAGES[mode]
+    agent = agent_definition(prompt.binding.agent)
     snapshot = resolve_context(run.repository, run.target.id, phase=phase, task=run.task["task"],
         focus_id=run.task.get("focus_id"), constraints=tuple(run.task.get("constraints", [])),
-        instructions=prompt.body, mode=mode_definition(agent_definition(prompt.binding.agent), phase))
+        instructions=prompt.body, agent=agent)
     run.last_context = snapshot.id
     pending = run.pending_gaps(phase, snapshot, review_input_digest=info["input_digest"])
     if pending and run.host.track_gaps:
@@ -209,7 +209,7 @@ def review(run, mode: str) -> dict:
     result = None
     try:
         with tempfile.TemporaryDirectory(prefix="concorde-review-") as directory:
-            project_workspace = agent_definition(prompt.binding.agent).harness.workspace == "project"
+            project_workspace = agent.workspace == "project"
             project = run.repository.root if project_workspace else Path(directory)
             relative = (f".concorde/runs/{run.host.invocation_id}/{uuid.uuid4()}/context.json"
                         if project_workspace else "context.json")
@@ -234,60 +234,33 @@ def review(run, mode: str) -> dict:
                 roles["references"] = reference_grants(records)
             binding = PolicyBinding("concorde-review", phase, 0, role, role, write_roles=())
             try:
-                policy = compile_policy(prompt.effects, binding, roles,
-                    outer_sandbox_required=run.configuration["data"]["enforcement"] == "outer")
+                policy = compile_policy(prompt.effects, binding, roles)
             except PermissionPolicyError as error:
                 raise SpecError(str(error), "permission_denied") from error
             if policy.write_paths:
                 raise SpecError("review role must have no write authority", "permission_denied")
-            selection = agent_selection(run.configuration, prompt.binding.agent, prompt.binding.mode)
-            integration = selection.integration
-            renderer = render_codex_configuration if integration == "codex" else render_claude_configuration
-            native = renderer(policy, native_enforcement=run.configuration["data"]["enforcement"] == "native",
-                              outer_sandbox=run.host.outer_sandbox, **selection.model_arguments())
-            invocation_id = str(uuid.uuid4())
             receipt = {"schema_version": 15, "target_id": run.target.id, "phase": phase,
                 "context_id": snapshot.id, "source_digest": snapshot.id, "input_digest": info["input_digest"],
                 "role_paths": {key: list(paths) for key, paths in roles.items()}}
-            launch = build_launch_specification(capability="concorde-review", stage=phase, occurrence=0,
-                role=role, integration=integration, agent=role, project_root=str(project),
-                request=run.task["task"], prompt=prompt.body, prior_results=(),
-                workspace_receipt_json=canonical(receipt), workspace_digest=snapshot.id,
-                policy=policy, native_configuration=native, runtime_input_json=canonical(value),
-                capability_configuration_json=canonical(run.configuration), invocation_id=invocation_id,
-                agent_binding_json=binding_json(prompt.binding))
-            run.host.descriptions.append({"capability": "concorde-review", "phase": phase,
-                "context_id": snapshot.id, "input_digest": info["input_digest"],
-                "project_root": str(project), "read_paths": list(policy.read_paths), "write_paths": [],
-                "network": False, "fresh_session": True, "policy_digest": policy.digest,
-                "agent": external_agent_name(prompt.binding.agent), "harness": prompt.binding.harness,
-                "agent_binding_digest": prompt.binding.digest, "mode": prompt.binding.mode,
-                "instructions_digest": prompt.binding.instructions_digest,
-                "loop_timeout_seconds": prompt.binding.effective_loop.timeout_seconds, **selection.wire()})
+            invocation = _worker_invocation(run.configuration, capability="concorde-review", stage=phase,
+                prompt=prompt, workspace=project, context_value=value, receipt=receipt, policy=policy,
+                protocol=_protocol_documents(snapshot.value, granted))
+            run.host.descriptions.append(_worker_description(prompt, invocation, policy,
+                capability="concorde-review", phase=phase, context_id=snapshot.id,
+                input_digest=info["input_digest"], project_root=str(project)))
             if run.host.mode == "describe-policy":
                 return run.response("described", reviews=[_empty(run, info, "not_run", "Policy described; review not run.")])
-            from ..harness.agent_executor import AgentProcessExecutor
             from ..harness.agent_node import AgentNode
+            checks = _check_service(run.repository, run.target, run.host.invocation_id) if project_workspace else None
 
             def launch_reviewer(context):
                 nonlocal result
-                result = (run.host.executor or AgentProcessExecutor())(launch)
-                if not isinstance(result, CapabilityExecutionResult):
-                    raise SpecError("review executor omitted native completion evidence", "invalid_completion")
-                record_usage(run.host, capability="concorde-review", stage=phase, target_id=run.target.id,
-                             agent=external_agent_name(prompt.binding.agent), mode=prompt.binding.mode,
-                             launch=launch, result=result, change_id=run.change_id)
-                if (result.receipt.requested_launch_digest != launch.digest
-                        or result.receipt.policy_digest != policy.digest or result.receipt.status != "success"
-                        or result.completion.invocation_id != invocation_id
-                        or result.completion.workspace_digest != snapshot.id
-                        or result.receipt.agent_binding_digest != prompt.binding.digest):
-                    raise SpecError("review evidence is not bound to this launch", "invalid_completion")
-                validate_mode_output(agent_definition(prompt.binding.agent), prompt.binding.mode, result.completion.domain_output)
-                return validate_typed(result.completion.domain_output, "concorde-review-stage-result")["data"]
+                result, data = _run_worker(run.host, invocation, prompt, capability="concorde-review",
+                                           stage=phase, target_id=run.target.id,
+                                           result_type="concorde-review-stage-result", checks=checks)
+                return data
 
-            data = AgentNode.select(agent_definition(prompt.binding.agent), prompt.binding.mode).invoke(
-                value, launch_reviewer)
+            data = AgentNode(agent).invoke(value, launch_reviewer)
             _validate(run, snapshot, info, data)
             recheck_context(run.repository, snapshot)
             if inputs(run, mode)[0] != info or load_configuration(run.repository.root) != run.configuration:
@@ -297,7 +270,7 @@ def review(run, mode: str) -> dict:
             reviewed = typed("concorde-review-result", {**data, "target_id": run.target.id,
                 "focus_id": run.task.get("focus_id"), "revision": info["revision"],
                 "semantic_completeness": "not_proven"})
-            reference = _persist(run, reviewed, execution=result)
+            reference = _persist(run, reviewed, execution=result.usage)
             if (data["status"] != "incomplete" and (data["gaps"]
                     or not any(f["severity"] == "blocking" for f in data["findings"]))):
                 run.record_gaps(phase, data["gaps"], review_input_digest=info["input_digest"])
@@ -332,16 +305,13 @@ def review(run, mode: str) -> dict:
                 run.host.lifecycle["persistence_error"] = (
                     f"Could not persist reviewer execution status: {persistence_error}")
         else:
-            code = error.code if isinstance(error, (SpecError, ModeContractError)) else "execution_failed"
+            code = error.code if isinstance(error, (SpecError, ContractError)) else "execution_failed"
         reviewed = _empty(run, info, "incomplete", f"Review could not complete ({code}).")
-        receipt = getattr(error, "receipt", None)
         failure = {"code": code, "message": str(error)}
         if run.host.lifecycle.get("persistence_error"):
             failure["persistence"] = run.host.lifecycle["persistence_error"]
-        reference = _persist(run, reviewed,
-            execution=result if isinstance(result, CapabilityExecutionResult) else None,
-            receipt=receipt if isinstance(receipt, EnforcementReceipt) else None,
-            failure=failure)
+        usage = result.usage if isinstance(result, WorkerOutcome) else getattr(error, "usage", None)
+        reference = _persist(run, reviewed, execution=usage, failure=failure)
         return run.response("failed", reviewed["data"]["answer"], artifacts=[reference], reviews=[reviewed])
 
 

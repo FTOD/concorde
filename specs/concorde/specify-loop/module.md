@@ -61,7 +61,7 @@ The detailed contract is [Independent Spec completion](specify-loop.md).
     "title": "Harness",
     "kind": "used module",
     "target_id": "module.harness",
-    "responsibility": "Bind the coordinator, author and each independent Spec reviewer to separate fresh Spec-only invocations."
+    "responsibility": "Bind the router, author and each independent Spec reviewer to separate fresh Spec-only invocations."
   },
   {
     "id": "entity.specify-loop.spec",
@@ -137,7 +137,7 @@ flowchart TB
   },
   {
     "target_id": "module.harness",
-    "responsibility": "Bind the coordinator, author and each independent Spec reviewer to separate fresh Spec-only invocations.",
+    "responsibility": "Bind the router, author and each independent Spec reviewer to separate fresh Spec-only invocations.",
     "selection_condition": "When routing or a composed authoring/review stage requires an Agent; reviewers inherit no author artifacts.",
     "relied_upon_promises": [
       "[Complete context selection](../harness/context.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant."

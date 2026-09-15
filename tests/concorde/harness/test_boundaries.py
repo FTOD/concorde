@@ -126,7 +126,7 @@ class BoundaryTests(unittest.TestCase):
         with self.assertRaises(SpecError) as raised:SpecRepository(self.root,package)
         self.assertEqual('protocol_mismatch',raised.exception.code)
     def test_configuration_cannot_replace_initialized_authority(self):
-        other=typed('concorde-capability-configuration',{'integration':'codex','enforcement':'native'})
+        other=typed('concorde-capability-configuration',{'model':CONFIGURATION['data']['model'],'thinking':'high'})
         result=run_capability('concorde-main',other,typed('concorde-main-request',self.task),host_context=CapabilityHost(self.root,PACKAGE))
         self.assertEqual('configuration_mismatch',result['errors'][0]['code'])
     @verifies("scenario.harness.typed-reject")
@@ -150,7 +150,7 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
         for policy in self.host.descriptions:
             if policy['phase'] not in {'implementation','code-review'}:self.assertSpecOnlyReads(policy['read_paths']);self.assertEqual([],policy['write_paths'])
-    def test_ask_policy_describes_only_coordinator_without_launching(self):
+    def test_ask_policy_describes_only_the_route_phase_without_launching(self):
         result=self.call_capability('concorde-main',{'task':'Explain transfer','target_id':'service.transfer'},mode='describe-policy')
         self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
         self.assertEqual(['route'],[item['phase'] for item in self.host.descriptions])

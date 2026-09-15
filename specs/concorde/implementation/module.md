@@ -114,7 +114,7 @@ flowchart TB
   {
     "target_id": "module.harness",
     "responsibility": "Bind a fresh programmer to the complete selected contract and enforce writes only to that Module's granted implementation paths.",
-    "selection_condition": "When launching implementation mode or admitting its matching completion under the current grant.",
+    "selection_condition": "When launching the programmer or admitting its matching completion under the current grant.",
     "relied_upon_promises": [
       "[Complete context selection](../harness/context.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant."
     ]

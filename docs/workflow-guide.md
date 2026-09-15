@@ -9,13 +9,15 @@ Concorde centers on writing and maintaining **architecture-aware Specs**. Its do
 Anything graph view help developers understand the project. **Agent observability** covers the
 working process: [LangGraph Studio](../scripts/development/STUDIO.md) exposes execution graphs and
 live stage and agent-process events, while recorded context, permission policies, checks and reviews
-make the work and its results inspectable. Specs guide each agent's task, while the host limits its context
-and permissions to the declared scope. Built-in coordinator, Spec engineer and programmer agents
-support this work through installable Skills. The reflection system retains feedback and persistent
+make the work and its results inspectable. Specs guide each worker's task, while the host limits its context
+and permissions to the declared scope. Twelve built-in Pi workers — one per lifecycle role, from
+answering questions and routing through Spec authoring, review, planning and task definition to
+implementation, code review and investigation — support this work through installable Skills. The
+reflection system retains feedback and persistent
 Spec gaps, coordinates investigation and routes approved resolutions into new development tasks.
 
 The development and delivery workflows below build on these foundations. The **Spec Protocol
-5.4.0** defines one specification category:
+5.5.0** defines one specification category:
 
 - **Module Spec:** a self-contained contract in four mandatory parts. Purpose, Requirements (one
   decidable SHALL statement each, about the Module) and Scenarios (testable GIVEN/WHEN/THEN
@@ -58,8 +60,9 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 ## Install and initialize
 
 The installer distributes a deterministic build's output — nine Skills exposing selected entries from fourteen
-Capabilities, three common Agent instruction sets and twelve explicit mode projections (from
-`agents/<name>/spec.md` and `agents/<name>/modes/`), and five Markdown templates — to Codex or Claude.
+Capabilities, one common worker rules file (`prompts/workers/common.md`) followed by twelve worker
+role Specs (`agents/<name>/spec.md`, rendered to `generated/agents/<hyphenated>.md`), and five
+Markdown templates — to Codex or Claude.
 Check `python3 scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project, then invoke the paired init entry in an isolated worktree (or use the trusted host's explicit
@@ -75,8 +78,8 @@ The originating session does not follow the task into a different checkout.
   "schema_version": 3,
   "capability_id": "concorde-init",
   "mode": "execute",
-  "configuration": {"type_id":"concorde-capability-configuration","schema_version":1,"data":{"integration":"codex","enforcement":"native"}},
-  "input": {"type_id":"concorde-init-request","schema_version":1,"data":{"action":"propose","name":"My project","configuration":{"type_id":"concorde-capability-configuration","schema_version":1,"data":{"integration":"codex","enforcement":"native"}}}}
+  "configuration": {"type_id":"concorde-capability-configuration","schema_version":1,"data":{"model":"openai-codex/gpt-6-astra","thinking":"medium"}},
+  "input": {"type_id":"concorde-init-request","schema_version":1,"data":{"action":"propose","name":"My project","configuration":{"type_id":"concorde-capability-configuration","schema_version":1,"data":{"model":"openai-codex/gpt-6-astra","thinking":"medium"}}}}
 }
 ```
 
@@ -104,8 +107,8 @@ Send this invocation on stdin to `scripts/run-capability.py concorde-dev-loop` (
 ```
 
 Null configuration asks the trusted host to load initialized settings. The `ask` action of
-`concorde-main` may omit target_id: the coordinator selects needed Module Spec contexts, Python
-resolves their complete documents, grants them read-only beside an index, and the coordinator
+`concorde-main` may omit target_id: the router or answerer selects needed Module Spec contexts, Python
+resolves their complete documents, grants them read-only beside an index, and the answerer
 opens the originals it needs and answers directly from them. Shared documents are granted once
 while preserving each Module's membership. A supplied target_id is a routing hint,
 not a context grant. The loop executes specification,
@@ -116,7 +119,7 @@ selection, determinism, launched Agents and composed capabilities; its size or p
 does not create a separate type. A Flow organizes calls, branches and loops. A Skill exposes a
 public Capability to the developer's external agent runtime.
 
-Capabilities with `CONTEXT_SELECTION="discover"` use the coordinator to discover complete Module
+Capabilities with `CONTEXT_SELECTION="discover"` use the router to discover complete Module
 contracts; `bound` consumes the selected Module without expanding its context; `none` performs
 deterministic host work without Agent context selection. `PUBLIC` independently decides whether a
 Capability has a Skill. For example, reflections-triage is public and uses a bound Module, while
@@ -180,8 +183,8 @@ Configured checks run with OS-enforced read-only project access, including ignor
 `.concorde/runs`. Linux currently requires a system-installed
 [bubblewrap](https://github.com/containers/bubblewrap) with working user, mount and PID namespaces
 and libc/kernel pidfd support. Unsupported platforms or denied sandbox setup block checks with
-`check_sandbox_unavailable`; there is no unrestricted fallback. Agent integration settings do not
-disable this check boundary.
+`check_sandbox_unavailable`; there is no unrestricted fallback. Project capability configuration
+(the selected Pi worker model and thinking level) does not disable this check boundary.
 
 Checks can read inputs and write temporary output under the supplied `TMPDIR`, `XDG_CACHE_HOME`
 and `CONCORDE_CHECK_REPORT_DIR`; `CONCORDE_CHECK_TMPDIR` names each check's independent external
@@ -338,26 +341,33 @@ capability on a stale build; a freshly created worktree must be built once befor
 Concorde Skills. After changing the standard chapters under `protocol/` or their runtime adapters, accept the
 new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-project` (see above).
 
-Each named Agent is defined under `agents/<name>/`: an authored `spec.md` plus a Python
-`__init__.py` binding it to a registered Harness and its effective Constraints (Agent = `spec.md` +
-Harness + Constraints). The build renders each Agent's instruction view to
-`generated/agents/<hyphenated-name>/<mode>.md`, combining common responsibilities and only the
-selected mode instructions, traceable through the build manifest; `describe-policy` mode (see above) shows the bound agent, harness and effective loop
+Each of the twelve workers is defined under `agents/<name>/`: an authored role `spec.md` plus a
+Python `__init__.py` binding its task contract, workspace kind (`capsule` or `project`), Pi tools,
+children and timeout (Agent = role Spec + worker profile). Each worker launches one Pi coding agent
+process (`pi --mode rpc`) for exactly one invocation. The build renders each worker's instructions
+to `generated/agents/<hyphenated>.md`, combining the common worker rules
+(`prompts/workers/common.md`) with only that worker's role Spec, traceable through the build
+manifest; `describe-policy` mode (see above) shows the bound worker, its profile and effective
 timeout for every stage it previews, alongside its read/write grants.
 
-The Agent inventory follows stable context and authority boundaries: coordinator handles ask,
-route and design-topology; spec-engineer handles specify, context-solve, plan, tasks, spec-review
-and topology-author; programmer handles implementation, code-review and reflection investigation.
-A mode explicitly pairs input and output types, admits specific stage artifacts and narrows the
-Agent permission ceiling. The Host applies structured Spec replacements. Only programmer's
-implementation mode may write granted code; reviews and investigations remain read-only. Every
-phase and target gets a fresh invocation and context identity, so a reviewer never inherits the
-author's conversation, artifacts or write authority merely because they share an Agent definition.
+The worker inventory follows stable context and authority boundaries: answerer, router and
+topology-designer handle ask, route and design-topology; spec-author, topology-author,
+spec-reviewer, context-assessor, planner and task-author handle specify, topology-author,
+spec-review, context-solve, plan and tasks; programmer, code-reviewer and investigator handle
+implementation, code-review and reflection investigation. Each worker's task contract explicitly
+pairs input and output types, admits specific stage artifacts and narrows its permission ceiling.
+The Host applies structured Spec replacements. Only the programmer may write granted code; reviews
+and investigations remain read-only. Every phase and target gets a fresh invocation and context
+identity, so a reviewer never inherits the author's conversation, artifacts or write authority
+merely because they share the common worker rules. A worker with declared children (spec-reviewer:
+fact-check, consistency; planner: scout; programmer: scout, planner, verifier; code-reviewer: scout,
+verifier; investigator: scout) may delegate one level deep through its `subagent` tool; a child runs
+inside the worker's own process, under the same gate, and cannot submit the worker's result.
 
 The fourteen Capability names and nine public Skills remain distinct. Their required boolean
 DETERMINISTIC metadata means no supported model-call path when true, including Host routing and
 transitive USES. Only init, configure, validate and deliver are true. USES is Host composition; all
-three Agents and their modes still have empty callable capability context.
+twelve workers still have empty callable capability context.
 
 **Capability** is the canonical name for a callable or composed Framework function; the former
 Operation name is retired. Development owns the capability invocation boundary and workflow

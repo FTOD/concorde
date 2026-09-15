@@ -2,14 +2,14 @@
 
 Never projected as a user-invocable Skill; the executable boundary has no direct entry for it."""
 from concorde.spec import contract_shapes as shapes
-from agents import spec_engineer
+from agents import spec_author
 
 from . import external_name
 
 PUBLIC = False
 CONTEXT_SELECTION = "bound"
 DETERMINISTIC = False
-AGENTS = (spec_engineer.AGENT,)
+AGENTS = (spec_author.AGENT,)
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 

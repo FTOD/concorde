@@ -9,13 +9,13 @@
 
 ## Required orchestration model
 The registered companion documents of the Harness Module define the Agent model (A1–A5) and the
-Agent Flow and Loop model (G1–G4) this host composes. The Harness resolves Agent definitions,
-their `spec.md` sources, Harness configurations and effective constraints into a reproducible
-`AgentBinding` that every structured launch carries, and its executor verifies that binding before
-any process starts. This Module MUST coordinate declared Flow transitions and bounded loops with
-attributed AI feedback and explicit human decisions, and every capability Flow is a LangGraph
-graph whose nodes are deterministic steps or Agent invocations. The wire `role` and `agent` fields
-remain compatibility identifiers derived from the bound Agent's name.
+Agent Flow and Loop model (G1–G4) this host composes. The Harness resolves worker definitions, their
+`spec.md` sources, profiles and child definitions into a reproducible `AgentBinding` that every
+worker invocation carries, and its executor verifies that binding before any process starts. This
+Module MUST coordinate declared Flow transitions and bounded loops with attributed AI feedback and
+explicit human decisions, and every capability Flow is a LangGraph graph whose nodes are
+deterministic steps or worker invocations. The policy `role` and `agent` fields are the bound
+worker's external name.
 
 ## Capability execution boundary
 A Capability provides usable or composable functionality under the Agent and Harness contract.
@@ -33,10 +33,10 @@ name), mode=execute|describe-policy, configuration and input. Maximum input is 1
 invocations are rejected with `unsupported_version`. configuration is a
 `concorde-capability-configuration@1` TypedValue or null for the initialized host settings; input is
 the capability's named request TypedValue. A TypedValue is {type_id,schema_version:1,data}; unknown
-fields and versions fail admission. Configuration is integration codex|claude and enforcement
-native, the only admitted value while no distributed launcher attests an outer sandbox. It is stored
-at initialization under `capability_configuration` and required to match host settings for ordinary
-invocations. Caller input never substitutes for permission authority.
+fields and versions fail admission. Configuration is the Pi worker model selection: an optional
+default model, thinking level and timeout and optional per-worker and per-child overrides. It is
+stored at initialization under `capability_configuration` and required to match host settings for
+ordinary invocations. Caller input never substitutes for permission authority.
 
 stdout is `concorde-capability-result@3` with capability_id, invocation_id, mode, status
 succeeded|blocked|failed|described, workspace (null or host-supplied worktree metadata), output
@@ -45,8 +45,8 @@ blocked/failed. Describe-policy does not launch agents or mutate project state; 
 go to stderr. Before executing or describing a top-level model-backed capability, the host
 verifies the build manifest and refuses a stale build with `stale_build`. The deterministic
 capabilities `concorde-init`, `concorde-configure`, `concorde-validate` and
-`concorde-deliver` are exempt from this entry check because they launch no Agents and consume no
-generated Agent instructions. Loading an Agent independently verifies build freshness before
+`concorde-deliver` are exempt from this entry check because they launch no workers and consume no
+generated worker instructions. Loading an Agent independently verifies build freshness before
 trusting its generated binding. The deterministic-entry exception does not waive Protocol, input,
 permission, validation or delivery-evidence checks; see the canonical
 [build admission scenario](../distribution/build.md#scenario.distribution.build-stale-blocks-execution).
@@ -82,11 +82,10 @@ lifecycle writes and final merges with the repository lock.
 The host resolves the complete selected owned and directly referenced Specs and Protocol/kind definition for every stage.
 Spec-only agents, including Spec reviewers, start in a private capsule containing only frozen input.
 Implementation workers receive the complete Module context plus the contents of its own listed implementation files. Planners and task authors already see those file names through the Module's entity declarations, but receive no file contents. Code reviewers
-use a distinct read-only implementation role with only the current listed implementation files. Sessions are fresh, network and credential
-access disabled, writes restricted by phase. A native integration unable to enforce the grant blocks;
-the attested outer-sandbox rendering path stays in Permissions for a trusted embedding host, but no
-admitted configuration selects it. Executor completions must match invocation, policy,
-launch and context identities. No ambient conversation or predecessor transcript is admitted.
+use a distinct read-only implementation role with only the current listed implementation files. Every
+worker is a fresh Pi process whose tool calls are gated to its grant; no worker receives network or
+credential effects, and writes are restricted by phase. Executor outcomes must match invocation,
+binding and context identities. No ambient conversation or predecessor transcript is admitted.
 
 Query and route semantics belong to [Query and Routing](../query-routing/query-and-routing.md).
 Topology actions of the same public main entry belong to [Topology](../topology/topology.md).
@@ -94,10 +93,11 @@ These are semantic siblings using the existing shared main adapter; they add no 
 
 No Skill returns context manifests; context resolution is host-internal and
 `describe-policy` mode already previews the exact grants a capability would receive without
-launching an agent or mutating project state. Each previewed stage's description also names the
-bound Agent and Harness identity (`agent`, `harness`, `agent_binding_digest`, `instructions_digest`,
-`loop_timeout_seconds`), so a caller can audit which Agent definition and effective loop timeout a
-launch would use without reading its rendered instructions. Complete cognitive snapshots never cross
+launching a worker or mutating project state. Each previewed stage's description also names the
+bound worker (`agent`, `agent_binding_digest`, `profile_digest`, `instructions_digest`, `workspace`,
+`tools`, `children`) and its resolved `model`, `thinking` and `timeout_seconds`, so a caller can
+audit which worker definition and model a launch would use without reading its rendered
+instructions. Complete cognitive snapshots never cross
 the Skill result boundary.
 
 Provider contracts are [Spec Authoring](../spec-authoring/authoring.md),
@@ -144,7 +144,7 @@ proposal and the stage-input artifacts that pass between stages inside one capab
 | --- | --- | --- |
 | `concorde-capability-invocation@3` | Every request, on stdin | `{type_id, schema_version: 3, capability_id, mode: execute\|describe-policy, configuration, input}`. `capability_id` must name a Skill; a non-public or unknown name is refused with `unknown_capability`. `configuration` is a `concorde-capability-configuration@1` TypedValue or null (falls back to the initialized project settings); `input` is the named capability's own request TypedValue. Any other `schema_version` is refused with `unsupported_version`. |
 | `concorde-capability-result@3` | Every response, on stdout | `{type_id, schema_version: 3, capability_id, invocation_id, mode, status: succeeded\|blocked\|failed\|described, workspace, output, errors: [{code,field,message}]}`. `output` is the named capability's own response TypedValue or null; `workspace` is null or host-supplied worktree metadata. Exit code 0 means `succeeded`/`described`; 3 means `blocked`/`failed`. |
-| `concorde-capability-configuration@1` | The invocation's `configuration` field, and `concorde-configure-request@1`/`-response@1` | `{integration: codex\|claude, enforcement: native, model?, reasoning_effort?: minimal\|low\|medium\|high\|xhigh\|max\|ultra, agents?: {<agent> or <agent>/<mode>: {integration?, model?, reasoning_effort?}}}`; the top-level `integration`, `model` and `reasoning_effort` are the project default and each `agents` entry overrides them for one Agent or one Agent node, the node entry winning over the Agent entry (see [the per-node selection scenario](../harness/module.md#scenario.harness.project-configured-model)); an absent value keeps the client default, a key naming no Agent or Agent node or an effort the resolved integration does not admit (Claude admits low through max) is rejected; `outer` is not admitted while the distributed launchers supply no sandbox attestation. Stored at initialization under `.concorde/config.json`'s `capability_configuration` key; an invocation or child stage whose configuration differs from that stored snapshot stops with `configuration_mismatch`. |
+| `concorde-capability-configuration@1` | The invocation's `configuration` field, and `concorde-configure-request@1`/`-response@1` | `{model?, thinking?: off\|minimal\|low\|medium\|high\|xhigh\|max, timeout_seconds?, workers?: {<worker> or <worker>/<child>: {model?, thinking?, timeout_seconds?}}}`; `model` is Pi's `provider/id`. The top-level values are the project default; a worker entry overrides them for one worker and a child entry for one worker child, which inherits its worker's entry (see [the worker selection scenario](../harness/module.md#scenario.harness.worker-selection)). An absent model or thinking level keeps Pi's default and an absent timeout the worker profile's. A key naming no worker or worker child, a timeout on a child, a nonpositive timeout or a model without a provider is rejected. Stored at initialization under `.concorde/config.json`'s `capability_configuration` key; an invocation or child stage whose configuration differs from that stored snapshot stops with `configuration_mismatch`. |
 
 ### Capability requests and responses
 
@@ -176,11 +176,6 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 | Type | Carried by | Promise |
 | --- | --- | --- |
 | `concorde-context-snapshot@4` | Every bound worker invocation's frozen input | [Canonical snapshot](../harness/context.md#context-snapshot-resolution); preserve its resolution provenance and reject stale inputs. |
-| `concorde-agent-task@1` | Host or admitted parent to Agent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
-| `concorde-agent-answer@1` | Generic Agent to parent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
-| `concorde-agent-interruption@1` | Agent to parent | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
-| `concorde-agent-loop-context@1` | Host to fresh native decision | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
-| `concorde-agent-loop-step@1` | Native decision to host | [Canonical Agent wire values](../harness/typed-values.md#typed-values-and-recursive-dispatch); Development validates before dispatch and never expands the grant. |
 | `concorde-agent-stage-context@2` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@4, change_id, expected_artifacts}`. |
 | `concorde-agent-stage-result@1` | Worker to host, the completion | `{context_id, outcome, answer, gaps, documents, plan, tasks, reflection_findings?}`; `documents`/`plan`/`tasks`/`reflection_findings` are populated only by the phase that produces them. A mismatched `context_id` is rejected as `incompatible_handoff`. |
 
@@ -197,9 +192,9 @@ except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, 
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-discovery-context@3` | Host to coordinator | [Canonical discovery context](../harness/context.md#global-spec-context-assembly); only explicit selections may expand discovery. |
+| `concorde-discovery-context@3` | Host to discovery worker | [Canonical discovery context](../harness/context.md#global-spec-context-assembly); only explicit selections may expand discovery. |
 | `concorde-main-stage-context@2` | Wraps the discovery context for launch | `{snapshot: concorde-discovery-context@3}`. |
-| `concorde-main-stage-result@1` | Coordinator to host, the completion | `{context_id, outcome, answer, expand_targets, routes, gaps, topology_design (nullable)}`. |
+| `concorde-main-stage-result@1` | Discovery worker to host, the completion | `{context_id, outcome, answer, expand_targets, routes, gaps, topology_design (nullable)}`. |
 | `concorde-topology-design@1` | design-topology's output, embedded in the main stage result | `{summary, registry, spec_tasks (nonempty), migration_constraints, acceptance (nonempty)}`. |
 | `concorde-topology-proposal@1` | design-topology's response, and accept-topology's request | `{proposal_id, base_registry_digest, protocol_binding, context_id, discovered_targets (nonempty), task, constraints, target_hint, focus_hint, design: concorde-topology-design@1, workspace}`; a stale `base_registry_digest` or `protocol_binding` is rejected as `stale_proposal`. |
 | `concorde-topology-author-context@2` | Host to target-local Spec author, during accept-topology | `{context_id, base_registry_digest, target, task, protocol_binding, protocol, candidate_references, spec_resolution, instructions, workspace}`. |
@@ -214,7 +209,7 @@ The topology-author context's `candidate_references` is the candidate Module's e
 is their candidate owner. Ownership transfers, additions and removals bind both prior and candidate
 descriptors and all affected consumers in the prepared application.
 
-For ask, the coordinator may expand explicitly selected contexts or complete directly from their
+For ask, the answerer may expand explicitly selected contexts or complete directly from their
 original contents with no routes. Other routed capabilities preserve one target task and its
 constraints. Spec gaps identify an admitted Module and the current combined context identity.
 Old reading-worker results and the synthesis phase are not accepted; clients must use the current
@@ -247,10 +242,10 @@ context forms; package/schema alignment checks verify those identities.
 | --- | --- |
 | `already_initialized` | The project is already configured; use `configure` to change settings instead of initializing again. |
 | `ambiguous_route` | Main routing found more than one owning target for a capability that requires exactly one; route cross-target work through a Module instead. |
-| `cancelled` | `CapabilityExecutionError.outcome` when the injected runner raised `KeyboardInterrupt`; the host maps this to the `execution_cancelled` result error code. |
+| `cancelled` | `CapabilityExecutionError.outcome` when the host interrupted a running worker; the host maps this to the `execution_cancelled` result error code. |
 | `child_blocked` | A composed child capability returned a blocked or otherwise non-successful outcome and stopped the composing capability. |
 | `check_sandbox_unavailable` | Harness could not enforce the configured check's read-only filesystem boundary or launch it inside that boundary; diagnostics remain in the host log and readiness is blocked. |
-| `configuration_mismatch` | The invocation's, a child's, or a native launch's configuration differs from the initialized project settings or the host's own snapshot. |
+| `configuration_mismatch` | The invocation's or a child stage's configuration differs from the initialized project settings or the host's own snapshot. |
 | `context_limit` | Main discovery exceeded its bounded expansion-step limit. |
 | `delivery_in_progress` | The candidate is already being delivered; resume delivery from either participating worktree instead of starting a new mutation. |
 | `delivery_session_required` | The current session is not recognized as the change's selected source or destination worktree. |
@@ -271,8 +266,8 @@ context forms; package/schema alignment checks verify those identities.
 | `incompatible_handoff` | A returned identity (context, target, gap, route, or configuration) does not match what the host issued or expects. |
 | `incomplete_change` | Delivery was requested before every authored task for the change was complete. |
 | `incomplete_tasks` | Implementation did not report every exact task as complete. |
-| `invalid_agent_binding` | A named Agent's definition, Harness reference, or Constraints is inconsistent with its registered Harness or the current build manifest. |
-| `invalid_completion` | An agent's or main's returned completion is internally inconsistent with its own declared context or outcome. |
+| `invalid_agent_binding` | A named worker's profile, contract or child definitions are inconsistent with each other or with the current build manifest. |
+| `invalid_completion` | A worker returned no single valid result, or its result is internally inconsistent with its own declared context or outcome. |
 | `invalid_delivery` | A delivery receipt has an invalid or mismatched identity. |
 | `invalid_entry_target` | The registry's `entry_target` is not a Module, so main discovery cannot start there. |
 | `invalid_field` | A TypedValue field fails its JSON Schema: wrong type or format, a missing or unknown field, non-unique items, or a mode/action-specific requirement. |
@@ -287,7 +282,7 @@ context forms; package/schema alignment checks verify those identities.
 | `invalid_spec` | An authored Spec document's `concorde-document` context declaration is invalid. |
 | `invalid_worktree_state` | `.concorde/worktree.json` has an invalid identity or schema. |
 | `legacy_attempt` | The worktree still carries an unsupported legacy `.concorde/attempts/` state that must be removed before it can be adopted. |
-| `limit_exhausted` | `CapabilityExecutionError.outcome` when the injected runner raised `subprocess.TimeoutExpired`; the host maps this to the `execution_limit` result error code. |
+| `limit_exhausted` | `CapabilityExecutionError.outcome` when a worker ran past its timeout; the host maps this to the `execution_limit` result error code. |
 | `merge_conflict` | Integration conflicts with the primary branch. Resolve and revalidate in the candidate worktree, or a new candidate if delivery already removed the source. |
 | `missing_change` | A requested existing change or task authoring has no managed change in the current worktree. |
 | `missing_plan` | Task authoring was requested without an authored plan. |
@@ -306,7 +301,7 @@ context forms; package/schema alignment checks verify those identities.
 | `studio_run_failed` | A Studio-driven capability run did not complete successfully. |
 | `studio_transport_failed` | The Studio client could not reach or exchange messages with the Studio server. |
 | `undeclared_capability` | A capability tried to compose another capability that its own module does not declare in `USES`. |
-| `unknown_agent` | The named Agent has no matching `agents/<name>/` definition. |
+| `unknown_agent` | The named worker has no matching `agents/<name>/` definition. |
 | `unknown_capability` | The named capability is not registered, or a parent capability referenced a capability that does not exist. |
 | `unknown_change` | Delivery named a `change_id` with no registered live worktree or delivery receipt. |
 | `unknown_target` | The requested Spec target ID is not registered. |
@@ -322,10 +317,10 @@ context forms; package/schema alignment checks verify those identities.
 
 ## Main routing view
 Select `module.harness` for context resolution, permission compilation, typed-value admission,
-Agent binding and native execution. Select `module.spec` for registry selection, structural
+worker binding and Pi worker execution. Select `module.spec` for registry selection, structural
 validation and initialization. Select `module.distribution` for build, installation and runtime
-provisioning. Select `module.reflections` for recorded feedback and gaps. The main coordinator
-may use these stable IDs to route a worker but may not expand their Module targets.
+provisioning. Select `module.reflections` for recorded feedback and gaps. The main router may use
+these stable IDs to route a worker but may not expand their Module targets.
 
 ## Worktree awareness
 
@@ -343,8 +338,8 @@ a candidate and request delivery from either participating worktree. Host update
 change Spec authority or grant agent writes outside the selected target.
 
 Every discovery and worker snapshot admits `workspace` lifecycle metadata. Main can answer a pure
-workspace-status question directly from this metadata; target-behavior answers still use separate
-coordinator. The current workspace identity and status are rechecked after a stage. Other live worktree
+workspace-status question directly from this metadata; target-behavior answers still use a separate
+answerer invocation. The current workspace identity and status are rechecked after a stage. Other live worktree
 summaries are frozen observations and their progress does not invalidate unrelated main cognition.
 
 ## Configured check execution
@@ -369,7 +364,7 @@ links state local uses and obligations; providers own the definitions, schemas a
 | [Registry and resolution](../spec/registry.md), [values](../spec/values.md) | Select the unique task owner, freeze its complete resolved context, reconstruct after changes and stop on failed admission. |
 | [Context](../harness/context.md#contract.context.selection) | Bind every stage to the current task and exact snapshot; handle gaps and stale-context failures before progressing. |
 | [Runtime values](../harness/runtime-values.md) and [permissions](../harness/permissions.md) | Compile bounded role permissions and preserve empty reviewer writes; never widen a policy after rejection. |
-| [Execution](../harness/execution.md) | Require the bound fresh process and matching completion; stop on failure and retain private evidence. |
+| [Execution](../harness/execution.md) | Require the bound fresh worker process and its single matching result; stop on failure and retain private evidence. |
 | [Typed values](../harness/typed-values.md) | Validate every handoff before state mutation; never use raw logs or code as later Spec-only input. |
 | [Build](../distribution/build.md) and [installation](../distribution/installation.md) | Require fresh projections and the pinned Protocol assets before launch; a mismatch blocks the invocation. |
 | [Validation](../spec/structure.md) | Require structural evidence and separately configured checks; never interpret it as semantic proof. |

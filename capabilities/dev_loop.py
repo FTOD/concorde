@@ -13,14 +13,14 @@ target in ``.concorde/worktree.json`` (``change["graph"][target_id]["policy"]``)
 first runs for that target, so a resumed loop keeps using the policy it started with.
 """
 from concorde.spec import contract_shapes as shapes
-from agents import coordinator
+from agents import router
 
 from . import external_name
 
 PUBLIC = True
 CONTEXT_SELECTION = "discover"
 DETERMINISTIC = False
-AGENTS = (coordinator.AGENT,)
+AGENTS = (router.AGENT,)
 USES = ("specify_loop", "review", "plan", "tasks", "implement", "validate")
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 

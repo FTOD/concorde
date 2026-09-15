@@ -63,7 +63,6 @@ class StudioTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         project(self.root)
         self.double = ModelProcessDouble()
-        self.addCleanup(self.double.runtime_directory.cleanup)
 
     def graph(self, capability="concorde-reflections-triage", executor=None):
         return build_studio_graph(capability, self.root, PACKAGE,
@@ -192,7 +191,7 @@ class StudioTests(unittest.TestCase):
     def test_configuration_and_agent_completion_cannot_bypass_authority(self):
         value = invocation("concorde-main", data={"task": "Explain transfer"})
         value["configuration"] = typed("concorde-capability-configuration",
-                                      {"integration": "codex", "enforcement": "native"})
+                                      {"model": "openai-codex/gpt-6-astra", "thinking": "high"})
         actual = self.graph("concorde-main").invoke({"invocation": value})
         self.assertEqual("configuration_mismatch", actual["result"]["errors"][0]["code"])
         self.assertEqual([], self.double.calls)

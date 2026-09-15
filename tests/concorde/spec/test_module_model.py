@@ -45,7 +45,7 @@ class ModuleImplementationTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
         self.configuration = {"type_id": "concorde-capability-configuration", "schema_version": 1,
-                              "data": {"integration": "claude", "enforcement": "native"}}
+                              "data": {"model": "openai-codex/gpt-6-astra", "thinking": "medium"}}
         self.write(".concorde/config.json", json.dumps({"profile_version": 12,
             "registry": ".concorde/specs.json", "protocol": protocol_binding(PACKAGE),
             "capability_configuration": self.configuration}))
@@ -592,7 +592,6 @@ class ModuleImplementationTests(unittest.TestCase):
                     "location": {"path": "source/shared.py", "line": 2},
                     "problem": "The shared implementation returns 43.", "affected_task": snapshot["task"]}])
         double = ModelProcessDouble(inspect)
-        self.addCleanup(double.runtime_directory.cleanup)
         host = CapabilityHost(self.root, PACKAGE, executor=double.executor, allow_primary_worktree=True,
                               invocation_id="shared-consumer-review")
         run = Invocation("concorde-review", self.configuration,
@@ -617,7 +616,6 @@ class ModuleImplementationTests(unittest.TestCase):
         seen = []
         double = ModelProcessDouble(lambda stage, snapshot, result, cwd:
                                     seen.append(snapshot["target_id"]) if stage == "code-review" else None)
-        self.addCleanup(double.runtime_directory.cleanup)
 
         def scope():
             host = CapabilityHost(self.root, PACKAGE, executor=double.executor, allow_primary_worktree=True)
@@ -714,7 +712,6 @@ class ModuleImplementationTests(unittest.TestCase):
                     data["documents"] = [{"path": "specs/transfer/module.md",
                                           "content": "```concorde-document\n{}\n```\n"}]
             double = ModelProcessDouble(author)
-            self.addCleanup(double.runtime_directory.cleanup)
             result = run_capability("concorde-dev-loop", self.configuration,
                 typed("concorde-dev-loop-request", {"target_id": "service.transfer",
                     "task": "Implement transfer", "run_reviews": False}),
@@ -757,7 +754,6 @@ class ModuleImplementationTests(unittest.TestCase):
                 written.append([item["path"] for item in snapshot["implementation_files"]])
                 (cwd / "app/helper.py").write_text("HELPER_CREATED_BELOW_A_LISTED_DIRECTORY = True\n")
             double = ModelProcessDouble(implement)
-            self.addCleanup(double.runtime_directory.cleanup)
             result = run_capability("concorde-dev-loop", self.configuration,
                 typed("concorde-dev-loop-request", {"target_id": "service.transfer",
                     "task": "Implement the pure transfer contract", "run_reviews": False}),
@@ -838,7 +834,6 @@ class ModuleImplementationTests(unittest.TestCase):
                             self.assertEqual({"app/bank.py"}, {item["path"] for item in snapshot["implementation_artifacts"]})
                             (cwd / "app/bank.py").write_text("from app.transfer import transfer\ndef result():\n    return transfer(100,20)\n")
                 double = ModelProcessDouble(implement)
-                self.addCleanup(double.runtime_directory.cleanup)
                 task = "Implement the bank result using its private transfer Module"
                 result = run_capability("concorde-dev-loop", self.configuration,
                     typed("concorde-dev-loop-request", {"target_id": "scope.bank", "task": task}),

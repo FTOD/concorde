@@ -127,7 +127,7 @@ flowchart TB
   {
     "target_id": "module.harness",
     "responsibility": "Freeze Spec-only inputs and run separate isolated context assessors, planners and task authors without implementation contents or project writes.",
-    "selection_condition": "Before invoking spec-engineer in context-solve, plan or tasks mode, including admitted repair task authoring.",
+    "selection_condition": "Before invoking the context assessor, planner or task author, including admitted repair task authoring.",
     "relied_upon_promises": [
       "[Complete context selection](../harness/context.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant."
     ]

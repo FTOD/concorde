@@ -24,11 +24,11 @@ A Flow's state is a typed LangGraph state schema: the development and specificat
 the last stage's typed response in `output`, a terminal failure envelope in `result` and the
 accumulated artifact references in `artifacts` under a reducer, and each stage node selects its own
 transition by returning a `Command` whose `goto` names a declared destination. No node smuggles
-routing or evidence through untyped fields. Every model-backed node executes its Agent through an
-`AgentNode`: a one-node `StateGraph` whose input schema is generated from the selected Mode's
-admitted context type and whose output schema is generated from the Mode's result type, so the
-Mode contract is the graph state, and the native launch with its evidence checks stays a
-host-private launcher outside that state. The same `AgentNode` factory is exposed for inspection
+routing or evidence through untyped fields. Every model-backed node executes its worker through an
+`AgentNode`: a one-node `StateGraph` whose input schema is generated from the worker contract's
+admitted context type and whose output schema is generated from its result type, so the contract is
+the graph state, and the Pi worker launch with its admission checks stays a host-private launcher
+outside that state. The same `AgentNode` factory is exposed for inspection
 inside the Flows that run it.
 
 A Flow's compiled nodes and edges are the authority for execution views. Inspection compiles the
@@ -79,9 +79,9 @@ budgets or an explicit bounded host policy; an unbounded retry is not an implici
 
 An Agent's Harness supplies its local control-loop mechanism. An Agent Flow may additionally
 coordinate loops across several Agents, such as author → reviewer → author. Each invocation's local loop and its enclosing loop MUST have distinguishable state and completion
-conditions. There is no fixed outer-Concorde/inner-provider hierarchy: a Codex or Claude Agent can
-delegate to a Python-controlled Agent, which can invoke another model-driven Agent. All such edges
-use the same host admission, typed feedback and shared tree limits defined in A5.
+conditions. Orchestration between workers is always a Flow transition: one worker never starts
+another. Inside one worker, delegation is limited to one level of its own declared children, as
+defined in A5; a child's work is evidence for its worker, not a Flow step.
 
 A retry or revision MUST identify what changed or what recovery condition permits another attempt.
 Unchanged blocking feedback MUST not cause endless retries. Stale task, context, policy or result

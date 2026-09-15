@@ -1,6 +1,6 @@
 ---
 name: concorde-configure
-description: "Capability: apply the initialized integration and enforcement configuration; with accept_protocol, rebind the project to the installed Protocol copy."
+description: "Capability: apply the Pi worker model selection (model, thinking level, timeout and per-worker overrides); with accept_protocol, rebind the project to the installed Protocol copy."
 capability: configure
 ---
 

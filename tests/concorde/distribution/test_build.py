@@ -17,13 +17,11 @@ sys.path.insert(0, str(RUNTIME_ROOT))
 from concorde.distribution.build import (  # noqa: E402
     AGENT_ROOTS,
     INTEGRATION_ROOTS,
-    ROLE_ROOTS,
     SKILL_NAMES,
     BuildError,
     build,
     check_build,
     load_agent,
-    load_role_prompt,
     verify_fresh,
     write_build,
 )
@@ -92,15 +90,17 @@ class BuildGoldenTests(unittest.TestCase):
                     self.assertNotIn("disable-model-invocation", codex_front)
 
     @verifies("scenario.distribution.build-render")
-    def test_eighteen_skills_three_common_agents_twelve_modes_and_one_langgraph_config(self):
+    def test_eighteen_skills_twelve_agents_and_one_langgraph_config(self):
         skill_outputs = [
             path for path in self.by_path
             if path.startswith(".claude/skills/") or path.startswith(".agents/skills/")
         ]
         agent_outputs = [path for path in self.by_path if path.startswith("generated/agents/")]
         self.assertEqual(len(skill_outputs), 18)
-        self.assertEqual(len(agent_outputs), 15)
-        self.assertEqual(3, len([path for path in agent_outputs if path.count("/") == 2]))
+        self.assertEqual(len(agent_outputs), 12)
+        # One flat rendered file per worker, never a mode subdirectory.
+        self.assertTrue(all(path.count("/") == 2 for path in agent_outputs))
+        self.assertEqual(set(agent_outputs), {f"generated/agents/{agent}.md" for agent in AGENT_ROOTS})
         self.assertIn("generated/langgraph.json", self.by_path)
 
     @verifies("scenario.distribution.build-render")
@@ -253,11 +253,11 @@ class BuildCheckLifecycleTests(unittest.TestCase):
     @verifies("scenario.distribution.build-check")
     def test_check_reports_a_modified_owned_file(self):
         write_build(self.root, "all")
-        target = self.root / "generated/agents/coordinator.md"
+        target = self.root / "generated/agents/planner.md"
         target.write_text(target.read_text(encoding="utf-8") + "tampered\n", encoding="utf-8")
         current, differences = check_build(self.root, "all")
         self.assertFalse(current)
-        self.assertIn("generated/agents/coordinator.md", differences)
+        self.assertIn("generated/agents/planner.md", differences)
 
 
 class BuildFreshnessTests(unittest.TestCase):
@@ -292,13 +292,13 @@ class BuildFreshnessTests(unittest.TestCase):
         self.assertEqual(failure.exception.code, "stale_build")
 
     @verifies("scenario.distribution.build-stale-blocks-execution")
-    def test_mode_instruction_and_python_contract_edits_both_invalidate_build(self):
+    def test_child_definition_and_python_contract_edits_both_invalidate_build(self):
         write_build(self.root, "all")
-        for relative in ("agents/programmer/modes/investigation.md", "agents/programmer/__init__.py"):
+        for relative in ("agents/programmer/children/scout.md", "agents/programmer/__init__.py"):
             path = self.root / relative
             before = path.read_text()
             with self.subTest(source=relative):
-                path.write_text(before + "\n# Changed mode contract\n")
+                path.write_text(before + "\n# Changed worker profile\n")
                 with self.assertRaises(BuildError) as failure:
                     verify_fresh(self.root)
                 self.assertEqual("stale_build", failure.exception.code)
@@ -315,35 +315,37 @@ class BuildFreshnessTests(unittest.TestCase):
     @verifies("scenario.distribution.load-agent")
     def test_load_agent_verifies_freshness_and_returns_effects_and_binding(self):
         write_build(self.root, "all")
-        prompt = load_agent(self.root, "concorde-spec-engineer")
-        self.assertEqual(prompt.name, "concorde-spec-engineer")
+        prompt = load_agent(self.root, "concorde-planner")
+        self.assertEqual(prompt.name, "concorde-planner")
         self.assertEqual(prompt.kind, "skill")
         self.assertIsNotNone(prompt.effects)
         self.assertTrue(prompt.body.strip())
         self.assertIsNotNone(prompt.binding)
-        self.assertEqual(prompt.binding.agent, "spec_engineer")
-        self.assertEqual(prompt.binding.spec_path, "agents/spec_engineer/spec.md")
+        self.assertEqual(prompt.binding.agent, "planner")
+        self.assertEqual(prompt.binding.spec_path, "agents/planner/spec.md")
 
-        edited = self.root / "agents/spec_engineer/spec.md"
+        edited = self.root / "agents/planner/spec.md"
         edited.write_text(edited.read_text(encoding="utf-8") + "\nChanged.\n", encoding="utf-8")
         with self.assertRaises(BuildError) as failure:
-            load_agent(self.root, "concorde-spec-engineer")
+            load_agent(self.root, "concorde-planner")
         self.assertEqual(failure.exception.code, "stale_build")
 
     @verifies("scenario.distribution.load-agent")
     def test_load_agent_accepts_underscore_and_hyphenated_names(self):
         write_build(self.root, "all")
-        by_external = load_agent(self.root, "concorde-spec-engineer")
-        by_underscore = load_agent(self.root, "spec_engineer")
+        by_external = load_agent(self.root, "concorde-planner")
+        by_underscore = load_agent(self.root, "planner")
         self.assertEqual(by_external.body, by_underscore.body)
-        self.assertEqual(by_external.name, "concorde-spec-engineer")
+        self.assertEqual(by_external.name, "concorde-planner")
 
     @verifies("scenario.distribution.load-agent")
-    def test_load_role_prompt_is_a_compatibility_alias_for_load_agent(self):
+    def test_load_agent_accepts_a_hyphenated_multiword_agent_name(self):
         write_build(self.root, "all")
-        self.assertIs(load_role_prompt, load_agent)
-        prompt = load_role_prompt(self.root, "concorde-coordinator")
-        self.assertEqual(prompt.name, "concorde-coordinator")
+        by_external = load_agent(self.root, "concorde-code-reviewer")
+        by_underscore = load_agent(self.root, "code_reviewer")
+        self.assertEqual(by_external.body, by_underscore.body)
+        self.assertEqual(by_external.name, "concorde-code-reviewer")
+        self.assertEqual(by_external.binding.agent, "code_reviewer")
 
 
 class WireHelperBuildTests(unittest.TestCase):

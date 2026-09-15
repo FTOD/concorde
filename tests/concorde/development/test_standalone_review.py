@@ -1,14 +1,12 @@
 """Public standalone review through Studio's shared executable boundary."""
 import subprocess
 import json
-from dataclasses import replace
 import tempfile
 import unittest
 from pathlib import Path
 
 from concorde.harness.studio import build_studio_graph
 from concorde.spec.verification import verifies
-from concorde.spec.typed_data import typed
 from tests.concorde.harness.test_studio import invocation
 from tests.concorde.spec.support import PACKAGE, ModelProcessDouble, project
 
@@ -20,39 +18,26 @@ class StandaloneReviewTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         project(self.root)
         self.double = ModelProcessDouble()
-        self.addCleanup(self.double.runtime_directory.cleanup)
 
     def graph(self, capability):
         return build_studio_graph(capability, self.root, PACKAGE, executor=self.double.executor)
 
     @verifies("scenario.development.standalone-review")
-    def test_native_codex_and_claude_schemas_request_only_routing_judgment(self):
-        for integration in ('codex', 'claude'):
-            with self.subTest(integration=integration):
-                configuration = typed('concorde-capability-configuration',
-                    {'integration': integration, 'enforcement': 'native'})
-                path = self.root / '.concorde/config.json'
-                config = json.loads(path.read_text())
-                config['capability_configuration'] = configuration
-                path.write_text(json.dumps(config))
-                captured = []
-                def runner(argv, **kwargs):
-                    schema = (json.loads(Path(argv[argv.index('--output-schema') + 1]).read_text())
-                        if '--output-schema' in argv else json.loads(argv[argv.index('--json-schema') + 1]))
-                    if schema['properties']['stage']['const'] == 'route':
-                        route = schema['$defs']['concorde-main-stage-result']['properties']['routes']['items']
-                        self.assertEqual({'target_id', 'focus_id'}, set(route['properties']))
-                        self.assertEqual({'target_id', 'focus_id'}, set(route['required']))
-                        self.assertFalse(route['additionalProperties'])
-                        captured.append(route)
-                    return self.double.run(argv, **kwargs)
-                self.double.executor = replace(self.double.executor, runner=runner)
-                request = invocation('concorde-review', data={'target_id': 'service.transfer',
-                    'task': '只读检查。', 'constraints': ['不修改文件。'], 'review_mode': 'code'})
-                request['configuration'] = configuration
-                result = self.graph('concorde-review').invoke({'invocation': request})
-                self.assertEqual('succeeded', result['result']['status'], result)
-                self.assertTrue(captured)
+    def test_pi_worker_route_result_schema_requests_only_routing_judgment(self):
+        from concorde.harness.worker_executor import result_parameters
+        request = invocation('concorde-review', data={'target_id': 'service.transfer',
+            'task': '只读检查。', 'constraints': ['不修改文件。'], 'review_mode': 'code'})
+        result = self.graph('concorde-review').invoke({'invocation': request})
+        self.assertEqual('succeeded', result['result']['status'], result)
+        routers = [call for call in self.double.calls if call['stage'] == 'route']
+        self.assertTrue(routers)
+        for call in routers:
+            schema = call['launch'].result_schema
+            self.assertEqual(result_parameters('concorde-main-stage-result'), schema)
+            route = schema['properties']['routes']['items']
+            self.assertEqual({'target_id', 'focus_id', 'task', 'constraints'}, set(route['properties']))
+            self.assertEqual({'target_id', 'focus_id'}, set(route['required']))
+            self.assertFalse(route['additionalProperties'])
 
     @verifies("scenario.development.standalone-review")
     def test_selection_only_route_binds_exact_unicode_intent_to_read_only_reviewer(self):
