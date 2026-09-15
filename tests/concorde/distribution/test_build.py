@@ -222,7 +222,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
     @verifies("scenario.distribution.build-check")
     def test_check_ignores_a_third_party_skill_directory(self):
         write_build(self.root, "all")
-        other = self.root / ".claude/skills/archify"
+        other = self.root / ".claude/skills/example-third-party"
         other.mkdir(parents=True)
         (other / "SKILL.md").write_text("unrelated third-party skill\n", encoding="utf-8")
         current, differences = check_build(self.root, "all")
