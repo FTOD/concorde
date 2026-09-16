@@ -36,6 +36,12 @@ LangGraph [triage Flow](lifecycle.md#design) separates parsing, investigation, a
 and disposition; File transactions applies accepted record changes with before-digest checks and
 recovery. Status requests do not create records or begin repairs.
 
+The replacement [Issue store](issues.md#entity.reflections.issue-store) records classified,
+branch-local problems independently of task outcomes. Its immutable observation receipts and
+retained dispositions are the persistence foundation for replacing the legacy triage queue; the
+legacy entry point does not yet consume those records. The new store performs no flow routing,
+agent launch or implicit conversion of existing Reflection reports.
+
 <a id="entity.reflections.record"></a><a id="entity.reflections.gap"></a><a id="entity.reflections.evidence"></a><a id="entity.reflections.plan"></a>
 
 A Captured development gap links a blocked task to a persistent Reflection record without

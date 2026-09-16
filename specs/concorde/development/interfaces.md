@@ -220,6 +220,11 @@ context forms; package/schema alignment checks verify those identities.
 | Error code | Meaning |
 | --- | --- |
 | `already_initialized` | The project is already configured; use `configure` to change settings instead of initializing again. |
+| `closed_issue` | Another observation requires reopening the closed Issue first. |
+| `invalid_issue` | An Issue report, record, receipt or disposition violates its closed shape or history invariants. |
+| `issue_key_conflict` | An invocation reused a report key with different content; the original observation is preserved. |
+| `stale_issue` | Selected Issue bytes or an immutable observation no longer match the requested operation. |
+| `unknown_issue` | The selected Issue does not exist in this worktree. |
 | `ambiguous_route` | Main routing found more than one owning target for a capability that requires exactly one; route cross-target work through a Module instead. |
 | `cancelled` | `CapabilityExecutionError.outcome` when the host interrupted a running worker; the host maps this to the `execution_cancelled` result error code. |
 | `child_blocked` | A composed child capability returned a blocked or otherwise non-successful outcome and stopped the composing capability. |

@@ -562,15 +562,18 @@
       "documents": [
         "specs/concorde/reflections/module.md",
         "specs/concorde/reflections/interfaces.md",
-        "specs/concorde/reflections/lifecycle.md"
+        "specs/concorde/reflections/lifecycle.md",
+        "specs/concorde/reflections/issues.md"
       ],
       "files": [
         "capabilities/reflections_triage.py",
         "scripts/reflections_queue.py",
+        "src/concorde/issues/",
         "src/concorde/reflections/",
         "src/concorde/spec/changes.py",
         "tests/concorde/development/test_review.py",
         "tests/concorde/fixtures/interfaces/reflections/",
+        "tests/concorde/issues/",
         "tests/concorde/reflections/",
         "tests/concorde/support/reflection_triage.py"
       ],

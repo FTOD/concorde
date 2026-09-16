@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "document": {"id": "document.reflections.issues", "owner": "module.reflections"},
+  "entities": [
+    {
+      "id": "entity.reflections.issue-store",
+      "title": "Issue store",
+      "kind": "program",
+      "meaning": "#entity.reflections.issue-store",
+      "files": ["src/concorde/issues/", "tests/concorde/issues/"]
+    }
+  ],
+  "dependencies": [],
+  "bindings": []
+}
