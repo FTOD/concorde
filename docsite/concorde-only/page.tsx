@@ -645,7 +645,8 @@ function CapabilityRelations({ name, data }: { name: string; data: FlowData }) {
       <p>
         <strong>Input State:</strong> <code>{info.state.input.join(", ")}</code>
         <br />
-        <strong>Output update:</strong> <code>{info.state.output.join(", ")}</code>
+        <strong>Output update:</strong>{" "}
+        <code>{info.state.output.join(", ")}</code>
       </p>
       {info.uses.length > 0 && (
         <p>
@@ -977,9 +978,10 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
                     <code>concorde-capability-result@3</code> with a typed{" "}
                     <code>output</code> or admission errors. These wire adapters
                     preserve existing callers while nodes use State contracts.
-                    Host-backed graphs retain the envelope in a result channel. The host reads{" "}
-                    <code>outcome</code>,<code>gaps</code>, <code>checks</code>{" "}
-                    and <code>artifacts</code> to choose the next step.
+                    Host-backed graphs retain the envelope in a result channel.
+                    The host reads <code>outcome</code>,<code>gaps</code>,{" "}
+                    <code>checks</code> and <code>artifacts</code> to choose the
+                    next step.
                   </span>
                 </li>
                 <li>
@@ -1156,9 +1158,9 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
               <li>
                 <strong>Independent reviewer</strong>
                 <span>
-                  Code diagnosis uses the code-reviewer Capability with the selected
-                  Module's authorized code. Spec review uses spec-reviewer.
-                  Both model Capabilities are read-only.
+                  Code diagnosis uses the code-reviewer Capability with the
+                  selected Module's authorized code. Spec review uses
+                  spec-reviewer. Both model Capabilities are read-only.
                 </span>
               </li>
               <li>
@@ -1264,8 +1266,10 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
                     <span className={styles.badge}>CAPABILITY</span>
                     <h2>{entry.title}</h2>
                     <CapabilityRelations name={entry.key} data={data} />
-                    <p>{workerDetails[entry.key]?.detail ??
-                      "This State-based model Capability runs with its own instructions, tools and permission profile. It shares the same inventory and composition relation as deterministic and composed nodes."}</p>
+                    <p>
+                      {workerDetails[entry.key]?.detail ??
+                        "This State-based model Capability runs with its own instructions, tools and permission profile. It shares the same inventory and composition relation as deterministic and composed nodes."}
+                    </p>
                     <p>
                       This Capability receives its Module from its caller and is
                       available through declared composition. It has no public
