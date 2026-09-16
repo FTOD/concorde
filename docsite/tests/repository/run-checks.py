@@ -6,6 +6,7 @@ the candidate; all dependency preparation and generated outputs stay in scratch.
 """
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 import shutil
@@ -15,22 +16,48 @@ import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[3]
-DIRECTORIES = ("agents", "capabilities", "prompts", "skills", "src", "protocol", "specs",
-               "docs", "scripts", "tests", "docsite", "reference")
-FILES = ("concorde.json", "pyproject.toml", "README.md", "skills-lock.json", ".concorde/config.json", ".concorde/specs.json",
-         ".github/workflows/deploy-docsite.yml")
+DIRECTORIES = ("agents", "capabilities", "prompts", "skills", "src", "protocol", "specs", "pi",
+               "docs", "scripts", "tests", "docsite", "reference", "templates", "viewer")
+FILES = ("concorde.json", "pyproject.toml", "README.md", "uv.lock", ".concorde/config.json",
+         ".concorde/specs.json", ".github/workflows/deploy-docsite.yml")
+
+
+def uncopied_listing_roots() -> list[str]:
+    """Registry listing entries whose top-level name this copy would leave out.
+
+    The copied project is validated, so every non-pending entry must exist in it. Deriving the
+    complaint from the registry keeps a new listing root from silently emptying these checks.
+    A source whose registry cannot be read carries no listing to compare, as in the preparation
+    fixtures that drive this script over stub inputs.
+    """
+    try:
+        registry = json.loads((ROOT / ".concorde/specs.json").read_text(encoding="utf-8"))
+        listed = {entry.split("/")[0] for target in registry["targets"] for entry in target["files"]}
+    except (OSError, UnicodeDecodeError, ValueError, KeyError, TypeError, AttributeError):
+        return []
+    return sorted(listed - set(DIRECTORIES) - {name.split("/")[0] for name in FILES})
 
 
 def main() -> int:
+    missing = uncopied_listing_roots()
+    if missing:
+        print("Registry lists implementation roots this check does not copy:", ", ".join(missing), flush=True)
+        return 1
     with tempfile.TemporaryDirectory(prefix="concorde-publication-check-") as temporary:
         project = Path(temporary) / "project"
         project.mkdir()
+        disposable = shutil.ignore_patterns("node_modules", "__pycache__", ".venv", ".generated",
+                                           ".docusaurus", "coverage", "*.pyc", "*.tsbuildinfo")
         for name in DIRECTORIES:
             source = ROOT / name
             if source.is_dir():
-                shutil.copytree(source, project / name, ignore=shutil.ignore_patterns(
-                    "node_modules", "__pycache__", ".venv", ".generated", ".docusaurus",
-                    "build", "coverage", "*.pyc", "*.tsbuildinfo"))
+                def ignore(directory, names, source=source):
+                    # Generated output sits directly under a copied directory; a listed fixture
+                    # deeper in the tree may legitimately be named build or coverage.
+                    top = {"build", "coverage"} if Path(directory) == source else set()
+                    return disposable(directory, names) | (top & set(names))
+
+                shutil.copytree(source, project / name, ignore=ignore)
         for name in FILES:
             destination = project / name
             destination.parent.mkdir(parents=True, exist_ok=True)
