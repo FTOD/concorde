@@ -17,7 +17,9 @@ The first development intent is retained for the candidate. It becomes the `conc
 stage artifact for ordinary authoring, assessment, planning, tasks and implementation; it contains
 only intended behavior. A later incompatible intended change requires a new decision instead of
 silently reusing old plans. An admitted `spec-repair` runs the ordinary owner-only author, then
-returns to fresh development. Failed/incomplete child execution stays failed; a reported blocker
+returns to fresh development or Issue-specific verification. Decision actions map explicitly to
+declared graph nodes; `spec-repair` selects `repair_spec`, not a name inferred by punctuation
+replacement. Failed/incomplete child execution stays failed; a reported blocker
 can select a bounded next decision. Six decision invocations is the limit per unchanged input
 state, counted before launch, with history retained even after cancellation. A fresh external
 Spec/code change permits a new bounded attempt. No unbounded nested Issue repair is implied.
@@ -41,6 +43,14 @@ mean primary was changed; delivery is a separately authorized action.
 - WHEN bounded development and Issue-specific verification succeed
 - THEN the authorized solver can resolve the Issue and final checks bind the disposition bytes
 - AND the result is a ready candidate without automatic delivery or primary merge
+
+### scenario.issues.solve-spec-repair — Route contract repair to the ordinary author
+
+- GIVEN an admitted solver decision with action spec-repair
+- WHEN the flow selects the next operation
+- THEN it enters the declared repair_spec node and invokes the owner-only Spec author
+- AND the author receives intended behavior without the solver's selection or prior transcript
+- AND accepted repair can continue to development or, for a code-free Module, Spec-only verification
 
 ### scenario.issues.solve-decision — Ask only for genuinely unsettled decisions
 

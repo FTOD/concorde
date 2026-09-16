@@ -61,6 +61,50 @@ class IssueFlowTests(unittest.TestCase):
         self.assertEqual("succeeded", repeated["status"], repeated)
         self.assertEqual([], self.model.calls)
 
+    @verifies("scenario.issues.solve-spec-repair")
+    def test_every_solver_action_has_an_explicit_declared_route(self):
+        from concorde.issues.flow import DECISION_ROUTES, NODES
+        from concorde.spec.typed_data import DATA_SCHEMAS
+        actions = DATA_SCHEMAS['concorde-agent-stage-result']['properties']['issue_decision']['properties']['action']['enum']
+        self.assertEqual(set(actions), set(DECISION_ROUTES))
+        self.assertLessEqual(set(DECISION_ROUTES.values()), set(NODES))
+        self.assertEqual('repair_spec', DECISION_ROUTES['spec-repair'])
+
+    @verifies("scenario.issues.solve-spec-repair")
+    def test_spec_repair_enters_the_author_then_continues_development(self):
+        def choose(stage, snapshot, data, cwd):
+            if stage == 'issue-solve' and sum(c['stage'] == stage for c in self.model.calls) == 1:
+                data['issue_decision']['action'] = 'spec-repair'
+        result = self.call('solve', choose)
+        self.assertEqual('succeeded', result['status'], result)
+        self.assertEqual('ready', result['output']['data']['outcome'])
+        stages = [call['stage'] for call in self.model.calls]
+        self.assertEqual(['issue-solve', 'specify', 'issue-solve'], stages[:3])
+        self.assertIn('implementation', stages)
+        author = self.model.calls[1]['snapshot']
+        self.assertIn('concorde-issue-intent', [value['type_id'] for value in author['stage_inputs']])
+        self.assertNotIn('concorde-issue-selection', [value['type_id'] for value in author['stage_inputs']])
+        self.assertEqual('closed', read_issue(self.root, self.ref['issue_id'])[0]['status'])
+
+    @verifies("scenario.issues.solve-spec-repair")
+    def test_code_free_spec_repair_can_continue_directly_to_verification(self):
+        self.healthy_implementation()
+        self.ref = report_issue(self.root, report(owner_target_id='scope.audit', evidence=[]),
+                                source(target_id='scope.audit', invocation_id='spec-only-repair'))
+        def choose(stage, snapshot, data, cwd):
+            if stage == 'issue-solve':
+                count = sum(call['stage'] == stage for call in self.model.calls)
+                if count <= 2:
+                    data['issue_decision']['action'] = 'spec-repair' if count == 1 else 'verify'
+        result = self.call('solve', choose)
+        self.assertEqual('succeeded', result['status'], result)
+        self.assertEqual('ready', result['output']['data']['outcome'])
+        stages = [call['stage'] for call in self.model.calls]
+        self.assertEqual(['issue-solve', 'specify', 'issue-solve'], stages[:3])
+        self.assertIn('spec-review', stages)
+        self.assertNotIn('code-review', stages)
+        self.assertNotIn('implementation', stages)
+
     @verifies("scenario.issues.solve-decision")
     def test_unsettled_design_stays_open_without_a_human_approval_gate_for_every_issue(self):
         def decision(stage, snapshot, data, cwd):

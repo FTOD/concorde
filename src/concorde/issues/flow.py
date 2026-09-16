@@ -13,6 +13,11 @@ from ..spec.changes import apply_files
 from .store import dispose_issue, issue_path, list_issues, read_issue, validate_report
 
 MAX_DECISIONS = 6
+DECISION_ROUTES = {
+    "develop": "develop", "spec-repair": "repair_spec", "verify": "verify",
+    "resolved": "close", "duplicate": "close", "not-actionable": "close",
+    "needs-decision": "finish",
+}
 NODES = ("select_operation", "inspect", "report", "reopen", "prepare", "decide", "develop",
          "repair_spec", "verify", "close", "ready", "finish")
 
@@ -241,7 +246,7 @@ def issue_nodes(run):
         if action == "resolved" and solution["verified_inputs"] != current_inputs():
             feedback = "Resolution requires fresh Issue-specific verification, not a workaround or a single non-reproduction."
             return {"route": "verify"}
-        return {"route": "close" if action in {"resolved", "duplicate", "not-actionable"} else action.replace("-", "_")}
+        return {"route": DECISION_ROUTES[action]}
 
     def child(capability, payload, *, coordinated=True):
         child_host = replace(run.host, routed_target=run.target.id, coordinated=coordinated,
