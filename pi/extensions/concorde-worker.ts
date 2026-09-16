@@ -46,13 +46,19 @@ const PARENT_SESSION = Symbol.for("concorde.worker.parent-session");
 
 function loadPolicy(): WorkerPolicy {
 	const location = process.env.CONCORDE_WORKER_POLICY;
-	if (!location) throw new Error("CONCORDE_WORKER_POLICY is not set; this extension runs only inside a Concorde worker");
+	if (!location)
+		throw new Error(
+			"CONCORDE_WORKER_POLICY is not set; this extension runs only inside a Concorde worker",
+		);
 	try {
 		const policy = JSON.parse(fs.readFileSync(location, "utf8")) as WorkerPolicy;
-		if (policy.schema_version !== 1) throw new Error("unsupported Concorde worker policy version");
+		if (policy.schema_version !== 1)
+			throw new Error("unsupported Concorde worker policy version");
 		return policy;
 	} catch (error) {
-		throw new Error("Cannot load the host-issued Concorde worker policy", { cause: error });
+		throw new Error("Cannot load the host-issued Concorde worker policy", {
+			cause: error,
+		});
 	}
 }
 
@@ -73,13 +79,21 @@ function canonical(workspace: string, target: string): string {
 }
 
 function within(target: string, root: string): boolean {
-	return target === root || target.startsWith(root.endsWith(path.sep) ? root : root + path.sep);
+	return (
+		target === root ||
+		target.startsWith(root.endsWith(path.sep) ? root : root + path.sep)
+	);
 }
 
-function hostRequest(socket: string, body: Record<string, unknown>): Promise<unknown> {
+function hostRequest(
+	socket: string,
+	body: Record<string, unknown>,
+): Promise<unknown> {
 	return new Promise((resolve, reject) => {
 		const chunks: Buffer[] = [];
-		const connection = net.createConnection(socket, () => connection.end(JSON.stringify(body) + "\n"));
+		const connection = net.createConnection(socket, () =>
+			connection.end(JSON.stringify(body) + "\n"),
+		);
 		connection.on("data", (chunk) => chunks.push(chunk));
 		connection.on("error", reject);
 		connection.on("end", () => {
@@ -94,22 +108,34 @@ function hostRequest(socket: string, body: Record<string, unknown>): Promise<unk
 
 export default function concordeWorker(pi: ExtensionAPI): void {
 	const policy = loadPolicy();
-	const readRoots = policy.read_paths.map((entry) => canonical(policy.workspace, entry));
-	const writeRoots = policy.write_paths.map((entry) => canonical(policy.workspace, entry));
+	const readRoots = policy.read_paths.map((entry) =>
+		canonical(policy.workspace, entry),
+	);
+	const writeRoots = policy.write_paths.map((entry) =>
+		canonical(policy.workspace, entry),
+	);
 	const store = globalThis as typeof globalThis & { [PARENT_SESSION]?: string };
-	const isChild = (sessionId: string) => store[PARENT_SESSION] !== undefined && store[PARENT_SESSION] !== sessionId;
+	const isChild = (sessionId: string) =>
+		store[PARENT_SESSION] !== undefined && store[PARENT_SESSION] !== sessionId;
 	let submitted = false;
 
 	pi.on("session_start", async (_event, ctx) => {
 		const sessionId = ctx.sessionManager.getSessionId();
 		store[PARENT_SESSION] ??= sessionId;
 		if (isChild(sessionId) || policy.children.length === 0) return;
-		const { registerSubagentCapabilityCeiling } = await import("pi-subagents/capability-ceiling");
-		const { registerRequiredChildExtensions } = await import("pi-subagents/required-child-extensions");
+		const { registerSubagentCapabilityCeiling } = await import(
+			"pi-subagents/capability-ceiling"
+		);
+		const { registerRequiredChildExtensions } = await import(
+			"pi-subagents/required-child-extensions"
+		);
 		registerSubagentCapabilityCeiling({
 			sessionId,
 			source: "concorde-worker",
-			ceiling: { allowedAgents: policy.children, allowedTools: policy.child_tools },
+			ceiling: {
+				allowedAgents: policy.children,
+				allowedTools: policy.child_tools,
+			},
 		});
 		registerRequiredChildExtensions({
 			sessionId,
@@ -124,21 +150,35 @@ export default function concordeWorker(pi: ExtensionAPI): void {
 
 	pi.on("tool_call", async (event, ctx) => {
 		const child = isChild(ctx.sessionManager.getSessionId());
-		const deny = (reason: string) => ({ block: true, reason: `Concorde worker policy: ${reason}` });
+		const deny = (reason: string) => ({
+			block: true,
+			reason: `Concorde worker policy: ${reason}`,
+		});
 		const name = event.toolName;
-		if (!(child ? policy.child_tools : policy.tools).includes(name)) return deny(`the ${name} tool is not granted`);
+		if (!(child ? policy.child_tools : policy.tools).includes(name))
+			return deny(`the ${name} tool is not granted`);
 		const input = event.input as Record<string, unknown>;
 		if (READ_TOOLS.has(name)) {
-			const target = typeof input.path === "string" && input.path ? input.path : ".";
+			const target =
+				typeof input.path === "string" && input.path ? input.path : ".";
 			const resolved = canonical(policy.workspace, target);
 			if (![...readRoots, ...writeRoots].some((root) => within(resolved, root))) {
 				return deny(`${target} is outside the read grant`);
 			}
 		} else if (WRITE_TOOLS.has(name)) {
-			if (typeof input.path !== "string" || !writeRoots.some((root) => within(canonical(policy.workspace, input.path as string), root))) {
+			if (
+				typeof input.path !== "string" ||
+				!writeRoots.some((root) =>
+					within(canonical(policy.workspace, input.path as string), root),
+				)
+			) {
 				return deny(`${String(input.path)} is outside the write grant`);
 			}
-		} else if (name === "bash" && typeof input.command === "string" && policy.scrub_environment.length > 0) {
+		} else if (
+			name === "bash" &&
+			typeof input.command === "string" &&
+			policy.scrub_environment.length > 0
+		) {
 			input.command = `unset ${policy.scrub_environment.join(" ")}\n${input.command}`;
 		} else if (name === "subagent" && child) {
 			return deny("a child session cannot delegate");
@@ -156,9 +196,14 @@ export default function concordeWorker(pi: ExtensionAPI): void {
 		promptSnippet: "Submit the final structured result and end the run",
 		parameters: Type.Unsafe<Record<string, unknown>>(policy.result_schema),
 		async execute(_toolCallId, params) {
-			if (submitted) throw new Error("submit_result was already called in this run");
+			if (submitted)
+				throw new Error("submit_result was already called in this run");
 			submitted = true;
-			return { content: [{ type: "text", text: "Result submitted." }], details: params, terminate: true };
+			return {
+				content: [{ type: "text", text: "Result submitted." }],
+				details: params,
+				terminate: true,
+			};
 		},
 	});
 
@@ -173,11 +218,20 @@ export default function concordeWorker(pi: ExtensionAPI): void {
 				"A report is limited to 64 KiB. Only the parent worker reports issues, not its helper children.",
 			parameters: Type.Unsafe<Record<string, unknown>>(policy.report_schema),
 			async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-				if (isChild(ctx.sessionManager.getSessionId())) throw new Error("only the worker reports verified observations");
-				if (!policy.host_socket) throw new Error("this worker has no host reporting service");
-				const reply = await hostRequest(policy.host_socket, { tool: "report_issue", report: params });
-				if (reply && typeof reply === "object" && "error" in reply) throw new Error(String(reply.error));
-				return { content: [{ type: "text", text: JSON.stringify(reply) }], details: reply };
+				if (isChild(ctx.sessionManager.getSessionId()))
+					throw new Error("only the worker reports verified observations");
+				if (!policy.host_socket)
+					throw new Error("this worker has no host reporting service");
+				const reply = await hostRequest(policy.host_socket, {
+					tool: "report_issue",
+					report: params,
+				});
+				if (reply && typeof reply === "object" && "error" in reply)
+					throw new Error(String(reply.error));
+				return {
+					content: [{ type: "text", text: JSON.stringify(reply) }],
+					details: reply,
+				};
 			},
 		});
 	}
@@ -189,10 +243,15 @@ export default function concordeWorker(pi: ExtensionAPI): void {
 			"Run the selected Module's configured deterministic checks on the host, read-only, and return each check's status and bounded output.",
 		parameters: Type.Object({}),
 		async execute() {
-			if (!policy.host_socket) throw new Error("this worker has no host check service");
+			if (!policy.host_socket)
+				throw new Error("this worker has no host check service");
 			const reply = await hostRequest(policy.host_socket, { tool: "run_checks" });
-			if (reply && typeof reply === "object" && "error" in reply) throw new Error(String(reply.error));
-			return { content: [{ type: "text", text: JSON.stringify(reply, null, 2) }], details: reply };
+			if (reply && typeof reply === "object" && "error" in reply)
+				throw new Error(String(reply.error));
+			return {
+				content: [{ type: "text", text: JSON.stringify(reply, null, 2) }],
+				details: reply,
+			};
 		},
 	});
 }
