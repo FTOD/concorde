@@ -215,7 +215,33 @@ class SpecifyLoopTests(unittest.TestCase):
         with self.assertRaises(SpecError):
             verify_required(run)
 
-    @verifies('scenario.development.specify-loop')
+    @verifies('scenario.spec-authoring.stale-output')
+    def test_author_output_prepared_from_changed_sources_is_rejected_without_applying(self):
+        task = {**self.task, 'specify': False, 'run_reviews': True}
+        self.assertEqual('succeeded', self.call_capability('concorde-specify-loop', task)['status'])
+        paths = ['specs/transfer/module.md', 'specs/transfer/promises.md']
+        blocked = self.call_capability('concorde-specify', self.task, callback=self.missing('specify'))
+        self.assertEqual('spec_incomplete', blocked['output']['data']['outcome'])
+        history = read_change(self.root)['gap_history']
+        before = {p: (self.root / p).read_bytes() for p in paths}
+
+        def replaced_after_a_change(stage, snapshot, data, cwd):
+            if stage != 'specify':
+                return
+            # The author prepares its replacement from the frozen context, but an admitted source
+            # changes in the project before the host rechecks and accepts that output.
+            data['documents'] = [{'path': paths[0], 'content': (cwd / paths[0]).read_text()
+                + '\nTransfer owns the requested daily-limit admission rule.\n'}]
+            source = self.root / paths[1]
+            source.write_text(source.read_text() + '\nA concurrent editor revised this promise.\n')
+
+        stale = self.call_capability('concorde-specify', self.task, callback=replaced_after_a_change)
+        self.assertNotEqual('succeeded', stale['status'], stale)
+        self.assertEqual('stale_context', stale['errors'][0]['code'], stale)
+        self.assertEqual(before[paths[0]], (self.root / paths[0]).read_bytes())
+        self.assertEqual(history, read_change(self.root)['gap_history'])
+
+    @verifies('scenario.development.specify-loop', 'scenario.spec-authoring.gap')
     def test_same_task_author_gap_blocks_cached_review_until_admitted_author_repairs_it(self):
         task = {**self.task, 'specify': False, 'run_reviews': True}
         first = self.call_capability('concorde-specify-loop', task)

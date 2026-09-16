@@ -7,7 +7,7 @@ from dataclasses import asdict, replace
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.harness.change_worktree import ensure_change, read_change, save_change
+from concorde.harness.change_worktree import WORK_PATH, ensure_change, read_change, save_change
 from concorde.harness.permissions import PermissionPolicyError
 from concorde.spec.typed_data import DATA_SCHEMAS, typed
 from concorde.spec.verification import verifies
@@ -573,7 +573,8 @@ class ReviewTests(unittest.TestCase):
         for path, content in source_bytes.items():
             self.assertEqual(content, (self.root / path).read_bytes())
 
-    @verifies("scenario.development.task-history-identities", "scenario.development.task-scope-repair")
+    @verifies("scenario.development.task-history-identities", "scenario.development.task-scope-repair",
+              "scenario.planning.tasks-from-plan", "scenario.planning.tasks-id-conflict")
     def test_replan_author_sees_all_retained_ids_and_collision_is_rejected_without_rewriting(self):
         from concorde.spec.repository import digest
         observed = []
@@ -1165,7 +1166,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("ready", state["status"])
         self.assertNotIn("specify", [x["stage"] for x in self.model.calls])
 
-    @verifies("scenario.development.dev-loop-spec-gap")
+    @verifies("scenario.development.dev-loop-spec-gap", "scenario.planning.assessment-gap")
     def test_real_task_phases_preserve_gaps_and_resume_after_repair(self):
         for phase in ("context-solve", "plan", "tasks", "implementation"):
             with self.subTest(phase=phase), tempfile.TemporaryDirectory() as temporary:
@@ -1275,6 +1276,103 @@ class ReviewTests(unittest.TestCase):
             self.assertEqual([], self.model.calls)
             self.assertEqual(tasks, read_change(self.root, required=True)["targets"][self.task["target_id"]]["tasks"])
 
+    @verifies("scenario.planning.assessment-sufficient", "scenario.planning.plan-current")
+    def test_a_sufficient_assessment_admits_a_revision_bound_plan_and_no_task_list(self):
+        from concorde.development.capability_host import _target_revision
+        from concorde.spec.repository import SpecRepository
+
+        self.assertEqual("succeeded", self.call_capability("concorde-dev-loop")["status"])
+        documents = {path: path.read_bytes() for path in (self.root / "specs").rglob("*.md")}
+        assessed = self.call_capability("concorde-context-solve")
+        self.assertEqual("succeeded", assessed["status"], assessed)
+        # A sufficient assessment concerns this task only: it authors nothing and admits planning.
+        self.assertEqual("completed", assessed["output"]["data"]["outcome"])
+        self.assertEqual([], assessed["output"]["data"]["gaps"])
+        self.assertEqual(["context-solve"], [call["stage"] for call in self.model.calls])
+        self.assertEqual(documents, {path: path.read_bytes() for path in (self.root / "specs").rglob("*.md")})
+        planned = self.call_capability("concorde-plan")
+        self.assertEqual("succeeded", planned["status"], planned)
+        reference = planned["output"]["data"]["artifacts"][0]
+        state = read_change(self.root, required=True)["targets"][self.task["target_id"]]
+        self.assertEqual((self.root / reference["path"]).read_text(), state["plan"])
+        repository = SpecRepository(self.root, PACKAGE)
+        self.assertEqual(_target_revision(repository, repository.select(self.task["target_id"])), state["spec_digest"])
+        self.assertEqual(([], [], None), (state["tasks"], state["checks"], state["implementation_digest"]))
+        self.assertEqual(documents, {path: path.read_bytes() for path in (self.root / "specs").rglob("*.md")})
+
+    @verifies("scenario.planning.plan-empty", "scenario.planning.plan-stale")
+    def test_an_empty_or_stale_planner_result_preserves_the_accepted_plan(self):
+        self.assertEqual("succeeded", self.call_capability("concorde-dev-loop")["status"])
+        self.assertEqual("succeeded", self.call_capability("concorde-plan")["status"])
+        accepted = read_change(self.root, required=True)["targets"][self.task["target_id"]]
+        stored = (self.root / f"{WORK_PATH}/{self.task['target_id']}/plan.md").read_bytes()
+
+        def empty(stage, snapshot, data, cwd):
+            if stage == "plan":
+                data["plan"] = ""
+
+        def changed(stage, snapshot, data, cwd):
+            if stage == "plan":
+                spec = self.root / "specs/transfer/module.md"
+                spec.write_text(spec.read_text() + "\nThe daily-limit owner is transfer.\n")
+
+        for label, callback, code in (("empty", empty, "invalid_completion"), ("stale", changed, "stale_context")):
+            with self.subTest(plan=label):
+                result = self.call_capability("concorde-plan", callback=callback)
+                self.assertNotEqual("succeeded", result["status"], result)
+                self.assertEqual(code, result["errors"][0]["code"], result)
+                current_state = read_change(self.root, required=True)["targets"][self.task["target_id"]]
+                self.assertEqual(accepted["plan"], current_state["plan"])
+                self.assertEqual(stored, (self.root / f"{WORK_PATH}/{self.task['target_id']}/plan.md").read_bytes())
+                self.assertEqual([], current_state["tasks"])
+
+    @verifies("scenario.planning.tasks-missing-plan", "scenario.implementation.missing-tasks")
+    def test_task_authoring_and_implementation_refuse_their_missing_prerequisite(self):
+        self.assertEqual("succeeded", self.call_capability("concorde-dev-loop")["status"])
+        history = read_change(self.root, required=True)["targets"][self.task["target_id"]].get("task_history", [])
+        self.assertEqual("succeeded", self.call_capability("concorde-plan")["status"])
+        # The accepted plan alone admits no implementation; without it, task authoring never starts.
+        for capability, code in (("concorde-implement", "missing_tasks"), ("concorde-tasks", "missing_plan")):
+            with self.subTest(capability=capability):
+                if capability == "concorde-tasks":
+                    state = read_change(self.root, required=True)
+                    state["targets"][self.task["target_id"]]["plan"] = ""
+                    save_change(self.root, state)
+                result = self.call_capability(capability)
+                self.assertEqual("blocked", result["status"], result)
+                self.assertEqual(code, result["errors"][0]["code"], result)
+                self.assertEqual([], self.model.calls)
+                current_state = read_change(self.root, required=True)["targets"][self.task["target_id"]]
+                self.assertEqual([], current_state["tasks"])
+                self.assertEqual(history, current_state.get("task_history", []))
+
+    @verifies("scenario.implementation.incomplete-output")
+    def test_an_incomplete_or_omitted_task_result_is_rejected_and_leaves_its_edits_inspectable(self):
+        def incomplete(mode):
+            def callback(stage, snapshot, data, cwd):
+                if stage != "implementation" or not data["tasks"]:
+                    return
+                data["tasks"] = [] if mode == "omitted" else [{**data["tasks"][0], "complete": False}]
+            return callback
+
+        for mode in ("incomplete", "omitted"):
+            with self.subTest(result=mode), tempfile.TemporaryDirectory() as directory:
+                previous_root, self.root = self.root, Path(directory)
+                try:
+                    project(self.root)
+                    self.assertEqual("succeeded", self.call_capability("concorde-dev-loop")["status"])
+                    for capability in ("concorde-plan", "concorde-tasks"):
+                        self.assertEqual("succeeded", self.call_capability(capability)["status"])
+                    result = self.call_capability("concorde-implement", callback=incomplete(mode))
+                    self.assertEqual("incomplete_tasks", result["errors"][0]["code"], result)
+                    state = read_change(self.root, required=True)["targets"][self.task["target_id"]]
+                    self.assertIsNone(state["implementation_digest"])
+                    self.assertEqual([False], [task["complete"] for task in state["tasks"]])
+                    # The programmer's authorized edits stay in the candidate for the next attempt.
+                    self.assertIn("TRANSFER_IMPLEMENTATION_CODE", (self.root / "app/transfer.py").read_text())
+                finally:
+                    self.root = previous_root
+
     @verifies("scenario.development.dev-loop-spec-gap")
     def test_upstream_task_gaps_block_standalone_dependents_but_allow_independent_queries(self):
         for phase in ("context-solve", "plan"):
@@ -1365,7 +1463,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("specify", self.model.calls[0]["stage"])
 
-    @verifies("scenario.development.dev-loop-spec-gap")
+    @verifies("scenario.development.dev-loop-spec-gap", "scenario.spec-authoring.invalid-output")
     def test_rejected_authoring_preserves_gaps_until_the_host_accepts_the_repair(self):
         result = self.call_capability("concorde-specify", callback=self.missing("specify"))
         self.assertEqual("blocked", result["status"], result)
@@ -1408,7 +1506,7 @@ class ReviewTests(unittest.TestCase):
                 finally:
                     self.root = previous_root
 
-    @verifies("scenario.development.dev-loop-spec-gap")
+    @verifies("scenario.development.dev-loop-spec-gap", "scenario.concorde.develop-failure")
     def test_failed_plan_artifact_write_can_resume_and_resolve_the_planning_gap(self):
         from concorde.development import capability_host
         self.assertEqual("blocked", self.call_capability("concorde-dev-loop",
@@ -1428,14 +1526,23 @@ class ReviewTests(unittest.TestCase):
         self.assertIn("plan", [call["stage"] for call in self.model.calls])
         self.assertEqual("resolved", read_change(self.root, required=True)["gap_history"][0]["status"])
 
+    @verifies("scenario.reflections.capture-gap", "scenario.reflections.repeat-capture-reuses-link",
+              "scenario.reflections.list-open-gaps", "scenario.reflections.reject-invalid-gap-selection")
     def test_gap_capture_is_explicit_deduplicated_and_keeps_owner_and_blocker(self):
+        unmanaged = {**self.task, "action": "status", "reflection_ids": []}
+        self.assertEqual([], self.call_capability("concorde-reflections-triage", unmanaged)["output"]["data"]["gap_records"])
         result = self.call_capability("concorde-plan", callback=self.missing("context-solve"))
         self.assertEqual("blocked", result["status"])
-        status = self.call_capability("concorde-reflections-triage", {**self.task, "action": "status", "reflection_ids": []})
+        status = self.call_capability("concorde-reflections-triage", unmanaged)
         self.assertEqual("succeeded", status["status"], status)
         gap = status["output"]["data"]["gap_records"][0]
-        self.assertEqual("open", gap["status"])
-        self.assertIsNone(gap["reflection_id"])
+        blocked = read_change(self.root, required=True)["gap_history"][0]
+        # The record carries the existing gap's selection metadata, not a second gap contract.
+        self.assertEqual({key: blocked[key] for key in ("id", "target_id", "task", "phase", "gap", "status")}
+                         | {"reflection_id": None}, gap)
+        self.assertEqual(("service.transfer", self.task["task"], "context-solve", "open"),
+                         (gap["target_id"], gap["task"], gap["phase"], gap["status"]))
+        self.assertEqual(self.gap(), {key: gap["gap"][key] for key in self.gap()})
         request = {**self.task, "action": "record-gaps", "reflection_ids": [], "gap_ids": [gap["id"]]}
         result = self.call_capability("concorde-reflections-triage", request)
         self.assertEqual("succeeded", result["status"], result)
@@ -1448,6 +1555,15 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(1, len(list((self.root / ".concorde/reflections/pending").glob("R-*.md"))))
         rejected = self.call_capability("concorde-reflections-triage", {**request, "target_id": "module.ledger"})
         self.assertEqual("permission_denied", rejected["errors"][0]["code"])
+        for implicit in ({**request, "gap_ids": []}, {k: v for k, v in request.items() if k != "gap_ids"}):
+            refused = self.call_capability("concorde-reflections-triage", implicit)
+            self.assertEqual("invalid_input", refused["errors"][0]["code"], refused)
+        state = read_change(self.root, required=True)
+        state["gap_history"][0]["status"] = "resolved"
+        save_change(self.root, state)
+        stale = self.call_capability("concorde-reflections-triage", request)
+        self.assertEqual("stale_reference", stale["errors"][0]["code"], stale)
+        self.assertEqual(1, len(list((self.root / ".concorde/reflections/pending").glob("R-*.md"))))
 
 
 class RepairLoopTests(unittest.TestCase):
@@ -1489,7 +1605,8 @@ class RepairLoopTests(unittest.TestCase):
                 "acceptance": "Valid transfer subtracts; invalid amount or insufficient funds raises ValueError.",
                 "complete": False}]
 
-    @verifies("scenario.development.task-history-identities", "scenario.development.dev-loop-repair")
+    @verifies("scenario.development.task-history-identities", "scenario.development.dev-loop-repair",
+              "scenario.planning.tasks-id-conflict")
     def test_code_review_repair_reserves_current_ids_before_archiving_them(self):
         def callback(stage, snapshot, data, cwd):
             if stage == "code-review":
@@ -1511,7 +1628,7 @@ class RepairLoopTests(unittest.TestCase):
         self.assertIsNotNone(change["graph"]["service.transfer"]["repair"])
         self.assertEqual(1, [c["stage"] for c in self.model.calls].count("implementation"))
 
-    @verifies("scenario.development.dev-loop-repair")
+    @verifies("scenario.development.dev-loop-repair", "scenario.implementation.admitted-work")
     def test_blocking_then_clean_repairs_once_and_reaches_ready(self):
         counter = [0]
         reviews = {"count": 0}

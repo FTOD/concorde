@@ -113,7 +113,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.registry['entry_target']='module.ledger'
         (self.root/'.concorde/specs.json').write_text(json.dumps(self.registry))
         self.assertEqual('module.ledger',SpecRepository(self.root).entry_target)
-    @verifies("scenario.development.answer-question")
+    @verifies("scenario.development.answer-question", "scenario.concorde.inspect-answer")
     def test_main_answers_directly_from_complete_injected_contexts(self):
         double=ModelProcessDouble()
         result=self.call_capability('concorde-main',{'task':'Explain transfer'},double)
@@ -387,7 +387,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('Transfer and ledger explained from their original Specs.',
                          result['output']['data']['answer'])
 
-    @verifies("scenario.development.answer-gap")
+    @verifies("scenario.development.answer-gap", "scenario.concorde.inspect-gap")
     def test_main_reports_gaps_with_owning_module_and_complete_context_identity(self):
         def routing_gap(stage,snapshot,data,cwd):
             data.update(outcome='spec_incomplete',answer='Routing facts are missing.',
@@ -600,7 +600,8 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertFalse((self.root/'.concorde/attempts').exists())
         state=json.loads((self.root/'.concorde/worktree.json').read_text())
         self.assertEqual('blocked',state['status']);self.assertEqual({},state['targets'])
-    @verifies("scenario.development.dev-loop-ready", "scenario.harness.context-freeze")
+    @verifies("scenario.development.dev-loop-ready", "scenario.harness.context-freeze",
+              "scenario.concorde.develop-change")
     def test_standard_loop_real_checks_leave_a_ready_change(self):
         double=ModelProcessDouble()
         result=self.call_capability('concorde-dev-loop',{'task':'Implement the transfer contract'},double)

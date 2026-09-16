@@ -193,6 +193,7 @@ class ProtocolFiveTests(unittest.TestCase):
             'target_id': 'service.transfer', 'task': 'Clarify the canonical promise'}), host_context=host)
         return result, double, before, proposed, path
 
+    @verifies("scenario.spec-authoring.admitted-work")
     def test_owner_proposal_is_applied_only_after_each_context_accepts(self):
         result, double, _, proposed, path = self._author_referenced_document(False)
         self.assertEqual('succeeded', result['status'], result)

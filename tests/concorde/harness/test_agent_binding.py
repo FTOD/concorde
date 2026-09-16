@@ -17,6 +17,7 @@ from concorde.development.capability_host import Invocation
 from concorde.development.capability_service import CapabilityHost, run_capability
 from concorde.harness.agent_model import agent_definition, resolve_agent
 from concorde.harness.change_worktree import read_change
+from concorde.harness.pi_worker import WorkerExecutionError
 from concorde.harness.worker_executor import CapabilityExecutionError
 from concorde.spec.typed_data import typed
 from concorde.spec.verification import verifies
@@ -155,6 +156,45 @@ class AgentBindingTests(unittest.TestCase):
         self.assertEqual("failed", result["status"], result)
         self.assertEqual("execution_cancelled", result["errors"][0]["code"], result)
         self.assertEqual("cancelled", read_change(self.root)["status"])
+
+    @verifies("scenario.implementation.failed-execution")
+    def test_authorized_edits_survive_a_failed_execution_and_the_retry_re_admits_the_same_artifacts(self):
+        double = ModelProcessDouble()
+        task = self.change(double)
+        result = self.call_capability("concorde-tasks", task, double=double)
+        self.assertEqual("succeeded", result["status"], result)
+        code = self.root / "app/transfer.py"
+        planned = code.read_bytes()
+
+        def fail_after_the_authorized_write(stage, snapshot, data, cwd):
+            # The double has already written the worker's authorized code edit when it reaches here.
+            if stage == "implementation":
+                raise WorkerExecutionError("the worker ran past its 10s timeout", outcome="limit_exhausted")
+
+        double.callback = fail_after_the_authorized_write
+        result = self.call_capability("concorde-implement", task, double=double)
+        self.assertEqual("failed", result["status"], result)
+        self.assertEqual("execution_limit", result["errors"][0]["code"], result)
+        self.assertNotEqual(planned, code.read_bytes())
+        self.assertIn(b"raise ValueError", code.read_bytes())
+        change = read_change(self.root)
+        self.assertEqual("limit_exhausted", change["status"])
+        recorded = change["targets"]["service.transfer"]
+        self.assertEqual(("tasks", None, [False]), (recorded["phase"], recorded["implementation_digest"],
+                                                    [item["complete"] for item in recorded["tasks"]]))
+        self.assertNotIn("concorde-implement", recorded["completed_capabilities"])
+        retry = ModelProcessDouble()
+        result = self.call_capability("concorde-implement", task, double=retry)
+        self.assertEqual("succeeded", result["status"], result)
+        first, second = (next(call for call in calls if call["stage"] == "implementation")
+                         for calls in (double.calls, retry.calls))
+        self.assertEqual(first["snapshot"]["stage_inputs"], second["snapshot"]["stage_inputs"])
+        self.assertEqual(first["launch"].write_paths, second["launch"].write_paths)
+        # A fresh invocation with its own frozen context file and no other added grant.
+        self.assertNotEqual(first["snapshot"]["context_id"], second["snapshot"]["context_id"])
+        granted = [[path for path in sorted(call["launch"].read_paths)
+                    if not path.startswith(".concorde/runs/")] for call in (first, second)]
+        self.assertEqual(granted[0], granted[1])
 
     @verifies("scenario.harness.execute-failure")
     def test_dev_loop_composition_records_child_limit_status_on_the_change(self):

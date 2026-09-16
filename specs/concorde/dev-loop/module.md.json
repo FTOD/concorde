@@ -13,6 +13,7 @@
         "capabilities/dev_loop.py",
         "tests/concorde/development/test_review.py",
         "tests/concorde/development/test_specify_loop.py",
+        "tests/concorde/development/test_target_discovery.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
       ],

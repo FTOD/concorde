@@ -12,6 +12,7 @@
       "files": [
         "capabilities/specify_loop.py",
         "tests/concorde/development/test_specify_loop.py",
+        "tests/concorde/harness/test_studio_server.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
       "meaning": "#entity.specify-loop.adapter"

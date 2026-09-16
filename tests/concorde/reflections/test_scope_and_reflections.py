@@ -106,7 +106,26 @@ Keep this user comment intact.
           'steps':'Subtract accepted amounts and reject invalid values.','validation':'Run the configured transfer check.',
           'risks':'No persistent side effects.','protocol_change':False}]
     def task(self,action):return {'target_id':'service.transfer','task':'Investigate the transfer promise','action':action,'reflection_ids':['R-001']}
-    @verifies("scenario.reflections.status-query")
+    def git(self,*arguments):return subprocess.run(['git',*arguments],cwd=self.root,capture_output=True,text=True,check=True).stdout.strip()
+    def plans(self):queue=queue_module(PACKAGE);return queue._load_plans(self.root,queue.load_config(self.root))
+    def require_approval(self):
+        config=self.root/'.concorde/reflections/config.json'
+        config.write_text(json.dumps({**json.loads(config.read_text()),'require_approval':True}))
+    def plan(self,status,*,files=('app/transfer.py',),steps='Subtract accepted amounts and reject invalid values.',commit=None):
+        """The developer-owned plan document the approval and merge conditions are read from."""
+        path=self.root/'.concorde/reflections/plans/R-001.md';path.parent.mkdir(parents=True,exist_ok=True)
+        verified=commit or self.git('rev-parse','HEAD')
+        path.write_text('---\nid: R-001\ntitle: Transfer promise is not implemented\n'
+            f'route: fast-loop\nstatus: {status}\nrecorded_under: scenario.transfer.debit\n'
+            'implement_in: specs/transfer/module.md\nimplement_in_id: scenario.transfer.debit\n'
+            'touches_docsite: false\neffort: small\nfiles:\n'+''.join(f'  - {item}\n' for item in files)
+            +(f'commit: {commit}\n' if commit else '')+f'verified: 2026-09-05\nverified_commit: {verified}\n---\n\n'
+            '## Problem\n\nThe promised arithmetic is absent.\n\n'
+            '## Verification\n\nCurrent transfer returns the input balance.\n\n'
+            f'## Change\n\n{steps}\n\n## Validation\n\nRun the configured transfer check.\n\n'
+            '## Risks and out of scope\n\nNo persistent side effects.\n')
+        return path
+    @verifies("scenario.reflections.status-query", "scenario.concorde.reflections-triage")
     def test_status_exposes_metadata_without_record_body_or_code(self):
         self.record();result=self.call_capability('concorde-reflections-triage',self.task('status'))
         self.assertEqual('succeeded',result['status'],result);self.assertEqual([],self.double.calls)
@@ -168,3 +187,68 @@ Keep this user comment intact.
             if call['stage']!='implementation':self.assertNotIn('PRIVATE_REFLECTION',call['prompt']);self.assertNotIn('Current transfer returns',call['prompt'])
         queue=queue_module(PACKAGE);plans=queue._load_plans(self.root,queue.load_config(self.root))
         self.assertEqual('implemented',plans['R-001']['status'])
+    @verifies("scenario.reflections.close-rejects-mere-nonreproduction")
+    def test_non_reproduction_alone_leaves_the_report_open(self):
+        self.record()
+        def loose(*args):self.finding(*args);args[2]['reflection_findings'][0].update(observed_state='not-reproduced')
+        result=self.call_capability('concorde-reflections-triage',self.task('investigate'),loose)
+        self.assertNotEqual('succeeded',result['status'],result)
+        self.assertIn('developer dismissal decision',json.dumps(result['errors']))
+        self.assertTrue((self.root/'.concorde/reflections/pending/R-001.md').exists())
+        def dismissal(*args):
+            self.finding(*args);args[2]['reflection_findings'][0].update(observed_state='not-reproduced',
+                route='dismiss',human_intervention='required')
+        self.assertEqual('succeeded',self.call_capability('concorde-reflections-triage',self.task('investigate'),dismissal)['status'])
+        # Non-reproduction only recommends dismissal: the record waits in needs-comments and its
+        # developer-owned status stays open until an explicit disposition closes it.
+        text=(self.root/'.concorde/reflections/needs-comments/R-001.md').read_text()
+        self.assertIn('status: open',text);self.assertIn('Keep this user comment intact.',text)
+        self.assertEqual('stale',self.plans()['R-001']['status'])
+    @verifies("scenario.reflections.close-sets-disposition")
+    def test_close_acts_on_an_explicit_disposition_and_preserves_the_report(self):
+        self.record();document=self.root/'.concorde/reflections/pending/R-001.md';original=document.read_text()
+        undecided=self.call_capability('concorde-reflections-triage',self.task('close'))
+        self.assertNotEqual('succeeded',undecided['status'],undecided)
+        self.assertIn('resolved or dismissed with a resolution_note',json.dumps(undecided['errors']))
+        self.assertEqual(original,document.read_text())
+        document.write_text(original.replace('status: open','status: resolved\nresolution_note: Fixed by the transfer change.'))
+        self.git('-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qam','disposition')
+        result=self.call_capability('concorde-reflections-triage',self.task('close'))
+        self.assertEqual('succeeded',result['status'],result);self.assertEqual([],self.double.calls)
+        self.assertFalse(document.exists())
+        # The decided disposition, the original observation and the user's comments stay in history.
+        committed=self.git('show','HEAD:.concorde/reflections/pending/R-001.md')
+        self.assertIn('status: resolved',committed);self.assertIn('resolution_note: Fixed by the transfer change.',committed)
+        self.assertIn('Balance is returned unchanged.',committed);self.assertIn('Keep this user comment intact.',committed)
+    @verifies("scenario.reflections.implement-requires-current-approval")
+    def test_implement_rejects_a_resolution_the_project_has_not_approved(self):
+        self.record();self.require_approval()
+        result=self.call_capability('concorde-reflections-triage',self.task('implement'),self.finding)
+        self.assertNotEqual('succeeded',result['status'],result)
+        self.assertIn('requires explicit approval',json.dumps(result['errors']))
+        # Only the read-only investigation ran; no development task was composed.
+        self.assertEqual(['implementation'],[call['stage'] for call in self.double.calls])
+        self.assertEqual('proposed',self.plans()['R-001']['status'])
+    @verifies("scenario.reflections.implement-requires-current-approval")
+    def test_implement_does_not_reuse_an_approval_of_a_changed_resolution(self):
+        self.record();self.require_approval()
+        self.plan('approved',files=['checks/transfer_check.py'],steps='Adjust the configured transfer check only.')
+        result=self.call_capability('concorde-reflections-triage',self.task('implement'),self.finding)
+        self.assertNotEqual('succeeded',result['status'],result)
+        self.assertIn('requires explicit approval',json.dumps(result['errors']))
+        self.assertEqual(['implementation'],[call['stage'] for call in self.double.calls])
+        # The changed resolution replaces the plan as proposed; the earlier approval is not carried over.
+        plan=self.plans()['R-001'];self.assertEqual(('proposed',['app/transfer.py']),(plan['status'],plan['files']))
+    def test_merge_removes_disposed_records_without_performing_a_git_merge(self):
+        # The merge action's own precondition is an open record whose plan is a merged fast-loop
+        # change committed on an ancestor of HEAD; see the reported lifecycle contradiction.
+        self.record();head=self.git('rev-parse','HEAD');self.plan('merged',commit=head)
+        index=(self.root/'.concorde/reflections/index.json').read_bytes();history=self.git('log','--oneline')
+        result=self.call_capability('concorde-reflections-triage',self.task('merge'))
+        self.assertEqual('succeeded',result['status'],result);self.assertEqual([],self.double.calls)
+        self.assertFalse((self.root/'.concorde/reflections/pending/R-001.md').exists())
+        self.assertFalse((self.root/'.concorde/reflections/plans/R-001.md').exists())
+        self.assertEqual(index,(self.root/'.concorde/reflections/index.json').read_bytes())
+        committed=self.git('show','HEAD:.concorde/reflections/pending/R-001.md')
+        self.assertIn('Balance is returned unchanged.',committed);self.assertIn('Keep this user comment intact.',committed)
+        self.assertEqual((head,history),(self.git('rev-parse','HEAD'),self.git('log','--oneline')))

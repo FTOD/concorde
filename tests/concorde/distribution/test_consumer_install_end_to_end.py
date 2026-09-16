@@ -52,7 +52,7 @@ class ConsumerInstallEndToEndAcceptance(unittest.TestCase):
         cls.project_temporary.cleanup()
         cls.runtime_temporary.cleanup()
 
-    @verifies("scenario.distribution.install-apply")
+    @verifies("scenario.distribution.install-apply", "scenario.concorde.adopt-initialize")
     def test_apply_installs_cleanly(self):
         self.assertEqual(0, self.install_result.returncode, self.install_result.stderr)
         self.assertEqual("installed", self.install_payload["status"], self.install_payload)

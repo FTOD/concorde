@@ -83,6 +83,8 @@
         "scripts/development/studio.py",
         "src/concorde/harness/studio.py",
         "src/concorde/harness/studio_client.py",
+        "tests/concorde/development/test_flow_surfaces.py",
+        "tests/concorde/development/test_target_discovery.py",
         "tests/concorde/harness/test_studio.py",
         "tests/concorde/harness/test_studio_client.py",
         "tests/concorde/harness/test_studio_server.py"

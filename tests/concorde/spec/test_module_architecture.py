@@ -9,7 +9,7 @@ from concorde.development.capability_host import CapabilityHost, run_capability
 from concorde.spec.typed_data import typed
 from concorde.harness.context import resolve_context, recheck_context
 from concorde.spec.initialize import project_proposal, apply_project_proposal, empty_target
-from concorde.spec.repository import SpecError, SpecRepository
+from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 from tests.concorde.spec.support import (
@@ -246,7 +246,8 @@ class ModuleArchitectureTests(unittest.TestCase):
 
 
 class InitialModuleTests(unittest.TestCase):
-    @verifies("scenario.spec.propose-initialization", "scenario.spec.apply-initialization", "scenario.spec.rollback-on-failure")
+    @verifies("scenario.spec.propose-initialization", "scenario.spec.apply-initialization",
+              "scenario.spec.rollback-on-failure", "scenario.concorde.adopt-initialize")
     def test_initialization_is_honest_and_rolls_back_a_bad_reading_entry(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -272,6 +273,72 @@ class InitialModuleTests(unittest.TestCase):
             self.assertEqual({"Project Spec", "Developer", "Concorde Framework"},
                              {entity.title for entity in repository.entities(target)})
             self.assertEqual("success", validate_repository(root, package_root=PACKAGE).status)
+
+    @verifies("scenario.spec.reject-already-initialized")
+    def test_an_already_configured_project_refuses_a_second_initialization(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            from concorde.distribution.project_defaults import install_project_defaults
+            install_project_defaults(root, PACKAGE)
+            apply_project_proposal(root, PACKAGE, project_proposal(root, PACKAGE, "New project", CONFIGURATION))
+            paths = [".concorde/config.json", ".concorde/specs.json", "specs/project/module.md",
+                     "specs/project/module.md.json"]
+            before = {path: (root / path).read_bytes() for path in paths}
+            with self.assertRaises(SpecError) as raised:
+                project_proposal(root, PACKAGE, "Second project", CONFIGURATION)
+            self.assertEqual("already_initialized", raised.exception.code)
+            self.assertEqual(before, {path: (root / path).read_bytes() for path in paths})
+
+    @verifies("scenario.spec.reject-stale-or-invalid-proposal")
+    def test_apply_rejects_an_invalid_out_of_bound_or_stale_proposal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            from concorde.distribution.project_defaults import install_project_defaults
+            install_project_defaults(root, PACKAGE)
+            original = project_proposal(root, PACKAGE, "New project", CONFIGURATION)
+
+            def mutated(update):
+                proposal = copy.deepcopy(original)
+                update(proposal)
+                return proposal
+
+            def reconfigured(update):
+                proposal = copy.deepcopy(original)
+                config = json.loads(proposal["files"][0]["content"])
+                proposal["files"][0]["content"] = json.dumps(update(config), indent=2) + "\n"
+                return proposal
+
+            cases = [
+                ("foreign envelope", "invalid_proposal",
+                 mutated(lambda p: p.update(type_id="concorde-topology-application"))),
+                ("issuance token", "invalid_proposal", mutated(lambda p: p.update(issuance_token="accepted"))),
+                ("registry omitted", "invalid_proposal", mutated(lambda p: p["files"].pop(1))),
+                ("registry rebound", "invalid_proposal",
+                 reconfigured(lambda c: {**c, "registry": ".concorde/other.json"})),
+                ("Protocol rebound", "invalid_proposal",
+                 reconfigured(lambda c: {**c, "protocol": {**c["protocol"], "digest": digest(b"another Protocol")}})),
+                ("replacement claimed", "invalid_proposal", mutated(lambda p: p.update(base_digest=digest(b"earlier")))),
+                ("overwrite claimed", "invalid_proposal",
+                 mutated(lambda p: p["files"][2].update(before_digest=digest(b"earlier")))),
+                ("out of bound file", "permission_denied", mutated(lambda p: p["files"].append(
+                    {"path": "specs/project/extra.md", "before_digest": None, "content": "# Extra\n"}))),
+            ]
+            for label, code, proposal in cases:
+                with self.subTest(case=label):
+                    with self.assertRaises(SpecError) as raised:
+                        apply_project_proposal(root, PACKAGE, proposal)
+                    self.assertEqual(code, raised.exception.code)
+                    self.assertFalse((root / ".concorde/config.json").exists())
+                    self.assertFalse((root / "specs/project").exists())
+            # The proposal's preconditions changed: a destination the proposal expects to be absent exists.
+            (root / "specs/project").mkdir(parents=True)
+            (root / "specs/project/module.md").write_text("# Concurrent draft\n")
+            with self.assertRaises(SpecError) as raised:
+                apply_project_proposal(root, PACKAGE, original)
+            self.assertEqual("stale_proposal", raised.exception.code)
+            self.assertFalse((root / ".concorde/config.json").exists())
+            self.assertFalse((root / ".concorde/specs.json").exists())
+            self.assertEqual("# Concurrent draft\n", (root / "specs/project/module.md").read_text())
 
 
 if __name__ == "__main__":

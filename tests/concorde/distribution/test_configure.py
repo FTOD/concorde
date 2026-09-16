@@ -44,7 +44,7 @@ class ConfigureTests(unittest.TestCase):
     def stored(self) -> dict:
         return json.loads(self.path.read_text())["capability_configuration"]
 
-    @verifies("scenario.distribution.configure-apply")
+    @verifies("scenario.distribution.configure-apply", "scenario.concorde.configure-apply")
     def test_supported_configuration_is_applied_atomically(self):
         selection = configuration(model="anthropic/claude-sonnet-5", thinking="high", timeout_seconds=2400,
                                   workers={"programmer/verifier": {"thinking": "low"}})

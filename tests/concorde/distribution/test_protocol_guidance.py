@@ -87,7 +87,7 @@ class ProtocolGuidanceTests(unittest.TestCase):
         self.install()
         self.assertEqual(preserved, b"".join(guidance.split(root.read_bytes())[::2]))
 
-    @verifies("scenario.distribution.install-conflict-rejected")
+    @verifies("scenario.distribution.install-conflict-rejected", "scenario.concorde.adopt-conflict")
     def test_markers_symlinks_and_modified_owned_blocks_conflict_without_writes(self):
         name = self.root / "AGENTS.md"
         cases = [guidance.entry("codex"), guidance.START, guidance.END,

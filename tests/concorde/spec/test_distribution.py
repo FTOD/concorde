@@ -39,7 +39,7 @@ class DistributionTests(unittest.TestCase):
         for path in shared:
             self.assertEqual(set(repo.listing_users(path)),
                              {t.id for t in repo.affected_modules([path])})
-        self.assertEqual({'module.development', 'module.dev-loop', 'module.specify-loop'},
+        self.assertEqual({'module.development', 'module.dev-loop', 'module.specify-loop', 'module.spec-authoring'},
                          {t.id for t in repo.affected_modules(['tests/concorde/development/test_specify_loop.py'])})
         text='\n'.join(repo.source_bytes(path).decode() for path in repo.spec_files('module.development'))
         for op in CAPABILITY_NAMES:self.assertIn(op+'-request',text)

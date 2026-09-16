@@ -402,7 +402,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual("incompatible_handoff", result["errors"][0]["code"])
         self.assertEqual("ready", read_change(self.change, required=True)["status"])
 
-    @verifies("scenario.development.dev-loop-spec-gap", "scenario.development.dev-loop-coordinated")
+    @verifies("scenario.development.dev-loop-spec-gap", "scenario.development.dev-loop-coordinated",
+              "scenario.concorde.develop-gap")
     def test_partial_spec_reconciliation_is_explicit_and_resumes_completed_authors(self):
         before_primary = (self.primary / "specs/transfer/module.md").read_bytes()
         from tests.concorde.spec.support import add_binding
@@ -460,7 +461,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(state["change_id"], read_change(self.change, required=True)["change_id"])
         self.assertTrue(self.change.exists())
 
-    @verifies("scenario.development.deliver-branch")
+    @verifies("scenario.development.deliver-branch", "scenario.concorde.deliver-stage")
     def test_source_delivery_removes_active_worktree_and_retry_does_not_republish(self):
         change_id = self.ready()
         before = git_value(self.primary, "rev-parse", "HEAD")
@@ -808,7 +809,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertEqual(before, (self.change / STATE_PATH).read_bytes())
         self.assertEqual([], self.last_double.calls)
 
-    @verifies("scenario.development.validate-ready", "scenario.development.deliver-branch")
+    @verifies("scenario.development.validate-ready", "scenario.development.deliver-branch",
+              "scenario.concorde.validate-record")
     def test_directly_authored_candidate_can_be_validated_and_delivered_without_a_plan(self):
         path = self.change / "app/transfer.py"
         path.write_text('def transfer(balance, amount):\n    if amount <= 0 or amount > balance:\n        raise ValueError("invalid transfer")\n    return balance - amount\n')

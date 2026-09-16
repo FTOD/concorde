@@ -192,7 +192,16 @@
         "specs/concorde/module.md",
         "specs/concorde/ownership-migration.md"
       ],
-      "files": [],
+      "files": [
+        "tests/concorde/development/test_review.py",
+        "tests/concorde/distribution/test_configure.py",
+        "tests/concorde/distribution/test_consumer_install_end_to_end.py",
+        "tests/concorde/distribution/test_protocol_guidance.py",
+        "tests/concorde/harness/test_scoped_protocol.py",
+        "tests/concorde/harness/test_worktree_lifecycle.py",
+        "tests/concorde/reflections/test_scope_and_reflections.py",
+        "tests/concorde/spec/test_module_architecture.py"
+      ],
       "id": "module.concorde",
       "kind": "module",
       "parent": null,
@@ -347,7 +356,9 @@
         "src/concorde/spec/schema.py",
         "src/concorde/spec/typed_data.py",
         "src/concorde/spec/wire_shapes.py",
+        "tests/concorde/development/test_flow_surfaces.py",
         "tests/concorde/development/test_review.py",
+        "tests/concorde/development/test_target_discovery.py",
         "tests/concorde/fixtures/build/golden/agents/",
         "tests/concorde/harness/",
         "tests/concorde/harness/test_boundaries.py",
@@ -453,6 +464,8 @@
         "tests/concorde/harness/test_flows.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_session_handoff.py",
+        "tests/concorde/harness/test_studio.py",
+        "tests/concorde/harness/test_studio_server.py",
         "tests/concorde/harness/test_worktree_boundary.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
         "tests/concorde/support/capability_json.py"
@@ -556,6 +569,7 @@
         "scripts/reflections_queue.py",
         "src/concorde/reflections/",
         "src/concorde/spec/changes.py",
+        "tests/concorde/development/test_review.py",
         "tests/concorde/fixtures/interfaces/reflections/",
         "tests/concorde/reflections/",
         "tests/concorde/support/reflection_triage.py"
@@ -850,7 +864,9 @@
         "specs/concorde/implementation/implementation.md"
       ],
       "files": [
-        "capabilities/implement.py"
+        "capabilities/implement.py",
+        "tests/concorde/development/test_review.py",
+        "tests/concorde/harness/test_agent_binding.py"
       ],
       "id": "module.implementation",
       "kind": "module",
@@ -911,7 +927,12 @@
         "specs/concorde/spec-authoring/authoring.md"
       ],
       "files": [
-        "capabilities/specify.py"
+        "capabilities/specify.py",
+        "tests/concorde/development/test_review.py",
+        "tests/concorde/development/test_specify_loop.py",
+        "tests/concorde/harness/test_boundaries.py",
+        "tests/concorde/spec/test_content_repository.py",
+        "tests/concorde/spec/test_protocol_v5.py"
       ],
       "id": "module.spec-authoring",
       "kind": "module",
@@ -968,7 +989,8 @@
         "capabilities/review.py",
         "tests/concorde/development/test_review.py",
         "tests/concorde/development/test_run_capability.py",
-        "tests/concorde/development/test_standalone_review.py"
+        "tests/concorde/development/test_standalone_review.py",
+        "tests/concorde/development/test_target_discovery.py"
       ],
       "id": "module.review",
       "kind": "module",
@@ -1139,6 +1161,7 @@
       ],
       "files": [
         "capabilities/main.py",
+        "tests/concorde/development/test_flow_surfaces.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
@@ -1259,6 +1282,7 @@
         "capabilities/dev_loop.py",
         "tests/concorde/development/test_review.py",
         "tests/concorde/development/test_specify_loop.py",
+        "tests/concorde/development/test_target_discovery.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
@@ -1345,6 +1369,7 @@
       "files": [
         "capabilities/specify_loop.py",
         "tests/concorde/development/test_specify_loop.py",
+        "tests/concorde/harness/test_studio_server.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
       "id": "module.specify-loop",

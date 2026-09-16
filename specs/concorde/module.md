@@ -50,12 +50,24 @@ Human views are complementary entries: Views presents registered contracts and d
 
 <a id="entity.concorde.developer"></a><a id="entity.concorde.protocol"></a>
 
-The Framework realizes its entry contract entirely through sixteen child responsibilities and
-binds no implementation files of its own. The common Development host admits typed requests;
+The Framework realizes its entry contract almost entirely through sixteen child responsibilities
+and owns no product code of its own. The common Development host admits typed requests;
 providers own reusable behavior and sibling Flows own sequencing. Spec supplies identities and
 complete contexts, Harness bounds worker execution, and Distribution supplies fresh runtime assets.
 This separates permission and admission from model decisions. Validation and Review produce
 revision-bound evidence; Delivery consumes it only at a separately authorized boundary.
+
+<a id="entity.concorde.acceptance-tests"></a>
+
+The one realization this Module does bind is its acceptance tests, because its promises are
+end-to-end by construction: each entry is kept by a routed request that crosses several children,
+so no single child's contract can carry the evidence that the composition works. These tests drive
+a request through the real entry point and observe the whole outcome — a routed change reaching a
+ready candidate, a gap or failure stopping dependent work while progress stays inspectable, an
+answer grounded in registered documents, adoption, worker configuration, recorded check evidence,
+a staged delivery, and read-only reflections triage. They are ordinary implementation files shared
+with the children whose behavior they also exercise; binding them here records that this Module is
+verified end to end, not that it owns their subjects.
 
 The child collaboration declarations below explain which guarantees support each entry. Reference
 inclusion preserves their ownership and is not permission to inspect their implementations. The

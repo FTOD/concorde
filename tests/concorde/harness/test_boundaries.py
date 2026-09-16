@@ -47,6 +47,7 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(['specs/transfer/promises.md','specs/transfer/promises.md.json'],[item['path'] for item in module['spec_resolution']['sources'] if item['owner'] != 'module.ledger'])
         self.assertEqual(['specs/ledger/module.md','specs/ledger/module.md.json'],[item['path'] for item in module['spec_resolution']['sources'] if item['owner'] == 'module.ledger'])
         self.assertNotIn('specs/transfer/module.md',json.dumps(module))
+    @verifies("scenario.spec-authoring.foreign-output")
     def test_consumer_author_cannot_change_provider_truth(self):
         self.registry['targets'][3]['references'].append({'kind':'document','id':'document.transfer.promises'});self.save()
         update_document_declaration(self.root,'specs/transfer/promises.md',
@@ -112,6 +113,17 @@ class BoundaryTests(unittest.TestCase):
         plain=resolve_context(repo,'service.transfer').value;impl=resolve_context(repo,'service.transfer',phase='implementation').value
         self.assertEqual([],plain['implementation_artifacts']);self.assertTrue(impl['implementation_artifacts'])
         self.assertNotIn('def transfer',json.dumps(impl))
+    @verifies("scenario.harness.context-invalid-input")
+    def test_unsupported_phase_or_blank_task_yields_no_snapshot(self):
+        repo=SpecRepository(self.root);snapshots=[]
+        for arguments,code in (({'phase':'audit'},'invalid_phase'),({'phase':'route'},'invalid_phase'),({'task':''},'invalid_input'),({'task':'  \n'},'invalid_input')):
+            with self.subTest(**arguments):
+                with self.assertRaises(SpecError) as raised:snapshots.append(resolve_context(repo,'service.transfer',**arguments))
+                self.assertEqual(code,raised.exception.code)
+        # Nothing partial is returned, and the refusal precedes Module selection, so nothing was resolved.
+        self.assertEqual([],snapshots)
+        with self.assertRaises(SpecError) as raised:resolve_context(repo,'module.absent',phase='audit')
+        self.assertEqual('invalid_phase',raised.exception.code)
     def test_unknown_stage_input_cannot_be_a_hidden_read_channel(self):
         with self.assertRaises(ValueError):resolve_context(SpecRepository(self.root),'service.transfer',stage_inputs=({'type_id':'opaque','schema_version':1,'data':{'code':'secret'}},))
     def test_protocol_tampering_invalidates_binding(self):

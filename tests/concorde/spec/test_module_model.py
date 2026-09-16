@@ -134,6 +134,41 @@ class ModuleImplementationTests(unittest.TestCase):
         report = validate_repository(self.root, package_root=PACKAGE)
         self.assertEqual("success", report.status, [f.message for f in report.findings])
 
+    @verifies("scenario.spec.select-scenario-focus", "scenario.spec.reject-foreign-focus")
+    def test_a_scenario_focus_narrows_attention_only_and_must_be_the_targets_own(self):
+        repository = self.repository()
+        unfocused = repository.select("module.a")
+        focused = repository.select("module.a", focus_id="scenario.a.value")
+        self.assertEqual(unfocused, focused)
+        self.assertEqual((("specs/a/module.md", "specs/a/details.md"),
+                          ("source/a.py", "source/shared.py"), ()),
+                         (focused.documents, focused.files, focused.checks))
+        # A focus selects attention inside the Module; the returned file set stays complete.
+        self.assertEqual(repository.implementation_files(unfocused), repository.implementation_files(focused))
+        self.assertEqual(source_pairs(["specs/a/module.md", "specs/a/details.md"]),
+                         sorted(repository.spec_files("module.a")))
+        with self.assertRaises(SpecError) as raised:
+            repository.select("module.a", focus_id="scenario.b.value")
+        self.assertEqual("invalid_focus", raised.exception.code)
+
+    @verifies("scenario.spec.reject-unsupported-profile")
+    def test_only_profile_14_with_the_installed_protocol_binding_is_admitted(self):
+        config = json.loads((self.root / ".concorde/config.json").read_text())
+        for profile in (13, 15):
+            with self.subTest(profile=profile):
+                self.write(".concorde/config.json", json.dumps({**config, "profile_version": profile}))
+                with self.assertRaises(SpecError) as raised:
+                    self.repository()
+                self.assertEqual("unsupported_profile", raised.exception.code)
+        self.write(".concorde/config.json", json.dumps(
+            {**config, "protocol": {**config["protocol"], "digest": digest(b"another Protocol")}}))
+        with self.assertRaises(SpecError) as raised:
+            self.repository()
+        self.assertEqual("protocol_mismatch", raised.exception.code)
+        self.write(".concorde/config.json", json.dumps(config))
+        self.assertEqual(14, self.repository().config["profile_version"])
+        self.assertEqual("module.a", self.repository().select("module.a").id)
+
     def test_non_code_agents_receive_the_whole_module_and_only_file_names(self):
         for phase in ("ask", "specify", "plan", "tasks", "context-solve", "spec-review"):
             with self.subTest(phase=phase):

@@ -13,7 +13,8 @@
         "capabilities/review.py",
         "tests/concorde/development/test_review.py",
         "tests/concorde/development/test_run_capability.py",
-        "tests/concorde/development/test_standalone_review.py"
+        "tests/concorde/development/test_standalone_review.py",
+        "tests/concorde/development/test_target_discovery.py"
       ],
       "meaning": "#entity.review.adapter"
     },
