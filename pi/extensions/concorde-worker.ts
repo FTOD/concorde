@@ -7,7 +7,8 @@
  *
  * - replaces the worker's system prompt with the host-rendered common rules and role prompt;
  * - registers `submit_result`, whose parameters are the worker's output contract and which ends
- *   the run, and `run_checks`, which asks the host to run the configured checks;
+ *   the run, `run_checks`, which asks the host to run the configured checks, and the optional
+ *   nonterminating `report_issue`, which persists an observation through a scoped host service;
  * - gates every tool call against the policy: only granted tools, reads under the read grant,
  *   edits and writes under the write grant, and no delegation from a child session;
  * - bounds delegation to one level by registering a pi-subagents capability ceiling (only the
@@ -33,6 +34,7 @@ interface WorkerPolicy {
 	children: string[];
 	system_prompt_path: string;
 	result_schema: Record<string, unknown>;
+	report_schema: Record<string, unknown> | null;
 	host_socket: string | null;
 	extension_path: string;
 	scrub_environment: string[];
@@ -45,9 +47,13 @@ const PARENT_SESSION = Symbol.for("concorde.worker.parent-session");
 function loadPolicy(): WorkerPolicy {
 	const location = process.env.CONCORDE_WORKER_POLICY;
 	if (!location) throw new Error("CONCORDE_WORKER_POLICY is not set; this extension runs only inside a Concorde worker");
-	const policy = JSON.parse(fs.readFileSync(location, "utf8")) as WorkerPolicy;
-	if (policy.schema_version !== 1) throw new Error("unsupported Concorde worker policy version");
-	return policy;
+	try {
+		const policy = JSON.parse(fs.readFileSync(location, "utf8")) as WorkerPolicy;
+		if (policy.schema_version !== 1) throw new Error("unsupported Concorde worker policy version");
+		return policy;
+	} catch (error) {
+		throw new Error("Cannot load the host-issued Concorde worker policy", { cause: error });
+	}
 }
 
 /** The canonical absolute path of `target`, resolving symlinks in its longest existing prefix. */
@@ -156,6 +162,26 @@ export default function concordeWorker(pi: ExtensionAPI): void {
 		},
 	});
 
+	if (policy.report_schema) {
+		pi.registerTool({
+			name: "report_issue",
+			label: "Report issue",
+			description:
+				"Persist a classified bug, gap or limitation through the host and return its immutable receipt. " +
+				"Use one stable report_key for each observation; retry identical input after an uncertain reply. " +
+				"Reporting neither ends this run nor approves a repair. Use admitted evidence only; do not copy raw logs or secrets. " +
+				"A report is limited to 64 KiB. Only the parent worker reports issues, not its helper children.",
+			parameters: Type.Unsafe<Record<string, unknown>>(policy.report_schema),
+			async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+				if (isChild(ctx.sessionManager.getSessionId())) throw new Error("only the worker reports verified observations");
+				if (!policy.host_socket) throw new Error("this worker has no host reporting service");
+				const reply = await hostRequest(policy.host_socket, { tool: "report_issue", report: params });
+				if (reply && typeof reply === "object" && "error" in reply) throw new Error(String(reply.error));
+				return { content: [{ type: "text", text: JSON.stringify(reply) }], details: reply };
+			},
+		});
+	}
+
 	pi.registerTool({
 		name: "run_checks",
 		label: "Run checks",
@@ -165,6 +191,7 @@ export default function concordeWorker(pi: ExtensionAPI): void {
 		async execute() {
 			if (!policy.host_socket) throw new Error("this worker has no host check service");
 			const reply = await hostRequest(policy.host_socket, { tool: "run_checks" });
+			if (reply && typeof reply === "object" && "error" in reply) throw new Error(String(reply.error));
 			return { content: [{ type: "text", text: JSON.stringify(reply, null, 2) }], details: reply };
 		},
 	});

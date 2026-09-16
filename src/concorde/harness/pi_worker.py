@@ -10,7 +10,7 @@ that into one private run directory:
   agent definitions and the pi-subagents configuration that bounds delegation to one level;
 - ``policy.json`` and ``system-prompt.md``: what the Concorde worker extension enforces and injects;
 - ``tmp/``: the process's temporary directory, so no worker state lands in the shared one;
-- ``host.sock``: the host's check service, present only for a worker granted ``run_checks``.
+- ``host.sock``: the host's check/report service, present for ``run_checks`` or ``report_issue``.
 
 The process starts with Pi's ambient discovery disabled (no sessions, context files, skills,
 prompt templates, themes or discovered extensions) and loads only the Concorde worker extension and,
@@ -28,13 +28,13 @@ import tempfile
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Literal, Mapping
+from typing import Any, Callable, Literal, Mapping, cast
 
 from .harness import SAFE_ENVIRONMENT
 from .pi_rpc import PiRpcCancelled, PiRpcError, PiRpcTimeout, PiRun, run_prompt
 
 BUILTIN_TOOLS = frozenset({"read", "grep", "find", "ls", "edit", "write", "bash"})
-CONCORDE_TOOLS = frozenset({"submit_result", "run_checks"})
+CONCORDE_TOOLS = frozenset({"submit_result", "run_checks", "report_issue"})
 DELEGATION_TOOL = "subagent"
 THINKING_LEVELS = ("off", "minimal", "low", "medium", "high", "xhigh", "max")
 
@@ -70,7 +70,7 @@ class WorkerExecutionError(RuntimeError):
 
     def __init__(self, message: str, outcome: Outcome = FAILED, run: PiRun | None = None):
         super().__init__(message)
-        self.outcome = outcome
+        self.outcome: Outcome = outcome
         self.run = run
 
 
@@ -97,6 +97,7 @@ class WorkerLaunch:
     model: str | None = None
     thinking: str | None = None
     timeout_seconds: float = 1800
+    report_schema: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -106,7 +107,7 @@ class WorkerResult:
     usage: dict[str, Any]
 
 
-def validate_launch(launch: WorkerLaunch, *, has_checks: bool) -> None:
+def validate_launch(launch: WorkerLaunch, *, has_checks: bool, has_reporter: bool = False) -> None:
     known = BUILTIN_TOOLS | CONCORDE_TOOLS | {DELEGATION_TOOL}
     tools, child_tools = set(launch.tools), set(launch.child_tools)
     if len(tools) != len(launch.tools) or len(child_tools) != len(launch.child_tools):
@@ -121,6 +122,10 @@ def validate_launch(launch: WorkerLaunch, *, has_checks: bool) -> None:
         raise WorkerExecutionError("child tools are declared exactly when the worker declares children")
     if "run_checks" in tools | child_tools and not has_checks:
         raise WorkerExecutionError("run_checks requires a host check service")
+    if ("report_issue" in tools) != (has_reporter and launch.report_schema is not None):
+        raise WorkerExecutionError("report_issue requires exactly a host reporter and its schema")
+    if launch.report_schema is not None and "report_issue" not in tools:
+        raise WorkerExecutionError("a report schema cannot grant an unlisted reporting tool")
     if {"edit", "write"} & tools and not launch.write_paths:
         raise WorkerExecutionError("edit and write require a write grant")
     names = [child.name for child in launch.children]
@@ -136,38 +141,59 @@ def validate_launch(launch: WorkerLaunch, *, has_checks: bool) -> None:
         raise WorkerExecutionError("the worker timeout must be positive")
 
 
-class _CheckServer(socketserver.ThreadingUnixStreamServer):
+class _HostToolServer(socketserver.ThreadingUnixStreamServer):
     daemon_threads = True
 
-    def __init__(self, path: str, checks: Callable[[], Any]):
-        self.checks = checks
-        super().__init__(path, _CheckHandler)
+    def __init__(self, path: str, checks: Callable[[], Any] | None,
+                 reporter: Callable[[dict], Any] | None):
+        self.checks, self.reporter = checks, reporter
+        super().__init__(path, _HostToolHandler)
 
 
-class _CheckHandler(socketserver.StreamRequestHandler):
+class _HostToolHandler(socketserver.StreamRequestHandler):
     def handle(self) -> None:
         try:
-            request = json.loads(self.rfile.readline() or b"{}")
-            if request.get("tool") != "run_checks":
-                raise ValueError("unknown host tool")
-            reply = self.server.checks()
-        except Exception as error:  # the worker receives the failure as its tool result
+            server = self.server
+            if not isinstance(server, _HostToolServer):
+                raise ValueError("host tool handler requires its declared server")
+            self.connection.settimeout(10)
+            raw = self.rfile.readline(128 * 1024 + 1)
+            if len(raw) > 128 * 1024 or not raw.endswith(b"\n"):
+                raise ValueError("host tool request exceeds its frame limit or is incomplete")
+            request = json.loads(raw)
+            if request == {"tool": "run_checks"} and server.checks is not None:
+                reply = server.checks()
+            elif (isinstance(request, dict) and set(request) == {"tool", "report"}
+                  and request["tool"] == "report_issue" and server.reporter is not None):
+                reply = server.reporter(request["report"])
+            else:
+                raise ValueError("unknown or ungranted host tool")
+        except Exception as error:  # explicit rejection, never a successful report receipt
             reply = {"error": f"{type(error).__name__}: {error}"}
-        self.wfile.write(json.dumps(reply).encode("utf-8"))
+        try:
+            self.wfile.write(json.dumps(reply).encode("utf-8"))
+        except (BrokenPipeError, ConnectionResetError):
+            # An accepted report is already durable even if its worker was cancelled before ack.
+            pass
 
 
 def _usage(launch: WorkerLaunch, run: PiRun) -> dict[str, Any]:
     stats = run.stats or {}
-    tokens = stats.get("tokens") if isinstance(stats.get("tokens"), dict) else {}
+    reported_tokens = stats.get("tokens")
+    tokens = reported_tokens if isinstance(reported_tokens, dict) else {}
 
     def count(value):
         return value if type(value) is int and value >= 0 else None
 
     cost = stats.get("cost")
+    try:
+        cost_usd = float(cost) if isinstance(cost, (int, float)) and not isinstance(cost, bool) and cost >= 0 else None
+    except OverflowError:
+        cost_usd = None
     return {"model": launch.model, "input_tokens": count(tokens.get("input")),
             "cached_input_tokens": count(tokens.get("cacheRead")), "output_tokens": count(tokens.get("output")),
             "total_tokens": count(tokens.get("total")),
-            "cost_usd": float(cost) if type(cost) in (int, float) and cost >= 0 else None,
+            "cost_usd": cost_usd,
             "turns": count(stats.get("assistantMessages")), "wall_seconds": round(run.wall_seconds, 3)}
 
 
@@ -214,8 +240,9 @@ class PiWorkerRuntime:
     credentials_dir: Path | None = None
     popen: Callable[..., Any] = subprocess.Popen
 
-    def __call__(self, launch: WorkerLaunch, *, checks: Callable[[], Any] | None = None) -> WorkerResult:
-        validate_launch(launch, has_checks=checks is not None)
+    def __call__(self, launch: WorkerLaunch, *, checks: Callable[[], Any] | None = None,
+                 report_issue: Callable[[dict], Any] | None = None) -> WorkerResult:
+        validate_launch(launch, has_checks=checks is not None, has_reporter=report_issue is not None)
         source = dict(os.environ if self.environment is None else self.environment)
         executable = self.pi_executable or shutil.which("pi", path=source.get("PATH"))
         if not executable:
@@ -244,13 +271,14 @@ class PiWorkerRuntime:
             for child in launch.children:
                 (agent_dir / "agents" / f"{child.name}.md").write_text(child.definition, encoding="utf-8")
             (run_dir / "system-prompt.md").write_text(launch.system_prompt, encoding="utf-8")
-            socket_path = run_dir / "host.sock" if checks is not None else None
+            socket_path = run_dir / "host.sock" if checks is not None or report_issue is not None else None
             policy = {"schema_version": 1, "worker": launch.worker, "workspace": launch.workspace,
                       "read_paths": list(launch.read_paths), "write_paths": list(launch.write_paths),
                       "tools": list(launch.tools), "child_tools": list(launch.child_tools),
                       "children": [child.name for child in launch.children],
                       "system_prompt_path": str(run_dir / "system-prompt.md"),
                       "result_schema": dict(launch.result_schema),
+                      "report_schema": dict(launch.report_schema) if launch.report_schema is not None else None,
                       "host_socket": str(socket_path) if socket_path else None,
                       "extension_path": str(extension), "scrub_environment": list(PROVIDER_CREDENTIALS)}
             (run_dir / "policy.json").write_text(json.dumps(policy), encoding="utf-8")
@@ -268,12 +296,12 @@ class PiWorkerRuntime:
                 argv += ["--model", launch.model]
             if launch.thinking:
                 argv += ["--thinking", launch.thinking]
-            server = _CheckServer(str(socket_path), checks) if checks is not None else None
+            server = _HostToolServer(str(socket_path), checks, report_issue) if socket_path is not None else None
             if server is not None:
                 threading.Thread(target=server.serve_forever, daemon=True).start()
             try:
                 run = run_prompt(argv, cwd=launch.workspace, env=env, message=launch.message,
-                                 timeout=launch.timeout_seconds, popen=self.popen)
+                                 timeout=launch.timeout_seconds, popen=cast(Any, self.popen))
             except PiRpcTimeout as error:
                 raise WorkerExecutionError(str(error), outcome=LIMIT_EXHAUSTED) from error
             except PiRpcCancelled as error:

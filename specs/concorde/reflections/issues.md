@@ -19,14 +19,18 @@ a reproduction verdict, an investigation plan, a repair proposal or human approv
 
 ## Store boundary
 
-`report_issue(root, report, source)` accepts the closed shapes in the issue model. The host, not a
+`concorde-issue-report@1` and `concorde-issue-receipt@1` publish the report and receipt shapes
+below. `report_issue(root, report, source)` accepts the closed shapes in the issue model. The host, not a
 worker parameter, supplies `source`. `report_key` is a reporter-local stable key for retrying the
 same observation. `type`, nullable `subtype`, `title`, `description`, `impact`, `basis`, nullable
 `owner_target_id`, and `evidence` are required; each evidence item has `path` and `description`.
 Strings are nonblank and paths are canonical project-relative POSIX paths. `issue_id` and
 `expected_revision` are either both absent for creation or both present for appending an observation.
 The caller must separately enforce evidence visibility and reporting authority; a syntactically
-safe path is not a grant. Reports are limited to 64 KiB of canonical JSON and records to 16 MiB.
+safe path is not a grant. Repository validation parses every active Issue, rejects corrupted
+records with `CONCORDE-ISSUE-001`, and includes record byte digests in its source identity. Historical
+provenance does not require a former owner to remain in the current registry. Reports are limited
+to 64 KiB of canonical JSON and records to 16 MiB.
 Reference evidence instead of copying large logs or secrets.
 
 An identity has the form `I-` followed by 32 lowercase hexadecimal characters. The host allocates
@@ -51,6 +55,52 @@ content, not a duplicate prose projection. A report stores its id, timestamp, re
 source. Dispositions preserve reason, note, evidence references, actor, timestamp and nullable
 duplicate target. Record status must agree with disposition history. Editing an immutable report
 without reconciling its digest is invalid; append new observations instead.
+
+## Worker reporting service
+
+`IssueReporter` binds the project root, source identity, admitted contract owners, evidence paths
+and explicitly selected issue identities before a worker starts. The `report_issue` worker tool
+sends only a report and receives `{receipt, revision}`: the immutable observation receipt plus the
+current record byte digest, so an admitted follow-up can supply `expected_revision`. The receipt
+identity stays unchanged on an identical retry; the current revision may change after later reports
+or dispositions. It cannot supply provenance, choose a
+filesystem root or change issue disposition. An owner outside the admitted Spec context or an
+evidence path outside the phase's admitted Spec/code/change locations is refused. Unknown ownership
+is represented by null. A worker may append only to an explicitly admitted issue or one it already
+reported in the same invocation. Helper children return observations to their parent for verification
+and do not receive the reporting tool.
+
+Reporting is nonterminating and has no implicit effect on the stage outcome. In particular, a
+worker can report multiple nonblocking gaps and still complete its task. A stage's existing
+blocking-contract output remains a separate execution contract during the rollout of Issue-linked
+blockers. A pure question can explicitly report an Issue without receiving code or Spec write
+authority; a query of stored Issue metadata and a policy preview do not create observations.
+Already accepted reports survive malformed final results, process failure, cancellation and time
+limits. The host emits `issue_reported` receipts even when the worker fails; these events do not
+establish stage completion. The host never rolls back accepted reports merely because a later
+`submit_result` fails.
+
+### scenario.issues.report-authority — Bind reporting without granting arbitrary writes
+
+- GIVEN a worker with a frozen context and host reporting service
+- WHEN it reports an admitted observation or attempts foreign evidence, ownership or provenance
+- THEN the host saves the admitted observation without granting the worker project writes
+- AND foreign evidence, forged provenance and appends to unselected issues are rejected
+- AND policy preview launches no reporting service and creates no issue
+
+### scenario.issues.report-independent — Report without ending the task
+
+- GIVEN a worker or question-answering invocation with reporting authority
+- WHEN it reports issues and then completes its own task
+- THEN the reports remain available and the task can complete successfully
+- AND the reporting tool itself neither terminates the worker nor starts a repair
+
+### scenario.issues.report-survives-failure — Retain observations from interrupted work
+
+- GIVEN a worker whose issue report was acknowledged by the host
+- WHEN its final result is invalid or its execution is interrupted
+- THEN the issue observation remains persisted independently of the failed stage
+- AND the failed or incomplete stage is not represented as successful
 
 ## Persistence and concurrency
 

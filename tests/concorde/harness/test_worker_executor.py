@@ -11,7 +11,7 @@ from pathlib import Path
 
 from concorde.development.capability_service import CapabilityHost, run_capability
 from concorde.harness.agent_model import agent_definition, binding_from_json, binding_json, child_definitions
-from concorde.harness.pi_worker import WorkerExecutionError
+from concorde.harness.pi_worker import Outcome, WorkerExecutionError
 from concorde.harness.worker_executor import (CapabilityExecutionError, WorkerExecutor, WorkerOutcome,
                                               build_worker_invocation, result_parameters, worker_instructions)
 from concorde.spec.typed_data import typed
@@ -30,10 +30,10 @@ class WorkerExecutorTests(unittest.TestCase):
 
     def plan(self, probe):
         """Run concorde-plan; ``probe(invocation, checks)`` runs in place of the planner's launch."""
-        def executor(invocation, *, checks=None):
+        def executor(invocation, *, checks=None, report_issue=None):
             if invocation.stage == "plan":
                 return probe(invocation, checks)
-            return self.double.executor(invocation, checks=checks)
+            return self.double.executor(invocation, checks=checks, report_issue=report_issue)
         host = CapabilityHost(self.root, PACKAGE, executor=executor, allow_primary_worktree=True,
                               routed_target="service.transfer")
         return run_capability("concorde-plan", CONFIGURATION, typed("concorde-plan-request", self.task),
@@ -117,10 +117,11 @@ class WorkerExecutorTests(unittest.TestCase):
         outcomes = {}
 
         def probe(invocation, checks):
-            for expected in ("failed", "cancelled", "limit_exhausted", "invalid_completion"):
+            expected_outcomes: tuple[Outcome, ...] = ("failed", "cancelled", "limit_exhausted", "invalid_completion")
+            for expected in expected_outcomes:
                 attempts = []
 
-                def runtime(launch, *, checks=None, expected=expected):
+                def runtime(launch, *, checks=None, expected: Outcome = expected):
                     attempts.append(launch)
                     raise WorkerExecutionError(f"simulated {expected}", outcome=expected)
                 with self.assertRaises(CapabilityExecutionError) as raised:

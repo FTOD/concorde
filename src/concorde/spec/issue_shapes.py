@@ -5,7 +5,7 @@ persistent store use the same contract without importing the capability inventor
 """
 from __future__ import annotations
 
-from ..spec.wire_shapes import DIGEST, PATH, STRING, array, obj
+from .wire_shapes import DIGEST, PATH, STRING, array, obj
 
 ISSUE_ID = {**STRING, "pattern": r"I-[0-9a-f]{32}"}
 NULLABLE_STRING = {"anyOf": [STRING, {"type": "null"}]}

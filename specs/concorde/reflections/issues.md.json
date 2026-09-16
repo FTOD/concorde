@@ -7,7 +7,7 @@
       "title": "Issue store",
       "kind": "program",
       "meaning": "#entity.reflections.issue-store",
-      "files": ["src/concorde/issues/", "tests/concorde/issues/"]
+      "files": ["src/concorde/issues/", "src/concorde/spec/issue_shapes.py", "tests/concorde/harness/test_pi_worker.py", "tests/concorde/issues/"]
     }
   ],
   "dependencies": [],

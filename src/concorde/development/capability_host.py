@@ -125,10 +125,17 @@ def _worker_description(prompt, invocation, policy, **labels) -> dict:
 
 def _run_worker(host, invocation, prompt, *, capability: str, stage: str, target_id: str | None,
                 result_type: str, change_id: str | None = None, checks=None) -> tuple[WorkerOutcome, dict]:
-    """Execute one bound worker, bind its outcome to the invocation and record what it consumed."""
+    """Run a bound worker with report-only issue authority; retain reports even on failure."""
     from ..harness.worker_executor import WorkerExecutor
+    from ..issues.reporting import reporter_for_invocation
     executor = host.executor or WorkerExecutor(host.package_root)
-    outcome = executor(invocation, checks=checks)
+    reporter = reporter_for_invocation(host.project_root, invocation, target_id=target_id, change_id=change_id)
+    try:
+        outcome = executor(invocation, checks=checks, report_issue=reporter)
+    finally:
+        # Already accepted observations survive invalid completion, cancellation and time limits.
+        for receipt in reporter.receipts:
+            host.observe("issue_reported", **receipt, launch_invocation_id=invocation.invocation_id)
     if (not isinstance(outcome, WorkerOutcome) or outcome.invocation_digest != invocation.digest
             or outcome.binding_digest != prompt.binding.digest):
         raise SpecError("worker outcome is not bound to this invocation", "invalid_completion")

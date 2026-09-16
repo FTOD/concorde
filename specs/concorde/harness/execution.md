@@ -125,8 +125,13 @@ role Spec and the Protocol rule bundle, in that order. Its only message is the c
 context: task context inline, Spec context as the index of granted files. Its output contract is its
 `submit_result` tool, whose parameters are the self-contained JSON Schema of the contract's result
 type. The executor wraps the single submitted value as that type, checks it against the contract and
-returns it; the host then checks its context identity and gap provenance before any state changes.
-A worker in a project workspace also receives the host check service behind `run_checks`.
+returns it; the host then checks its context identity and gap provenance before accepting stage
+completion. Independently, each admitted worker may use `report_issue` to persist an observation
+through a host-issued, scope-bound callback before submitting its final result. Report admission
+is separate from completion; accepted reports survive an invalid or interrupted final result.
+The [Issue reporting boundary](../reflections/issues.md#worker-reporting-service) defines report
+shape and authority. A worker in a project workspace also receives the host check service behind
+`run_checks`.
 
 #### Common limits
 
@@ -150,12 +155,14 @@ WorkerLaunch(worker: str, workspace: str, system_prompt: str, message: str,
              result_schema: Mapping[str, Any], tools: tuple[str, ...],
              read_paths: tuple[str, ...] = (), write_paths: tuple[str, ...] = (),
              children: tuple[ChildAgent, ...] = (), child_tools: tuple[str, ...] = (),
-             model: str | None = None, thinking: str | None = None, timeout_seconds: float = 1800)
+             model: str | None = None, thinking: str | None = None, timeout_seconds: float = 1800,
+             report_schema: Mapping[str, Any] | None = None)
 ChildAgent(name: str, definition: str)
 PiWorkerRuntime(package_root: Path, pi_executable: str | None = None,
                 environment: Mapping[str, str] | None = None, credentials_dir: Path | None = None,
                 popen=subprocess.Popen)
-PiWorkerRuntime.__call__(launch: WorkerLaunch, *, checks: Callable[[], Any] | None = None) -> WorkerResult
+PiWorkerRuntime.__call__(launch: WorkerLaunch, *, checks: Callable[[], Any] | None = None,
+                         report_issue: Callable[[dict], Any] | None = None) -> WorkerResult
 WorkerResult(value: dict[str, Any], run: PiRun, usage: dict[str, Any])
 WorkerExecutionError(message: str, outcome: "failed"|"cancelled"|"limit_exhausted"|"invalid_completion",
                      run: PiRun | None = None)
@@ -164,11 +171,23 @@ run_prompt(argv, *, cwd: str, env: Mapping[str, str], message: str, timeout: flo
 
 Paths in a launch are relative to its absolute workspace, which is the process's working
 directory. `model` is Pi's `provider/id` and `thinking` one of Pi's levels (`off` through `max`).
-The tools are Pi's built-ins (`read`, `grep`, `find`, `ls`, `edit`, `write`, `bash`) and three
+The tools are Pi's built-ins (`read`, `grep`, `find`, `ls`, `edit`, `write`, `bash`) and the
 Concorde tools: `submit_result`, which every worker has; `run_checks`, which requires the host
-check service; and `subagent`, which a worker has exactly when it declares children. Edit and
-write require a write grant, and child tools are built-ins or `run_checks`. An inconsistent launch
-is refused before any process starts.
+check service; `report_issue`, which requires both its host callback and report schema; and
+`subagent`, which a worker has exactly when it declares children. Edit and write require a write
+grant, and child tools are built-ins or `run_checks`, never `report_issue`. An inconsistent launch
+is refused before any process starts. The executor accepts an optional host reporter with a
+`schema` property and callable report handler, forwards it only to the admitted runtime, and does
+not convert reporting authority into any file write grant. The common Development host supplies
+this service for actual worker launches, including capsule workers, but not policy previews.
+
+The private Unix socket dispatches only explicitly granted `run_checks` and `report_issue` calls.
+Requests must be complete newline-terminated JSON frames of at most 128 KiB, received within ten
+seconds. Reporting parameters are validated by the bound host callback, which returns only a
+receipt. A rejected callback returns an error that the extension throws as a failed tool result,
+not a successful receipt. Reporting never returns `terminate`; the worker can continue reporting
+or working. Accepted persistence is retained if cancellation disconnects the client before the
+acknowledgement arrives.
 
 ### Usage accounting
 
@@ -278,8 +297,8 @@ Pi credentials (`auth.json` and custom-provider `models.json`, copied from the d
 directory), the declared child definitions under `agents/` and the pi-subagents configuration
 under `extensions/subagent/config.json`. Beside it lie `policy.json`, which the Concorde worker
 extension enforces, `system-prompt.md`, which it installs as the worker's complete system prompt,
-`tmp/`, the process's temporary directory, and, for a worker with `run_checks`, the host check
-service's socket. The developer's own Pi settings, sessions, agents, extensions and skills are
+`tmp/`, the process's temporary directory, and, for a worker with `run_checks` or `report_issue`,
+the host tool service's socket. The developer's own Pi settings, sessions, agents, extensions and skills are
 never read. When Pi refreshes an OAuth credential during the run, the host writes the refreshed
 `auth.json` back to the developer's Pi directory, but only while that file still holds the bytes the
 run was issued, so a concurrent refresh is never overwritten.

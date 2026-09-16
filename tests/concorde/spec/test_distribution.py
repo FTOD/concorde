@@ -102,9 +102,9 @@ print(json.dumps({'result':result,'spec_result':spec_result,'spec_stages':spec_s
         from concorde.development.capability_service import CapabilityHost,run_capability
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);project(root);model=ModelProcessDouble();saved=[];replay=[False]
-            def executor(launch,*,checks=None):
+            def executor(launch,*,checks=None,report_issue=None):
                 if replay[0]:return saved[0]
-                result=model.executor(launch,checks=checks)
+                result=model.executor(launch,checks=checks,report_issue=report_issue)
                 if not saved:saved.append(result)
                 return result
             host=CapabilityHost(root,PACKAGE,executor=executor,allow_primary_worktree=True)

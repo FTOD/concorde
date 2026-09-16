@@ -585,6 +585,11 @@ def validate_repository(root: str | Path, target_id: str | None = None,
                     error("CONCORDE-REFLECT-004",entry.path,"Reflection attribution must be a registered Module or scenario")
             inputs.extend((p,digest(b)) for p,b in raw.items())
             inputs.append(("reflection-index",digest(index)))
+        from ..issues.store import list_issues, issue_path
+        try:
+            inputs.extend((issue_path(item["id"]), item["revision"]) for item in list_issues(repository.root))
+        except (ValueError, OSError) as problem:
+            error("CONCORDE-ISSUE-001", ".concorde/issues", str(problem))
         if (repository.root/"concorde.json").is_file():
             from ..distribution.package_validation import validate_package
             findings.extend(validate_package(repository.root))

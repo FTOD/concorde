@@ -5598,6 +5598,179 @@
     ],
     "type": "object"
   },
+  "concorde-issue-receipt": {
+    "$defs": {
+      "concorde-issue-receipt": {
+        "additionalProperties": false,
+        "properties": {
+          "issue_id": {
+            "minLength": 1,
+            "pattern": "I-[0-9a-f]{32}",
+            "type": "string"
+          },
+          "path": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "report_id": {
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issue_id",
+          "report_id",
+          "path"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "data": {
+        "$ref": "#/$defs/concorde-issue-receipt"
+      },
+      "schema_version": {
+        "const": 1,
+        "type": "integer"
+      },
+      "type_id": {
+        "const": "concorde-issue-receipt"
+      }
+    },
+    "required": [
+      "type_id",
+      "schema_version",
+      "data"
+    ],
+    "type": "object"
+  },
+  "concorde-issue-report": {
+    "$defs": {
+      "concorde-issue-report": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "description": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "description"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "expected_revision": {
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "impact": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "issue_id": {
+            "minLength": 1,
+            "pattern": "I-[0-9a-f]{32}",
+            "type": "string"
+          },
+          "owner_target_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "report_key": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "subtype": {
+            "anyOf": [
+              {
+                "enum": [
+                  "implementation-spec-mismatch",
+                  "spec-conflict",
+                  "missing-contract"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "bug",
+              "gap",
+              "limitation"
+            ]
+          }
+        },
+        "required": [
+          "report_key",
+          "type",
+          "subtype",
+          "title",
+          "description",
+          "impact",
+          "basis",
+          "owner_target_id",
+          "evidence"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "data": {
+        "$ref": "#/$defs/concorde-issue-report"
+      },
+      "schema_version": {
+        "const": 1,
+        "type": "integer"
+      },
+      "type_id": {
+        "const": "concorde-issue-report"
+      }
+    },
+    "required": [
+      "type_id",
+      "schema_version",
+      "data"
+    ],
+    "type": "object"
+  },
   "concorde-main-request": {
     "$defs": {
       "concorde-main-request": {

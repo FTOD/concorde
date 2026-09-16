@@ -111,7 +111,7 @@ build_worker_invocation(*, capability: str, stage: str, agent: str, invocation_i
     child_selections: tuple[tuple[str, WorkerSelection], ...] = ()) -> WorkerInvocation
 worker_instructions(rendered: str, protocol: list[tuple[str, bytes]]) -> str
 WorkerExecutor(package_root: Path = <package root>, runtime=None)
-WorkerExecutor.__call__(invocation: WorkerInvocation, *, checks=None) -> WorkerOutcome
+WorkerExecutor.__call__(invocation: WorkerInvocation, *, checks=None, report_issue=None) -> WorkerOutcome
 WorkerOutcome(value: dict, usage: ExecutionUsage, invocation_digest: str, binding_digest: str)
 ExecutionUsage(model, thinking, input_tokens, cached_input_tokens, output_tokens, total_tokens,
                cost_usd, turns, wall_seconds, prompt_bytes, context_bytes)
@@ -133,11 +133,15 @@ equals the current build's resolution, each listed Protocol file in the workspac
 digest, the instructions equal that composition, the context's own instructions equal the rendered
 file, and the contract input and policy checks pass; network and credential grants are always
 refused. It then launches the worker through the Pi worker runtime with the profile's tools plus
-`submit_result` (and `subagent` with children), the policy's grants (plus the workspace root for a
+`submit_result` (and `subagent` with children), plus `report_issue` when its trusted reporting
+callback is supplied, the policy's grants (plus the workspace root for a
 capsule), the child definitions with their selected models, the resolved selection and a timeout of
 the selection's value or the binding's, and the self-contained JSON schema of the contract's result
 type as the result parameters. The submitted value is wrapped as that type and checked against the
-contract. `runtime` is a trusted test seam, never task input.
+contract. `runtime` is a trusted test seam, never task input. The optional `report_issue` service
+is a host-bound callable with a `schema` property; it grants no file writes and its durable reports
+are independent of accepting the final result. Its protocol is defined in
+[worker execution](execution.md#pi-worker-runtime).
 
 `CapabilityExecutionError.outcome` distinguishes `failed` (a refused launch, a process failure or a
 protocol break), `cancelled`, `limit_exhausted` (the timeout) and `invalid_completion` (no, several or

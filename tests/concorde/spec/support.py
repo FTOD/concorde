@@ -272,7 +272,7 @@ class ModelProcessDouble:
                     documents.insert(documents.index(item) + 1, partner)
                 partner['content'] = json.dumps(source.metadata, indent=2) + '\n'
         return WorkerResult(value=json.loads(json.dumps(data)), run=PiRun(exit_code=0), usage=dict(USAGE))
-    def run(self, launch, *, checks=None):
+    def run(self, launch, *, checks=None, report_issue=None):
         agent=agent_definition(launch.worker)
         stage=agent.contract.phase; capability=external_agent_name(agent.name); cwd=launch.workspace
         value=json.loads(launch.message)
@@ -288,7 +288,7 @@ class ModelProcessDouble:
                 raise AssertionError(f'granted context file missing, ungranted or changed in the workspace: {path}')
         self.calls.append({'stage':stage,'capability':capability,'agent':agent.name,'snapshot':snapshot,'cwd':Path(cwd),
             'prompt':launch.system_prompt+'\n'+launch.message,'launch':launch,'timeout':launch.timeout_seconds,
-            'granted':sorted(index),'checks':checks})
+            'granted':sorted(index),'checks':checks,'report_issue':report_issue})
         if value['type_id']=='concorde-review-stage-context':
             review=value['data']['review']['data']
             self.calls[-1]['review']=review

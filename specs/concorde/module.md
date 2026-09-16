@@ -32,7 +32,7 @@ The entry table below identifies the available actions and their completion boun
 
 | Intent | Entry and completion |
 | --- | --- |
-| Ask about a Spec or route a task | `concorde-main` takes intent and optional target/focus hints; an answer or attributed limitation completes a query without mutation. |
+| Ask about a Spec or route a task | `concorde-main` takes intent and optional target/focus hints; an answer or attributed limitation completes a query without editing Specs or code; an explicit worker Issue report is host bookkeeping. |
 | Prepare or review a Spec | `concorde-specify-loop` completes independent Spec preparation; Planning and Implementation are separate downstream choices. |
 | Review a task | `concorde-review` returns independent Spec/code coverage and findings without creating a development change. |
 | Develop a change | `concorde-dev-loop` takes task/constraints and optional authoring/review flags; completion is a ready candidate, with explicit skips where authorized. |
@@ -148,7 +148,11 @@ frozen context.
 
 ### req.concorde.read-no-mutate — No mutation from read operations
 
-A read or preview operation SHALL NOT mutate project state.
+A read or preview operation SHALL NOT modify project Specs, implementation or topology.
+
+A worker may explicitly report a classified Issue through its host reporting tool; that limited
+bookkeeping effect grants no project-file write authority to the worker. Policy previews and
+queries of stored issue metadata remain free of issue-creation effects.
 
 ### req.concorde.versioned-result — Versioned result per invocation
 

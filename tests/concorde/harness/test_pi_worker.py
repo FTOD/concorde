@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
@@ -48,6 +49,7 @@ class RpcClientTests(unittest.TestCase):
         details = run.results_of("submit_result")[0]["result"]["details"]
         self.assertEqual("line separator paragraph", details["text"])
         self.assertEqual({"type": "extension_ui_response", "id": "dialog-1", "cancelled": True}, details["dialog"])
+        assert run.stats is not None
         self.assertEqual({"input": 7, "output": 3, "cacheRead": 1, "total": 10}, run.stats["tokens"])
         self.assertEqual("agent_settled", run.events[-1]["type"])
         self.assertEqual(0, run.exit_code)
@@ -74,6 +76,7 @@ class PiWorkerTests(unittest.TestCase):
         self.credentials = self.root / "credentials"
         self.credentials.mkdir()
         pi = installed_pi()
+        assert pi is not None
         self.environment = {"HOME": str(self.root), "LANG": "C.UTF-8",
                             "PATH": f"{Path(pi).parent}:/usr/bin:/bin", "OPENAI_API_KEY": "sk-test"}
         self.runtime = PiWorkerRuntime(REPOSITORY_ROOT, pi_executable=pi, environment=self.environment,
@@ -88,7 +91,7 @@ class PiWorkerTests(unittest.TestCase):
         return provider
 
     def launch(self, **changes) -> WorkerLaunch:
-        values = dict(worker="tester", workspace=str(self.workspace), system_prompt="WORKER-SYSTEM-PROMPT",
+        values: dict[str, Any] = dict(worker="tester", workspace=str(self.workspace), system_prompt="WORKER-SYSTEM-PROMPT",
                       message='{"task": "answer"}', result_schema=RESULT, tools=(*READ, "submit_result"),
                       read_paths=("granted.md",), model="fake/fake-model", timeout_seconds=90)
         values.update(changes)
@@ -170,6 +173,44 @@ class PiWorkerTests(unittest.TestCase):
         blocked = [message for message in child_requests[1]["messages"] if message.get("role") == "tool"]
         self.assertIn("outside the read grant", json.dumps(blocked))
 
+    @verifies("scenario.issues.report-independent", "scenario.issues.report-authority")
+    def test_issue_tool_persists_during_execution_and_reports_rejection_as_an_error(self):
+        from concorde.issues.reporting import IssueReporter
+        from concorde.issues.store import list_issues
+        from tests.concorde.issues.test_store import report, source
+        reporter = IssueReporter(self.workspace, source(), frozenset({"module.service"}), frozenset())
+        one = report(evidence=[])
+        two = report(report_key="second", evidence=[])
+        turns = [{"tool": "report_issue", "arguments": report(owner_target_id="module.foreign", evidence=[])},
+                 {"tool": "report_issue", "arguments": one},
+                 {"tool": "report_issue", "arguments": one},
+                 {"tool": "report_issue", "arguments": two},
+                 {"tool": "submit_result", "arguments": {"answer": "reported and continued"}}]
+        launch = self.launch(tools=(*READ, "report_issue", "submit_result"), report_schema=reporter.schema)
+        with self.provider(turns):
+            result = self.runtime(launch, report_issue=reporter)
+        reports = self.results(result.run, "report_issue")
+        self.assertTrue(reports[0][0], reports)
+        self.assertIn("outside the admitted context", reports[0][1])
+        self.assertTrue(all(not failed for failed, _ in reports[1:]), reports)
+        self.assertEqual(reports[1][1], reports[2][1])
+        self.assertEqual(2, len(list_issues(self.workspace)))
+        self.assertEqual("reported and continued", result.value["answer"])
+        self.assertEqual((), launch.write_paths)
+
+    @verifies("scenario.issues.report-survives-failure")
+    def test_issue_tool_report_survives_a_missing_final_submission(self):
+        from concorde.issues.reporting import IssueReporter
+        from concorde.issues.store import list_issues
+        from tests.concorde.issues.test_store import report, source
+        reporter = IssueReporter(self.workspace, source(), frozenset({"module.service"}), frozenset())
+        launch = self.launch(tools=(*READ, "report_issue", "submit_result"), report_schema=reporter.schema)
+        turns = [{"tool": "report_issue", "arguments": report(evidence=[])}, {"text": "No final submission."}]
+        with self.provider(turns), self.assertRaises(WorkerExecutionError) as failure:
+            self.runtime(launch, report_issue=reporter)
+        self.assertEqual("invalid_completion", failure.exception.outcome)
+        self.assertEqual(1, len(list_issues(self.workspace)))
+
     @verifies("scenario.harness.pi-worker-launch")
     def test_run_checks_is_answered_by_the_host(self):
         turns = [{"tool": "run_checks", "arguments": {}},
@@ -198,7 +239,9 @@ class PiWorkerTests(unittest.TestCase):
                                   credentials_dir=self.credentials, popen=lambda *args, **kwargs: self.fail("started"))
         for changes in ({"tools": READ}, {"tools": (*READ, "subagent", "submit_result")},
                         {"tools": (*READ, "edit", "submit_result")}, {"tools": (*READ, "run_checks", "submit_result")},
-                        {"thinking": "extreme"}, {"workspace": "relative"}):
+                        {"thinking": "extreme"}, {"workspace": "relative"},
+                        {"tools": (*READ, "report_issue", "submit_result")},
+                        {"report_schema": RESULT}):
             with self.subTest(changes=changes), self.assertRaises(WorkerExecutionError):
                 runtime(self.launch(**changes))
 

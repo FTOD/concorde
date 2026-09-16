@@ -394,6 +394,10 @@
           "kind": "document"
         },
         {
+          "id": "document.reflections.issues",
+          "kind": "document"
+        },
+        {
           "id": "module.development",
           "kind": "module"
         },
@@ -571,8 +575,10 @@
         "src/concorde/issues/",
         "src/concorde/reflections/",
         "src/concorde/spec/changes.py",
+        "src/concorde/spec/issue_shapes.py",
         "tests/concorde/development/test_review.py",
         "tests/concorde/fixtures/interfaces/reflections/",
+        "tests/concorde/harness/test_pi_worker.py",
         "tests/concorde/issues/",
         "tests/concorde/reflections/",
         "tests/concorde/support/reflection_triage.py"

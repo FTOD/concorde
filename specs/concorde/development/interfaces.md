@@ -201,6 +201,13 @@ updated; a mismatched package/context is rejected instead of reinterpreted.
 | --- | --- | --- |
 | `concorde-project-proposal@1` | `concorde-init-request@1.proposal` and `-response@1.proposal` | `{action: "initialize", base_digest (nullable), files: [{path, before_digest (nullable), content}]}`. |
 
+#### Issue reporting values
+
+| Type | Carried by | Promise |
+| --- | --- | --- |
+| `concorde-issue-report@1` | Worker reporting tool to the host | [Classified observation](../reflections/issues.md#store-boundary), without caller-supplied provenance or a flow-control effect. |
+| `concorde-issue-receipt@1` | Host to the reporting worker | Immutable `{issue_id, report_id, path}` identity for the exact accepted observation; the tool additionally returns the current record revision for a subsequent append. |
+
 #### Stage-input artifacts
 
 | Type | Carried by | Promise |

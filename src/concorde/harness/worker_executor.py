@@ -34,7 +34,7 @@ class CapabilityExecutionError(RuntimeError):
     def __init__(self, message: str, outcome: Outcome = "failed", code: str | None = None,
                  usage: "ExecutionUsage | None" = None):
         super().__init__(message)
-        self.outcome = outcome
+        self.outcome: Outcome = outcome
         self.code = code
         self.usage = usage
 
@@ -79,7 +79,8 @@ class WorkerInvocation:
 
     @property
     def context_id(self) -> str:
-        return json.loads(self.receipt_json)["source_digest"]
+        from ..spec.typed_data import decode
+        return decode(self.receipt_json)["source_digest"]
 
 
 @dataclass(frozen=True)
@@ -122,7 +123,10 @@ def result_parameters(type_id: str) -> dict[str, Any]:
             return [expand(item, seen) for item in value]
         return value
 
-    return expand(DATA_SCHEMAS[type_id], frozenset({type_id}))
+    result = expand(DATA_SCHEMAS[type_id], frozenset({type_id}))
+    if not isinstance(result, dict):
+        raise ValueError("worker result schema must be an object")
+    return result
 
 
 def build_worker_invocation(*, capability: str, stage: str, agent: str, invocation_id: str, workspace: str,
@@ -146,7 +150,7 @@ def build_worker_invocation(*, capability: str, stage: str, agent: str, invocati
         raise CapabilityExecutionError("an invocation needs a host-issued identity and an absolute workspace")
     payload = {"capability": capability, "stage": stage, "agent": name, "invocation_id": invocation_id,
                "workspace": workspace, "context": context, "receipt": receipt, "policy_digest": policy.digest,
-               "binding": json.loads(binding_json), "instructions_digest": _digest(instructions),
+               "binding": decode(binding_json), "instructions_digest": _digest(instructions),
                "selection": selection.wire(),
                "child_selections": [[child, value.wire()] for child, value in child_selections]}
     return WorkerInvocation(capability=capability, stage=stage, agent=name, invocation_id=invocation_id,
@@ -211,7 +215,8 @@ class WorkerExecutor:
             raise CapabilityExecutionError("worker invocations never grant network or credential effects")
         return agent, binding, context
 
-    def __call__(self, invocation: WorkerInvocation, *, checks: Callable[[], Any] | None = None) -> WorkerOutcome:
+    def __call__(self, invocation: WorkerInvocation, *, checks: Callable[[], Any] | None = None,
+                 report_issue=None) -> WorkerOutcome:
         from ..spec.typed_data import TypedDataError, typed
 
         agent, binding, _ = self.preflight(invocation)
@@ -219,7 +224,8 @@ class WorkerExecutor:
         selections = dict(invocation.child_selections)
         children = tuple(ChildAgent(item.name, _child_text(item, selections.get(item.name))) for item in definitions)
         child_tools = tuple(sorted({tool for item in definitions for tool in item.tools}))
-        tools = (*agent.tools, "submit_result", *(("subagent",) if agent.children else ()))
+        tools = (*agent.tools, "submit_result", *(("report_issue",) if report_issue is not None else ()),
+                 *(("subagent",) if agent.children else ()))
         read_paths = invocation.policy.read_paths + (("." ,) if agent.workspace == "capsule" else ())
         launch = WorkerLaunch(
             worker=agent.name, workspace=invocation.workspace, system_prompt=invocation.instructions,
@@ -227,13 +233,15 @@ class WorkerExecutor:
             tools=tools, read_paths=read_paths, write_paths=invocation.policy.write_paths,
             children=children, child_tools=child_tools, model=invocation.selection.model,
             thinking=invocation.selection.thinking,
-            timeout_seconds=invocation.selection.timeout_seconds or binding.timeout_seconds)
+            timeout_seconds=invocation.selection.timeout_seconds or binding.timeout_seconds,
+            report_schema=report_issue.schema if report_issue is not None else None)
         runtime = self.runtime or PiWorkerRuntime(Path(self.package_root))
         # The host check service is served only to a worker or child granted run_checks.
         if "run_checks" not in (*launch.tools, *launch.child_tools):
             checks = None
         try:
-            result = runtime(launch, checks=checks)
+            services = {"report_issue": report_issue} if report_issue is not None else {}
+            result = runtime(launch, checks=checks, **services)
         except WorkerExecutionError as error:
             raise CapabilityExecutionError(str(error), outcome=error.outcome) from error
         reported = result.usage

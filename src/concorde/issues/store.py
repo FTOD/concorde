@@ -15,9 +15,9 @@ from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
 from ..spec.changes import apply_files
+from ..spec.issue_shapes import ISSUE_ID, PROVENANCE, RECEIPT, RECORD, REPORT
 from ..spec.repository import SpecError, digest
 from ..spec.typed_data import canonical, check_schema, checked_path, decode
-from .model import ISSUE_ID, PROVENANCE, RECEIPT, RECORD, REPORT
 
 DIRECTORY = ".concorde/issues"
 MAX_REPORT_BYTES = 64 * 1024

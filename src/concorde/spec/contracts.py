@@ -10,6 +10,7 @@ owned by any one capability and stay defined directly here.
 """
 from __future__ import annotations
 
+from .issue_shapes import RECEIPT as ISSUE_RECEIPT, REPORT as ISSUE_REPORT
 from .contract_shapes import ARTIFACT, DIGEST, GAP, MAIN_OUTCOMES, NULLABLE_ID, PATH, ROUTE, STRING, WORKSPACE_CONTEXT, array, obj, typed_schema
 
 DOCUMENT_CHANGE = obj({"path": PATH, "content": {"type": "string"}})
@@ -98,6 +99,8 @@ INTERNAL_SKILLS = tuple(sorted({*MAIN_AGENTS.values(), TOPOLOGY_AUTHOR_AGENT, IN
                                 *(role for _, role in CAPABILITY_AGENTS.values()),
                                 *(role for _, role in REVIEW_STAGES.values())}))
 INTERNAL_DATA_TYPES = (
+    "concorde-issue-report",
+    "concorde-issue-receipt",
     "concorde-agent-stage-context",
     "concorde-agent-stage-result",
     "concorde-review-input",
@@ -151,7 +154,7 @@ def _capability_schemas() -> dict:
 
 
 def schemas() -> dict:
-    result = {}
+    result = {"concorde-issue-report": ISSUE_REPORT, "concorde-issue-receipt": ISSUE_RECEIPT}
     document_ref = obj({"document_id": STRING, "path": PATH, "digest": DIGEST,
         "owner": STRING,
         "role": {"enum": ["reading", "metadata"]}})

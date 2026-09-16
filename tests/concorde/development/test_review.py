@@ -1253,7 +1253,9 @@ class ReviewTests(unittest.TestCase):
         self.assertTrue(wire["representative_tasks"]["uniqueItems"])
         self.assertTrue(launch.result_schema["properties"]["representative_tasks"]["uniqueItems"])
         self.assertNotIn("context_id", wire["gaps"]["items"]["required"])
-        self.assertEqual({"read", "grep", "find", "ls", "submit_result", "subagent"}, set(launch.tools))
+        self.assertEqual({"read", "grep", "find", "ls", "submit_result", "report_issue", "subagent"}, set(launch.tools))
+        self.assertIsNotNone(launch.report_schema)
+        self.assertNotIn("report_issue", launch.child_tools)
 
     def test_unrelated_review_query_cannot_replace_required_lifecycle_evidence(self):
         self.assertEqual("succeeded", self.call_capability("concorde-dev-loop")["status"])
