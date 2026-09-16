@@ -1,0 +1,40 @@
+{
+  "baseline": "4b4fb0fce4435f163fa640b262e14c153952b33a",
+  "invocation_id": "maintenance-reflection-history-2026-09-16-6a9d49b1-2c9f-4a3f-96dc-4a02cb9071b1",
+  "authority": "Explicit developer-authorized direct maintenance in the original worktree; host IssueReporter/store API, not a solve/triage flow.",
+  "receipts": [
+    {
+      "legacy_item": "R-071-F1-topology-recovery",
+      "classification": "limitation",
+      "owner": "module.dev-loop",
+      "receipt": {
+        "issue_id": "I-81d4173fa1595f1a871e7605c389a77c",
+        "report_id": "sha256:a90e74461bf0cc5c1aa472a2cd42989259523b675a10da57dcde1f066e148c53",
+        "path": ".concorde/issues/I-81d4173fa1595f1a871e7605c389a77c.md"
+      },
+      "revision": "sha256:57e3fef8c6805f3720652e57fd2628d08ff5d1bb721ab9fa16e998c48cba2d91"
+    },
+    {
+      "legacy_item": "R-071-F2-explicit-hidden-roots",
+      "classification": "gap",
+      "owner": "module.spec",
+      "receipt": {
+        "issue_id": "I-d2d72e8022785dc7b150ebf0a1602263",
+        "report_id": "sha256:3291db01246ece6a054dfa6a29261f52678849e34496bc55f769576fbd50fa61",
+        "path": ".concorde/issues/I-d2d72e8022785dc7b150ebf0a1602263.md"
+      },
+      "revision": "sha256:1cdeed60f3fbda46c985f2c437583fcc2b6778cb4cc0ccf87990c12797fcead6"
+    },
+    {
+      "legacy_item": "R-074-provider-verification-scope",
+      "classification": "limitation",
+      "owner": "module.planning",
+      "receipt": {
+        "issue_id": "I-61c12e3efc4655a29315033898bbc807",
+        "report_id": "sha256:6939ec2b3f9b86f95bfe08ab0683e21ef9b36e553b71772e7c0a3cda8be9d349",
+        "path": ".concorde/issues/I-61c12e3efc4655a29315033898bbc807.md"
+      },
+      "revision": "sha256:82edaf554a758a890cd1098430b57bc343d472e05773e311306636104656e763"
+    }
+  ]
+}

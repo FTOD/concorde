@@ -1,0 +1,84 @@
+{
+  "baseline": "4b4fb0fce4435f163fa640b262e14c153952b33a",
+  "method": "Deterministic current-code probes using temporary fixtures and ModelProcessDouble; no model calls.",
+  "hidden_entries": {
+    ".github/workflows/check.yml": [
+      ".github/workflows/check.yml"
+    ],
+    ".github/workflows/": [
+      ".github/workflows/check.yml"
+    ],
+    ".github/": [
+      ".github/workflows/check.yml"
+    ],
+    "source/": [
+      "source/visible.py"
+    ],
+    "source/.hidden.py": [
+      "source/.hidden.py"
+    ]
+  },
+  "topology_recovery": {
+    "status": "blocked",
+    "errors": [
+      {
+        "code": "incompatible_handoff",
+        "field": "",
+        "message": "topology application differs from this worktree's owning task"
+      }
+    ],
+    "owner_retained": "module.ledger",
+    "registry_unchanged": true
+  },
+  "review_reference": {
+    "outcome": "spec_incomplete",
+    "review_status": "findings",
+    "blocker_derived_from_judgment": true,
+    "persisted_issue_status": "open"
+  },
+  "component_acceptance": {
+    "task": "Implement the transfer promise.\nAcceptance: Inspect Banking's scenario.bank.settlement declaration and verify that its consumer-side obligations agree with the transfer provider.",
+    "spec_paths": [
+      "specs/transfer/module.md",
+      "specs/transfer/module.md.json",
+      "specs/transfer/promises.md",
+      "specs/transfer/promises.md.json"
+    ],
+    "consumer_spec_granted": false,
+    "status": "blocked",
+    "outcome": "spec_incomplete",
+    "stages": [
+      "route",
+      "specify",
+      "spec-review",
+      "context-solve",
+      "plan",
+      "tasks",
+      "specify"
+    ]
+  },
+  "blocker_replanning": {
+    "accepted_scope_ids": [
+      "module:service.transfer",
+      "module:service.transfer"
+    ],
+    "stable_relation": true,
+    "relation_status": "resolved",
+    "issue_status": "open",
+    "foreign_worker_blockers": []
+  },
+  "source_digests": {
+    "src/concorde/spec/repository_base.py": "sha256:4cb4c2097af0ad7571884020b1c4d85cc9cf606f02051555131b686f31a050a1",
+    "src/concorde/development/capability_host.py": "sha256:c6e66708b9fb9f2840572a3caf85919fbf7f31e2ea3b9d8d07396b5bfbd950f8",
+    "src/concorde/harness/change_worktree.py": "sha256:e81457bb9c6d34929424ad2b8a069e7219ecea48f85f52f974a4eff3085ac0e7",
+    "src/concorde/issues/references.py": "sha256:890d418911e52c829134d06a82e018c26cd3a10152ff680ec9c0954262f9ca56",
+    "agents/task_author/spec.md": "sha256:f0f58be321398560b638a3cff410a608c56b48548754755b4e0ef71aac10e790",
+    "prompts/protocol/framework-profile.md": "sha256:ef79b2cf64003965cd87ede112bf7c229f03f9156e4f12f2778002aea86a8683"
+  },
+  "contract_context_digests": {
+    "module.spec": "sha256:8e2ba5cc0ac3d23e425b7febd1b4b1a342fedfdbbbbff9383b70e6aaf91f503d",
+    "module.planning": "sha256:ba169c85bf184edb1790ecdaa01f317ac9c1a4239656f8ca16304cebdd1de461",
+    "module.topology": "sha256:c7c95ff4af101f262ff8c6817c8ec45a7dbe178f5410e1022dbbcb6aa9c62969",
+    "module.dev-loop": "sha256:0c205cfb0fff04d2dd1e0ae8646fed852f5f6d382a7a021d142988a7266919a5"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "baseline": "4b4fb0fce4435f163fa640b262e14c153952b33a",
+  "scope": "Direct-maintenance investigation, evidence and Issue bookkeeping only; no production source or Spec changes.",
+  "checks": [
+    {
+      "command": "python3 scripts/concorde.py build --check",
+      "exit_code": 0,
+      "timing": "Before investigation and after Issue registration"
+    },
+    {
+      "command": "python3 scripts/concorde.py validate",
+      "exit_code": 0,
+      "timing": "After Issue registration",
+      "status": "success",
+      "findings": [],
+      "source_digest": "sha256:eba7962fe98f50af1d60056d519196819faacdbf6edcc550ef1d4428d31131c0"
+    },
+    {
+      "command": ".venv/bin/python -m unittest discover -s tests/concorde -t . -p 'test_*.py'",
+      "exit_code": 0,
+      "timing": "Investigated runtime baseline; before Issue registration; no runtime changes afterward",
+      "tests": 848,
+      "skipped": 10,
+      "seconds": 794.452,
+      "result": "OK (skipped=10)",
+      "session_log": "/tmp/reflection-history-full-tests.log",
+      "session_log_sha256": "d0850ec6fe50a8732dd192e715391b742cd5674bb05009ebddcd1d7094c93935"
+    },
+    {
+      "command": "PYTHONPATH=src:. .venv/bin/python docs/reports/2026-09-16-reflection-history-probes.py",
+      "exit_code": 0,
+      "probes": ["hidden_entries", "topology_recovery", "review_reference", "component_acceptance", "blocker_replanning"],
+      "evidence": "docs/reports/2026-09-16-reflection-history-probes.json",
+      "limitations": "Temporary fixtures and process doubles; no live-model effectiveness claim"
+    },
+    {
+      "tool": "lens_diagnostics",
+      "source": "lsp",
+      "path": "docs/reports/2026-09-16-reflection-history-probes.py",
+      "files_checked": 1,
+      "errors": 0,
+      "outcome": "clean"
+    },
+    {
+      "check": "Issue store integrity and registration retry",
+      "issues": 3,
+      "status": "all open",
+      "reports_per_issue": 1,
+      "dispositions": 0,
+      "receipt_and_revision_checks": "passed",
+      "all_evidence_paths_exist": true,
+      "identical_report_retry": "same receipt and revision"
+    },
+    {
+      "check": "Compare all tracked archive files byte-for-byte with baseline Git objects",
+      "files": 37,
+      "unchanged": true
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "unsuccessful_attempts": [
+    "Initial broad targeted unittest command exceeded its 300-second tool timeout; not counted as passing. The subsequent full suite completed successfully.",
+    "Two initial investigation probe runs had incomplete synthetic lifecycle state (missing bound owner, then missing coordination status fields). Fixture setup was corrected; neither was classified as a product regression."
+  ],
+  "not_performed": ["live model investigation", "independent model review", "Issue solve or disposition", "production repair", "docsite UI verification"],
+  "semantic_completeness": "not_proven"
+}
