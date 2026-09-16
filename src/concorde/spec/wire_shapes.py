@@ -12,19 +12,25 @@ PATH = {**STRING, "format": "project-path"}
 DIGEST = {**STRING, "pattern": r"^sha256:[0-9a-f]{64}$"}
 ARTIFACT = obj({"id": STRING, "path": PATH, "digest": DIGEST})
 
-VERSION_THREE_TYPES = frozenset({
+ISSUE_RESULT_TYPES = frozenset({
+    "concorde-agent-stage-result", "concorde-main-stage-result", "concorde-review-stage-result",
+    "concorde-topology-author-result", "concorde-review-result"})
+VERSION_FOUR_TYPES = frozenset({
     "concorde-agent-stage-context", "concorde-main-stage-context", "concorde-review-stage-context",
     "concorde-topology-author-context"})
-VERSION_FOUR_TYPES = frozenset({"concorde-discovery-context"})
-VERSION_FIVE_TYPES = frozenset({"concorde-context-snapshot"})
 
 
 def type_version(type_id: str) -> int:
-    if type_id in VERSION_FIVE_TYPES:
+    if type_id == "concorde-context-snapshot":
+        return 6
+    if type_id == "concorde-discovery-context":
         return 5
     if type_id in VERSION_FOUR_TYPES:
         return 4
-    return 3 if type_id in VERSION_THREE_TYPES else 1
+    if type_id in ISSUE_RESULT_TYPES or (type_id.endswith("-response") and type_id not in {
+            "concorde-init-response", "concorde-configure-response", "concorde-issues-response"}):
+        return 2
+    return 1
 
 def typed_schema(type_id: str) -> dict:
     return obj({"type_id": {"const": type_id}, "schema_version": {"type": "integer", "const": type_version(type_id)},

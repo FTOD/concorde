@@ -13,7 +13,7 @@ make the work and its results inspectable. Specs guide each worker's task, while
 and permissions to the declared scope. Twelve built-in Pi workers — one per lifecycle role, from
 answering questions and routing through Spec authoring, review, planning and task definition to
 implementation, code review and investigation — support this work through installable Skills. The
-reflection system retains feedback and persistent
+Issue system retains classified problems and persistent
 Spec gaps, coordinates investigation and routes approved resolutions into new development tasks.
 
 The development and delivery workflows below use **Spec Protocol 7.0.0**. It defines one Module
@@ -120,7 +120,7 @@ public Capability to the developer's external agent runtime.
 Capabilities with `CONTEXT_SELECTION="discover"` use the router to discover complete Module
 contracts; `bound` consumes the selected Module without expanding its context; `none` performs
 deterministic host work without Agent context selection. `PUBLIC` independently decides whether a
-Capability has a Skill. For example, reflections-triage is public and uses a bound Module, while
+Capability has a Skill. For example, issues is public and uses a bound Module, while
 specify is non-public and runs only through declared composition.
 
 `concorde-specify-loop` routes a task, authors or revises its Spec and independently reviews it,
@@ -133,7 +133,7 @@ change without repeating current evidence.
 
 `concorde-review` accepts a `task` and `review_mode: "spec"` or `"code"`, with optional target/focus
 routing hints. It selects the owning Module and starts a fresh read-only reviewer in the current
-worktree, without requiring a development change or Reflection. The host returns structured
+worktree, without requiring a development change or preexisting Issue. The host returns structured
 findings and coverage; unmanaged Git checkouts use HEAD as the diff baseline.
 
 No Skill returns a context manifest; `describe-policy` mode previews the exact stage
@@ -169,8 +169,9 @@ Conflicts, failed checks or local primary edits block final merging and preserve
 branch. Receipts distinguish staging, cleanup and final merging, allowing retries without duplicate
 merges; after source removal, use the primary session to retry.
 
-Reflection investigation is a separate, read-only implementation invocation; human
-approval/disposition remains governed by project settings.
+Issue reporting is independent of task control. Explicit solving uses ordinary providers and
+Issue-specific reviews; the solver can make evidence-grounded dispositions without a mandatory
+human gate, and asks only for genuinely unsettled decisions. Solving stops at ready, not delivery.
 
 For a directly authored candidate without generated plans, `concorde-validate` checks the whole project and records readiness in the
 same worktree state. Any already authored plans and tasks must still be completed. No placeholder
@@ -217,13 +218,17 @@ Anything graph using the installer-owned runtime. Starting it does not generate 
 prove that the graph agrees with the Spec. A developer can inspect the views, clarify feedback in
 the agent conversation and proceed directly with an authorized change request.
 
-For feedback that needs to be tracked across sessions, use `concorde-reflections-triage`. The
-[reflection system](../specs/concorde/reflections/module.md) attributes each record to a Module or
-scenario and retains observations, evidence and developer comments. It supports queue inspection,
-explicit capture of selected gaps, and investigation within the responsible Module's context and
-file permissions. An approved resolution becomes a fresh development task; resolving or dismissing
-the report remains an explicit developer decision independent of repair completion. See the
-[reflection lifecycle](../specs/concorde/reflections/lifecycle.md) for investigation and disposition.
+For problems that need tracking across sessions, use `concorde-issues` with list, show, report,
+reopen or solve. The [Issue system](../specs/concorde/issues/module.md) records bug, gap and limitation
+observations during work. Stage blockers and review judgments reference those immutable reports.
+Reporting does not itself stop an agent or start a repair, and a workaround can leave an Issue open.
+
+An explicit solve request selects one Issue and its current revision. The bounded solver can use
+ordinary development, Spec repair and read-only verification, then include the disposition in final
+candidate checks. Unresolved choices return needs-decision; an explicit solve note supplies developer
+clarification. A successful candidate-local close is not a claim about primary. See the
+[Issue lifecycle](../specs/concorde/issues/lifecycle.md). Legacy data can be preserved explicitly with
+`scripts/issues.py archive-reflections`; it is never automatically classified or approved.
 
 Concorde 7 uses Package Manifest 3, Architecture Profile 14, registry schema 5, Workspace Protocol
 15 and Delivery Proposal 10. Older profiles require an explicit migration; normal execution never
@@ -319,7 +324,7 @@ checks with `npm run typecheck`, `npm test`, `npm run validate`, `npm run build`
 
 `prompts/`, `skills/`, and the top-level `capabilities/` package produce this checkout's agent
 surfaces. Never edit `generated/`, `.agents/skills/concorde-*`, `.claude/skills/concorde-*`, or
-generated reflection agents directly; they are untracked build output. After changing their
+generated Issue-solving agents directly; they are untracked build output. After changing their
 sources, run the build and the deterministic checks in the same primary or linked worktree:
 
 ```bash
@@ -348,15 +353,15 @@ timeout for every stage it previews, alongside its read/write grants.
 The worker inventory follows stable context and authority boundaries: answerer, router and
 topology-designer handle ask, route and design-topology; spec-author, topology-author,
 spec-reviewer, context-assessor, planner and task-author handle specify, topology-author,
-spec-review, context-solve, plan and tasks; programmer, code-reviewer and investigator handle
-implementation, code-review and reflection investigation. Each worker's task contract explicitly
+spec-review, context-solve, plan and tasks; programmer and code-reviewer handle implementation and
+code review, while the Spec-only issue-solver selects bounded actions for an explicit Issue. Each worker's task contract explicitly
 pairs input and output types, admits specific stage artifacts and narrows its permission ceiling.
 The Host applies structured Spec replacements. Only the programmer may write granted code; reviews
 and investigations remain read-only. Every phase and target gets a fresh invocation and context
 identity, so a reviewer never inherits the author's conversation, artifacts or write authority
 merely because they share the common worker rules. A worker with declared children (spec-reviewer:
 fact-check, consistency; planner: scout; programmer: scout, planner, verifier; code-reviewer: scout,
-verifier; investigator: scout) may delegate one level deep through its `subagent` tool; a child runs
+verifier) may delegate one level deep through its `subagent` tool; a child runs
 inside the worker's own process, under the same gate, and cannot submit the worker's result.
 
 The fourteen Capability names and nine public Skills remain distinct. Their required boolean

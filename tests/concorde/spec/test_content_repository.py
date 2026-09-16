@@ -301,17 +301,21 @@ class DocumentUnitRepositoryTests(unittest.TestCase):
         from concorde.development.review import _validate
         snapshot = SimpleNamespace(id=digest('snapshot'))
         info = {'review_mode': 'spec', 'input_digest': digest('review')}
+        from concorde.issues.reporting import IssueReporter
+        from tests.concorde.issues.test_store import report, source
+        reporter = IssueReporter(self.root, source(target_id='module.a', context_id=snapshot.id),
+            frozenset({'module.a', 'module.b'}), frozenset(repository.spec_files('module.a')))
+        observation = report(owner_target_id='module.b', evidence=[{
+            'path': 'specs/b/interface.md.json', 'description': 'Clarify participant mapping.'}])
+        ref = reporter(observation)['receipt']
         data = {'context_id': snapshot.id, 'input_digest': info['input_digest'], 'review_mode': 'spec',
                 'status': 'findings', 'answer': 'Metadata observation.', 'representative_tasks': ['Review admission'],
-                'gaps': [], 'findings': [{'id': 'finding.metadata', 'severity': 'advisory', 'target_id': 'module.b',
-                'document': 'specs/b/interface.md', 'contract': 'contract.b.result',
-                'location': {'path': 'specs/b/interface.md.json', 'line': 1},
-                'problem': 'Clarify participant mapping.', 'affected_task': 'Review admission'}]}
+                'issues': [{**ref, 'severity': 'advisory', 'affected_task': 'Review admission'}]}
         run = SimpleNamespace(repository=repository, target=repository.select('module.a'))
         _validate(run, snapshot, info, data)
-        data['findings'][0]['location']['path'] = 'specs/c/module.md.json'
-        with self.assertRaisesRegex(SpecError, 'authority'):
-            _validate(run, snapshot, info, data)
+        observation['evidence'][0]['path'] = 'specs/c/module.md.json'
+        with self.assertRaisesRegex(SpecError, 'scope'):
+            reporter(observation)
 
     def test_a_scoped_diagram_can_omit_an_inventory_entity_but_not_invent_one(self):
         path = self.root / 'specs/a/module.md'

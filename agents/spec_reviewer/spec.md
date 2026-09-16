@@ -48,17 +48,17 @@ scoped changes. Every review starts a fresh worker for its target.
 ## Expected results
 
 Submit a `concorde-review-stage-result`: `status` (`no_findings`, `findings` or `incomplete`),
-`representative_tasks` actually covered, `findings` with target, contract document, location,
-problem and affected task, and `gaps`, without raw source, patches or logs.
+`representative_tasks` actually covered, and `issues` containing accepted report receipt fields
+plus severity and affected_task, without duplicate gap prose, raw source, patches or logs.
 
 ## Completion conditions
 
-`no_findings` requires actual coverage of nonempty `representative_tasks` with no findings or gaps.
-`findings` means a completed review with concrete findings or gaps. Use `incomplete` and explain why
+`no_findings` requires actual coverage of nonempty `representative_tasks` with an empty issues list.
+`findings` means a completed review with concrete Issue references. Use `incomplete` and explain why
 when the review cannot complete; never treat failure or skipped coverage as `no_findings`.
 
 ## Missing information, failure and human decisions
 
-A blocking Spec finding must also supply a gap whose `blocked_step` is the finding's `affected_task`
-and whose `needed_contract` is the finding's `contract`, both copied verbatim, with a concrete
-`question`. Stop dependent judgments when the needed contract is absent.
+Report missing or conflicting contracts as gap Issues. Mark an Issue reference blocking only
+when it blocks the admitted task. Stop dependent judgments when a necessary contract is absent,
+but continue independent checks and report all findings before submitting.

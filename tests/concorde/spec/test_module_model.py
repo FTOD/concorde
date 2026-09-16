@@ -626,7 +626,7 @@ class ModuleImplementationTests(unittest.TestCase):
             else:
                 self.assertNotIn("A_OWN_ADDITIONAL_CONTRACT", text)
                 self.assertIn("return 43", (cwd / "source/shared.py").read_text())
-                result.update(status="findings", findings=[{"id": "finding.b.value", "severity": "blocking",
+                result.update(status="findings", issues=[{"id": "finding.b.value", "severity": "blocking",
                     "target_id": "module.b", "document": "specs/b/module.md", "contract": "value() returns 42",
                     "location": {"path": "source/shared.py", "line": 2},
                     "problem": "The shared implementation returns 43.", "affected_task": snapshot["task"]}])

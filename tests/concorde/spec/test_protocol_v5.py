@@ -185,7 +185,7 @@ class ProtocolFiveTests(unittest.TestCase):
                 self.assertEqual(before, path.read_bytes())
                 self.assertIn('Clarified canonical promise.', (cwd / 'specs/transfer/promises.md').read_text())
                 if block_consumer and snapshot['target_id'] == 'module.ledger':
-                    result.update(status='findings', gaps=[{'question': 'Which limit applies?',
+                    result.update(status='findings', blockers=[{'question': 'Which limit applies?',
                         'needed_contract': 'service.transfer canonical limit', 'blocked_step': 'Rely on the proposed limit'}])
         double = ModelProcessDouble(callback)
         host = CapabilityHost(self.root, PACKAGE, executor=double.executor, allow_primary_worktree=True)
@@ -205,7 +205,8 @@ class ProtocolFiveTests(unittest.TestCase):
         result, _, before, _, path = self._author_referenced_document(True)
         self.assertEqual('spec_incomplete', result['output']['data']['outcome'], result)
         self.assertEqual(before, path.read_bytes())
-        self.assertEqual('module.ledger', result['output']['data']['gaps'][0]['target_id'])
+        from tests.concorde.development.test_review import issue_observation
+        self.assertEqual('module.ledger', issue_observation(self.root, result['output']['data']['blockers'][0])['source']['target_id'])
 
     def test_canonical_contract_and_complementary_bindings_are_independent(self):
         self.reference('service.transfer', 'document', 'document.ledger.api')
@@ -229,9 +230,9 @@ class ProtocolFiveTests(unittest.TestCase):
 
     def test_old_wire_payloads_are_not_reinterpreted(self):
         value = typed('concorde-context-snapshot', resolve_context(self.repository(), 'scope.bank').value)
-        self.assertEqual(5, value['schema_version'])
-        self.assertEqual(5, value['data']['schema_version'])
-        for old in (1, 2, 3, 4):
+        self.assertEqual(6, value['schema_version'])
+        self.assertEqual(6, value['data']['schema_version'])
+        for old in (1, 2, 3, 4, 5):
             stale = {**value, 'schema_version': old}
             with self.assertRaises(TypedDataError): validate_typed(stale)
 
@@ -239,7 +240,7 @@ class ProtocolFiveTests(unittest.TestCase):
         self.reference('service.transfer', 'module', 'module.ledger')
         def callback(stage, snapshot, result, cwd):
             if stage == 'spec-review':
-                result.update(status='findings', findings=[{
+                result.update(status='findings', issues=[{
                     'id': 'finding.provider', 'severity': 'advisory', 'target_id': 'module.ledger',
                     'document': 'specs/ledger/module.md', 'contract': 'scenario.ledger.read',
                     'location': {'path': 'specs/ledger/module.md', 'line': 1},
@@ -251,7 +252,8 @@ class ProtocolFiveTests(unittest.TestCase):
         self.assertEqual('succeeded', result['status'], result)
         review = result['output']['data']['reviews'][0]['data']
         self.assertEqual('service.transfer', review['target_id'])
-        self.assertEqual('module.ledger', review['findings'][0]['target_id'])
+        from tests.concorde.development.test_review import issue_observation
+        self.assertEqual('module.ledger', issue_observation(self.root, review['issues'][0])['report']['owner_target_id'])
         self.assertTrue(all(not item['write_paths'] for item in host.descriptions))
 
     def test_required_binding_links_report_excluded_definition_without_adding_context(self):

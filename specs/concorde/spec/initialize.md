@@ -20,7 +20,7 @@ unknown properties.
 
 Initialization produces only what the user's project generates through Concorde: its
 configuration, its registry and its first Module Spec. Everything that exists only because Concorde
-is installed, the Protocol copy under `.concorde/protocol/`, the Reflection defaults and the
+is installed, the Protocol copy under `.concorde/protocol/`, the Issue directory defaults and the
 topology-artifact ignore file, is the installer's output and is never created here.
 
 `action: "propose"` additionally requires `name` and `configuration` and optionally a `target_id`
@@ -53,7 +53,7 @@ changing project files; apply returns `status: "applied"`, `proposal: null` and 
 - GIVEN a previously returned proposal whose destinations are still absent and whose Protocol binding is current
 - WHEN the developer requests action apply with that exact proposal
 - THEN the capability validates the complete resulting registry and documents and commits every file in one transaction
-- AND it creates nothing that exists only because Concorde is installed: the Protocol copy, the Reflection defaults and the topology-artifact ignore file are the installer's outputs
+- AND it creates nothing that exists only because Concorde is installed: the Protocol copy, the Issue directory defaults and the topology-artifact ignore file are the installer's outputs
 - AND the response reports status applied with the applied paths
 
 #### scenario.spec.reject-already-initialized — Rejecting an already-configured project
@@ -82,8 +82,7 @@ changing project files; apply returns `status: "applied"`, `proposal: null` and 
 #### req.spec.init-allowed-files — Initialization touches only its allowed files
 
 Application SHALL touch only .concorde/config.json, .concorde/specs.json,
-.concorde/topology-proposals/.gitignore, .concorde/reflections/index.json,
-.concorde/reflections/config.json and the explicit document paths named in the proposed registry.
+.concorde/topology-proposals/.gitignore, .concorde/issues/.gitignore and the explicit document paths named in the proposed registry.
 
 #### req.spec.init-null-digests — Every proposed file has a null before_digest
 

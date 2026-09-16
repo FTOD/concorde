@@ -9,9 +9,10 @@ relationships together. Twelve built-in Pi worker agents support specification a
 Agent observability covers their working process and results:
 LangGraph Studio exposes execution Flows and live stage and agent-process events, while recorded
 context, permission policies, checks and reviews provide inspectable evidence.
-The reflection system retains feedback and persistent gaps attributed to Modules or scenarios,
-supports investigation within their declared boundaries, and routes approved resolutions into
-fresh development tasks while preserving explicit developer control of report disposition.
+The Issue system retains classified bugs, contract gaps and limitations reported during bounded
+work. Reporting does not itself stop a worker. Explicit solving composes ordinary development and
+verification, permits evidence-grounded autonomous disposition, and asks the developer only for
+unsettled choices while preserving file authority and the separate delivery boundary.
 
 ## Usage
 
@@ -40,11 +41,11 @@ The entry table below identifies the available actions and their completion boun
 | Change worker configuration | `concorde-configure` applies an explicit supported Pi worker model/thinking/timeout selection to an initialized project. |
 | Check a candidate | `concorde-validate` records current deterministic evidence; a failed or stale check cannot establish readiness. |
 | Deliver a candidate | `concorde-deliver` stages the selected change on an independent branch and removes its worktree by default; only a separate explicitly authorized request by the sole primary writer merges it into the primary branch. |
-| Work with recorded feedback | `concorde-reflections-triage` selects explicit Module-owned reports/gaps; status is read-only and mutations follow their declared evidence and disposition conditions. |
+| Work with Issues | `concorde-issues` lists, shows, reports, reopens or solves an explicit Issue; solving ends at a verified candidate, not delivery. |
 
 Installed Skills use a single schema-3 capability invocation with `capability_id`, execute or describe-policy mode, configuration and a version-1 typed request. Unsupported versions, malformed requests and configuration mismatch fail admission. The result reports succeeded, blocked, failed or described; domain output still distinguishes a ready candidate, gap, conflict or completed answer. Describe-policy reports the bound grant without launching an Agent. Standard execution can create candidate state and invoke separately bounded Agents; only the admitted action can change files.
 
-Human views are complementary entries: Views presents registered contracts and declared relationships and opens a preexisting raw code graph. A view or feedback comment does not itself authorize code changes, claim Spec/code agreement or create a Reflection. The developer's explicit intent and constraints determine a subsequent task.
+Human views are complementary entries: Views presents registered contracts and declared relationships and opens a preexisting raw code graph. A view or feedback comment does not itself authorize code changes, claim Spec/code agreement or create an Issue. The developer's explicit intent and constraints determine a subsequent task.
 
 ## Design
 
@@ -65,7 +66,7 @@ so no single child's contract can carry the evidence that the composition works.
 a request through the real entry point and observe the whole outcome — a routed change reaching a
 ready candidate, a gap or failure stopping dependent work while progress stays inspectable, an
 answer grounded in registered documents, adoption, worker configuration, recorded check evidence,
-a staged delivery, and read-only reflections triage. They are ordinary implementation files shared
+a staged delivery, and read-only Issue inspection. They are ordinary implementation files shared
 with the children whose behavior they also exercise; binding them here records that this Module is
 verified end to end, not that it owns their subjects.
 
@@ -78,7 +79,7 @@ The Developer supplies intent through installed Skills. The independent Spec Pro
 
 ## Relationships
 
-Sixteen Modules have this Module as their sole structural parent. The scoped diagrams show principal responsibility dependencies; each consumer's local contract states all of its registered uses. **Spec** owns the project's Spec model: the pinned Protocol binding, the registry, structural validation and initialization. **Harness** owns how an Agent is configured and run: the four context kinds it freezes, Agent and Harness definitions, permissions, Pi worker execution and the LangGraph control flow. **Development** owns common admission and dispatch. Planning, Implementation, Spec Authoring, Review, Validation, Delivery, Query and Routing, and Topology own cohesive provider contracts. Development Flow and Specification Flow compose them as siblings. **Reflections** retains attributed feedback and gaps, uses Development for admission and hands approved work to Development Flow. **Distribution** builds authored projections, installs them and provisions the managed runtime. **Views** publishes registered Specs and opens an existing code graph.
+Sixteen Modules have this Module as their sole structural parent. The scoped diagrams show principal responsibility dependencies; each consumer's local contract states all of its registered uses. **Spec** owns the project's Spec model: the pinned Protocol binding, the registry, structural validation and initialization. **Harness** owns how an Agent is configured and run: the four context kinds it freezes, Agent and Harness definitions, permissions, Pi worker execution and the LangGraph control flow. **Development** owns common admission and dispatch. Planning, Implementation, Spec Authoring, Review, Validation, Delivery, Query and Routing, and Topology own cohesive provider contracts. Development Flow and Specification Flow compose them as siblings. **Issues** retains classified observations, admits report references and composes bounded solving through Development providers. **Distribution** builds authored projections, installs them and provisions the managed runtime. **Views** publishes registered Specs and opens an existing code graph.
 
 A developer request carries intent and constraints. Project Specs supply promised behavior; a candidate worktree holds proposed changes and revision-bound evidence. A ready candidate ends development; only a separately authorized delivery updates the destination.
 
@@ -113,7 +114,7 @@ flowchart TB
 ### Runtime foundations
 
 This view separates contract meaning, execution and distribution. Delivery remains a separately
-selected transition. Reflections hands approved intent to Development Flow; Topology uses Query and
+selected transition. Issues hands selected intended behavior to Development Flow; Topology uses Query and
 Routing for design context. Their complete local obligations remain in the collaboration agreements
 below rather than being compressed into every overview edge.
 
@@ -260,11 +261,11 @@ agent Spec context; it does not acquire authority as a registered Module contrac
 - THEN the Framework stages the change on an independent branch and removes its worktree by default
 - BUT merging into the primary branch requires a further, separately authorized request by the sole primary writer
 
-### scenario.concorde.reflections-triage — Working with recorded feedback
+### scenario.concorde.issues — Working with recorded feedback
 
 - GIVEN feedback or a persistent gap recorded against a Module or scenario identity
-- WHEN the developer selects it through reflections triage
-- THEN status reporting is read-only
+- WHEN the developer inspects it through concorde-issues
+- THEN inspection is read-only
 - AND any mutation follows its declared evidence and disposition conditions
 
 ## Local collaboration agreements
@@ -306,16 +307,16 @@ Whenever a capability enters or resumes through the common boundary.
 
 - [Admit typed requests, preserve current worktree binding and distinct outcomes](development/interfaces.md#capability-execution-boundary)
 
-### Reflections
+### Issues
 
-<a id="entity.concorde.reflections"></a><a id="agreement.document.concorde.module.4"></a>
+<a id="entity.concorde.issues"></a><a id="agreement.document.concorde.module.4"></a>
 
 Retains, investigates and resolves explicitly attributed project feedback and persistent gaps.
 
 This collaboration applies when a developer works with recorded feedback.
 
-- [Capture only selected records and preserve attribution](reflections/interfaces.md)
-- [Retain human disposition when coordinating resolution](reflections/lifecycle.md)
+- [Report and reference classified problems without changing task control](issues/interfaces.md)
+- [Solve with bounded authority and evidence-grounded disposition](issues/lifecycle.md)
 
 ### Distribution
 

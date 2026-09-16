@@ -118,7 +118,7 @@ class BoundaryTests(unittest.TestCase):
         repo=SpecRepository(self.root);snapshots=[]
         for arguments,code in (({'phase':'audit'},'invalid_phase'),({'phase':'route'},'invalid_phase'),({'task':''},'invalid_input'),({'task':'  \n'},'invalid_input')):
             with self.subTest(**arguments):
-                with self.assertRaises(SpecError) as raised:snapshots.append(resolve_context(repo,'service.transfer',**arguments))
+                with self.assertRaises(SpecError) as raised:snapshots.append(resolve_context(repo,'service.transfer',**dict(arguments)))
                 self.assertEqual(code,raised.exception.code)
         # Nothing partial is returned, and the refusal precedes Module selection, so nothing was resolved.
         self.assertEqual([],snapshots)
@@ -151,7 +151,7 @@ class BoundaryTests(unittest.TestCase):
         def cb(stage,snapshot,data,cwd):
             if stage=='context-solve':data.update(outcome='unsupported',answer='The Spec prohibits this use.')
         result=self.call_capability('concorde-plan',callback=cb)
-        self.assertEqual('unsupported',result['output']['data']['outcome']);self.assertEqual([],result['output']['data']['gaps']);self.assertFalse((self.root/'.concorde/attempts').exists())
+        self.assertEqual('unsupported',result['output']['data']['outcome']);self.assertEqual([],result['output']['data']['blockers']);self.assertFalse((self.root/'.concorde/attempts').exists())
     def assertSpecOnlyReads(self,read_paths):
         # A Spec-only phase reads the frozen index plus the granted Spec documents and the accepted
         # Protocol copy it lists, and no implementation file.

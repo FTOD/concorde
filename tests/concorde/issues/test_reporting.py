@@ -129,4 +129,4 @@ class ReportingIntegrationTests(unittest.TestCase):
         result = self.call(lambda *_: self.fail("preview launched a worker"), mode="describe-policy")
         self.assertEqual("described", result["status"], result)
         self.assertEqual([], list_issues(self.root))
-        self.assertFalse((self.root / ".concorde/issues").exists())
+        self.assertEqual([".gitignore"], [p.name for p in (self.root / ".concorde/issues").iterdir()])

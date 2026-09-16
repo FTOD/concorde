@@ -11,7 +11,7 @@ from concorde.spec.verification import verifies
 def _stage_context():
     from concorde.harness.context import PROTOCOL_PATHS  # noqa: F401  (import keeps the fixture honest)
     snapshot = {
-        "context_id": "sha256:" + "3" * 64, "schema_version": 5, "target_id": "service.fixture",
+        "context_id": "sha256:" + "3" * 64, "schema_version": 6, "target_id": "service.fixture",
         "kind": "module", "focus_id": None, "phase": "plan", "task": "Plan", "constraints": [],
         "protocol_binding": {"version": "7.0.0", "digest": "sha256:" + "4" * 64}, "protocol": [],
         "spec_resolution": {"schema_version": 1, "registration": {
@@ -24,7 +24,7 @@ def _stage_context():
         "external_references": [],
         "workspace": {"kind": "unversioned", "current_worktree": "/fixture", "current_branch": None,
                       "primary_worktree": None, "primary_branch": None, "change_id": None, "phase": None,
-                      "status": None, "outcome": None, "gaps": [], "components": [], "active_worktrees": []},
+                      "status": None, "outcome": None, "blockers": [], "components": [], "active_worktrees": []},
     }
     return typed("concorde-agent-stage-context", {"snapshot": typed("concorde-context-snapshot", snapshot),
                                                   "change_id": None, "expected_artifacts": []})
@@ -59,8 +59,7 @@ class AgentNodeTests(unittest.TestCase):
         def launcher(admitted):
             seen.append(admitted)
             return {"context_id": admitted["data"]["snapshot"]["data"]["context_id"], "outcome": "completed",
-                    "answer": "Planned.", "gaps": [], "documents": [], "plan": "Do the work.", "tasks": [],
-                    "reflection_findings": []}
+                    "answer": "Planned.", "blockers": [], "documents": [], "plan": "Do the work.", "tasks": []}
         data = node.invoke(context, launcher)
         self.assertEqual("Do the work.", data["plan"])
         self.assertEqual([context], seen)

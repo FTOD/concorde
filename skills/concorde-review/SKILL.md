@@ -20,12 +20,12 @@ No positional task arguments or domain flags are accepted.
 @include prompts/workflow-host/main-may-inspect.md WORKERS="a fresh read-only reviewer"
 
 Review runs in the current worktree without creating a development change or requiring a
-Reflection. Spec review reads the complete selected Module contract; code review also reads only
+preexisting Issue. Spec review reads the complete selected Module contract; code review also reads only
 its admitted implementation files and scoped changes. Reviewers have no write, network or
 credential grants. The host persists review reports separately from reviewer authority.
 
 A managed change uses its recorded base commit for the diff; an unmanaged Git checkout uses HEAD.
 Do not claim this compares against another branch or a merge base. Report the returned review
-coverage, findings, gaps and limitations, preserving incomplete or failed outcomes. Findings do
+coverage, Issue judgments and limitations, preserving incomplete or failed outcomes. Findings do
 not authorize repairs. describe-policy previews grants without launching agents or persisting
 review results. A separate review intent cannot replace another task's required lifecycle review.

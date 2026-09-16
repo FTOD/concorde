@@ -209,7 +209,7 @@ class ModuleArchitectureTests(unittest.TestCase):
                         {"target_id": "scope.risk", "task": "Define the known authoring boundary and name missing risk rules."}],
                     "migration_constraints": [], "acceptance": ["Risk is registered and routable."]})
                 result.update(outcome="topology_proposed", answer="Risk Module proposed.",
-                              routes=[], expand_targets=[], gaps=[], topology_design=design)
+                              routes=[], expand_targets=[], blockers=[], topology_design=design)
 
             if stage == "topology-author" and snapshot["target"]["id"] == "scope.bank":
                 import re

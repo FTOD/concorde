@@ -69,7 +69,7 @@ Review SHALL return independent findings bound to its exact admitted task and cu
 
 ### scenario.development.standalone-review — Public review without a development change
 
-- GIVEN an initialized project without a managed development change or selected Reflection record
+- GIVEN an initialized project without a managed development change or preexisting Issue record
 - AND a task with review_mode spec or code and optional target/focus routing hints
 - WHEN the user invokes the public `concorde-review` Skill or its Studio entry
 - THEN a Spec-only router selects one owning Module and a separate fresh reviewer receives its complete contract and, in code mode, only its admitted implementation files and scoped changes

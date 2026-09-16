@@ -17,7 +17,7 @@ from tests.concorde.spec.support import CONFIGURATION, PACKAGE, ModelProcessDoub
 
 EXPECTED_PUBLIC = (
     "concorde-main", "concorde-dev-loop", "concorde-specify-loop",
-    "concorde-reflections-triage", "concorde-init", "concorde-configure",
+    "concorde-issues", "concorde-init", "concorde-configure",
     "concorde-validate", "concorde-deliver", "concorde-review",
 )
 
@@ -41,12 +41,12 @@ class PublicInventoryTests(unittest.TestCase):
                 assert_public_inventory(self, names)
 
 
-def invocation(capability="concorde-reflections-triage", mode="execute", data=None):
+def invocation(capability="concorde-issues", mode="execute", data=None):
     return {"type_id": "concorde-capability-invocation", "schema_version": 3,
             "capability_id": capability, "mode": mode, "configuration": None,
             "input": {"type_id": capability + "-request", "schema_version": 1, "data":
                       data if data is not None else {"target_id": "service.transfer", "task": "Explain transfer",
-                          **({"action": "status", "reflection_ids": []} if capability == "concorde-reflections-triage" else {})}}}
+                          **({"action": "list"} if capability == "concorde-issues" else {})}}}
 
 
 def stable(value):
@@ -64,7 +64,7 @@ class StudioTests(unittest.TestCase):
         project(self.root)
         self.double = ModelProcessDouble()
 
-    def graph(self, capability="concorde-reflections-triage", executor=None):
+    def graph(self, capability="concorde-issues", executor=None):
         return build_studio_graph(capability, self.root, PACKAGE,
                                   executor=executor or self.double.executor)
 
@@ -123,7 +123,8 @@ class StudioTests(unittest.TestCase):
     def test_streamed_agent_stages_use_native_executor_and_fresh_invocations(self):
         graph = self.graph("concorde-main")
         value = invocation("concorde-main", data={"task": "Explain transfer"})
-        chunks = list(graph.stream({"invocation": value}, stream_mode=["custom", "updates"]))
+        from typing import Any
+        chunks: list[Any] = list(graph.stream({"invocation": value}, stream_mode=["custom", "updates"]))
         custom = [data for mode, data in chunks if mode == "custom"]
         actual = [data["concorde-main"] for mode, data in chunks
                   if mode == "updates" and "concorde-main" in data][0]
@@ -149,13 +150,14 @@ class StudioTests(unittest.TestCase):
     def test_reused_thread_clears_results_and_rechecks_resume_workspace(self):
         graph = self.graph()
         graph.checkpointer = InMemorySaver()
-        config = {"configurable": {"thread_id": "repeat"}}
+        from langchain_core.runnables import RunnableConfig
+        config: RunnableConfig = {"configurable": {"thread_id": "repeat"}}
         first = graph.invoke({"invocation": invocation()}, config)
         rejected = graph.invoke({"invocation": {}, "expected_workspace": None}, config)
         self.assertEqual("blocked", rejected["result"]["status"])
         self.assertEqual([], rejected["events"])
         self.assertIsNone(rejected["result"]["output"])
-        graph.invoke({"invocation": invocation()}, config, interrupt_before=["concorde-reflections-triage"])
+        graph.invoke({"invocation": invocation()}, config, interrupt_before=["concorde-issues"])
         graph.update_state(config, {"expected_workspace": {"project_root": "/other", "package_root": str(PACKAGE)}})
         resumed = graph.invoke(None, config)
         self.assertEqual("workspace_mismatch", resumed["result"]["errors"][0]["code"])
@@ -209,7 +211,7 @@ class StudioTests(unittest.TestCase):
 
     def test_observer_failure_does_not_change_operation_result(self):
         value = invocation()
-        result = run_capability("concorde-reflections-triage", None, value["input"], host_context=CapabilityHost(
+        result = run_capability("concorde-issues", None, value["input"], host_context=CapabilityHost(
             self.root, PACKAGE, observer=Mock(side_effect=RuntimeError("disconnected"))))
         self.assertEqual("succeeded", result["status"])
 
@@ -254,4 +256,4 @@ class StudioTests(unittest.TestCase):
         alias = self.root / "alias"
         alias.symlink_to(self.root, target_is_directory=True)
         with self.assertRaisesRegex(Exception, "symlinks"):
-            build_studio_graph("concorde-reflections-triage", alias, PACKAGE)
+            build_studio_graph("concorde-issues", alias, PACKAGE)

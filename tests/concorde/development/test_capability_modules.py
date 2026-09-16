@@ -81,7 +81,7 @@ class CapabilityModuleContractTests(unittest.TestCase):
             "main": (),
             "specify_loop": ("specify", "review"),
             "dev_loop": ("specify_loop", "review", "plan", "tasks", "implement", "validate"),
-            "reflections_triage": ("dev_loop",),
+            "issues": ("dev_loop", "specify", "review", "validate"),
             "init": (),
             "configure": (),
             "validate": (),
@@ -142,8 +142,8 @@ class CapabilityModuleContractTests(unittest.TestCase):
 
     def test_discovery_preserves_the_existing_routing_boundary(self):
         self.assertEqual(set(DISCOVERY_CAPABILITIES), {"concorde-main", "concorde-dev-loop", "concorde-specify-loop", "concorde-review"})
-        self.assertEqual("bound", _modules()["reflections_triage"].CONTEXT_SELECTION)
-        self.assertTrue(_modules()["reflections_triage"].PUBLIC)
+        self.assertEqual("bound", _modules()["issues"].CONTEXT_SELECTION)
+        self.assertTrue(_modules()["issues"].PUBLIC)
 
     def test_only_public_capabilities_are_projected_as_skills(self):
         self.assertEqual(set(SKILL_NAMES), {module.EXTERNAL_NAME for module in _modules().values() if module.PUBLIC})
@@ -154,7 +154,7 @@ class InProcessCompositionTests(unittest.TestCase):
     """Every in-process nested dispatch the host can perform must match the declared USES graph.
 
     ``resolve_child_capability`` is the one place the host resolves a nested capability call
-    (``Invocation.loop``'s stage graph, ``reflections_triage``'s composition of ``dev_loop``, and a
+    (``Invocation.loop``'s stage graph, ``issues``'s composition of ``dev_loop``, and a
     Domain's own recursive per-component review routing). This exhaustively compares its behavior,
     for every ordered pair of capabilities, against each capability module's own declared ``USES``:
     self-recursion (fan-out across component targets, never a composition edge) always resolves;
@@ -188,14 +188,14 @@ class InProcessCompositionTests(unittest.TestCase):
             resolve_child_capability("concorde-specify", "concorde-plan")
         self.assertEqual(failure.exception.code, "undeclared_capability")
 
-    def test_declared_dev_loop_and_reflections_triage_edges_resolve(self):
+    def test_declared_dev_loop_and_issues_edges_resolve(self):
         from concorde.development.capability_host import resolve_child_capability
 
         modules = _modules()
         for child in ("specify_loop", "review", "plan", "tasks", "implement", "validate"):
             resolved = resolve_child_capability("concorde-dev-loop", modules[child].EXTERNAL_NAME)
             self.assertIs(resolved, modules[child])
-        resolved = resolve_child_capability("concorde-reflections-triage", "concorde-dev-loop")
+        resolved = resolve_child_capability("concorde-issues", "concorde-dev-loop")
         self.assertIs(resolved, modules["dev_loop"])
 
     def test_self_recursion_never_requires_a_declared_edge(self):

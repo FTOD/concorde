@@ -22,7 +22,7 @@ SKILL_NAMES = (
     "concorde-main",
     "concorde-dev-loop",
     "concorde-specify-loop",
-    "concorde-reflections-triage",
+    "concorde-issues",
     "concorde-review",
     "concorde-init",
     "concorde-configure",

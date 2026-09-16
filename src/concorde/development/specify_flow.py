@@ -34,7 +34,7 @@ def build_specify_flow(node_factory):
 def has_authored_spec(change, target_id, task):
     blocked = any(item["status"] == "open" and item["target_id"] == target_id
                   and item["task"] == task["task"] and item["phase"] == "specify"
-                  for item in change.get("gap_history", []))
+                  for item in change.get("issue_blockers", []))
     authored = change.get("authored_specs", {}).get(target_id, {})
     return bool(authored and not blocked and all(authored.get(key) == value for key, value in {
         "task": task["task"], "focus_id": task.get("focus_id"),
@@ -127,7 +127,7 @@ def specify_nodes(run):
         if state.get("result"):
             return {}
         data = state["output"]
-        return {"output": run.response(data["outcome"], data["answer"], gaps=data["gaps"],
+        return {"output": run.response(data["outcome"], data["answer"], blockers=data["blockers"],
                                         checks=data["checks"], artifacts=list(state.get("artifacts", [])))}
 
     return {"initialize": initialize, "specify": execute("specify"),

@@ -15,12 +15,12 @@ concorde-implementation-task@1. Missing tasks are missing_tasks; stale artifacts
 intent stop admission. A fresh programmer receives the complete selected
 Spec and contents of the files its own entities bind. Only those implementation paths are writable;
 registered Specs, registry, entity declarations and configuration are not. Network and credentials
-remain disabled. Optional concorde-review-result@1 is admitted only after the host verifies the
+remain disabled. Optional concorde-review-result@2 is admitted only after the host verifies the
 current dev-loop repair round; structural validity does not authorize repair.
 
 The worker returns every exact admitted task with unchanged identity and acceptance, marked complete
 only when fulfilled. Missing or incomplete tasks produce incomplete_tasks, never ready. The host
-persists accepted progress and returns artifact references in concorde-implement-response@1.
+persists accepted progress and returns artifact references in concorde-implement-response@2.
 Authorized code edits can remain after failed execution; recovery inspects preserved progress and
 re-admits current context rather than claiming rollback or rerunning with wider grants.
 

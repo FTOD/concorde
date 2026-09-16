@@ -1,50 +1,44 @@
 # Review-result interface
 
-`concorde-review-result@1` has exactly the typed envelope fields `type_id`, integer
-`schema_version: 1` (not boolean), and `data`. Its closed payload has all these required fields.
-Here `S` is a nonblank string, `N` is `S|null`, and `D` is `sha256:` plus exactly 64 lowercase
-hexadecimal digits:
+`concorde-review-result@2` has exactly the typed envelope fields `type_id`, integer
+`schema_version: 2` and `data`. The closed payload contains the fields below. `S` is a nonblank
+string, `N` is `S|null`, and `D` is `sha256:` followed by 64 lowercase hexadecimal digits.
 
 | Field | Type or allowed values |
 | --- | --- |
-| `context_id` | `D | null` |
+| `context_id` | `D` or null |
 | `input_digest` | `D` |
-| `review_mode` | `"spec" | "code"` |
-| `status` | `"no_findings" | "findings" | "incomplete" | "skipped" | "not_run"` |
+| `review_mode` | `spec` or `code` |
+| `status` | `no_findings`, `findings`, `incomplete`, `skipped` or `not_run` |
 | `representative_tasks` | unique `S[]` |
-| `findings` | `Finding[]` |
-| `gaps` | `ReviewGap[]` |
+| `issues` | `IssueJudgment[]` |
 | `answer`, `target_id` | `S` |
 | `focus_id` | `N` |
-| `revision` | closed object with `spec_digest: D`, `implementation_digest: D | null`,`baseline: N`,`head: N`, all required |
-| `semantic_completeness` | exactly `"not_proven"` |
+| `revision` | closed object with spec_digest, nullable implementation_digest, baseline and head |
+| `semantic_completeness` | exactly `not_proven` |
 
-A closed `Finding` requires `id: S`, `severity: "blocking"|"advisory"`, `target_id: S`,
-`document: S`, `contract: S`, `location`, `problem: S`, and `affected_task: S`. The closed
-`location` requires `path` (a safe project-relative path) and `line` (positive integer or null).
-A closed `ReviewGap` requires `question: S`, `blocked_step: S`, and `needed_contract: S`, with
-optional `target_id: S` and `context_id: D`. These optional wire fields do not weaken the review
-host's requirement to bind blocking gaps to the reviewed target and context. Arrays may be empty
-unless the review host's status/coverage rules require contents. Unknown fields, invalid versions,
-unsafe paths and shape mismatches raise `TypedDataError` during typed validation. String baseline
-and head fields identify revisions; the wire shape itself does not prove their freshness.
+Each closed `IssueJudgment` has `issue_id`, `report_id`, `path`, `severity: blocking|advisory` and
+`affected_task`. The first three fields are the host-issued immutable report receipt. The review
+worker must have reported or explicitly received that observation; guessed identities, foreign
+observations and duplicate Issue judgments are invalid. There is no parallel `gaps` array, no
+copied question/contract tuple and no free-text equality join. The canonical problem, evidence and
+ownership live in the Issue observation; severity is this review's judgment about its admitted task.
 
-The context service validates allowed typed stage-input values and freezes their exact bytes into
-the snapshot. Repair admission additionally belongs to Development Flow policy enforced by the common host: it binds the current
-code review and revision, admits that declared result only to `tasks`/`implementation` repair
-contexts, and removes write authority during review. A structurally valid review result alone
-neither authorizes a repair nor proves review completion, currentness or semantic completeness.
+The result's target_id identifies the reviewed Module. An Issue can identify a different known
+contract owner from that Module's admitted references. Reporting scope and definition ownership do
+not merge. Evidence locations are checked when the report is accepted; a receipt adds no source
+access. Reviewers never copy raw code, patches or logs into reports. A typed result is not proof
+of completion or freshness: the host also checks coverage, bound identities, source/configuration
+bytes and actual worker completion. Old version-1 results are rejected rather than silently reused.
 
-The result's `target_id` identifies the selected Module whose task was reviewed. Each finding's
-`target_id` identifies the sole owner of its contract definition, which may be a referenced
-provider. `document` must be in the selected context; `affected_task` and gaps retain the
-consumer's blocked step and snapshot. Repairing the provider definition requires its owner's
-separate authoring boundary. A gap's `needed_contract` identifies that definition/owner when known;
-capture never transfers ownership. The existing version-1 payload shape is retained, but acceptance
-and freshness must use Protocol 7 document-unit ownership/reference semantics under a version-3 context wrapper;
-old review evidence cannot be reused across the Protocol binding change.
+Blocking judgments derive task-local blocker references with `blocked_step=affected_task`. Missing
+or conflicting necessary contracts can stop for Spec repair; implementation defects can enter the
+existing bounded code-repair edge. Reporting an advisory Issue does not stop the review or its
+caller. An interrupted review remains incomplete even when its already acknowledged reports survive.
 
-This record is an output of Review and an input to Harness repair admission. It has
-no independent mutation effect. Invalid shapes fail typed admission; stale identity or an
-inadmissible repair stops the affected transition without retrying under wider permissions.
-An unchanged valid result is idempotent metadata, not a command to replay a repair. The retained wire shape now uses owner-aware admission and complete context freshness checks.
+For admitted tasks/implementation repair, Harness freezes the exact review result together with a
+`concorde-issue-context` containing only the selected observations' contract-level description,
+impact and basis. It does not expose the rest of the Issue store or a prior conversation. Disposition
+changes cannot rewrite the observation a review judged, and closing an Issue does not make a stale
+review current. Required review gates still bind the reviewed Spec/code inputs and independent
+completion evidence, not a problem's open/closed flag.

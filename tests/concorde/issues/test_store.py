@@ -120,6 +120,20 @@ class IssueStoreTests(unittest.TestCase):
                       evidence=["comparison"], actor="solve", duplicate_of=first["issue_id"])
         self.assertEqual(first["issue_id"], read_issue(self.root, identifier)[0]["dispositions"][-1]["duplicate_of"])
 
+    @verifies("scenario.issues.store-disposition")
+    def test_duplicate_target_revision_is_checked_inside_the_transaction(self):
+        first = report_issue(self.root, report(), source())
+        second = report_issue(self.root, report(), source(invocation_id="second"))
+        _, first_revision = read_issue(self.root, first["issue_id"])
+        _, second_revision = read_issue(self.root, second["issue_id"])
+        report_issue(self.root, report(report_key="new-evidence", issue_id=first["issue_id"],
+                     expected_revision=first_revision), source(invocation_id="update"))
+        with self.assertRaisesRegex(SpecError, "duplicate target changed"):
+            dispose_issue(self.root, second["issue_id"], second_revision, reason="duplicate",
+                          note="Earlier comparison", evidence=["comparison"], actor="solve",
+                          duplicate_of=first["issue_id"], duplicate_revision=first_revision)
+        self.assertEqual("open", read_issue(self.root, second["issue_id"])[0]["status"])
+
     @verifies("scenario.issues.store-boundary")
     def test_invalid_reports_and_symlinks_never_write_an_issue(self):
         for changes in ({"type": "bug"}, {"subtype": None}, {"type": "todo"}, {"title": " "},

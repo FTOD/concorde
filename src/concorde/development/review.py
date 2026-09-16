@@ -102,6 +102,9 @@ def inputs(run, mode: str) -> tuple[dict, SkillPrompt]:
             "src/concorde/development/discovery_flow.py", "src/concorde/development/target_flow.py",
             "src/concorde/development/coordination_flow.py", "src/concorde/development/loop_flow.py",
             "src/concorde/development/specify_flow.py",
+            "src/concorde/issues/reporting.py", "src/concorde/issues/references.py",
+            "src/concorde/issues/store.py", "src/concorde/spec/issue_shapes.py",
+            "src/concorde/harness/change_worktree.py",
             "src/concorde/harness/worker_executor.py", "src/concorde/harness/pi_worker.py",
             "src/concorde/harness/permissions.py", "src/concorde/harness/context.py",
             "src/concorde/harness/batch_flow.py")},
@@ -112,7 +115,7 @@ def inputs(run, mode: str) -> tuple[dict, SkillPrompt]:
 def _empty(run, info, status, answer) -> dict:
     return typed("concorde-review-result", {"context_id": None, "input_digest": info["input_digest"],
         "review_mode": info["review_mode"], "status": status, "representative_tasks": [],
-        "findings": [], "gaps": [], "answer": answer, "target_id": run.target.id,
+        "issues": [], "answer": answer, "target_id": run.target.id,
         "focus_id": run.task.get("focus_id"), "revision": info["revision"],
         "semantic_completeness": "not_proven"})
 
@@ -155,40 +158,21 @@ def _validate(run, snapshot, info, data):
     if (data["context_id"] != snapshot.id or data["input_digest"] != info["input_digest"]
             or data["review_mode"] != info["review_mode"]):
         raise SpecError("review identities differ from admitted input", "incompatible_handoff")
-    findings, gaps = data["findings"], data["gaps"]
+    findings = data["issues"]
     if not data["answer"].strip() or any(not task.strip() for task in data["representative_tasks"]):
         raise SpecError("review answer and covered tasks must be meaningful nonblank text", "invalid_completion")
-    if len({finding["id"] for finding in findings}) != len(findings):
+    if len({finding["issue_id"] for finding in findings}) != len(findings):
         raise SpecError("review finding IDs must be unique", "invalid_completion")
-    if data["status"] == "no_findings" and (findings or gaps):
+    if data["status"] == "no_findings" and findings:
         raise SpecError("no_findings review cannot contain findings or gaps", "invalid_completion")
-    if data["status"] == "findings" and not (findings or gaps):
+    if data["status"] == "findings" and not findings:
         raise SpecError("findings review requires concrete findings or gaps", "invalid_completion")
     if data["status"] != "incomplete" and not data["representative_tasks"]:
         raise SpecError("completed review requires representative task coverage", "invalid_completion")
-    spec_paths = set(run.repository.spec_files(run.target.id))
-    allowed = set(spec_paths)
-    if info["review_mode"] == "code":
-        allowed.update(run.repository.implementation_files(run.target))
-        allowed.update(item["path"] for item in info["changes"])
-    for finding in findings:
-        if any(not finding[key].strip() for key in ("id", "contract", "problem", "affected_task")):
-            raise SpecError("review findings require nonblank evidence and an affected task", "invalid_completion")
-        if (finding["document"] not in spec_paths
-                or finding["target_id"] != run.repository.document(finding["document"]).owner
-                or finding["location"]["path"] not in allowed):
-            raise SpecError("review finding crosses target authority", "permission_denied")
-        if (info["review_mode"] == "spec" and finding["severity"] == "blocking"
-                and not any(gap["blocked_step"] == finding["affected_task"]
-                            and gap["needed_contract"] == finding["contract"] for gap in gaps)):
-            raise SpecError("blocking Spec finding requires its concrete gap", "invalid_completion")
-    for gap in gaps:
-        if any(not gap[key].strip() for key in ("question", "blocked_step", "needed_contract")):
-            raise SpecError("review gaps require a concrete question, step and contract", "invalid_completion")
-        if (gap.get("target_id", run.target.id) != run.target.id
-                or gap.get("context_id", snapshot.id) != snapshot.id):
-            raise SpecError("review gap provenance differs from context", "incompatible_handoff")
-        gap.update(target_id=run.target.id, context_id=snapshot.id)
+    # Report admission validates evidence locations and contract owners. The result references
+    # those immutable observations instead of duplicating their text in findings and gaps.
+    if any(not finding["affected_task"].strip() for finding in findings):
+        raise SpecError("review Issue requires an affected task", "invalid_completion")
 
 
 def review(run, mode: str) -> dict:
@@ -208,7 +192,7 @@ def review(run, mode: str) -> dict:
     if pending and run.host.track_gaps:
         value = _empty(run, info, "not_run", "Repair the recorded necessary contracts before resuming review.")
         reference = _persist(run, value)
-        return run.response("spec_incomplete", value["data"]["answer"], gaps=pending,
+        return run.response("spec_incomplete", value["data"]["answer"], blockers=pending,
                             artifacts=[reference], reviews=[value])
     result = None
     try:
@@ -277,48 +261,45 @@ def review(run, mode: str) -> dict:
                 "focus_id": run.task.get("focus_id"), "revision": info["revision"],
                 "semantic_completeness": "not_proven"})
             reference = _persist(run, reviewed, execution=result.usage)
-            if (data["status"] != "incomplete" and (data["gaps"]
-                    or not any(f["severity"] == "blocking" for f in data["findings"]))):
-                run.record_gaps(phase, data["gaps"], review_input_digest=info["input_digest"])
+            from ..issues.references import review_blockers, requires_contract_repair
+            blockers = review_blockers(data["issues"])
+            if data["status"] != "incomplete":
+                run.record_gaps(phase, blockers, review_input_digest=info["input_digest"])
             run.host.evidence.append(result)
             run.completed.append("concorde-review")
             outcome = ("failed" if data["status"] == "incomplete" else
-                       "spec_incomplete" if data["gaps"] else
-                       "conflicting" if any(f["severity"] == "blocking" for f in data["findings"]) else "completed")
-            return run.response(outcome, data["answer"], gaps=data["gaps"], artifacts=[reference], reviews=[reviewed])
+                       "spec_incomplete" if requires_contract_repair(run.repository.root, blockers) else
+                       "conflicting" if blockers else "completed")
+            return run.response(outcome, data["answer"], blockers=blockers, artifacts=[reference], reviews=[reviewed])
     except Exception as error:
         if run.host.mode != "execute":
-            # A failed preview has no execution or persistence authority.
-            raise
-        # Failures remain failures even when the model supplied no findings.
-        if isinstance(error, CapabilityExecutionError):
-            code = error.code or ("execution_cancelled" if error.outcome == "cancelled" else
-                   "execution_limit" if error.outcome == "limit_exhausted" else "execution_failed")
-            lifecycle_status = ("cancelled" if error.outcome == "cancelled" else
-                                "limit_exhausted" if error.outcome == "limit_exhausted" else "failed")
-            run.host.lifecycle["status"] = lifecycle_status
-            if lifecycle_status in {"cancelled", "limit_exhausted"}:
-                run.host.lifecycle["execution_error"] = code
-            # concorde-review is never mutation-classified (record_progress excludes it), so a
-            # standalone review's own executor failure would otherwise leave the change status
-            # untouched; a cancelled/limit-exhausted executor outcome is host bookkeeping, not a
-            # content judgment a read-only query should withhold.
-            try:
-                progress(run.repository.root, status=lifecycle_status)
-            except (ValueError, OSError) as persistence_error:
-                # The interruption evidence and the failed Review result still stand; the
-                # enclosing capability reports the lost status write beside them.
-                run.host.lifecycle["persistence_error"] = (
-                    f"Could not persist reviewer execution status: {persistence_error}")
-        else:
-            code = error.code if isinstance(error, (SpecError, ContractError)) else "execution_failed"
-        reviewed = _empty(run, info, "incomplete", f"Review could not complete ({code}).")
-        failure = {"code": code, "message": str(error)}
-        if run.host.lifecycle.get("persistence_error"):
-            failure["persistence"] = run.host.lifecycle["persistence_error"]
-        usage = result.usage if isinstance(result, WorkerOutcome) else getattr(error, "usage", None)
-        reference = _persist(run, reviewed, execution=usage, failure=failure)
-        return run.response("failed", reviewed["data"]["answer"], artifacts=[reference], reviews=[reviewed])
+            raise  # A preview has no persistence authority.
+        return _failed_review(run, info, result, error)
+
+
+def _failed_review(run, info, result, error):
+    """Preserve execution failure without retracting already acknowledged Issue observations."""
+    if isinstance(error, CapabilityExecutionError):
+        code = error.code or ("execution_cancelled" if error.outcome == "cancelled" else
+               "execution_limit" if error.outcome == "limit_exhausted" else "execution_failed")
+        lifecycle_status = ("cancelled" if error.outcome == "cancelled" else
+                            "limit_exhausted" if error.outcome == "limit_exhausted" else "failed")
+        run.host.lifecycle["status"] = lifecycle_status
+        if lifecycle_status in {"cancelled", "limit_exhausted"}:
+            run.host.lifecycle["execution_error"] = code
+        try:
+            progress(run.repository.root, status=lifecycle_status)
+        except (ValueError, OSError) as persistence_error:
+            run.host.lifecycle["persistence_error"] = f"Could not persist reviewer execution status: {persistence_error}"
+    else:
+        code = error.code if isinstance(error, (SpecError, ContractError)) else "execution_failed"
+    reviewed = _empty(run, info, "incomplete", f"Review could not complete ({code}).")
+    failure = {"code": code, "message": str(error)}
+    if run.host.lifecycle.get("persistence_error"):
+        failure["persistence"] = run.host.lifecycle["persistence_error"]
+    usage = result.usage if isinstance(result, WorkerOutcome) else getattr(error, "usage", None)
+    reference = _persist(run, reviewed, execution=usage, failure=failure)
+    return run.response("failed", reviewed["data"]["answer"], artifacts=[reference], reviews=[reviewed])
 
 
 def spec_consumers(run) -> set[str]:
@@ -499,7 +480,7 @@ def review_scope(run, mode: str) -> dict:
             state.setdefault("shared_implementation_reviews", {})[run.target.id] = records
             save_change(run.repository.root, state)
     return run.response(outcome, "\n\n".join(output["answer"] for output in outputs),
-        gaps=[gap for output in outputs for gap in output["gaps"]],
+        blockers=[gap for output in outputs for gap in output["blockers"]],
         artifacts=[ref for output in outputs for ref in output["artifacts"]],
         reviews=[value for output in outputs for value in output["reviews"]])
 
@@ -518,6 +499,10 @@ def _current_artifact(run, mode: str, reference: dict) -> dict | None:
         value = validate_typed(json.loads(read_file(run.repository.root, reference["path"])),
                                "concorde-review-result")
         data = value["data"]
+        from ..issues.references import receipt
+        from ..issues.store import resolve_report
+        for judgment in data["issues"]:
+            resolve_report(run.repository.root, receipt(judgment))
         if (data["input_digest"] != inputs(run, mode)[0]["input_digest"]
                 or data["target_id"] != run.target.id or data["review_mode"] != mode
                 or data["focus_id"] != run.task.get("focus_id") or not data["context_id"]
@@ -525,7 +510,7 @@ def _current_artifact(run, mode: str, reference: dict) -> dict | None:
                 or not data["representative_tasks"]
                 or any(not task.strip() for task in data["representative_tasks"])
                 or not data["answer"].strip()
-                or data["gaps"] or any(f["severity"] == "blocking" for f in data["findings"])):
+                or any(f["severity"] == "blocking" for f in data["issues"])):
             return None
         # Cached evidence must pass the same attributed prerequisite admission as a
         # fresh reviewer, including authoring gaps recorded after this artifact.
@@ -605,10 +590,14 @@ def _code_peer_artifacts(run, state: dict) -> list[dict] | None:
             verify_artifacts(run.repository.root, record["artifact"])
             value = validate_typed(json.loads(read_file(run.repository.root,
                 record["artifact"]["path"]).decode()), "concorde-review-result")["data"]
+            from ..issues.references import receipt
+            from ..issues.store import resolve_report
+            for judgment in value["issues"]:
+                resolve_report(run.repository.root, receipt(judgment))
             valid = (value["target_id"] == target.id and value["review_mode"] == "code"
                 and value["input_digest"] == inputs(reviewer, "code")[0]["input_digest"]
-                and value["status"] in {"no_findings", "findings"} and not value["gaps"]
-                and not any(item["severity"] == "blocking" for item in value["findings"]))
+                and value["status"] in {"no_findings", "findings"}
+                and not any(item["severity"] == "blocking" for item in value["issues"]))
         except (ValueError, OSError, KeyError):
             valid = False
         if not valid:

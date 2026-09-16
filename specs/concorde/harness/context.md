@@ -11,7 +11,7 @@ implementation context; this Module realizes those definitions and adds the two 
 | Spec context | The selected Module's complete resolved document-unit context (reading plus metadata), exactly the Protocol's `Context(M)`; a scenario focus changes the question, not the membership. The Protocol fixes only this visible set; the Framework delivers it as a context index and grant: the snapshot lists every document with identity, owner, digest, inclusion reasons and the reading entry, and the documents are granted read-only at their project-relative paths, byte-identical copies in a capsule. No document body is embedded. | Every Module-bound invocation. |
 | Implementation context | The Protocol's `ImplementationContext(M)`: the listing entries the selected Module's own entities declare, exact files and directory prefixes alike, and the files those entries currently bind. Every phase can see the declared entries and bound file names with their owning entity and pending status; only code-writing and code-review phases receive file contents, in their declared subsets. | Entries and file names: every phase. File contents: code-writing and code-review phases only. |
 | Capability context | The contracts of the Capabilities and Tools the invocation may use, as admitted by its Harness and constraints, together with the Module's Protocol-defined external references: the vendored documentation and source it declares with `references` of kind `external`, one tree digest per entry. Descriptions given to the model and bindings accepted by the executor resolve to the same contracts. | Reference entries and digests: every phase. Reference contents, read-only: the modes that declare the `references` effect (plan, tasks, implementation, code-review). Capability and Tool contracts: none admitted by any current Agent. |
-| Task context | The task and constraints, the stage artifacts admitted for this phase, such as a plan, implementation tasks, a review result or a reflection selection, and the frozen workspace lifecycle metadata. Task context travels inline in the invocation input, including the review host's typed changes. | Every invocation; stage artifacts are optional. |
+| Task context | The task and constraints, the stage artifacts admitted for this phase, such as a plan, implementation tasks, a review result or an Issue selection, and the frozen workspace lifecycle metadata. Task context travels inline in the invocation input, including the review host's typed changes. | Every invocation; stage artifacts are optional. |
 
 A kind may be empty for a phase, but the frozen closure is never empty. Agent instructions, the
 Protocol rule bundle and installed Skills are not context: instructions belong to the Agent
@@ -22,7 +22,7 @@ a public Capability. The snapshot identity covers every admitted byte of every k
 
 `resolve_context` freezes one Module's Spec context with its task context, its external
 references, and, for code phases, its implementation context, into a private
-`concorde-context-snapshot@5`. `resolve_discovery_context`
+`concorde-context-snapshot@6`. `resolve_discovery_context`
 freezes several explicitly selected complete Spec contexts for the global coordinator.
 `recheck_context` and `recheck_discovery_context` reject reuse after any admitted input changed.
 The sections below define the exact inputs, records, phases and errors.
@@ -65,10 +65,10 @@ trusted-host frozen observation, not a caller task field or replacement authorit
 
 `ContextSnapshot(serialized: str)` is frozen; `.serialized` is canonical JSON, `.value` decodes a
 new dictionary and `.id` returns its `context_id`. The dictionary is the data of the private
-`concorde-context-snapshot@5` TypedValue; wrapping it adds the ordinary
-`{type_id, schema_version: 5, data}` envelope. Its exact fields are:
+`concorde-context-snapshot@6` TypedValue; wrapping it adds the ordinary
+`{type_id, schema_version: 6, data}` envelope. Its exact fields are:
 
-- `schema_version: 5`, `context_id: sha256`, `target_id: str`, `kind: module`,
+- `schema_version: 6`, `context_id: sha256`, `target_id: str`, `kind: module`,
   `focus_id: str|null` (a scenario ID when present), `phase: str`, `task: str`,
   `constraints: list[str]` and `instructions: str`.
 - `protocol_binding: {version: str, digest: sha256}` and
@@ -144,25 +144,25 @@ reviewer still reads the complete documents and files, not only the changed line
 Ordinary `stage_inputs` are version-1 TypedValues with these payloads:
 `concorde-plan-artifact` has `plan: nonblank str`; `concorde-implementation-task` has that same
 `plan` and `tasks: list[{id, target_id, description, acceptance, complete}]`, with nonblank strings
-and a boolean `complete`; `concorde-reflection-selection` has `head: nonblank str` and
-`records: list[{id: str, path, digest: sha256, content: str}]`, with nonblank string fields.
+and a boolean `complete`. `concorde-issue-selection` binds a selected problem, revision and bounded
+progress for the Issue solver. `concorde-issue-intent` supplies only intended behavior to ordinary stages.
 `concorde-task-scope-feedback` has `tasks_digest: sha256` and `reason: "implementation_boundary"`; only task authoring admits it with prior tasks and the plan. It carries no implementation contents or raw check logs.
 `concorde-task-identity-constraints` has `reserved_task_ids: list[nonblank str]`, unique and possibly
 empty. Only task authoring admits it and requires it alongside the plan. The common host supplies all
 retained historical IDs and the current list for repair; the IDs reserve identity without adding
 software obligations or code contents. The snapshot digest covers this input like every stage artifact.
 These records are closed objects. A stage input conveys only its declared content, not authority.
-Only `tasks` and `implementation` additionally admit `concorde-review-result@1`, carrying a typed
+Only `tasks` and `implementation` additionally admit `concorde-review-result@2`, carrying a typed
 review's target/focus, context/input identities, spec/code mode, status, representative tasks,
-findings, gaps, answer, revision and `semantic_completeness: "not_proven"`. Findings have ID,
-blocking/advisory severity, owning target/document, path and nullable line location, contract,
-problem and affected task. Revisions bind Spec/implementation digests and nullable base/head commits.
+Issue judgments, answer, revision and `semantic_completeness: "not_proven"`. A judgment carries
+immutable receipt fields, blocking/advisory severity and affected_task. The host admits only the
+selected observation descriptions through concorde-issue-context, not the whole Issue history. Revisions bind Spec/implementation digests and nullable base/head commits.
 This service enforces the declared type and phase; the common host enforces Development Flow policy and independently verifies
 current, target-bound code-review repair evidence and the bounded repair policy before supplying
 it. This addition preserves the existing review-driven repair edge without granting raw code reads.
 
 The private snapshots also carry declared `workspace` lifecycle metadata: current and
-primary worktree identities/branches, current change phase/status/outcome, its reported gaps and
+primary worktree identities/branches, current change phase/status/outcome, its task-scoped Issue blocker references and
 component progress, and basic information about live linked worktrees. This contains no target plan,
 implementation body or hidden Spec document. Paths and task summaries identify candidate work, not
 permission to read another worktree. A secondary context is explicitly a candidate revision.
@@ -174,8 +174,9 @@ so a committed-base handoff can recheck the same admitted Spec and design inputs
 
 That closed record has `kind: primary|change|unversioned`, `current_worktree: str`, nullable string
 `current_branch`, `primary_worktree`, `primary_branch`, `change_id`, `phase`, `status` and `outcome`,
-plus arrays `gaps`, `components` and `active_worktrees`. A gap has nonblank `question`, `blocked_step`
-and `needed_contract`, and optional `target_id` and sha256 `context_id`. A component has nonblank
+plus arrays `blockers`, `components` and `active_worktrees`. A blocker has receipt fields
+issue_id/report_id/path and blocked_step. Bound contexts select their accepted Module work scope;
+unrelated task scopes and other Modules are not injected. A component has nonblank
 `target_id`, `spec_status`, `implementation_status` and nullable `outcome`. Each active-worktree
 summary has `path: str`, nullable `branch`, `head`, `change_id`, `target_id`, `phase` and `outcome`,
 booleans `managed` and `locked`, `task: str` (possibly empty) and nonblank `status`.
@@ -201,7 +202,7 @@ outer user sessions only. An installation update refreshes the copy but leaves t
 unchanged, and resolution rejects `protocol_mismatch` until the developer explicitly accepts the
 installed version through `concorde-configure` with `accept_protocol`. Changed bindings require new contexts.
 Stage inputs must be versioned plan, implementation-task, task-identity-constraints,
-task-scope-feedback, reflection-selection or review-result
+task-scope-feedback, issue-selection, issue-intent, issue-context or review-result
 values (the last only accompanies a bounded dev-loop code-review repair round: see
 `concorde-dev-loop` in the Development Flow contract). Code bytes
 are not embedded in a snapshot; implementation and the dedicated read-only code-review phase have
@@ -232,7 +233,7 @@ document ID, owner or registered references change through topology reconciliati
 Context solving is a separate fresh spec-engineer context-solve mode, run directly by the
 `concorde-context-solve` capability or as `concorde-plan`'s preliminary sufficiency check. It returns
 sufficient, spec_incomplete, unsupported, conflicting or failed. A gap
-must name question, blocked_step and needed_contract. It cannot fetch missing context. Known missing
+is reported once as an Issue; a dependent step references its receipt and names blocked_step. It cannot fetch missing context. Known missing
 runtime fields fail admission; semantic incompleteness is task-specific, never universally proven.
 Before launching that assessor for a Module, the host deterministically compares the selected
 Module's dependency entries with its registry relationships. A missing direct entry returns a
@@ -286,7 +287,7 @@ in characters. The example’s target ID illustrates a separately registered con
 All task roles use the same necessary-contract gap rule. Explanation, planning, tasks and
 implementation pause only dependent judgments when a required contract is missing or ambiguous;
 independent reasoning may continue. Development gaps retain target, task, phase and Spec revision
-until repair and a successful fresh assessment of that step. Pure queries do not create Reflections.
+until repair and a successful fresh assessment of that step. An explicit worker report may create an Issue without granting Spec/code write authority; context resolution itself remains read-only.
 
 ### Review-result stage-input value
 
@@ -320,7 +321,7 @@ phases/actions, invalid selections, unavailable required files and inconsistent 
 resolution; no partial context is returned. Hints do not themselves add a Module's documents.
 
 DiscoveryContext has serialized, value and id accessors like ContextSnapshot. Its canonical
-concorde-discovery-context@4 payload contains context_id, schema_version, capability, phase,
+concorde-discovery-context@5 payload contains context_id, schema_version, capability, phase,
 action, task, constraints, target_hint, focus_hint, protocol_binding, protocol, topology,
 targets, documents, instructions and workspace. Topology is the exact registry
 only for design-topology; otherwise it is null.
@@ -351,9 +352,9 @@ export. Missing assets prevent construction; digest mismatches report protocol_m
 
 Mode admission precedes launch: the instruction digest identifies common responsibilities plus one
 selected task mode. Stage artifact types are restricted by that mode; Spec and code reviews admit
-no author stage_inputs. Programmer investigation receives code read-only and only the selected
-reflection artifact, while implementation receives the implementation task and optional review
-feedback. Neither mode inherits conversation or private reasoning.
+no author stage_inputs. The Issue solver receives a selected problem and bounded host feedback with Spec-only authority.
+Implementation receives its tasks and optional admitted review/Issue context. No phase inherits
+conversation, private reasoning or another Module's implementation.
 
 The optional host-only Mode argument to resolve_context rejects incompatible phases and artifact
 types before resolving implementation digests. It permits missing prerequisites only for policy

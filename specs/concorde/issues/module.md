@@ -1,0 +1,144 @@
+# Issues
+
+## Purpose
+
+Issues retains classified project problems independently of tasks, reviews and repair attempts.
+Workers report bugs, contract gaps and limitations while performing their own bounded work. The
+reporter decides how a problem affects that work; storing an observation does not stop a worker,
+authorize a repair or decide another Module's behavior. Developers can inspect or solve a selected
+Issue, and authorized solving decisions need human input only when the available contracts and
+evidence cannot settle a necessary choice.
+
+## Usage
+
+Workers use `report_issue` during any admitted invocation, including a Spec-only query or review.
+The host returns an immutable receipt and the current record revision before the worker continues.
+A final stage blocker or review judgment references that receipt instead of repeating the problem.
+A reviewer can collect all independently assessable findings before finishing; an implementer can
+repair or work around a problem only within the current task and its existing authority.
+
+Use `concorde-issues` with `action=list|show|report|reopen|solve`. Listing and showing records are
+read-only. Reporting is bookkeeping without a managed change requirement. Solve selects one Issue,
+uses ordinary development and optional verification or Spec repair, and ends at a verified ready
+candidate, a bounded stop or a precise need for a developer decision. It never delivers or merges.
+See [the public interface](interfaces.md), [records and reporting](issues.md) and
+[the solving lifecycle](lifecycle.md) for fields, effects and error behavior.
+
+Records under `.concorde/issues/` travel through Git with the branch. Closing an Issue in a candidate
+is not a claim about primary. Closed records remain available. Old Reflections are archived
+historical material, not active Issues; no old report is silently classified or approved.
+
+## Design
+
+<a id="entity.issues.runtime"></a>
+
+The Issue runtime validates report references, coordinates the solving graph and separates durable
+problem content from task-local blocker relations. Its file transactions are host-only and use
+exact-byte checks. Individual reports are immutable; a later observation can refine classification
+without erasing the report that a review actually considered. Report IDs are never joined by
+free-text equality. Candidate blocker records identify a change, Module, phase and Issue, not a
+mutable task description. Reassessment can release a dependency without closing the Issue.
+
+<a id="entity.issues.solver"></a>
+
+The Issue solver is a fresh Spec-only decision worker, invoked only when solve is requested. It
+selects intended development, bounded Spec repair, Issue-specific review or a reasoned disposition.
+It does not perform intake classification or implementation. Only its intended behavior becomes
+an input to ordinary development; code evidence, old logs and previous conversations are excluded
+from Spec authoring. Decisions bind the selected record revision and current input identities.
+
+<a id="entity.issues.langgraph"></a>
+
+LangGraph compiles the declared `issue_flow` nodes and routes before execution. The host retains
+attempt counts before model calls, current intended behavior and evidence in candidate bookkeeping.
+No autonomous nested repair escapes the selected goal or the declared iteration limit.
+
+## Relationships
+
+This view shows the selected Issue's collaborators, not the inventory of the repaired Module. Each
+provider runs under its own contract and context. Using a provider does not acquire its files or
+allow the Issue solver to edit a Spec or implementation directly.
+
+```mermaid
+flowchart TB
+    accTitle: Issue reporting and solving
+    accDescr: The runtime stores classified observations, binds a solver decision and uses ordinary development, Spec repair, review and validation without automatic delivery.
+    runtime["Issue runtime"]
+    store["Issue store"]
+    solver["Issue solver"]
+    development["Development"]
+    spec["Spec"]
+    loop["Development Flow"]
+    author["Spec Authoring"]
+    review["Review"]
+    validation["Validation"]
+    langgraph["LangGraph"]
+    runtime -->|persists observations through| store
+    runtime -->|requests bounded decisions from| solver
+    runtime -->|admits workers through| development
+    runtime -->|resolves attribution with| spec
+    runtime -->|implements intended behavior through| loop
+    runtime -->|repairs necessary contracts through| author
+    runtime -->|checks the selected problem through| review
+    runtime -->|verifies final candidate bytes through| validation
+    runtime -->|executes declared transitions with| langgraph
+```
+
+## Collaborations
+
+<a id="entity.issues.development"></a>
+
+Development owns typed admission, phase results and candidate progress. Issue operations use its
+[execution boundary](../development/interfaces.md#capability-execution-boundary), preserving its
+configuration, context, permission and failure distinctions. Reporting is a separate limited host
+effect, never worker filesystem write authority or permission to advance a failed stage.
+
+<a id="entity.issues.spec"></a>
+
+Spec resolves Module/scenario ownership and validates paired contracts. Issue attribution uses the
+[current registered context](../spec/registry.md#stable-id-spec-context-queries), not a path guess.
+Included definitions retain their owner; unknown ownership remains null. Historical report owners
+need not remain in a later registry. Invalid current target selections stop solving.
+
+<a id="entity.issues.dev-loop"></a>
+
+Development Flow supplies [ordinary development](../dev-loop/development.md) for the selected goal.
+The Issue runtime preserves the goal, constraints, file boundaries, required checks and independent
+reviews. A blocked child yields a new bounded decision rather than automatic delivery or wider access.
+
+<a id="entity.issues.spec-authoring"></a>
+
+Spec Authoring supplies [owner-only contract changes](../spec-authoring/authoring.md) when an
+admitted decision can settle a required contract. The author receives intended behavior, not code
+investigation. Missing product choices remain explicit; shared changes retain consumer checks.
+
+<a id="entity.issues.review"></a>
+
+Review supplies [fresh read-only assessments](../review/review.md). Issue-specific verification
+checks the selected problem, not just unrelated passing tests. Failed, incomplete or stale reviews
+cannot justify resolved disposition. Canonical report references retain their exact observations.
+
+<a id="entity.issues.validation"></a>
+
+Validation supplies [candidate checks](../validation/validation.md). The disposition is written
+before final validation so ready evidence includes those bytes. A failed final validation restores
+only the runtime's own unchanged disposition write, preserves other work and leaves the Issue open.
+If concurrent edits prevent restoration, the host reports the conflict rather than overwriting them.
+
+## Requirements
+
+### req.issues.report-control — Reporting does not control execution
+
+Accepting an Issue report SHALL NOT itself stop a worker, start repair or change task completion.
+
+### req.issues.scope — Issue routing preserves authority
+
+Selecting or reporting an Issue SHALL NOT widen the selected worker's Spec, implementation or command grant.
+
+### req.issues.retention — Closing preserves observations
+
+Issue disposition SHALL preserve the record and every original observation.
+
+### req.issues.ready-boundary — Solving stops before delivery
+
+A successful solving flow SHALL stop at ready without delivery or primary merge.

@@ -28,8 +28,8 @@ to work within as the software evolves.
 
 The framework brings together a Spec docsite, an Understand Anything graph view, LangGraph Studio
 support for observing agent execution, explicit agent context and permissions, and a small set of
-built-in agents for specification and development. A reflection system retains feedback and Spec
-gaps so they can be investigated and carried into future improvements.
+built-in agents for specification and development. Branch-local Issues retain bugs, contract gaps
+and limitations reported during work, independently of whether a task continues or stops.
 
 ## Why Concorde
 
@@ -73,21 +73,28 @@ Concorde defines twelve Pi workers, one per lifecycle role: **answerer**, **rout
 **topology-designer** for questions, routing and topology design; **spec-author**,
 **topology-author**, **spec-reviewer**, **context-assessor**, **planner** and **task-author** for
 authoring, reviewing, planning and task definition; and **programmer**, **code-reviewer** and
-**investigator** for implementation, code review and investigation. Each worker is one Pi coding
+**issue-solver** for implementation, code review and bounded Issue resolution. Each worker is one Pi coding
 agent process (`pi --mode rpc`) run for exactly one invocation. Public Skills compose them into
 workflows with explicit context and permissions for each invocation.
 
 ### 5. Turn feedback into tracked improvements
 
-The **[reflection system](specs/concorde/reflections/module.md)** keeps project feedback and
-persistent Spec gaps as records attributed to a Module or scenario. Use
-`concorde-reflections-triage` to inspect the queue, capture selected gaps, investigate problems and
-turn an approved resolution into a fresh development task.
+The **[Issue system](specs/concorde/issues/module.md)** keeps classified problems in Git-versioned
+`.concorde/issues/` records. Workers use `report_issue` during their own flows; a successful report
+is saved immediately and does not stop the worker or authorize a repair. Review judgments and
+stage blockers reference the original observations instead of copying their prose.
 
-Each record retains the observation, evidence, investigation and developer comments, so the
-problem remains available across sessions. Investigation uses the responsible Module's context
-and authorized files. Developers explicitly decide whether to resolve or dismiss a report;
-finishing a repair does not automatically close it.
+Use `concorde-issues` to list, show, report, reopen or solve an explicitly selected Issue. Solve can
+use ordinary development, a fresh Spec repair or Issue-specific review without a mandatory triage
+pass. It makes evidence-grounded dispositions autonomously and asks for human input only when a
+necessary choice cannot be settled. A successful solve includes the disposition in final candidate
+verification and stops at ready, never at automatic delivery or primary merge. Closed records stay
+available, and a candidate-local solution says nothing about another branch.
+
+Legacy Reflections are not automatically converted or approved. This checkout's records are in
+`.concorde/archive/reflections/`. Consumer projects can explicitly preserve their old queue with
+`python3 .concorde/framework/scripts/issues.py archive-reflections`; installation preserves old user
+data. Removed investigator model overrides must be updated explicitly to the issue-solver role.
 
 ## A development workflow using these foundations
 
@@ -344,7 +351,7 @@ Read the [Protocol](protocol/README.md), start from the
 | Write or revise a Spec and review it before implementation | `concorde-specify-loop` |
 | Take a change through specification, implementation and checks | `concorde-dev-loop` |
 | Review a Spec or diagnose code in a fresh read-only invocation | `concorde-review` |
-| Track feedback and Spec gaps, investigate problems and act on approved resolutions | `concorde-reflections-triage` |
+| Report, inspect or solve classified Issues without mandatory triage | `concorde-issues` |
 | Initialize or configure a project | `concorde-init` · `concorde-configure` |
 | Validate a candidate or deliver a verified change | `concorde-validate` · `concorde-deliver` |
 
@@ -373,7 +380,7 @@ those capabilities from the developer's agent client.
 | `task-author` | tasks | Derive implementation acceptance tasks from the accepted plan; no source contents or writes. |
 | `programmer` | implementation | Implement tasks; may write only the selected Module's listed implementation files. |
 | `code-reviewer` | code-review | Independent code review findings; authorized code read-only. |
-| `investigator` | implementation (reflection) | Investigate a reflection selection; authorized code read-only. |
+| `issue-solver` | issue-solve | Select bounded work or an evidence-grounded disposition from a selected Issue and its Module Spec. |
 
 Each worker is `agents/<name>/spec.md` (its role Spec) plus `agents/<name>/__init__.py` (its
 profile: task contract, workspace, Pi tools, children, timeout). Definitions live in
@@ -389,7 +396,7 @@ invocation receives fresh, explicitly bounded context and permissions.
 | `specify-loop` | Route a change, author or revise its Spec, and independently review it before implementation. | `concorde-specify-loop` |
 | `dev-loop` | Call specify-loop, then plan, implement, validate and review code to a ready candidate. | `concorde-dev-loop` |
 | `review` | Run a standalone Spec or code review, including source diagnosis. | `concorde-review` |
-| `reflections-triage` | Inspect feedback, capture gaps, investigate, implement resolutions and manage owned records. | `concorde-reflections-triage` |
+| `issues` | Inspect, report, reopen or solve an explicit Issue to a verified candidate. | `concorde-issues` |
 | `init` | Propose and apply project initialization with a pinned Protocol. | `concorde-init` |
 | `configure` | Apply the project's Pi worker model/thinking selection and, on request, accept an updated Protocol binding. | `concorde-configure` |
 | `validate` | Run deterministic Spec and configured code checks and record readiness. | `concorde-validate` |
@@ -435,7 +442,7 @@ scripts under `.concorde/framework/`; Studio and development setup are documente
 | `python3 scripts/concorde.py <command>` | `validate`, `build`, `docsite`, `ua-graph`, `protocol-manifest`. |
 | [LangGraph Studio](scripts/development/STUDIO.md) | Start, observe and debug the same nine public workflows through the shared CapabilityHost. |
 | `python3 scripts/install-concorde.py` | Preview or apply installation into a project. |
-| `python3 scripts/reflections_queue.py` | Query and maintain the reflection queue. |
+| `python3 scripts/issues.py` | Inspect branch-local Issues or explicitly archive legacy Reflection data. |
 | `python3 scripts/run-ua-graph-viewer.py` | Launch the code graph viewer. |
 | `npm --prefix docsite run <script>` | `start`, `build`, `validate`, `typecheck`, `test`, `check`. |
 | `python3 scripts/development/run-tests.py` | Run the project's test suite. |

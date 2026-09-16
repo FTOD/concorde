@@ -13,7 +13,7 @@ from ..spec.repository import (REFERENCE_SKIPPED_SUFFIXES, SpecError, SpecReposi
 
 
 PHASES = frozenset({"ask", "specify", "plan", "tasks", "implementation", "spec-review", "code-review",
-                    "validate", "deliver", "context-solve"})
+                    "validate", "deliver", "context-solve", "issue-solve"})
 CODE_PHASES = frozenset({"implementation", "code-review"})
 DISCOVERY_PHASES = frozenset({"route"})
 DISCOVERY_KINDS = frozenset({"module"})
@@ -214,13 +214,13 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
                 "concorde-task-identity-constraints", "concorde-task-scope-feedback"}:
             raise SpecError("task-control stage inputs require the tasks phase", "incompatible_handoff")
         if item.get("type_id") not in {"concorde-plan-artifact","concorde-task-identity-constraints","concorde-implementation-task","concorde-task-scope-feedback",
-                                       "concorde-reflection-selection","concorde-review-result"}:
+                                       "concorde-issue-selection","concorde-issue-context","concorde-issue-intent","concorde-review-result"}:
             raise SpecError("unknown stage input type", "incompatible_handoff")
         validate_typed(item, item["type_id"])
     resolution = repository.spec_context(focus_id or target.id).value
     # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
     from .change_worktree import workspace_context
-    manifest = {"schema_version": 5, "target_id": target.id, "kind": target.kind,
+    manifest = {"schema_version": 6, "target_id": target.id, "kind": target.kind,
         "focus_id": focus_id, "phase": phase, "task": task, "constraints": list(constraints),
         "protocol_binding": repository.config["protocol"], "protocol": _protocol(repository),
         "spec_resolution": resolution, "instructions": instructions,
@@ -229,7 +229,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
         "implementation_files": _implementation_files(repository, target),
         "implementation_artifacts": _implementation_artifacts(repository, target) if phase in CODE_PHASES else [],
         "external_references": _external_references(repository, target),
-        "workspace": workspace if workspace is not None else workspace_context(repository.root)}
+        "workspace": workspace if workspace is not None else workspace_context(repository.root, target_id=target.id, task=task)}
     return ContextSnapshot(canonical({**manifest, "context_id": digest(manifest)}))
 
 
@@ -281,7 +281,7 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
     # File contents are deliberately absent from non-code cognition.
     from .change_worktree import workspace_context
     manifest = {
-        "schema_version": 4,
+        "schema_version": 5,
         "capability": capability,
         "phase": phase,
         "action": action,
@@ -343,7 +343,7 @@ def resolve_topology_author_context(repository: RepositoryCore, target: dict, *,
         "candidate_references": target["references"],
         "spec_resolution": resolution,
         "instructions": instructions,
-        "workspace": workspace if workspace is not None else workspace_context(repository.root),
+        "workspace": workspace if workspace is not None else workspace_context(repository.root, target_id=target["id"], task=task),
     }
     return TopologyAuthorContext(canonical({**manifest, "context_id": digest(manifest)}))
 
@@ -370,7 +370,7 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, ch
     declared = value.pop("context_id")
     if digest(value) != declared:
         raise SpecError("context snapshot identity has changed", "stale_context")
-    _recheck_workspace(repository.root, value["workspace"])
+    _recheck_workspace(repository.root, value["workspace"], value["target_id"], value["task"])
     current = SpecRepository(repository.root, repository.package_root,
         registry_bytes=repository.registry_bytes if repository.document_overrides else None,
         document_overrides=repository.document_overrides)
@@ -418,7 +418,7 @@ def recheck_discovery_context(repository: SpecRepository, snapshot: DiscoveryCon
 def recheck_topology_author_context(repository: SpecRepository, snapshot: TopologyAuthorContext, *,
                                    candidate_repository: SpecRepository | None = None) -> None:
     value = snapshot.value
-    _recheck_workspace(repository.root, value["workspace"])
+    _recheck_workspace(repository.root, value["workspace"], value["target"]["id"], value["task"])
     current = SpecRepository(repository.root, repository.package_root)
     resolved = resolve_topology_author_context(
         current,
@@ -433,9 +433,9 @@ def recheck_topology_author_context(repository: SpecRepository, snapshot: Topolo
         raise SpecError("topology author context changed", "stale_context")
 
 
-def _recheck_workspace(root: Path, observed: dict) -> None:
+def _recheck_workspace(root: Path, observed: dict, target_id: str | None = None, task: str | None = None) -> None:
     from .change_worktree import workspace_context
-    current = workspace_context(root)
+    current = workspace_context(root, target_id=target_id, task=task)
     # Other worktrees may advance while this stage runs. Their inventory is an
     # explicitly timestamp-free observation, never an authority grant. This
     # invocation's own identity and lifecycle boundary must remain unchanged.
@@ -447,15 +447,15 @@ def _recheck_workspace(root: Path, observed: dict) -> None:
 def assess_result(snapshot: ContextSnapshot, assessment: dict) -> dict:
     """Validate a task-specific judgment; no code or external document lookup occurs here."""
     from ..spec.schema import validate
+    from ..spec.issue_shapes import BLOCKER
     validate(assessment, {"type": "object", "additionalProperties": False,
-        "required": ["context_id", "outcome", "answer", "gaps"], "properties": {
+        "required": ["context_id", "outcome", "answer", "blockers"], "properties": {
             "context_id": {"const": snapshot.id},
             "outcome": {"enum": ["sufficient", "spec_incomplete", "unsupported", "conflicting"]},
             "answer": {"type": "string", "minLength": 1},
-            "gaps": {"type": "array", "items": {"type": "object", "additionalProperties": False,
-                "required": ["question", "blocked_step", "needed_contract"], "properties": {
-                    key: {"type": "string", "minLength": 1} for key in ("question", "blocked_step", "needed_contract")}}}}})
-    if (assessment["outcome"] == "spec_incomplete") != bool(assessment["gaps"]):
-        raise SpecError("only Spec incomplete has nonempty structured gaps", "invalid_assessment")
+            "blockers": {"type": "array", "items": BLOCKER}}})
+    if ((assessment["outcome"] == "spec_incomplete" and not assessment["blockers"])
+            or (assessment["outcome"] == "sufficient" and assessment["blockers"])):
+        raise SpecError("assessment outcome contradicts its Issue blockers", "invalid_assessment")
     return {"type_id": "concorde-context-assessment", "schema_version": 1,
             "data": {"target_id": snapshot.value["target_id"], **assessment}}

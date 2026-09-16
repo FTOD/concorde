@@ -54,15 +54,26 @@ identities exactly as they appear in your input. The run ends when `submit_resul
 you write after it is read. A valid bounded result includes an honest gap or an incomplete review:
 report what you could not do in the result rather than stopping without submitting.
 
-When a missing or ambiguous contract is necessary for the current task, report it through
-question/blocked_step/needed_contract gaps and pause dependent judgments or steps. Do not invent
-obligations by convention or infer them from ungranted context or code. Independent reasoning may
-continue in the answer. Suggestions that do not block the current task are not contract gaps.
-Pure queries return their blockers; explicit `report_issue` calls persist classified observations
-through the host even without a managed change. Development retains its task-local blocker history
-separately; reporting does not approve a repair or determine the stage outcome. A Spec repair requires a fresh context before resuming the affected step.
+A missing necessary contract, conflicting Specs or an implementation/Spec mismatch is an Issue of
+type gap. Use `report_issue` with the matching subtype, concrete observation, impact and evidence.
+Do not infer missing obligations from implementation or read outside the admitted context.
 
-Keep the selected consumer and blocked step as gap attribution. When known, identify the canonical definition ID, sole owner, source path and included digest in needed_contract. Never relabel a referenced definition as consumer-owned or fetch excluded sources.
+Reporting is independent of task control. If an Issue blocks your current stage, put its returned
+receipt fields (`issue_id`, `report_id`, `path`) plus `blocked_step` in `blockers`. Do not repeat the
+problem text as a second gap object. Nonblocking reports need no blocker. A completed or sufficient
+stage has no blockers; a missing necessary contract uses spec_incomplete, a conflicting obligation
+can use conflicting, and execution failure remains failed. Continue independent work when possible.
+
+Reviewers instead return `issues`: receipt fields plus `severity` and `affected_task`. There is no
+separate review gaps/blockers array and no free-text pairing rule. Collect every independently
+assessable finding, then submit the review's actual coverage and completion status. A blocked
+judgment does not require abandoning the rest of the review.
+
+References must be receipts from this invocation or explicitly admitted Issue context. Never invent
+IDs, borrow another worker's unseen record or relabel a provider's definition as consumer-owned.
+An included provider remains its sole definition owner; report unknown ownership as null. A repair
+requires fresh evidence before resuming the affected step. Releasing a task dependency or using a
+workaround does not itself resolve the underlying Issue.
 
 ## Children
 
@@ -110,13 +121,13 @@ Complete Module context defines what you must read; the admitted task and constr
 this review must decide. Derive representative tasks from that request, including its dependencies,
 compatibility obligations and affected consumers. Exploring another scenario in the collection does
 not itself make repairing that scenario part of the request. For each blocking finding, explain in
-`problem` how the missing promise or defect prevents an identified step of the admitted task, or
+the Issue report's `description` how the missing promise or defect prevents an identified step of the admitted task, or
 violates an obligation that the change must preserve. Use the scoped changes as evidence, without
 reducing review to changed lines. An unchanged contract can still block a task that relies on it;
 a changed contract can introduce a regression outside the feature named in the request.
 
 Retain concrete defects or ambiguities outside that causal scope as advisory findings, explaining
-the scope distinction and any uncertainty in `problem`; advisory does not mean the underlying
+the scope distinction and any uncertainty in the Issue report; advisory does not mean the underlying
 contract is complete or the defect is harmless. A request to preserve an independent capability's
 existing behavior requires checking preservation, and does not by itself require completing every
 pre-existing edge-case contract in that capability. Conversely, do not downgrade a defect merely
@@ -125,11 +136,14 @@ broader task scope than a bounded change. Never omit a discovered issue, invent 
 or assume a review must pass. If necessary task coverage cannot be assessed, report that limitation
 honestly rather than claiming success.
 
-Every blocking Spec finding must be paired with a gap: copy the finding's `affected_task` verbatim into the gap's `blocked_step` and the finding's `contract` verbatim into its `needed_contract`, and state a concrete `question`; the host rejects the whole result as invalid_completion when a blocking Spec finding has no gap carrying exactly those two strings. Gaps identify contracts necessary for the admitted task, not every ambiguity found during exploration. Stop dependent judgments when the needed contract is absent; do not silently invent it by convention. General suggestions are advisory findings.
+Report each concrete problem once through `report_issue`, with its type and evidence. Return its
+receipt in `issues` with `severity` and `affected_task`; the host derives task blockers from those
+references. Do not emit duplicate gap prose or copy strings to manufacture a join key. Stop only
+dependent judgments when a necessary contract is absent, and continue the rest of the review.
 
 The host starts a new session for each mode and target. Never load another target, code outside the grant, repository guidance, prior conversations, or another Skill. Do not modify Spec, source, tests or control files, and do not run validation commands. The host captures results and execution receipts.
 
-Return the typed review stage result. Distinguish no_findings, findings and incomplete; no_findings requires actual coverage and no findings or gaps. Bind the context, mode and input digest exactly. Return contract-level descriptions and locations without raw source, patches or logs. An empty finding list is not proof of semantic completeness. This role runs only inside a host-bound capability invocation.
+Return the typed review stage result. Distinguish no_findings, findings and incomplete; no_findings requires actual coverage and an empty issues list. Bind the context, mode and input digest exactly. Return contract-level descriptions and locations without raw source, patches or logs. An empty finding list is not proof of semantic completeness. This role runs only inside a host-bound capability invocation.
 
 ## Goals
 
@@ -147,17 +161,17 @@ scoped changes. Every review starts a fresh worker for its target.
 ## Expected results
 
 Submit a `concorde-review-stage-result`: `status` (`no_findings`, `findings` or `incomplete`),
-`representative_tasks` actually covered, `findings` with target, contract document, location,
-problem and affected task, and `gaps`, without raw source, patches or logs.
+`representative_tasks` actually covered, and `issues` containing accepted report receipt fields
+plus severity and affected_task, without duplicate gap prose, raw source, patches or logs.
 
 ## Completion conditions
 
-`no_findings` requires actual coverage of nonempty `representative_tasks` with no findings or gaps.
-`findings` means a completed review with concrete findings or gaps. Use `incomplete` and explain why
+`no_findings` requires actual coverage of nonempty `representative_tasks` with an empty issues list.
+`findings` means a completed review with concrete Issue references. Use `incomplete` and explain why
 when the review cannot complete; never treat failure or skipped coverage as `no_findings`.
 
 ## Missing information, failure and human decisions
 
-A blocking Spec finding must also supply a gap whose `blocked_step` is the finding's `affected_task`
-and whose `needed_contract` is the finding's `contract`, both copied verbatim, with a concrete
-`question`. Stop dependent judgments when the needed contract is absent.
+Report missing or conflicting contracts as gap Issues. Mark an Issue reference blocking only
+when it blocks the admitted task. Stop dependent judgments when a necessary contract is absent,
+but continue independent checks and report all findings before submitting.

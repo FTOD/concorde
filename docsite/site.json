@@ -10,7 +10,7 @@
   "homepage": {
     "eyebrow": "Architecture-aware Specs · Codex + Claude",
     "title": "Specify the architecture.",
-    "description": "Write and maintain Specs that explain your software’s behavior and architecture. Understand the project through its docsite and Understand Anything graph view. Observe agent execution with LangGraph Studio, guide agents with explicit context and permissions, use built-in agents for development, and track feedback and improvements through the reflection system.",
+    "description": "Write and maintain Specs that explain your software’s behavior and architecture. Understand the project through its docsite and Understand Anything graph view. Observe agent execution with LangGraph Studio, guide agents with explicit context and permissions, use built-in agents for development, and track feedback and improvements through branch-local Issues.",
     "features": {
       "title": "Specify, understand and improve your software.",
       "items": [
@@ -31,7 +31,7 @@
           "description": "A coordinator handles questions, routing and topology design. A Spec engineer authors and reviews Specs, plans work and defines tasks. A programmer implements, reviews and investigates code. Public Skills compose these basic agents into development workflows."
         },
         {
-          "title": "Turn reflections into tracked improvements.",
+          "title": "Report and solve Issues without mandatory triage.",
           "description": "Retain project feedback and persistent Spec gaps as records attributed to a Module or scenario. Investigate with scoped access and evidence, preserve developer comments, and turn approved resolutions into fresh development tasks. Records remain available across sessions; developers explicitly decide when to resolve or dismiss them."
         }
       ]
@@ -123,9 +123,9 @@
             ],
             [
               "Global",
-              "reflections-triage",
+              "issues",
               "Inspect feedback, capture gaps, investigate, implement resolutions and manage owned records.",
-              "concorde-reflections-triage"
+              "concorde-issues"
             ],
             [
               "Lifecycle",
@@ -234,8 +234,8 @@
               "Preview or apply installation into a project."
             ],
             [
-              "python3 scripts/reflections_queue.py",
-              "Query and maintain the reflection queue."
+              "python3 scripts/issues.py",
+              "Inspect Issues or explicitly archive legacy Reflection history."
             ],
             [
               "python3 scripts/run-ua-graph-viewer.py",

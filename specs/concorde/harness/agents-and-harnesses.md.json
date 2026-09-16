@@ -56,21 +56,18 @@
         "children": []
       },
       {
-        "id": "investigator",
-        "workspace": "project",
+        "id": "issue-solver",
+        "workspace": "capsule",
         "capabilities": [
-          "reflections-triage"
+          "issues"
         ],
         "tools": [
-          "bash",
           "find",
           "grep",
           "ls",
           "read"
         ],
-        "children": [
-          "scout"
-        ]
+        "children": []
       },
       {
         "id": "planner",

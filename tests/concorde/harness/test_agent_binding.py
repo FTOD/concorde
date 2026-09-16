@@ -58,13 +58,14 @@ class AgentBindingTests(unittest.TestCase):
         self.assertEqual("permission_denied", result["errors"][0]["code"], result)
 
     @verifies("scenario.harness.permission-compile")
-    def test_readonly_investigation_path_has_empty_write_paths(self):
+    def test_issue_solver_is_spec_only_with_empty_write_paths(self):
         host = CapabilityHost(self.root, PACKAGE, mode="describe-policy", allow_primary_worktree=True)
-        Invocation("concorde-implement", CONFIGURATION, self.task, host).stage(
-            "concorde-implement", mode="investigation", readonly=True)
-        policy = next(item for item in host.descriptions if item["phase"] == "implementation")
-        self.assertEqual("concorde-investigator", policy["agent"])
+        Invocation("concorde-issues", CONFIGURATION, self.task, host).stage("concorde-issues")
+        policy = next(item for item in host.descriptions if item["phase"] == "issue-solve")
+        self.assertEqual("concorde-issue-solver", policy["agent"])
+        self.assertEqual("capsule", policy["workspace"])
         self.assertEqual([], policy["write_paths"])
+        self.assertFalse(any(path.startswith("app/") for path in policy["read_paths"]))
 
     @verifies("scenario.harness.worker-selection")
     def test_describe_policy_descriptions_expose_the_worker_and_its_selection(self):
@@ -143,7 +144,7 @@ class AgentBindingTests(unittest.TestCase):
         result = self.call_capability("concorde-implement", task, double=double)
         self.assertEqual("failed", result["status"], result)
         self.assertEqual("execution_limit", result["errors"][0]["code"], result)
-        self.assertEqual("limit_exhausted", read_change(self.root)["status"])
+        self.assertEqual("limit_exhausted", read_change(self.root, required=True)["status"])
 
     @verifies("scenario.harness.execute-failure")
     def test_execution_cancelled_outcome_maps_to_execution_cancelled_and_records_change_status(self):
@@ -155,7 +156,7 @@ class AgentBindingTests(unittest.TestCase):
         result = self.call_capability("concorde-implement", task, double=double)
         self.assertEqual("failed", result["status"], result)
         self.assertEqual("execution_cancelled", result["errors"][0]["code"], result)
-        self.assertEqual("cancelled", read_change(self.root)["status"])
+        self.assertEqual("cancelled", read_change(self.root, required=True)["status"])
 
     @verifies("scenario.implementation.failed-execution")
     def test_authorized_edits_survive_a_failed_execution_and_the_retry_re_admits_the_same_artifacts(self):
@@ -177,7 +178,7 @@ class AgentBindingTests(unittest.TestCase):
         self.assertEqual("execution_limit", result["errors"][0]["code"], result)
         self.assertNotEqual(planned, code.read_bytes())
         self.assertIn(b"raise ValueError", code.read_bytes())
-        change = read_change(self.root)
+        change = read_change(self.root, required=True)
         self.assertEqual("limit_exhausted", change["status"])
         recorded = change["targets"]["service.transfer"]
         self.assertEqual(("tasks", None, [False]), (recorded["phase"], recorded["implementation_digest"],
@@ -203,7 +204,7 @@ class AgentBindingTests(unittest.TestCase):
         result = self.call_capability("concorde-dev-loop", double=double)
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("child_blocked", result["errors"][0]["code"], result)
-        self.assertEqual("limit_exhausted", read_change(self.root)["status"])
+        self.assertEqual("limit_exhausted", read_change(self.root, required=True)["status"])
 
 
 if __name__ == "__main__":

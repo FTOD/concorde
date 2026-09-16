@@ -22,8 +22,8 @@ SUBFLOW_NODES = {
     "design_topology": ("decide", "expand_context", "bind_routes", "finish", "respond"),
     "prepare_topology": ("prepare_authors", "author_module", "validate_candidate", "review_contexts", "persist_application"),
     "apply_topology": ("admit_application", "validate_application", "apply_atomically", "cleanup"),
-    "triage": ("select_records", "record_gaps", "status", "remove_records", "prepare_investigation", "investigate",
-               "persist_findings", "implement_resolution", "validate_candidate", "finish"),
+    "issues": ("select_operation", "inspect", "report", "reopen", "prepare", "decide", "develop",
+               "repair_spec", "verify", "close", "ready", "finish"),
     "plan": ("assess_context", "author_plan", "persist_plan"),
     "project": ("select_action", "configure", "propose", "apply"),
     "specify_loop": ("initialize", "specify", "review_spec", "summarize"),
@@ -32,7 +32,7 @@ SUBFLOW_NODES = {
 }
 
 DISPATCH_NODES = ("select_capability", "deliver", "project", "answer", "design_topology",
-                  "prepare_topology", "apply_topology", "review", "describe_policy", "triage", "specify",
+                  "prepare_topology", "apply_topology", "review", "describe_policy", "issues", "specify",
                   "plan", "tasks", "implement", "validate", "development_loop", "specify_loop", "context_solve",
                   *(name + "/" + node for name, nodes in SUBFLOW_NODES.items() for node in nodes))
 
@@ -46,17 +46,17 @@ def build_dispatch_flow(node_factory, *, capability=None):
     from .loop_flow import build_loop_flow
     from .specify_flow import build_specify_flow
     from .target_flow import build_target_flow
-    from ..reflections.triage_flow import build_triage_flow
+    from ..issues.flow import build_issue_flow
     factories = {"answer": build_query_flow, "design_topology": build_query_flow,
                  "prepare_topology": build_topology_flow, "apply_topology": build_topology_apply_flow,
-                 "plan": build_plan_flow, "project": build_project_flow, "triage": build_triage_flow,
+                 "plan": build_plan_flow, "project": build_project_flow, "issues": build_issue_flow,
                  "development_loop": lambda nodes: build_loop_flow(nodes, dynamic=True),
                  "specify_loop": build_specify_flow,
                  "prepare_target": lambda nodes: build_target_flow(
                      nodes, discover=capability is None or capability in TARGET_DISCOVERY_CAPABILITIES)}
     flow = StateGraph(DispatchState)
     leaves = ("deliver", "project", "answer", "design_topology", "prepare_topology", "apply_topology",
-              "review", "describe_policy", "triage", "specify", "plan", "tasks", "implement",
+              "review", "describe_policy", "issues", "specify", "plan", "tasks", "implement",
               "validate", "development_loop", "specify_loop", "context_solve")
     entry = ["deliver", "project", "answer", "design_topology", "prepare_topology", "apply_topology", "prepare_target"]
     targeted = list(leaves[6:])
@@ -66,7 +66,7 @@ def build_dispatch_flow(node_factory, *, capability=None):
         entry, targeted = ["deliver" if capability == "concorde-deliver" else "project"], []
     elif capability is not None:
         entry = ["prepare_target"]
-        target = {"concorde-review": "review", "concorde-reflections-triage": "triage",
+        target = {"concorde-review": "review", "concorde-issues": "issues",
                   "concorde-specify": "specify", "concorde-plan": "plan", "concorde-tasks": "tasks",
                   "concorde-implement": "implement", "concorde-validate": "validate",
                   "concorde-dev-loop": "development_loop",

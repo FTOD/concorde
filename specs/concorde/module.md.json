@@ -29,7 +29,7 @@
         "tests/concorde/distribution/test_protocol_guidance.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
-        "tests/concorde/reflections/test_scope_and_reflections.py",
+        "tests/concorde/issues/test_flow.py",
         "tests/concorde/spec/test_module_architecture.py"
       ]
     },
@@ -55,11 +55,11 @@
       "meaning": "#entity.concorde.development"
     },
     {
-      "id": "entity.concorde.reflections",
-      "title": "Reflections",
+      "id": "entity.concorde.issues",
+      "title": "Issues",
       "kind": "submodule",
-      "target_id": "module.reflections",
-      "meaning": "#entity.concorde.reflections"
+      "target_id": "module.issues",
+      "meaning": "#entity.concorde.issues"
     },
     {
       "id": "entity.concorde.distribution",
@@ -160,7 +160,7 @@
       "meaning": "#agreement.document.concorde.module.3"
     },
     {
-      "target_id": "module.reflections",
+      "target_id": "module.issues",
       "meaning": "#agreement.document.concorde.module.4"
     },
     {

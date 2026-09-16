@@ -31,11 +31,11 @@
         "skill": "concorde-dev-loop"
       },
       {
-        "id": "reflections-triage",
+        "id": "issues",
         "public": true,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": "concorde-reflections-triage"
+        "skill": "concorde-issues"
       },
       {
         "id": "init",

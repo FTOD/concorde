@@ -23,6 +23,7 @@ class IssueReporter:
     admitted_owners: frozenset[str]
     evidence_paths: frozenset[str]
     selected_issues: frozenset[str] = frozenset()
+    admitted_receipts: tuple[dict, ...] = ()
     receipts: list[dict] = field(default_factory=list, init=False)
     _lock: Lock = field(default_factory=Lock, init=False, repr=False)
 
@@ -65,7 +66,8 @@ def reporter_for_invocation(root: Path, invocation, *, target_id: str | None, ch
     resolutions = ([snapshot["spec_resolution"]] if "spec_resolution" in snapshot else
                    [target["spec_resolution"] for target in snapshot["targets"]])
     owners = {owner for resolution in resolutions for owner in
-              [resolution["module_id"], *(source["owner"] for source in resolution["sources"])]}
+              [resolution["module_id"], *resolution["registration"]["uses"],
+               *(source["owner"] for source in resolution["sources"])]}
     reporting_target = target_id or resolutions[0]["module_id"]
     paths = {source["path"] for resolution in resolutions for source in resolution["sources"]}
     paths.update(item["path"] for item in snapshot.get("implementation_artifacts", []))
@@ -76,4 +78,9 @@ def reporter_for_invocation(root: Path, invocation, *, target_id: str | None, ch
         "capability": invocation.capability, "phase": invocation.stage, "target_id": reporting_target,
         "context_id": snapshot["context_id"], "change_id": change_id,
         "head": head.stdout.strip() if head.returncode == 0 else None}
-    return IssueReporter(root, source, frozenset(owners), frozenset(paths))
+    admitted = tuple(item["receipt"] for value in snapshot.get("stage_inputs", [])
+                     if value["type_id"] == "concorde-issue-context" for item in value["data"]["observations"])
+    selected = {item["issue_id"] for item in admitted}
+    selected.update(value["data"]["issue_id"] for value in snapshot.get("stage_inputs", [])
+                    if value["type_id"] == "concorde-issue-selection")
+    return IssueReporter(root, source, frozenset(owners), frozenset(paths), frozenset(selected), admitted)

@@ -31,12 +31,8 @@ PATH_ROLES = frozenset(
         "attempt",
         "checklists",
         "constitution",
-        "reflections",
         "framework",
         "templates",
-        "reflection-queue",
-        "reflection-plans",
-        "reflection-worktrees",
         "generated-projections",
     }
 )

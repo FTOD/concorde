@@ -139,7 +139,7 @@ class WorkerExecutorTests(unittest.TestCase):
 
         def probe(invocation, checks):
             context_id = json.loads(invocation.receipt_json)["source_digest"]
-            valid = {"context_id": context_id, "outcome": "completed", "answer": "Planned.", "gaps": [],
+            valid = {"context_id": context_id, "outcome": "completed", "answer": "Planned.", "blockers": [],
                      "documents": [], "plan": "A plan.", "tasks": []}
             results = {
                 "missing field": {key: value for key, value in valid.items() if key != "plan"},

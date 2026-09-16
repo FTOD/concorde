@@ -199,7 +199,8 @@ def report_issue(root: Path, report: dict, source: dict) -> dict:
 
 
 def dispose_issue(root: Path, identifier: str, expected_revision: str, *, reason: str, note: str,
-                  evidence: list[str], actor: str, duplicate_of: str | None = None) -> str:
+                  evidence: list[str], actor: str, duplicate_of: str | None = None,
+                  duplicate_revision: str | None = None) -> str:
     """Trusted host disposition, never a worker reporting-tool action.
 
     The caller supplies authorization and checks semantic evidence before calling. This operation
@@ -211,7 +212,9 @@ def dispose_issue(root: Path, identifier: str, expected_revision: str, *, reason
         if revision != expected_revision:
             raise SpecError("issue changed before disposition", "stale_issue")
         if reason == "duplicate" and duplicate_of:
-            other, _ = read_issue(root, duplicate_of)
+            other, other_revision = read_issue(root, duplicate_of)
+            if duplicate_revision is not None and other_revision != duplicate_revision:
+                raise SpecError("duplicate target changed before disposition", "stale_issue")
             if other["status"] != "open":
                 raise SpecError("duplicate target must be an open canonical issue", "invalid_issue")
         record["dispositions"].append({"reason": reason, "note": note, "evidence": evidence,

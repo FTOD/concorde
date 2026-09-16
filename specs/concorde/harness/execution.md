@@ -112,7 +112,7 @@ their kinds are listed in [Agents and Harnesses](agents-and-harnesses.md).
   worktree; the grant covers it, the Spec documents and the installed Protocol copy under
   `.concorde/protocol/` it indexes, at their project paths, and the selected Module's
   implementation: its listed entries with write authority for the programmer, its enumerated files
-  read-only for the code reviewer and the investigator.
+  read-only for the code reviewer. The Issue solver uses a Spec-only capsule.
 
 In both kinds the host rereads the snapshot file after the worker settles and rejects a result whose
 file bytes, registry digest, document digests or initialized configuration changed during execution
@@ -129,7 +129,7 @@ returns it; the host then checks its context identity and gap provenance before 
 completion. Independently, each admitted worker may use `report_issue` to persist an observation
 through a host-issued, scope-bound callback before submitting its final result. Report admission
 is separate from completion; accepted reports survive an invalid or interrupted final result.
-The [Issue reporting boundary](../reflections/issues.md#worker-reporting-service) defines report
+The [Issue reporting boundary](../issues/issues.md#worker-reporting-service) defines report
 shape and authority. A worker in a project workspace also receives the host check service behind
 `run_checks`.
 

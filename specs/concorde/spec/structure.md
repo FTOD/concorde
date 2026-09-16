@@ -125,7 +125,7 @@ Every validation result SHALL carry a source digest of the exact state it assess
 `status=success|invalid`, findings with `rule_id`, `message` and `remediation`, and a result
 containing `source_digest` for the assessed Spec state. It checks identities, document
 declarations, unique ownership, one-level references, canonical contract definitions, participant bindings, dependency metadata and readable meaning, scenario/requirement/entity syntax, entity listing
-entries against the registry, architecture diagrams, structured contracts and Reflection
+entries against the registry, architecture diagrams, structured contracts and Issue
 attribution; a declared entry whose file or directory is missing is an error unless its entity marks
 it pending, a still-pending entry that now exists is a warning, and a regular file that no Module's
 entries cover is a warning; it explicitly does not prove semantics. Configured implementation checks

@@ -32,7 +32,7 @@ it never rewrites author output or clears history to admit it.
 The result is a nonempty list of internally unique, initially incomplete tasks, disjoint from
 reserved IDs, each carrying id, target_id, description, acceptance and complete. The host accepts
 and persists the list as a concorde-implementation-task@1 with its plan; it returns artifact
-references through concorde-tasks-response@1. The author cannot complete tasks or mutate project files.
+references through concorde-tasks-response@2. The author cannot complete tasks or mutate project files.
 
 For scope recovery it receives the plan, prior list, reserved IDs and the fixed
 implementation_boundary feedback, preserving software acceptance. A semantic change requiring a

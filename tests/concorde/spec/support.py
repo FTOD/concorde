@@ -256,8 +256,60 @@ class ModelProcessDouble:
 
     def __init__(self, callback=None):
         self.calls=[]; self.callback=callback
+        self.reporter = None
         self.executor=WorkerExecutor(PACKAGE, runtime=self.run)
+    def fixture_reports(self, data):
+        """Author fixture observations through the real report service; not a runtime adapter.
+
+        Historical test helpers describe findings as prose. Convert that authoring notation into
+        the new wire references here so every host/executor still sees the actual Issue contract.
+        """
+        reporter = self.reporter
+        if reporter is None:
+            return
+        from concorde.spec.repository import SpecError
+        def observed(problem, basis, impact, key, owner=None, evidence=(), kind='gap'):
+            return reporter({'report_key': key, 'type': kind,
+                'subtype': 'missing-contract' if kind == 'gap' else None,
+                'title': problem, 'description': problem, 'basis': basis, 'impact': impact,
+                'owner_target_id': owner or reporter.source['target_id'], 'evidence': list(evidence)})['receipt']
+        blockers = data.get('blockers', [])
+        if 'review_mode' in data:
+            findings = data.get('issues', [])
+            converted = []
+            for item in findings:
+                if 'issue_id' in item:
+                    converted.append(item)
+                    continue
+                proof = [{'path': item['location']['path'], 'description': item['contract']}]
+                if item['document'] != item['location']['path']:
+                    proof.append({'path': item['document'], 'description': item['contract']})
+                ref = observed(item['problem'], item['contract'], item['affected_task'], item['id'],
+                    item['target_id'], proof, kind='gap' if data['review_mode'] == 'spec' else 'bug')
+                converted.append({**ref, 'severity': item['severity'], 'affected_task': item['affected_task']})
+            for index, gap in enumerate(blockers):
+                if any(item.get('affected_task') == gap.get('blocked_step') for item in converted):
+                    continue
+                if 'issue_id' in gap:
+                    ref = {key: gap[key] for key in ('issue_id', 'report_id', 'path')}
+                else:
+                    ref = observed(gap['question'], gap['needed_contract'], gap['blocked_step'], 'gap-'+str(index))
+                converted.append({**ref, 'severity': 'blocking', 'affected_task': gap['blocked_step']})
+            data.pop('blockers', None)
+            if 'issues' in data:
+                data['issues'] = converted
+        else:
+            for index, gap in enumerate(blockers):
+                if 'issue_id' in gap:
+                    continue
+                if gap.get('context_id', reporter.source['context_id']) != reporter.source['context_id']:
+                    raise SpecError('fixture blocker provenance differs from the admitted context', 'incompatible_handoff')
+                ref = observed(gap['question'], gap['needed_contract'], gap['blocked_step'], 'blocker-'+str(index),
+                               owner=gap.get('target_id'))
+                blockers[index] = {**ref, 'blocked_step': gap['blocked_step']}
+
     def result(self, data):
+        self.fixture_reports(data)
         # DocumentSource explicitly carries a paired fixture proposal; serialize both members
         # into the worker's ordinary path/content list before the JSON transport round trip.
         documents = data.get('documents', [])
@@ -273,6 +325,7 @@ class ModelProcessDouble:
                 partner['content'] = json.dumps(source.metadata, indent=2) + '\n'
         return WorkerResult(value=json.loads(json.dumps(data)), run=PiRun(exit_code=0), usage=dict(USAGE))
     def run(self, launch, *, checks=None, report_issue=None):
+        self.reporter = report_issue
         agent=agent_definition(launch.worker)
         stage=agent.contract.phase; capability=external_agent_name(agent.name); cwd=launch.workspace
         value=json.loads(launch.message)
@@ -294,7 +347,7 @@ class ModelProcessDouble:
             self.calls[-1]['review']=review
             data={'context_id':snapshot['context_id'],'input_digest':review['input_digest'],
                   'review_mode':review['review_mode'],'status':'no_findings',
-                  'representative_tasks':[snapshot['task']],'findings':[],'gaps':[],
+                  'representative_tasks':[snapshot['task']],'issues':[],
                   'answer':'Explicit process double completed; model effectiveness is not measured.'}
             if self.callback:self.callback(stage,snapshot,data,Path(cwd))
             return self.result(data)
@@ -347,12 +400,12 @@ class ModelProcessDouble:
                     metadata = json.dumps(source.metadata, indent=2) + '\n'
                 documents.extend([{'path':path,'content':reading}, {'path':path+'.json','content':metadata}])
             data={'context_id':snapshot['context_id'],'target_id':target['id'],'outcome':'completed',
-                  'answer':'Target-local Spec authored.','gaps':[],'documents':documents}
+                  'answer':'Target-local Spec authored.','blockers':[],'documents':documents}
             if self.callback:self.callback(stage,snapshot,data,Path(cwd))
             return self.result(data)
         if value['type_id']=='concorde-main-stage-context':
             data={'context_id':snapshot['context_id'],'outcome':'completed','answer':'Main answered from complete Spec contexts.',
-                  'expand_targets':[],'routes':[],'gaps':[],'topology_design':None}
+                  'expand_targets':[],'routes':[],'blockers':[],'topology_design':None}
             if stage=='route':
                 hint=snapshot['target_hint']
                 discovered=[item['target_id'] for item in snapshot['targets']]
@@ -374,7 +427,14 @@ class ModelProcessDouble:
             if self.callback:self.callback(stage,snapshot,data,Path(cwd))
             return self.result(data)
         data={'context_id':snapshot['context_id'],'outcome':'completed','answer':'Bounded role completed.',
-              'gaps':[],'documents':[],'plan':'','tasks':[]}
+              'blockers':[],'documents':[],'plan':'','tasks':[]}
+        if stage=='issue-solve':
+            selection = snapshot['stage_inputs'][0]['data']
+            action = ('resolved' if selection['verification'] else
+                      'verify' if 'Development and' in selection['feedback'] else 'develop')
+            data['issue_decision'] = {'action': action, 'intent': 'Fulfil the specified pure transfer behavior.',
+                'rationale': 'The current contract defines the expected transfer behavior.',
+                'specify': True, 'duplicate_of': None}
         if stage=='context-solve': data['outcome']='sufficient'
         if stage=='plan': data['plan']='Implement the pure transfer contract, then check valid and rejected amounts.'
         if stage=='tasks':

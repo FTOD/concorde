@@ -5,7 +5,7 @@
 The Development host executes every capability invocation as LangGraph Flows. The six Flows
 below are its own: admission, dispatch, target admission, project initialization and
 configuration, component coordination and shared-candidate stabilization. The composed Flows they
-dispatch to (discovery, query, topology, planning, specification, development and triage) are
+dispatch to (discovery, query, topology, planning, specification, development and issues) are
 specified by their owning Modules. Each Flow Spec follows the
 [Flow Spec convention](../harness/graphs-and-loops.md): nodes execute, edges route, and node
 labels state the state read and written. Every diagram is bound to its compiled Flow by
@@ -72,7 +72,7 @@ capability; the diagram shows the complete dispatch topology every entry compile
 | `apply_topology` | The topology application Flow. | prepared application | applied topology |
 | `review` | Deterministic scope over Review invocations: owner and changed-file peers. | bound target, changes | review results |
 | `describe_policy` | Deterministic: the exact grants each stage would receive, without launching an Agent. | bound target | policy descriptions |
-| `triage` | The reflection triage Flow. | bound target, reflection records | triage result |
+| `issues` | The Issue management and solving Flow. | bound target, selected Issue | Issue result |
 | `specify` | Spec Authoring: one spec-author invocation and the affected-consumer reviews. | bound target, Spec context | replaced Spec documents |
 | `plan` | The planning Flow. | bound target, Spec context | plan |
 | `tasks` | One task-author invocation and task admission. | plan, reserved ids, review feedback | tasks |
@@ -98,7 +98,7 @@ flowchart TB
     apply_topology["apply_topology<br/>in: prepared application<br/>out: applied topology"]
     review["review<br/>in: bound target, changes<br/>out: review results"]
     describe_policy["describe_policy<br/>in: bound target<br/>out: policy descriptions"]
-    triage["triage<br/>in: bound target, reflection records<br/>out: triage result"]
+    issues["issues<br/>in: bound target, selected Issue<br/>out: Issue result"]
     specify["specify<br/>in: bound target, Spec context<br/>out: replaced Spec documents"]
     plan["plan<br/>in: bound target, Spec context<br/>out: plan"]
     tasks["tasks<br/>in: plan, reserved ids, review feedback<br/>out: tasks"]
@@ -119,7 +119,7 @@ flowchart TB
     select_capability -->|error| __end__
     prepare_target -->|concorde-review| review
     prepare_target -->|describe-policy mode| describe_policy
-    prepare_target -->|concorde-reflections-triage| triage
+    prepare_target -->|concorde-issues| issues
     prepare_target -->|concorde-specify| specify
     prepare_target -->|concorde-plan| plan
     prepare_target -->|concorde-tasks| tasks
@@ -137,7 +137,7 @@ flowchart TB
     apply_topology --> __end__
     review --> __end__
     describe_policy --> __end__
-    triage --> __end__
+    issues --> __end__
     specify --> __end__
     plan --> __end__
     tasks --> __end__

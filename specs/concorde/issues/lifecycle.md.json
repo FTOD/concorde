@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.issues.lifecycle",
+    "owner": "module.issues"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": []
+}

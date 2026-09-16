@@ -35,13 +35,14 @@ fresh worker for its target.
 ## Expected results
 
 Submit a `concorde-review-stage-result`: `status` (`no_findings`, `findings` or `incomplete`),
-`representative_tasks` actually covered, `findings` with target, contract document, location,
-problem and affected task, and `gaps`, without raw source, patches or logs.
+`representative_tasks` actually covered, and `issues` with accepted receipt fields, severity and
+affected_task. Report problem content once through report_issue; do not repeat gaps or include raw
+source, patches or logs.
 
 ## Completion conditions
 
-`no_findings` requires actual coverage of nonempty `representative_tasks` with no findings or gaps.
-`findings` means a completed review with concrete findings or gaps. Use `incomplete` and explain why
+`no_findings` requires actual coverage of nonempty `representative_tasks` and an empty issues list.
+`findings` means a completed review with concrete Issue references. Use `incomplete` and explain why
 when the review cannot complete. When the scoped changes touch none of the granted files, the
 representative task is preserving this Module's own contract against its granted implementation;
 complete that review. Implementation outside the grant belongs to its owning Modules' reviews and is

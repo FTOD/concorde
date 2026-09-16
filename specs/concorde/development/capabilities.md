@@ -31,7 +31,7 @@ interface agreement. It neither loads Skills into its workers nor owns their dis
 | main | `true` | `discover` | `false` | concorde-main | answerer, router, topology-designer, topology-author | — | Answer directly from complete indexed and granted Spec contexts, or design, prepare and atomically apply an explicitly accepted topology |
 | dev-loop | `true` | `discover` | `false` | concorde-dev-loop | router | specify-loop, review, plan, tasks, implement, validate | Route one change, call specify-loop, then plan, task, implement, validate and review code to ready; `run_reviews=false` records explicit skips and cannot cancel a recorded requirement |
 | specify-loop | `true` | `discover` | `false` | concorde-specify-loop | router | specify, review | Route one change, author or revise its Spec unless `specify=false`, independently review it, and return completed before planning or implementation; `run_reviews=false` records a Spec-only skip without cancelling an existing requirement |
-| reflections-triage | `true` | `bound` | `false` | concorde-reflections-triage | investigator | dev-loop | Report status, capture recorded gaps, investigate read-only, implement through the development loop, merge or close owned reflections |
+| issues | `true` | `bound` | `false` | concorde-issues | issue-solver | dev-loop, specify, review, validate | Inspect, report, reopen or solve one Issue to a verified candidate without delivery |
 | init | `true` | `none` | `true` | concorde-init | — | — | Propose and apply explicit project initialization with a pinned Protocol |
 | configure | `true` | `none` | `true` | concorde-configure | — | — | Apply the initialized Pi worker model/thinking/timeout configuration; with `accept_protocol`, rebind the configuration to the installed Protocol copy |
 | validate | `true` | `none` | `true` | concorde-validate | — | — | Run deterministic Spec and configured code checks and record readiness |
@@ -68,7 +68,7 @@ Each Python module MUST declare these independent properties:
 - **AGENTS** names the Agents launched directly, and **USES** names composed capabilities. A
   composition edge does not grant new context or write authority.
 
-Public exposure does not imply discovery: reflections-triage is public and consumes a bound
+Public exposure does not imply discovery: issues is public and consumes a bound
 Module. Conversely, being composed does not require private exposure: dev-loop calls the public
 specify-loop, which calls specify and review. The host rejects undeclared composition with
 `undeclared_capability` and preserves every participant's own invocation constraints.
@@ -84,18 +84,18 @@ the same identifiers, boolean `public` and `deterministic` values, `context_sele
 Skill names, exactly one Skill for each public capability and none for a non-public capability. The block is intentional redundancy so that this Spec explains the workflow
 without reading Python; it never adds a capability that code does not implement.
 
-Target workers use `concorde-agent-stage-context@3`/`concorde-agent-stage-result@1` with explicit
+Target workers use `concorde-agent-stage-context@4`/`concorde-agent-stage-result@2` with explicit
 document order, owned and directly referenced Specs. Discovery questions, routing and topology design
-use `concorde-main-stage-context@3`/`concorde-main-stage-result@1` with explicit complete Module contexts, deduplicated original source pools and per-Module resolution provenance. Accepted topology design uses
-`concorde-topology-proposal@1`, `concorde-topology-author-context@3`/`concorde-topology-author-result@1`
-and a host-private `concorde-topology-application@1` artifact; shared replacements require sole-owner authoring and compatibility evidence for each affected consumer. Plan artifacts, implementation tasks and selected reflections have
+use `concorde-main-stage-context@4`/`concorde-main-stage-result@2` with explicit complete Module contexts, deduplicated original source pools and per-Module resolution provenance. Accepted topology design uses
+`concorde-topology-proposal@1`, `concorde-topology-author-context@4`/`concorde-topology-author-result@2`
+and a host-private `concorde-topology-application@1` artifact; shared replacements require sole-owner authoring and compatibility evidence for each affected consumer. Plan artifacts, implementation tasks and selected Issues have
 separate registered type identities. Fresh snapshots accompany every handoff. Deterministic outputs
 carry identities and digests, never non-visible Module collections, code or logs into main or
 unrelated cognition.
 
-Reviewers use `concorde-review-stage-context@3` containing a full `concorde-context-snapshot@5`
-and host-produced `concorde-review-input@1`; they return `concorde-review-stage-result@1`. The host
-publishes `concorde-review-result@1` with target/focus/revision identity and
+Reviewers use `concorde-review-stage-context@4` containing a full `concorde-context-snapshot@6`
+and host-produced `concorde-review-input@1`; they return `concorde-review-stage-result@2`. The host
+publishes `concorde-review-result@2` with target/focus/revision identity and
 `semantic_completeness=not_proven`. Spec and code modes use different fresh roles, with no writes in
 either mode. Complete collections remain distinct from the scoped change patches. Module candidate
 review aggregates separately scoped results for its recorded participating components; it never

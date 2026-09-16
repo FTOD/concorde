@@ -9,7 +9,7 @@ every control flow uses, and the optional Studio view. Value records are defined
 The Studio adapter starts or observes the same CapabilityHost used by CLI and Skill invocations, with
 the same worker executor. Its generated LangGraph configuration exposes one Flow per Skill. Studio
 expands the same admission, dispatch and composed Flow instances used by local calls, including
-query/discovery, topology, planning, development and reflection branches. Non-public Capabilities
+query/discovery, topology, planning, development and Issue-solving branches. Non-public Capabilities
 remain callable through declared composition. Batch and coordination Flows are also inspectable from
 their executable factories; their runtime instances depend on host admission. Studio receives an
 invocation wrapper containing the existing schema-3 invocation and an optional expected_workspace
@@ -46,7 +46,7 @@ thinking level and timeout.
 ### Control-flow substrate
 
 Every capability Flow, including the global discovery loop, the development loop, topology
-evolution, reflection triage and the deterministic capabilities, is a LangGraph `StateGraph` built
+evolution, Issue solving and the deterministic capabilities, is a LangGraph `StateGraph` built
 with the Graph API, never with the Functional API. Its nodes are deterministic steps, which make no
 model call, or worker invocations, which do. These Flows are the Studio surface; no capability runs
 its control flow outside them. Flow structure alone proves nothing about semantics: transitions,
@@ -61,7 +61,7 @@ name.
 
 State: the contract's context fields in (for a stage context: `snapshot`, `change_id`,
 `expected_artifacts`) and the contract's result fields out (`context_id`, `outcome`, `answer`,
-`gaps`, `documents`, `plan`, `tasks`, `reflection_findings`).
+`blockers`, `documents`, `plan`, `tasks`, `issue_decision`).
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |

@@ -1,6 +1,6 @@
 """Shared JSON Schema building blocks for capability request/response contracts.
 
-Import-cycle-free: this module may import only ``wire_shapes``. The top-level ``capabilities/``
+Import-cycle-free: this module imports only dependency-free wire and issue shapes. The top-level ``capabilities/``
 package's modules build their own ``REQUEST``/``RESPONSE`` schemas from these shared shapes; the
 internal (non-capability) data types — topology design/proposal/application, discovery context,
 context snapshots, review internals — stay defined directly in ``contracts.py``.
@@ -9,10 +9,11 @@ context snapshots, review internals — stay defined directly in ``contracts.py`
 from __future__ import annotations
 
 from .wire_shapes import ARTIFACT, DIGEST, PATH, STRING, array, obj, typed_schema
+from .issue_shapes import BLOCKER
 
 __all__ = [
     "ARTIFACT", "DIGEST", "PATH", "STRING", "array", "obj", "typed_schema",
-    "TASK_FIELDS", "TASK_OPTIONAL", "NULLABLE_ID", "GAP", "CHECK_RESULT", "ROUTE",
+    "TASK_FIELDS", "TASK_OPTIONAL", "NULLABLE_ID", "BLOCKER", "CHECK_RESULT", "ROUTE",
     "MAIN_OUTCOMES", "WORKTREE_SUMMARY", "COMPONENT_PROGRESS", "WORKSPACE_CONTEXT",
     "task_request", "capability_response",
 ]
@@ -21,8 +22,6 @@ TASK_FIELDS = {"target_id": STRING, "task": STRING, "focus_id": STRING,
                "constraints": array(STRING), "change_id": STRING}
 TASK_OPTIONAL = ("focus_id", "constraints", "change_id")
 NULLABLE_ID = {"anyOf": [STRING, {"type": "null"}]}
-GAP = obj({"question": STRING, "blocked_step": STRING, "needed_contract": STRING,
-           "target_id": STRING, "context_id": DIGEST}, ("target_id", "context_id"))
 CHECK_RESULT = obj({"check_id": STRING, "target_id": STRING,
     "status": {"enum": ["passed", "failed", "timeout"]}, "exit_code": {"type": "integer"},
     "source_digest": DIGEST, "log_digest": DIGEST})
@@ -41,7 +40,7 @@ WORKSPACE_CONTEXT = obj({"kind": {"enum": ["primary", "change", "unversioned"]},
     "current_worktree": STRING, "current_branch": NULLABLE_ID,
     "primary_worktree": NULLABLE_ID, "primary_branch": NULLABLE_ID,
     "change_id": NULLABLE_ID, "phase": NULLABLE_ID, "status": NULLABLE_ID,
-    "outcome": NULLABLE_ID, "gaps": array(GAP), "components": array(COMPONENT_PROGRESS),
+    "outcome": NULLABLE_ID, "blockers": array(BLOCKER), "components": array(COMPONENT_PROGRESS),
     "active_worktrees": array(WORKTREE_SUMMARY)})
 
 
@@ -65,5 +64,5 @@ def capability_response() -> dict:
         "context_id": {"anyOf": [DIGEST, {"type": "null"}]},
         "outcome": {"enum": ["completed", "ready", "spec_incomplete", "unsupported",
                               "conflicting", "failed", "described", "delivered"]},
-        "answer": {"type": "string"}, "artifacts": array(ARTIFACT), "gaps": array(GAP),
+        "answer": {"type": "string"}, "artifacts": array(ARTIFACT), "blockers": array(BLOCKER),
         "checks": array(CHECK_RESULT), "completed_capabilities": array(STRING)})

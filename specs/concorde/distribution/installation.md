@@ -4,7 +4,7 @@
 
 The canonical Module template and Scenario fragment and the mandatory Spec document format are
 authored under `protocol/` and distributed with the independent standard. The `templates/` entry
-links to those sources. Plan, task and reflection starters remain Framework workflow assets; they
+links to those sources. Plan and task starters remain Framework workflow assets; they
 are not additional Protocol Spec kinds.
 
 The Framework identifies its supported project configuration as Profile 14. Initialization writes
@@ -44,8 +44,8 @@ provisions the viewer and the Pi worker extensions from their own `package.json`
 entry below `viewer/` and `pi/` is deployed like the rest of the package. It also installs the selected root rule entry: `AGENTS.md` explicitly directs Codex to
 read `.concorde/protocol/principles.md`; `CLAUDE.md` uses Claude's native relative `@` import of
 the same file. Only the selected integration's entry is installed. It seeds the Concorde-owned
-defaults a project starts from, `.concorde/reflections/config.json`, `index.json` and
-`.gitignore` and `.concorde/topology-proposals/.gitignore`, only when absent; these defaults are
+defaults a project starts from, `.concorde/issues/.gitignore` and
+`.concorde/topology-proposals/.gitignore`, only when absent; these defaults are
 excluded from the installation receipt and never overwritten on update. Everything that exists only
 because Concorde is installed is the installer's output; initialization creates only what the
 user's project generates through Concorde, its configuration, registry and Module stub.

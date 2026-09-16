@@ -14,7 +14,7 @@ file names are visible and implementation contents remain excluded from non-code
 fresh planner invocation. Its optional concorde-plan-artifact is an explicitly admitted
 prior plan, not a predecessor conversation. The accepted output is a nonempty plan bound to the
 selected contract revision and intent. The host stores the target plan and returns artifact references
-in concorde-plan-response@1; the worker has no direct project writes. No task list, implementation,
+in concorde-plan-response@2; the worker has no direct project writes. No task list, implementation,
 review or readiness is produced by planning.
 
 A coordinating plan identifies local work and exact direct child/used-Module IDs from its local

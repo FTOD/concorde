@@ -6,7 +6,7 @@ Development supplies the common capability invocation boundary, typed admission,
 host-owned state mechanics used by Concorde's providers and flows. It serves external runtimes and
 declared composing capabilities. Providers own their individual semantics and sibling flows own
 their sequencing and completion policies; this host does not make dev-loop a universal capability
-precondition. Harness binds execution, Spec resolves contracts, Reflections captures explicit gaps,
+precondition. Harness binds execution, Spec resolves contracts, Issues captures explicit gaps,
 and Distribution supplies fresh instruction projections.
 
 ## Usage
@@ -60,14 +60,14 @@ Candidate sequencing, repairs and ready/stop policy belong to
 ```mermaid
 flowchart TB
     accTitle: Development entities and relationships
-    accDescr: Distribution supplies Installed Skills, which the external Developer runtime reads before submitting capability requests to the Development host. Development capabilities declares the contracts the host dispatches. The host uses Harness for Agent execution, Spec for selection and validation, Reflections for gap history and Distribution for fresh projections. Worktree lifecycle and File transactions realize shared mutation mechanics.
+    accDescr: Distribution supplies Installed Skills, which the external Developer runtime reads before submitting capability requests to the Development host. Development capabilities declares the contracts the host dispatches. The host uses Harness for Agent execution, Spec for selection and validation, Issues for gap history and Distribution for fresh projections. Worktree lifecycle and File transactions realize shared mutation mechanics.
     developmentCapabilities["Development capabilities"]
     developmentHost["Development host"]
     worktreeLifecycle["Worktree lifecycle"]
     fileTransactions["File transactions"]
     harness["Harness"]
     spec["Spec"]
-    reflections["Reflections"]
+    issues["Issues"]
     distribution["Distribution"]
     installedSkills["Installed Skills"]
     developerRuntime["Developer runtime"]
@@ -79,7 +79,7 @@ flowchart TB
     developmentHost -->|applies accepted replacements through| fileTransactions
     developmentHost -->|resolves context, compiles permissions and runs Agents and isolated checks through| harness
     developmentHost -->|selects targets and validates Spec structure through| spec
-    developmentHost -->|records attributed gaps in| reflections
+    developmentHost -->|records classified problems in| issues
     developmentHost -->|verifies build freshness through| distribution
     worktreeLifecycle -.->|also realizes worktree mechanics for| harness
     fileTransactions -.->|also applies accepted replacements for| spec
@@ -246,7 +246,7 @@ agent-to-agent channel bypassing it.
 - GIVEN an admitted capability request through a local or Studio entry
 - WHEN the host executes the request
 - THEN the same compiled Flow definitions select its capability branch, Agent stages and feedback transitions
-- AND discovery expansion, topology authors, component work and reflection resolutions advance through bounded Flow transitions
+- AND discovery expansion, topology authors, component work and Issue resolutions advance through bounded Flow transitions
 - AND failed admission or a stopping outcome prevents dependent nodes from running
 - AND existing task identity, context isolation, review requirements and delivery authorization remain enforced
 - AND a change to the Flow that schedules scoped reviews invalidates their recorded input identity
@@ -291,9 +291,9 @@ This collaboration applies when routing, binding a target, deriving affected imp
 - [Find every affected consumer before coordinating work](../spec/registry.md#stable-id-spec-context-queries)
 - [Require source-bound structural evidence without claiming semantic proof](../spec/structure.md#scenario.spec.validate-success)
 
-### Reflections
+### Issues
 
-<a id="entity.development.reflections"></a><a id="agreement.document.development.module.3"></a>
+<a id="entity.development.issues"></a><a id="agreement.document.development.module.3"></a>
 
 Retain, investigate and resolve explicitly attributed project feedback and persistent gaps.
 
@@ -301,7 +301,7 @@ Retain explicitly captured development gaps and reports.
 
 This collaboration applies when a developer explicitly records gaps from a change's history.
 
-- [Create or reuse an explicit gap link without resolving it or starting repair](../reflections/interfaces.md#scenario.reflections.capture-gap)
+- [Persist classified observations without controlling work](../issues/interfaces.md#scenario.issues.reference)
 
 ### Distribution
 
@@ -423,7 +423,7 @@ launch, execute and validate sequence of `Invocation.stage` and `MainInvocation.
 to the Harness Module's own host contract; extracting them into a Harness-owned realization is pending.
 
 Capability admission and dispatch, query/discovery, topology authoring and application,
-planning, development and component coordination, and reflection triage execute through compiled
+planning, development and component coordination, and Issue solving execute through compiled
 Flow factories. Deterministic lifecycle operations are nodes in the same public capability Flow.
 Batch authoring, review and finalization use bounded Flow composition. The remaining invocation-binding
 ownership gap does not change this Module's promises.

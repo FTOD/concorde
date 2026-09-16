@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "document": {
+    "id": "document.reflections.issues",
+    "owner": "module.issues"
+  },
+  "entities": [
+    {
+      "id": "entity.reflections.issue-store",
+      "title": "Issue store",
+      "kind": "program",
+      "meaning": "#entity.reflections.issue-store",
+      "files": [
+        "src/concorde/issues/",
+        "src/concorde/spec/issue_shapes.py",
+        "tests/concorde/harness/test_pi_worker.py",
+        "tests/concorde/issues/"
+      ]
+    }
+  ],
+  "dependencies": [],
+  "bindings": []
+}

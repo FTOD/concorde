@@ -140,7 +140,8 @@ it("publishes the configured introduction at the root while preserving direct Sp
  expect(home).toContain("Capability inventory");
  expect(home).toContain("Harnesses and native tools");
  expect(home).toContain("Launchers and supporting tools");
- expect(home).toContain("concorde-reflections-triage");
+ expect(home).toContain("concorde-issues");
+ expect(home).not.toContain("concorde-reflections-triage");
  expect(home).toContain("implementation-workspace");
  expect(home).toContain('scope="col"');
  expect(home).toMatch(/role="region"[^>]*tabindex="0"/i);

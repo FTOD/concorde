@@ -26,6 +26,10 @@ PROVENANCE = obj({
     "head": NULLABLE_STRING,
 })
 RECEIPT = obj({"issue_id": ISSUE_ID, "report_id": DIGEST, "path": PATH})
+# Task-local judgments reference one immutable observation; they are not another problem record.
+BLOCKER = obj({**RECEIPT["properties"], "blocked_step": STRING})
+REVIEW_ISSUE = obj({**RECEIPT["properties"], "severity": {"enum": ["blocking", "advisory"]},
+                    "affected_task": STRING})
 OBSERVATION = obj({"id": DIGEST, "created_at": STRING, "report": REPORT, "source": PROVENANCE})
 DISPOSITION = obj({
     "reason": {"enum": ["resolved", "duplicate", "not-actionable", "reopened"]},

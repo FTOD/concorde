@@ -141,7 +141,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
     def test_failed_delivery_preserves_visible_unresolved_task_gaps(self):
         def missing(stage, snapshot, data, cwd):
             if stage == "plan":
-                data.update(outcome="spec_incomplete", gaps=[{
+                data.update(outcome="spec_incomplete", blockers=[{
                     "question": "Who owns transfer admission?", "blocked_step": "Plan admission",
                     "needed_contract": "Transfer admission owner"}])
         blocked = self.call_capability(self.change, "concorde-plan", self.task, missing)
@@ -150,9 +150,9 @@ class WorktreeLifecycleTests(unittest.TestCase):
         rejected = self.call_capability(self.primary, "concorde-deliver", {"change_id": before["change_id"]})
         self.assertEqual("blocked", rejected["status"], rejected)
         after = read_change(self.change, required=True)
-        self.assertEqual(before["gap_history"], after["gap_history"])
-        self.assertEqual(before["gaps"], after["gaps"])
-        self.assertTrue(after["gaps"])
+        self.assertEqual(before["issue_blockers"], after["issue_blockers"])
+        self.assertEqual(before["blockers"], after["blockers"])
+        self.assertTrue(after["blockers"])
 
     @verifies("scenario.development.answer-question")
     def test_main_answers_workspace_metadata_directly(self):
@@ -434,7 +434,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 data['documents']=[{'path':reading,'content':(cwd/reading).read_text()+'\nClarified candidate promise.\n'},
                                    {'path':metadata,'content':json.dumps(value)}]
             if stage == "specify" and snapshot["target_id"] == "module.ledger":
-                data.update(outcome="spec_incomplete", gaps=[{"question": "Which account is known?",
+                data.update(outcome="spec_incomplete", blockers=[{"question": "Which account is known?",
                     "blocked_step": "Author the ledger view", "needed_contract": "Known account identity"}])
         result = self.call_capability(self.change, "concorde-dev-loop", task, partial)
         self.assertEqual("blocked", result["status"], result)

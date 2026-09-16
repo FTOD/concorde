@@ -66,7 +66,7 @@ class ManifestContractTests(unittest.TestCase):
         capabilities = load_capability_inventory()
         templates = sorted(path.name for path in (REPOSITORY_ROOT / "templates").glob("*.md"))
         self.assertEqual(sorted(self.manifest["templates"]), templates)
-        self.assertEqual((len(agents.AGENTS), len(capabilities.CAPABILITIES), len(SKILL_NAMES), len(templates)), (12, 14, 9, 5))
+        self.assertEqual((len(agents.AGENTS), len(capabilities.CAPABILITIES), len(SKILL_NAMES), len(templates)), (12, 14, 9, 4))
         self.assertEqual(
             (REPOSITORY_ROOT / "scripts/requirements.lock").read_text(),
             "langgraph==1.2.11\n",
@@ -80,19 +80,15 @@ class ManifestContractTests(unittest.TestCase):
 
 
 
-    def test_reflection_template_separates_recording_from_triage(self):
-        body = (REPOSITORY_ROOT / "templates/reflections-template.md").read_text()
-        self.assertIn("Concorde Reflection Document v2", body)
-        self.assertIn(".concorde/reflections/<bucket>/R-NNN.md", body)
-        for bucket in ("pending/", "planned/", "needs-comments/"):
-            self.assertIn(bucket, body)
-        self.assertIn("--allocate-id", body)
-        self.assertIn("--validate-entry", body)
-        # The bucket directory is the only record of triage state: the front matter never repeats it.
-        self.assertNotIn("triage:", body)
-        self.assertNotIn("human_intervention:", body)
-        self.assertIn("## User Comments", body)
-        self.assertIn("R-NNN", body)
+    def test_issue_reporting_replaces_the_reflection_template_and_triage(self):
+        from concorde.spec.issue_shapes import REPORT
+        from concorde.spec.contracts import CAPABILITY_NAMES
+        self.assertEqual(['bug', 'gap', 'limitation'], REPORT['properties']['type']['enum'])
+        self.assertFalse({'source', 'status', 'human_intervention', 'action'} & REPORT['properties'].keys())
+        self.assertIn('concorde-issues', CAPABILITY_NAMES)
+        self.assertNotIn('concorde-reflections-triage', CAPABILITY_NAMES)
+        self.assertFalse((REPOSITORY_ROOT / 'templates/reflections-template.md').exists())
+        self.assertFalse((REPOSITORY_ROOT / 'scripts/reflections_queue.py').exists())
 
     def test_removed_host_package_layout_is_absent(self):
         for relative in (".specify", "presets", "extensions", "bundles", "catalogs"):

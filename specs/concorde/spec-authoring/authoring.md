@@ -13,7 +13,7 @@ file names are visible and implementation contents remain excluded from non-code
 `specify` uses a fresh spec-engineer specify invocation with no inherited stage artifacts or
 implementation contents. Inputs are the complete owned/direct-reference contract, task and
 constraints under the pinned Protocol. It returns full owned document replacements in
-concorde-agent-stage-result@1, or attributed gaps with no replacements. The host validates identity,
+concorde-agent-stage-result@2, or attributed gaps with no replacements. The host validates identity,
 metadata, allowed paths, context and configuration before applying accepted replacements; the author
 never writes project files. The capability response retains references to accepted output.
 

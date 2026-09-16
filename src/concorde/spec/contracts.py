@@ -10,8 +10,8 @@ owned by any one capability and stay defined directly here.
 """
 from __future__ import annotations
 
-from .issue_shapes import RECEIPT as ISSUE_RECEIPT, REPORT as ISSUE_REPORT
-from .contract_shapes import ARTIFACT, DIGEST, GAP, MAIN_OUTCOMES, NULLABLE_ID, PATH, ROUTE, STRING, WORKSPACE_CONTEXT, array, obj, typed_schema
+from .issue_shapes import RECEIPT as ISSUE_RECEIPT, REPORT as ISSUE_REPORT, REVIEW_ISSUE
+from .contract_shapes import ARTIFACT, DIGEST, BLOCKER, MAIN_OUTCOMES, NULLABLE_ID, PATH, ROUTE, STRING, WORKSPACE_CONTEXT, array, obj, typed_schema
 
 DOCUMENT_CHANGE = obj({"path": PATH, "content": {"type": "string"}})
 TASK_ITEM = obj({"id": STRING, "target_id": STRING, "description": STRING,
@@ -66,8 +66,8 @@ CAPABILITY_AGENTS = {
     "concorde-tasks": ("tasks", "concorde-task-author"),
     "concorde-implement": ("implementation", "concorde-programmer"),
     "concorde-context-solve": ("context-solve", "concorde-context-assessor"),
+    "concorde-issues": ("issue-solve", "concorde-issue-solver"),
 }
-INVESTIGATION_AGENT = "concorde-investigator"
 REVIEW_STAGES = {"spec": ("spec-review", "concorde-spec-reviewer"),
                  "code": ("code-review", "concorde-code-reviewer")}
 # Main discovery runs one worker per action; accepted topologies are authored by fresh authors.
@@ -95,7 +95,7 @@ DISCOVERY_CAPABILITIES = frozenset(name for name in CAPABILITY_NAMES
 DETERMINISTIC_CAPABILITIES = frozenset(name for name in CAPABILITY_NAMES if _MODULES[name].DETERMINISTIC)
 COMPOSITE_CAPABILITIES = tuple(name for name in CAPABILITY_NAMES if _MODULES[name].USES)
 assert len(CAPABILITY_NAMES) == len(load_capability_inventory().CAPABILITIES), "capability identities must be unique"
-INTERNAL_SKILLS = tuple(sorted({*MAIN_AGENTS.values(), TOPOLOGY_AUTHOR_AGENT, INVESTIGATION_AGENT,
+INTERNAL_SKILLS = tuple(sorted({*MAIN_AGENTS.values(), TOPOLOGY_AUTHOR_AGENT,
                                 *(role for _, role in CAPABILITY_AGENTS.values()),
                                 *(role for _, role in REVIEW_STAGES.values())}))
 INTERNAL_DATA_TYPES = (
@@ -175,9 +175,15 @@ def schemas() -> dict:
     result["concorde-implementation-task"] = obj({"plan": STRING, "tasks": array(TASK_ITEM)})
     result["concorde-task-scope-feedback"] = obj({"tasks_digest": DIGEST,
         "reason": {"const": "implementation_boundary"}})
-    result["concorde-reflection-selection"] = obj({"head": STRING, "records": array(obj({"id":STRING,"path":PATH,"digest":DIGEST,"content":STRING}))})
-    stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-task-identity-constraints","concorde-implementation-task","concorde-task-scope-feedback","concorde-reflection-selection","concorde-review-result")]}
-    result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 5},
+    result["concorde-issue-intent"] = obj({"intent": STRING})
+    result["concorde-issue-selection"] = obj({"issue_id": STRING, "revision": DIGEST,
+        "problem": STRING, "type": {"enum": ["bug", "gap", "limitation"]},
+        "feedback": {"type": "string"}, "verification": {"type": "string"},
+        "duplicates": array(obj({"issue_id": STRING, "revision": DIGEST, "problem": STRING}))})
+    result["concorde-issue-context"] = obj({"observations": array(obj({
+        "receipt": ISSUE_RECEIPT, "description": STRING, "impact": STRING, "basis": STRING}))})
+    stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-task-identity-constraints","concorde-implementation-task","concorde-task-scope-feedback","concorde-issue-selection","concorde-issue-context","concorde-issue-intent","concorde-review-result")]}
+    result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 6},
         "target_id": STRING, "kind": {"const": "module"}, "focus_id": NULLABLE_ID,
         "phase": STRING, "task": STRING, "constraints": array(STRING),
         "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
@@ -206,12 +212,7 @@ def schemas() -> dict:
         "review_mode": {"enum": ["spec", "code"]},
         "status": {"enum": ["no_findings", "findings", "incomplete"]},
         "representative_tasks": array(STRING, unique=True),
-        "findings": array(obj({"id": STRING, "severity": {"enum": ["blocking", "advisory"]},
-            "target_id": STRING, "document": PATH, "contract": STRING,
-            "location": obj({"path": PATH, "line": {"anyOf": [
-                {"type": "integer", "minimum": 1}, {"type": "null"}]}}),
-            "problem": STRING, "affected_task": STRING})),
-        "gaps": array(GAP), "answer": STRING}
+        "issues": array(REVIEW_ISSUE), "answer": STRING}
     result["concorde-review-stage-result"] = obj(review_fields)
     result["concorde-review-result"] = obj({**review_fields,
         "context_id": {"anyOf": [DIGEST, {"type": "null"}]},
@@ -220,13 +221,11 @@ def schemas() -> dict:
         "semantic_completeness": {"const": "not_proven"}})
     result["concorde-agent-stage-result"] = obj({"context_id": DIGEST,
         "outcome": {"enum": ["completed", "sufficient", "spec_incomplete", "unsupported", "conflicting", "failed"]},
-        "answer": {"type": "string"}, "gaps": array(GAP), "documents": array(DOCUMENT_CHANGE),
+        "answer": {"type": "string"}, "blockers": array(BLOCKER), "documents": array(DOCUMENT_CHANGE),
         "plan": {"type": "string"}, "tasks": array(TASK_ITEM),
-        "reflection_findings": array(obj({"reflection_id":STRING,"verified_commit":STRING,
-          "observed_state":{"enum":["reproduced","not-reproduced"]},"verification":STRING,"analysis":STRING,"resolution":STRING,
-          "intervention_rationale":STRING,"human_intervention":{"enum":["required","not-required"]},
-          "route":{"enum":["fast-loop","plan","dismiss","blocked"]},"effort":{"enum":["small","medium","large"]},
-          "files":array(PATH,unique=True),"steps":STRING,"validation":STRING,"risks":STRING,"protocol_change":{"type":"boolean"}}))}, ("reflection_findings",))
+        "issue_decision": obj({"action": {"enum": ["develop", "spec-repair", "verify", "resolved", "duplicate", "not-actionable", "needs-decision"]},
+            "intent": STRING, "rationale": STRING, "specify": {"type": "boolean"},
+            "duplicate_of": NULLABLE_ID})}, ("issue_decision",))
     result["concorde-topology-design"] = obj({"summary": STRING, "registry": REGISTRY,
         "spec_tasks": {**array(SPEC_TASK), "minItems": 1},
         "migration_constraints": array(STRING), "acceptance": {**array(STRING), "minItems": 1}})
@@ -242,7 +241,7 @@ def schemas() -> dict:
         "files": {**array(PROPOSAL_FILE), "minItems": 1}})
     discovery_target = obj({"target_id": STRING, "kind": {"const": "module"},
                             "spec_resolution": resolution(source)})
-    result["concorde-discovery-context"] = obj({"context_id": DIGEST, "schema_version": {"const": 4},
+    result["concorde-discovery-context"] = obj({"context_id": DIGEST, "schema_version": {"const": 5},
         "capability": {"enum": sorted(DISCOVERY_CAPABILITIES)}, "phase": {"const": "route"},
         "action": {"enum": ["route", "ask", "design-topology"]},
         "task": STRING, "constraints": array(STRING), "target_hint": NULLABLE_ID,
@@ -258,7 +257,7 @@ def schemas() -> dict:
         "answer": {"type": "string"}, "expand_targets": array(STRING, unique=True),
         # Selection-only routes keep single-target intent in host-owned input. Full routes
         # remain readable for existing routers, but explicit echoes are checked exactly.
-        "routes": array(obj(ROUTE["properties"], ("task", "constraints"))), "gaps": array(GAP),
+        "routes": array(obj(ROUTE["properties"], ("task", "constraints"))), "blockers": array(BLOCKER),
         "topology_design": {"anyOf": [typed_schema("concorde-topology-design"), {"type": "null"}]}})
     result["concorde-topology-author-context"] = obj({"context_id": DIGEST,
         "base_registry_digest": DIGEST, "target": TARGET_DESCRIPTOR, "task": STRING,
@@ -268,7 +267,7 @@ def schemas() -> dict:
         "spec_resolution": resolution(source),
         "instructions": {"type": "string"}, "workspace": WORKSPACE_CONTEXT})
     result["concorde-topology-author-result"] = obj({"context_id": DIGEST, "target_id": STRING,
-        "outcome": WORKER_OUTCOMES, "answer": {"type": "string"}, "gaps": array(GAP),
+        "outcome": WORKER_OUTCOMES, "answer": {"type": "string"}, "blockers": array(BLOCKER),
         "documents": array(DOCUMENT_CHANGE)})
     result.update(_capability_schemas())
     return result

@@ -80,11 +80,11 @@
       "meaning": "#entity.development.spec"
     },
     {
-      "id": "entity.development.reflections",
-      "title": "Reflections",
+      "id": "entity.development.issues",
+      "title": "Issues",
       "kind": "used module",
-      "target_id": "module.reflections",
-      "meaning": "#entity.development.reflections"
+      "target_id": "module.issues",
+      "meaning": "#entity.development.issues"
     },
     {
       "id": "entity.development.distribution",
@@ -192,7 +192,7 @@
       "meaning": "#agreement.document.development.module.2"
     },
     {
-      "target_id": "module.reflections",
+      "target_id": "module.issues",
       "meaning": "#agreement.document.development.module.3"
     },
     {

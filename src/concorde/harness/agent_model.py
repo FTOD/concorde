@@ -33,7 +33,7 @@ WORKER_TOOLS = frozenset({"read", "grep", "find", "ls", "edit", "write", "bash",
 CHILD_TOOLS = frozenset({"read", "grep", "find", "ls", "bash", "run_checks"})
 CONTEXT_RESULT_PAIRS = {f"concorde-{kind}-context": f"concorde-{kind}-result"
                         for kind in ("agent-stage", "review-stage", "main-stage", "topology-author")}
-RESULT_FIELDS = ("documents", "plan", "tasks", "reflection_findings", "routes", "topology_design")
+RESULT_FIELDS = ("documents", "plan", "tasks", "issue_decision", "routes", "topology_design")
 _CHILD_SETTINGS = {"systemPromptMode": "replace", "inheritProjectContext": False,
                    "inheritGlobalContext": False, "inheritSkills": False}
 
@@ -238,7 +238,10 @@ def agent_definition(name: str) -> Agent:
 def validate_agent_artifacts(agent: Agent, inputs, *, require_all: bool = True) -> None:
     contract = agent.contract
     types = [item["type_id"] for item in inputs]
-    if (len(types) != len(set(types)) or set(types) - set(contract.stage_inputs)
+    allowed = set(contract.stage_inputs) | {"concorde-issue-intent"}
+    if "concorde-review-result" in types:
+        allowed.add("concorde-issue-context")
+    if (len(types) != len(set(types)) or set(types) - allowed
             or require_all and (set(contract.required_inputs) - set(types)
                 or "concorde-task-scope-feedback" in types
                     and "concorde-implementation-task" not in types)):
@@ -348,7 +351,10 @@ def binding_json(binding: AgentBinding) -> str:
 
 
 def binding_from_json(text: str) -> AgentBinding:
-    return AgentBinding(**json.loads(text))
+    try:
+        return AgentBinding(**json.loads(text))
+    except (ValueError, TypeError) as error:
+        raise ValueError("malformed Agent binding JSON") from error
 
 
 def resolve_agent(package_root: str | Path, name: str) -> AgentBinding:
@@ -370,7 +376,10 @@ def resolve_agent(package_root: str | Path, name: str) -> AgentBinding:
         raise _invalid(f"agent {agent.name!r} spec is missing: {agent.spec}")
     spec_digest = _sha256_bytes(spec_path.read_bytes())
     manifest_bytes = (root / "generated/build-manifest.json").read_bytes()
-    sources = json.loads(manifest_bytes.decode("utf-8")).get("sources", {})
+    try:
+        sources = json.loads(manifest_bytes.decode("utf-8")).get("sources", {})
+    except (ValueError, AttributeError) as error:
+        raise BuildError("malformed build manifest", "stale_build") from error
     if sources.get(agent.spec) != spec_digest:
         raise _invalid(f"agent {agent.name!r} spec is not recorded in the build manifest: {agent.spec}")
     for child in agent.children:

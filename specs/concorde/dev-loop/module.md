@@ -139,7 +139,7 @@ code change.
 
 - GIVEN a code-owning target's code review returns blocking findings
 - WHEN the loop selects its automatic revision edge from code review back to task authoring
-- THEN task authoring receives the current completed tasks and the blocking `concorde-review-result@1` as `stage_inputs`, and the resulting repair tasks and their implementation are checked and code-reviewed again like any other change
+- THEN task authoring receives the current completed tasks and the blocking `concorde-review-result@2` as `stage_inputs`, and the resulting repair tasks and their implementation are checked and code-reviewed again like any other change
 - AND this repair is bounded by the target's declared `max_repair_iterations` policy
 
 See [code-review repair is the only automatic edge](#req.development.repair-edge-only) and

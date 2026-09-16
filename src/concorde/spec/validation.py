@@ -572,19 +572,6 @@ def validate_repository(root: str | Path, target_id: str | None = None,
         findings.extend(link_findings(repository))
         findings.extend(unlisted_file_findings(repository))
         findings.extend(verification_findings(repository))
-        if (repository.root/".concorde/reflections").exists():
-            from ..reflections.scoped_triage import queue_module
-            queue=queue_module(repository.package_root)
-            _,index,parsed,_,raw=queue._load_reflections(repository.root,required=True)
-            # Reflection parsing is independent of the candidate overlay, but attribution must be
-            # checked against the repository instance being validated rather than the on-disk
-            # registry that the compatibility queue helper happens to load.
-            ids = definition_ids(repository)
-            for entry in parsed.entries:
-                if entry.feature not in ids:
-                    error("CONCORDE-REFLECT-004",entry.path,"Reflection attribution must be a registered Module or scenario")
-            inputs.extend((p,digest(b)) for p,b in raw.items())
-            inputs.append(("reflection-index",digest(index)))
         from ..issues.store import list_issues, issue_path
         try:
             inputs.extend((issue_path(item["id"]), item["revision"]) for item in list_issues(repository.root))

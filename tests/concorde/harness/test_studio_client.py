@@ -6,6 +6,7 @@ import json
 import os
 import unittest
 from pathlib import Path
+from typing import Any, cast
 from unittest.mock import Mock, patch
 from urllib.error import HTTPError, URLError
 from uuid import uuid4
@@ -21,7 +22,7 @@ from tests.concorde.spec.support import PACKAGE
 
 class StudioClientTests(unittest.TestCase):
     def setUp(self):
-        self.thread, self.run = str(uuid4()), str(uuid4())
+        self.thread, self.run_id = str(uuid4()), str(uuid4())
         self.value = invocation()
         self.result = {"type_id": "concorde-capability-result", "schema_version": 3,
             "capability_id": self.value["capability_id"], "mode": "execute", "status": "succeeded",
@@ -47,7 +48,7 @@ class StudioClientTests(unittest.TestCase):
                 with self.assertRaises(SpecError):
                     run_in_studio(url, self.value, Path.cwd(), PACKAGE)
                 factory.assert_not_called()
-        self.assertIsNone(_NoRedirect().redirect_request(None, None, 302, "", {}, "http://other"))
+        self.assertIsNone(cast(Any, _NoRedirect()).redirect_request(None, None, 302, "", {}, "http://other"))
 
     def test_connection_loss_after_submission_never_retries_or_runs_locally(self):
         opener, calls = self.opener(iter([
@@ -59,8 +60,8 @@ class StudioClientTests(unittest.TestCase):
              patch("sys.stdin", io.StringIO(json.dumps(self.value))), patch("sys.argv", ["run-capability.py"]), \
              contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             inventory = load_capability_inventory()
-            module = importlib.import_module(f"{inventory.__name__}.reflections_triage")
-            code = json_main(PACKAGE, "concorde-reflections-triage", runner=module.run)
+            module = importlib.import_module(f"{inventory.__name__}.issues")
+            code = json_main(PACKAGE, "concorde-issues", runner=module.run)
         local.assert_not_called()
         self.assertEqual(2, len(calls))
         self.assertEqual(3, code)
@@ -72,8 +73,8 @@ class StudioClientTests(unittest.TestCase):
     def test_polling_and_policies_preserve_the_server_result(self):
         state = {"result": self.result, "policies": [{"phase": "ask"}], "events": []}
         opener, calls = self.opener(iter([{"thread_id": self.thread},
-            {"run_id": self.run, "status": "pending"}, {"run_id": self.run, "status": "running"},
-            {"run_id": self.run, "status": "success"}, {"values": state}]))
+            {"run_id": self.run_id, "status": "pending"}, {"run_id": self.run_id, "status": "running"},
+            {"run_id": self.run_id, "status": "success"}, {"values": state}]))
         with patch("concorde.harness.studio_client.build_opener", return_value=opener) as factory, \
              patch("concorde.harness.studio_client.time.sleep"), contextlib.redirect_stderr(io.StringIO()):
             actual = run_in_studio("http://localhost:2024", self.value, Path.cwd(), PACKAGE)
@@ -86,7 +87,7 @@ class StudioClientTests(unittest.TestCase):
 
     def test_failed_and_interrupted_runs_report_thread_without_reading_stale_state(self):
         for status in ["error", "interrupted", "timeout"]:
-            opener, calls = self.opener(iter([{"thread_id": self.thread}, {"run_id": self.run, "status": status}]))
+            opener, calls = self.opener(iter([{"thread_id": self.thread}, {"run_id": self.run_id, "status": status}]))
             with self.subTest(status=status), patch("concorde.harness.studio_client.build_opener", return_value=opener), \
                  contextlib.redirect_stderr(io.StringIO()):
                 with self.assertRaises(SpecError) as error:
@@ -98,7 +99,7 @@ class StudioClientTests(unittest.TestCase):
     def test_incompatible_result_is_rejected(self):
         for changes in [{"mode": "describe-policy"}, {"capability_id": "concorde-plan"},
                         {"status": "success"}, {"schema_version": True}, {"errors": "bad"}]:
-            opener, _ = self.opener(iter([{"thread_id": self.thread}, {"run_id": self.run, "status": "success"},
+            opener, _ = self.opener(iter([{"thread_id": self.thread}, {"run_id": self.run_id, "status": "success"},
                 {"values": {"result": {**self.result, **changes}}}]))
             with self.subTest(changes=changes), patch("concorde.harness.studio_client.build_opener", return_value=opener), \
                  contextlib.redirect_stderr(io.StringIO()):
@@ -120,7 +121,7 @@ class StudioClientTests(unittest.TestCase):
         result = {**self.result, "capability_id": "concorde-main",
                   "mode": "describe-policy", "status": "described"}
         opener, calls = self.opener(iter([
-            {"thread_id": self.thread}, {"run_id": self.run, "status": "success"},
+            {"thread_id": self.thread}, {"run_id": self.run_id, "status": "success"},
             {"values": {"result": result, "policies": [], "events": []}}]))
         with patch("concorde.harness.studio_client.build_opener", return_value=opener), \
                 contextlib.redirect_stderr(io.StringIO()):
@@ -139,7 +140,7 @@ class StudioClientTests(unittest.TestCase):
         for field in ("project_root", "package_root"):
             wrong = {**submitted, "expected_workspace": {
                 **submitted["expected_workspace"], field: "/another-workspace"}}
-            rejected = flow.invoke(wrong)
+            rejected = flow.invoke(cast(Any, wrong))
             self.assertEqual("workspace_mismatch", rejected["result"]["errors"][0]["code"])
             self.assertEqual([], rejected["events"])
             self.assertEqual([], rejected["policies"])

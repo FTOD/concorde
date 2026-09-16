@@ -46,7 +46,7 @@ def export():
     from concorde.harness.agent_model import agent_definition
     from concorde.harness.agent_node import AgentNode
     from concorde.harness.batch_flow import build_batch_flow
-    from concorde.reflections.triage_flow import build_triage_flow
+    from concorde.issues.flow import build_issue_flow, build_issue_verification_flow
     factories = {
         'Discovery': build_discovery_flow, 'Target admission and discovery': build_target_flow,
         'Bound target admission': lambda nodes: build_target_flow(nodes, discover=False),
@@ -54,7 +54,7 @@ def export():
         'Topology preparation': build_topology_flow, 'Topology application': build_topology_apply_flow,
         'Spec authoring and review': build_specify_flow, 'Planning': build_plan_flow, 'Initialization and configuration': build_project_flow,
         'Component coordination': build_coordination_flow, 'Shared candidate stabilization': build_stabilization_flow,
-        'Reflection triage': build_triage_flow,
+        'Issue solving': build_issue_flow, 'Issue verification': build_issue_verification_flow,
         # One worker invocation as a node typed by its contract; every model-backed stage runs one.
         'Agent invocation node': lambda nodes: AgentNode(agent_definition('planner')).flow(),
         'Capability admission': build_capability_flow, 'Capability dispatch': build_dispatch_flow,
@@ -62,12 +62,12 @@ def export():
     }
     flows = {name: inspect_flow(factory(lambda node: lambda state: {})) for name, factory in factories.items()}
     import inspect
-    factory_sources = sorted({Path(inspect.getsourcefile(factory)).relative_to(ROOT).as_posix()
+    factory_sources = sorted({Path(source).relative_to(ROOT).as_posix()
         for factory in [*factories.values(), build_batch_flow, build_loop_flow, build_studio_flow, AgentNode.flow]
-        if factory.__name__ != '<lambda>'})
+        if factory.__name__ != '<lambda>' and (source := inspect.getsourcefile(factory)) is not None})
     paths = sorted(set(factory_sources) | {
         'src/concorde/development/capability_host.py', 'src/concorde/development/review.py',
-        'src/concorde/harness/worker_executor.py', 'src/concorde/reflections/scoped_triage.py',
+        'src/concorde/harness/worker_executor.py', 'src/concorde/issues/flow.py',
         'docsite/concorde-only/flows.py'} | {
             Path(module.__file__).relative_to(ROOT).as_posix() for module in modules.values()})
     capabilities = {name: inspect_flow(build_studio_flow(name, ROOT, ROOT) if module.PUBLIC else

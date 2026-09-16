@@ -10,7 +10,7 @@ request uses Spec-only router discovery to select one owning Module, then starts
 read-only reviewer. A composing capability may supply its trusted bound target without repeating
 discovery; a current-change resumption supplies both target_id and change_id. The public launcher
 and Studio admit this capability directly. Review runs in the current worktree without creating
-a development change or requiring a Reflection record. The host may persist reports and existing
+a development change or requiring a preexisting Issue record. The host may persist reports and existing
 change evidence, but reviewers receive no project write authority.
 Spec mode uses the complete admitted owned and directly referenced Specs, Protocol/kind rules, task and scoped changes to any document included in that context. Code mode uses those
 contracts, the target's exact current registered implementation-file enumeration and scoped code
@@ -25,7 +25,7 @@ supplies content. Deleted files under a current grant appear as scoped changes; 
 grants never expose their old contents. Full admitted current documents always accompany Spec review,
 even when a focus or patch names only a small portion.
 
-Private `concorde-review-stage-context@3` contains a full context snapshot and a
+Private `concorde-review-stage-context@4` contains a full context snapshot and a
 `concorde-review-input@1` with review_mode, input_digest, revision and changes. Each change is
 `{path, patch}`; binary changes carry only digest markers. The revision has spec_digest,
 nullable implementation_digest, nullable baseline and nullable head. spec_digest binds the selected
@@ -39,29 +39,27 @@ additionally records the actual frozen lifecycle observation. Lifecycle phase ch
 invalidate an otherwise identical task review; changed relevant input does. Old result artifacts
 remain audit history and cannot pass a current gate.
 
-The reviewer returns `concorde-review-stage-result@1` bound to context_id, input_digest and mode, with
-representative_tasks, findings, gaps, answer and status=no_findings|findings|incomplete. A finding
-has unique id, severity=blocking|advisory, target_id, document (an exact admitted Markdown path),
-contract, location={path,line}, problem and affected_task. line is a positive integer or null.
-Its contract document must be in the complete collection, and its location must be admitted Spec or
-code/change scope. A blocking Spec finding requires a gap with blocked_step=affected_task and
-needed_contract=contract. Gap target/context provenance is verified and filled by the host. Missing
-contracts during code review also use gaps; a concrete code defect can block without a Spec gap.
-Findings and answers contain contract-level descriptions/locations, never raw code, patches or logs.
+The reviewer returns `concorde-review-stage-result@2` bound to context_id, input_digest and mode, with
+representative_tasks, issues, answer and status=no_findings|findings|incomplete. Each Issue judgment
+carries its accepted immutable receipt, severity=blocking|advisory and affected_task. The report
+service checks the problem's evidence locations and known contract owner against the admitted
+context; final admission rejects unreported, ungranted or duplicate references. The host derives
+task blockers from blocking judgments instead of requiring a duplicated gap object. Reports and
+answers contain contract-level descriptions/locations, never raw code, patches or logs.
 
 The host rejects mismatched identities, foreign locations, duplicate IDs/tasks, a clean result with
-findings/gaps, a findings result without evidence, and completed review without representative tasks.
+Issue judgments, a findings result without evidence, and completed review without representative tasks.
 It rechecks the context, source/input/configuration identities and frozen capsule after execution.
-It publishes `concorde-review-result@1` adding target/focus, revision and
+It publishes `concorde-review-result@2` adding target/focus, revision and
 semantic_completeness=not_proven. Public response `reviews` contains these typed results, and artifacts
 reference saved review reports. Native receipts and failure diagnostics remain separate host records.
 
 | Review state | Skill outcome and progression |
 | --- | --- |
 | no_findings with nonempty coverage | completed; bounded review succeeded |
-| findings, all advisory and no gaps | completed; findings retained for the consumer |
-| concrete necessary gaps | spec_incomplete; dependent steps pause |
-| blocking code findings without gaps | conflicting; dependent steps pause |
+| findings, all advisory | completed; Issue references retained for the consumer |
+| blocking missing/conflicting contract Issues | spec_incomplete; dependent steps pause |
+| other blocking Issues | conflicting; the caller selects bounded repair or a stop |
 | incomplete coverage, invalid result or process failure | failed; an incomplete report, never a clean result |
 | describe-policy | described with not_run; no execution or persistence |
 | run_reviews=false | host records skipped; no reviewer runs |
@@ -105,7 +103,7 @@ exercising its steps is a defect, while a declaration naming a scenario outside 
 assessed by the owning Module's review and is neither a defect nor a gap for the reviewing Module.
 A Module never gains a reference to a consumer's documents merely so its reviewer can read them.
 Each reviewer resolves a separate Agent definition and Harness under read-only permissions.
-The host records input versions, coverage, concrete findings, gaps and completion. No-findings,
+The host records input versions, coverage, immutable Issue judgments and completion. No-findings,
 findings, incomplete, not-run and skipped are distinct, and all conclusions remain task-specific.
 
 The complete collection is the review's information boundary, not an instruction to repair every

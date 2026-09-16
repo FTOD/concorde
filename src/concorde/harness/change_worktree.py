@@ -144,7 +144,7 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
             or state.get("path") != str(root.resolve())
             or not isinstance(state.get("targets"), dict)
             or not isinstance(state.get("guidance"), dict)
-            or not isinstance(state.get("gaps"), list)
+            or not isinstance(state.get("blockers"), list)
             or not isinstance(state.get("phase"), str) or not state["phase"]
             or not isinstance(state.get("status"), str) or not state["status"]):
         raise SpecError("worktree state has an invalid identity or schema", "invalid_worktree_state")
@@ -174,6 +174,22 @@ def read_change(root: Path, *, required: bool = False) -> dict | None:
             raise ValueError("invalid constraints")
     except ValueError as error:
         raise SpecError(f"worktree owner state is invalid: {error}", "invalid_worktree_state") from error
+    from ..issues.references import receipt
+    from ..issues.store import resolve_report
+    from ..spec.issue_shapes import BLOCKER
+    from ..spec.typed_data import check_schema
+    from ..spec.repository import digest
+    try:
+        for item in state.get("issue_blockers", []):
+            check_schema(item["blocker"], BLOCKER)
+            expected = digest({"change_id": state["change_id"], "target_id": item["target_id"], "scope_id": item["scope_id"],
+                               "phase": item["phase"], "issue_id": item["blocker"]["issue_id"]})
+            observation = resolve_report(root, receipt(item["blocker"]))
+            if (item["id"] != expected or item["status"] not in {"open", "resolved"}
+                    or observation["source"]["context_id"] not in item["contexts"]):
+                raise ValueError("Issue blocker identity or provenance changed")
+    except (ValueError, KeyError, TypeError) as error:
+        raise SpecError(f"invalid Issue blocker history: {error}", "invalid_worktree_state") from error
     primary, current = workspace_identity(root)
     if current is not None and (primary is None or state.get("branch") != current["branch"]
             or state.get("primary_worktree") != primary["path"]):
@@ -315,7 +331,7 @@ def ensure_change(root: Path, *, task: dict | None = None, change_id: str | None
         "target_id": None, "target_hint": (task or {}).get("target_id"),
         "focus_id": (task or {}).get("focus_id"), "task": (task or {}).get("task"),
         "constraints": (task or {}).get("constraints", []),
-        "phase": "created", "status": "active", "outcome": None, "gaps": [],
+        "phase": "created", "status": "active", "outcome": None, "blockers": [],
         "targets": {}, "guidance": {}, "validated_tree": None, "validation": None,
     }
     identifier(state["change_id"])
@@ -444,7 +460,7 @@ def save_target_state(root: Path, value: dict) -> None:
 
 
 def progress(root: Path, *, phase: str | None = None, status: str | None = None,
-             outcome: str | None = None, gaps=None, invalidate: bool = False) -> None:
+             outcome: str | None = None, blockers=None, invalidate: bool = False) -> None:
     state = read_change(root)
     if state is None:
         return
@@ -453,9 +469,9 @@ def progress(root: Path, *, phase: str | None = None, status: str | None = None,
     if status is not None:
         state["status"] = status
     state["outcome"] = outcome
-    if gaps is not None:
-        unresolved = [item["gap"] for item in state.get("gap_history", []) if item["status"] == "open"]
-        state["gaps"] = list({canonical(gap): gap for gap in [*unresolved, *gaps]}.values())
+    if blockers is not None:
+        unresolved = [item["blocker"] for item in state.get("issue_blockers", []) if item["status"] == "open"]
+        state["blockers"] = list({canonical(gap): gap for gap in [*unresolved, *blockers]}.values())
     if invalidate:
         state["validated_tree"] = None
         state["validation"] = None
@@ -508,47 +524,88 @@ def record_transition(root: Path, target_id: str, **fields) -> None:
     save_change(root, change)
 
 
-def record_task_gaps(root: Path, target_id: str, task: str, phase: str, gaps, spec_digest: str,
-                     *, review_input_digest: str | None = None, spec_resolution: dict | None = None) -> None:
-    """Persist task-local blocking contracts; unrelated progress cannot erase them."""
+def blocker_scope(state: dict, target_id: str, task: str | None) -> str | None:
+    """Bind a request to accepted candidate work, not an ID hashed from task wording.
+
+    Root intent, evolving component intent and required consumer review intent all select the
+    same durable Module work scope. A separately requested unrelated task cannot borrow it.
+    """
+    if task is None:
+        return "module:" + target_id
+    intents = []
+    if state.get("target_id") == target_id:
+        intents.append(state.get("task"))
+    intents.append(state.get("targets", {}).get(target_id, {}).get("task"))
+    intents.append(state.get("review_intents", {}).get(target_id, {}).get("task"))
+    for target in state.get("targets", {}).values():
+        intents.append(target.get("coordination", {}).get(target_id, {}).get("task"))
+    for name in ("shared_spec_reviews", "shared_implementation_reviews"):
+        for consumers in state.get(name, {}).values():
+            intents.append(consumers.get(target_id, {}).get("task"))
+    if task in intents:
+        return "module:" + target_id
+    return next((item["scope_id"] for item in state.get("issue_blockers", [])
+                 if item["target_id"] == target_id and item["task"] == task), None)
+
+
+def record_task_gaps(root: Path, target_id: str, task: str, phase: str, blockers, spec_digest: str,
+                     *, review_input_digest: str | None = None, spec_resolution: dict | None = None,
+                     scope_id: str | None = None) -> None:
+    """Retain Issue dependencies by change/Module/phase/Issue, never by task wording.
+
+    A successful fresh assessment releases a dependency, not the referenced Issue. Reports and
+    their immutable observations survive independently. Caller admission protects unrelated review
+    intents; one candidate has one evolving work scope for each participating Module.
+    """
+    from ..issues.references import receipt, requires_contract_repair
+    from ..issues.store import resolve_report
     from ..spec.repository import digest
     state = read_change(root)
     if state is None:
         return
-    history = state.setdefault("gap_history", [])
+    history = state.setdefault("issue_blockers", [])
+    scope_id = scope_id or blocker_scope(state, target_id, task)
+    if scope_id is None:
+        if not blockers:
+            return
+        scope_id = "independent:" + resolve_report(root, receipt(blockers[0]))["source"]["invocation_id"]
     existing = {item["id"]: item for item in history}
-    for gap in gaps:
-        key = digest({"target_id": target_id, "task": task, "phase": phase,
-                      **{field: gap[field] for field in ("question", "blocked_step", "needed_contract")}})
+    for blocker in blockers:
+        observation = resolve_report(root, receipt(blocker))
+        context_id = observation["source"]["context_id"]
+        key = digest({"change_id": state["change_id"], "target_id": target_id, "scope_id": scope_id,
+                      "phase": phase, "issue_id": blocker["issue_id"]})
         if key not in existing:
-            item = {"id": key, "target_id": target_id, "task": task, "phase": phase,
-                    "gap": dict(gap), "status": "open", "contexts": [], "spec_digest": spec_digest}
+            item = {"id": key, "target_id": target_id, "task": task, "phase": phase, "scope_id": scope_id,
+                    "blocker": dict(blocker), "status": "open", "contexts": [], "spec_digest": spec_digest}
             history.append(item)
             existing[key] = item
         item = existing[key]
-        item.update(gap=dict(gap), status="open", spec_digest=spec_digest)
+        item.update(blocker=dict(blocker), task=task, status="open", spec_digest=spec_digest)
         if spec_resolution is not None:
             evidence = {key: value for key, value in spec_resolution.items() if key != "sources"}
             evidence["sources"] = [{key: value for key, value in source.items() if key != "content"}
                                    for source in spec_resolution["sources"]]
-            item.setdefault("context_evidence", {})[gap["context_id"]] = evidence
-        if review_input_digest is not None and phase in {"spec-review", "code-review"}:
+            item.setdefault("context_evidence", {})[context_id] = evidence
+        if review_input_digest is not None:
             item["review_input_digest"] = review_input_digest
-        if gap["context_id"] not in item["contexts"]:
-            item["contexts"].append(gap["context_id"])
+        if context_id not in item["contexts"]:
+            item["contexts"].append(context_id)
     for item in history:
-        if (item["target_id"] == target_id and item["task"] == task and item["phase"] == phase
-                and not gaps and (phase == "specify" or item.get("spec_digest") != spec_digest
-                    or (phase in {"spec-review", "code-review"} and review_input_digest is not None
-                        and item.get("review_input_digest") is not None
-                        and item["review_input_digest"] != review_input_digest))):
+        if (item["target_id"] == target_id and item["scope_id"] == scope_id
+                and item["phase"] == phase and not blockers
+                and (phase == "specify" or item.get("spec_digest") != spec_digest
+                     or (review_input_digest is not None and item.get("review_input_digest") is not None
+                         and item["review_input_digest"] != review_input_digest)
+                     or (phase in {"spec-review", "code-review"}
+                         and not requires_contract_repair(root, [item["blocker"]])))):
             item["status"] = "resolved"
-    state["gaps"] = [item["gap"] for item in history if item["status"] == "open"]
+    state["blockers"] = [item["blocker"] for item in history if item["status"] == "open"]
     target = state["targets"].get(target_id)
     if target is not None:
-        target["gaps"] = [item["gap"] for item in history
-                          if item["status"] == "open" and item["target_id"] == target_id]
-    if gaps:
+        target["blockers"] = [item["blocker"] for item in history
+                              if item["status"] == "open" and item["target_id"] == target_id]
+    if blockers:
         state["validated_tree"] = None
         state["validation"] = None
     save_change(root, state)
@@ -556,10 +613,13 @@ def record_task_gaps(root: Path, target_id: str, task: str, phase: str, gaps, sp
 
 def unchanged_task_gaps(root: Path, target_id: str, task: str, phase: str, spec_digest: str,
                         *, review_input_digest: str | None = None) -> list[dict]:
+    from ..issues.references import requires_contract_repair
     state = read_change(root)
-    return [dict(item["gap"]) for item in (state or {}).get("gap_history", [])
-            if item["status"] == "open" and item["target_id"] == target_id and item["task"] == task
+    scope = blocker_scope(state or {}, target_id, task)
+    return [dict(item["blocker"]) for item in (state or {}).get("issue_blockers", [])
+            if item["status"] == "open" and item["target_id"] == target_id and item["scope_id"] == scope
             and item["phase"] == phase and item.get("spec_digest") == spec_digest
+            and (phase != "code-review" or requires_contract_repair(root, [item["blocker"]]))
             and (review_input_digest is None or phase not in {"spec-review", "code-review"}
                  or item.get("review_input_digest") in {None, review_input_digest})]
 
@@ -571,7 +631,8 @@ def work_path(target_id: str, name: str) -> str:
     return f"{WORK_PATH}/{target_id}/{name}"
 
 
-def workspace_context(root: Path, *, persist: bool = False) -> dict:
+def workspace_context(root: Path, *, persist: bool = False, target_id: str | None = None,
+                      task: str | None = None) -> dict:
     inventory = refresh_registry(root, persist=persist)
     primary, current = workspace_identity(root)
     state = read_change(root)
@@ -588,7 +649,9 @@ def workspace_context(root: Path, *, persist: bool = False) -> dict:
         "phase": state["phase"] if state else None,
         "status": state["status"] if state else None,
         "outcome": state.get("outcome") if state else None,
-        "gaps": state["gaps"] if state else [],
+        "blockers": [item["blocker"] for item in (state or {}).get("issue_blockers", [])
+                     if item["status"] == "open" and (target_id is None or
+                         (item["target_id"] == target_id and item["scope_id"] == blocker_scope(state or {}, target_id, task)))],
         "components": [{"target_id": target_id, "spec_status": record["spec_status"],
                         "implementation_status": record["implementation_status"],
                         "outcome": record["outcome"]} for target_id, record in coordination.items()],

@@ -55,7 +55,7 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertEqual(self.package.version, "7.0.0")
         self.assertEqual(self.package.manifest["architecture_profile"], 14)
         self.assertEqual(self.package.manifest["workspace_protocol"], 15)
-        self.assertEqual(len(self.package.manifest["templates"]), 5)
+        self.assertEqual(len(self.package.manifest["templates"]), 4)
         self.assertEqual(
             self.package.manifest["runtime"]["venv"],
             ".concorde/.venv",
@@ -177,7 +177,7 @@ class NativeInstallerTests(unittest.TestCase):
             for directory in ("agents", "capabilities", "prompts", "protocol", "skills", "src",
                               "templates", "viewer", "scripts"):
                 (root / directory).mkdir()
-            for name in ("concorde.py", "concorde.ps1", "concorde.sh", "reflections_queue.py",
+            for name in ("concorde.py", "concorde.ps1", "concorde.sh", "issues.py",
                          "requirements.lock", "run-capability.py", "run-ua-graph-viewer.py"):
                 (root / "scripts" / name).write_text("# script\n")
             (root / "viewer/package.json").write_text("{}\n")
@@ -200,20 +200,25 @@ class NativeInstallerTests(unittest.TestCase):
     def test_existing_project_defaults_are_preserved_and_not_owned(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
-            config = target / ".concorde/reflections/config.json"
+            config = target / ".concorde/issues/.gitignore"
             config.parent.mkdir(parents=True)
-            config.write_text('{"schema_version":1,"developer":"custom"}\n')
+            config.write_text('# developer custom\n')
+            legacy = target / '.concorde/reflections/pending/R-001.md'
+            legacy.parent.mkdir(parents=True)
+            legacy.write_text('Unresolved historical report\n')
             actions, desired, _ = installer.installation_plan(target, self.package, "codex")
-            item = next(entry for entry in actions if entry["path"] == ".concorde/reflections/config.json")
+            item = next(entry for entry in actions if entry["path"] == ".concorde/issues/.gitignore")
             self.assertEqual(item["action"], "preserve")
             installer.apply_plan(target, self.package, "codex", actions, desired)
-            self.assertIn('"developer":"custom"', config.read_text())
+            self.assertEqual('# developer custom\n', config.read_text())
+            self.assertEqual('Unresolved historical report\n', legacy.read_text())
             paths = {entry["path"] for entry in json.loads((target / ".concorde/install.json").read_text())["outputs"]}
             self.assertNotIn(".concorde/reflections/config.json", paths)
             self.assertNotIn(".concorde/reflections/index.json", paths)
             self.assertNotIn(".concorde/reflections/.gitignore", paths)
             self.assertNotIn(".concorde/topology-proposals/.gitignore", paths)
-            self.assertTrue((target / ".concorde/reflections/index.json").is_file())
+            self.assertNotIn('.concorde/issues/.gitignore', paths)
+            self.assertFalse((target / ".concorde/reflections/index.json").exists())
             self.assertIn(".concorde/protocol/manifest.json", paths)
 
     @verifies("scenario.distribution.runtime-plan", "scenario.distribution.runtime-provision")

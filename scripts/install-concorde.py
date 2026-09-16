@@ -222,7 +222,7 @@ def _package_files(package: Package) -> dict[str, bytes]:
         "concorde.py",
         "concorde.ps1",
         "concorde.sh",
-        "reflections_queue.py",
+        "issues.py",
         "requirements.lock",
         "run-capability.py",
         "run-ua-graph-viewer.py",

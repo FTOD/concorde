@@ -30,7 +30,7 @@ as a fresh worker with a fresh snapshot.
 ## Expected results
 
 Submit a `concorde-agent-stage-result` with Markdown replacements in `documents` and no plan, tasks
-or reflection findings.
+or Issue-solving decisions.
 
 ## Completion conditions
 

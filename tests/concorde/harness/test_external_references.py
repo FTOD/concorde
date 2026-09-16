@@ -32,7 +32,7 @@ class ExternalReferenceTests(unittest.TestCase):
             with self.subTest(phase=phase):
                 snapshot = resolve_context(repository, "module.a", phase=phase, task="Adapt", agent=agent,
                                            stage_inputs=inputs).value
-                self.assertEqual(5, snapshot["schema_version"])
+                self.assertEqual(6, snapshot["schema_version"])
                 self.assertEqual(expected, snapshot["external_references"])
         ask = resolve_context(repository, "module.a", phase="ask", task="Adapt")
         self.fixture.write("reference/lib/diagram.png", "other binary")

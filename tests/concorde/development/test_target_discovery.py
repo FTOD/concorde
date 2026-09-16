@@ -1,5 +1,6 @@
 """The discovery child shown by each public parent must be the child it executes."""
 import unittest
+from typing import Any, cast
 from unittest.mock import Mock, patch
 
 from concorde.development import target_flow
@@ -36,7 +37,7 @@ class TargetDiscoveryTests(unittest.TestCase):
             drawing = graph.get_graph(xray=True).to_json()
             self.assertEqual(drawing, graph.get_graph(xray=True).to_json())
         self.assertEqual([], model.calls)
-        parent = graph.nodes[capability].subgraphs[0].nodes['execute'].subgraphs[0]
+        parent = cast(Any, graph.nodes[capability].subgraphs[0]).nodes['execute'].subgraphs[0]
         preparation = parent.nodes['prepare_target'].subgraphs[0]
         child = preparation.nodes['discover'].subgraphs[0]
         self.assertEqual([child], built)
@@ -56,7 +57,7 @@ class TargetDiscoveryTests(unittest.TestCase):
             with self.subTest(capability=capability):
                 fixture, model = self.fixture()
                 graph, child = self.graph(capability, fixture, model)
-                task = dict(fixture.task)
+                task: dict[str, Any] = dict(fixture.task)
                 task.update({'review_mode': 'spec'} if capability == 'concorde-review' else
                             {'specify': False, 'run_reviews': True})
                 request = invocation(capability, data=task)
@@ -83,14 +84,14 @@ class TargetDiscoveryTests(unittest.TestCase):
                 else:
                     child.invoke.assert_called_once()
                     self.assertFalse(any(c['stage'] == 'route' for c in model.calls))
-                    self.assertEqual(fixture.task['task'], read_change(fixture.change)['task'])
+                    self.assertEqual(fixture.task['task'], read_change(fixture.change, required=True)['task'])
 
     @verifies('scenario.harness.flow-inspection', 'scenario.development.flow-execution')
     def test_blocked_discovery_keeps_typed_output_and_never_enters_dependent_work(self):
         def unsupported(stage, snapshot, data, cwd):
             if stage == 'route':
                 data.update(outcome='unsupported', answer='Controlled routing stop', routes=[],
-                            expand_targets=[], gaps=[])
+                            expand_targets=[], blockers=[])
         for capability in ('concorde-review', 'concorde-dev-loop', 'concorde-specify-loop'):
             with self.subTest(capability=capability):
                 fixture, model = self.fixture(unsupported)

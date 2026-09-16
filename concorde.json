@@ -2,7 +2,7 @@
   "schema_version": 3,
   "name": "concorde",
   "version": "7.0.0",
-  "description": "Concorde Framework: architecture-aware Specs, project understanding, agent observability with LangGraph Studio, explicit context and permissions, built-in agents, and a reflection system for tracked improvements",
+  "description": "Concorde Framework: architecture-aware Specs, project understanding, agent observability with LangGraph Studio, explicit context and permissions, built-in agents, and branch-local Issues with bounded autonomous resolution",
   "license": "MIT",
   "license_file": "LICENSE",
   "repository": "https://github.com/FTOD/concorde",
@@ -38,7 +38,6 @@
   "templates": [
     "module-template.md",
     "plan-template.md",
-    "reflections-template.md",
     "scenario-template.md",
     "tasks-template.md"
   ],

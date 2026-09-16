@@ -54,15 +54,26 @@ identities exactly as they appear in your input. The run ends when `submit_resul
 you write after it is read. A valid bounded result includes an honest gap or an incomplete review:
 report what you could not do in the result rather than stopping without submitting.
 
-When a missing or ambiguous contract is necessary for the current task, report it through
-question/blocked_step/needed_contract gaps and pause dependent judgments or steps. Do not invent
-obligations by convention or infer them from ungranted context or code. Independent reasoning may
-continue in the answer. Suggestions that do not block the current task are not contract gaps.
-Pure queries return their blockers; explicit `report_issue` calls persist classified observations
-through the host even without a managed change. Development retains its task-local blocker history
-separately; reporting does not approve a repair or determine the stage outcome. A Spec repair requires a fresh context before resuming the affected step.
+A missing necessary contract, conflicting Specs or an implementation/Spec mismatch is an Issue of
+type gap. Use `report_issue` with the matching subtype, concrete observation, impact and evidence.
+Do not infer missing obligations from implementation or read outside the admitted context.
 
-Keep the selected consumer and blocked step as gap attribution. When known, identify the canonical definition ID, sole owner, source path and included digest in needed_contract. Never relabel a referenced definition as consumer-owned or fetch excluded sources.
+Reporting is independent of task control. If an Issue blocks your current stage, put its returned
+receipt fields (`issue_id`, `report_id`, `path`) plus `blocked_step` in `blockers`. Do not repeat the
+problem text as a second gap object. Nonblocking reports need no blocker. A completed or sufficient
+stage has no blockers; a missing necessary contract uses spec_incomplete, a conflicting obligation
+can use conflicting, and execution failure remains failed. Continue independent work when possible.
+
+Reviewers instead return `issues`: receipt fields plus `severity` and `affected_task`. There is no
+separate review gaps/blockers array and no free-text pairing rule. Collect every independently
+assessable finding, then submit the review's actual coverage and completion status. A blocked
+judgment does not require abandoning the rest of the review.
+
+References must be receipts from this invocation or explicitly admitted Issue context. Never invent
+IDs, borrow another worker's unseen record or relabel a provider's definition as consumer-owned.
+An included provider remains its sole definition owner; report unknown ownership as null. A repair
+requires fresh evidence before resuming the affected step. Releasing a task dependency or using a
+workaround does not itself resolve the underlying Issue.
 
 ## Children
 
@@ -137,7 +148,7 @@ The input is one `concorde-agent-stage-context` for phase `implementation` with 
 ## Expected results
 
 Submit a `concorde-agent-stage-result` returning every supplied task unchanged except `complete: true`
-for each fulfilled one, with no documents, plan or reflection findings, and an answer that states
+for each fulfilled one, with no documents, plan or Issue-solving decisions, and an answer that states
 the checks run and any deferred host verification.
 
 ## Completion conditions

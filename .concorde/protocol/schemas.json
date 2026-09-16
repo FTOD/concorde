@@ -29,7 +29,7 @@
                 "$ref": "#/$defs/concorde-context-snapshot"
               },
               "schema_version": {
-                "const": 5,
+                "const": 6,
                 "type": "integer"
               },
               "type_id": {
@@ -252,7 +252,7 @@
             "type": "object"
           },
           "schema_version": {
-            "const": 5
+            "const": 6
           },
           "spec_resolution": {
             "additionalProperties": false,
@@ -621,14 +621,56 @@
                   "additionalProperties": false,
                   "properties": {
                     "data": {
-                      "$ref": "#/$defs/concorde-reflection-selection"
+                      "$ref": "#/$defs/concorde-issue-selection"
                     },
                     "schema_version": {
                       "const": 1,
                       "type": "integer"
                     },
                     "type_id": {
-                      "const": "concorde-reflection-selection"
+                      "const": "concorde-issue-selection"
+                    }
+                  },
+                  "required": [
+                    "type_id",
+                    "schema_version",
+                    "data"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/concorde-issue-context"
+                    },
+                    "schema_version": {
+                      "const": 1,
+                      "type": "integer"
+                    },
+                    "type_id": {
+                      "const": "concorde-issue-context"
+                    }
+                  },
+                  "required": [
+                    "type_id",
+                    "schema_version",
+                    "data"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/concorde-issue-intent"
+                    },
+                    "schema_version": {
+                      "const": 1,
+                      "type": "integer"
+                    },
+                    "type_id": {
+                      "const": "concorde-issue-intent"
                     }
                   },
                   "required": [
@@ -645,7 +687,7 @@
                       "$ref": "#/$defs/concorde-review-result"
                     },
                     "schema_version": {
-                      "const": 1,
+                      "const": 2,
                       "type": "integer"
                     },
                     "type_id": {
@@ -779,6 +821,39 @@
                 },
                 "type": "array"
               },
+              "blockers": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "blocked_step": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "issue_id": {
+                      "minLength": 1,
+                      "pattern": "I-[0-9a-f]{32}",
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "report_id": {
+                      "minLength": 1,
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "issue_id",
+                    "report_id",
+                    "path",
+                    "blocked_step"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "change_id": {
                 "anyOf": [
                   {
@@ -842,41 +917,6 @@
               "current_worktree": {
                 "minLength": 1,
                 "type": "string"
-              },
-              "gaps": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "blocked_step": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "context_id": {
-                      "minLength": 1,
-                      "pattern": "^sha256:[0-9a-f]{64}$",
-                      "type": "string"
-                    },
-                    "needed_contract": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "question": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "target_id": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "question",
-                    "blocked_step",
-                    "needed_contract"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
               },
               "kind": {
                 "enum": [
@@ -951,7 +991,7 @@
               "phase",
               "status",
               "outcome",
-              "gaps",
+              "blockers",
               "components",
               "active_worktrees"
             ],
@@ -1029,6 +1069,148 @@
         ],
         "type": "object"
       },
+      "concorde-issue-context": {
+        "additionalProperties": false,
+        "properties": {
+          "observations": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "basis": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "description": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "impact": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "receipt": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "issue_id": {
+                      "minLength": 1,
+                      "pattern": "I-[0-9a-f]{32}",
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "report_id": {
+                      "minLength": 1,
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "issue_id",
+                    "report_id",
+                    "path"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "receipt",
+                "description",
+                "impact",
+                "basis"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "observations"
+        ],
+        "type": "object"
+      },
+      "concorde-issue-intent": {
+        "additionalProperties": false,
+        "properties": {
+          "intent": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent"
+        ],
+        "type": "object"
+      },
+      "concorde-issue-selection": {
+        "additionalProperties": false,
+        "properties": {
+          "duplicates": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "issue_id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "problem": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "revision": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "revision",
+                "problem"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "feedback": {
+            "type": "string"
+          },
+          "issue_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "problem": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "revision": {
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "bug",
+              "gap",
+              "limitation"
+            ]
+          },
+          "verification": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "issue_id",
+          "revision",
+          "problem",
+          "type",
+          "feedback",
+          "verification",
+          "duplicates"
+        ],
+        "type": "object"
+      },
       "concorde-plan-artifact": {
         "additionalProperties": false,
         "properties": {
@@ -1039,52 +1221,6 @@
         },
         "required": [
           "plan"
-        ],
-        "type": "object"
-      },
-      "concorde-reflection-selection": {
-        "additionalProperties": false,
-        "properties": {
-          "head": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "records": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "content": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "digest": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "path": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "path",
-                "digest",
-                "content"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "head",
-          "records"
         ],
         "type": "object"
       },
@@ -1107,80 +1243,6 @@
               }
             ]
           },
-          "findings": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "affected_task": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "document": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "location": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "line": {
-                      "anyOf": [
-                        {
-                          "minimum": 1,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "path": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "path",
-                    "line"
-                  ],
-                  "type": "object"
-                },
-                "problem": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "severity": {
-                  "enum": [
-                    "blocking",
-                    "advisory"
-                  ]
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "severity",
-                "target_id",
-                "document",
-                "contract",
-                "location",
-                "problem",
-                "affected_task"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "focus_id": {
             "anyOf": [
               {
@@ -1192,45 +1254,50 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "input_digest": {
             "minLength": 1,
             "pattern": "^sha256:[0-9a-f]{64}$",
             "type": "string"
+          },
+          "issues": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "affected_task": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "severity": {
+                  "enum": [
+                    "blocking",
+                    "advisory"
+                  ]
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "severity",
+                "affected_task"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "representative_tasks": {
             "items": {
@@ -1320,8 +1387,7 @@
           "review_mode",
           "status",
           "representative_tasks",
-          "findings",
-          "gaps",
+          "issues",
           "answer",
           "target_id",
           "focus_id",
@@ -1373,7 +1439,7 @@
         "$ref": "#/$defs/concorde-agent-stage-context"
       },
       "schema_version": {
-        "const": 3,
+        "const": 4,
         "type": "integer"
       },
       "type_id": {
@@ -1394,6 +1460,39 @@
         "properties": {
           "answer": {
             "type": "string"
+          },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "context_id": {
             "minLength": 1,
@@ -1420,40 +1519,51 @@
             },
             "type": "array"
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
+          "issue_decision": {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "enum": [
+                  "develop",
+                  "spec-repair",
+                  "verify",
+                  "resolved",
+                  "duplicate",
+                  "not-actionable",
+                  "needs-decision"
+                ]
               },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
+              "duplicate_of": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "intent": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "rationale": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "specify": {
+                "type": "boolean"
+              }
             },
-            "type": "array"
+            "required": [
+              "action",
+              "intent",
+              "rationale",
+              "specify",
+              "duplicate_of"
+            ],
+            "type": "object"
           },
           "outcome": {
             "enum": [
@@ -1467,106 +1577,6 @@
           },
           "plan": {
             "type": "string"
-          },
-          "reflection_findings": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "analysis": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "effort": {
-                  "enum": [
-                    "small",
-                    "medium",
-                    "large"
-                  ]
-                },
-                "files": {
-                  "items": {
-                    "minLength": 1,
-                    "type": "string"
-                  },
-                  "type": "array",
-                  "uniqueItems": true
-                },
-                "human_intervention": {
-                  "enum": [
-                    "required",
-                    "not-required"
-                  ]
-                },
-                "intervention_rationale": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "observed_state": {
-                  "enum": [
-                    "reproduced",
-                    "not-reproduced"
-                  ]
-                },
-                "protocol_change": {
-                  "type": "boolean"
-                },
-                "reflection_id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "resolution": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "risks": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "route": {
-                  "enum": [
-                    "fast-loop",
-                    "plan",
-                    "dismiss",
-                    "blocked"
-                  ]
-                },
-                "steps": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "validation": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "verification": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "verified_commit": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "reflection_id",
-                "verified_commit",
-                "observed_state",
-                "verification",
-                "analysis",
-                "resolution",
-                "intervention_rationale",
-                "human_intervention",
-                "route",
-                "effort",
-                "files",
-                "steps",
-                "validation",
-                "risks",
-                "protocol_change"
-              ],
-              "type": "object"
-            },
-            "type": "array"
           },
           "tasks": {
             "items": {
@@ -1608,7 +1618,7 @@
           "context_id",
           "outcome",
           "answer",
-          "gaps",
+          "blockers",
           "documents",
           "plan",
           "tasks"
@@ -1623,7 +1633,7 @@
         "$ref": "#/$defs/concorde-agent-stage-result"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
@@ -2063,7 +2073,7 @@
             "type": "object"
           },
           "schema_version": {
-            "const": 5
+            "const": 6
           },
           "spec_resolution": {
             "additionalProperties": false,
@@ -2432,14 +2442,56 @@
                   "additionalProperties": false,
                   "properties": {
                     "data": {
-                      "$ref": "#/$defs/concorde-reflection-selection"
+                      "$ref": "#/$defs/concorde-issue-selection"
                     },
                     "schema_version": {
                       "const": 1,
                       "type": "integer"
                     },
                     "type_id": {
-                      "const": "concorde-reflection-selection"
+                      "const": "concorde-issue-selection"
+                    }
+                  },
+                  "required": [
+                    "type_id",
+                    "schema_version",
+                    "data"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/concorde-issue-context"
+                    },
+                    "schema_version": {
+                      "const": 1,
+                      "type": "integer"
+                    },
+                    "type_id": {
+                      "const": "concorde-issue-context"
+                    }
+                  },
+                  "required": [
+                    "type_id",
+                    "schema_version",
+                    "data"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/concorde-issue-intent"
+                    },
+                    "schema_version": {
+                      "const": 1,
+                      "type": "integer"
+                    },
+                    "type_id": {
+                      "const": "concorde-issue-intent"
                     }
                   },
                   "required": [
@@ -2456,7 +2508,7 @@
                       "$ref": "#/$defs/concorde-review-result"
                     },
                     "schema_version": {
-                      "const": 1,
+                      "const": 2,
                       "type": "integer"
                     },
                     "type_id": {
@@ -2590,6 +2642,39 @@
                 },
                 "type": "array"
               },
+              "blockers": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "blocked_step": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "issue_id": {
+                      "minLength": 1,
+                      "pattern": "I-[0-9a-f]{32}",
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "report_id": {
+                      "minLength": 1,
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "issue_id",
+                    "report_id",
+                    "path",
+                    "blocked_step"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "change_id": {
                 "anyOf": [
                   {
@@ -2653,41 +2738,6 @@
               "current_worktree": {
                 "minLength": 1,
                 "type": "string"
-              },
-              "gaps": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "blocked_step": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "context_id": {
-                      "minLength": 1,
-                      "pattern": "^sha256:[0-9a-f]{64}$",
-                      "type": "string"
-                    },
-                    "needed_contract": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "question": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "target_id": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "question",
-                    "blocked_step",
-                    "needed_contract"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
               },
               "kind": {
                 "enum": [
@@ -2762,7 +2812,7 @@
               "phase",
               "status",
               "outcome",
-              "gaps",
+              "blockers",
               "components",
               "active_worktrees"
             ],
@@ -2840,6 +2890,148 @@
         ],
         "type": "object"
       },
+      "concorde-issue-context": {
+        "additionalProperties": false,
+        "properties": {
+          "observations": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "basis": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "description": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "impact": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "receipt": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "issue_id": {
+                      "minLength": 1,
+                      "pattern": "I-[0-9a-f]{32}",
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "report_id": {
+                      "minLength": 1,
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "issue_id",
+                    "report_id",
+                    "path"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "receipt",
+                "description",
+                "impact",
+                "basis"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "observations"
+        ],
+        "type": "object"
+      },
+      "concorde-issue-intent": {
+        "additionalProperties": false,
+        "properties": {
+          "intent": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent"
+        ],
+        "type": "object"
+      },
+      "concorde-issue-selection": {
+        "additionalProperties": false,
+        "properties": {
+          "duplicates": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "issue_id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "problem": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "revision": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "revision",
+                "problem"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "feedback": {
+            "type": "string"
+          },
+          "issue_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "problem": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "revision": {
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "bug",
+              "gap",
+              "limitation"
+            ]
+          },
+          "verification": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "issue_id",
+          "revision",
+          "problem",
+          "type",
+          "feedback",
+          "verification",
+          "duplicates"
+        ],
+        "type": "object"
+      },
       "concorde-plan-artifact": {
         "additionalProperties": false,
         "properties": {
@@ -2850,52 +3042,6 @@
         },
         "required": [
           "plan"
-        ],
-        "type": "object"
-      },
-      "concorde-reflection-selection": {
-        "additionalProperties": false,
-        "properties": {
-          "head": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "records": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "content": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "digest": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "path": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "path",
-                "digest",
-                "content"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "head",
-          "records"
         ],
         "type": "object"
       },
@@ -2918,80 +3064,6 @@
               }
             ]
           },
-          "findings": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "affected_task": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "document": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "location": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "line": {
-                      "anyOf": [
-                        {
-                          "minimum": 1,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "path": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "path",
-                    "line"
-                  ],
-                  "type": "object"
-                },
-                "problem": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "severity": {
-                  "enum": [
-                    "blocking",
-                    "advisory"
-                  ]
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "severity",
-                "target_id",
-                "document",
-                "contract",
-                "location",
-                "problem",
-                "affected_task"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "focus_id": {
             "anyOf": [
               {
@@ -3003,45 +3075,50 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "input_digest": {
             "minLength": 1,
             "pattern": "^sha256:[0-9a-f]{64}$",
             "type": "string"
+          },
+          "issues": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "affected_task": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "severity": {
+                  "enum": [
+                    "blocking",
+                    "advisory"
+                  ]
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "severity",
+                "affected_task"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "representative_tasks": {
             "items": {
@@ -3131,8 +3208,7 @@
           "review_mode",
           "status",
           "representative_tasks",
-          "findings",
-          "gaps",
+          "issues",
           "answer",
           "target_id",
           "focus_id",
@@ -3184,7 +3260,7 @@
         "$ref": "#/$defs/concorde-context-snapshot"
       },
       "schema_version": {
-        "const": 5,
+        "const": 6,
         "type": "integer"
       },
       "type_id": {
@@ -3290,6 +3366,39 @@
             },
             "type": "array"
           },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "change_id": {
             "anyOf": [
               {
@@ -3376,41 +3485,6 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "outcome": {
             "enum": [
               "completed",
@@ -3436,7 +3510,7 @@
           "outcome",
           "answer",
           "artifacts",
-          "gaps",
+          "blockers",
           "checks",
           "completed_capabilities"
         ],
@@ -3450,7 +3524,7 @@
         "$ref": "#/$defs/concorde-context-solve-response"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
@@ -3561,6 +3635,39 @@
             },
             "type": "array"
           },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "change_id": {
             "anyOf": [
               {
@@ -3647,41 +3754,6 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "outcome": {
             "enum": [
               "completed",
@@ -3707,7 +3779,7 @@
           "outcome",
           "answer",
           "artifacts",
-          "gaps",
+          "blockers",
           "checks",
           "completed_capabilities"
         ],
@@ -3721,7 +3793,7 @@
         "$ref": "#/$defs/concorde-deliver-response"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
@@ -3846,6 +3918,39 @@
             },
             "type": "array"
           },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "change_id": {
             "anyOf": [
               {
@@ -3932,41 +4037,6 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "outcome": {
             "enum": [
               "completed",
@@ -3992,7 +4062,7 @@
           "outcome",
           "answer",
           "artifacts",
-          "gaps",
+          "blockers",
           "checks",
           "completed_capabilities"
         ],
@@ -4006,7 +4076,7 @@
         "$ref": "#/$defs/concorde-dev-loop-response"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
@@ -4150,7 +4220,7 @@
             "type": "object"
           },
           "schema_version": {
-            "const": 4
+            "const": 5
           },
           "target_hint": {
             "anyOf": [
@@ -4770,6 +4840,39 @@
                 },
                 "type": "array"
               },
+              "blockers": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "blocked_step": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "issue_id": {
+                      "minLength": 1,
+                      "pattern": "I-[0-9a-f]{32}",
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "report_id": {
+                      "minLength": 1,
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "issue_id",
+                    "report_id",
+                    "path",
+                    "blocked_step"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "change_id": {
                 "anyOf": [
                   {
@@ -4833,41 +4936,6 @@
               "current_worktree": {
                 "minLength": 1,
                 "type": "string"
-              },
-              "gaps": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "blocked_step": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "context_id": {
-                      "minLength": 1,
-                      "pattern": "^sha256:[0-9a-f]{64}$",
-                      "type": "string"
-                    },
-                    "needed_contract": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "question": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "target_id": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "question",
-                    "blocked_step",
-                    "needed_contract"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
               },
               "kind": {
                 "enum": [
@@ -4942,7 +5010,7 @@
               "phase",
               "status",
               "outcome",
-              "gaps",
+              "blockers",
               "components",
               "active_worktrees"
             ],
@@ -4977,7 +5045,7 @@
         "$ref": "#/$defs/concorde-discovery-context"
       },
       "schema_version": {
-        "const": 4,
+        "const": 5,
         "type": "integer"
       },
       "type_id": {
@@ -5083,6 +5151,39 @@
             },
             "type": "array"
           },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "change_id": {
             "anyOf": [
               {
@@ -5169,41 +5270,6 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "outcome": {
             "enum": [
               "completed",
@@ -5229,7 +5295,7 @@
           "outcome",
           "answer",
           "artifacts",
-          "gaps",
+          "blockers",
           "checks",
           "completed_capabilities"
         ],
@@ -5243,7 +5309,7 @@
         "$ref": "#/$defs/concorde-implement-response"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
@@ -5762,6 +5828,682 @@
       },
       "type_id": {
         "const": "concorde-issue-report"
+      }
+    },
+    "required": [
+      "type_id",
+      "schema_version",
+      "data"
+    ],
+    "type": "object"
+  },
+  "concorde-issues-request": {
+    "$defs": {
+      "concorde-issues-request": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "list",
+              "show",
+              "report",
+              "solve",
+              "reopen"
+            ]
+          },
+          "change_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "constraints": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "expected_revision": {
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "focus_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "issue_id": {
+            "minLength": 1,
+            "pattern": "I-[0-9a-f]{32}",
+            "type": "string"
+          },
+          "note": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "report": {
+            "additionalProperties": false,
+            "properties": {
+              "basis": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "description": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "evidence": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "description": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "description"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "expected_revision": {
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "impact": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "issue_id": {
+                "minLength": 1,
+                "pattern": "I-[0-9a-f]{32}",
+                "type": "string"
+              },
+              "owner_target_id": {
+                "anyOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "report_key": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "subtype": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "implementation-spec-mismatch",
+                      "spec-conflict",
+                      "missing-contract"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "title": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "bug",
+                  "gap",
+                  "limitation"
+                ]
+              }
+            },
+            "required": [
+              "report_key",
+              "type",
+              "subtype",
+              "title",
+              "description",
+              "impact",
+              "basis",
+              "owner_target_id",
+              "evidence"
+            ],
+            "type": "object"
+          },
+          "target_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "task": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "data": {
+        "$ref": "#/$defs/concorde-issues-request"
+      },
+      "schema_version": {
+        "const": 1,
+        "type": "integer"
+      },
+      "type_id": {
+        "const": "concorde-issues-request"
+      }
+    },
+    "required": [
+      "type_id",
+      "schema_version",
+      "data"
+    ],
+    "type": "object"
+  },
+  "concorde-issues-response": {
+    "$defs": {
+      "concorde-issues-response": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "artifacts": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "digest": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "path",
+                "digest"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "change_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checks": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "check_id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "exit_code": {
+                  "type": "integer"
+                },
+                "log_digest": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "source_digest": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "passed",
+                    "failed",
+                    "timeout"
+                  ]
+                },
+                "target_id": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "check_id",
+                "target_id",
+                "status",
+                "exit_code",
+                "source_digest",
+                "log_digest"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "completed_capabilities": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "context_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "focus_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issues": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "dispositions": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "actor": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "created_at": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "duplicate_of": {
+                        "anyOf": [
+                          {
+                            "minLength": 1,
+                            "pattern": "I-[0-9a-f]{32}",
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "evidence": {
+                        "items": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
+                      },
+                      "note": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "reason": {
+                        "enum": [
+                          "resolved",
+                          "duplicate",
+                          "not-actionable",
+                          "reopened"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "reason",
+                      "note",
+                      "evidence",
+                      "duplicate_of",
+                      "actor",
+                      "created_at"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "reports": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "created_at": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "id": {
+                        "minLength": 1,
+                        "pattern": "^sha256:[0-9a-f]{64}$",
+                        "type": "string"
+                      },
+                      "report": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "basis": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "description": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "evidence": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "description": {
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "path": {
+                                  "minLength": 1,
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "path",
+                                "description"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "expected_revision": {
+                            "minLength": 1,
+                            "pattern": "^sha256:[0-9a-f]{64}$",
+                            "type": "string"
+                          },
+                          "impact": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "issue_id": {
+                            "minLength": 1,
+                            "pattern": "I-[0-9a-f]{32}",
+                            "type": "string"
+                          },
+                          "owner_target_id": {
+                            "anyOf": [
+                              {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "report_key": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "subtype": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "implementation-spec-mismatch",
+                                  "spec-conflict",
+                                  "missing-contract"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "title": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "type": {
+                            "enum": [
+                              "bug",
+                              "gap",
+                              "limitation"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "report_key",
+                          "type",
+                          "subtype",
+                          "title",
+                          "description",
+                          "impact",
+                          "basis",
+                          "owner_target_id",
+                          "evidence"
+                        ],
+                        "type": "object"
+                      },
+                      "source": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "agent": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "capability": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "change_id": {
+                            "anyOf": [
+                              {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "context_id": {
+                            "minLength": 1,
+                            "pattern": "^sha256:[0-9a-f]{64}$",
+                            "type": "string"
+                          },
+                          "head": {
+                            "anyOf": [
+                              {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "invocation_id": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "phase": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "target_id": {
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "invocation_id",
+                          "agent",
+                          "capability",
+                          "phase",
+                          "target_id",
+                          "context_id",
+                          "change_id",
+                          "head"
+                        ],
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "created_at",
+                      "report",
+                      "source"
+                    ],
+                    "type": "object"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "schema_version": {
+                  "const": 1,
+                  "type": "integer"
+                },
+                "status": {
+                  "enum": [
+                    "open",
+                    "closed"
+                  ]
+                }
+              },
+              "required": [
+                "schema_version",
+                "id",
+                "status",
+                "reports",
+                "dispositions"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "outcome": {
+            "enum": [
+              "completed",
+              "ready",
+              "spec_incomplete",
+              "unsupported",
+              "conflicting",
+              "failed",
+              "described",
+              "delivered"
+            ]
+          },
+          "target_id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_id",
+          "focus_id",
+          "change_id",
+          "context_id",
+          "outcome",
+          "answer",
+          "artifacts",
+          "blockers",
+          "checks",
+          "completed_capabilities",
+          "issues",
+          "decision"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "data": {
+        "$ref": "#/$defs/concorde-issues-response"
+      },
+      "schema_version": {
+        "const": 1,
+        "type": "integer"
+      },
+      "type_id": {
+        "const": "concorde-issues-response"
       }
     },
     "required": [
@@ -6305,6 +7047,39 @@
                 },
                 "type": "array"
               },
+              "blockers": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "blocked_step": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "issue_id": {
+                      "minLength": 1,
+                      "pattern": "I-[0-9a-f]{32}",
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "report_id": {
+                      "minLength": 1,
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "issue_id",
+                    "report_id",
+                    "path",
+                    "blocked_step"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "change_id": {
                 "anyOf": [
                   {
@@ -6368,41 +7143,6 @@
               "current_worktree": {
                 "minLength": 1,
                 "type": "string"
-              },
-              "gaps": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "blocked_step": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "context_id": {
-                      "minLength": 1,
-                      "pattern": "^sha256:[0-9a-f]{64}$",
-                      "type": "string"
-                    },
-                    "needed_contract": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "question": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "target_id": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "question",
-                    "blocked_step",
-                    "needed_contract"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
               },
               "kind": {
                 "enum": [
@@ -6477,7 +7217,7 @@
               "phase",
               "status",
               "outcome",
-              "gaps",
+              "blockers",
               "components",
               "active_worktrees"
             ],
@@ -6568,6 +7308,39 @@
               }
             ]
           },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "completed_capabilities": {
             "items": {
               "minLength": 1,
@@ -6606,41 +7379,6 @@
             },
             "type": "array",
             "uniqueItems": true
-          },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
           },
           "outcome": {
             "enum": [
@@ -6834,6 +7572,39 @@
                 },
                 "type": "array"
               },
+              "blockers": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "blocked_step": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "issue_id": {
+                      "minLength": 1,
+                      "pattern": "I-[0-9a-f]{32}",
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "report_id": {
+                      "minLength": 1,
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "issue_id",
+                    "report_id",
+                    "path",
+                    "blocked_step"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "change_id": {
                 "anyOf": [
                   {
@@ -6897,41 +7668,6 @@
               "current_worktree": {
                 "minLength": 1,
                 "type": "string"
-              },
-              "gaps": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "blocked_step": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "context_id": {
-                      "minLength": 1,
-                      "pattern": "^sha256:[0-9a-f]{64}$",
-                      "type": "string"
-                    },
-                    "needed_contract": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "question": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "target_id": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "question",
-                    "blocked_step",
-                    "needed_contract"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
               },
               "kind": {
                 "enum": [
@@ -7006,7 +7742,7 @@
               "phase",
               "status",
               "outcome",
-              "gaps",
+              "blockers",
               "components",
               "active_worktrees"
             ],
@@ -7024,7 +7760,7 @@
           "topology_proposal",
           "application",
           "files",
-          "gaps",
+          "blockers",
           "completed_capabilities",
           "workspace"
         ],
@@ -7483,6 +8219,39 @@
                 },
                 "type": "array"
               },
+              "blockers": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "blocked_step": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "issue_id": {
+                      "minLength": 1,
+                      "pattern": "I-[0-9a-f]{32}",
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "report_id": {
+                      "minLength": 1,
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "issue_id",
+                    "report_id",
+                    "path",
+                    "blocked_step"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "change_id": {
                 "anyOf": [
                   {
@@ -7546,41 +8315,6 @@
               "current_worktree": {
                 "minLength": 1,
                 "type": "string"
-              },
-              "gaps": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "blocked_step": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "context_id": {
-                      "minLength": 1,
-                      "pattern": "^sha256:[0-9a-f]{64}$",
-                      "type": "string"
-                    },
-                    "needed_contract": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "question": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "target_id": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "question",
-                    "blocked_step",
-                    "needed_contract"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
               },
               "kind": {
                 "enum": [
@@ -7655,7 +8389,7 @@
               "phase",
               "status",
               "outcome",
-              "gaps",
+              "blockers",
               "components",
               "active_worktrees"
             ],
@@ -7685,7 +8419,7 @@
         "$ref": "#/$defs/concorde-main-response"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
@@ -7829,7 +8563,7 @@
             "type": "object"
           },
           "schema_version": {
-            "const": 4
+            "const": 5
           },
           "target_hint": {
             "anyOf": [
@@ -8449,6 +9183,39 @@
                 },
                 "type": "array"
               },
+              "blockers": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "blocked_step": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "issue_id": {
+                      "minLength": 1,
+                      "pattern": "I-[0-9a-f]{32}",
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "report_id": {
+                      "minLength": 1,
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "issue_id",
+                    "report_id",
+                    "path",
+                    "blocked_step"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "change_id": {
                 "anyOf": [
                   {
@@ -8512,41 +9279,6 @@
               "current_worktree": {
                 "minLength": 1,
                 "type": "string"
-              },
-              "gaps": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "blocked_step": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "context_id": {
-                      "minLength": 1,
-                      "pattern": "^sha256:[0-9a-f]{64}$",
-                      "type": "string"
-                    },
-                    "needed_contract": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "question": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "target_id": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "question",
-                    "blocked_step",
-                    "needed_contract"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
               },
               "kind": {
                 "enum": [
@@ -8621,7 +9353,7 @@
               "phase",
               "status",
               "outcome",
-              "gaps",
+              "blockers",
               "components",
               "active_worktrees"
             ],
@@ -8658,7 +9390,7 @@
                 "$ref": "#/$defs/concorde-discovery-context"
               },
               "schema_version": {
-                "const": 4,
+                "const": 5,
                 "type": "integer"
               },
               "type_id": {
@@ -8686,7 +9418,7 @@
         "$ref": "#/$defs/concorde-main-stage-context"
       },
       "schema_version": {
-        "const": 3,
+        "const": 4,
         "type": "integer"
       },
       "type_id": {
@@ -8708,6 +9440,39 @@
           "answer": {
             "type": "string"
           },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "context_id": {
             "minLength": 1,
             "pattern": "^sha256:[0-9a-f]{64}$",
@@ -8720,41 +9485,6 @@
             },
             "type": "array",
             "uniqueItems": true
-          },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
           },
           "outcome": {
             "enum": [
@@ -8845,7 +9575,7 @@
           "answer",
           "expand_targets",
           "routes",
-          "gaps",
+          "blockers",
           "topology_design"
         ],
         "type": "object"
@@ -9103,7 +9833,7 @@
         "$ref": "#/$defs/concorde-main-stage-result"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
@@ -9209,6 +9939,39 @@
             },
             "type": "array"
           },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "change_id": {
             "anyOf": [
               {
@@ -9295,41 +10058,6 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "outcome": {
             "enum": [
               "completed",
@@ -9355,7 +10083,7 @@
           "outcome",
           "answer",
           "artifacts",
-          "gaps",
+          "blockers",
           "checks",
           "completed_capabilities"
         ],
@@ -9369,449 +10097,11 @@
         "$ref": "#/$defs/concorde-plan-response"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
         "const": "concorde-plan-response"
-      }
-    },
-    "required": [
-      "type_id",
-      "schema_version",
-      "data"
-    ],
-    "type": "object"
-  },
-  "concorde-reflections-triage-request": {
-    "$defs": {
-      "concorde-reflections-triage-request": {
-        "additionalProperties": false,
-        "properties": {
-          "action": {
-            "enum": [
-              "status",
-              "record-gaps",
-              "investigate",
-              "implement",
-              "merge",
-              "close"
-            ]
-          },
-          "change_id": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "constraints": {
-            "items": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "focus_id": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "gap_ids": {
-            "items": {
-              "minLength": 1,
-              "pattern": "^sha256:[0-9a-f]{64}$",
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "reflection_ids": {
-            "items": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "type": "array",
-            "uniqueItems": true
-          },
-          "target_id": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "task": {
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": [
-          "target_id",
-          "action",
-          "reflection_ids"
-        ],
-        "type": "object"
-      }
-    },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "additionalProperties": false,
-    "properties": {
-      "data": {
-        "$ref": "#/$defs/concorde-reflections-triage-request"
-      },
-      "schema_version": {
-        "const": 1,
-        "type": "integer"
-      },
-      "type_id": {
-        "const": "concorde-reflections-triage-request"
-      }
-    },
-    "required": [
-      "type_id",
-      "schema_version",
-      "data"
-    ],
-    "type": "object"
-  },
-  "concorde-reflections-triage-response": {
-    "$defs": {
-      "concorde-reflections-triage-response": {
-        "additionalProperties": false,
-        "properties": {
-          "answer": {
-            "type": "string"
-          },
-          "artifacts": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "digest": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "path": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "path",
-                "digest"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "change_id": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "checks": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "check_id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "exit_code": {
-                  "type": "integer"
-                },
-                "log_digest": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "source_digest": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "status": {
-                  "enum": [
-                    "passed",
-                    "failed",
-                    "timeout"
-                  ]
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "check_id",
-                "target_id",
-                "status",
-                "exit_code",
-                "source_digest",
-                "log_digest"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "completed_capabilities": {
-            "items": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "context_id": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "pattern": "^sha256:[0-9a-f]{64}$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "focus_id": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "gap_records": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "gap": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "blocked_step": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "context_id": {
-                      "minLength": 1,
-                      "pattern": "^sha256:[0-9a-f]{64}$",
-                      "type": "string"
-                    },
-                    "needed_contract": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "question": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "target_id": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "question",
-                    "blocked_step",
-                    "needed_contract"
-                  ],
-                  "type": "object"
-                },
-                "id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "phase": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "reflection_id": {
-                  "anyOf": [
-                    {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "status": {
-                  "enum": [
-                    "open",
-                    "resolved"
-                  ]
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "task": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "target_id",
-                "task",
-                "phase",
-                "gap",
-                "status",
-                "reflection_id"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "outcome": {
-            "enum": [
-              "completed",
-              "ready",
-              "spec_incomplete",
-              "unsupported",
-              "conflicting",
-              "failed",
-              "described",
-              "delivered"
-            ]
-          },
-          "reflections": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "bucket": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "plan_status": {
-                  "anyOf": [
-                    {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "status": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "triage": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "verification": {
-                  "anyOf": [
-                    {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                }
-              },
-              "required": [
-                "id",
-                "target_id",
-                "status",
-                "triage",
-                "bucket",
-                "plan_status",
-                "verification"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "target_id": {
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": [
-          "target_id",
-          "focus_id",
-          "change_id",
-          "context_id",
-          "outcome",
-          "answer",
-          "artifacts",
-          "gaps",
-          "checks",
-          "completed_capabilities"
-        ],
-        "type": "object"
-      }
-    },
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "additionalProperties": false,
-    "properties": {
-      "data": {
-        "$ref": "#/$defs/concorde-reflections-triage-response"
-      },
-      "schema_version": {
-        "const": 1,
-        "type": "integer"
-      },
-      "type_id": {
-        "const": "concorde-reflections-triage-response"
       }
     },
     "required": [
@@ -10037,6 +10327,39 @@
             },
             "type": "array"
           },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "change_id": {
             "anyOf": [
               {
@@ -10123,41 +10446,6 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "outcome": {
             "enum": [
               "completed",
@@ -10178,7 +10466,7 @@
                   "$ref": "#/$defs/concorde-review-result"
                 },
                 "schema_version": {
-                  "const": 1,
+                  "const": 2,
                   "type": "integer"
                 },
                 "type_id": {
@@ -10207,7 +10495,7 @@
           "outcome",
           "answer",
           "artifacts",
-          "gaps",
+          "blockers",
           "checks",
           "completed_capabilities",
           "reviews"
@@ -10233,80 +10521,6 @@
               }
             ]
           },
-          "findings": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "affected_task": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "document": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "location": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "line": {
-                      "anyOf": [
-                        {
-                          "minimum": 1,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "path": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "path",
-                    "line"
-                  ],
-                  "type": "object"
-                },
-                "problem": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "severity": {
-                  "enum": [
-                    "blocking",
-                    "advisory"
-                  ]
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "severity",
-                "target_id",
-                "document",
-                "contract",
-                "location",
-                "problem",
-                "affected_task"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "focus_id": {
             "anyOf": [
               {
@@ -10318,45 +10532,50 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "input_digest": {
             "minLength": 1,
             "pattern": "^sha256:[0-9a-f]{64}$",
             "type": "string"
+          },
+          "issues": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "affected_task": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "severity": {
+                  "enum": [
+                    "blocking",
+                    "advisory"
+                  ]
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "severity",
+                "affected_task"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "representative_tasks": {
             "items": {
@@ -10446,8 +10665,7 @@
           "review_mode",
           "status",
           "representative_tasks",
-          "findings",
-          "gaps",
+          "issues",
           "answer",
           "target_id",
           "focus_id",
@@ -10464,7 +10682,7 @@
         "$ref": "#/$defs/concorde-review-response"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
@@ -10499,80 +10717,6 @@
               }
             ]
           },
-          "findings": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "affected_task": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "document": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "location": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "line": {
-                      "anyOf": [
-                        {
-                          "minimum": 1,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "path": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "path",
-                    "line"
-                  ],
-                  "type": "object"
-                },
-                "problem": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "severity": {
-                  "enum": [
-                    "blocking",
-                    "advisory"
-                  ]
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "severity",
-                "target_id",
-                "document",
-                "contract",
-                "location",
-                "problem",
-                "affected_task"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "focus_id": {
             "anyOf": [
               {
@@ -10584,45 +10728,50 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "input_digest": {
             "minLength": 1,
             "pattern": "^sha256:[0-9a-f]{64}$",
             "type": "string"
+          },
+          "issues": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "affected_task": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "severity": {
+                  "enum": [
+                    "blocking",
+                    "advisory"
+                  ]
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "severity",
+                "affected_task"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "representative_tasks": {
             "items": {
@@ -10712,8 +10861,7 @@
           "review_mode",
           "status",
           "representative_tasks",
-          "findings",
-          "gaps",
+          "issues",
           "answer",
           "target_id",
           "focus_id",
@@ -10730,7 +10878,7 @@
         "$ref": "#/$defs/concorde-review-result"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
@@ -10947,7 +11095,7 @@
             "type": "object"
           },
           "schema_version": {
-            "const": 5
+            "const": 6
           },
           "spec_resolution": {
             "additionalProperties": false,
@@ -11316,14 +11464,56 @@
                   "additionalProperties": false,
                   "properties": {
                     "data": {
-                      "$ref": "#/$defs/concorde-reflection-selection"
+                      "$ref": "#/$defs/concorde-issue-selection"
                     },
                     "schema_version": {
                       "const": 1,
                       "type": "integer"
                     },
                     "type_id": {
-                      "const": "concorde-reflection-selection"
+                      "const": "concorde-issue-selection"
+                    }
+                  },
+                  "required": [
+                    "type_id",
+                    "schema_version",
+                    "data"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/concorde-issue-context"
+                    },
+                    "schema_version": {
+                      "const": 1,
+                      "type": "integer"
+                    },
+                    "type_id": {
+                      "const": "concorde-issue-context"
+                    }
+                  },
+                  "required": [
+                    "type_id",
+                    "schema_version",
+                    "data"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/concorde-issue-intent"
+                    },
+                    "schema_version": {
+                      "const": 1,
+                      "type": "integer"
+                    },
+                    "type_id": {
+                      "const": "concorde-issue-intent"
                     }
                   },
                   "required": [
@@ -11340,7 +11530,7 @@
                       "$ref": "#/$defs/concorde-review-result"
                     },
                     "schema_version": {
-                      "const": 1,
+                      "const": 2,
                       "type": "integer"
                     },
                     "type_id": {
@@ -11474,6 +11664,39 @@
                 },
                 "type": "array"
               },
+              "blockers": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "blocked_step": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "issue_id": {
+                      "minLength": 1,
+                      "pattern": "I-[0-9a-f]{32}",
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "report_id": {
+                      "minLength": 1,
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "issue_id",
+                    "report_id",
+                    "path",
+                    "blocked_step"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "change_id": {
                 "anyOf": [
                   {
@@ -11537,41 +11760,6 @@
               "current_worktree": {
                 "minLength": 1,
                 "type": "string"
-              },
-              "gaps": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "blocked_step": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "context_id": {
-                      "minLength": 1,
-                      "pattern": "^sha256:[0-9a-f]{64}$",
-                      "type": "string"
-                    },
-                    "needed_contract": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "question": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "target_id": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "question",
-                    "blocked_step",
-                    "needed_contract"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
               },
               "kind": {
                 "enum": [
@@ -11646,7 +11834,7 @@
               "phase",
               "status",
               "outcome",
-              "gaps",
+              "blockers",
               "components",
               "active_worktrees"
             ],
@@ -11724,6 +11912,148 @@
         ],
         "type": "object"
       },
+      "concorde-issue-context": {
+        "additionalProperties": false,
+        "properties": {
+          "observations": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "basis": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "description": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "impact": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "receipt": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "issue_id": {
+                      "minLength": 1,
+                      "pattern": "I-[0-9a-f]{32}",
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "report_id": {
+                      "minLength": 1,
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "issue_id",
+                    "report_id",
+                    "path"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "receipt",
+                "description",
+                "impact",
+                "basis"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "observations"
+        ],
+        "type": "object"
+      },
+      "concorde-issue-intent": {
+        "additionalProperties": false,
+        "properties": {
+          "intent": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent"
+        ],
+        "type": "object"
+      },
+      "concorde-issue-selection": {
+        "additionalProperties": false,
+        "properties": {
+          "duplicates": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "issue_id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "problem": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "revision": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "revision",
+                "problem"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "feedback": {
+            "type": "string"
+          },
+          "issue_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "problem": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "revision": {
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "bug",
+              "gap",
+              "limitation"
+            ]
+          },
+          "verification": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "issue_id",
+          "revision",
+          "problem",
+          "type",
+          "feedback",
+          "verification",
+          "duplicates"
+        ],
+        "type": "object"
+      },
       "concorde-plan-artifact": {
         "additionalProperties": false,
         "properties": {
@@ -11734,52 +12064,6 @@
         },
         "required": [
           "plan"
-        ],
-        "type": "object"
-      },
-      "concorde-reflection-selection": {
-        "additionalProperties": false,
-        "properties": {
-          "head": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "records": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "content": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "digest": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "path": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "path",
-                "digest",
-                "content"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "head",
-          "records"
         ],
         "type": "object"
       },
@@ -11896,80 +12180,6 @@
               }
             ]
           },
-          "findings": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "affected_task": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "document": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "location": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "line": {
-                      "anyOf": [
-                        {
-                          "minimum": 1,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "path": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "path",
-                    "line"
-                  ],
-                  "type": "object"
-                },
-                "problem": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "severity": {
-                  "enum": [
-                    "blocking",
-                    "advisory"
-                  ]
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "id",
-                "severity",
-                "target_id",
-                "document",
-                "contract",
-                "location",
-                "problem",
-                "affected_task"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "focus_id": {
             "anyOf": [
               {
@@ -11981,45 +12191,50 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "input_digest": {
             "minLength": 1,
             "pattern": "^sha256:[0-9a-f]{64}$",
             "type": "string"
+          },
+          "issues": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "affected_task": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                "severity": {
+                  "enum": [
+                    "blocking",
+                    "advisory"
+                  ]
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "severity",
+                "affected_task"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "representative_tasks": {
             "items": {
@@ -12109,8 +12324,7 @@
           "review_mode",
           "status",
           "representative_tasks",
-          "findings",
-          "gaps",
+          "issues",
           "answer",
           "target_id",
           "focus_id",
@@ -12150,7 +12364,7 @@
                 "$ref": "#/$defs/concorde-context-snapshot"
               },
               "schema_version": {
-                "const": 5,
+                "const": 6,
                 "type": "integer"
               },
               "type_id": {
@@ -12214,7 +12428,7 @@
         "$ref": "#/$defs/concorde-review-stage-context"
       },
       "schema_version": {
-        "const": 3,
+        "const": 4,
         "type": "integer"
       },
       "type_id": {
@@ -12242,7 +12456,12 @@
             "pattern": "^sha256:[0-9a-f]{64}$",
             "type": "string"
           },
-          "findings": {
+          "input_digest": {
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "issues": {
             "items": {
               "additionalProperties": false,
               "properties": {
@@ -12250,45 +12469,18 @@
                   "minLength": 1,
                   "type": "string"
                 },
-                "contract": {
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
                   "minLength": 1,
                   "type": "string"
                 },
-                "document": {
+                "report_id": {
                   "minLength": 1,
-                  "type": "string"
-                },
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "location": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "line": {
-                      "anyOf": [
-                        {
-                          "minimum": 1,
-                          "type": "integer"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "path": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "path",
-                    "line"
-                  ],
-                  "type": "object"
-                },
-                "problem": {
-                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 "severity": {
@@ -12296,65 +12488,18 @@
                     "blocking",
                     "advisory"
                   ]
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
                 }
               },
               "required": [
-                "id",
+                "issue_id",
+                "report_id",
+                "path",
                 "severity",
-                "target_id",
-                "document",
-                "contract",
-                "location",
-                "problem",
                 "affected_task"
               ],
               "type": "object"
             },
             "type": "array"
-          },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "input_digest": {
-            "minLength": 1,
-            "pattern": "^sha256:[0-9a-f]{64}$",
-            "type": "string"
           },
           "representative_tasks": {
             "items": {
@@ -12384,8 +12529,7 @@
           "review_mode",
           "status",
           "representative_tasks",
-          "findings",
-          "gaps",
+          "issues",
           "answer"
         ],
         "type": "object"
@@ -12398,7 +12542,7 @@
         "$ref": "#/$defs/concorde-review-stage-result"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
@@ -12509,6 +12653,39 @@
             },
             "type": "array"
           },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "change_id": {
             "anyOf": [
               {
@@ -12595,41 +12772,6 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "outcome": {
             "enum": [
               "completed",
@@ -12655,7 +12797,7 @@
           "outcome",
           "answer",
           "artifacts",
-          "gaps",
+          "blockers",
           "checks",
           "completed_capabilities"
         ],
@@ -12669,7 +12811,7 @@
         "$ref": "#/$defs/concorde-specify-loop-response"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
@@ -12775,6 +12917,39 @@
             },
             "type": "array"
           },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "change_id": {
             "anyOf": [
               {
@@ -12861,41 +13036,6 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "outcome": {
             "enum": [
               "completed",
@@ -12921,7 +13061,7 @@
           "outcome",
           "answer",
           "artifacts",
-          "gaps",
+          "blockers",
           "checks",
           "completed_capabilities"
         ],
@@ -12935,7 +13075,7 @@
         "$ref": "#/$defs/concorde-specify-response"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
@@ -13055,6 +13195,39 @@
             },
             "type": "array"
           },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "change_id": {
             "anyOf": [
               {
@@ -13141,41 +13314,6 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "outcome": {
             "enum": [
               "completed",
@@ -13201,7 +13339,7 @@
           "outcome",
           "answer",
           "artifacts",
-          "gaps",
+          "blockers",
           "checks",
           "completed_capabilities"
         ],
@@ -13215,7 +13353,7 @@
         "$ref": "#/$defs/concorde-tasks-response"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
@@ -13781,6 +13919,39 @@
                 },
                 "type": "array"
               },
+              "blockers": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "blocked_step": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "issue_id": {
+                      "minLength": 1,
+                      "pattern": "I-[0-9a-f]{32}",
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "report_id": {
+                      "minLength": 1,
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "issue_id",
+                    "report_id",
+                    "path",
+                    "blocked_step"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "change_id": {
                 "anyOf": [
                   {
@@ -13844,41 +14015,6 @@
               "current_worktree": {
                 "minLength": 1,
                 "type": "string"
-              },
-              "gaps": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "blocked_step": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "context_id": {
-                      "minLength": 1,
-                      "pattern": "^sha256:[0-9a-f]{64}$",
-                      "type": "string"
-                    },
-                    "needed_contract": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "question": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "target_id": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "question",
-                    "blocked_step",
-                    "needed_contract"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
               },
               "kind": {
                 "enum": [
@@ -13953,7 +14089,7 @@
               "phase",
               "status",
               "outcome",
-              "gaps",
+              "blockers",
               "components",
               "active_worktrees"
             ],
@@ -14609,6 +14745,39 @@
                 },
                 "type": "array"
               },
+              "blockers": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "blocked_step": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "issue_id": {
+                      "minLength": 1,
+                      "pattern": "I-[0-9a-f]{32}",
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "report_id": {
+                      "minLength": 1,
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "issue_id",
+                    "report_id",
+                    "path",
+                    "blocked_step"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "change_id": {
                 "anyOf": [
                   {
@@ -14672,41 +14841,6 @@
               "current_worktree": {
                 "minLength": 1,
                 "type": "string"
-              },
-              "gaps": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "blocked_step": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "context_id": {
-                      "minLength": 1,
-                      "pattern": "^sha256:[0-9a-f]{64}$",
-                      "type": "string"
-                    },
-                    "needed_contract": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "question": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "target_id": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "question",
-                    "blocked_step",
-                    "needed_contract"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
               },
               "kind": {
                 "enum": [
@@ -14781,7 +14915,7 @@
               "phase",
               "status",
               "outcome",
-              "gaps",
+              "blockers",
               "components",
               "active_worktrees"
             ],
@@ -14810,7 +14944,7 @@
         "$ref": "#/$defs/concorde-topology-author-context"
       },
       "schema_version": {
-        "const": 3,
+        "const": 4,
         "type": "integer"
       },
       "type_id": {
@@ -14831,6 +14965,39 @@
         "properties": {
           "answer": {
             "type": "string"
+          },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "context_id": {
             "minLength": 1,
@@ -14857,41 +15024,6 @@
             },
             "type": "array"
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "outcome": {
             "enum": [
               "completed",
@@ -14911,7 +15043,7 @@
           "target_id",
           "outcome",
           "answer",
-          "gaps",
+          "blockers",
           "documents"
         ],
         "type": "object"
@@ -14924,7 +15056,7 @@
         "$ref": "#/$defs/concorde-topology-author-result"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {
@@ -15662,6 +15794,39 @@
                 },
                 "type": "array"
               },
+              "blockers": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "blocked_step": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "issue_id": {
+                      "minLength": 1,
+                      "pattern": "I-[0-9a-f]{32}",
+                      "type": "string"
+                    },
+                    "path": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "report_id": {
+                      "minLength": 1,
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "issue_id",
+                    "report_id",
+                    "path",
+                    "blocked_step"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "change_id": {
                 "anyOf": [
                   {
@@ -15725,41 +15890,6 @@
               "current_worktree": {
                 "minLength": 1,
                 "type": "string"
-              },
-              "gaps": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "blocked_step": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "context_id": {
-                      "minLength": 1,
-                      "pattern": "^sha256:[0-9a-f]{64}$",
-                      "type": "string"
-                    },
-                    "needed_contract": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "question": {
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "target_id": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "question",
-                    "blocked_step",
-                    "needed_contract"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
               },
               "kind": {
                 "enum": [
@@ -15834,7 +15964,7 @@
               "phase",
               "status",
               "outcome",
-              "gaps",
+              "blockers",
               "components",
               "active_worktrees"
             ],
@@ -15973,6 +16103,39 @@
             },
             "type": "array"
           },
+          "blockers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "blocked_step": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "issue_id": {
+                  "minLength": 1,
+                  "pattern": "I-[0-9a-f]{32}",
+                  "type": "string"
+                },
+                "path": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "report_id": {
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "issue_id",
+                "report_id",
+                "path",
+                "blocked_step"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "change_id": {
             "anyOf": [
               {
@@ -16059,41 +16222,6 @@
               }
             ]
           },
-          "gaps": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "blocked_step": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "context_id": {
-                  "minLength": 1,
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                "needed_contract": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "question": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "target_id": {
-                  "minLength": 1,
-                  "type": "string"
-                }
-              },
-              "required": [
-                "question",
-                "blocked_step",
-                "needed_contract"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
           "outcome": {
             "enum": [
               "completed",
@@ -16119,7 +16247,7 @@
           "outcome",
           "answer",
           "artifacts",
-          "gaps",
+          "blockers",
           "checks",
           "completed_capabilities"
         ],
@@ -16133,7 +16261,7 @@
         "$ref": "#/$defs/concorde-validate-response"
       },
       "schema_version": {
-        "const": 1,
+        "const": 2,
         "type": "integer"
       },
       "type_id": {

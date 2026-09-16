@@ -208,7 +208,7 @@ def _deliver(host, configuration: dict, task: dict) -> dict:
             "answer": "Delivery verifies integration into concorde/delivered/" + change_id
                 + " and removes the source unless explicitly retained. A separate merge_primary:true "
                 "request from the primary session is required to update " + primary["branch"] + ".",
-            "gaps": [], "checks": [], "artifacts": [], "completed_capabilities": [],
+            "blockers": [], "checks": [], "artifacts": [], "completed_capabilities": [],
         })
     with repository_lock(root):
         receipt_file = checked_path(root, relative)
@@ -395,7 +395,7 @@ def _response(root: Path, receipt: dict, complete: bool) -> dict:
         "target_id": receipt["target_id"], "focus_id": receipt["focus_id"],
         "change_id": receipt["change_id"], "context_id": None,
         "outcome": "delivered" if complete else "failed", "answer": answer,
-        "gaps": [], "checks": promotion.get("checks", receipt["checks"]),
+        "blockers": [], "checks": promotion.get("checks", receipt["checks"]),
         "artifacts": [artifact(root, "delivery", _receipt_path(receipt["change_id"]))],
         "completed_capabilities": ["concorde-deliver"] if complete else [],
     })

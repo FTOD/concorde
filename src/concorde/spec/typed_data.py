@@ -47,8 +47,6 @@ def decode(text: str) -> Any:
         raise TypedDataError("invalid_json", "", str(error)) from error
 
 
-REFLECTION_ID = {**STRING, "pattern": r"^R-[0-9]{3,}$"}
-COMMIT = {**STRING, "pattern": r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$"}
 # Capability identities and their paired context/result type IDs are declared by ``contracts``;
 # this mapping is populated from it at the end of this module.
 CAPABILITY_CONTRACTS: dict[str, tuple[str, str]] = {}
@@ -68,19 +66,6 @@ DATA_SCHEMAS = {
                                             "workers": {"type": "object", "properties": {},
                                                         "additionalProperties": obj(_SELECTION, tuple(_SELECTION))}},
                                            (*_SELECTION, "workers")),
-    "concorde-reflection-investigation-result": obj({
-        "findings": array(obj({
-            "reflection_id": REFLECTION_ID, "verified_commit": COMMIT,
-            "observed_state": {"enum": ["reproduced", "not-reproduced"]},
-            "verification": STRING, "analysis": STRING, "resolution": STRING,
-            "intervention_rationale": STRING,
-            "human_intervention": {"enum": ["required", "not-required"]},
-            "route": {"enum": ["fast-loop", "plan", "dismiss", "blocked"]},
-            "effort": {"enum": ["small", "medium", "large"]}, "files": array(PATH, unique=True),
-            "steps": STRING, "validation": STRING, "risks": STRING,
-            "protocol_change": {"type": "boolean"},
-        })),
-    }),
 }
 
 

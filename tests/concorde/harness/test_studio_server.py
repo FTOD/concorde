@@ -1,7 +1,8 @@
 """Opt-in real Agent Server checks: CONCORDE_TEST_STUDIO=1 with uv's studio group.
 
 Only temporary consumer fixtures run capabilities. No source/primary-worktree state is changed.
-Model responses are deterministic; AgentProcessExecutor and permission gates remain real.
+Model responses are deterministic; WorkerExecutor admission and compiled policy checks remain real.
+These server tests do not substitute for the separate real Pi tool-gate tests.
 """
 import json
 import os
@@ -43,6 +44,7 @@ class StudioServerTests(unittest.TestCase):
         source = directory / "graphs.py"
         source.write_text(
             "from pathlib import Path\n"
+            "import json\n"
             "from concorde.spec.contracts import SKILL_NAMES\n"
             "from concorde.harness.studio import build_studio_graph\n"
             "from tests.concorde.spec.support import ModelProcessDouble\n"
@@ -57,15 +59,17 @@ class StudioServerTests(unittest.TestCase):
             "        data.update(status='incomplete', representative_tasks=[], answer='Coverage incomplete.')\n"
             "    if mode == 'blocking':\n"
             "        gap = dict(question='Which limit applies?', blocked_step='Review limit admission', needed_contract='Limit admission')\n"
-            "        data.update(status='findings', gaps=[gap], findings=[dict(id='limit', severity='blocking',\n"
+            "        data.update(status='findings', blockers=[gap], issues=[dict(id='limit', severity='blocking',\n"
             "            target_id=snapshot['target_id'], document='specs/transfer/module.md', contract=gap['needed_contract'],\n"
             "            location=dict(path='specs/transfer/module.md', line=1), problem='Limit is unspecified.',\n"
             "            affected_task=gap['blocked_step'])])\n"
             "double = ModelProcessDouble(review_response)\n"
-            "def executor(launch):\n"
-            "    if launch.request == 'Trigger executor failure':\n"
+            "def executor(launch, *, checks=None, report_issue=None):\n"
+            "    value = json.loads(launch.context_json)['data']\n"
+            "    snapshot = value.get('snapshot', {}).get('data', value)\n"
+            "    if snapshot.get('task') == 'Trigger executor failure':\n"
             "        raise RuntimeError('fixture executor failure')\n"
-            "    return double.executor(launch)\n"
+            "    return double.executor(launch, checks=checks, report_issue=report_issue)\n"
             "for op in SKILL_NAMES:\n"
             f"    roots = {{'concorde-dev-loop': {str(cls.change_fixture.change)!r}, 'concorde-specify-loop': {str(cls.spec_fixture.change)!r}}}\n"
             f"    root = Path(roots.get(op, {str(cls.root)!r}))\n"
@@ -223,7 +227,7 @@ class StudioServerTests(unittest.TestCase):
         self.assertEqual([], state["events"])
         # Same CLI entry, but its cwd belongs to another workspace.
         result = subprocess.run([sys.executable, str(PACKAGE / "scripts/run-capability.py"),
-            "concorde-reflections-triage"],
+            "concorde-issues"],
             input=json.dumps(invocation()), text=True, capture_output=True, cwd=PACKAGE,
             env={**os.environ, "CONCORDE_STUDIO_URL": self.base}, timeout=30)
         self.assertEqual(3, result.returncode)
@@ -257,7 +261,7 @@ class StudioServerTests(unittest.TestCase):
         primary_before = tracked_bytes(fixture.primary)
         other_primary_before = tracked_bytes(self.change_fixture.primary)
         other_candidate_before = tracked_bytes(self.change_fixture.change)
-        other_lifecycle_before = read_change(self.change_fixture.change)
+        other_lifecycle_before = read_change(self.change_fixture.change, required=True)
         implementation_before = (fixture.change / "app/transfer.py").read_bytes()
         thread, state = self.run_graph(invocation("concorde-specify-loop",
             data={**fixture.task, "run_reviews": True}))
@@ -266,7 +270,7 @@ class StudioServerTests(unittest.TestCase):
         self.assertEqual(3, state["result"]["schema_version"])
         self.assertEqual("concorde-specify-loop", state["result"]["capability_id"])
         self.assertEqual("concorde-specify-loop-response", state["result"]["output"]["type_id"])
-        self.assertEqual(1, state["result"]["output"]["schema_version"])
+        self.assertEqual(2, state["result"]["output"]["schema_version"])
         self.assertEqual("completed", state["result"]["output"]["data"]["outcome"])
         stages = [e["stage"] for e in state["events"] if e["event"] == "agent_finished"]
         self.assertEqual(["route", "specify", "spec-review"], stages)
@@ -279,7 +283,7 @@ class StudioServerTests(unittest.TestCase):
         self.assertFalse(any(e.get("stage") in {"plan", "tasks", "implement", "implementation",
                                                 "validate", "code-review", "ready"}
                              for e in state["events"]))
-        change = read_change(fixture.change)
+        change = read_change(fixture.change, required=True)
         self.assertNotEqual("ready", change["status"])
         self.assertFalse(change["targets"].get(fixture.task["target_id"], {}).get("plan"))
         self.assertEqual({"spec": True}, change["review_requirements"][fixture.task["target_id"]])
@@ -287,7 +291,7 @@ class StudioServerTests(unittest.TestCase):
         self.assertEqual(primary_before, tracked_bytes(fixture.primary))
         self.assertEqual(other_primary_before, tracked_bytes(self.change_fixture.primary))
         self.assertEqual(other_candidate_before, tracked_bytes(self.change_fixture.change))
-        self.assertEqual(other_lifecycle_before, read_change(self.change_fixture.change))
+        self.assertEqual(other_lifecycle_before, read_change(self.change_fixture.change, required=True))
         saved = self.request(f"/threads/{thread}/state")["values"]
         self.assertEqual(state["result"], saved["result"])
         self.assertEqual({"invocation", "result", "policies", "events"}, set(saved))
@@ -327,7 +331,7 @@ class StudioServerTests(unittest.TestCase):
                     self.assertFalse(any(e.get("stage") in {"plan", "tasks", "implementation",
                                                             "validate", "code-review", "ready"}
                                          for e in stopped["events"]))
-                    current = read_change(fixture.change)
+                    current = read_change(fixture.change, required=True)
                     self.assertTrue(current["review_requirements"][fixture.task["target_id"]]["spec"])
                     self.assertNotEqual("ready", current["status"])
                     self.assertEqual(primary_before, tracked_bytes(fixture.primary))
@@ -335,7 +339,7 @@ class StudioServerTests(unittest.TestCase):
                     _, disabled = self.run_graph(invocation("concorde-specify-loop",
                         data={**request, "run_reviews": False}))
                     self.assertNotEqual("succeeded", disabled["result"]["status"], disabled)
-                    self.assertTrue(read_change(fixture.change)["review_requirements"][fixture.task["target_id"]]["spec"])
+                    self.assertTrue(read_change(fixture.change, required=True)["review_requirements"][fixture.task["target_id"]]["spec"])
                     self.assertFalse(any(e.get("stage") in {"plan", "tasks", "implementation",
                                                             "validate", "code-review", "ready"}
                                          for e in disabled["events"]))
@@ -356,7 +360,7 @@ class StudioServerTests(unittest.TestCase):
     def test_invalid_envelope_resets_a_previously_successful_thread(self):
         thread, _ = self.run_graph(invocation())
         state = self.request(f"/threads/{thread}/runs/wait", {
-            "assistant_id": "concorde-reflections-triage", "input": {"invocation": {}}})
+            "assistant_id": "concorde-issues", "input": {"invocation": {}}})
         self.assertEqual("invalid_input", state["result"]["errors"][0]["code"])
         self.assertIsNone(state["result"]["output"])
         self.assertEqual([], state["events"])

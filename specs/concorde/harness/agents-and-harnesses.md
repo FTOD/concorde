@@ -185,7 +185,7 @@ Each worker fulfils exactly one task contract. The table uses these typed pairs:
 | task-author | stage; tasks | required concorde-plan-artifact and concorde-task-identity-constraints; optional concorde-implementation-task, concorde-review-result and concorde-task-scope-feedback | Implementation acceptance tasks with new IDs outside the reserved set; no source contents or writes |
 | programmer | stage; implementation | required concorde-implementation-task; optional concorde-review-result | Fulfilled tasks only; may write the selected Module's listed implementation paths |
 | code-reviewer | review; code-review | none | Independent code findings; authorized code read-only |
-| investigator | stage; implementation | required concorde-reflection-selection | Reflection findings only; authorized code read-only |
+| issue-solver | stage; issue-solve | required concorde-issue-selection | Bounded next action or disposition; Spec-only, no project writes |
 
 The host selects the worker before freezing its context and compiling its permissions, and the
 executor checks that selection again before any process starts. A context of the wrong type or
@@ -195,14 +195,15 @@ rejected. After the process, a result whose type, outcome or populated fields th
 permit is rejected: disallowed authored fields as `permission_denied`, other contract violations as
 `invalid_completion`. Reviews additionally bind the matching `review_mode`. Spec-only workers never
 receive source contents or project writes; the programmer receives only the bound Module's
-authorized code; read-only code review and investigation grants enumerate the frozen implementation
+authorized code; read-only code review grants enumerate the frozen implementation
 files, so a listed directory cannot widen them to hidden, excluded or later-created files.
 
 The programmer executes useful tests its grant supports. A listed test does not grant transitive
 imports or repository fixtures; an unavailable input is recorded as deferred host verification,
 never as a passing result, and actual defects and unfulfilled obligations still prevent completion.
-The investigator retains the implementation phase on the stage wire while its own contract admits
-only the reflection selection; reusing a wire pair does not merge artifact or result permissions.
+The Issue solver uses its own issue-solve phase and a selected problem, not an implementation grant.
+Ordinary development stages may receive the host-bound concorde-issue-intent. Tasks/implementation
+repair receives selected concorde-issue-context observations alongside the admitted review result.
 
 Every phase, target, repair and review has a fresh invocation identity and frozen context. Sharing a
 role never shares a conversation, private reasoning, stage inputs or write grant between workers.

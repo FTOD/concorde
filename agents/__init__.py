@@ -22,7 +22,7 @@ AGENTS = (
     "task_author",
     "programmer",
     "code_reviewer",
-    "investigator",
+    "issue_solver",
 )
 
 

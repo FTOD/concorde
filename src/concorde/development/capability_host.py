@@ -28,10 +28,10 @@ from ..harness.check_executor import CHECK_POLICY, CheckSandboxError, execute_ch
 from ..harness.model_selection import worker_selection
 from ..harness.permissions import PolicyBinding, PermissionPolicyError, compile_policy
 from ..distribution.build import BuildError, load_agent, verify_fresh
-from ..spec.contracts import (CAPABILITY_AGENTS, INVESTIGATION_AGENT, MAIN_AGENTS, TOPOLOGY_AUTHOR_AGENT,
+from ..spec.contracts import (CAPABILITY_AGENTS, MAIN_AGENTS, TOPOLOGY_AUTHOR_AGENT,
     MAIN_CAPABILITY, DISCOVERY_CAPABILITIES, DETERMINISTIC_CAPABILITIES, load_capability_inventory)
 from ..harness.change_worktree import (STATE_PATH, WORK_PATH, bind_owner, create_worktree,
-    ensure_change, graph_state, progress, read_change, record_transition, refresh_registry,
+    ensure_change, graph_state, progress, read_change, record_transition, refresh_registry, blocker_scope,
     save_change, save_target_state, snapshot_tree, target_state, work_path, workspace_context, resume_owner,
     workspace_identity)
 from ..spec.repository import SpecRepository, SpecError, digest, read_file, identifier
@@ -61,6 +61,7 @@ class CapabilityHost:
     defer_ready: bool = False
     defer_component_checks: bool = False
     finalize_components: bool = False
+    issue_intent: str | None = None
     depth: int = 0
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     # The top-level capability invocation's identity, inherited by every nested invocation so one
@@ -142,7 +143,11 @@ def _run_worker(host, invocation, prompt, *, capability: str, stage: str, target
     record_usage(host, capability=capability, stage=stage, target_id=target_id,
                  agent=external_agent_name(invocation.agent), invocation=invocation, result=outcome,
                  change_id=change_id)
-    return outcome, validate_typed(outcome.value, result_type)["data"]
+    data = validate_typed(outcome.value, result_type)["data"]
+    from ..issues.references import validate_references
+    validate_references(host.project_root, data.get("blockers", data.get("issues", [])),
+                        admitted=[*reporter.receipts, *reporter.admitted_receipts])
+    return outcome, data
 
 
 def _check_service(repository: SpecRepository, target, invocation_id: str):
@@ -191,8 +196,8 @@ def invoke_capability(parent_capability: str, child_capability: str, configurati
     """Invoke another capability module's ``run`` in-process (proposal section 6.3).
 
     Used by every nested dispatch the host performs on a parent capability's behalf: the stage
-    graph inside ``dev_loop``'s ``Invocation.loop``, ``reflections_triage``'s composition of
-    ``dev_loop`` and a Module's own recursive per-component review routing. ``run_capability``
+    graph inside ``dev_loop``'s ``Invocation.loop``, ``issues``' bounded composition of
+    development, verification and Spec repair and a Module's own recursive per-component review routing. ``run_capability``
     remains the shared machinery every capability module's own ``run`` delegates to; this only
     resolves which module owns the call (see ``resolve_child_capability``).
     """
@@ -227,6 +232,11 @@ def _worktree(host: CapabilityHost, mutation: bool, task: dict) -> tuple[Capabil
     if current is not None:
         refresh_registry(host.project_root)
     return host, None
+
+
+def _issues_revision(root: Path) -> str:
+    from ..issues.store import list_issues
+    return digest([(item["id"], item["revision"]) for item in list_issues(root)])
 
 
 def _implementation_digest(repository: SpecRepository, target) -> str:
@@ -337,7 +347,7 @@ class MainInvocation:
         self.completed: list[str] = []
 
     def main_response(self, outcome: str, answer: str = "", *, routes=(),
-                      topology_proposal=None, application=None, files=(), gaps=()) -> dict:
+                      topology_proposal=None, application=None, files=(), blockers=()) -> dict:
         if self.last_context is None or self.last_snapshot is None:
             raise SpecError("main response has no discovery context", "invalid_completion")
         return typed("concorde-main-response", {
@@ -351,12 +361,12 @@ class MainInvocation:
             "topology_proposal": topology_proposal,
             "application": application,
             "files": list(files),
-            "gaps": list(gaps),
+            "blockers": list(blockers),
             "completed_capabilities": list(self.completed),
             "workspace": self.last_snapshot.value["workspace"],
         })
 
-    def capability_response(self, outcome: str, answer: str = "", *, gaps=()) -> dict:
+    def capability_response(self, outcome: str, answer: str = "", *, blockers=()) -> dict:
         if self.last_context is None:
             raise SpecError("main response has no discovery context", "invalid_completion")
         return typed(CAPABILITY_CONTRACTS[self.capability][1], {
@@ -367,7 +377,7 @@ class MainInvocation:
             "outcome": outcome,
             "answer": answer,
             "artifacts": [],
-            "gaps": list(gaps),
+            "blockers": list(blockers),
             "checks": [],
             "completed_capabilities": list(self.completed),
             **({"reviews": []} if self.capability == "concorde-review" else {}),
@@ -435,7 +445,7 @@ class MainInvocation:
                 discovered_targets=list(self.discovered)))
             if self.host.mode == "describe-policy":
                 return {"context_id": snapshot.id, "outcome": "described", "answer": "",
-                        "expand_targets": [], "routes": [], "gaps": []}
+                        "expand_targets": [], "routes": [], "blockers": []}
             from ..harness.agent_node import AgentNode
             result = None
 
@@ -462,38 +472,34 @@ class MainInvocation:
         if data["context_id"] != snapshot.id:
             raise SpecError("main returned a different discovery context identity", "incompatible_handoff")
         outcome = data["outcome"]
-        expansions, routes, gaps = data["expand_targets"], data["routes"], data["gaps"]
+        expansions, routes, blockers = data["expand_targets"], data["routes"], data["blockers"]
         topology = data["topology_design"]
         if phase == "route":
             if outcome == "completed":
                 if (self.capability != MAIN_CAPABILITY or self.action != "ask"
-                        or expansions or routes or gaps or topology is not None or not data["answer"].strip()):
+                        or expansions or routes or blockers or topology is not None or not data["answer"].strip()):
                     raise SpecError("direct main answers require only an answer from admitted Spec context or workspace metadata", "invalid_completion")
             elif outcome == "expand":
-                if not expansions or routes or gaps or topology is not None:
+                if not expansions or routes or blockers or topology is not None:
                     raise SpecError("expand requires only nonempty Module targets", "invalid_completion")
             elif outcome == "routed":
-                if (self.action == "ask" or expansions or not routes or gaps or topology is not None):
+                if (self.action == "ask" or expansions or not routes or blockers or topology is not None):
                     raise SpecError("routed requires only nonempty worker routes", "invalid_completion")
             elif outcome == "topology_proposed":
-                if (self.action != "design-topology" or expansions or routes or gaps
+                if (self.action != "design-topology" or expansions or routes or blockers
                         or topology is None):
                     raise SpecError("topology design has inconsistent fields", "invalid_completion")
             elif outcome in {"spec_incomplete", "unsupported", "conflicting", "failed"}:
                 if (expansions or routes or topology is not None
-                        or ((outcome == "spec_incomplete") != bool(gaps))):
+                        or (outcome == "spec_incomplete" and not blockers)):
                     raise SpecError("blocked main routing has inconsistent fields", "invalid_completion")
             else:
                 raise SpecError("route phase returned an unsupported outcome", "invalid_completion")
         else:
             raise SpecError("main returned an unsupported phase", "invalid_completion")
-        admitted = set(self.discovered)
-        for gap in gaps:
-            if gap.get("target_id") not in admitted:
-                raise SpecError("main gap must identify an admitted target", "incompatible_handoff")
-            if gap.get("context_id", snapshot.id) != snapshot.id:
-                raise SpecError("main gap has a different context identity", "incompatible_handoff")
-            gap["context_id"] = snapshot.id
+        # _run_worker has admitted every referenced observation against this exact discovery.
+        if blockers and outcome in {"completed", "routed", "expand", "topology_proposed"}:
+            raise SpecError("successful discovery cannot retain task blockers", "invalid_completion")
 
     def discover_routes(self) -> tuple[list[dict], dict | None]:
         from .discovery_flow import build_discovery_flow
@@ -589,7 +595,7 @@ class MainInvocation:
         """Admit the result of this invocation's executed discovery subflow."""
         if decision is not None:
             outcome = "described" if self.host.mode == "describe-policy" else decision["outcome"]
-            return None, self.capability_response(outcome, decision["answer"], gaps=decision["gaps"])
+            return None, self.capability_response(outcome, decision["answer"], blockers=decision["blockers"])
         if len(routes) != 1:
             raise SpecError(
                 f"{self.capability} requires one owning target; route cross-target work through a coordinating Module",
@@ -606,7 +612,7 @@ class MainInvocation:
         if decision is None:
             raise SpecError("questions require a direct answerer result", "invalid_completion")
         outcome = "described" if self.host.mode == "describe-policy" else decision["outcome"]
-        return self.main_response(outcome, decision["answer"], gaps=decision["gaps"])
+        return self.main_response(outcome, decision["answer"], blockers=decision["blockers"])
 
     def run_topology_design(self) -> dict:
         _, decision = self.discover_routes()
@@ -618,7 +624,7 @@ class MainInvocation:
         if decision is None or decision["outcome"] != "topology_proposed":
             if decision is None:
                 raise SpecError("topology design returned worker routes", "invalid_completion")
-            return self.main_response(decision["outcome"], decision["answer"], gaps=decision["gaps"])
+            return self.main_response(decision["outcome"], decision["answer"], blockers=decision["blockers"])
         _inspect_topology_design(
             self.repository,
             decision["topology_design"],
@@ -816,7 +822,7 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
             phase="topology-author", target_id=target["id"], context_id=snapshot.id, project_root=str(project)))
         if host.mode == "describe-policy":
             return {"context_id": snapshot.id, "target_id": target["id"], "outcome": "completed",
-                    "answer": "", "gaps": [], "documents": []}
+                    "answer": "", "blockers": [], "documents": []}
         from ..harness.agent_node import AgentNode
         result = None
 
@@ -830,14 +836,9 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
         data = AgentNode(agent).invoke(runtime, launch_author)
         if data["context_id"] != snapshot.id or data["target_id"] != target["id"]:
             raise SpecError("topology author returned a different target/context", "incompatible_handoff")
-        if (data["outcome"] == "spec_incomplete") != bool(data["gaps"]):
-            raise SpecError("topology author gaps do not match its outcome", "invalid_completion")
-        for gap in data["gaps"]:
-            if gap.get("target_id", target["id"]) != target["id"]:
-                raise SpecError("topology author gap names another target", "incompatible_handoff")
-            if gap.get("context_id", snapshot.id) != snapshot.id:
-                raise SpecError("topology author gap names another context", "incompatible_handoff")
-            gap.update(target_id=target["id"], context_id=snapshot.id)
+        if ((data["outcome"] == "spec_incomplete" and not data["blockers"])
+                or (data["outcome"] == "completed" and data["blockers"])):
+            raise SpecError("topology author blockers do not match its outcome", "invalid_completion")
         paths = [item["path"] for item in data["documents"]]
         if data["outcome"] == "completed":
             if paths != [member for path in target["documents"] for member in (path, path + ".json")]:
@@ -858,7 +859,7 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
 
 
 def _main_topology_response(action: str, repository: SpecRepository, proposal: dict, *,
-                            outcome: str, answer: str, application=None, files=(), gaps=(),
+                            outcome: str, answer: str, application=None, files=(), blockers=(),
                             completed=()) -> dict:
     data = proposal["data"]
     design = data["design"]["data"]
@@ -867,7 +868,7 @@ def _main_topology_response(action: str, repository: SpecRepository, proposal: d
         "outcome": outcome, "answer": answer,
         "discovered_targets": data["discovered_targets"], "routes": [],
         "topology_proposal": proposal if action == "accept-topology" else None,
-        "application": application, "files": list(files), "gaps": list(gaps),
+        "application": application, "files": list(files), "blockers": list(blockers),
         "completed_capabilities": list(completed),
         "workspace": workspace_context(repository.root)})
 
@@ -902,10 +903,10 @@ def _review_candidate_contexts(repository, candidate, configuration, host, inten
                 records[target_id] = {"artifact": reference, "task": task["task"], "constraints": list(constraints),
                                       "focus_id": task.get("focus_id"), "input_digest": evidence["input_digest"],
                                       "status": evidence["status"]}
-        if result["gaps"] or result["outcome"] == "completed":
+        if result["blockers"] or result["outcome"] == "completed":
             from ..harness.change_worktree import record_task_gaps
             evidence = result["reviews"][0]["data"] if result["reviews"] else None
-            record_task_gaps(repository.root, target_id, task["task"], "spec-review", result["gaps"],
+            record_task_gaps(repository.root, target_id, task["task"], "spec-review", result["blockers"],
                 _target_revision(candidate, candidate.select(target_id)),
                 review_input_digest=evidence["input_digest"] if evidence else None,
                 spec_resolution=candidate.spec_context(target_id).value)
@@ -985,7 +986,7 @@ def _topology_nodes(configuration, proposal, host):
                                   references, candidate_repository=author_repository)
         if result["outcome"] != "completed":
             return {"output": _main_topology_response("accept-topology", repository, proposal,
-                outcome=result["outcome"], answer=result["answer"], gaps=result["gaps"],
+                outcome=result["outcome"], answer=result["answer"], blockers=result["blockers"],
                 completed=completed), "route": END}
         for item in result["documents"]:
             path = item["path"]
@@ -1027,7 +1028,7 @@ def _topology_nodes(configuration, proposal, host):
             proposal["data"]["task"], proposal["data"]["constraints"], completed)
         if failure is not None:
             return {"output": _main_topology_response("accept-topology", repository, proposal,
-                outcome=failure["outcome"], answer=failure["answer"], gaps=failure["gaps"], completed=completed), "route": END}
+                outcome=failure["outcome"], answer=failure["answer"], blockers=failure["blockers"], completed=completed), "route": END}
         return {"route": "persist_application"}
 
     def persist_application(state):
@@ -1140,7 +1141,7 @@ def _topology_apply_nodes(application_ref, host):
                 raise SpecError("topology application differs from this worktree's owning task", "incompatible_handoff")
             change.update(target_id=owner, focus_id=None, task=proposal["data"]["task"],
                           constraints=proposal["data"]["constraints"], phase="specified", status="active",
-                          outcome="topology_applied", gaps=[])
+                          outcome="topology_applied", blockers=[])
             candidate_repository = SpecRepository(repository.root, host.package_root,
                 registry_bytes=candidate_bytes, document_overrides={item["path"]: item["content"].encode()
                     for item in files if item["path"] != repository.registry_path})
@@ -1195,17 +1196,24 @@ class Invocation:
         self.last_context = None
         self.completed: list[str] = []
 
-    def response(self, outcome="completed", answer="", *, gaps=(), checks=(), artifacts=(), reviews=()) -> dict:
+    def response(self, outcome="completed", answer="", *, blockers=(), checks=(), artifacts=(), reviews=()) -> dict:
         data = {
             "target_id": self.target.id, "focus_id": self.task.get("focus_id"), "change_id": self.change_id,
             "context_id": self.last_context, "outcome": outcome, "answer": answer,
-            "gaps": list(gaps), "checks": list(checks), "artifacts": list(artifacts),
+            "blockers": list(blockers), "checks": list(checks), "artifacts": list(artifacts),
             "completed_capabilities": list(self.completed)}
         if self.capability == "concorde-review":
             data["reviews"] = list(reviews)
+        if self.capability == "concorde-issues":
+            data.update(issues=[], decision=None)
         return typed(CAPABILITY_CONTRACTS[self.capability][1], data)
 
-    def record_gaps(self, phase, gaps, *, review_input_digest=None):
+    def blocker_revision(self, phase):
+        spec = _target_revision(self.repository, self.target)
+        return digest({"spec": spec, "code": _implementation_digest(self.repository, self.target)}) \
+            if phase in {"implementation", "code-review"} else spec
+
+    def record_gaps(self, phase, blockers, *, review_input_digest=None):
         if getattr(self, "candidate_review", False):
             return
         if self.host.mode != "execute":
@@ -1218,8 +1226,8 @@ class Invocation:
         if self.host.track_gaps or required_review or self.capability not in {
                 "concorde-main", "concorde-context-solve", "concorde-review"}:
             from ..harness.change_worktree import record_task_gaps
-            record_task_gaps(self.repository.root, self.target.id, self.task["task"], phase, gaps,
-                             _target_revision(self.repository, self.target),
+            record_task_gaps(self.repository.root, self.target.id, self.task["task"], phase, blockers,
+                             self.blocker_revision(phase),
                              review_input_digest=review_input_digest,
                              spec_resolution=self.repository.spec_context(self.target.id).value)
 
@@ -1229,31 +1237,33 @@ class Invocation:
         from ..harness.change_worktree import unchanged_task_gaps
         if phase == "specify" or self.host.mode != "execute":
             return []
-        gaps = unchanged_task_gaps(self.repository.root, self.target.id, self.task["task"], phase,
-                                  _target_revision(self.repository, self.target),
+        blockers = unchanged_task_gaps(self.repository.root, self.target.id, self.task["task"], phase,
+                                  self.blocker_revision(phase),
                                   review_input_digest=review_input_digest)
         if include_prerequisites:
             order = ("specify", "spec-review", "context-solve", "plan", "tasks", "implementation", "code-review")
             prerequisites = set(order[:order.index(phase)]) if phase in order else set()
             change = read_change(self.repository.root)
-            gaps.extend(dict(item["gap"]) for item in (change or {}).get("gap_history", [])
+            blockers.extend(dict(item["blocker"]) for item in (change or {}).get("issue_blockers", [])
                 if item["status"] == "open" and item["target_id"] == self.target.id
-                and item["task"] == self.task["task"] and item["phase"] in prerequisites)
+                and item["scope_id"] == blocker_scope(change or {}, self.target.id, self.task["task"])
+                and item["phase"] in prerequisites)
         # No reviewer ran again. Retain the actual observation's provenance.
-        return gaps
+        return blockers
 
     def stage(self, capability: str, *, inputs: tuple[dict, ...] = (), readonly=False,
               defer_gap_resolution=False, mode: str | None = None) -> dict:
         phase, role = CAPABILITY_AGENTS[capability]
-        # A reflection investigation reuses the implementation phase through its own read-only worker.
-        investigation = mode == "investigation"
-        if mode not in {None, phase, "investigation"} or (investigation and capability != "concorde-implement"):
+        if self.host.issue_intent and capability != "concorde-issues":
+            inputs = (*inputs, typed("concorde-issue-intent", {"intent": self.host.issue_intent}))
+        if mode not in {None, phase}:
             raise SpecError("unsupported stage worker selection", "invalid_input")
-        if investigation:
-            role = INVESTIGATION_AGENT
         prompt = load_agent(self.host.package_root, role)
         agent = agent_definition(prompt.binding.agent)
-        readonly = readonly or investigation
+        reviews = [value for value in inputs if value["type_id"] == "concorde-review-result"]
+        if reviews:
+            from ..issues.references import observation_context
+            inputs = (*inputs, observation_context(self.repository.root, reviews[0]["data"]["issues"]))
         snapshot = resolve_context(self.repository, self.target.id, phase=phase, task=self.task["task"],
             focus_id=self.task.get("focus_id"), constraints=tuple(self.task.get("constraints", [])),
             instructions=prompt.body, stage_inputs=inputs, agent=agent)
@@ -1263,7 +1273,7 @@ class Invocation:
             if pending:
                 return {"context_id": snapshot.id, "outcome": "spec_incomplete",
                     "answer": "Repair the recorded necessary contracts before resuming this step.",
-                    "gaps": pending, "documents": [], "plan": "", "tasks": []}
+                    "blockers": pending, "documents": [], "plan": "", "tasks": []}
         implementation = phase == "implementation"
         if implementation and not self.target.files:
             raise SpecError("implementation requires a Module whose entities list implementation files", "unsupported_target")
@@ -1277,18 +1287,23 @@ class Invocation:
                     return {"context_id": snapshot.id, "outcome": "conflicting",
                             "answer": "Module dependency promises conflicts with its registered topology: "
                                 + "; ".join(finding.message for finding in conflicts),
-                            "gaps": [], "documents": [], "plan": "", "tasks": []}
-                gaps = [{
-                    "question": "How should the Module dependency promises be completed? " + finding.message,
-                    "blocked_step": "Assess context sufficiency before Module planning",
-                    "needed_contract": f"{finding.rule_id}: {finding.remediation}",
-                    "target_id": self.target.id,
-                    "context_id": snapshot.id,
-                } for finding in participant_findings]
-                self.record_gaps(phase, gaps)
+                            "blockers": [], "documents": [], "plan": "", "tasks": []}
+                from ..issues.store import report_issue
+                blockers = []
+                for finding in participant_findings:
+                    receipt = report_issue(self.repository.root, {
+                        "report_key": digest([self.target.id, finding.rule_id, finding.message]),
+                        "type": "gap", "subtype": "missing-contract", "title": "Missing dependency promise",
+                        "description": finding.message, "impact": "Context assessment cannot admit planning.",
+                        "basis": finding.remediation, "owner_target_id": self.target.id, "evidence": []},
+                        {"invocation_id": self.host.invocation_id, "agent": "host", "capability": capability,
+                         "phase": phase, "target_id": self.target.id, "context_id": snapshot.id,
+                         "change_id": self.change_id, "head": None})
+                    blockers.append({**receipt, "blocked_step": "Assess context sufficiency before Module planning"})
+                self.record_gaps(phase, blockers)
                 return {"context_id": snapshot.id, "outcome": "spec_incomplete",
                         "answer": "Module dependency promises is incomplete or inconsistent.",
-                        "gaps": gaps, "documents": [], "plan": "", "tasks": []}
+                        "blockers": blockers, "documents": [], "plan": "", "tasks": []}
         before_registry = self.repository.registry_bytes
         with tempfile.TemporaryDirectory(prefix="concorde-context-") as directory:
             capsule = Path(directory)
@@ -1319,7 +1334,7 @@ class Invocation:
                 if not project_workspace and self.host.mode != "describe-policy":
                     materialize_references(self.repository, capsule, records)
                 roles["references"] = reference_grants(records)
-            write_roles = ("implementation",) if implementation and not investigation and not readonly else ()
+            write_roles = ("implementation",) if implementation and not readonly else ()
             try:
                 policy = compile_policy(prompt.effects,
                     PolicyBinding(capability, phase, 0, role, role, write_roles=write_roles), roles)
@@ -1336,7 +1351,7 @@ class Invocation:
             self.host.descriptions.append(_worker_description(prompt, invocation, policy, capability=capability,
                 phase=phase, context_id=snapshot.id, project_root=str(project)))
             if self.host.mode == "describe-policy":
-                return {"context_id": snapshot.id, "outcome": "completed", "answer": "", "gaps": [],
+                return {"context_id": snapshot.id, "outcome": "completed", "answer": "", "blockers": [],
                         "documents": [], "plan": "", "tasks": []}
             from ..harness.agent_node import AgentNode
             result = None
@@ -1354,14 +1369,9 @@ class Invocation:
             data = AgentNode(agent).invoke(value, launch_agent)
             if data["context_id"] != snapshot.id:
                 raise SpecError("agent returned a different context identity", "incompatible_handoff")
-            if (data["outcome"] == "spec_incomplete") != bool(data["gaps"]):
-                raise SpecError("Spec incomplete requires concrete gaps; other outcomes cannot carry gaps", "invalid_completion")
-            for gap in data["gaps"]:
-                if any(not gap[key].strip() for key in ("question", "blocked_step", "needed_contract")):
-                    raise SpecError("task gaps require a concrete question, step and contract", "invalid_completion")
-                if gap.get("target_id",self.target.id)!=self.target.id or gap.get("context_id",snapshot.id)!=snapshot.id:
-                    raise SpecError("gap provenance differs from the admitted context", "incompatible_handoff")
-                gap.update(target_id=self.target.id,context_id=snapshot.id)
+            if ((data["outcome"] == "spec_incomplete" and not data["blockers"])
+                    or (data["outcome"] in {"completed", "sufficient"} and data["blockers"])):
+                raise SpecError("stage outcome does not match its task blockers", "invalid_completion")
             if read_file(self.repository.root, self.repository.registry_path) != before_registry:
                 raise SpecError("registry changed during agent execution", "stale_context")
             recheck_context(self.repository, snapshot, check_implementation=not implementation or readonly)
@@ -1378,9 +1388,9 @@ class Invocation:
                 self.target = current.select(self.target.id)
             self.host.evidence.append(result)
             self.completed.append(capability)
-            if (data["outcome"] == "spec_incomplete" or not defer_gap_resolution
+            if (data["blockers"] or not defer_gap_resolution
                     and data["outcome"] in {"completed", "sufficient"}):
-                self.record_gaps(phase, data["gaps"])
+                self.record_gaps(phase, data["blockers"])
             return data
 
     def author(self, capability: str) -> dict:
@@ -1389,7 +1399,7 @@ class Invocation:
             progress(self.repository.root, phase="specify", status="active", invalidate=True)
         result = self.stage(capability, defer_gap_resolution=True)
         if result["outcome"] not in {"completed", "sufficient"}:
-            return self.response(result["outcome"], result["answer"], gaps=result["gaps"])
+            return self.response(result["outcome"], result["answer"], blockers=result["blockers"])
         if self.host.mode == "describe-policy":
             return self.response("described")
         if result["documents"]:
@@ -1443,7 +1453,7 @@ class Invocation:
                         records=consumer_records, change_id=self.change_id, owner_id=self.target.id,
                         focus_id=self.task.get("focus_id"))
                     if failure is not None:
-                        return self.response(failure["outcome"], failure["answer"], gaps=failure["gaps"],
+                        return self.response(failure["outcome"], failure["answer"], blockers=failure["blockers"],
                                              artifacts=failure["artifacts"])
                 if read_file(self.repository.root, self.repository.registry_path) != self.repository.registry_bytes:
                     raise SpecError("registry changed during canonical document review", "stale_context")
@@ -1514,14 +1524,14 @@ class Invocation:
                 progress(self.repository.root, phase="plan", status="active", invalidate=True)
             assessment = self.stage("concorde-context-solve")
             if assessment["outcome"] not in {"completed", "sufficient"}:
-                return {"output": self.response(assessment["outcome"], assessment["answer"], gaps=assessment["gaps"]), "route": END}
+                return {"output": self.response(assessment["outcome"], assessment["answer"], blockers=assessment["blockers"]), "route": END}
             return {"route": "author_plan"}
 
         def author_plan(state):
             nonlocal result
             result = self.stage("concorde-plan", defer_gap_resolution=True)
             if result["outcome"] not in {"completed", "sufficient"}:
-                return {"output": self.response(result["outcome"], result["answer"], gaps=result["gaps"]), "route": END}
+                return {"output": self.response(result["outcome"], result["answer"], blockers=result["blockers"]), "route": END}
             if self.host.mode == "describe-policy":
                 return {"output": self.response("described"), "route": END}
             return {"route": "persist_plan"}
@@ -1589,7 +1599,7 @@ class Invocation:
                       review_value)
         result = self.stage("concorde-tasks", inputs=inputs, defer_gap_resolution=True)
         if result["outcome"] not in {"completed", "sufficient"}:
-            return self.response(result["outcome"], result["answer"], gaps=result["gaps"])
+            return self.response(result["outcome"], result["answer"], blockers=result["blockers"])
         if self.host.mode == "describe-policy":
             return self.response("described")
         tasks = result["tasks"]
@@ -1627,19 +1637,19 @@ class Invocation:
                     owners.add((owner, intent))
                     component = change["targets"].get(owner, {})
                     if component.get("task") == intent:
-                        pending.extend((child, nested["task"])
-                            for child, nested in component.get("coordination", {}).items())
-                history = [item for item in change.get("gap_history", [])
-                           if (item["target_id"], item["task"]) in owners]
-                # A fresh component review updates its durable history, not this parent's
-                # cached response. Nested gaps retain their owning task through the recorded
-                # coordination chain; a different component intent cannot supply provenance.
+                        for child, nested in component.get("coordination", {}).items():
+                            declarations = [item for item in component.get("tasks", []) if item["target_id"] == child]
+                            if declarations and nested["task"] != _component_intent(declarations):
+                                raise SpecError("component coordination differs from its accepted task list", "incompatible_handoff")
+                            pending.append((child, nested["task"]))
+                history = [item for item in change.get("issue_blockers", [])
+                           if item["target_id"] in {owner for owner, _ in owners}
+                           and item["scope_id"] == "module:" + item["target_id"]]
+                # Match immutable observations, not duplicated free text or a previous task label.
                 unresolved_cache = any(not any(item["status"] == "resolved"
-                    and item["target_id"] == gap.get("target_id")
-                    and all(item["gap"].get(field) == gap.get(field)
-                            for field in ("target_id", "question", "blocked_step", "needed_contract"))
-                    and gap.get("context_id") in item.get("contexts", [])
-                    for item in history) for gap in record.get("gaps", []))
+                    and item["blocker"]["issue_id"] == blocker.get("issue_id")
+                    and item["blocker"]["report_id"] == blocker.get("report_id")
+                    for item in history) for blocker in record.get("blockers", []))
                 if unresolved_cache or any(item["status"] == "open" for item in history):
                     raise SpecError("resolve the component's contract gaps before repairing its task boundary",
                                     "spec_incomplete")
@@ -1676,7 +1686,7 @@ class Invocation:
         self.require_spec_review()
         pending = self.pending_gaps("implementation")
         if pending:
-            return self.response("spec_incomplete", "Resolve the prerequisite task gaps before implementation.", gaps=pending)
+            return self.response("spec_incomplete", "Resolve the prerequisite task gaps before implementation.", blockers=pending)
         if not self.work_directory:
             raise SpecError("implementation requires a managed change and authored tasks", "missing_change")
         state = target_state(self.repository.root, self.target.id, self.task.get("focus_id"))
@@ -1698,7 +1708,7 @@ class Invocation:
             inputs = (*inputs, review_value)
         result = self.stage("concorde-implement", inputs=inputs, defer_gap_resolution=True)
         if result["outcome"] not in {"completed", "sufficient"}:
-            return self.response(result["outcome"], result["answer"], gaps=result["gaps"])
+            return self.response(result["outcome"], result["answer"], blockers=result["blockers"])
         if self.host.mode == "describe-policy":
             return self.response("described")
         returned = result["tasks"]
@@ -1750,7 +1760,7 @@ class Invocation:
         for target_id, task_text in component_tasks.items():
             record = coordination.setdefault(target_id, {
                 "task": task_text, "spec_status": "pending", "implementation_status": "pending",
-                "spec_digest": None, "implementation_digest": None, "gaps": [], "outcome": None})
+                "spec_digest": None, "implementation_digest": None, "blockers": [], "outcome": None})
             if record["task"] != task_text:
                 raise SpecError("component intent changed; replan this worktree change", "stale_context")
         progress(self.repository.root, phase="spec_reconciliation", status="active", invalidate=True)
@@ -1762,14 +1772,14 @@ class Invocation:
             record[phase + "_status"] = "blocked"
             child = result["output"]["data"] if result["output"] else None
             record["outcome"] = child["outcome"] if child else "failed"
-            record["gaps"] = child["gaps"] if child else []
+            record["blockers"] = child["blockers"] if child else []
             state["status"] = "blocked"
             save_target_state(self.repository.root, state)
             progress(self.repository.root, status="blocked", outcome=record["outcome"],
-                     gaps=record["gaps"])
+                     blockers=record["blockers"])
             if child:
                 return self.response(child["outcome"], "Component " + target_id + ": " + child["answer"],
-                                     gaps=child["gaps"], artifacts=child["artifacts"])
+                                     blockers=child["blockers"], artifacts=child["artifacts"])
             raise SpecError("component " + phase + " blocked: " + target_id, "child_blocked")
 
         from ..harness.batch_flow import run_batch_flow
@@ -1783,7 +1793,7 @@ class Invocation:
                 revision = _target_revision(self.repository, component)
                 if record["spec_status"] == "completed" and record["spec_digest"] == revision:
                     return None
-                record.update(spec_status="running", implementation_status="pending", gaps=[], outcome=None)
+                record.update(spec_status="running", implementation_status="pending", blockers=[], outcome=None)
                 save_target_state(self.repository.root, state)
                 payload = {"target_id": target_id, "task": task_text, "change_id": self.change_id,
                            "constraints": self.task.get("constraints", [])}
@@ -1841,7 +1851,7 @@ class Invocation:
                         return None
                     except SpecError:
                         pass
-                record.update(implementation_status="running", gaps=[], outcome=None)
+                record.update(implementation_status="running", blockers=[], outcome=None)
                 save_target_state(self.repository.root, state)
                 result = run_capability("concorde-dev-loop", self.configuration,
                     typed("concorde-dev-loop-request", {**payload, "specify": False, "run_reviews": bool(
@@ -1874,7 +1884,7 @@ class Invocation:
                     if result["outcome"] not in {"completed", "sufficient"}:
                         state.update(phase="implementation", status="blocked")
                         save_target_state(self.repository.root, state)
-                        return {"output": self.response(result["outcome"], result["answer"], gaps=result["gaps"])}
+                        return {"output": self.response(result["outcome"], result["answer"], blockers=result["blockers"])}
                     if result["tasks"] != expected_local:
                         raise SpecError("local coordination code did not complete its exact tasks", "incomplete_tasks")
                     if _unconfirmed_files(self.repository, self.target):
@@ -1963,7 +1973,7 @@ class Invocation:
                         state.update(phase="validate", status="blocked")
                         save_target_state(self.repository.root, state)
                         return self.response(failure["outcome"], failure["answer"],
-                            gaps=failure.get("gaps", []), checks=failure.get("checks", []),
+                            blockers=failure.get("blockers", []), checks=failure.get("checks", []),
                             artifacts=failure.get("artifacts", []))
                     coordination[target_id]["implementation_digest"] = _implementation_digest(
                         self.repository, self.repository.select(target_id))
@@ -2018,6 +2028,7 @@ class Invocation:
             state = target_state(self.repository.root, self.target.id, self.task.get("focus_id"))
             state.update(checks=results, implementation_impacts=impacts,
                          validation_spec_digest=report.result["source_digest"],
+                         validation_issue_digest=_issues_revision(self.repository.root),
                          phase="validate", status="active")
             save_target_state(self.repository.root, state)
         self.completed.append("concorde-validate")
@@ -2072,7 +2083,8 @@ class Invocation:
         verify_required(self)
         change = read_change(self.repository.root, required=True)
         if any(item["status"] == "open" and item["target_id"] == self.target.id
-                and item["task"] == self.task["task"] for item in change.get("gap_history", [])):
+                and item["scope_id"] == blocker_scope(change, self.target.id, self.task["task"])
+                for item in change.get("issue_blockers", [])):
             raise SpecError("current task still has unresolved contract gaps", "spec_incomplete")
         if not change["targets"]:
             validation = change.get("validation")
@@ -2150,9 +2162,9 @@ class Invocation:
                   ["plan", "tasks", "implement", "validate"])
         change = read_change(self.repository.root, required=True)
         existing = change["targets"].get(self.target.id) if change else None
-        blocked_phases = {item["phase"] for item in change.get("gap_history", [])
+        blocked_phases = {item["phase"] for item in change.get("issue_blockers", [])
             if item["status"] == "open" and item["target_id"] == self.target.id
-            and item["task"] == self.task["task"]}
+            and item["scope_id"] == blocker_scope(change, self.target.id, self.task["task"])}
         has_authored_spec = authored_for_task(change, self.target.id, self.task)
         if specify and has_authored_spec:
             stages.remove("specify")
@@ -2224,7 +2236,7 @@ class Invocation:
             if data["outcome"] != "conflicting":
                 return stop("review_code", data["outcome"])
             if any(value["data"]["target_id"] != self.target.id and any(
-                    finding["severity"] == "blocking" for finding in value["data"]["findings"])
+                    finding["severity"] == "blocking" for finding in value["data"]["issues"])
                     for value in data.get("reviews", [])):
                 # A peer's contract is not this planner's context. Preserve the peer result
                 # for separately routed work instead of inventing a repair from the first artifact.
@@ -2234,10 +2246,13 @@ class Invocation:
             verify_artifacts(self.repository.root, reference)
             reviewed = validate_typed(decode(read_file(self.repository.root, reference["path"]).decode()),
                                       "concorde-review-result")["data"]
-            blocking = [f for f in reviewed["findings"] if f["severity"] == "blocking"]
-            feedback_digest = digest(sorted((f["contract"], f["problem"], f["location"]["path"],
-                -1 if f["location"]["line"] is None else f["location"]["line"]) for f in blocking))
-            finding_ids = sorted(f["id"] for f in blocking)
+            blocking = [f for f in reviewed["issues"] if f["severity"] == "blocking"]
+            from ..issues.references import receipt
+            from ..issues.store import resolve_report
+            feedback_digest = digest(sorted(canonical({key: value for key, value in
+                resolve_report(self.repository.root, receipt(f))["report"].items()
+                if key not in {"report_key", "issue_id", "expected_revision"}}) for f in blocking))
+            finding_ids = sorted(f["issue_id"] for f in blocking)
             change = read_change(self.repository.root, required=True)
             record = change["graph"][self.target.id]
             common = dict(**{"from": "review_code", "to": "tasks"}, trigger="ai-review", outcome="conflicting",
@@ -2264,6 +2279,16 @@ class Invocation:
             def node(state):
                 self.repository = SpecRepository(self.host.project_root, self.host.package_root)
                 if name == "ready":
+                    work = target_state(self.repository.root, self.target.id, self.task.get("focus_id"))
+                    if work.get("validation_issue_digest") != _issues_revision(self.repository.root):
+                        # Reviews may report advisory Issues after the earlier checks. Refresh
+                        # deterministic evidence for those new deliverable bytes without reusing
+                        # a stale ready receipt or making Issue reporting fail the task.
+                        validator = Invocation("concorde-validate", self.configuration, self.task,
+                            replace(self.host, defer_ready=True))
+                        checked = validator.validate()["data"]
+                        if checked["outcome"] != "completed":
+                            return Command(goto="summarize", update={"output": checked})
                     return Command(goto="summarize", update={"output": self.mark_ready()["data"]})
                 mode = name.removeprefix("review_")
                 is_review = name.startswith("review_")
@@ -2372,7 +2397,7 @@ class Invocation:
                                            "concorde-review-result")["data"]
                     coverage.append(f"{value['target_id']}/{value['review_mode']}={value['status']}")
             answer = result["answer"] + (" Review coverage: " + "; ".join(coverage) + "." if coverage else "")
-            return {"output": self.response(result["outcome"], answer, gaps=result["gaps"], checks=result["checks"], artifacts=artifacts)}
+            return {"output": self.response(result["outcome"], answer, blockers=result["blockers"], checks=result["checks"], artifacts=artifacts)}
 
         names = ("specify_loop", "plan", "tasks", "implement", "validate", "review_code", "ready")
         return {"initialize": initialize, "summarize": summarize,
@@ -2503,16 +2528,15 @@ def _dispatch_nodes(capability, configuration, task, host):
             host = replace(host, routed_target=route["target_id"])
             main_completed = tuple(target_discovery.completed)
         readonly = capability in {"concorde-main", "concorde-context-solve", "concorde-review"}
-        readonly = readonly or (capability == "concorde-reflections-triage" and task["action"] == "status")
-        if (host.mode == "execute" and not readonly
-                and not (capability == "concorde-reflections-triage" and task["action"] == "record-gaps")):
+        readonly = readonly or (capability == "concorde-issues" and (task["action"] != "solve" or task.get("_issue_closed")))
+        if host.mode == "execute" and not readonly:
             SpecRepository(host.project_root, host.package_root).select(task["target_id"], task.get("focus_id"))
             bind_owner(host.project_root, task, coordinated=host.coordinated)
         run = Invocation(capability, configuration, task, host)
         bound_run().completed.extend(main_completed)
         route = "review" if capability == "concorde-review" else (
             "describe_policy" if host.mode == "describe-policy" else {
-                "concorde-reflections-triage": "triage", "concorde-specify": "specify",
+                "concorde-issues": "issues", "concorde-specify": "specify",
                 "concorde-plan": "plan", "concorde-tasks": "tasks", "concorde-implement": "implement",
                 "concorde-validate": "validate", "concorde-dev-loop": "development_loop",
                 "concorde-specify-loop": "specify_loop",
@@ -2524,6 +2548,8 @@ def _dispatch_nodes(capability, configuration, task, host):
                       for name in ("decide", "expand_context", "bind_routes", "finish")}}
 
     def describe_policy():
+        if capability == "concorde-issues" and (task["action"] != "solve" or task.get("_issue_closed")):
+            return bound_run().response("described", "This Issue operation uses host bookkeeping only; no worker or candidate is launched.")
         stages = [capability] if capability in CAPABILITY_AGENTS else []
         describe_reviews = False
         if capability == "concorde-dev-loop":
@@ -2563,14 +2589,14 @@ def _dispatch_nodes(capability, configuration, task, host):
         from .review import review_scope
         return review_scope(bound_run(), task["review_mode"])
 
-    def triage():
-        from ..reflections.scoped_triage import triage
-        return triage(bound_run())
+    def issues():
+        from ..issues.flow import build_issue_flow, issue_nodes
+        return build_issue_flow(issue_nodes(bound_run()).__getitem__).invoke({}, {"recursion_limit": 64})["output"]
 
     def context_solve():
         result = bound_run().stage(capability)
         return bound_run().response("completed" if result["outcome"] == "sufficient" else result["outcome"],
-                            result["answer"], gaps=result["gaps"])
+                            result["answer"], blockers=result["blockers"])
 
     operations = {
         "deliver": deliver, "project": project,
@@ -2578,7 +2604,7 @@ def _dispatch_nodes(capability, configuration, task, host):
         "design_topology": lambda: MainInvocation(capability, configuration, task, host).run_topology_design(),
         "prepare_topology": lambda: _prepare_topology(configuration, task["topology_proposal"], host),
         "apply_topology": lambda: _apply_topology(task["application"], host),
-        "review": review, "describe_policy": describe_policy, "triage": triage,
+        "review": review, "describe_policy": describe_policy, "issues": issues,
         "specify": lambda: bound_run().author(capability), "plan": lambda: bound_run().plan(),
         "tasks": lambda: bound_run().tasks(), "implement": lambda: bound_run().implement(),
         "validate": lambda: bound_run().validate(task.get("run_checks", True)),
@@ -2610,9 +2636,9 @@ def _dispatch_nodes(capability, configuration, task, host):
                 subflows[name] = specify_nodes(bound_run())
             elif name == "development_loop":
                 subflows[name] = bound_run().loop_nodes()
-            elif name == "triage":
-                from ..reflections.scoped_triage import triage_nodes
-                subflows[name] = triage_nodes(bound_run())
+            elif name == "issues":
+                from ..issues.flow import issue_nodes
+                subflows[name] = issue_nodes(bound_run())
         return subflows[name][child](state)
 
     from .dispatch_flow import SUBFLOW_NODES
@@ -2672,7 +2698,7 @@ def capability_flow_nodes(capability, configuration, runtime_input, *, host_cont
         configuration = validate_typed(configuration if configuration is not None else load_configuration(host.project_root), "concorde-capability-configuration")
         task = validate_typed(runtime_input, CAPABILITY_CONTRACTS[capability][0])["data"]
         task = copy.deepcopy(task)
-        if capability != "concorde-deliver" and not (capability == MAIN_CAPABILITY
+        if capability not in {"concorde-deliver", "concorde-issues"} and not (capability == MAIN_CAPABILITY
                 and task.get("action") in {"accept-topology", "apply-topology"}):
             task.setdefault("task", "Inspect the selected records")
         mutation = capability not in {"concorde-main", "concorde-context-solve", "concorde-review"}
@@ -2680,8 +2706,11 @@ def capability_flow_nodes(capability, configuration, runtime_input, *, host_cont
             mutation = task["action"] == "apply"
         if capability == MAIN_CAPABILITY:
             mutation = task["action"] in {"accept-topology", "apply-topology"}
-        if capability == "concorde-reflections-triage" and task["action"] == "status":
-            mutation = False
+        if capability == "concorde-issues":
+            from ..issues.flow import prepare_request
+            # Issue selection, attribution and current bytes are host-bound before workspace creation.
+            task = prepare_request(host.project_root, host.package_root, task)
+            mutation = task["action"] == "solve" and not task.get("_issue_closed")
 
     def bind_workspace():
         nonlocal host, record_progress
@@ -2690,14 +2719,20 @@ def capability_flow_nodes(capability, configuration, runtime_input, *, host_cont
             from ..harness.worktree_delivery import require_delivery_session
             primary = require_delivery_session(host, task["change_id"])
             workspace = {"path": primary["path"], "branch": primary["branch"]}
+        elif capability == "concorde-issues" and (task["action"] != "solve" or task.get("_issue_closed")):
+            workspace = None  # bookkeeping operations do not create a development candidate
         else:
             host, workspace = _worktree(host, mutation, task)
         result["workspace"] = workspace
         if workspace and workspace.get("handoff"):
+            if capability == "concorde-issues":
+                from ..issues.flow import copy_selection
+                copy_selection(host.project_root, Path(workspace["path"]), task)
             from ..harness.session_handoff import handoff_prompt
             prompt = handoff_prompt(
                 workspace["path"], branch=workspace.get("branch"), change_id=workspace.get("change_id"),
-                task=runtime_input["data"].get("task"), constraints=runtime_input["data"].get("constraints"),
+                task=task["task"] if capability == "concorde-issues" else runtime_input["data"].get("task"),
+                constraints=runtime_input["data"].get("constraints"),
                 completed="The host prepared a linked worktree from the committed base and local change state. "
                           "No task agent has run in it during this invocation.",
                 remaining=f"Resume {capability} for this change with the original task and constraints.",
@@ -2707,7 +2742,9 @@ def capability_flow_nodes(capability, configuration, runtime_input, *, host_cont
                             "applied": True, "temporary": True,
                             "storage": "create_worktree used a temporary directory; preserve it until completion"}],
                 next_steps=f"Resume {capability} with change_id {workspace.get('change_id')} in the initial "
-                           "directory after policy verification. The host must resolve fresh bounded contexts.",
+                           "directory after policy verification. The host must resolve fresh bounded contexts."
+                           + (f" Select issue_id {task['issue_id']} with expected_revision {task['expected_revision']}."
+                              if capability == "concorde-issues" else ""),
                 completion=("Complete Spec authoring and required Spec review, then return completed before planning "
                             "or implementation. The same change can continue through concorde-dev-loop."
                             if capability == "concorde-specify-loop" else
@@ -2814,7 +2851,7 @@ def capability_flow_nodes(capability, configuration, runtime_input, *, host_cont
                 progress(host.project_root,
                          status=host.lifecycle.get("status") or ("blocked" if result["status"] == "blocked" else "failed"),
                          outcome=data.get("outcome") or (result["errors"][0]["code"] if result["errors"] else "failed"),
-                         gaps=data.get("gaps", []))
+                         blockers=data.get("blockers", []))
             except (ValueError, OSError) as error:
                 result["errors"].append({"code": "state_persistence_failed", "field": "", "message": str(error)})
         host_context.evidence.extend(host.evidence)

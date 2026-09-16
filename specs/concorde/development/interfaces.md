@@ -131,53 +131,54 @@ Common request task fields (named once, not repeated per row): `target_id` (requ
 bound Module request; an optional routing hint for `main`, `dev-loop`, `specify-loop` and `review`), `task`,
 `focus_id` (a candidate scenario ID), `constraints`, `change_id`. Common response fields (present in every capability response
 except `configure`, which replaces them): `target_id`, `focus_id`, `change_id`, `context_id`,
-`outcome`, `answer`, `artifacts`, `gaps`, `checks`, `completed_capabilities`.
+`outcome`, `answer`, `artifacts`, `blockers`, `checks`, `completed_capabilities`. A blocker contains
+an immutable Issue receipt plus its task-local blocked_step, never a second copy of the problem.
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-main-request@1` / `concorde-main-response@1` | main | Every request field is optional at the wire level. Request adds `action` (ask\|design-topology\|accept-topology\|apply-topology, default ask), `topology_proposal` (a `concorde-topology-proposal@1` TypedValue, required for accept-topology) and `application` (an ArtifactRef, required for apply-topology). Response adds `entry_target`, `discovered_targets`, `routes`, nullable `topology_proposal`/`application`, `files` and `workspace`. |
-| `concorde-specify-loop-request@1` / `concorde-specify-loop-response@1` | specify-loop | Only `task` is required. Optional target/focus hints, constraints, change_id, `specify` and `run_reviews` (both default true). The common response reports Spec completion or blockers with artifact references; it never reports implementation readiness. |
-| `concorde-dev-loop-request@1` / `concorde-dev-loop-response@1` | dev-loop | Only `task` is required. Request adds optional `repair_task_scope:{tasks_digest: sha256}` for exact incomplete-list phase recovery, `specify` (default true; false skips Spec authoring) and `run_reviews` (default true; false records an explicit per-mode skip). Response is the common shape only. |
-| `concorde-reflections-triage-request@1` / `concorde-reflections-triage-response@1` | reflections-triage | Requires `target_id`, `action` (status\|record-gaps\|investigate\|implement\|merge\|close) and `reflection_ids` (a unique array, possibly empty); `task` is optional here, unlike other capabilities, because status and record-gaps need none. Adds optional `gap_ids`. Response adds `reflections` and `gap_records`. |
+| `concorde-main-request@1` / `concorde-main-response@2` | main | Every request field is optional at the wire level. Request adds `action` (ask\|design-topology\|accept-topology\|apply-topology, default ask), `topology_proposal` (a `concorde-topology-proposal@1` TypedValue, required for accept-topology) and `application` (an ArtifactRef, required for apply-topology). Response adds `entry_target`, `discovered_targets`, `routes`, nullable `topology_proposal`/`application`, `files` and `workspace`. |
+| `concorde-specify-loop-request@1` / `concorde-specify-loop-response@2` | specify-loop | Only `task` is required. Optional target/focus hints, constraints, change_id, `specify` and `run_reviews` (both default true). The common response reports Spec completion or blockers with artifact references; it never reports implementation readiness. |
+| `concorde-dev-loop-request@1` / `concorde-dev-loop-response@2` | dev-loop | Only `task` is required. Request adds optional `repair_task_scope:{tasks_digest: sha256}` for exact incomplete-list phase recovery, `specify` (default true; false skips Spec authoring) and `run_reviews` (default true; false records an explicit per-mode skip). Response is the common shape only. |
+| `concorde-issues-request@1` / `concorde-issues-response@1` | issues | Select list, show, report, reopen or solve. Show/reopen/solve require one issue_id; report requires a target and classified report. Optional expected_revision rejects stale selection. Response adds complete Issue records and nullable decision. [Canonical operation semantics](../issues/interfaces.md). |
 | `concorde-init-request@1` / `concorde-init-response@1` | init | Requires only `action` (propose\|apply); adds optional `name`, `target_id`, `configuration` and `proposal` (a `concorde-project-proposal@1` TypedValue). Response replaces the common shape with `status` (proposed\|applied), a nullable `proposal` and `files`. |
 | `concorde-configure-request@1` / `concorde-configure-response@1` | configure | Requires `configuration`. Response requires `configuration` and `status: "applied"`; the only capability whose response does not use the common stage shape. |
-| `concorde-validate-request@1` / `concorde-validate-response@1` | validate | Requires `target_id` and `task`; adds optional `run_checks`. Response is the common shape only. |
-| `concorde-deliver-request@1` / `concorde-deliver-response@1` | deliver | Requires only `change_id`; adds optional `target_id`, `task`, `focus_id`, `constraints`, `keep_worktree` and `merge_primary`. Response is the common shape only. |
-| `concorde-specify-request@1` / `concorde-specify-response@1` | specify (stage) | Requires `target_id` and `task`. Response is the common shape only. |
-| `concorde-review-request@1` / `concorde-review-response@1` | review | Requires `task` and `review_mode` (spec\|code); optional target/focus are routing hints for a new standalone task. A composing capability or current-change resumption supplies the bound target. Response adds `reviews` (`concorde-review-result@1` TypedValues). |
-| `concorde-context-solve-request@1` / `concorde-context-solve-response@1` | context-solve (stage) | Requires `target_id` and `task`. Response is the common shape only. |
-| `concorde-plan-request@1` / `concorde-plan-response@1` | plan (stage) | Requires `target_id` and `task`. Response is the common shape only. |
-| `concorde-tasks-request@1` / `concorde-tasks-response@1` | tasks (stage) | Requires `target_id` and `task`. Response is the common shape only. |
-| `concorde-implement-request@1` / `concorde-implement-response@1` | implement (stage) | Requires `target_id` and `task`. Response is the common shape only. |
+| `concorde-validate-request@1` / `concorde-validate-response@2` | validate | Requires `target_id` and `task`; adds optional `run_checks`. Response is the common shape only. |
+| `concorde-deliver-request@1` / `concorde-deliver-response@2` | deliver | Requires only `change_id`; adds optional `target_id`, `task`, `focus_id`, `constraints`, `keep_worktree` and `merge_primary`. Response is the common shape only. |
+| `concorde-specify-request@1` / `concorde-specify-response@2` | specify (stage) | Requires `target_id` and `task`. Response is the common shape only. |
+| `concorde-review-request@1` / `concorde-review-response@2` | review | Requires `task` and `review_mode` (spec\|code); optional target/focus are routing hints for a new standalone task. A composing capability or current-change resumption supplies the bound target. Response adds `reviews` (`concorde-review-result@2` TypedValues). |
+| `concorde-context-solve-request@1` / `concorde-context-solve-response@2` | context-solve (stage) | Requires `target_id` and `task`. Response is the common shape only. |
+| `concorde-plan-request@1` / `concorde-plan-response@2` | plan (stage) | Requires `target_id` and `task`. Response is the common shape only. |
+| `concorde-tasks-request@1` / `concorde-tasks-response@2` | tasks (stage) | Requires `target_id` and `task`. Response is the common shape only. |
+| `concorde-implement-request@1` / `concorde-implement-response@2` | implement (stage) | Requires `target_id` and `task`. Response is the common shape only. |
 
 #### Stage handoffs
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-context-snapshot@5` | Every bound worker invocation's frozen input | [Canonical snapshot](../harness/context.md#context-snapshot-resolution); preserve its resolution provenance and reject stale inputs. |
-| `concorde-agent-stage-context@3` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@5, change_id, expected_artifacts}`. |
-| `concorde-agent-stage-result@1` | Worker to host, the completion | `{context_id, outcome, answer, gaps, documents, plan, tasks, reflection_findings?}`; `documents`/`plan`/`tasks`/`reflection_findings` are populated only by the phase that produces them. A mismatched `context_id` is rejected as `incompatible_handoff`. |
+| `concorde-context-snapshot@6` | Every bound worker invocation's frozen input | [Canonical snapshot](../harness/context.md#context-snapshot-resolution); preserve its resolution provenance and reject stale inputs. |
+| `concorde-agent-stage-context@4` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@6, change_id, expected_artifacts}`. |
+| `concorde-agent-stage-result@2` | Worker to host, the completion | `{context_id, outcome, answer, blockers, documents, plan, tasks, issue_decision?}`; `documents`/`plan`/`tasks`/`issue_decision` are populated only by the phase that produces them. A mismatched `context_id` is rejected as `incompatible_handoff`. |
 
 #### Review types
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
 | `concorde-review-input@1` | Host-produced, inside the review stage context | `{review_mode, input_digest, revision, changes: [{path,patch}]}`; binds the exact Spec/code revision under review. |
-| `concorde-review-stage-context@3` | Host to reviewer, the launch | `{snapshot: concorde-context-snapshot@5, review: concorde-review-input@1}`. |
-| `concorde-review-stage-result@1` | Reviewer to host, the completion | `{context_id, input_digest, review_mode, status: no_findings\|findings\|incomplete, representative_tasks, findings, gaps, answer}`. |
-| `concorde-review-result@1` | Published in `concorde-review-response@1.reviews` | The stage result plus `target_id`, `focus_id`, `revision`, a nullable `context_id`, `status` extended with skipped\|not_run, and `semantic_completeness: "not_proven"`. |
+| `concorde-review-stage-context@4` | Host to reviewer, the launch | `{snapshot: concorde-context-snapshot@6, review: concorde-review-input@1}`. |
+| `concorde-review-stage-result@2` | Reviewer to host, the completion | `{context_id, input_digest, review_mode, status: no_findings\|findings\|incomplete, representative_tasks, issues, answer}`. |
+| `concorde-review-result@2` | Published in `concorde-review-response@2.reviews` | The stage result plus `target_id`, `focus_id`, `revision`, a nullable `context_id`, `status` extended with skipped\|not_run, and `semantic_completeness: "not_proven"`. |
 
 #### Topology types
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-discovery-context@4` | Host to discovery worker | [Canonical discovery context](../harness/context.md#global-spec-context-assembly); only explicit selections may expand discovery. |
-| `concorde-main-stage-context@3` | Wraps the discovery context for launch | `{snapshot: concorde-discovery-context@4}`. |
-| `concorde-main-stage-result@1` | Discovery worker to host, the completion | `{context_id, outcome, answer, expand_targets, routes, gaps, topology_design (nullable)}`. |
+| `concorde-discovery-context@5` | Host to discovery worker | [Canonical discovery context](../harness/context.md#global-spec-context-assembly); only explicit selections may expand discovery. |
+| `concorde-main-stage-context@4` | Wraps the discovery context for launch | `{snapshot: concorde-discovery-context@5}`. |
+| `concorde-main-stage-result@2` | Discovery worker to host, the completion | `{context_id, outcome, answer, expand_targets, routes, blockers, topology_design (nullable)}`. |
 | `concorde-topology-design@1` | design-topology's output, embedded in the main stage result | `{summary, registry, spec_tasks (nonempty), migration_constraints, acceptance (nonempty)}`. |
 | `concorde-topology-proposal@1` | design-topology's response, and accept-topology's request | `{proposal_id, base_registry_digest, protocol_binding, context_id, discovered_targets (nonempty), task, constraints, target_hint, focus_hint, design: concorde-topology-design@1, workspace}`; a stale `base_registry_digest` or `protocol_binding` is rejected as `stale_proposal`. |
-| `concorde-topology-author-context@3` | Host to target-local Spec author, during accept-topology | `{context_id, base_registry_digest, target, task, protocol_binding, protocol, candidate_references, spec_resolution, instructions, workspace}`. |
-| `concorde-topology-author-result@1` | Author to host, the completion | `{context_id, target_id, outcome, answer, gaps, documents}`. |
+| `concorde-topology-author-context@4` | Host to target-local Spec author, during accept-topology | `{context_id, base_registry_digest, target, task, protocol_binding, protocol, candidate_references, spec_resolution, instructions, workspace}`. |
+| `concorde-topology-author-result@2` | Author to host, the completion | `{context_id, target_id, outcome, answer, blockers, documents}`. |
 | `concorde-topology-application@1` | Host-private, produced by accept-topology and consumed by apply-topology | `{application_id, topology_proposal: concorde-topology-proposal@1, base_registry_digest, protocol_binding, files (nonempty)}`; the public response exposes only its ArtifactRef, never these bytes. |
 
 The canonical [discovery record](../harness/context.md#global-spec-context-assembly) defines
@@ -205,7 +206,7 @@ updated; a mismatched package/context is rejected instead of reinterpreted.
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-issue-report@1` | Worker reporting tool to the host | [Classified observation](../reflections/issues.md#store-boundary), without caller-supplied provenance or a flow-control effect. |
+| `concorde-issue-report@1` | Worker reporting tool to the host | [Classified observation](../issues/issues.md#store-boundary), without caller-supplied provenance or a flow-control effect. |
 | `concorde-issue-receipt@1` | Host to the reporting worker | Immutable `{issue_id, report_id, path}` identity for the exact accepted observation; the tool additionally returns the current record revision for a subsequent append. |
 
 #### Stage-input artifacts
@@ -216,8 +217,10 @@ updated; a mismatched package/context is rejected instead of reinterpreted.
 | `concorde-task-identity-constraints@1` | Host to every fresh task author, including after replanning | `{reserved_task_ids: list[nonblank str]}`; required, sorted and unique, possibly empty. Includes every retained historical ID and the current list for scope or code-review repair. New tasks must not reuse these identities; collisions report the conflicting IDs without rewriting output or history. No software obligations or code contents. |
 | `concorde-implementation-task@1` | A `stage_inputs` entry: produced by tasks, consumed by implement | `{plan, tasks: [{id,target_id,description,acceptance,complete}]}`; implement must return every task with the same identity, marked complete only when its acceptance is met. |
 | `concorde-task-scope-feedback@1` | Host to fresh task author only | `{tasks_digest: sha256, reason: "implementation_boundary"}`; fixed semantic feedback preserves software acceptance while separating implementation from later Host validation, review and authorized outer-session commit. No code or raw logs. |
-| `concorde-reflection-selection@1` | A `stage_inputs` entry: produced by reflections-triage, consumed by dev-loop implementation | `{head, records: [{id,path,digest,content}]}`. |
-| `concorde-review-result@1` | A `stage_inputs` entry: produced by code review, consumed by the repair `tasks`/`implement` iteration | The same value published in `concorde-review-response@1.reviews` (see Review types below), re-verified from its stored artifact before reuse; only accompanies a dev-loop's bounded `review_code -> tasks` repair round. |
+| `concorde-issue-selection@1` | Host to Issue solver only | Selected issue_id/revision, problem/type, bounded host feedback/verification and explicitly admitted duplicate candidates. No code, logs or predecessor conversation. |
+| `concorde-issue-intent@1` | Host to ordinary development stages | `{intent}` carries only the selected intended behavior; it never widens a file grant. |
+| `concorde-issue-context@1` | Host to admitted tasks/implementation repair | Selected immutable receipts and their contract-level description, impact and basis. It supplies meaning for the exact review references without exposing the whole Issue history. |
+| `concorde-review-result@2` | A `stage_inputs` entry: produced by code review, consumed by the repair `tasks`/`implement` iteration | The same value published in `concorde-review-response@2.reviews` (see Review types below), re-verified from its stored artifact before reuse; only accompanies a dev-loop's bounded `review_code -> tasks` repair round. |
 
 Unknown fields, an incompatible `type_id`, an unsupported `schema_version`, and an unsafe or
 non-project-relative path are all rejected before any agent launches, with the `TypedDataError`
@@ -311,7 +314,7 @@ context forms; package/schema alignment checks verify those identities.
 Select `module.harness` for context resolution, permission compilation, typed-value admission,
 worker binding and Pi worker execution. Select `module.spec` for registry selection, structural
 validation and initialization. Select `module.distribution` for build, installation and runtime
-provisioning. Select `module.reflections` for recorded feedback and gaps. The main router may use
+provisioning. Select `module.issues` for recorded feedback and gaps. The main router may use
 these stable IDs to route a worker but may not expand their Module targets.
 
 ### Worktree awareness
@@ -379,7 +382,7 @@ links state local uses and obligations; providers own the definitions, schemas a
 | [Typed values](../harness/typed-values.md) | Validate every handoff before state mutation; never use raw logs or code as later Spec-only input. |
 | [Build](../distribution/build.md) and [installation](../distribution/installation.md) | Require fresh projections and the pinned Protocol assets before launch; a mismatch blocks the invocation. |
 | [Validation](../spec/structure.md) | Require structural evidence and separately configured checks; never interpret it as semantic proof. |
-| [Reflection interface](../reflections/interfaces.md) | Preserve returned gap/Reflection identities; only explicitly selected records may start a transition. |
+| [Issue interface](../issues/interfaces.md) | Preserve immutable report references and task-local blocker judgments; only explicit solving starts repair. |
 
 Configuration loading remains Development-owned: `load_configuration(project_root: str|Path)`
 returns the initialized configuration TypedValue. Ordinary invocations and child stages must equal
@@ -387,7 +390,7 @@ that snapshot; mismatch stops the transition without fallback or expanded author
 
 #### File transactions
 
-- File transactions (this Module's own `entity.development.file-transactions`, also listed by Spec, Reflections and Views): `file_change(root: Path, path: str, content: str) ->
+- File transactions (this Module's own `entity.development.file-transactions`, also listed by Spec, Issues and Views): `file_change(root: Path, path: str, content: str) ->
   {path,before_digest,content}` captures current bytes (null digest for new files).
   `apply_files(root: Path, changes: list[dict], allowed: set[str], *, verify=None) -> list[str]` requires
   nonempty unique allowed paths, UTF-8 replacement text and exact before digests. It rechecks before
@@ -396,7 +399,7 @@ that snapshot; mismatch stops the transition without fallback or expanded author
 
 #### Gap capture
 
-The [Reflection interface](../reflections/interfaces.md) owns status/record-gaps semantics.
+The [Issue interface](../issues/interfaces.md) owns report, inspection, reopening and solving semantics.
 Development passes host-bound gap provenance, retains history and treats capture as a link to
 feedback, never as resolution or approval to implement.
 

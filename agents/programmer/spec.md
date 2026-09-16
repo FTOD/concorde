@@ -63,7 +63,7 @@ The input is one `concorde-agent-stage-context` for phase `implementation` with 
 ## Expected results
 
 Submit a `concorde-agent-stage-result` returning every supplied task unchanged except `complete: true`
-for each fulfilled one, with no documents, plan or reflection findings, and an answer that states
+for each fulfilled one, with no documents, plan or Issue-solving decisions, and an answer that states
 the checks run and any deferred host verification.
 
 ## Completion conditions

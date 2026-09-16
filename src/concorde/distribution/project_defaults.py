@@ -16,10 +16,7 @@ from ..spec.typed_data import checked_path, decode
 PROTOCOL_DIR = ".concorde/protocol"
 PROTOCOL_MANIFEST_PATH = PROTOCOL_DIR + "/manifest.json"
 RENDERED_PROTOCOL_PREFIX = "generated/protocol/"
-REFLECTIONS_CONFIG_DEFAULT = "src/concorde/reflections/config.default.json"
-REFLECTIONS_CONFIG_PATH = ".concorde/reflections/config.json"
-REFLECTIONS_INDEX_PATH = ".concorde/reflections/index.json"
-REFLECTIONS_IGNORE_PATH = ".concorde/reflections/.gitignore"
+ISSUES_IGNORE_PATH = ".concorde/issues/.gitignore"
 TOPOLOGY_IGNORE_PATH = ".concorde/topology-proposals/.gitignore"
 TOPOLOGY_IGNORE = b"# Exact topology applications are local, developer-reviewed host artifacts.\n*\n!.gitignore\n"
 
@@ -56,9 +53,7 @@ def protocol_files(package: Path) -> dict[str, bytes]:
 def project_default_files(package: Path) -> dict[str, bytes]:
     """Concorde-owned defaults a project starts from; the installer seeds them only when absent."""
     return {
-        REFLECTIONS_CONFIG_PATH: read_file(package, REFLECTIONS_CONFIG_DEFAULT),
-        REFLECTIONS_INDEX_PATH: (json.dumps({"schema_version": 1, "high_water": "R-000"}, indent=2) + "\n").encode(),
-        REFLECTIONS_IGNORE_PATH: b"plans/\nworktrees/\n",
+        ISSUES_IGNORE_PATH: b"# Issue records are versioned project data. Host locks live under ../runs/.\n",
         TOPOLOGY_IGNORE_PATH: TOPOLOGY_IGNORE,
     }
 

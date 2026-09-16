@@ -387,37 +387,35 @@ This complete schema is the invocation's input field. It does not grant project 
                 }
               ]
             },
-            "gaps": {
+            "blockers": {
               "type": "array",
               "items": {
                 "type": "object",
                 "properties": {
-                  "question": {
+                  "issue_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "I-[0-9a-f]{32}"
+                  },
+                  "report_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  },
+                  "path": {
                     "type": "string",
                     "minLength": 1
                   },
                   "blocked_step": {
                     "type": "string",
                     "minLength": 1
-                  },
-                  "needed_contract": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "target_id": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "context_id": {
-                    "type": "string",
-                    "minLength": 1,
-                    "pattern": "^sha256:[0-9a-f]{64}$"
                   }
                 },
                 "required": [
-                  "question",
-                  "blocked_step",
-                  "needed_contract"
+                  "issue_id",
+                  "report_id",
+                  "path",
+                  "blocked_step"
                 ],
                 "additionalProperties": false
               }
@@ -576,7 +574,7 @@ This complete schema is the invocation's input field. It does not grant project 
             "phase",
             "status",
             "outcome",
-            "gaps",
+            "blockers",
             "components",
             "active_worktrees"
           ],

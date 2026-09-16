@@ -30,7 +30,7 @@ RESPONSE = shapes.obj({
     "topology_proposal": {"anyOf": [shapes.typed_schema("concorde-topology-proposal"), {"type": "null"}]},
     "application": {"anyOf": [shapes.ARTIFACT, {"type": "null"}]},
     "files": shapes.array(shapes.PATH, unique=True),
-    "gaps": shapes.array(shapes.GAP),
+    "blockers": shapes.array(shapes.BLOCKER),
     "completed_capabilities": shapes.array(shapes.STRING),
     "workspace": shapes.WORKSPACE_CONTEXT,
 })

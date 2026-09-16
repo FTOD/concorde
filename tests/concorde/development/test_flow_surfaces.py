@@ -1,5 +1,6 @@
 """Local executable surfaces; collaborator doubles never stand for native enforcement."""
 from pathlib import Path
+from typing import Any
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import Mock, patch
@@ -38,7 +39,7 @@ class FlowSurfaceTests(TestCase):
                             key = child.target.id
                             calls.append(key)
                             return {'data': {'outcome': 'failed' if interrupted else 'completed',
-                                'answer': 'review', 'gaps': [], 'completed_capabilities': [],
+                                'answer': 'review', 'blockers': [], 'completed_capabilities': [],
                                 'artifacts': [{'id': f'review.{key}.{mode}', 'path': key + '-new.json'}],
                                 'reviews': [{'data': {'target_id': key}}]}}
                         with patch.object(review, 'read_change', return_value=state), \
@@ -78,7 +79,7 @@ class FlowSurfaceTests(TestCase):
                 def reviewed(child, mode):
                     calls.append((child.target.id, mode))
                     return {'data': {'outcome': 'completed', 'answer': 'Reviewed',
-                        'gaps': [], 'artifacts': [], 'reviews': [], 'completed_capabilities': []}}
+                        'blockers': [], 'artifacts': [], 'reviews': [], 'completed_capabilities': []}}
                 with patch.object(review, 'read_change', return_value=state), \
                      patch.object(review, 'spec_consumers', return_value=set()), \
                      patch.object(review, 'review', side_effect=reviewed), \
@@ -117,7 +118,7 @@ class FlowSurfaceTests(TestCase):
         for capability in ('concorde-review', 'concorde-dev-loop'):
             for terminal in ('routed', 'failed'):
                 with self.subTest(capability=capability, terminal=terminal):
-                    run = MainInvocation.__new__(MainInvocation)
+                    run: Any = MainInvocation.__new__(MainInvocation)
                     run.capability = capability
                     run.repository = SimpleNamespace(
                         targets={str(i): SimpleNamespace(kind='module') for i in range(40)},
@@ -146,7 +147,7 @@ class FlowSurfaceTests(TestCase):
 
     @verifies('scenario.development.flow-bounds', 'scenario.development.discovery-limit')
     def test_discovery_domain_limit_does_not_restart(self):
-        run = MainInvocation.__new__(MainInvocation)
+        run: Any = MainInvocation.__new__(MainInvocation)
         run.repository = SimpleNamespace(targets={'entry': SimpleNamespace(kind='module')})
         run.stage = Mock()
         with self.assertRaises(SpecError) as caught:
@@ -199,7 +200,7 @@ class FlowSurfaceTests(TestCase):
             def reviewed(child, mode):
                 calls.append(child.target.id)
                 return {'data': {'outcome': 'failed' if len(calls) - 1 == stop else 'completed',
-                    'answer': 'review', 'gaps': [], 'artifacts': [], 'reviews': [], 'completed_capabilities': []}}
+                    'answer': 'review', 'blockers': [], 'artifacts': [], 'reviews': [], 'completed_capabilities': []}}
             def child(capability, configuration, task, child_host):
                 return SimpleNamespace(target=repository.select(task['target_id']))
             with patch.object(review, 'read_change', return_value=None), \

@@ -70,7 +70,7 @@ broaden another invocation's permission.
 Each invocation is the unit of work this Module executes. Its Spec context is the selected
 Module's complete one-level owned/reference context; its implementation context is the
 Protocol-defined set of files the Module's own entities bind — every phase sees their names, only
-the programmer, code reviewer and investigator see authorized contents; its capability context is
+the programmer and code reviewer see authorized contents; its capability context is
 its worker's tools together with the Module's declared external references, whose readable files
 reach the planner, task author, programmer and code reviewer read-only; its task context is the
 task, constraints, stage artifacts and lifecycle metadata. The frozen closure is never empty and its
@@ -546,7 +546,7 @@ This collaboration applies when resolving an Agent binding or admitting the Prot
   contracts are not yet snapshot fields. Materializing them in the snapshot record, with their
   identities in the context digest, is pending implementation work that must not widen any grant.
 - The tool gate is a policy boundary inside the Pi process. Shell commands of workers and children
-  granted `bash` (the programmer, the investigator and the verifier child) are not confined by it,
+  granted `bash` (the programmer and the verifier child) are not confined by it,
   and no operating-system sandbox yet wraps the Pi process; that stronger boundary is pending.
 - The gate and the capability ceiling are verified for foreground single delegation. Whether every
   other pi-subagents execution path loads the required child extension is unverified, which is why
