@@ -55,13 +55,22 @@ metadata stays authoritative for identities and implementation mappings and cont
 source digest. A disclosure component shows identity, owner, inclusion provenance and both source
 digests without changing reading membership or creating another canonical page.
 
-#### scenario.views.id-anchors — Materializing injects scenario, requirement and entity anchors
+#### scenario.views.id-anchors — Publish readable definition titles with stable identity anchors
 
 - GIVEN a loaded registry model whose documents define scenario/requirement headings and entity meaning anchors with paired metadata
-- WHEN `materializeScoped` runs
-- THEN it emits every scenario and requirement heading with its own ID as an explicit heading anchor, for example `### req.x — Title {#req.x}`
+- WHEN `materializeScoped` runs and the site is built
+- THEN every scenario and requirement heading displays only its authored title, with its own ID retained as an explicit heading anchor, for example `### Title {#req.x}`
+- AND table-of-contents labels and indexed heading text use that title without the definition ID prefix
+- AND definitions with the same title retain distinct ID anchors, and changing a title does not change its ID anchor
 - AND it preserves each entity's readable meaning anchor, including adjacent anchors on a single line for a coherent shared explanation
 - AND a `path#id` link to that scenario, requirement or entity resolves on the published site
+- AND source document bytes, obligation bodies, ordinary prose and fenced examples remain unchanged by the title transformation
+
+This is the default registered-Spec publishing behavior, not a CSS visibility rule or a change to
+Spec syntax or identity. It recognizes level-2 through level-5 definition headings with the
+Protocol's spaced em dash, en dash or hyphen separator and preserves title Markdown and heading
+level. Source definitions still carry their IDs for validation, test associations and agent context;
+publication removes only the ID and separator from the displayed heading, not the stable link target.
 
 #### scenario.views.build-site — buildSite runs the full prepare/build/validate/promote path
 

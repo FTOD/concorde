@@ -88,9 +88,9 @@ export function primaryDocument(target: Target): string {
   return main[0];
 }
 const DEFINITION_HEADING =
-  /^(#{2,5})([ \t]+)((?:scenario|req)\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)([ \t]+[—–-][ \t]+.+?)[ \t]*$/;
-/** Scenario and requirement headings carry their ID as an explicit anchor, and every entity ID
- * becomes an anchor right before the block that declares it, so `path#id` links resolve. */
+  /^(#{2,5})([ \t]+)((?:scenario|req)\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)[ \t]+[—–-][ \t]+(.+?)[ \t]*$/;
+/** Publish definition titles without identity prefixes while keeping stable explicit anchors.
+ * Preserve entity meaning anchors and expose structured contract anchors for `path#id` links. */
 export function injectAnchors(content: string): string {
   let fence: string | undefined;
   const out: string[] = [];
@@ -133,11 +133,11 @@ export function injectAnchors(content: string): string {
       continue;
     }
     const heading = DEFINITION_HEADING.exec(
-      line.replace(/\s+\{#[^{}]+\}\s*$/, ""),
+      line.replace(/[ \t]+#+[ \t]*$/, "").replace(/\s+\{#[^{}]+\}\s*$/, ""),
     );
     out.push(
       heading
-        ? `${heading[1]}${heading[2]}${heading[3]}${heading[4]} {#${heading[3]}}`
+        ? `${heading[1]}${heading[2]}${heading[4]} {#${heading[3]}}`
         : line,
     );
   }

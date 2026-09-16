@@ -181,15 +181,21 @@ describe("a project holding only Profile 14 initialization outputs", () => {
     ).toBe("unchanged");
   });
 
-  // verifies: scenario.views.publish-homepage-default scenario.views.publish-without-graph
+  // verifies: scenario.views.publish-homepage-default scenario.views.publish-without-graph scenario.views.id-anchors
   it("builds the received adapter", async () => {
-    // scenario.views.publish-candidate / scenario.views.id-anchors: Specs remain literal Markdown.
     const sourcePath = resolve(root, "specs/project/module.md");
-    await writeFile(
-      sourcePath,
-      (await readFile(sourcePath, "utf8")) +
-        "\nLiteral Spec expression: {6 * 7}.\n",
-    );
+    const definitions = [
+      { id: "req.atlas.publication", title: "Readable obligation" },
+      { id: "scenario.atlas.publication", title: "Readable situation" },
+      { id: "scenario.atlas.another", title: "Readable situation" },
+    ];
+    const source = (await readFile(sourcePath, "utf8")) +
+      "\nLiteral Spec expression: {6 * 7}.\n" +
+      "\n## req.atlas.publication — Readable obligation\n\nAtlas SHALL preserve the reading contract.\n" +
+      "\n## scenario.atlas.publication – Readable situation\n\n- GIVEN a definition\n- WHEN it is published\n- THEN its title is readable\n" +
+      "\n## scenario.atlas.another - Readable situation\n\n- GIVEN another definition with the same title\n- WHEN it is published\n- THEN its identity remains distinct\n" +
+      "\nSee [obligation](#req.atlas.publication), [situation](#scenario.atlas.publication) and [another](#scenario.atlas.another).\n";
+    await writeFile(sourcePath, source);
     await mkdir(resolve(root, "docsite/.docusaurus"), { recursive: true });
     await writeFile(
       resolve(root, "docsite/.docusaurus/preview-sentinel.json"),
@@ -284,6 +290,17 @@ describe("a project holding only Profile 14 initialization outputs", () => {
     expect(mainPage).not.toContain("/diagrams/");
     expect(mainPage).toContain("Spec metadata");
     expect(mainPage).toContain("Literal Spec expression: {6 * 7}.");
+    expect(await readFile(sourcePath, "utf8")).toBe(source);
+    const search = JSON.parse(await readFile(
+      resolve(root, "docsite/build/search-index.json"), "utf8",
+    )) as Array<{ documents: Array<{ t: string; h?: string }> }>;
+    const indexed = search.flatMap((section) => section.documents);
+    for (const { id, title } of definitions) {
+      const escapedId = id.replace(/\./g, "\\.");
+      expect(mainPage).toMatch(new RegExp(`<h2[^>]*id="${escapedId}"[^>]*>${title}<a`));
+      expect(mainPage).toMatch(new RegExp(`<a[^>]*href="#${escapedId}"[^>]*>${title}</a>`));
+      expect(indexed.find((entry) => entry.h === `#${id}`)?.t).toBe(title);
+    }
     expect(
       await readFile(
         resolve(root, "docsite/.docusaurus/preview-sentinel.json"),
