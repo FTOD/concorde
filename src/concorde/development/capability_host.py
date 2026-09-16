@@ -221,6 +221,9 @@ def _worktree(host: CapabilityHost, mutation: bool, task: dict) -> tuple[Capabil
         return host, {key: state[key] for key in
                       ("path", "branch", "base_commit", "change_id", "primary_worktree")}
     if mutation and not host.allow_primary_worktree:
+        if task.get("_issue_recovery"):
+            raise SpecError("pending Issue disposition must recover in its owning worktree; do not create another candidate",
+                            "workspace_mismatch")
         if primary is None:
             raise SpecError("mutations require a committed Git worktree", "workspace_mismatch")
         # Preparing a worktree is a handoff, never permission to continue the

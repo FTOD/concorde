@@ -121,13 +121,24 @@ receipt establishes persistence in the worktree, not a Git commit, backup or com
 ## Disposition boundary
 
 `dispose_issue(root, id, expected_revision, reason=..., note=..., evidence=..., actor=...,
-duplicate_of=None, duplicate_revision=None)` is a trusted host operation, not part of the worker reporting authority.
+duplicate_of=None, duplicate_revision=None, created_at=None)` is a trusted host operation, not part
+of the worker reporting authority. The optional timestamp is issued by the host when it prepares
+exact transaction bytes; it is not a worker-supplied report field.
 The caller must authorize disposition and assess the evidence before calling. The store validates
 current record bytes, a nonempty note, at least one evidence reference, the actor and a valid
 transition. Reasons `resolved`, `duplicate` and `not-actionable` close an open record; `reopened`
 reopens a closed record. Duplicate requires another existing open canonical issue; a supplied duplicate revision is
 rechecked inside the same lock as the disposition, and solving always supplies that revision. Other reasons
 cannot carry a duplicate target. Closed records and all their observations remain present.
+
+`disposition_record(record, ...)` prepares and validates a copied record without writing. The
+solving host uses its exact timestamp/content for a write-ahead journal and subsequent publication.
+`restore_issue(root, id, original_bytes, expected_revision)` is a separate trusted recovery
+operation: under the same store lock it restores a valid open before-image only over the exact
+expected closing revision, or does nothing when that before-image is already present. Other bytes
+are stale, not permission to overwrite. The caller must bind both images and their digests to its
+own pending transaction and invalidate any readiness receipt before restoring. Neither helper is
+an agent tool or a general-purpose record editing grant. See [recovery](lifecycle.md#scenario.issues.disposition-recovery).
 
 The store cannot establish semantic truth from an evidence string. Merely not reproducing once,
 using a workaround, writing code without validation or completing an unrelated task is not a

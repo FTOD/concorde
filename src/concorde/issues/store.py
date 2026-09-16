@@ -143,8 +143,11 @@ def _lock(root: Path):
 
 
 def _publish(root: Path, record: dict, before: str | None) -> None:
-    path = issue_path(record["id"])
-    text = render(record)
+    _publish_text(root, record["id"], render(record), before)
+
+
+def _publish_text(root: Path, identifier: str, text: str, before: str | None) -> None:
+    path = issue_path(identifier)
     if len(text.encode()) > MAX_RECORD_BYTES:
         raise SpecError("issue record exceeds the admitted size", "invalid_issue")
     apply_files(root, [{"path": path, "before_digest": before, "content": text}], {path})
@@ -198,9 +201,20 @@ def report_issue(root: Path, report: dict, source: dict) -> dict:
     return receipt
 
 
+def disposition_record(record: dict, *, reason: str, note: str, evidence: list[str], actor: str,
+                       duplicate_of: str | None = None, created_at: str | None = None) -> dict:
+    """Prepare exact disposition content without writing or granting disposition authority."""
+    updated = copy.deepcopy(record)
+    updated["dispositions"].append({"reason": reason, "note": note, "evidence": list(evidence),
+        "duplicate_of": duplicate_of, "actor": actor, "created_at": _now() if created_at is None else created_at})
+    updated["status"] = "open" if reason == "reopened" else "closed"
+    validate_record(updated)
+    return updated
+
+
 def dispose_issue(root: Path, identifier: str, expected_revision: str, *, reason: str, note: str,
                   evidence: list[str], actor: str, duplicate_of: str | None = None,
-                  duplicate_revision: str | None = None) -> str:
+                  duplicate_revision: str | None = None, created_at: str | None = None) -> str:
     """Trusted host disposition, never a worker reporting-tool action.
 
     The caller supplies authorization and checks semantic evidence before calling. This operation
@@ -217,11 +231,25 @@ def dispose_issue(root: Path, identifier: str, expected_revision: str, *, reason
                 raise SpecError("duplicate target changed before disposition", "stale_issue")
             if other["status"] != "open":
                 raise SpecError("duplicate target must be an open canonical issue", "invalid_issue")
-        record["dispositions"].append({"reason": reason, "note": note, "evidence": evidence,
-            "duplicate_of": duplicate_of, "actor": actor, "created_at": _now()})
-        record["status"] = "open" if reason == "reopened" else "closed"
-        _publish(root, record, revision)
-        return digest(render(record).encode())
+        updated = disposition_record(record, reason=reason, note=note, evidence=evidence, actor=actor,
+                                     duplicate_of=duplicate_of, created_at=created_at)
+        _publish(root, updated, revision)
+        return digest(render(updated).encode())
+
+
+def restore_issue(root: Path, identifier: str, original: bytes, expected_revision: str) -> None:
+    """Undo only exact owned disposition bytes, idempotently, under the report/disposition lock."""
+    record = parse(original.decode("utf-8"), identifier)
+    if record["status"] != "open":
+        raise SpecError("disposition recovery requires an open before-image", "invalid_issue")
+    before = digest(original)
+    with _lock(root):
+        _, revision = read_issue(root, identifier)
+        if revision == before:
+            return  # A previous rollback completed but its bookkeeping acknowledgement was lost.
+        if revision != expected_revision:
+            raise SpecError("Issue changed after the pending disposition; preserve concurrent edits", "stale_issue")
+        _publish_text(root, identifier, original.decode("utf-8"), revision)
 
 
 def resolve_report(root: Path, receipt: dict) -> dict:

@@ -4,7 +4,8 @@ One solve request selects one Issue and freezes its exact byte revision before p
 new host-created candidate receives exactly that selected record, even if it is not yet committed;
 other local changes are not copied or committed. The existing fresh-session handoff remains
 mandatory. The owning session resumes in that candidate. Current-worktree bookkeeping operations
-never create candidates. Repeating solve on a closed Issue reports its existing disposition.
+never create candidates. Repeating solve on an ordinarily closed Issue reports its existing
+disposition, but a candidate-local pending disposition must be recovered before that fast path.
 
 The solver receives the problem and impact plus its complete Module Spec. It chooses ordinary
 development, a fresh Spec repair, Issue-specific verification, a reasoned disposition or a precise
@@ -31,11 +32,29 @@ explained by the solver. `not-actionable` requires a contract-grounded rationale
 need no mandatory human approval. Unsettled product/design choices use `needs-decision` and preserve
 the open Issue; execution errors and iteration limits remain distinguishable.
 
-A disposition is written before final ordinary validation. Ready evidence includes that write and
-all required candidate checks/reviews. On failure the runtime restores only its own unchanged Issue
-write, leaves implementation progress inspectable and does not claim ready. A concurrent Issue edit
-prevents restoration and is reported rather than overwritten. Candidate-local completion does not
-mean primary was changed; delivery is a separately authorized action.
+A disposition is written before final ordinary validation. Before publishing that write, the host
+saves and syncs a candidate-local write-ahead journal with the change/Issue identities, exact open
+before-image, exact intended closed after-image and both byte digests. The prepared timestamp is
+reused for publication so a lost write acknowledgement cannot make the after-image unknowable.
+The journal remains pending until final validation and the completed checkpoint are saved together.
+It is host bookkeeping, never worker input, an implementation grant or a second problem record.
+
+A retry in the owning worktree checks the journal before considering an Issue already closed.
+Only the journal's exact before- or after-image is admitted for recovery; the original frozen
+selection may be retried across this own write. The host first invalidates any old ready receipt,
+then restores its exact before-image under the Issue-store lock, clears stale verification and
+continues through fresh solving and validation. Already-restored bytes are a no-op, so a second
+interruption during rollback remains recoverable. Attempt counts are retained unless the normal
+changed-input or explicit-clarification rule resets them. Recovery never creates another candidate
+or moves into another worktree. An older unfinished solver close with no trustworthy journal is
+rejected for explicit reconciliation rather than guessed complete or rolled back speculatively.
+
+Ready evidence includes the disposition and all required candidate checks/reviews. On failed final
+validation the runtime restores only its own unchanged Issue write, leaves implementation progress
+inspectable and does not claim ready. A corrupt journal or a concurrent Issue edit prevents
+restoration and is reported rather than overwritten, including an independent developer reopening.
+A lost completion checkpoint after validation still requires recovery, not an already-closed success.
+Candidate-local completion does not mean primary was changed; delivery remains separately authorized.
 
 ### scenario.issues.solve-ready — Resolve and verify the candidate
 
@@ -66,6 +85,22 @@ mean primary was changed; delivery is a separately authorized action.
 - THEN stale evidence is rejected and unrelated work is preserved
 - AND failed final candidate verification cannot leave the runtime's unchanged disposition presented as completed
 
+### scenario.issues.disposition-recovery — Recover an interrupted closing transaction
+
+- GIVEN a selected Issue whose disposition is about to be published
+- WHEN execution or persistence fails before publication, after publication or before the completed checkpoint
+- THEN a journal is durable before any closing write and an unjournaled failed preparation leaves the Issue open
+- AND retry first invalidates old readiness and restores only the exact journaled write before fresh solving and validation
+- AND a rollback whose acknowledgement is lost can be retried without another restoration write
+- AND the original selected request can resume across its own journaled revision without automatic delivery
+
+### scenario.issues.disposition-recovery-stale — Refuse unprovable restoration
+
+- GIVEN an interrupted solver disposition
+- WHEN a retry finds changed Issue bytes, a corrupt journal or a legacy unfinished close without a journal
+- THEN it rejects recovery without overwriting the record or treating it as an ordinary completed close
+- AND no solver worker is launched before those checks succeed
+
 ### scenario.issues.solve-handoff — Carry an uncommitted selected report
 
 - GIVEN an open report not yet present in the committed base
@@ -86,12 +121,12 @@ verification are bound by the host; durable attempt history belongs to the candi
 | `inspect` | Deterministic record lookup. | selection | output |
 | `report` | Deterministic scoped reporting. | report | output |
 | `reopen` | Deterministic explicit reopening. | revision, note | output |
-| `prepare` | Deterministic selection and attempt binding. | selected issue | route |
+| `prepare` | Deterministic selection, pending-disposition recovery and attempt binding. | selected issue | route |
 | `decide` | One fresh Issue solver invocation. | problem, Spec, evidence | route |
 | `develop` | Ordinary Development Flow. | intended behavior | route |
 | `repair_spec` | Ordinary owner-only Spec Authoring. | intended contract | route |
 | `verify` | Fresh Issue-specific reviews. | problem, current inputs | route |
-| `close` | Deterministic disposition with stale checks. | decision, evidence | disposition |
+| `close` | Deterministic write-ahead journaling and disposition with stale checks. | decision, evidence | disposition |
 | `ready` | Final validation including disposition bytes. | candidate | output |
 | `finish` | Deterministic stopped or already-completed response. | reason | output |
 

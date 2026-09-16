@@ -1,6 +1,7 @@
 """Issue management and bounded solving through the ordinary development providers."""
 from __future__ import annotations
 
+import os
 from dataclasses import replace
 from pathlib import Path
 from typing import TypedDict
@@ -10,7 +11,8 @@ from langgraph.graph import END, START, StateGraph
 from ..spec.repository import SpecError, SpecRepository, digest, read_file
 from ..spec.typed_data import typed, canonical, checked_path
 from ..spec.changes import apply_files
-from .store import dispose_issue, issue_path, list_issues, read_issue, validate_report
+from .store import (MAX_RECORD_BYTES, disposition_record, dispose_issue, issue_path, list_issues,
+                    parse, read_issue, render, restore_issue, validate_report)
 
 MAX_DECISIONS = 6
 DECISION_ROUTES = {
@@ -60,6 +62,35 @@ def build_issue_verification_flow(node_factory):
     return graph.compile(name="issue_verification_flow", checkpointer=False)
 
 
+def pending_disposition(change: dict | None, identifier: str) -> dict | None:
+    """Validate a candidate-local write-ahead record before it can authorize any restoration."""
+    solution = (change or {}).get("issue_solutions", {}).get(identifier) or {}
+    if "pending_disposition" not in solution:
+        return None
+    journal = solution["pending_disposition"]
+    try:
+        if (not isinstance(journal, dict) or set(journal) != {
+                "schema_version", "change_id", "issue_id", "before", "before_digest", "after", "after_digest"}
+                or type(journal["schema_version"]) is not int or journal["schema_version"] != 1
+                or journal["change_id"] != (change or {}).get("change_id") or journal["issue_id"] != identifier):
+            raise ValueError("pending disposition identity is invalid")
+        for name in ("before", "after"):
+            text = journal[name]
+            if (not isinstance(text, str) or len(text.encode()) > MAX_RECORD_BYTES
+                    or digest(text.encode()) != journal[name + "_digest"]):
+                raise ValueError("pending disposition bytes do not match their digest")
+        before, after = parse(journal["before"], identifier), parse(journal["after"], identifier)
+        if (before["status"] != "open" or after["status"] != "closed"
+                or len(after["dispositions"]) != len(before["dispositions"]) + 1
+                or {**after, "status": "open", "dispositions": after["dispositions"][:-1]} != before
+                or after["dispositions"][-1]["actor"] != "concorde-issue-solver"
+                or solution["revision"] != journal["before_digest"]):
+            raise ValueError("pending disposition is not this solve's single closing write")
+    except (ValueError, KeyError, TypeError) as error:
+        raise SpecError(f"invalid pending Issue disposition: {error}", "invalid_worktree_state") from error
+    return journal
+
+
 def prepare_request(root: Path, package: Path, task: dict) -> dict:
     """Bind the explicit selection before workspace creation, without mutating either worktree."""
     task = dict(task)
@@ -70,9 +101,29 @@ def prepare_request(root: Path, package: Path, task: dict) -> dict:
         if "issue_id" not in task:
             raise SpecError("this action requires an explicit issue_id", "invalid_input")
         record, revision = read_issue(root, task["issue_id"])
-        if task.get("expected_revision", revision) != revision:
+        from ..harness.change_worktree import read_change
+        change = read_change(root) if action == "solve" else None
+        journal = pending_disposition(change, task["issue_id"])
+        if journal is not None:
+            versions = {journal["before_digest"], journal["after_digest"]}
+            if revision not in versions or task.get("expected_revision", revision) not in versions:
+                raise SpecError("Issue changed outside the pending disposition; preserve it for reconciliation", "stale_issue")
+            task["_issue_recovery"] = True
+            if change is None:
+                raise SpecError("pending disposition requires its owning change", "invalid_worktree_state")
+            for field in ("task", "constraints", "focus_id", "change_id"):
+                if change.get(field) is not None:
+                    task.setdefault(field, change[field])
+        elif task.get("expected_revision", revision) != revision:
             raise SpecError("selected Issue has changed", "stale_issue")
-        task["_issue_closed"] = record["status"] == "closed"
+        elif record["status"] == "closed" and change:
+            solution = change.get("issue_solutions", {}).get(task["issue_id"]) or {}
+            closing = record["dispositions"][-1]
+            contexts = {item.get("context_id") for item in solution.get("history", [])}
+            if (solution and solution.get("status") != "completed"
+                    and closing["actor"] == "concorde-issue-solver" and contexts.intersection(closing["evidence"])):
+                raise SpecError("unfinished Issue disposition has no recovery journal; reconcile it explicitly", "invalid_worktree_state")
+        task["_issue_closed"] = record["status"] == "closed" and journal is None
         latest = record["reports"][-1]
         owner = latest["report"]["owner_target_id"] or latest["source"]["target_id"]
         if task.get("target_id", owner) != owner:
@@ -134,6 +185,12 @@ def issue_nodes(run):
         state.setdefault("issue_solutions", {})[identifier] = solution
         state["validated_tree"] = None
         save_change(root, state)
+        # The journal rename must be durable before publishing a closing Issue file.
+        descriptor = os.open(checked_path(root, ".concorde"), os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
 
     def current_inputs():
         repository = SpecRepository(root, run.host.package_root)
@@ -185,7 +242,21 @@ def issue_nodes(run):
         selected, revision = read_issue(root, identifier)
         if revision != task["expected_revision"]:
             raise SpecError("Issue changed before solving", "stale_issue")
-        if selected["status"] == "closed":
+        change = read_change(root)
+        journal = pending_disposition(change, identifier)
+        if journal is not None:
+            if change is None:
+                raise SpecError("pending disposition lost its owning change", "invalid_worktree_state")
+            solution = change["issue_solutions"][identifier]
+            # Invalidate any ready receipt BEFORE undoing bytes, including after a lost final ack.
+            progress(root, phase="issue-recovery", status="active", invalidate=True)
+            restore_issue(root, identifier, journal["before"].encode(), journal["after_digest"])
+            selected, revision = read_issue(root, identifier)
+            solution.pop("pending_disposition")
+            solution.update(status="active", verified_inputs=None)
+            solution.pop("verification", None)
+            save()
+        elif selected["status"] == "closed":
             return stop("completed", "Issue is already disposed in this branch; no work was replayed.", "already-closed")
         original = read_file(root, issue_path(identifier))
         change = read_change(root, required=True)
@@ -347,6 +418,8 @@ def issue_nodes(run):
 
     def close(state):
         nonlocal closed_revision
+        if digest(original) != solution["revision"]:
+            raise SpecError("Issue before-image changed during selection", "stale_issue")
         reason = decision["action"]
         if reason == "resolved" and solution["verified_inputs"] != current_inputs():
             raise SpecError("resolution verification is stale", "stale_evidence")
@@ -356,10 +429,23 @@ def issue_nodes(run):
                 raise SpecError("duplicate decision does not match an admitted current Issue", "stale_issue")
         elif duplicate is not None:
             raise SpecError("only duplicate disposition may name another Issue", "invalid_completion")
+        evidence = [solution["history"][-1]["context_id"], *solution.get("verification", [])]
+        prepared = disposition_record(selected, reason=reason, note=decision["rationale"], evidence=evidence,
+                                      actor="concorde-issue-solver", duplicate_of=duplicate)
+        after = render(prepared)
+        if len(after.encode()) > MAX_RECORD_BYTES:
+            raise SpecError("Issue disposition exceeds the admitted record size", "invalid_issue")
+        solution["pending_disposition"] = {"schema_version": 1, "change_id": run.change_id, "issue_id": identifier,
+            "before": original.decode(), "before_digest": solution["revision"],
+            "after": after, "after_digest": digest(after.encode())}
+        solution["status"] = "closing"
+        save()  # Durable write-ahead evidence, including the exact timestamp, precedes the mutation.
         closed_revision = dispose_issue(root, identifier, solution["revision"], reason=reason,
             note=decision["rationale"], actor="concorde-issue-solver", duplicate_of=duplicate,
-            duplicate_revision=duplicate_versions.get(duplicate),
-            evidence=[solution["history"][-1]["context_id"], *solution.get("verification", [])])
+            duplicate_revision=duplicate_versions.get(duplicate), evidence=evidence,
+            created_at=prepared["dispositions"][-1]["created_at"])
+        if closed_revision != solution["pending_disposition"]["after_digest"]:
+            raise SpecError("Issue disposition differs from its recovery journal", "stale_issue")
         solution["status"] = "verifying-candidate"
         save()
         return {}
@@ -369,9 +455,9 @@ def issue_nodes(run):
         # Include the disposition bytes in the final checks/readiness identity, never edit after ready.
         result = child("concorde-validate", base_task(), coordinated=False)
         if result["status"] != "succeeded" or result["output"]["data"]["outcome"] != "ready":
-            relative = issue_path(identifier)
-            apply_files(root, [{"path": relative, "before_digest": closed_revision, "content": original.decode()}], {relative})
             progress(root, status="blocked", invalidate=True)
+            restore_issue(root, identifier, original, closed_revision)
+            solution.pop("pending_disposition")
             solution["status"] = "verification-failed"
             save()
             return {"output": response("failed", "Final candidate verification failed; the Issue remains open.",
@@ -379,6 +465,7 @@ def issue_nodes(run):
         # Host-local solution bookkeeping is excluded from the deliverable tree.
         change = read_change(root, required=True)
         solution.update(status="completed", disposition=decision["action"], closed_revision=closed_revision)
+        solution.pop("pending_disposition")
         change["issue_solutions"][identifier] = solution
         save_change(root, change)
         return {"output": response("ready", "Issue disposed and candidate verified. Delivery remains a separate explicit request.",
