@@ -11,11 +11,18 @@ from concorde.views.docsite_template import template_files
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
+def step_ids(page: str) -> set[str]:
+    """Step keys and their first title property survive compact or formatter-expanded layout."""
+    return set(re.findall(r'^\s*(\w+)\s*:\s*\{\s*title\s*:', page, re.MULTILINE))
+
+
 class AgentFlowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         spec = importlib.util.spec_from_file_location('concorde_site_graphs',
             REPOSITORY_ROOT / 'docsite/concorde-only/flows.py')
+        if spec is None or spec.loader is None:
+            raise RuntimeError('the Concorde flow publication module could not be loaded')
         cls.module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.module)
         cls.data = cls.module.export()
@@ -61,7 +68,7 @@ class AgentFlowTests(unittest.TestCase):
     @verifies('scenario.views.agent-flows')
     def test_variants_expose_repair_stops_resume_and_missing_code_review(self):
         page = (REPOSITORY_ROOT / 'docsite/concorde-only/page.tsx').read_text()
-        explained = set(re.findall(r'^  (\w+): \{title:', page, re.MULTILINE))
+        explained = step_ids(page)
         self.assertEqual((set(self.data['loops'][0]['nodes'])
                           | set(self.data['flows']['Spec authoring and review']['nodes']))
                          - {'__start__', '__end__'}, explained)
@@ -80,6 +87,13 @@ class AgentFlowTests(unittest.TestCase):
             if graph['label'] == 'Skip authoring':
                 self.assertNotIn('specify', graph['nodes'])
         self.assertEqual(self.data, self.module.export())
+
+    def test_step_explanations_are_independent_of_formatter_layout(self):
+        compact = '  plan: {title: "Plan", kind: "Agent"},\n  ready: {title: "Ready"},\n'
+        formatted = '\tplan: {\n\t\ttitle: "Plan",\n\t\tkind: "Agent",\n\t},\n  ready: {\n    title: "Ready",\n  },\n'
+        self.assertEqual({'plan', 'ready'}, step_ids(compact))
+        self.assertEqual(step_ids(compact), step_ids(formatted))
+        self.assertEqual(set(), step_ids('  unrelated: {kind: "Not a step"},\n'))
 
     @verifies('scenario.views.agent-flows')
     def test_consumer_inventory_has_no_flow_assets_or_python_dependency(self):
