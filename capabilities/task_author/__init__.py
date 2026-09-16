@@ -1,9 +1,11 @@
 """Turn an accepted plan into implementation acceptance tasks."""
-from concorde.harness.agent_model import Agent, Contract
+from concorde.harness.worker_profile import WorkerProfile, Contract
 from concorde.harness.effects import EffectDeclaration
+from concorde.harness.capability_state import StateContract, run_model
+from .. import external_name
 
-AGENT = Agent(
-    name="task_author", spec="agents/task_author/spec.md", workspace="capsule",
+PROFILE = WorkerProfile(
+    name="task_author", spec="capabilities/task_author/spec.md", workspace="capsule",
     contract=Contract(
         phase="tasks",
         context="concorde-agent-stage-context", result="concorde-agent-stage-result",
@@ -15,3 +17,14 @@ AGENT = Agent(
     tools=("read", "grep", "find", "ls"),
     timeout_seconds=1800,
 )
+
+PUBLIC = False
+CONTEXT_SELECTION = "bound"
+DETERMINISTIC = False
+USES = ()
+EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
+STATE = StateContract(PROFILE.contract.context, PROFILE.contract.result)
+
+
+def run(state, runtime):
+    return run_model(PROFILE, state, runtime)

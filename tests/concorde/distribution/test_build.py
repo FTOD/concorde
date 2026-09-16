@@ -15,13 +15,13 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.distribution.build import (  # noqa: E402
-    AGENT_ROOTS,
+    MODEL_ROOTS,
     INTEGRATION_ROOTS,
     SKILL_NAMES,
     BuildError,
     build,
     check_build,
-    load_agent,
+    load_model_instructions,
     verify_fresh,
     write_build,
 )
@@ -100,7 +100,7 @@ class BuildGoldenTests(unittest.TestCase):
         self.assertEqual(len(agent_outputs), 12)
         # One flat rendered file per worker, never a mode subdirectory.
         self.assertTrue(all(path.count("/") == 2 for path in agent_outputs))
-        self.assertEqual(set(agent_outputs), {f"generated/agents/{agent}.md" for agent in AGENT_ROOTS})
+        self.assertEqual(set(agent_outputs), {f"generated/agents/{agent}.md" for agent in MODEL_ROOTS})
         self.assertIn("generated/langgraph.json", self.by_path)
 
     @verifies("scenario.distribution.build-render")
@@ -169,7 +169,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
-        shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
+        shutil.copytree(REPOSITORY_ROOT / "capabilities", self.root / "capabilities")
         shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", self.root / "src/concorde/spec",
                         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
 
@@ -268,7 +268,7 @@ class BuildFreshnessTests(unittest.TestCase):
         shutil.copytree(REPOSITORY_ROOT / "prompts", self.root / "prompts")
         shutil.copytree(REPOSITORY_ROOT / "protocol", self.root / "protocol")
         shutil.copytree(REPOSITORY_ROOT / "skills", self.root / "skills")
-        shutil.copytree(REPOSITORY_ROOT / "agents", self.root / "agents")
+        shutil.copytree(REPOSITORY_ROOT / "capabilities", self.root / "capabilities")
         shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", self.root / "src/concorde/spec",
                         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
 
@@ -294,7 +294,7 @@ class BuildFreshnessTests(unittest.TestCase):
     @verifies("scenario.distribution.build-stale-blocks-execution")
     def test_child_definition_and_python_contract_edits_both_invalidate_build(self):
         write_build(self.root, "all")
-        for relative in ("agents/programmer/children/scout.md", "agents/programmer/__init__.py"):
+        for relative in ("capabilities/programmer/children/scout.md", "capabilities/programmer/__init__.py"):
             path = self.root / relative
             before = path.read_text()
             with self.subTest(source=relative):
@@ -315,34 +315,34 @@ class BuildFreshnessTests(unittest.TestCase):
     @verifies("scenario.distribution.load-agent")
     def test_load_agent_verifies_freshness_and_returns_effects_and_binding(self):
         write_build(self.root, "all")
-        prompt = load_agent(self.root, "concorde-planner")
+        prompt = load_model_instructions(self.root, "concorde-planner")
         self.assertEqual(prompt.name, "concorde-planner")
         self.assertEqual(prompt.kind, "skill")
         self.assertIsNotNone(prompt.effects)
         self.assertTrue(prompt.body.strip())
         self.assertIsNotNone(prompt.binding)
         self.assertEqual(prompt.binding.agent, "planner")
-        self.assertEqual(prompt.binding.spec_path, "agents/planner/spec.md")
+        self.assertEqual(prompt.binding.spec_path, "capabilities/planner/spec.md")
 
-        edited = self.root / "agents/planner/spec.md"
+        edited = self.root / "capabilities/planner/spec.md"
         edited.write_text(edited.read_text(encoding="utf-8") + "\nChanged.\n", encoding="utf-8")
         with self.assertRaises(BuildError) as failure:
-            load_agent(self.root, "concorde-planner")
+            load_model_instructions(self.root, "concorde-planner")
         self.assertEqual(failure.exception.code, "stale_build")
 
     @verifies("scenario.distribution.load-agent")
     def test_load_agent_accepts_underscore_and_hyphenated_names(self):
         write_build(self.root, "all")
-        by_external = load_agent(self.root, "concorde-planner")
-        by_underscore = load_agent(self.root, "planner")
+        by_external = load_model_instructions(self.root, "concorde-planner")
+        by_underscore = load_model_instructions(self.root, "planner")
         self.assertEqual(by_external.body, by_underscore.body)
         self.assertEqual(by_external.name, "concorde-planner")
 
     @verifies("scenario.distribution.load-agent")
     def test_load_agent_accepts_a_hyphenated_multiword_agent_name(self):
         write_build(self.root, "all")
-        by_external = load_agent(self.root, "concorde-code-reviewer")
-        by_underscore = load_agent(self.root, "code_reviewer")
+        by_external = load_model_instructions(self.root, "concorde-code-reviewer")
+        by_underscore = load_model_instructions(self.root, "code_reviewer")
         self.assertEqual(by_external.body, by_underscore.body)
         self.assertEqual(by_external.name, "concorde-code-reviewer")
         self.assertEqual(by_external.binding.agent, "code_reviewer")
@@ -354,7 +354,7 @@ class WireHelperBuildTests(unittest.TestCase):
     def test_wire_helper_change_invalidates_and_rebuilds_actual_schema_outputs(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
-            for directory in ("prompts", "protocol", "skills", "agents", "capabilities"):
+            for directory in ("prompts", "protocol", "skills", "capabilities"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
             shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", root / "src/concorde/spec",
                             ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
@@ -371,7 +371,7 @@ class WireHelperBuildTests(unittest.TestCase):
                 from concorde.development.capability_host import CapabilityHost, run_capability
                 from concorde.spec.typed_data import typed
                 def launched(launch):
-                    raise AssertionError("an Agent launched on a stale build")
+                    raise AssertionError("an WorkerProfile launched on a stale build")
                 host = CapabilityHost(root, root, mode="describe-policy", executor=launched)
                 return run_capability("concorde-review", None, typed("concorde-review-request", {
                     "target_id": "module.fixture", "task": "Review", "review_mode": "spec"}),
@@ -433,7 +433,7 @@ class BuildErrorTests(unittest.TestCase):
             shutil.copytree(REPOSITORY_ROOT / "prompts", root / "prompts")
             shutil.copytree(REPOSITORY_ROOT / "protocol", root / "protocol")
             shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills")
-            shutil.copytree(REPOSITORY_ROOT / "agents", root / "agents")
+            shutil.copytree(REPOSITORY_ROOT / "capabilities", root / "capabilities")
             main = root / "skills/concorde-main/SKILL.md"
             main.write_text(main.read_text(encoding="utf-8") + "\nUnbound {SOMETHING}.\n", encoding="utf-8")
             with self.assertRaises(BuildError):
@@ -442,7 +442,7 @@ class BuildErrorTests(unittest.TestCase):
     def test_broken_schema_helper_fails_the_build_with_build_error(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for directory in ("prompts", "protocol", "skills", "agents", "capabilities"):
+            for directory in ("prompts", "protocol", "skills", "capabilities"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
             shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", root / "src/concorde/spec",
                             ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
@@ -459,7 +459,7 @@ class BuildErrorTests(unittest.TestCase):
     def test_incomplete_schema_source_tree_fails_closed_while_a_source_free_root_falls_back(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for directory in ("prompts", "protocol", "skills", "agents", "capabilities"):
+            for directory in ("prompts", "protocol", "skills", "capabilities"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
             shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", root / "src/concorde/spec",
                             ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
@@ -479,7 +479,7 @@ class BuildErrorTests(unittest.TestCase):
     def test_root_inventory_missing_a_skill_request_schema_fails_the_build_with_build_error(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for directory in ("prompts", "protocol", "skills", "agents", "capabilities"):
+            for directory in ("prompts", "protocol", "skills", "capabilities"):
                 shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
             shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", root / "src/concorde/spec",
                             ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))

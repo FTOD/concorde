@@ -20,15 +20,15 @@ from typing import Any
 from ..spec.typed_data import (CAPABILITY_CONTRACTS, TypedDataError, canonical, checked_path,
     decode, typed, validate_typed, artifact, verify_artifacts)
 from .configuration import load_configuration
-from ..harness.agent_model import ContractError, agent_definition, binding_json, external_agent_name
+from ..harness.worker_profile import ContractError, worker_profile, binding_json, external_worker_name
 from ..harness.worker_executor import (CapabilityExecutionError, WorkerOutcome, build_worker_invocation,
     worker_instructions)
 from ..harness.usage import record_usage, read_usage, summarize_usage
 from ..harness.check_executor import CHECK_POLICY, CheckSandboxError, execute_check
 from ..harness.model_selection import worker_selection
 from ..harness.permissions import PolicyBinding, PermissionPolicyError, compile_policy
-from ..distribution.build import BuildError, load_agent, verify_fresh
-from ..spec.contracts import (CAPABILITY_AGENTS, MAIN_AGENTS, TOPOLOGY_AUTHOR_AGENT,
+from ..distribution.build import BuildError, load_model_instructions, verify_fresh
+from ..spec.contracts import (MODEL_STAGES, DISCOVERY_NODES, TOPOLOGY_AUTHOR_NODE,
     MAIN_CAPABILITY, DISCOVERY_CAPABILITIES, DETERMINISTIC_CAPABILITIES, load_capability_inventory)
 from ..harness.change_worktree import (STATE_PATH, WORK_PATH, bind_owner, create_worktree,
     ensure_change, graph_state, progress, read_change, record_transition, refresh_registry, blocker_scope,
@@ -100,7 +100,8 @@ def _protocol_documents(value: dict, granted: dict[str, bytes]) -> list[tuple[st
 def _worker_invocation(configuration: dict, *, capability: str, stage: str, prompt, workspace: Path,
                        context_value: dict, receipt: dict, policy, protocol: list[tuple[str, bytes]]):
     """Bind one worker launch: its frozen context, policy, binding, instructions and model selection."""
-    agent = agent_definition(prompt.binding.agent)
+    agent = worker_profile(prompt.binding.agent)
+    resolve_child_capability(capability, external_worker_name(agent.name))
     return build_worker_invocation(
         capability=capability, stage=stage, agent=agent.name, invocation_id=str(uuid.uuid4()),
         workspace=str(workspace), context_json=canonical(context_value), receipt_json=canonical(receipt),
@@ -113,10 +114,10 @@ def _worker_invocation(configuration: dict, *, capability: str, stage: str, prom
 
 def _worker_description(prompt, invocation, policy, **labels) -> dict:
     """The describe-policy record of one worker launch: its grant, profile and model selection."""
-    agent = agent_definition(prompt.binding.agent)
+    agent = worker_profile(prompt.binding.agent)
     return {**labels, "read_paths": list(policy.read_paths), "write_paths": list(policy.write_paths),
             "network": False, "fresh_session": True, "policy_digest": policy.digest,
-            "agent": external_agent_name(agent.name), "agent_binding_digest": prompt.binding.digest,
+            "agent": external_worker_name(agent.name), "agent_binding_digest": prompt.binding.digest,
             "profile_digest": prompt.binding.profile_digest,
             "instructions_digest": prompt.binding.instructions_digest, "workspace": agent.workspace,
             "tools": list(agent.tools), "children": [child.name for child in agent.children],
@@ -141,7 +142,7 @@ def _run_worker(host, invocation, prompt, *, capability: str, stage: str, target
             or outcome.binding_digest != prompt.binding.digest):
         raise SpecError("worker outcome is not bound to this invocation", "invalid_completion")
     record_usage(host, capability=capability, stage=stage, target_id=target_id,
-                 agent=external_agent_name(invocation.agent), invocation=invocation, result=outcome,
+                 agent=external_worker_name(invocation.agent), invocation=invocation, result=outcome,
                  change_id=change_id)
     data = validate_typed(outcome.value, result_type)["data"]
     from ..issues.references import validate_references
@@ -175,6 +176,9 @@ def resolve_child_capability(parent_capability: str, child_capability: str):
 
     inventory = load_capability_inventory()
     parent_key, child_key = _capability_key(parent_capability), _capability_key(child_capability)
+    for key, external in ((parent_key, parent_capability), (child_key, child_capability)):
+        if key not in inventory.CAPABILITIES or inventory.external_name(key) != external:
+            raise SpecError(f"unknown capability: {external}", "unknown_capability")
     if parent_key != child_key:
         try:
             parent_module = importlib.import_module(f"{inventory.__name__}.{parent_key}")
@@ -193,17 +197,24 @@ def resolve_child_capability(parent_capability: str, child_capability: str):
 
 def invoke_capability(parent_capability: str, child_capability: str, configuration: dict, payload: dict,
                       host: CapabilityHost) -> dict:
-    """Invoke another capability module's ``run`` in-process (proposal section 6.3).
+    """Adapt existing host-wire composition to a Capability's State-based ``run``.
 
-    Used by every nested dispatch the host performs on a parent capability's behalf: the stage
-    graph inside ``dev_loop``'s ``Invocation.loop``, ``issues``' bounded composition of
-    development, verification and Spec repair and a Module's own recursive per-component review routing. ``run_capability``
-    remains the shared machinery every capability module's own ``run`` delegates to; this only
-    resolves which module owns the call (see ``resolve_child_capability``).
+    Development, Issue solving and recursive per-component review use this transport adapter.
+    Model nodes use their own admitted State via CapabilityNode; both paths check the same USES
+    relation. A wire adapter is not a second kind of executable identity.
     """
 
     child_module = resolve_child_capability(parent_capability, child_capability)
-    return child_module.run(host, configuration, payload)
+    return _run_host_node(child_module.run, host, configuration, payload, child_capability)
+
+
+def _run_host_node(runner, host, configuration, payload, capability):
+    """The wire boundary adapts to State; trusted execution context never enters State."""
+    from langgraph.runtime import Runtime
+    from ..harness.capability_state import CapabilityContext
+    validate_typed(payload, f"{capability}-request")
+    return runner(payload["data"], Runtime(context=CapabilityContext(
+        host=host, configuration=configuration)))["result"]
 
 
 def _worktree(host: CapabilityHost, mutation: bool, task: dict) -> tuple[CapabilityHost, dict | None]:
@@ -387,9 +398,9 @@ class MainInvocation:
         })
 
     def stage(self, phase: str, occurrence: int) -> dict:
-        role = MAIN_AGENTS[self.action]
-        prompt = load_agent(self.host.package_root, role)
-        agent = agent_definition(prompt.binding.agent)
+        role = DISCOVERY_NODES[self.action]
+        prompt = load_model_instructions(self.host.package_root, role)
+        agent = worker_profile(prompt.binding.agent)
         snapshot = resolve_discovery_context(
             self.repository,
             tuple(self.discovered),
@@ -449,7 +460,7 @@ class MainInvocation:
             if self.host.mode == "describe-policy":
                 return {"context_id": snapshot.id, "outcome": "described", "answer": "",
                         "expand_targets": [], "routes": [], "blockers": []}
-            from ..harness.agent_node import AgentNode
+            from ..harness.capability_node import CapabilityNode
             result = None
 
             def launch_worker(context):
@@ -459,7 +470,7 @@ class MainInvocation:
                                            result_type="concorde-main-stage-result")
                 return data
 
-            data = AgentNode(agent).invoke(value, launch_worker)
+            data = CapabilityNode(agent.name).invoke(value, launch_worker)
             self._validate_result(snapshot, phase, data)
             if read_file(self.repository.root, self.repository.registry_path) != before_registry:
                 raise SpecError("registry changed during main discovery", "stale_context")
@@ -766,7 +777,7 @@ def _validate_topology_proposal(host: CapabilityHost, proposal: dict) -> tuple[S
         raise SpecError("topology proposal registry base changed", "stale_proposal")
     if repository.config["protocol"] != data["protocol_binding"]:
         raise SpecError("topology proposal Protocol binding changed", "stale_proposal")
-    prompt = load_agent(host.package_root, MAIN_AGENTS["design-topology"])
+    prompt = load_model_instructions(host.package_root, DISCOVERY_NODES["design-topology"])
     snapshot = resolve_discovery_context(
         repository,
         tuple(data["discovered_targets"]),
@@ -789,9 +800,9 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
                      target: dict, task: str, occurrence: int,
                      candidate_document_references: tuple[dict, ...],
                      candidate_repository: SpecRepository | None = None) -> dict:
-    role = TOPOLOGY_AUTHOR_AGENT
-    prompt = load_agent(host.package_root, role)
-    agent = agent_definition(prompt.binding.agent)
+    role = TOPOLOGY_AUTHOR_NODE
+    prompt = load_model_instructions(host.package_root, role)
+    agent = worker_profile(prompt.binding.agent)
     snapshot = resolve_topology_author_context(repository, target, task=task, instructions=prompt.body,
         candidate_document_references=candidate_document_references, candidate_repository=candidate_repository)
     before_registry = repository.registry_bytes
@@ -826,7 +837,7 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
         if host.mode == "describe-policy":
             return {"context_id": snapshot.id, "target_id": target["id"], "outcome": "completed",
                     "answer": "", "blockers": [], "documents": []}
-        from ..harness.agent_node import AgentNode
+        from ..harness.capability_node import CapabilityNode
         result = None
 
         def launch_author(context):
@@ -836,7 +847,7 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Capa
                                        result_type="concorde-topology-author-result")
             return data
 
-        data = AgentNode(agent).invoke(runtime, launch_author)
+        data = CapabilityNode(agent.name).invoke(runtime, launch_author)
         if data["context_id"] != snapshot.id or data["target_id"] != target["id"]:
             raise SpecError("topology author returned a different target/context", "incompatible_handoff")
         if ((data["outcome"] == "spec_incomplete" and not data["blockers"])
@@ -1256,13 +1267,13 @@ class Invocation:
 
     def stage(self, capability: str, *, inputs: tuple[dict, ...] = (), readonly=False,
               defer_gap_resolution=False, mode: str | None = None) -> dict:
-        phase, role = CAPABILITY_AGENTS[capability]
+        phase, role = MODEL_STAGES[capability]
         if self.host.issue_intent and capability != "concorde-issues":
             inputs = (*inputs, typed("concorde-issue-intent", {"intent": self.host.issue_intent}))
         if mode not in {None, phase}:
             raise SpecError("unsupported stage worker selection", "invalid_input")
-        prompt = load_agent(self.host.package_root, role)
-        agent = agent_definition(prompt.binding.agent)
+        prompt = load_model_instructions(self.host.package_root, role)
+        agent = worker_profile(prompt.binding.agent)
         reviews = [value for value in inputs if value["type_id"] == "concorde-review-result"]
         if reviews:
             from ..issues.references import observation_context
@@ -1356,12 +1367,12 @@ class Invocation:
             if self.host.mode == "describe-policy":
                 return {"context_id": snapshot.id, "outcome": "completed", "answer": "", "blockers": [],
                         "documents": [], "plan": "", "tasks": []}
-            from ..harness.agent_node import AgentNode
+            from ..harness.capability_node import CapabilityNode
             result = None
             checks = _check_service(self.repository, self.target, self.host.invocation_id) if project_workspace else None
 
             def launch_agent(context):
-                # The AgentNode's typed state carries the admitted context in and the validated
+                # The CapabilityNode's typed state carries the admitted context in and the validated
                 # result out; the Pi worker launch and its admission checks stay host-private.
                 nonlocal result
                 result, data = _run_worker(self.host, invocation, prompt, capability=capability, stage=phase,
@@ -1369,7 +1380,7 @@ class Invocation:
                                            change_id=self.change_id, checks=checks)
                 return data
 
-            data = AgentNode(agent).invoke(value, launch_agent)
+            data = CapabilityNode(agent.name).invoke(value, launch_agent)
             if data["context_id"] != snapshot.id:
                 raise SpecError("agent returned a different context identity", "incompatible_handoff")
             if ((data["outcome"] == "spec_incomplete" and not data["blockers"])
@@ -2553,7 +2564,7 @@ def _dispatch_nodes(capability, configuration, task, host):
     def describe_policy():
         if capability == "concorde-issues" and (task["action"] != "solve" or task.get("_issue_closed")):
             return bound_run().response("described", "This Issue operation uses host bookkeeping only; no worker or candidate is launched.")
-        stages = [capability] if capability in CAPABILITY_AGENTS else []
+        stages = [capability] if capability in MODEL_STAGES else []
         describe_reviews = False
         if capability == "concorde-dev-loop":
             describe_reviews = task.get("run_reviews", True)
@@ -2694,8 +2705,8 @@ def capability_flow_nodes(capability, configuration, runtime_input, *, host_cont
             raise SpecError("unknown capability mode", "invalid_input")
         if host.depth == 1 and capability not in DETERMINISTIC_CAPABILITIES:
             # The build is the only instruction source. Deterministic capabilities run no agent
-            # cognition and load no Agent, so they never consume generated/; every other
-            # top-level invocation is verified once here, and load_agent verifies it
+            # cognition and load no WorkerProfile, so they never consume generated/; every other
+            # top-level invocation is verified once here, and load_model_instructions verifies it
             # again independently before trusting any generated/agents/*.md body.
             verify_fresh(host.package_root)
         configuration = validate_typed(configuration if configuration is not None else load_configuration(host.project_root), "concorde-capability-configuration")
@@ -2894,8 +2905,8 @@ def invocation_failure(capability: str | None, error: Exception) -> dict:
 def json_main(package_root: Path, capability: str, runner) -> int:
     """Shared stdin/limit/envelope/result handling for every skill's executable boundary.
 
-    ``runner(host, configuration, request)`` is the skill's own capability module ``run`` function
-    (proposal section 6.3); this never dispatches by name itself. Only a skill has an executable
+    ``runner(state, runtime)`` is the Skill's Capability node. This boundary validates the wire
+    envelope and adapts it to State plus trusted Runtime context; it does not dispatch by name. Only a skill has an executable
     boundary at all, so every caller already knows and validates its own ``capability`` before
     reaching here (``scripts/run-capability.py``); there is no internal/stage fallback to guard.
     """
@@ -2916,7 +2927,7 @@ def json_main(package_root: Path, capability: str, runner) -> int:
                 print(canonical({"policies": state["policies"]}), file=sys.stderr)
         else:
             host = CapabilityHost(Path.cwd(), package_root, mode=value["mode"])
-            result = runner(host, value["configuration"], value["input"])
+            result = _run_host_node(runner, host, value["configuration"], value["input"], capability)
 
     except Exception as error:
         result = invocation_failure(capability, error)

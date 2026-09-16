@@ -132,7 +132,7 @@ class StudioClientTests(unittest.TestCase):
         self.assertEqual({"project_root": str(PACKAGE), "package_root": str(PACKAGE)},
                          submitted["expected_workspace"])
         from concorde.harness.studio import build_studio_flow
-        executor = Mock(side_effect=AssertionError("policy preview must not launch an Agent"))
+        executor = Mock(side_effect=AssertionError("policy preview must not launch an WorkerProfile"))
         flow = build_studio_flow("concorde-main", PACKAGE, PACKAGE, executor=executor)
         preview = flow.invoke(submitted)
         self.assertEqual("described", preview["result"]["status"], preview)

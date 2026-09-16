@@ -1,11 +1,11 @@
 """Execute one host-built worker invocation as a Pi worker and admit its typed result.
 
-The host freezes an invocation's context, compiles its policy, resolves its Agent binding and
+The host freezes an invocation's context, compiles its policy, resolves its WorkerProfile binding and
 selects its model; ``build_worker_invocation`` binds all of that into one immutable, digest-bound
 ``WorkerInvocation``. ``WorkerExecutor`` then refuses to run anything it cannot verify: the carried
 binding must equal the current build's, the system prompt must be exactly the worker's rendered
 instructions followed by the Protocol files the context lists, and the context and policy must fit
-the Agent's contract. It launches the worker through the Pi worker runtime and admits the single
+the WorkerProfile's contract. It launches the worker through the Pi worker runtime and admits the single
 submitted result only when it validates against the contract's result type and permitted fields.
 """
 from __future__ import annotations
@@ -16,7 +16,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable, Literal
 
-from . import agent_model
+from . import worker_profile
 from .model_selection import WorkerSelection
 from .permissions import NormalizedPolicy
 from .pi_worker import ChildAgent, PiWorkerRuntime, WorkerExecutionError, WorkerLaunch
@@ -136,8 +136,8 @@ def build_worker_invocation(*, capability: str, stage: str, agent: str, invocati
     """Bind one invocation's identities, refusing an inconsistent or non-canonical combination."""
     from ..spec.typed_data import canonical, decode, validate_typed
 
-    name = agent_model.agent_key(agent)
-    external = agent_model.external_agent_name(name)
+    name = worker_profile.worker_key(agent)
+    external = worker_profile.external_worker_name(name)
     if (policy.capability, policy.stage, policy.role, policy.agent) != (capability, stage, external, external):
         raise CapabilityExecutionError("invocation identity differs from its compiled policy")
     context = validate_typed(decode(context_json))
@@ -159,7 +159,7 @@ def build_worker_invocation(*, capability: str, stage: str, agent: str, invocati
                             selection=selection, child_selections=tuple(child_selections), digest=_digest(payload))
 
 
-def _child_text(definition: agent_model.ChildDefinition, selection: WorkerSelection | None) -> str:
+def _child_text(definition: worker_profile.ChildDefinition, selection: WorkerSelection | None) -> str:
     extra = "".join(f"{key}: {value}\n" for key, value in (("model", selection and selection.model),
                                                            ("thinking", selection and selection.thinking)) if value)
     return definition.text.replace("---\n", "---\n" + extra, 1) if extra else definition.text
@@ -172,22 +172,22 @@ class WorkerExecutor:
     package_root: Path = PACKAGE_ROOT
     runtime: Callable[..., Any] | None = None
 
-    def preflight(self, invocation: WorkerInvocation) -> tuple[agent_model.Agent, agent_model.AgentBinding, dict]:
+    def preflight(self, invocation: WorkerInvocation) -> tuple[worker_profile.WorkerProfile, worker_profile.WorkerBinding, dict]:
         from ..spec.typed_data import decode
 
         try:
-            binding = agent_model.binding_from_json(invocation.binding_json)
+            binding = worker_profile.binding_from_json(invocation.binding_json)
         except (TypeError, ValueError, KeyError) as error:
-            raise CapabilityExecutionError(f"invocation carries a malformed Agent binding: {error}") from error
-        if agent_model.binding_digest(binding) != binding.digest or binding.agent != invocation.agent:
-            raise CapabilityExecutionError("invocation Agent binding does not match its own digest or Agent")
+            raise CapabilityExecutionError(f"invocation carries a malformed WorkerProfile binding: {error}") from error
+        if worker_profile.binding_digest(binding) != binding.digest or binding.agent != invocation.agent:
+            raise CapabilityExecutionError("invocation WorkerProfile binding does not match its own digest or WorkerProfile")
         try:
-            current = agent_model.resolve_agent(self.package_root, binding.agent)
+            current = worker_profile.resolve_worker(self.package_root, binding.agent)
         except ValueError as error:
-            raise CapabilityExecutionError(f"Agent binding cannot be resolved: {error}", code=getattr(error, "code", None)) from error
+            raise CapabilityExecutionError(f"WorkerProfile binding cannot be resolved: {error}", code=getattr(error, "code", None)) from error
         if current != binding:
-            raise CapabilityExecutionError("Agent binding differs from the current build")
-        agent = agent_model.agent_definition(binding.agent)
+            raise CapabilityExecutionError("WorkerProfile binding differs from the current build")
+        agent = worker_profile.worker_profile(binding.agent)
         context = decode(invocation.context_json)
         data = context["data"]
         snapshot = data.get("snapshot", {}).get("data", data)
@@ -204,13 +204,13 @@ class WorkerExecutor:
         if snapshot.get("instructions") != rendered:
             raise CapabilityExecutionError("context instructions differ from the rendered worker instructions")
         try:
-            agent_model.validate_agent_input(agent, context, phase=invocation.stage)
-            agent_model.validate_agent_policy(agent, context, invocation.policy, json.loads(invocation.receipt_json))
+            worker_profile.validate_worker_input(agent, context, phase=invocation.stage)
+            worker_profile.validate_worker_policy(agent, context, invocation.policy, json.loads(invocation.receipt_json))
         except (ValueError, KeyError, TypeError) as error:
             raise CapabilityExecutionError(f"contract admission failed: {error}") from error
         effects = agent.contract.effects
         if invocation.policy.write_paths and not effects.writes:
-            raise CapabilityExecutionError("invocation grants writes the Agent contract does not declare")
+            raise CapabilityExecutionError("invocation grants writes the WorkerProfile contract does not declare")
         if invocation.policy.network_enabled or invocation.policy.credentials != "none":
             raise CapabilityExecutionError("worker invocations never grant network or credential effects")
         return agent, binding, context
@@ -220,7 +220,7 @@ class WorkerExecutor:
         from ..spec.typed_data import TypedDataError, typed
 
         agent, binding, _ = self.preflight(invocation)
-        definitions = agent_model.child_definitions(self.package_root, agent)
+        definitions = worker_profile.child_definitions(self.package_root, agent)
         selections = dict(invocation.child_selections)
         children = tuple(ChildAgent(item.name, _child_text(item, selections.get(item.name))) for item in definitions)
         child_tools = tuple(sorted({tool for item in definitions for tool in item.tools}))
@@ -255,8 +255,8 @@ class WorkerExecutor:
                                context_bytes=len(invocation.context_json.encode("utf-8")))
         try:
             value = typed(agent.contract.result, result.value)
-            agent_model.validate_agent_output(agent, value)
-        except agent_model.ContractError as error:
+            worker_profile.validate_worker_output(agent, value)
+        except worker_profile.ContractError as error:
             raise CapabilityExecutionError(f"invalid worker result: {error}", outcome=_INVALID,
                                            code=error.code, usage=usage) from error
         except TypedDataError as error:

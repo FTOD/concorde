@@ -1,6 +1,6 @@
 """Least-privilege policy compilation for worker invocations.
 
-``compile_policy`` intersects an Agent contract's declared effects with a host-issued, narrowing
+``compile_policy`` intersects an WorkerProfile contract's declared effects with a host-issued, narrowing
 binding and the concrete role paths the host supplies, producing one digest-bound
 ``NormalizedPolicy``. The Pi worker runtime enforces that policy's read and write grants through
 the Concorde worker extension (see ``pi_worker``); nothing here launches a process.

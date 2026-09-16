@@ -14,98 +14,500 @@
         "public": true,
         "context_selection": "discover",
         "deterministic": false,
-        "skill": "concorde-main"
-      },
-      {
-        "id": "specify-loop",
-        "public": true,
-        "context_selection": "discover",
-        "deterministic": false,
-        "skill": "concorde-specify-loop"
+        "skill": "concorde-main",
+        "uses": [
+          "answerer",
+          "router",
+          "topology_designer",
+          "topology_author"
+        ],
+        "state": {
+          "input": "concorde-main-request",
+          "output": null
+        },
+        "profile": null
       },
       {
         "id": "dev-loop",
         "public": true,
         "context_selection": "discover",
         "deterministic": false,
-        "skill": "concorde-dev-loop"
+        "skill": "concorde-dev-loop",
+        "uses": [
+          "router",
+          "specify_loop",
+          "review",
+          "plan",
+          "tasks",
+          "implement",
+          "validate"
+        ],
+        "state": {
+          "input": "concorde-dev-loop-request",
+          "output": null
+        },
+        "profile": null
+      },
+      {
+        "id": "specify-loop",
+        "public": true,
+        "context_selection": "discover",
+        "deterministic": false,
+        "skill": "concorde-specify-loop",
+        "uses": [
+          "router",
+          "specify",
+          "review"
+        ],
+        "state": {
+          "input": "concorde-specify-loop-request",
+          "output": null
+        },
+        "profile": null
       },
       {
         "id": "issues",
         "public": true,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": "concorde-issues"
+        "skill": "concorde-issues",
+        "uses": [
+          "issue_solver",
+          "dev_loop",
+          "specify",
+          "review",
+          "validate"
+        ],
+        "state": {
+          "input": "concorde-issues-request",
+          "output": null
+        },
+        "profile": null
       },
       {
         "id": "init",
         "public": true,
         "context_selection": "none",
         "deterministic": true,
-        "skill": "concorde-init"
+        "skill": "concorde-init",
+        "uses": [],
+        "state": {
+          "input": "concorde-init-request",
+          "output": null
+        },
+        "profile": null
       },
       {
         "id": "configure",
         "public": true,
         "context_selection": "none",
         "deterministic": true,
-        "skill": "concorde-configure"
+        "skill": "concorde-configure",
+        "uses": [],
+        "state": {
+          "input": "concorde-configure-request",
+          "output": null
+        },
+        "profile": null
       },
       {
         "id": "validate",
         "public": true,
         "context_selection": "none",
         "deterministic": true,
-        "skill": "concorde-validate"
+        "skill": "concorde-validate",
+        "uses": [],
+        "state": {
+          "input": "concorde-validate-request",
+          "output": null
+        },
+        "profile": null
       },
       {
         "id": "deliver",
         "public": true,
         "context_selection": "none",
         "deterministic": true,
-        "skill": "concorde-deliver"
+        "skill": "concorde-deliver",
+        "uses": [],
+        "state": {
+          "input": "concorde-deliver-request",
+          "output": null
+        },
+        "profile": null
       },
       {
         "id": "specify",
         "public": false,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null
+        "skill": null,
+        "uses": [
+          "spec_author"
+        ],
+        "state": {
+          "input": "concorde-specify-request",
+          "output": null
+        },
+        "profile": null
       },
       {
         "id": "review",
         "public": true,
         "context_selection": "discover",
         "deterministic": false,
-        "skill": "concorde-review"
+        "skill": "concorde-review",
+        "uses": [
+          "router",
+          "spec_reviewer",
+          "code_reviewer"
+        ],
+        "state": {
+          "input": "concorde-review-request",
+          "output": null
+        },
+        "profile": null
       },
       {
         "id": "context-solve",
         "public": false,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null
+        "skill": null,
+        "uses": [
+          "context_assessor"
+        ],
+        "state": {
+          "input": "concorde-context-solve-request",
+          "output": null
+        },
+        "profile": null
       },
       {
         "id": "plan",
         "public": false,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null
+        "skill": null,
+        "uses": [
+          "context_assessor",
+          "planner"
+        ],
+        "state": {
+          "input": "concorde-plan-request",
+          "output": null
+        },
+        "profile": null
       },
       {
         "id": "tasks",
         "public": false,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null
+        "skill": null,
+        "uses": [
+          "task_author"
+        ],
+        "state": {
+          "input": "concorde-tasks-request",
+          "output": null
+        },
+        "profile": null
       },
       {
         "id": "implement",
         "public": false,
         "context_selection": "bound",
         "deterministic": false,
-        "skill": null
+        "skill": null,
+        "uses": [
+          "programmer"
+        ],
+        "state": {
+          "input": "concorde-implement-request",
+          "output": null
+        },
+        "profile": null
+      },
+      {
+        "id": "answerer",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null,
+        "uses": [],
+        "state": {
+          "input": "concorde-main-stage-context",
+          "output": "concorde-main-stage-result"
+        },
+        "profile": {
+          "workspace": "capsule",
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
+          "children": []
+        }
+      },
+      {
+        "id": "router",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null,
+        "uses": [],
+        "state": {
+          "input": "concorde-main-stage-context",
+          "output": "concorde-main-stage-result"
+        },
+        "profile": {
+          "workspace": "capsule",
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
+          "children": []
+        }
+      },
+      {
+        "id": "topology-designer",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null,
+        "uses": [],
+        "state": {
+          "input": "concorde-main-stage-context",
+          "output": "concorde-main-stage-result"
+        },
+        "profile": {
+          "workspace": "capsule",
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
+          "children": []
+        }
+      },
+      {
+        "id": "spec-author",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null,
+        "uses": [],
+        "state": {
+          "input": "concorde-agent-stage-context",
+          "output": "concorde-agent-stage-result"
+        },
+        "profile": {
+          "workspace": "capsule",
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
+          "children": []
+        }
+      },
+      {
+        "id": "topology-author",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null,
+        "uses": [],
+        "state": {
+          "input": "concorde-topology-author-context",
+          "output": "concorde-topology-author-result"
+        },
+        "profile": {
+          "workspace": "capsule",
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
+          "children": []
+        }
+      },
+      {
+        "id": "spec-reviewer",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null,
+        "uses": [],
+        "state": {
+          "input": "concorde-review-stage-context",
+          "output": "concorde-review-stage-result"
+        },
+        "profile": {
+          "workspace": "capsule",
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
+          "children": [
+            "consistency",
+            "fact-check"
+          ]
+        }
+      },
+      {
+        "id": "context-assessor",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null,
+        "uses": [],
+        "state": {
+          "input": "concorde-agent-stage-context",
+          "output": "concorde-agent-stage-result"
+        },
+        "profile": {
+          "workspace": "capsule",
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
+          "children": []
+        }
+      },
+      {
+        "id": "planner",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null,
+        "uses": [],
+        "state": {
+          "input": "concorde-agent-stage-context",
+          "output": "concorde-agent-stage-result"
+        },
+        "profile": {
+          "workspace": "capsule",
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
+          "children": [
+            "scout"
+          ]
+        }
+      },
+      {
+        "id": "task-author",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null,
+        "uses": [],
+        "state": {
+          "input": "concorde-agent-stage-context",
+          "output": "concorde-agent-stage-result"
+        },
+        "profile": {
+          "workspace": "capsule",
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
+          "children": []
+        }
+      },
+      {
+        "id": "programmer",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null,
+        "uses": [],
+        "state": {
+          "input": "concorde-agent-stage-context",
+          "output": "concorde-agent-stage-result"
+        },
+        "profile": {
+          "workspace": "project",
+          "tools": [
+            "bash",
+            "edit",
+            "find",
+            "grep",
+            "ls",
+            "read",
+            "run_checks",
+            "write"
+          ],
+          "children": [
+            "planner",
+            "scout",
+            "verifier"
+          ]
+        }
+      },
+      {
+        "id": "code-reviewer",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null,
+        "uses": [],
+        "state": {
+          "input": "concorde-review-stage-context",
+          "output": "concorde-review-stage-result"
+        },
+        "profile": {
+          "workspace": "project",
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
+          "children": [
+            "scout",
+            "verifier"
+          ]
+        }
+      },
+      {
+        "id": "issue-solver",
+        "public": false,
+        "context_selection": "bound",
+        "deterministic": false,
+        "skill": null,
+        "uses": [],
+        "state": {
+          "input": "concorde-agent-stage-context",
+          "output": "concorde-agent-stage-result"
+        },
+        "profile": {
+          "workspace": "capsule",
+          "tools": [
+            "find",
+            "grep",
+            "ls",
+            "read"
+          ],
+          "children": []
+        }
       }
     ]
   }

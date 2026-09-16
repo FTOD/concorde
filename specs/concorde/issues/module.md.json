@@ -3,7 +3,7 @@
   "document": {"id": "document.issues.module", "owner": "module.issues"},
   "entities": [
     {"id": "entity.issues.runtime", "title": "Issue runtime", "kind": "program", "meaning": "#entity.issues.runtime", "files": ["capabilities/issues.py", "scripts/issues.py"]},
-    {"id": "entity.issues.solver", "title": "Issue solver", "kind": "agent", "meaning": "#entity.issues.solver", "files": ["agents/issue_solver/"]},
+    {"id": "entity.issues.solver", "title": "Issue solver", "kind": "agent", "meaning": "#entity.issues.solver", "files": ["capabilities/issue_solver/"]},
     {"id": "entity.issues.langgraph", "title": "LangGraph", "kind": "external library", "meaning": "#entity.issues.langgraph"},
     {"id": "entity.issues.development", "title": "Development", "kind": "used module", "meaning": "#entity.issues.development", "target_id": "module.development"},
     {"id": "entity.issues.spec", "title": "Spec", "kind": "used module", "meaning": "#entity.issues.spec", "target_id": "module.spec"},

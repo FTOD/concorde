@@ -2,7 +2,7 @@
 
 A Harness is context, control flow, models and per-worker permissions and environment
 (workflow/agents-and-harnesses.md). In Concorde the per-worker part is the worker profile each
-Agent declares (``agent_model.Agent``): its workspace kind, tools, children, timeout and contract
+WorkerProfile declares (``worker_profile.WorkerProfile``): its workspace kind, tools, children, timeout and contract
 effects. What every worker shares is the host environment allowlist below, the Pi worker runtime
 (``pi_worker``) and the LangGraph Flows that orchestrate them.
 """

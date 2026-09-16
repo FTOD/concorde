@@ -1,9 +1,8 @@
 """Profile 14 capability registry and versioned JSON contracts.
 
 Public capabilities are each paired with exactly one Skill; non-public capabilities require
-declared composition. Internal Skills describe only one host-bound agent role. Per-capability
-request/response contracts are owned by the top-level ``capabilities/`` package, one module per
-capability. Exposure, context selection, determinism and composition are derived from their
+declared composition. Model nodes use their State contract directly; only existing host adapters
+own request/response wire envelopes. All executable identities belong to ``capabilities/``. Exposure, context selection, determinism and composition are derived from their
 declarations; there is no capability class taxonomy. The internal data types below — topology
 design/proposal/application, discovery context, context snapshots, review internals — are not
 owned by any one capability and stay defined directly here.
@@ -60,7 +59,7 @@ def load_capability_inventory():
 
 
 # Each bound capability stage runs the one worker whose contract names that phase.
-CAPABILITY_AGENTS = {
+MODEL_STAGES = {
     "concorde-specify": ("specify", "concorde-spec-author"),
     "concorde-plan": ("plan", "concorde-planner"),
     "concorde-tasks": ("tasks", "concorde-task-author"),
@@ -71,14 +70,14 @@ CAPABILITY_AGENTS = {
 REVIEW_STAGES = {"spec": ("spec-review", "concorde-spec-reviewer"),
                  "code": ("code-review", "concorde-code-reviewer")}
 # Main discovery runs one worker per action; accepted topologies are authored by fresh authors.
-MAIN_AGENTS = {"ask": "concorde-answerer", "route": "concorde-router",
+DISCOVERY_NODES = {"ask": "concorde-answerer", "route": "concorde-router",
                "design-topology": "concorde-topology-designer"}
-TOPOLOGY_AUTHOR_AGENT = "concorde-topology-author"
+TOPOLOGY_AUTHOR_NODE = "concorde-topology-author"
 MAIN_CAPABILITY = "concorde-main"
 
 
 def capability_modules() -> dict:
-    """Load the capability declarations; schemas and Agent definitions have no registry dependency."""
+    """Load the capability declarations; schemas and WorkerProfile definitions have no registry dependency."""
     import importlib
     inventory = load_capability_inventory()
     return {inventory.external_name(name): importlib.import_module(f"{inventory.__name__}.{name}")
@@ -95,9 +94,7 @@ DISCOVERY_CAPABILITIES = frozenset(name for name in CAPABILITY_NAMES
 DETERMINISTIC_CAPABILITIES = frozenset(name for name in CAPABILITY_NAMES if _MODULES[name].DETERMINISTIC)
 COMPOSITE_CAPABILITIES = tuple(name for name in CAPABILITY_NAMES if _MODULES[name].USES)
 assert len(CAPABILITY_NAMES) == len(load_capability_inventory().CAPABILITIES), "capability identities must be unique"
-INTERNAL_SKILLS = tuple(sorted({*MAIN_AGENTS.values(), TOPOLOGY_AUTHOR_AGENT,
-                                *(role for _, role in CAPABILITY_AGENTS.values()),
-                                *(role for _, role in REVIEW_STAGES.values())}))
+MODEL_CAPABILITIES = tuple(name for name in CAPABILITY_NAMES if _MODULES[name].PROFILE is not None)
 INTERNAL_DATA_TYPES = (
     "concorde-issue-report",
     "concorde-issue-receipt",
@@ -121,18 +118,18 @@ INTERNAL_DATA_TYPES = (
 
 def dependencies(capability: str) -> tuple[str, ...]:
     module = _MODULES[capability]
-    agents = tuple("concorde-" + agent.name.replace("_", "-") for agent in module.AGENTS)
-    children = tuple("concorde-" + name.replace("_", "-") for name in module.USES)
-    routing = (MAIN_AGENTS["route"],) if module.CONTEXT_SELECTION == "discover" else ()
-    return tuple(dict.fromkeys((*routing, *agents, *children)))
+    return tuple("concorde-" + name.replace("_", "-") for name in module.USES)
 
 
 def contracts() -> dict[str, tuple[str, str]]:
-    return {name: (f"{name}-request", f"{name}-response") for name in CAPABILITY_NAMES}
+    # Only existing host adapters own request/response envelopes. Model nodes consume their
+    # State contract directly; being private does not invent a new external wire interface.
+    return {name: (f"{name}-request", f"{name}-response") for name in CAPABILITY_NAMES
+            if hasattr(_MODULES[name], "REQUEST")}
 
 
 def exported_types() -> tuple[str, ...]:
-    return tuple(f"{capability}-{suffix}" for capability in CAPABILITY_NAMES
+    return tuple(f"{capability}-{suffix}" for capability in contracts()
                  for suffix in ("request", "response")) + INTERNAL_DATA_TYPES
 
 
@@ -148,8 +145,9 @@ def _capability_schemas() -> dict:
     result = {}
     for name in capability_inventory.CAPABILITIES:
         module = importlib.import_module(f"{capability_inventory.__name__}.{name}")
-        result[f"{module.EXTERNAL_NAME}-request"] = module.REQUEST
-        result[f"{module.EXTERNAL_NAME}-response"] = module.RESPONSE
+        if hasattr(module, "REQUEST"):
+            result[f"{module.EXTERNAL_NAME}-request"] = module.REQUEST
+            result[f"{module.EXTERNAL_NAME}-response"] = module.RESPONSE
     return result
 
 
@@ -159,7 +157,7 @@ def schemas() -> dict:
         "owner": STRING,
         "role": {"enum": ["reading", "metadata"]}})
     # Context index records (Framework profile P5, Spec context grant): a document is identified, owned
-    # and digested, never embedded. Its bytes reach an Agent through the read-only grant of the path.
+    # and digested, never embedded. Its bytes reach an WorkerProfile through the read-only grant of the path.
     reason = obj({"kind": {"enum": ["owned", "module", "document"]}, "id": STRING})
     source = obj({**document_ref["properties"], "reasons": array(reason, unique=True)})
     def resolution(source_shape):

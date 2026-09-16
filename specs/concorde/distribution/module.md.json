@@ -10,7 +10,6 @@
       "title": "Build",
       "kind": "program",
       "files": [
-        "agents/__init__.py",
         "capabilities/__init__.py",
         "concorde.json",
         "pyproject.toml",

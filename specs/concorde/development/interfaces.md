@@ -2,11 +2,12 @@
 
 ### Capability execution boundary
 
-A Capability provides usable or composable functionality under the Agent and Harness contract.
-The existing host adapter implements each registered entry as a Python module declaring launched
-Agents, effects, composed entries and typed request/response contracts. In this adapter, rendered
-public Skills expose exactly one public Capability. Non-public capabilities have no Skill or direct launcher entry. Every request
-passes through this host. The capability registry is a member of this complete Spec; exact wire
+A Capability is a State-based LangGraph node under the Capability and Harness contract. Each
+registered entry declares its State, USES and optional model execution profile. Existing host
+adapters additionally retain versioned request/response transport contracts; model-only nodes do
+not acquire new wire envelopes. Rendered public Skills expose exactly one public Capability.
+Non-public Capabilities have no Skill or direct launcher entry. Every external request passes
+through this host. The capability registry is a member of this complete Spec; exact wire
 schemas are code, exported by the build for runtime/API use, and this document states
 their promises.
 
@@ -295,7 +296,7 @@ context forms; package/schema alignment checks verify those identities.
 | `studio_run_failed` | A Studio-driven capability run did not complete successfully. |
 | `studio_transport_failed` | The Studio client could not reach or exchange messages with the Studio server. |
 | `undeclared_capability` | A capability tried to compose another capability that its own module does not declare in `USES`. |
-| `unknown_agent` | The named worker has no matching `agents/<name>/` definition. |
+| `unknown_agent` | The named worker has no matching `capabilities/<name>/` definition. |
 | `unknown_capability` | The named capability is not registered, or a parent capability referenced a capability that does not exist. |
 | `unknown_change` | Delivery named a `change_id` with no registered live worktree or delivery receipt. |
 | `unknown_target` | The requested Spec target ID is not registered. |

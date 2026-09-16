@@ -69,11 +69,10 @@ class TargetDiscoveryTests(unittest.TestCase):
                     child.invoke.assert_called_once()
                     self.assertEqual(1, sum(c['stage'] == 'route' for c in model.calls))
                     if capability == 'concorde-review':
-                        from agents import router
                         from capabilities import review as review_capability
                         route = next(c for c in model.calls if c['stage'] == 'route')
                         self.assertEqual('concorde-router', route['capability'])
-                        self.assertIn(router.AGENT, review_capability.AGENTS)
+                        self.assertIn("router", review_capability.USES)
                     model.calls.clear()
                     second = graph.invoke({'invocation': request})
                 self.assertEqual('succeeded', second['result']['status'], second)

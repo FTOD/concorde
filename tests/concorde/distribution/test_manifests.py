@@ -57,7 +57,7 @@ class ManifestContractTests(unittest.TestCase):
         sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
         sys.path.insert(0, str(REPOSITORY_ROOT))
         try:
-            import agents
+            from concorde.harness.worker_profile import load_worker_profiles
             from concorde.distribution.build import SKILL_NAMES
             from concorde.spec.contracts import load_capability_inventory
         finally:
@@ -66,7 +66,7 @@ class ManifestContractTests(unittest.TestCase):
         capabilities = load_capability_inventory()
         templates = sorted(path.name for path in (REPOSITORY_ROOT / "templates").glob("*.md"))
         self.assertEqual(sorted(self.manifest["templates"]), templates)
-        self.assertEqual((len(agents.AGENTS), len(capabilities.CAPABILITIES), len(SKILL_NAMES), len(templates)), (12, 14, 9, 4))
+        self.assertEqual((len(load_worker_profiles()), len(capabilities.CAPABILITIES), len(SKILL_NAMES), len(templates)), (12, 26, 9, 4))
         self.assertEqual(
             (REPOSITORY_ROOT / "scripts/requirements.lock").read_text(),
             "langgraph==1.2.11\n",

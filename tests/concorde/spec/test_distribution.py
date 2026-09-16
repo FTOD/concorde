@@ -7,9 +7,9 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from concorde.spec.contracts import CAPABILITY_NAMES,INTERNAL_SKILLS
+from concorde.spec.contracts import CAPABILITY_NAMES,MODEL_CAPABILITIES,contracts
 from concorde.distribution.package_validation import validate_package
-from concorde.distribution.build import load_agent
+from concorde.distribution.build import load_model_instructions
 from concorde.spec.typed_data import typed
 from concorde.spec.repository import SpecRepository
 from concorde.spec.validation import validate_repository
@@ -19,11 +19,11 @@ from .support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
 class DistributionTests(unittest.TestCase):
     def test_catalog_roles_and_exported_schemas_are_executable_package_contracts(self):
         self.assertEqual([],validate_package(PACKAGE))
-        self.assertEqual(14,len(CAPABILITY_NAMES));self.assertEqual(12,len(INTERNAL_SKILLS))
+        self.assertEqual(26,len(CAPABILITY_NAMES));self.assertEqual(12,len(MODEL_CAPABILITIES))
         self.assertIn('concorde-main',CAPABILITY_NAMES);self.assertNotIn('concorde-ask',CAPABILITY_NAMES)
-        self.assertIn('concorde-planner',INTERNAL_SKILLS);self.assertNotIn('concorde-main',INTERNAL_SKILLS)
-        for role in INTERNAL_SKILLS:
-            prompt=load_agent(PACKAGE,role)
+        self.assertIn('concorde-planner',MODEL_CAPABILITIES);self.assertNotIn('concorde-main',MODEL_CAPABILITIES)
+        for role in MODEL_CAPABILITIES:
+            prompt=load_model_instructions(PACKAGE,role)
             self.assertEqual(role,prompt.name);self.assertTrue(prompt.body.strip());self.assertIsNotNone(prompt.effects)
     @verifies("scenario.spec.admit-inventory", "scenario.spec.shared-file", "scenario.spec.validate-success")
     def test_self_architecture_lists_every_implementation_file_under_an_entity(self):
@@ -42,7 +42,7 @@ class DistributionTests(unittest.TestCase):
         self.assertEqual({'module.development', 'module.dev-loop', 'module.specify-loop', 'module.spec-authoring'},
                          {t.id for t in repo.affected_modules(['tests/concorde/development/test_specify_loop.py'])})
         text='\n'.join(repo.source_bytes(path).decode() for path in repo.spec_files('module.development'))
-        for op in CAPABILITY_NAMES:self.assertIn(op+'-request',text)
+        for op in contracts():self.assertIn(op+'-request',text)
     def test_launcher_refuses_a_nonpublic_capability_name_and_accepts_a_public_skill(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);project(root)

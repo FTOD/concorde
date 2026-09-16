@@ -1,4 +1,4 @@
-"""Opt-in real Agent Server checks: CONCORDE_TEST_STUDIO=1 with uv's studio group.
+"""Opt-in real WorkerProfile Server checks: CONCORDE_TEST_STUDIO=1 with uv's studio group.
 
 Only temporary consumer fixtures run capabilities. No source/primary-worktree state is changed.
 Model responses are deterministic; WorkerExecutor admission and compiled policy checks remain real.

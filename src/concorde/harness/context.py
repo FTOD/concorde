@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from .agent_model import Agent, validate_agent_artifacts
+from .worker_profile import WorkerProfile, validate_worker_artifacts
 
 from ..spec.typed_data import canonical
 from ..spec.repository_base import RepositoryCore
@@ -193,7 +193,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
                     task: str = "Understand this Spec", focus_id: str | None = None,
                     constraints: tuple[str, ...] = (), instructions: str = "",
                     stage_inputs: tuple[dict, ...] = (), workspace: dict | None = None,
-                    agent: Agent | None = None) -> ContextSnapshot:
+                    agent: WorkerProfile | None = None) -> ContextSnapshot:
     if phase not in PHASES:
         raise SpecError("unsupported context phase", "invalid_phase")
     if not isinstance(task, str) or not task.strip():
@@ -204,7 +204,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
             raise SpecError("context phase exceeds the selected worker's contract", "permission_denied")
         try:
             # Policy previews can omit not-yet-authored prerequisites; launches require them all.
-            validate_agent_artifacts(agent, stage_inputs, require_all=False)
+            validate_worker_artifacts(agent, stage_inputs, require_all=False)
         except ValueError as error:
             raise SpecError(str(error), "incompatible_handoff") from error
     target = repository.select(target_id, focus_id)
@@ -239,7 +239,7 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
                               target_hint: str | None = None,
                               focus_hint: str | None = None,
                               constraints: tuple[str, ...] = (), instructions: str = "",
-                              workspace: dict | None = None, agent: Agent | None = None) -> DiscoveryContext:
+                              workspace: dict | None = None, agent: WorkerProfile | None = None) -> DiscoveryContext:
     """Resolve complete selected Module contexts without model interpretation or summaries.
 
     Target sections retain document membership. Sorted source pools carry each physical file's

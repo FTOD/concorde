@@ -15,7 +15,7 @@ from unittest.mock import patch
 from concorde.development import capability_host
 from concorde.development.capability_host import Invocation
 from concorde.development.capability_service import CapabilityHost, run_capability
-from concorde.harness.agent_model import agent_definition, resolve_agent
+from concorde.harness.worker_profile import worker_profile, resolve_worker
 from concorde.harness.change_worktree import read_change
 from concorde.harness.pi_worker import WorkerExecutionError
 from concorde.harness.worker_executor import CapabilityExecutionError
@@ -46,13 +46,13 @@ class AgentBindingTests(unittest.TestCase):
 
     @verifies("scenario.harness.permission-compile")
     def test_narrowed_implementation_worker_write_authority_is_never_widened(self):
-        real_load = capability_host.load_agent
+        real_load = capability_host.load_model_instructions
 
         def narrowed(package_root, name):
             prompt = real_load(package_root, name)
             return replace(prompt, effects=replace(prompt.effects, writes=()))
 
-        with patch.object(capability_host, "load_agent", side_effect=narrowed):
+        with patch.object(capability_host, "load_model_instructions", side_effect=narrowed):
             result = self.call_capability("concorde-implement", mode="describe-policy")
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("permission_denied", result["errors"][0]["code"], result)
@@ -73,7 +73,7 @@ class AgentBindingTests(unittest.TestCase):
         self.assertEqual("described", result["status"], result)
         self.assertTrue(self.host.descriptions)
         for policy in self.host.descriptions:
-            agent = agent_definition(policy["agent"])
+            agent = worker_profile(policy["agent"])
             self.assertEqual(agent.workspace, policy["workspace"])
             self.assertEqual(list(agent.tools), policy["tools"])
             self.assertEqual([child.name for child in agent.children], policy["children"])
@@ -88,7 +88,7 @@ class AgentBindingTests(unittest.TestCase):
         host = CapabilityHost(self.root, PACKAGE, mode="describe-policy", allow_primary_worktree=True)
         Invocation("concorde-context-solve", CONFIGURATION, self.task, host).stage("concorde-context-solve")
         policy = host.descriptions[0]
-        expected = resolve_agent(PACKAGE, "context_assessor")
+        expected = resolve_worker(PACKAGE, "context_assessor")
         self.assertEqual(expected.digest, policy["agent_binding_digest"])
         self.assertEqual(expected.instructions_digest, policy["instructions_digest"])
         self.assertEqual(expected.profile_digest, policy["profile_digest"])
@@ -102,7 +102,7 @@ class AgentBindingTests(unittest.TestCase):
         self.call_capability("concorde-plan", double=double)
         planner_calls = [call for call in double.calls if call["stage"] == "plan"]
         self.assertTrue(planner_calls)
-        self.assertEqual(agent_definition("planner").timeout_seconds, planner_calls[-1]["timeout"])
+        self.assertEqual(worker_profile("planner").timeout_seconds, planner_calls[-1]["timeout"])
 
     @verifies("scenario.harness.worker-selection")
     def test_each_worker_and_child_launches_on_its_own_configured_selection(self):
@@ -119,7 +119,7 @@ class AgentBindingTests(unittest.TestCase):
         assessor, planner = launches["context_assessor"], launches["planner"]
         self.assertEqual(("anthropic/claude-sonnet-5", "medium", 600),
                          (assessor.model, assessor.thinking, assessor.timeout_seconds))
-        self.assertEqual(("openai-codex/gpt-6-astra", "high", agent_definition("planner").timeout_seconds),
+        self.assertEqual(("openai-codex/gpt-6-astra", "high", worker_profile("planner").timeout_seconds),
                          (planner.model, planner.thinking, planner.timeout_seconds))
         scout = next(child for child in planner.children if child.name == "scout")
         self.assertTrue(scout.definition.startswith("---\nmodel: openai-codex/gpt-5.6-sol\nthinking: low\n"))

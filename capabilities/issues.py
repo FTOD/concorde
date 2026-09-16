@@ -1,14 +1,14 @@
 """Branch-local Issue management and solving, with reporting independent of execution."""
 from concorde.spec import contract_shapes as shapes
 from concorde.spec.issue_shapes import ISSUE_ID, RECORD, REPORT
-from agents import issue_solver
 from . import external_name
+from concorde.harness.capability_state import StateContract, run_host
 
 PUBLIC = True
 CONTEXT_SELECTION = "bound"
 DETERMINISTIC = False
-AGENTS = (issue_solver.AGENT,)
-USES = ("dev_loop", "specify", "review", "validate")
+PROFILE = None
+USES = ('issue_solver', 'dev_loop', 'specify', 'review', 'validate')
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 REQUEST = shapes.obj({
     **shapes.TASK_FIELDS,
@@ -23,6 +23,8 @@ RESPONSE = shapes.obj({**BASE["properties"], "issues": shapes.array(RECORD),
     "decision": {"anyOf": [shapes.STRING, {"type": "null"}]}})
 
 
-def run(host, configuration, request):
-    from concorde.development.capability_service import run_capability
-    return run_capability(EXTERNAL_NAME, configuration, request, host_context=host)
+STATE = StateContract(f"{EXTERNAL_NAME}-request", None)
+
+
+def run(state, runtime):
+    return run_host(EXTERNAL_NAME, state, runtime)

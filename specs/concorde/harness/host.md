@@ -28,7 +28,7 @@ This execution view participates in Developer view and feedback through the Deve
 ### Invocation binding
 
 The host obtains an invocation's inputs in a fixed order: select the worker whose contract names the
-stage; load its rendered instructions and resolve its `AgentBinding` against the build (see
+stage; load its rendered instructions and resolve its `WorkerBinding` against the build (see
 [Agents and Harnesses](agents-and-harnesses.md)); freeze its context (see [context](context.md)) with
 those instructions; compile the exact role and path policy with `compile_policy`; resolve the
 worker's and each child's model selection from project configuration; bind all of it with
@@ -52,12 +52,15 @@ model call, or worker invocations, which do. These Flows are the Studio surface;
 its control flow outside them. Flow structure alone proves nothing about semantics: transitions,
 limits and evidence still follow G1–G4.
 
-### Agent invocation node (`agent_node`)
+### Capability node (`capability_node`)
 
-Every model-backed node of every Flow executes its worker through an `AgentNode`: a one-node Flow
-whose input schema is the worker contract's admitted context type and whose output schema is its
-result type. The catalog compiles the planner as its representative; the node name is the worker's
-name.
+Every registered Capability exposes `run(state, runtime)` and a State contract. `CapabilityNode`
+compiles that same implementation for embedding as a LangGraph subgraph, whether its implementation
+uses a model or the host's deterministic/composed Flow. Input schemas admit only the Capability's
+channels; output schemas expose only its declared update. Hosts, launchers and configuration live
+in trusted `Runtime.context`, not State. Host-backed adapters preserve their full success or failure
+envelope in the `result` output channel. Model nodes return their task-result fields. The catalog
+compiles the planner as its representative; the node name is the Capability's identity.
 
 State: the contract's context fields in (for a stage context: `snapshot`, `change_id`,
 `expected_artifacts`) and the contract's result fields out (`context_id`, `outcome`, `answer`,
@@ -69,8 +72,8 @@ State: the contract's context fields in (for a stage context: `snapshot`, `chang
 
 ```mermaid
 flowchart TB
-    %% flow: agent_node
-    accTitle: Agent invocation node
+    %% flow: capability_node
+    accTitle: Capability node
     accDescr: One worker invocation: the admitted typed context enters, the launcher runs the Pi worker, and the validated typed result leaves.
     __start__["start"]
     planner["planner<br/>in: admitted context<br/>out: validated result data"]

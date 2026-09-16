@@ -174,7 +174,7 @@ class NativeInstallerTests(unittest.TestCase):
             root = Path(temporary)
             for name in ("concorde.json", "LICENSE", "README.md"):
                 (root / name).write_text(name + "\n")
-            for directory in ("agents", "capabilities", "prompts", "protocol", "skills", "src",
+            for directory in ("capabilities", "prompts", "protocol", "skills", "src",
                               "templates", "viewer", "scripts"):
                 (root / directory).mkdir()
             for name in ("concorde.py", "concorde.ps1", "concorde.sh", "issues.py",

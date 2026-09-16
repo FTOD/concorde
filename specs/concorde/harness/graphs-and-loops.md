@@ -1,7 +1,6 @@
-# Agent Flows, Agent Loops and feedback
+# Capability Flows, loops and feedback
 
-Agent orchestration coordinates Agent invocations, Capability calls and control decisions toward
-a declared goal. A Flow describes the structure of that coordination; a Loop describes feedback
+Orchestration coordinates Capability invocations and control decisions toward a declared goal. A Flow describes the structure of that coordination; a Loop describes feedback
 driven execution. They are related concepts, not interchangeable names.
 
 **Flow** is Concorde's name for an executable LangGraph `StateGraph`. Every Flow is built with
@@ -18,10 +17,10 @@ the last stage's typed response in `output`, a terminal failure envelope in `res
 accumulated artifact references in `artifacts` under a reducer, and each stage node selects its own
 transition by returning a `Command` whose `goto` names a declared destination. No node smuggles
 routing or evidence through untyped fields. Every model-backed node executes its worker through an
-`AgentNode`: a one-node `StateGraph` whose input schema is generated from the worker contract's
+`CapabilityNode`: a State-based node/subgraph adapter whose input schema is generated from the worker contract's
 admitted context type and whose output schema is generated from its result type, so the contract is
 the graph state, and the Pi worker launch with its admission checks stays a host-private launcher
-outside that state. The same `AgentNode` factory is exposed for inspection
+outside that state. The same `CapabilityNode` factory is exposed for inspection
 inside the Flows that run it.
 
 A Flow's compiled nodes and edges are the authority for execution views. Inspection compiles the
@@ -47,31 +46,30 @@ separate, explicit inputs. Code-driven control does not guarantee reproducible o
 models, tools and external state may still vary. Determinism is a property to document where it
 applies, not the primary classification of Agents or dispatch.
 
-### G1. Agent Flow
+### G1. Capability Flow
 
-An Agent Flow MUST declare its participating Agent definitions, Capability calls, control nodes,
-state and result contracts, and directed transitions. Transitions MUST identify their trigger and
+A Flow MUST declare its participating Capabilities, State contracts and directed transitions. Transitions MUST identify their trigger and
 the information they transfer. Conditional branches, parallel execution or joins, when used, MUST
 define selection, completion and failure behavior. A sequence of deterministic installation steps
-does not become an Agent Flow merely because it has several steps.
+does not become model-backed merely because it has several steps.
 
-The Flow MUST identify which Agent makes each model-assisted decision, which transitions are
+The Flow MUST identify which model Capability makes each model-assisted decision, which transitions are
 code-driven, and which require a human decision. It MUST preserve invocation-local context and
 permissions across every handoff. A coordinator receives only admitted results; dispatching an
-Agent does not grant access to that Agent's complete private context.
+model Capability does not grant access to its complete private context.
 
 A Flow MAY be exposed as a Capability with a complete external contract. Invoking that Capability
-does not expose its internal Agents or grant authority to call arbitrary internal nodes.
+does not expose its internal model workers or grant authority to call arbitrary internal nodes.
 
-### G2. Agent Loop
+### G2. Feedback loop
 
-An Agent Loop MUST define how execution moves through decision, action, observation and feedback,
+A loop MUST define how execution moves through decision, action, observation and feedback,
 and how those observations affect the next action. It MUST define completion, revision, waiting,
 cancellation, failure and execution-limit conditions. Limits may be time, iterations, resource
 budgets or an explicit bounded host policy; an unbounded retry is not an implicit default.
 
-An Agent's Harness supplies its local control-loop mechanism. An Agent Flow may additionally
-coordinate loops across several Agents, such as author → reviewer → author. Each invocation's local loop and its enclosing loop MUST have distinguishable state and completion
+A model Capability's Harness supplies its local tool loop. A composed Flow may additionally
+coordinate loops across several Capabilities, such as author → reviewer → author. Each invocation's local loop and its enclosing loop MUST have distinguishable state and completion
 conditions. Orchestration between workers is always a Flow transition: one worker never starts
 another. Inside one worker, delegation is limited to one level of its own declared children, as
 defined in A5; a child's work is evidence for its worker, not a Flow step.
@@ -128,7 +126,7 @@ has three parts:
 1. **State**: the typed channels the Flow carries between nodes and the candidate or lifecycle
    records its nodes read and write.
 2. **Nodes**: a table naming each node exactly as the compiled Flow names it, what it executes
-   (a deterministic host step, or an Agent invocation naming the Agent and Mode), and the state
+   (a deterministic, model-backed or composed Capability with its execution mode), and the state
    it reads (`in`) and writes (`out`).
 3. **Edges**: a Mermaid flowchart bound to the compiled Flow by the comment `%% flow: <name>`,
    where `<name>` is the Flow's compiled graph name in the Flow catalog. Its node identifiers are
@@ -140,7 +138,7 @@ The Flow Spec check (`scripts/development/check-flow-specs.py`, the configured
 `check.development.flow-specs`) compiles every catalog Flow with inert nodes and reports each
 diagram whose nodes, edges, routing labels or state labels disagree with the compiled topology,
 and every compiled Flow without a diagram. It also enforces the Graph API rule: a catalog Flow
-that is not a compiled `StateGraph`, and any Python file under `src/` or `scripts/` that imports
+that is not a compiled `StateGraph`, and any Python file under `src/`, `scripts/` or `capabilities/` that imports
 `langgraph.func`, found by parsing the file rather than running it, are errors. A diagram that
 passes proves the Spec and the executed topology agree; it proves nothing about whether the
 routing conditions are right, which the scenarios and tests of the owning Module cover. The Relationships diagram of a Module's

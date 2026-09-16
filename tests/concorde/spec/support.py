@@ -6,7 +6,7 @@ import hashlib
 from pathlib import Path
 from typing import Callable
 from concorde.spec.typed_data import typed
-from concorde.harness.agent_model import agent_definition, external_agent_name
+from concorde.harness.worker_profile import worker_profile, external_worker_name
 from concorde.harness.pi_rpc import PiRun
 from concorde.harness.pi_worker import WorkerResult
 from concorde.harness.worker_executor import WorkerExecutor, WorkerOutcome
@@ -326,8 +326,8 @@ class ModelProcessDouble:
         return WorkerResult(value=json.loads(json.dumps(data)), run=PiRun(exit_code=0), usage=dict(USAGE))
     def run(self, launch, *, checks=None, report_issue=None):
         self.reporter = report_issue
-        agent=agent_definition(launch.worker)
-        stage=agent.contract.phase; capability=external_agent_name(agent.name); cwd=launch.workspace
+        agent=worker_profile(launch.worker)
+        stage=agent.contract.phase; capability=external_worker_name(agent.name); cwd=launch.workspace
         value=json.loads(launch.message)
         snapshot=(value['data']['snapshot']['data'] if value['type_id'] in {
             'concorde-main-stage-context','concorde-agent-stage-context','concorde-review-stage-context'} else value['data'])

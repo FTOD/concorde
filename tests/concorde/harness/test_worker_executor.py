@@ -10,7 +10,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from concorde.development.capability_service import CapabilityHost, run_capability
-from concorde.harness.agent_model import agent_definition, binding_from_json, binding_json, child_definitions
+from concorde.harness.worker_profile import worker_profile, binding_from_json, binding_json, child_definitions
 from concorde.harness.pi_worker import Outcome, WorkerExecutionError
 from concorde.harness.worker_executor import (CapabilityExecutionError, WorkerExecutor, WorkerOutcome,
                                               build_worker_invocation, result_parameters, worker_instructions)
@@ -51,7 +51,7 @@ class WorkerExecutorTests(unittest.TestCase):
         result = self.plan(probe)
         self.assertEqual("succeeded", result["status"], result)
         invocation, outcome, launch = seen["invocation"], seen["outcome"], seen["launch"]
-        planner = agent_definition("planner")
+        planner = worker_profile("planner")
         self.assertIsInstance(outcome, WorkerOutcome)
         self.assertEqual((invocation.digest, binding_from_json(invocation.binding_json).digest),
                          (outcome.invocation_digest, outcome.binding_digest))
@@ -84,7 +84,7 @@ class WorkerExecutorTests(unittest.TestCase):
 
         def probe(invocation, checks):
             binding = binding_from_json(invocation.binding_json)
-            planner = agent_definition("planner")
+            planner = worker_profile("planner")
             forged = {
                 "binding digest": replace(invocation, binding_json=binding_json(replace(binding, timeout_seconds=1))),
                 "another worker's binding": replace(invocation, binding_json=invocation.binding_json.replace(
@@ -166,7 +166,7 @@ class WorkerExecutorTests(unittest.TestCase):
         text = worker_instructions("# concorde-planner\n\nRole.\n", [("a.md", b"A\n"), ("b.md", b"B")])
         self.assertEqual("# concorde-planner\n\nRole.\n\n# Concorde Spec Protocol and Framework profile (a.md)\n\nA"
                          "\n\n# Concorde Spec Protocol and Framework profile (b.md)\n\nB\n", text)
-        self.assertEqual(["scout"], [item.name for item in child_definitions(PACKAGE, agent_definition("planner"))])
+        self.assertEqual(["scout"], [item.name for item in child_definitions(PACKAGE, worker_profile("planner"))])
 
 
 if __name__ == "__main__":

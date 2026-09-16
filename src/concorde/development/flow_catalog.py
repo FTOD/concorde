@@ -4,7 +4,7 @@ Every Flow Concorde runs is a LangGraph ``StateGraph`` built by a factory in thi
 Harness package or the Issues package. This catalog names each factory by its compiled graph
 name and builds it with stub node functions, so inspection, publication and the Flow Spec check
 all look at exactly the topology execution compiles: the same nodes, the same edges, the same
-conditional routing. Building a catalog entry never resolves a context or starts an Agent.
+conditional routing. Building a catalog entry never resolves a context or starts an WorkerProfile.
 """
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ def _stub(name: str):
 
 def catalog() -> dict[str, Callable[[], object]]:
     """Compiled-name to factory of the inert compiled Flow; the same factories execution uses."""
-    from ..harness.agent_model import agent_definition
-    from ..harness.agent_node import AgentNode
+    from ..harness.worker_profile import worker_profile
+    from ..harness.capability_node import CapabilityNode
     from ..harness.batch_flow import build_batch_flow
     from ..issues.flow import build_issue_flow, build_issue_verification_flow
     from .capability_flow import build_capability_flow
@@ -52,7 +52,7 @@ def catalog() -> dict[str, Callable[[], object]]:
         "issue_flow": lambda: build_issue_flow(_stub),
         "issue_verification_flow": lambda: build_issue_verification_flow(_stub),
         "batch_flow": lambda: build_batch_flow(_stub, name="batch_flow", item_node="execute_item"),
-        "agent_node": lambda: AgentNode(agent_definition("planner")).flow(),
+        "capability_node": lambda: CapabilityNode("planner").flow(),
     }
 
 

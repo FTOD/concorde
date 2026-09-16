@@ -55,10 +55,11 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 
 ## Install and initialize
 
-The installer distributes a deterministic build's output — nine Skills exposing selected entries from fourteen
-Capabilities, one common worker rules file (`prompts/workers/common.md`) followed by twelve worker
-role Specs (`agents/<name>/spec.md`, rendered to `generated/agents/<hyphenated>.md`), and five
-Markdown templates — to Codex or Claude.
+The installer distributes a deterministic build's output — nine Skills exposing selected entries
+from one inventory of twenty-six Capabilities, including twelve model-backed nodes. Their common
+worker rules (`prompts/workers/common.md`) and local instructions (`capabilities/<name>/spec.md`)
+render to the compatible `generated/agents/<hyphenated>.md` paths. Four Markdown templates and
+the selected Codex or Claude Skill projections accompany them.
 Check `python3 scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project, then invoke the paired init entry in an isolated worktree (or use the trusted host's explicit
@@ -341,9 +342,9 @@ lifecycle entry points retain their separate admission/evidence checks. A freshl
 must be built once before an agent can load Concorde Skills. After changing the standard chapters under `protocol/` or their runtime adapters, accept the
 new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-project` (see above).
 
-Each of the twelve workers is defined under `agents/<name>/`: an authored role `spec.md` plus a
+Each of the twelve workers is defined under `capabilities/<name>/`: an authored role `spec.md` plus a
 Python `__init__.py` binding its task contract, workspace kind (`capsule` or `project`), Pi tools,
-children and timeout (Agent = role Spec + worker profile). Each worker launches one Pi coding agent
+children and timeout as optional execution configuration on that Capability. Each worker launches one Pi coding agent
 process (`pi --mode rpc`) for exactly one invocation. The build renders each worker's instructions
 to `generated/agents/<hyphenated>.md`, combining the common worker rules
 (`prompts/workers/common.md`) with only that worker's role Spec, traceable through the build
@@ -364,17 +365,18 @@ fact-check, consistency; planner: scout; programmer: scout, planner, verifier; c
 verifier) may delegate one level deep through its `subagent` tool; a child runs
 inside the worker's own process, under the same gate, and cannot submit the worker's result.
 
-The fourteen Capability names and nine public Skills remain distinct. Their required boolean
-DETERMINISTIC metadata means no supported model-call path when true, including Host routing and
-transitive USES. Only init, configure, validate and deliver are true. USES is Host composition; all
-twelve workers still have empty callable capability context.
+One registry contains twenty-six Capabilities, nine exposed through public Skills. All use State
+contracts and `run(state, runtime)`. DETERMINISTIC means no supported model-call path when true,
+including transitive USES. Only init, configure, validate and deliver are true in the current
+inventory. USES is the sole composition relation, including model nodes; it does not install
+arbitrary Capability calls as worker tools.
 
 **Capability** is the canonical name for a callable or composed Framework function; the former
 Operation name is retired. Development owns the capability invocation boundary and workflow
 composition. Distribution owns `skills/` and `prompts/workflow-host/`, renders and installs the
 public Skill instructions, and keeps their projections current. The developer's external agent
 runtime reads those Skills and submits typed capability requests to Development. Skills are not
-part of a Concorde Agent's Harness. See [Agents and Harnesses](../specs/concorde/harness/agents-and-harnesses.md)
+part of a worker's Harness. See [Capabilities and Harnesses](../specs/concorde/harness/agents-and-harnesses.md)
 and the [Capability registry](../specs/concorde/development/capabilities.md) for definitions and mappings.
 
 Developing this checkout is direct developer-authorized maintenance in the current worktree,

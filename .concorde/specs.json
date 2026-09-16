@@ -11,6 +11,7 @@
       "inputs": [
         "scripts",
         "src/concorde",
+        "capabilities",
         "specs/concorde"
       ]
     },
@@ -60,7 +61,7 @@
         "unittest",
         "tests.concorde.harness.test_scoped_protocol",
         "tests.concorde.harness.test_boundaries",
-        "tests.concorde.harness.test_agent_binding",
+        "tests.concorde.harness.test_worker_binding",
         "tests.concorde.harness.test_check_executor"
       ],
       "id": "check.harness.runtime",
@@ -113,7 +114,6 @@
       ],
       "id": "check.views.repository-regressions",
       "inputs": [
-        "agents",
         "capabilities",
         "prompts",
         "skills",
@@ -332,7 +332,7 @@
         "specs/concorde/harness/typed-values.md"
       ],
       "files": [
-        "agents/",
+        "capabilities/",
         "pi/",
         "prompts/workers/common.md",
         "scripts/development/STUDIO.md",
@@ -570,7 +570,7 @@
         "specs/concorde/issues/issues.md"
       ],
       "files": [
-        "agents/issue_solver/",
+        "capabilities/issue_solver/",
         "capabilities/issues.py",
         "scripts/issues.py",
         "src/concorde/issues/",
@@ -630,7 +630,6 @@
         "specs/concorde/distribution/runtime.md"
       ],
       "files": [
-        "agents/__init__.py",
         "capabilities/__init__.py",
         "capabilities/configure.py",
         "concorde.json",
@@ -837,7 +836,7 @@
       "files": [
         "capabilities/implement.py",
         "tests/concorde/development/test_review.py",
-        "tests/concorde/harness/test_agent_binding.py"
+        "tests/concorde/harness/test_worker_binding.py"
       ],
       "id": "module.implementation",
       "kind": "module",

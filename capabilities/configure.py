@@ -4,11 +4,12 @@ Deterministic; runs no agent cognition and selects no context."""
 from concorde.spec import contract_shapes as shapes
 
 from . import external_name
+from concorde.harness.capability_state import StateContract, run_host
 
 PUBLIC = True
 CONTEXT_SELECTION = "none"
 DETERMINISTIC = True
-AGENTS = ()
+PROFILE = None
 USES = ()
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 
@@ -21,6 +22,8 @@ REQUEST = shapes.obj({"configuration": _CONFIGURATION, "accept_protocol": {"type
 RESPONSE = shapes.obj({"configuration": _CONFIGURATION, "status": {"const": "applied"}})
 
 
-def run(host, configuration, request):
-    from concorde.development.capability_service import run_capability
-    return run_capability(EXTERNAL_NAME, configuration, request, host_context=host)
+STATE = StateContract(f"{EXTERNAL_NAME}-request", None)
+
+
+def run(state, runtime):
+    return run_host(EXTERNAL_NAME, state, runtime)

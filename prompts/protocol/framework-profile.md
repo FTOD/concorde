@@ -57,7 +57,7 @@ project-Spec collection and, for planners and task authors, its declared externa
 They MUST NOT read source code to supply missing Module meaning. Only the
 code-writing phase receives the complete implementation context; code review receives its separately
 declared read-only subset. Agent instructions, the Protocol rule bundle and Skills are not context:
-instructions belong to the Agent definition, and a Skill is the installed projection of a public
+instructions belong to a model-backed Capability's execution profile, and a Skill is the installed projection of a public
 Capability for the developer's own agent runtime. Every worker's system prompt is its common worker
 rules, then its own role instructions, then the Protocol rule bundle; the bundle's files are also
 listed in the index with their digests and readable at their paths.
@@ -103,9 +103,13 @@ Every Framework capability's control flow is a LangGraph graph built with the Gr
 `StateGraph` whose nodes and edges are declared before it is compiled. The Functional API,
 `entrypoint` and `task` from `langgraph.func`, MUST NOT be used, because it keeps control flow
 inside ordinary Python where neither a Flow Spec nor Studio can inspect it; a deterministic check
-refuses it. The graph's nodes are deterministic capabilities, which make no model call, or
-Agents, which do; a leaf node may be either. The same graphs are the inspectable Studio surface,
-and no capability runs control flow outside them.
+refuses it. Every executable node is a Capability with declared input State and output State
+updates. Its implementation may be deterministic code, a model invocation or a compiled subgraph;
+these are not separate entity kinds. Capability composition uses one explicit USES relation.
+Model instructions, tools and limits are execution configuration, not a parallel Agent identity.
+The same graphs are the inspectable Studio surface, and no capability runs control flow outside
+them. State channels carry data, not execution authority; runtime context and permission checks
+remain separate. Parent graphs define reducers for shared channels explicitly.
 
 Agent instructions, Skills, schemas and rule assets are deterministic projections of authored
 sources. Generated output is not edited as source. Builds distribute the Module kind definition and
@@ -180,7 +184,8 @@ English labels, accTitle and accDescr, a nonempty subset of local entity titles 
 Explain its scope; inventory coverage is not a readability requirement or proof of completeness.
 Files are bound in entity metadata, using owned package directory prefixes and exact shared files;
 the registry listing remains their exact union. Project-owned metadata extensions
-`concorde.capabilities` and `concorde.agents` record the checked implementation inventories; their
+`concorde.capabilities` records the single checked inventory, including State contracts, USES and
+optional model execution profiles; its
 behavioral explanations remain reading content and unknown extensions cannot override the Protocol.
 
 Every executable Flow has a Flow Spec in its owning Module's documents written with LangGraph's

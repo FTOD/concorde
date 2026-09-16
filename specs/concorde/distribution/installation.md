@@ -108,12 +108,12 @@ receipts. The locked managed Python runtime runs actual capabilities; viewer pro
 separate and versioned. Check verifies receipt hashes and required runtime identity without
 changing project behavior.
 
-The distributable manifest is `concorde.json` schema_version 3, Concorde 6.0.0, Architecture
-Profile 14, Workspace Protocol 15 and Delivery Proposal 10. It contains exactly 12 Agents, each one
-Pi worker with a single task contract, and 14 Capabilities: 9 are public through Skills and 5 are available through declared
-composition. It also declares package roots including `prompts`/`capabilities`/`protocol`, and 5
-templates. Codex `.agents/skills` and Claude `.claude/skills` expose the same 9 Skills; canonical
-Agent definitions and non-public Capabilities remain private. Every Skill sends a typed `invocation@3` to
+The distributable manifest is `concorde.json` schema_version 3, Concorde 7.0.0, Architecture
+Profile 14, Workspace Protocol 15 and Delivery Proposal 10. The single inventory has 26
+Capabilities: 9 public Skill entries and 17 private nodes, including 12 model-backed nodes with
+Pi worker profiles. It declares package roots including `prompts`/`capabilities`/`protocol`, with
+no separate `agents` authoring root, and 4 templates. Codex `.agents/skills` and Claude
+`.claude/skills` expose the same 9 Skills; non-public Capabilities remain private. Every Skill sends a typed `invocation@3` to
 `scripts/run-capability.py` and does not inspect project context.
 
 Project initialization and Protocol-binding decisions are a distinct typed `concorde-init`

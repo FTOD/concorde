@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 import unittest
 
-from concorde.spec.contracts import SKILL_NAMES, CAPABILITY_NAMES
+from concorde.spec.contracts import SKILL_NAMES, CAPABILITY_NAMES, MODEL_CAPABILITIES
 from concorde.spec.verification import verifies
 from concorde.views.docsite_template import template_files
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -34,6 +34,12 @@ class AgentFlowTests(unittest.TestCase):
         public = {name for name, info in self.data['capability_info'].items() if info['public']}
         self.assertEqual(set(SKILL_NAMES), public)
         for capability, graph in self.data['capabilities'].items():
+            if capability in MODEL_CAPABILITIES:
+                name = capability.removeprefix('concorde-').replace('-', '_')
+                self.assertEqual({'__start__', name, '__end__'}, set(graph['nodes']))
+                self.assertTrue(self.data['capability_info'][capability]['state']['input'])
+                self.assertTrue(self.data['capability_info'][capability]['state']['output'])
+                continue
             if capability not in public:
                 self.assertIn('execute:prepare_target:initialize_target', graph['nodes'])
                 self.assertFalse(any(node.endswith(':discover:decide') for node in graph['nodes']))
@@ -62,7 +68,7 @@ class AgentFlowTests(unittest.TestCase):
                    and node.func.id == 'StateGraph' for node in ast.walk(tree)):
                 factories.append(path.relative_to(REPOSITORY_ROOT).as_posix())
         self.assertEqual(sorted(factories), self.data['factory_sources'])
-        self.assertIn('Agent invocation node', self.data['flows'])
+        self.assertIn('Capability node', self.data['flows'])
         self.assertIn('Component coordination', self.data['flows'])
 
     @verifies('scenario.views.agent-flows')
@@ -89,8 +95,8 @@ class AgentFlowTests(unittest.TestCase):
         self.assertEqual(self.data, self.module.export())
 
     def test_step_explanations_are_independent_of_formatter_layout(self):
-        compact = '  plan: {title: "Plan", kind: "Agent"},\n  ready: {title: "Ready"},\n'
-        formatted = '\tplan: {\n\t\ttitle: "Plan",\n\t\tkind: "Agent",\n\t},\n  ready: {\n    title: "Ready",\n  },\n'
+        compact = '  plan: {title: "Plan", kind: "WorkerProfile"},\n  ready: {title: "Ready"},\n'
+        formatted = '\tplan: {\n\t\ttitle: "Plan",\n\t\tkind: "WorkerProfile",\n\t},\n  ready: {\n    title: "Ready",\n  },\n'
         self.assertEqual({'plan', 'ready'}, step_ids(compact))
         self.assertEqual(step_ids(compact), step_ids(formatted))
         self.assertEqual(set(), step_ids('  unrelated: {kind: "Not a step"},\n'))

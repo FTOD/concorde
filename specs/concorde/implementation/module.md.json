@@ -12,7 +12,7 @@
       "files": [
         "capabilities/implement.py",
         "tests/concorde/development/test_review.py",
-        "tests/concorde/harness/test_agent_binding.py"
+        "tests/concorde/harness/test_worker_binding.py"
       ],
       "meaning": "#entity.implementation.adapter"
     },

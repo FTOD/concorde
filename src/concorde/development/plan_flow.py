@@ -19,11 +19,11 @@ def build_plan_flow(node_factory):
     flow.add_conditional_edges("author_plan", lambda state: state["route"], ["persist_plan", END])
     flow.add_edge("persist_plan", END)
     compiled = flow.compile(name="plan_flow", checkpointer=False)
-    # The two model-backed nodes execute their worker through an AgentNode Flow whose state is the
+    # The two model-backed nodes execute their worker through an CapabilityNode Flow whose state is the
     # worker's typed contract; expose those same factories so inspection shows the worker inside.
-    from ..harness.agent_model import agent_definition
-    from ..harness.agent_node import AgentNode
+    from ..harness.worker_profile import worker_profile
+    from ..harness.capability_node import CapabilityNode
     from .capability_flow import expose_stateless_subflow
-    expose_stateless_subflow(compiled, "assess_context", AgentNode(agent_definition("context_assessor")).flow())
-    expose_stateless_subflow(compiled, "author_plan", AgentNode(agent_definition("planner")).flow())
+    expose_stateless_subflow(compiled, "assess_context", CapabilityNode("context_assessor").flow())
+    expose_stateless_subflow(compiled, "author_plan", CapabilityNode("planner").flow())
     return compiled

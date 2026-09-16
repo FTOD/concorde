@@ -1,4 +1,4 @@
-"""Executable, bounded Module discovery Flow; inspection never starts an Agent."""
+"""Executable, bounded Module discovery Flow; inspection never starts an WorkerProfile."""
 from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph

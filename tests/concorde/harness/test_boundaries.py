@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 from concorde.spec.typed_data import typed,validate_typed,TypedDataError
 from concorde.spec.verification import verifies
 from concorde.development.capability_service import CapabilityHost,run_capability
@@ -118,7 +119,9 @@ class BoundaryTests(unittest.TestCase):
         repo=SpecRepository(self.root);snapshots=[]
         for arguments,code in (({'phase':'audit'},'invalid_phase'),({'phase':'route'},'invalid_phase'),({'task':''},'invalid_input'),({'task':'  \n'},'invalid_input')):
             with self.subTest(**arguments):
-                with self.assertRaises(SpecError) as raised:snapshots.append(resolve_context(repo,'service.transfer',**dict(arguments)))
+                invalid_input: dict[str, Any] = dict(arguments)
+                with self.assertRaises(SpecError) as raised:
+                    snapshots.append(resolve_context(repo, 'service.transfer', **invalid_input))
                 self.assertEqual(code,raised.exception.code)
         # Nothing partial is returned, and the refusal precedes Module selection, so nothing was resolved.
         self.assertEqual([],snapshots)
@@ -131,7 +134,7 @@ class BoundaryTests(unittest.TestCase):
         package=self.root/'package'
         shutil.copytree(PACKAGE/'prompts',package/'prompts')
         shutil.copytree(PACKAGE/'skills',package/'skills')
-        shutil.copytree(PACKAGE/'agents',package/'agents')
+        shutil.copytree(PACKAGE/'capabilities',package/'capabilities')
         shutil.copytree(PACKAGE/'protocol',package/'protocol')
         write_build(package,'all')
         SpecRepository(self.root,package)

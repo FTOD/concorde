@@ -2,8 +2,8 @@
 import unittest
 
 from concorde.development.plan_flow import build_plan_flow
-from concorde.harness.agent_model import agent_definition
-from concorde.harness.agent_node import AgentNode, state_schema, typed_state
+from concorde.harness.worker_profile import worker_profile
+from concorde.harness.capability_node import CapabilityNode, state_schema, typed_state
 from concorde.spec.typed_data import DATA_SCHEMAS, TypedDataError, typed
 from concorde.spec.verification import verifies
 
@@ -30,16 +30,17 @@ def _stage_context():
                                                   "change_id": None, "expected_artifacts": []})
 
 
-class AgentNodeTests(unittest.TestCase):
+class CapabilityNodeTests(unittest.TestCase):
     @verifies("scenario.harness.agent-node")
     def test_node_schemas_are_exactly_the_contract_fields(self):
         for name in ("planner", "code_reviewer", "router", "topology_author"):
             with self.subTest(worker=name):
-                agent = agent_definition(name)
-                node = AgentNode(agent)
+                agent = worker_profile(name)
+                node = CapabilityNode(agent.name)
                 self.assertEqual((agent.contract.context, agent.contract.result), (node.input_type, node.result_type))
                 self.assertEqual(set(DATA_SCHEMAS[node.input_type]["properties"]),
                                  set(node.input_schema.__annotations__))
+                assert node.result_type is not None
                 self.assertEqual(set(DATA_SCHEMAS[node.result_type]["properties"]),
                                  set(node.output_schema.__annotations__))
                 union = state_schema(node.input_type, node.result_type, name="S")
@@ -52,7 +53,7 @@ class AgentNodeTests(unittest.TestCase):
 
     @verifies("scenario.harness.agent-node")
     def test_invocation_validates_context_in_and_result_out(self):
-        node = AgentNode(agent_definition("planner"))
+        node = CapabilityNode("planner")
         context = _stage_context()
         seen = []
 

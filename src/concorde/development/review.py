@@ -17,11 +17,11 @@ from pathlib import Path
 from ..harness.change_worktree import git, git_value, progress, read_change, save_change, workspace_identity
 from ..spec.typed_data import artifact, canonical, checked_path, typed, validate_typed, verify_artifacts
 from .configuration import load_configuration
-from ..harness.agent_model import ContractError, agent_definition
+from ..harness.worker_profile import ContractError, worker_profile
 from ..harness.worker_executor import CapabilityExecutionError, WorkerOutcome
 from ..harness.permissions import PermissionPolicyError, PolicyBinding, compile_policy
 from ..spec.contracts import REVIEW_STAGES
-from ..distribution.build import SkillPrompt, load_agent
+from ..distribution.build import SkillPrompt, load_model_instructions
 from ..harness.context import (context_documents, materialize_documents, materialize_references,
                                recheck_context, reference_grants, resolve_context)
 from ..harness.usage import record_usage
@@ -79,9 +79,9 @@ def inputs(run, mode: str) -> tuple[dict, SkillPrompt]:
     if mode == "code" and not target.files:
         raise SpecError("code review requires a Module whose entities list implementation files", "unsupported_target")
     phase, role = REVIEW_STAGES[mode]
-    prompt = load_agent(run.host.package_root, role)
+    prompt = load_model_instructions(run.host.package_root, role)
     if prompt.binding is None or prompt.effects is None:
-        raise SpecError("review requires a bound Agent with explicit effects", "permission_denied")
+        raise SpecError("review requires a bound WorkerProfile with explicit effects", "permission_denied")
     change = read_change(repository.root)
     _, current = workspace_identity(repository.root)
     head = current["head"] if current else None
@@ -181,9 +181,9 @@ def review(run, mode: str) -> dict:
                                   _worker_invocation)
     info, prompt = inputs(run, mode)
     if prompt.binding is None or prompt.effects is None:
-        raise SpecError("review requires a bound Agent with explicit effects", "permission_denied")
+        raise SpecError("review requires a bound WorkerProfile with explicit effects", "permission_denied")
     phase, role = REVIEW_STAGES[mode]
-    agent = agent_definition(prompt.binding.agent)
+    agent = worker_profile(prompt.binding.agent)
     snapshot = resolve_context(run.repository, run.target.id, phase=phase, task=run.task["task"],
         focus_id=run.task.get("focus_id"), constraints=tuple(run.task.get("constraints", [])),
         instructions=prompt.body, agent=agent)
@@ -238,7 +238,7 @@ def review(run, mode: str) -> dict:
                 input_digest=info["input_digest"], project_root=str(project)))
             if run.host.mode == "describe-policy":
                 return run.response("described", reviews=[_empty(run, info, "not_run", "Policy described; review not run.")])
-            from ..harness.agent_node import AgentNode
+            from ..harness.capability_node import CapabilityNode
             checks = _check_service(run.repository, run.target, run.host.invocation_id) if project_workspace else None
 
             def launch_reviewer(context):
@@ -248,7 +248,7 @@ def review(run, mode: str) -> dict:
                                            result_type="concorde-review-stage-result", checks=checks)
                 return data
 
-            data = AgentNode(agent).invoke(value, launch_reviewer)
+            data = CapabilityNode(agent.name).invoke(value, launch_reviewer)
             if result is None:
                 raise SpecError("review returned without a worker execution result", "invalid_completion")
             _validate(run, snapshot, info, data)

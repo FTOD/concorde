@@ -1,6 +1,6 @@
 """The executable development topology, shared with Concorde's own documentation.
 
-This factory performs no project access or Agent execution. Node functions and the resume
+This factory performs no project access or WorkerProfile execution. Node functions and the resume
 entry are supplied by the admitted invocation; conditional outcomes remain host decisions, and
 every node states its own transition by returning a LangGraph ``Command``. The Flow's state is
 typed: ``output`` carries the last stage's typed response data, ``result`` a terminal failure

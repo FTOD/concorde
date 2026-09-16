@@ -14,8 +14,8 @@ fully substituted text. It performs no network or process I/O beyond reading fil
 
 Skill sources (``skills/<name>/SKILL.md``) are a distinct front-matter shape (``name``,
 ``description``, ``capability``) with no ``audience`` field; they are always implicit ``ambient``
-roots. Agent Specs (``agents/<name>/spec.md``) are a third distinct shape: no front matter at all,
-and always an implicit ``worker`` root -- an Agent Spec carries its own ``# concorde-<name>``
+roots. WorkerProfile Specs (``capabilities/<name>/spec.md``) are a third distinct shape: no front matter at all,
+and always an implicit ``worker`` root -- an WorkerProfile Spec carries its own ``# concorde-<name>``
 heading and behavioral contract directly, not role/audience metadata. Every other prompt lives
 under ``prompts/`` and must declare its own ``audience``. Independent standard chapters under
 ``protocol/`` are plain Markdown, implicitly shared, and can only be included by Protocol adapters
@@ -39,7 +39,7 @@ PROTOCOL_TEXT_ROOT = "protocol/"
 PROMPTS_ROOT = "prompts/"
 SKILLS_ROOT = "skills/"
 SPECS_ROOT = "specs/"
-AGENTS_ROOT = "agents/"
+CAPABILITIES_ROOT = "capabilities/"
 
 _DIRECTIVE_LINE = re.compile(r"^@include(?:[ \t]+(?P<rest>\S.*))?[ \t]*$")
 _VARIABLE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
@@ -142,9 +142,9 @@ def _check_scope(target: str, including: str) -> None:
         raise PromptResolverError("CONCORDE-PROMPT-SCOPE-001", f"{including}: cannot include a skill source: {target}")
     if target.startswith(SPECS_ROOT) or target == "specs":
         raise PromptResolverError("CONCORDE-PROMPT-SCOPE-001", f"{including}: cannot include a Spec document: {target}")
-    if including.startswith(AGENTS_ROOT) and not target.startswith(PROMPTS_ROOT):
+    if including.startswith(CAPABILITIES_ROOT) and not target.startswith(PROMPTS_ROOT):
         raise PromptResolverError(
-            "CONCORDE-PROMPT-SCOPE-001", f"{including}: an Agent Spec may include only prompts/ files: {target}"
+            "CONCORDE-PROMPT-SCOPE-001", f"{including}: an WorkerProfile Spec may include only prompts/ files: {target}"
         )
     including_is_protocol = including.startswith((PROTOCOL_PREFIX, PROTOCOL_TEXT_ROOT))
     target_is_protocol = target.startswith((PROTOCOL_PREFIX, PROTOCOL_TEXT_ROOT))
@@ -282,10 +282,10 @@ def resolve_skill_source(project_root: str | Path, relative_path: str) -> Resolv
     return ResolvedPrompt(body=resolved, sources=tuple(sorted({relative, *sources})))
 
 
-def resolve_agent_spec(project_root: str | Path, relative_path: str) -> ResolvedPrompt:
-    """Resolve one Agent Spec (``agents/<name>/spec.md``): an implicit ``worker`` root with no
+def resolve_model_instructions(project_root: str | Path, relative_path: str) -> ResolvedPrompt:
+    """Resolve one WorkerProfile Spec (``capabilities/<name>/spec.md``): an implicit ``worker`` root with no
     front matter (workflow/agents-and-harnesses.md A1). Unlike a role root or a skill source, an
-    Agent Spec carries its own ``# concorde-<name>`` heading and behavioral contract directly, so
+    WorkerProfile Spec carries its own ``# concorde-<name>`` heading and behavioral contract directly, so
     there is no ``audience``/``name``/``description``/``capability`` metadata to parse -- only a
     front-matter fence itself is rejected."""
 
@@ -296,7 +296,7 @@ def resolve_agent_spec(project_root: str | Path, relative_path: str) -> Resolved
     first_line = normalized.splitlines()[0].strip() if normalized else ""
     if first_line == "---":
         raise PromptResolverError(
-            "CONCORDE-PROMPT-AUDIENCE-002", f"Agent Spec {relative} must carry no front matter"
+            "CONCORDE-PROMPT-AUDIENCE-002", f"WorkerProfile Spec {relative} must carry no front matter"
         )
     sources: set[str] = set()
     resolved = _resolve_body(
@@ -319,8 +319,8 @@ def find_unreachable_prompts(project_root: str | Path, roots: list[str] | tuple[
     for candidate in roots:
         if candidate.startswith(SKILLS_ROOT):
             resolved = resolve_skill_source(root, candidate)
-        elif candidate.startswith(AGENTS_ROOT):
-            resolved = resolve_agent_spec(root, candidate)
+        elif candidate.startswith(CAPABILITIES_ROOT):
+            resolved = resolve_model_instructions(root, candidate)
         else:
             resolved = resolve_role_prompt(root, candidate)
         visited.update(resolved.sources)

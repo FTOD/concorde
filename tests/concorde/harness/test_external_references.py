@@ -19,14 +19,14 @@ class ExternalReferenceTests(unittest.TestCase):
 
     @verifies("scenario.harness.external-references")
     def test_every_phase_sees_the_entries_and_a_byte_change_stales_them(self):
-        from concorde.harness.agent_model import agent_definition
+        from concorde.harness.worker_profile import worker_profile
         repository = self.fixture.repository()
         expected = repository.external_reference_records(repository.select("module.a"))
         self.assertEqual(1, len(expected))
-        for phase, agent, inputs in (("specify", agent_definition("spec-author"), ()),
-                                    ("plan", agent_definition("planner"), ()),
-                                    ("code-review", agent_definition("code-reviewer"), ()),
-                                    ("implementation", agent_definition("programmer"),
+        for phase, agent, inputs in (("specify", worker_profile("spec-author"), ()),
+                                    ("plan", worker_profile("planner"), ()),
+                                    ("code-review", worker_profile("code-reviewer"), ()),
+                                    ("implementation", worker_profile("programmer"),
                                      ({"type_id": "concorde-implementation-task", "schema_version": 1,
                                        "data": {"plan": "Plan", "tasks": []}},))):
             with self.subTest(phase=phase):

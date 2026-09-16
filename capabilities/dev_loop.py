@@ -13,15 +13,15 @@ target in ``.concorde/worktree.json`` (``change["graph"][target_id]["policy"]``)
 first runs for that target, so a resumed loop keeps using the policy it started with.
 """
 from concorde.spec import contract_shapes as shapes
-from agents import router
 
 from . import external_name
+from concorde.harness.capability_state import StateContract, run_host
 
 PUBLIC = True
 CONTEXT_SELECTION = "discover"
 DETERMINISTIC = False
-AGENTS = (router.AGENT,)
-USES = ("specify_loop", "review", "plan", "tasks", "implement", "validate")
+PROFILE = None
+USES = ('router', 'specify_loop', 'review', 'plan', 'tasks', 'implement', 'validate')
 EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
 
 # The only automatic revision edge (review_code -> tasks) is bounded by this declared policy
@@ -40,6 +40,8 @@ REQUEST = shapes.obj({
 RESPONSE = shapes.capability_response()
 
 
-def run(host, configuration, request):
-    from concorde.development.capability_service import run_capability
-    return run_capability(EXTERNAL_NAME, configuration, request, host_context=host)
+STATE = StateContract(f"{EXTERNAL_NAME}-request", None)
+
+
+def run(state, runtime):
+    return run_host(EXTERNAL_NAME, state, runtime)

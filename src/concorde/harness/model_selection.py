@@ -34,12 +34,12 @@ def _narrow(selection: WorkerSelection, entry: dict) -> WorkerSelection:
 
 def worker_selection(configuration: dict, agent: str, child: str | None = None) -> WorkerSelection:
     """Resolve one worker's or one child's selection; ``agent`` may be bare, hyphenated or external."""
-    from .agent_model import agent_key
+    from .worker_profile import worker_key
 
     data = configuration["data"]
     selection = WorkerSelection(data.get("model"), data.get("thinking"), data.get("timeout_seconds"))
     workers = data.get("workers", {})
-    name = agent_key(agent)
+    name = worker_key(agent)
     for key in (name, f"{name}/{child}" if child is not None else None):
         if key in workers:
             selection = _narrow(selection, workers[key])
@@ -52,9 +52,9 @@ def _pointer(field: str, key: str) -> str:
 
 def validate_worker_selections(configuration: dict, field: str = "/configuration") -> None:
     """Reject keys naming no worker or child, child timeouts, bad timeouts and non-Pi model names."""
-    from .agent_model import load_agents
+    from .worker_profile import load_worker_profiles
 
-    agents = load_agents()
+    agents = load_worker_profiles()
     children = {f"{name}/{child.name}" for name, agent in agents.items() for child in agent.children}
     data = configuration["data"]
     workers = data.get("workers", {})

@@ -34,9 +34,9 @@ stronger protection. See [execution and its limits](execution.md) before admitti
 
 <a id="entity.harness.agent-model"></a><a id="entity.harness.agent-definitions"></a><a id="entity.harness.typed-values"></a>
 
-The Agent and Harness model defines a worker's task contract, effects, workspace, tools and
-children. The Agent definitions service combines the authored role and Python profile into a reproducible
-AgentBinding, using fresh instructions supplied by Distribution. The Typed values layer validates the
+The Capability and Harness model defines a worker's task contract, effects, workspace, tools and
+children. The Model execution profiles service combines the authored role and Python profile into a reproducible
+WorkerBinding, using fresh instructions supplied by Distribution. The Typed values layer validates the
 contracts and handoffs; knowing a type or worker name does not itself grant access. This keeps
 instruction identity separate from the project knowledge a worker may read.
 
@@ -77,7 +77,7 @@ task, constraints, stage artifacts and lifecycle metadata. The frozen closure is
 identity covers every admitted byte.
 
 A worker definition binds its role Spec, one task contract, a workspace kind, tools and children.
-Resolution yields an `AgentBinding` that every invocation carries and the executor reverifies.
+Resolution yields an `WorkerBinding` that every invocation carries and the executor reverifies.
 Permissions are compiled purely from the contract's effects and host authority, guarded by the
 isolated-worktree check before any unsafe mutation, and handed to the Pi worker runtime, whose
 extension gates every tool call of the worker and its children. Every control flow is a LangGraph
@@ -88,9 +88,9 @@ permissions, and a settled process alone never establishes completion.
 ```mermaid
 flowchart TB
     accTitle: Harness entities and relationships
-    accDescr: The Agent and Harness model defines the worker profile and contract records that Agent definitions bind and that Worker execution runs. Agent definitions resolve a verified binding for Worker execution and render instructions through Distribution. Permissions compiles the effective policy for Worker execution, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Worker execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Worker execution admits. Studio starts or observes the same capability host as Worker execution. Worker execution launches each worker through the Pi worker runtime, which runs it in RPC mode on Pi and bounds its delegation to one level with pi-subagents.
-    agentModel["Agent and Harness model"]
-    agentDefs["Agent definitions"]
+    accDescr: The Capability and Harness model defines the worker profile and contract records that Model execution profiles bind and that Worker execution runs. Model execution profiles resolve a verified binding for Worker execution and render instructions through Distribution. Permissions compiles the effective policy for Worker execution, guarded by an isolated Worktree lifecycle boundary. Context resolution supplies Spec, implementation and task context to Worker execution, resolves documents and file listings from Spec, and admits Protocol assets rendered by Distribution. Typed values validates the typed records Context resolution freezes and Worker execution admits. Studio starts or observes the same capability host as Worker execution. Worker execution launches each worker through the Pi worker runtime, which runs it in RPC mode on Pi and bounds its delegation to one level with pi-subagents.
+    agentModel["Capability and Harness model"]
+    agentDefs["Model execution profiles"]
     permissions["Permissions"]
     execution["Worker execution"]
     context["Context resolution"]
@@ -104,10 +104,10 @@ flowchart TB
     pi["Pi"]
     piSubagents["pi-subagents"]
     agentModel -->|defines worker profile and contract records for| agentDefs
-    agentModel -->|supplies Agent, contract, AgentBinding and selection records to| execution
+    agentModel -->|supplies profile, contract, WorkerBinding and selection records to| execution
     agentModel -->|declares maximum effects for| permissions
     agentModel -->|supplies the host environment allowlist to| piRuntime
-    agentDefs -->|resolves a verified AgentBinding for| execution
+    agentDefs -->|resolves a verified WorkerBinding for| execution
     agentDefs -->|renders instructions and attests freshness through| distribution
     permissions -->|compiles the effective policy for| execution
     worktree -->|verifies an isolated mutation boundary for| permissions
@@ -174,7 +174,7 @@ changed since resolution.
 resolve_discovery_context SHALL NOT follow a dependency or hyperlink to add another Module's
 documents to the discovery context.
 
-### Agent and Harness binding
+### Capability profile and Harness binding
 
 #### req.harness.profile-within-contract — A profile never exceeds its contract
 
@@ -312,7 +312,7 @@ rule: see [names for every phase](#req.harness.context-file-names-every-phase) a
 #### scenario.harness.agent-node — Run a worker as a LangGraph node typed by its contract
 
 - GIVEN a canonical worker definition and its task contract
-- WHEN the host binds it as an AgentNode and executes an invocation through its compiled Flow
+- WHEN the host binds it as an CapabilityNode and executes an invocation through its compiled Flow
 - THEN the node's input schema is exactly the top-level fields of the contract's admitted context type and its output schema exactly those of the contract's result type
 - AND the node revalidates the admitted context before the launch and the returned data against the result type after it, so the launcher can neither admit an unexpected context nor return an unexpected result
 - AND the same factory compiled without a launcher is inspectable inside the Flows that run it and starts no process
@@ -353,25 +353,25 @@ See [the no-recursive-expansion bound](#req.harness.context-discovery-no-recurse
 - AND planning stops only for the dependent step while independent reasoning continues
 - BUT no relationship inventory is injected into the worker snapshot when this comparison stops planning
 
-### Agent and Harness binding
+### Capability profile and Harness binding
 
-Realized by `agent_definition` and `resolve_agent`; see [Agents and Harnesses](agents-and-harnesses.md)
+Realized by `worker_profile` and `resolve_worker`; see [Agents and Harnesses](agents-and-harnesses.md)
 and [runtime values](runtime-values.md).
 
 #### scenario.harness.agent-bind — Bind a named worker's Spec, profile and children
 
-- GIVEN a named worker registered in the Agent inventory and a current, fresh build
-- WHEN resolve_agent is called for that name
-- THEN the host returns a reproducible AgentBinding covering spec_digest, instructions_digest, profile_digest, build_manifest_digest and timeout_seconds, where the profile digest covers every child definition's bytes
-- AND agent_definition resolves that same name, its hyphenated spelling or its concorde- external name to one canonical Agent record
-- AND resolve_agent verifies the binding against the current build before returning it
+- GIVEN a named worker registered in the Capability inventory and a current, fresh build
+- WHEN resolve_worker is called for that name
+- THEN the host returns a reproducible WorkerBinding covering spec_digest, instructions_digest, profile_digest, build_manifest_digest and timeout_seconds, where the profile digest covers every child definition's bytes
+- AND worker_profile resolves that same name, its hyphenated spelling or its concorde- external name to the Capability's model execution profile
+- AND resolve_worker verifies the binding against the current build before returning it
 
 See [the profile-within-contract bound](#req.harness.profile-within-contract).
 
 #### scenario.harness.agent-bind-reject — Reject an unknown worker or a stale or inconsistent build
 
 - GIVEN an unregistered worker name, a stale package build, a profile inconsistent with its contract or workspace, or a child definition that is missing, malformed, names a model or thinking level or lists a tool outside the child tool set
-- WHEN agent_definition or resolve_agent is called
+- WHEN worker_profile or resolve_worker is called
 - THEN the call raises BuildError with code unknown_agent, stale_build or invalid_agent_binding
 - AND no invocation starts from an unverified binding
 
@@ -434,7 +434,7 @@ worker](#req.harness.worker-single-result).
 
 #### scenario.harness.execute-success — Execute a bound worker and accept its typed result
 
-- GIVEN a host-built WorkerInvocation carrying a verified AgentBinding, frozen context, compiled policy and model selection
+- GIVEN a host-built WorkerInvocation carrying a verified WorkerBinding, frozen context, compiled policy and model selection
 - WHEN WorkerExecutor is called with it
 - THEN its preflight reverifies the binding against the current build, the instructions against the rendered worker and its indexed Protocol files, and the context and policy against the worker contract before starting any process
 - AND it launches one Pi worker with the profile's tools, the policy's grants, the children with their selected models and the contract's result schema as submit_result's parameters

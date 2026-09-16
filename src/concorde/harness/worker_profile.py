@@ -1,17 +1,9 @@
-"""Concorde's Agent model: one Pi worker per task contract.
+"""Optional model execution configuration on a Capability, with no separate Agent registry.
 
-An Agent is one worker the host launches as a Pi process for one bounded task. Its definition is
-the worker profile (workflow/agents-and-harnesses.md): the authored role Spec (``spec.md``), the
-task contract it fulfils (the phase it runs in, the typed context it admits, the typed result it
-submits, its effects on the project, the stage artifacts it admits and the result fields and
-outcomes it may produce), its workspace kind, its Pi tools, its lightweight child agents and its
-timeout. One Python module under the top-level ``agents/`` package declares each Agent. Children
-are pi-subagents Markdown definitions under ``agents/<name>/children/``; they are not Agents and
-carry no Concorde contract.
-
-``resolve_agent`` binds an Agent to the current build into an ``AgentBinding``, the reproducible
-identity a launch carries. This module never imports ``build`` at module scope, because ``build``
-imports the Agent inventory from here; every function that needs it imports it lazily.
+A WorkerProfile binds instructions, task/effect constraints, workspace, tools, internal helpers
+and timeout for one model-backed entry in capabilities.CAPABILITIES. resolve_worker produces a
+byte-bound WorkerBinding; persisted agent fields and error codes retain their wire spellings.
+Build imports remain lazy because Distribution derives model projections from this same inventory.
 """
 
 from __future__ import annotations
@@ -39,7 +31,7 @@ _CHILD_SETTINGS = {"systemPromptMode": "replace", "inheritProjectContext": False
 
 
 class ContractError(ValueError):
-    """A result violated its Agent's contract; ``code`` preserves the host rejection class."""
+    """A result violated its WorkerProfile's contract; ``code`` preserves the host rejection class."""
 
     def __init__(self, message: str, code: str = "invalid_completion"):
         super().__init__(message)
@@ -49,7 +41,7 @@ class ContractError(ValueError):
 
 @dataclass(frozen=True)
 class Contract:
-    """The one task an Agent fulfils: its phase, typed context and result, effects and artifacts."""
+    """Execution constraints for a model node's State input/output: phase, effects and artifacts."""
 
     phase: str
     context: str
@@ -71,7 +63,7 @@ class Child:
 
 
 @dataclass(frozen=True)
-class Agent:
+class WorkerProfile:
     """One worker profile: role Spec, task contract, workspace, tools, children and timeout."""
 
     name: str
@@ -92,8 +84,8 @@ class ChildDefinition:
 
 
 @dataclass(frozen=True)
-class AgentBinding:
-    """The reproducible identity of one resolved Agent against the current build."""
+class WorkerBinding:
+    """The reproducible identity of one resolved WorkerProfile against the current build."""
 
     agent: str
     spec_path: str
@@ -119,22 +111,22 @@ def _sha256_json(payload: object) -> str:
     return _sha256_bytes(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"))
 
 
-def agent_key(name: str) -> str:
-    """Normalize an external (``concorde-code-reviewer``), hyphenated or underscored Agent name."""
+def worker_key(name: str) -> str:
+    """Normalize an external (``concorde-code-reviewer``), hyphenated or underscored WorkerProfile name."""
     key = name[len("concorde-"):] if name.startswith("concorde-") else name
     return key.replace("-", "_")
 
 
-def external_agent_name(name: str) -> str:
-    """The ``concorde-<hyphenated>`` identity of one bare Agent name."""
+def external_worker_name(name: str) -> str:
+    """The ``concorde-<hyphenated>`` identity of one bare WorkerProfile name."""
     return "concorde-" + name.replace("_", "-")
 
 
-def validate_agent(agent: Agent) -> None:
+def validate_worker_profile(agent: WorkerProfile) -> None:
     """Reject a profile whose contract, workspace, tools or children are inconsistent."""
     contract = agent.contract
-    if agent.spec != f"agents/{agent.name}/spec.md":
-        raise _invalid(f"agent {agent.name!r} must declare spec agents/{agent.name}/spec.md")
+    if agent.spec != f"capabilities/{agent.name}/spec.md":
+        raise _invalid(f"agent {agent.name!r} must declare spec capabilities/{agent.name}/spec.md")
     if agent.workspace not in WORKSPACES:
         raise _invalid(f"agent {agent.name!r} has an unknown workspace {agent.workspace!r}")
     if CONTEXT_RESULT_PAIRS.get(contract.context) != contract.result:
@@ -163,14 +155,14 @@ def validate_agent(agent: Agent) -> None:
     if len(names) != len(set(names)):
         raise _invalid(f"agent {agent.name!r} declares a child twice")
     for child in agent.children:
-        if child.definition != f"agents/{agent.name}/children/{child.name}.md":
+        if child.definition != f"capabilities/{agent.name}/children/{child.name}.md":
             raise _invalid(f"child {child.name!r} of {agent.name!r} must be defined at "
-                           f"agents/{agent.name}/children/{child.name}.md")
+                           f"capabilities/{agent.name}/children/{child.name}.md")
     if type(agent.timeout_seconds) is not int or agent.timeout_seconds <= 0:
         raise _invalid(f"agent {agent.name!r} needs a positive integer timeout")
 
 
-def child_definition(package_root: str | Path, agent: Agent, child: Child) -> ChildDefinition:
+def child_definition(package_root: str | Path, agent: WorkerProfile, child: Child) -> ChildDefinition:
     """Parse and check one child's pi-subagents Markdown definition."""
     from ..spec.frontmatter import FrontMatterError, parse_document
 
@@ -196,46 +188,36 @@ def child_definition(package_root: str | Path, agent: Agent, child: Child) -> Ch
     return ChildDefinition(child.name, str(metadata["description"]), tools, text)
 
 
-def child_definitions(package_root: str | Path, agent: Agent) -> tuple[ChildDefinition, ...]:
+def child_definitions(package_root: str | Path, agent: WorkerProfile) -> tuple[ChildDefinition, ...]:
     return tuple(child_definition(package_root, agent, child) for child in agent.children)
 
 
-def load_agent_inventory():
-    """Import the package-root ``agents`` package by its real name."""
-    import sys
-
-    package_root = Path(__file__).resolve().parents[3]
-    if str(package_root) not in sys.path:
-        sys.path.insert(0, str(package_root))
-    import agents
-
-    return agents
-
-
-def load_agents() -> dict[str, Agent]:
-    """``{name: Agent}`` for every module named in ``agents.AGENTS``."""
+def load_worker_profiles() -> dict[str, WorkerProfile]:
+    """Derive optional worker execution profiles from the single Capability inventory."""
     import importlib
+    import capabilities
 
-    inventory = load_agent_inventory()
-    result: dict[str, Agent] = {}
-    for name in inventory.AGENTS:
-        agent = importlib.import_module(f"{inventory.__name__}.{name}").AGENT
-        if not isinstance(agent, Agent) or agent.name != name:
-            raise _invalid(f"agents.{name} does not declare AGENT with name={name!r}")
-        result[name] = agent
+    result: dict[str, WorkerProfile] = {}
+    for name in capabilities.CAPABILITIES:
+        profile = importlib.import_module(f"capabilities.{name}").PROFILE
+        if profile is None:
+            continue
+        if not isinstance(profile, WorkerProfile) or profile.name != name:
+            raise _invalid(f"capabilities.{name} does not declare PROFILE with name={name!r}")
+        result[name] = profile
     return result
 
 
-def agent_definition(name: str) -> Agent:
-    """Look up one Agent by its external, hyphenated or underscored name."""
-    agent = load_agents().get(agent_key(name))
+def worker_profile(name: str) -> WorkerProfile:
+    """Look up one WorkerProfile by its external, hyphenated or underscored name."""
+    agent = load_worker_profiles().get(worker_key(name))
     if agent is None:
         from ..distribution.build import BuildError
         raise BuildError(f"unknown agent: {name!r}", "unknown_agent")
     return agent
 
 
-def validate_agent_artifacts(agent: Agent, inputs, *, require_all: bool = True) -> None:
+def validate_worker_artifacts(agent: WorkerProfile, inputs, *, require_all: bool = True) -> None:
     contract = agent.contract
     types = [item["type_id"] for item in inputs]
     allowed = set(contract.stage_inputs) | {"concorde-issue-intent"}
@@ -248,8 +230,8 @@ def validate_agent_artifacts(agent: Agent, inputs, *, require_all: bool = True) 
         raise ValueError(f"stage inputs do not match the {agent.name} contract")
 
 
-def validate_agent_input(agent: Agent, value: dict, *, phase: str) -> None:
-    """Check an admitted context against the Agent's contract, independently of prompt text."""
+def validate_worker_input(agent: WorkerProfile, value: dict, *, phase: str) -> None:
+    """Check an admitted context against the WorkerProfile's contract, independently of prompt text."""
     from ..spec.typed_data import validate_typed
 
     contract = agent.contract
@@ -262,9 +244,9 @@ def validate_agent_input(agent: Agent, value: dict, *, phase: str) -> None:
         raise ValueError("snapshot phase does not match the contract")
     if contract.action is not None and snapshot.get("action") != contract.action:
         raise ValueError("discovery action does not match the contract")
-    validate_agent_artifacts(agent, snapshot.get("stage_inputs", []))
+    validate_worker_artifacts(agent, snapshot.get("stage_inputs", []))
     if "implementation" not in contract.effects.reads and snapshot.get("implementation_artifacts"):
-        raise ValueError("this Agent cannot admit implementation contents")
+        raise ValueError("this WorkerProfile cannot admit implementation contents")
     if contract.context == "concorde-review-stage-context":
         review = data["review"]["data"]
         if review["review_mode"] != contract.phase.split("-")[0]:
@@ -274,10 +256,10 @@ def validate_agent_input(agent: Agent, value: dict, *, phase: str) -> None:
                 for change in review["changes"]):
             raise ValueError("a Spec review cannot admit implementation patches")
     if data.get("expected_artifacts"):
-        raise ValueError("no Agent admits extra expected artifact paths")
+        raise ValueError("no WorkerProfile admits extra expected artifact paths")
 
 
-def validate_agent_output(agent: Agent, value: dict) -> None:
+def validate_worker_output(agent: WorkerProfile, value: dict) -> None:
     from ..spec.typed_data import validate_typed
 
     contract = agent.contract
@@ -286,14 +268,14 @@ def validate_agent_output(agent: Agent, value: dict) -> None:
         raise ContractError(f"result outcome does not match the {agent.name} contract")
     for field in RESULT_FIELDS:
         if field not in contract.output_fields and data.get(field):
-            message = ("this Agent cannot author Spec documents" if field == "documents"
-                       else f"this Agent cannot return {field}")
+            message = ("this WorkerProfile cannot author Spec documents" if field == "documents"
+                       else f"this WorkerProfile cannot return {field}")
             raise ContractError(message, "permission_denied")
     if contract.context == "concorde-review-stage-context" and data["review_mode"] != contract.phase.split("-")[0]:
         raise ContractError("review result does not match the contract")
 
 
-def validate_agent_policy(agent: Agent, value: dict, policy, receipt: dict) -> None:
+def validate_worker_policy(agent: WorkerProfile, value: dict, policy, receipt: dict) -> None:
     """Recompile the concrete grant against the contract's effects, including code path membership."""
     from .context import context_grants
     from .permissions import PolicyBinding, compile_policy, verify_effective_subset
@@ -312,7 +294,7 @@ def validate_agent_policy(agent: Agent, value: dict, policy, receipt: dict) -> N
     artifacts = {item["path"] for item in snapshot.get("implementation_artifacts", [])}
     for path in role_paths.get("implementation", ()):
         if "implementation" not in contract.effects.reads:
-            raise ValueError("this Agent cannot be granted implementation reads")
+            raise ValueError("this WorkerProfile cannot be granted implementation reads")
         if not contract.effects.writes and path not in artifacts:
             raise ValueError("a read-only grant exceeds the frozen implementation files")
         if path not in entries + names and not any(path.startswith(directory) for directory in directories):
@@ -320,45 +302,45 @@ def validate_agent_policy(agent: Agent, value: dict, policy, receipt: dict) -> N
     references = {item["path"].rstrip("/") for item in snapshot.get("external_references", [])}
     for path in role_paths.get("references", ()):
         if "references" not in contract.effects.reads:
-            raise ValueError("this Agent cannot be granted external reference reads")
+            raise ValueError("this WorkerProfile cannot be granted external reference reads")
         if path not in references:
             raise ValueError("reference grant exceeds the snapshot's external references")
     bound = PolicyBinding(policy.capability, policy.stage, policy.occurrence, policy.role, policy.agent)
     verify_effective_subset(compile_policy(contract.effects, bound, role_paths), policy)
 
 
-def profile_digest(package_root: str | Path, agent: Agent) -> str:
+def profile_digest(package_root: str | Path, agent: WorkerProfile) -> str:
     """Identity of the complete worker profile, including each child definition's bytes."""
     return _sha256_json({"agent": dataclasses.asdict(agent),
                          "children": {child.name: _sha256_bytes((Path(package_root) / child.definition).read_bytes())
                                       for child in agent.children}})
 
 
-def canonical_binding(binding: AgentBinding) -> str:
+def canonical_binding(binding: WorkerBinding) -> str:
     """Canonical JSON of the binding without its own digest, the digest's input."""
     payload = dataclasses.asdict(binding)
     payload.pop("digest", None)
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
-def binding_digest(binding: AgentBinding) -> str:
+def binding_digest(binding: WorkerBinding) -> str:
     return _sha256_bytes(canonical_binding(binding).encode("utf-8"))
 
 
-def binding_json(binding: AgentBinding) -> str:
+def binding_json(binding: WorkerBinding) -> str:
     """Canonical JSON of the complete binding, digest included: the wire form a launch carries."""
     return json.dumps(dataclasses.asdict(binding), sort_keys=True, separators=(",", ":"))
 
 
-def binding_from_json(text: str) -> AgentBinding:
+def binding_from_json(text: str) -> WorkerBinding:
     try:
-        return AgentBinding(**json.loads(text))
+        return WorkerBinding(**json.loads(text))
     except (ValueError, TypeError) as error:
-        raise ValueError("malformed Agent binding JSON") from error
+        raise ValueError("malformed WorkerProfile binding JSON") from error
 
 
-def resolve_agent(package_root: str | Path, name: str) -> AgentBinding:
-    """Bind one Agent to the current build, failing closed with ``BuildError``.
+def resolve_worker(package_root: str | Path, name: str) -> WorkerBinding:
+    """Bind one WorkerProfile to the current build, failing closed with ``BuildError``.
 
     ``stale_build`` when sources drifted since the last build or the rendered instructions are
     missing, ``unknown_agent`` for an unrecognized name, ``invalid_agent_binding`` for an
@@ -368,8 +350,8 @@ def resolve_agent(package_root: str | Path, name: str) -> AgentBinding:
 
     root = Path(package_root)
     verify_fresh(root)
-    agent = agent_definition(name)
-    validate_agent(agent)
+    agent = worker_profile(name)
+    validate_worker_profile(agent)
     child_definitions(root, agent)
     spec_path = root / agent.spec
     if spec_path.is_symlink() or not spec_path.is_file():
@@ -389,7 +371,7 @@ def resolve_agent(package_root: str | Path, name: str) -> AgentBinding:
     rendered = root / instructions_path
     if rendered.is_symlink() or not rendered.is_file():
         raise BuildError(f"no rendered instructions found for agent {agent.name!r}; run the build", "stale_build")
-    binding = AgentBinding(agent=agent.name, spec_path=agent.spec, spec_digest=spec_digest,
+    binding = WorkerBinding(agent=agent.name, spec_path=agent.spec, spec_digest=spec_digest,
                            instructions_path=instructions_path,
                            instructions_digest=_sha256_bytes(rendered.read_bytes()),
                            profile_digest=profile_digest(root, agent),

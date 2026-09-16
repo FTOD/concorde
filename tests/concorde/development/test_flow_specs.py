@@ -113,11 +113,14 @@ class FlowSpecTests(unittest.TestCase):
                 "from langgraph.graph import StateGraph\nNAME = 'langgraph.func'\nraise SystemExit(3)\n")
             (root / "src" / "pkg" / "__pycache__" / "skip.py").write_text("from langgraph.func import task\n")
             (root / "scripts" / "c.py").write_text("from langgraph import func\n")
+            (root / "capabilities").mkdir()
+            (root / "capabilities" / "d.py").write_text("from langgraph.func import task\n")
             self.assertEqual((
                 ("src/pkg/a.py", 2, "from langgraph.func import entrypoint, task"),
                 ("src/pkg/b.py", 1, "import langgraph.func as func"),
                 ("src/pkg/broken.py", 1, "file cannot be parsed"),
                 ("scripts/c.py", 1, "from langgraph import func"),
+                ("capabilities/d.py", 1, "from langgraph.func import task"),
             ), functional_api_imports(root))
         self.assertEqual((), functional_api_imports(REPOSITORY_ROOT))
 

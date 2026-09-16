@@ -19,7 +19,7 @@
     },
     {
       "id": "entity.harness.agent-model",
-      "title": "Agent and Harness model",
+      "title": "Capability and Harness model",
       "kind": "program",
       "files": [
         "src/concorde/harness/",
@@ -29,10 +29,10 @@
     },
     {
       "id": "entity.harness.agent-definitions",
-      "title": "Agent definitions",
+      "title": "Model execution profiles",
       "kind": "program",
       "files": [
-        "agents/",
+        "capabilities/",
         "prompts/workers/common.md",
         "tests/concorde/fixtures/build/golden/agents/"
       ],

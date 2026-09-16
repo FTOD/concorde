@@ -888,7 +888,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         from concorde.distribution.build import verify_fresh
         fixture_report=validate_repository(self.primary,package_root=PACKAGE)
         self.assertEqual(fixture_report.status,'success')
-        for directory in ('prompts','skills','agents','protocol'):
+        for directory in ('prompts','skills','capabilities','protocol'):
             shutil.copytree(PACKAGE/directory,self.primary/directory)
         (self.primary/'concorde.json').write_text('{}')
         (self.primary/'app/transfer.py').write_text(

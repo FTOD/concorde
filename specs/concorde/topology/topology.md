@@ -8,7 +8,7 @@ A second acceptance binds the exact prepared transaction before application.
 Human acceptance is a Flow control input tied to the exact design or prepared application. A
 rejection may select another design or authoring loop, but cannot authorize the rejected effects.
 The loop waits for a required decision and re-admits revised intent and current source identity.
-Topology-designer and target-author invocations retain separate Agent definitions and Harness bindings.
+Topology-designer and target-author are separate model Capabilities with independent State contracts and Harness bindings.
 
 ## Design
 

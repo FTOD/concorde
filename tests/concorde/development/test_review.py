@@ -1098,9 +1098,9 @@ class ReviewTests(unittest.TestCase):
     def test_changed_review_instructions_reassess_without_erasing_gaps_on_failure(self):
         import hashlib
         from contextlib import contextmanager
-        from concorde.harness import agent_model
-        from concorde.harness.agent_model import binding_digest
-        from concorde.distribution.build import load_agent
+        from concorde.harness import worker_profile
+        from concorde.harness.worker_profile import binding_digest
+        from concorde.distribution.build import load_model_instructions
         first = self.call_capability("concorde-dev-loop", callback=self.missing("spec-review"))
         self.assertEqual("blocked", first["status"], first)
         original = read_change(self.root, required=True)["issue_blockers"][0]
@@ -1110,7 +1110,7 @@ class ReviewTests(unittest.TestCase):
         self.addCleanup(lambda: __import__("shutil").rmtree(rendered, ignore_errors=True))
 
         def revised(suffix, package_root, name):
-            prompt = load_agent(package_root, name)
+            prompt = load_model_instructions(package_root, name)
             if prompt.binding.agent != "spec_reviewer":
                 return prompt
             # A rebuilt package's instructions: the rendered file and its binding change together.
@@ -1128,12 +1128,12 @@ class ReviewTests(unittest.TestCase):
         def instructions(loader):
             # Admit the test's new instruction binding through the same preflight as a rebuilt
             # package; the worker's effects and contract stay intact.
-            resolve = agent_model.resolve_agent
+            resolve = worker_profile.resolve_worker
             prompt = loader(PACKAGE, "concorde-spec-reviewer")
             def binding(package, name):
-                return prompt.binding if agent_model.agent_key(name) == "spec_reviewer" else resolve(package, name)
-            with patch("concorde.development.review.load_agent", side_effect=loader), \
-                    patch("concorde.harness.agent_model.resolve_agent", side_effect=binding):
+                return prompt.binding if worker_profile.worker_key(name) == "spec_reviewer" else resolve(package, name)
+            with patch("concorde.development.review.load_model_instructions", side_effect=loader), \
+                    patch("concorde.harness.worker_profile.resolve_worker", side_effect=binding):
                 yield
 
         def incomplete(stage, snapshot, data, cwd):

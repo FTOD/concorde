@@ -42,7 +42,6 @@
     "tasks-template.md"
   ],
   "package_roots": [
-    "agents",
     "capabilities",
     "docsite",
     "pi",

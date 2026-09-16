@@ -227,7 +227,7 @@ flowchart TB
 ### AI and human feedback
 
 Author, assessor, planner, task author, implementation and reviewer invocations MUST resolve their
-own Agent definitions and effective Harnesses. Shared Flow state contains admitted outputs and
+own Capability execution profiles and effective Harnesses. Shared Flow state contains admitted outputs and
 feedback, not their private transcripts. Review findings identify the input revision and the
 required repair. A code defect selects an implementation repair and another review; a necessary
 Spec gap selects a clarification or authorized Spec-authoring path before implementation resumes.

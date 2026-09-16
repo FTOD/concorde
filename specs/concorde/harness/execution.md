@@ -82,7 +82,7 @@ completeness. The calling host remains responsible for digest and candidate fres
 
 The local companion contract **Agents and Harnesses** defines A1–A5 for this Module. Execution MUST
 receive a resolved worker binding, its frozen context, its compiled policy and its model selection,
-and run exactly that worker. The worker executor's preflight reverifies the carried `AgentBinding`,
+and run exactly that worker. The worker executor's preflight reverifies the carried `WorkerBinding`,
 the instructions, the admitted context and the policy against the current build and the worker's
 contract before starting any process, so the launch below executes only a complete, checked worker
 profile.
@@ -212,7 +212,7 @@ never fails the launch. See [usage accounting](module.md#scenario.harness.usage-
 ### Outcomes
 
 A worker's deadline is its selected `timeout_seconds`, else its profile's timeout as bound in its
-`AgentBinding`. `CapabilityExecutionError.outcome` distinguishes four cases so a caller need not
+`WorkerBinding`. `CapabilityExecutionError.outcome` distinguishes four cases so a caller need not
 parse message text: `failed` for a refused preflight, a process that exits or breaks the RPC
 protocol before settling, or any other launch failure; `cancelled` for a host interrupt, with the
 process already killed; `limit_exhausted` for a run past its deadline, likewise killed; and
@@ -294,7 +294,7 @@ Each launch gets a private run directory that is removed afterwards. Its `agent/
 Pi's configuration directory for the process (`PI_CODING_AGENT_DIR`): Concorde's own settings
 (project trust never, install telemetry off, pi-subagents builtin agents disabled), the developer's
 Pi credentials (`auth.json` and custom-provider `models.json`, copied from the developer's Pi
-directory), the declared child definitions under `agents/` and the pi-subagents configuration
+directory), the declared child definitions under `capabilities/` and the pi-subagents configuration
 under `extensions/subagent/config.json`. Beside it lie `policy.json`, which the Concorde worker
 extension enforces, `system-prompt.md`, which it installs as the worker's complete system prompt,
 `tmp/`, the process's temporary directory, and, for a worker with `run_checks` or `report_issue`,

@@ -14,7 +14,7 @@ compares each bound diagram with the Flow the catalog compiles from the executab
 - every executing node's label names its input and output state.
 
 It also holds the Graph API rule of the Framework profile: every catalog Flow is a compiled
-``StateGraph``, and no Python file under ``src/`` or ``scripts/`` imports LangGraph's Functional
+``StateGraph``, and no Python file under ``src/``, ``scripts/`` or ``capabilities/`` imports LangGraph's Functional
 API (``langgraph.func``), which would hide control flow inside ordinary Python. Source files are
 parsed for that, never executed.
 
@@ -27,6 +27,7 @@ import ast
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TypeGuard
 
 from ..spec.model import Finding
 from ..spec.repository import SpecRepository
@@ -36,7 +37,7 @@ BINDING = re.compile(r"^\s*%%\s*flow:\s*([A-Za-z0-9_.-]+)\s*$", re.M)
 FENCE = re.compile(r"^```mermaid[ \t]*\n(.*?)^```[ \t]*$", re.M | re.S)
 BOUNDARY = {"__start__", "__end__"}
 FUNCTIONAL_API = "langgraph.func"
-SOURCE_ROOTS = ("src", "scripts")
+SOURCE_ROOTS = ("src", "scripts", "capabilities")
 EXCLUDED_DIRS = {"node_modules", "__pycache__", ".venv", "build", "dist"}
 
 
@@ -112,7 +113,7 @@ def compare(spec: FlowSpec, topology: dict) -> list[str]:
     return problems
 
 
-def _imports_functional_api(node: ast.AST) -> bool:
+def _imports_functional_api(node: ast.AST) -> TypeGuard[ast.Import | ast.ImportFrom]:
     """Whether one import statement names ``langgraph.func`` or a member of it."""
     if isinstance(node, ast.Import):
         return any(alias.name == FUNCTIONAL_API or alias.name.startswith(FUNCTIONAL_API + ".")
@@ -146,7 +147,8 @@ def functional_api_imports(root: Path | str, roots: tuple[str, ...] = SOURCE_ROO
             try:
                 tree = ast.parse(path.read_bytes(), filename=posix)
             except SyntaxError as problem:
-                hits.append((posix, problem.lineno or 0, "file cannot be parsed"))
+                line = problem.lineno if problem.lineno is not None else 0
+                hits.append((posix, line, "file cannot be parsed"))
                 continue
             for node in ast.walk(tree):
                 if _imports_functional_api(node):

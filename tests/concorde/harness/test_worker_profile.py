@@ -15,29 +15,29 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.harness import agent_model  # noqa: E402
-from concorde.harness.agent_model import (  # noqa: E402
+from concorde.harness import worker_profile as profiles  # noqa: E402
+from concorde.harness.worker_profile import (  # noqa: E402
     Child,
-    agent_definition,
+    worker_profile,
     binding_digest,
     binding_from_json,
     binding_json,
     child_definitions,
     profile_digest,
-    resolve_agent,
-    validate_agent,
+    resolve_worker,
+    validate_worker_profile,
 )
-from concorde.distribution.build import BuildError, load_agent, write_build  # noqa: E402
+from concorde.distribution.build import BuildError, load_model_instructions, write_build  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
 
 
 def _package(root: Path) -> None:
-    for directory in ("prompts", "protocol", "skills", "agents"):
+    for directory in ("prompts", "protocol", "skills", "capabilities"):
         shutil.copytree(REPOSITORY_ROOT / directory, root / directory)
 
 
 class ResolveAgentBuildTests(unittest.TestCase):
-    """``resolve_agent``/``load_agent`` against a real freshly built package."""
+    """``resolve_worker``/``load_model_instructions`` against a real freshly built package."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
@@ -49,14 +49,14 @@ class ResolveAgentBuildTests(unittest.TestCase):
     @verifies("scenario.harness.agent-bind")
     def test_resolve_agent_succeeds_for_every_inventory_worker(self):
         manifest = json.loads((self.root / "generated/build-manifest.json").read_text(encoding="utf-8"))
-        inventory = agent_model.load_agent_inventory()
-        self.assertEqual(12, len(inventory.AGENTS))
-        for name in inventory.AGENTS:
+        inventory = profiles.load_worker_profiles()
+        self.assertEqual(12, len(inventory))
+        for name in inventory:
             with self.subTest(agent=name):
-                agent = agent_definition(name)
-                binding = resolve_agent(self.root, name)
+                agent = worker_profile(name)
+                binding = resolve_worker(self.root, name)
                 self.assertEqual(binding.agent, name)
-                self.assertEqual(binding.spec_path, f"agents/{name}/spec.md")
+                self.assertEqual(binding.spec_path, f"capabilities/{name}/spec.md")
                 self.assertEqual(binding.spec_digest, manifest["sources"][binding.spec_path])
                 for child in agent.children:
                     self.assertIn(child.definition, manifest["sources"])
@@ -75,28 +75,28 @@ class ResolveAgentBuildTests(unittest.TestCase):
 
     @verifies("scenario.harness.agent-bind")
     def test_resolve_agent_accepts_external_hyphenated_and_underscored_names(self):
-        by_external = resolve_agent(self.root, "concorde-code-reviewer")
-        self.assertEqual(by_external, resolve_agent(self.root, "code-reviewer"))
-        self.assertEqual(by_external, resolve_agent(self.root, "code_reviewer"))
+        by_external = resolve_worker(self.root, "concorde-code-reviewer")
+        self.assertEqual(by_external, resolve_worker(self.root, "code-reviewer"))
+        self.assertEqual(by_external, resolve_worker(self.root, "code_reviewer"))
         self.assertEqual("code_reviewer", by_external.agent)
 
     @verifies("scenario.harness.agent-bind")
     def test_load_agent_binding_and_effects_match_resolve_agent(self):
-        prompt = load_agent(self.root, "concorde-planner")
-        self.assertEqual(resolve_agent(self.root, "concorde-planner"), prompt.binding)
-        self.assertEqual(agent_definition("planner").contract.effects, prompt.effects)
+        prompt = load_model_instructions(self.root, "concorde-planner")
+        self.assertEqual(resolve_worker(self.root, "concorde-planner"), prompt.binding)
+        self.assertEqual(worker_profile("planner").contract.effects, prompt.effects)
         self.assertTrue(prompt.body.strip())
 
     @verifies("scenario.harness.agent-bind")
     def test_a_changed_child_definition_changes_the_profile_and_stales_the_build(self):
-        before = resolve_agent(self.root, "programmer")
-        scout = self.root / "agents/programmer/children/scout.md"
+        before = resolve_worker(self.root, "programmer")
+        scout = self.root / "capabilities/programmer/children/scout.md"
         scout.write_text(scout.read_text(encoding="utf-8") + "\nPrefer exact file names.\n", encoding="utf-8")
         with self.assertRaises(BuildError) as failure:
-            resolve_agent(self.root, "programmer")
+            resolve_worker(self.root, "programmer")
         self.assertEqual("stale_build", failure.exception.code)
         write_build(self.root, "all")
-        after = resolve_agent(self.root, "programmer")
+        after = resolve_worker(self.root, "programmer")
         self.assertNotEqual(before.profile_digest, after.profile_digest)
         self.assertNotEqual(before.digest, after.digest)
 
@@ -104,14 +104,14 @@ class ResolveAgentBuildTests(unittest.TestCase):
     def test_unknown_worker_name_fails_closed(self):
         for name in ("concorde-not-a-real-agent", "coordinator", "spec_engineer"):
             with self.subTest(name=name), self.assertRaises(BuildError) as failure:
-                resolve_agent(self.root, name)
+                resolve_worker(self.root, name)
             self.assertEqual("unknown_agent", failure.exception.code)
 
     @verifies("scenario.harness.agent-bind-reject")
     def test_missing_rendered_instructions_is_stale_build(self):
         (self.root / "generated/agents/router.md").unlink()
         with self.assertRaises(BuildError) as failure:
-            resolve_agent(self.root, "concorde-router")
+            resolve_worker(self.root, "concorde-router")
         self.assertEqual("stale_build", failure.exception.code)
 
 
@@ -120,13 +120,13 @@ class ProfileValidationTests(unittest.TestCase):
 
     def assertInvalid(self, agent) -> None:
         with self.assertRaises(BuildError) as failure:
-            validate_agent(agent)
+            validate_worker_profile(agent)
         self.assertEqual("invalid_agent_binding", failure.exception.code)
 
     @verifies("scenario.harness.agent-bind-reject", "scenario.harness.worker-contract")
     def test_profiles_cannot_exceed_their_contract_or_workspace(self):
-        planner = agent_definition("planner")
-        programmer = agent_definition("programmer")
+        planner = worker_profile("planner")
+        programmer = worker_profile("programmer")
         effects = planner.contract.effects
         contract = planner.contract
         for label, agent in {
@@ -142,25 +142,25 @@ class ProfileValidationTests(unittest.TestCase):
                 contract, result="concorde-review-stage-result")),
             "required input not admitted": dataclasses.replace(planner, contract=dataclasses.replace(
                 contract, required_inputs=("concorde-implementation-task",))),
-            "wrong spec path": dataclasses.replace(planner, spec="agents/other/spec.md"),
-            "child outside its directory": dataclasses.replace(planner, children=(Child("scout", "agents/scout.md"),)),
+            "wrong spec path": dataclasses.replace(planner, spec="capabilities/other/spec.md"),
+            "child outside its directory": dataclasses.replace(planner, children=(Child("scout", "capabilities/scout.md"),)),
             "child declared twice": dataclasses.replace(programmer, children=(*programmer.children, programmer.children[0])),
             "zero timeout": dataclasses.replace(planner, timeout_seconds=0),
             "unknown workspace": dataclasses.replace(planner, workspace="container"),
         }.items():
             with self.subTest(label):
                 self.assertInvalid(agent)
-        for name in agent_model.load_agent_inventory().AGENTS:
-            validate_agent(agent_definition(name))
+        for name in profiles.load_worker_profiles():
+            validate_worker_profile(worker_profile(name))
 
     @verifies("scenario.harness.agent-bind-reject")
     def test_child_definitions_are_checked_and_leave_model_selection_to_configuration(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            shutil.copytree(REPOSITORY_ROOT / "agents", root / "agents")
-            programmer = agent_definition("programmer")
+            shutil.copytree(REPOSITORY_ROOT / "capabilities", root / "capabilities")
+            programmer = worker_profile("programmer")
             self.assertEqual({"scout", "planner", "verifier"}, {item.name for item in child_definitions(root, programmer)})
-            verifier = root / "agents/programmer/children/verifier.md"
+            verifier = root / "capabilities/programmer/children/verifier.md"
             original = verifier.read_text(encoding="utf-8")
             forged = {
                 "a model": original.replace("---\n", "---\nmodel: openai-codex/gpt-6-astra\n", 1),
@@ -181,11 +181,11 @@ class ProfileValidationTests(unittest.TestCase):
             with self.assertRaises(BuildError):
                 child_definitions(root, programmer)
             # A capsule worker's children cannot run host checks.
-            scout = root / "agents/planner/children/scout.md"
+            scout = root / "capabilities/planner/children/scout.md"
             scout.write_text(scout.read_text(encoding="utf-8").replace("tools: read", "tools: run_checks, read", 1),
                              encoding="utf-8")
             with self.assertRaises(BuildError):
-                child_definitions(root, agent_definition("planner"))
+                child_definitions(root, worker_profile("planner"))
 
     @verifies("scenario.harness.agent-bind-reject")
     def test_resolve_agent_rejects_an_inconsistent_inventory_profile(self):
@@ -193,11 +193,11 @@ class ProfileValidationTests(unittest.TestCase):
             root = Path(temporary)
             _package(root)
             write_build(root, "all")
-            modified = dict(agent_model.load_agents())
+            modified = dict(profiles.load_worker_profiles())
             modified["router"] = dataclasses.replace(modified["router"], tools=("read", "write"))
-            with mock.patch.object(agent_model, "load_agents", return_value=modified):
+            with mock.patch.object(profiles, "load_worker_profiles", return_value=modified):
                 with self.assertRaises(BuildError) as failure:
-                    resolve_agent(root, "router")
+                    resolve_worker(root, "router")
             self.assertEqual("invalid_agent_binding", failure.exception.code)
 
 

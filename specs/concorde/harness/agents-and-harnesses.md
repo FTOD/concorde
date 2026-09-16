@@ -1,168 +1,111 @@
-# Agents and Harnesses
+# Capabilities and Harnesses
 
-This document defines the required Agent model for Concorde Framework. The requirements below are
-the standard for implementation review; an existing role prompt or launcher is not evidence that
-the complete model is implemented. Agent, worker, Harness and Capability are Framework entities, not
-new Concorde Spec Protocol target kinds. Their providing Modules retain the explicit registered Spec
-structure.
+This document defines model execution configuration for the single Capability model. Capability
+is the executable entity: deterministic code, a model invocation and a compiled LangGraph subgraph
+all expose State-based node contracts. A worker profile is optional execution configuration on a
+Capability, not a separately registered Agent or an additional composition relation. The historical
+document identity and requirement/scenario anchors remain stable for existing links.
 
-### The Agent and Harness model
+### The execution model
 
-**Harness = context + control flow + models + permissions and environment, per worker.**
-**Agent = role Spec + worker profile (task contract, workspace, tools, children, timeout).**
-**Invocation = Agent + Module/version + admitted artifacts + actual grant + model selection.**
+**Harness = context + control flow + models + permissions and environment.**
+**Capability = input State + output State updates + execution implementation and constraints.**
+**Invocation = Capability + Module/version + admitted artifacts + actual grant + runtime settings.**
 
-| Entity | Meaning | Relationships |
-| --- | --- | --- |
-| Agent Spec | The worker's authored role `spec.md`, defining its responsibilities, goals and behavioral contract | Rendered after the common worker rules into the worker's instructions |
-| Worker profile | The Python definition of one Agent: its task contract, workspace kind, Pi tools, children and timeout | Is the per-worker part of the Harness; bound with the Agent Spec into an `AgentBinding` |
-| Task contract | The one task an Agent fulfils: phase and action, admitted context type and result type, effects, admitted stage artifacts, permitted result fields and outcomes | Admitted by the host before launch and by the executor again before and after the process |
-| Worker | One Pi coding agent process run in RPC mode for exactly one invocation | Executes one Agent under its grant and returns one submitted result |
-| Child agent | A lightweight pi-subagents Markdown definition a worker may delegate a focused subtask to | Runs inside its worker's process, under the same gate, one level deep |
-| Common worker rules | The tier-one rules every worker follows (`prompts/workers/common.md`) | Precede every role Spec in the rendered instructions; the Protocol rule bundle follows |
-| Agent invocation | One execution of an Agent for a specific task | Receives its frozen context kinds, effective permissions, model selection and a fresh identity |
-| Harness | The organized execution environment supporting a worker | Integrates context assembly, the Flow, the worker profile, the Pi worker runtime, permissions and system environment |
-| Capability | Functionality a worker can use, or that can be composed to provide further functionality | Deterministic when it makes no model call; otherwise it launches workers through the Harness |
-| Tool | A callable interface a worker uses | Pi built-ins filtered by the profile, plus `submit_result`, `run_checks` and `subagent` |
-| Skill | An instruction artifact for the developer's external agent runtime | Distribution owns, renders and installs it; the external runtime uses it to invoke a public Capability through Development |
-| Constraints/Permissions | Limits on information, operations, effects and execution | Compiled from the contract's effects and the host grant and enforced outside model discretion |
+| Term | Meaning |
+| --- | --- |
+| Capability | The one executable identity, usable as a LangGraph node or composed subgraph |
+| State contract | Declared input channels and output updates; wire shapes are checked at runtime |
+| Model execution profile | Instructions, task/effect contract, workspace, tools, children and timeout on a Capability |
+| Worker | One fresh Pi RPC process executing a model-backed Capability invocation |
+| Child helper | A bounded pi-subagents session internal to a worker; not an independently callable Framework node |
+| Harness | Context resolution, worker runtime, model selection, permissions and environment |
+| Skill | Instructions for an external developer runtime to invoke one public Capability |
+| Tool | An interface admitted by the worker's actual tool grant, not by graph composition alone |
 
-A **deterministic capability** is Python that makes no model call: context resolution, permission
-compilation, validation, delivery and installation are examples. A **model-backed capability**
-calls a model at least once through a worker. The distinction names whether a model participates,
-not whether output is reproducible: deterministic Python may still observe Git, files or
-subprocesses. A Flow node is one or the other, and a model-backed leaf is one worker invocation whose
-Pi tool loop stays inside its own process.
+A deterministic Capability makes no model call on any supported path, including its transitive
+composition. It may still read Git, files or subprocess results; determinism here does not mean
+purity. Model-backed nodes use the same Capability inventory and USES relation as other nodes.
+Sharing a graph State or knowing a Capability name grants neither context nor execution authority.
 
-A model is a resource used through the Harness. Responsibilities, task information and admitted tool
-descriptions may all be presented as model context, while retaining distinct identities and
-contracts. Loading an instruction or mentioning a tool does not itself grant authority. Skills are
-not worker context: a Skill is the installed projection of a public Capability for the developer's
-own agent runtime. The four context kinds an invocation receives are defined in [context](context.md).
+### A1. Capability instructions and execution profile
 
-### A1. Agent Spec and Python definition
+Each model-backed Capability MUST own instructions in `capabilities/<name>/spec.md` and a Python
+`PROFILE` declaration in that same package. Its instructions define responsibilities, goals,
+accepted input and feedback, expected results, completion conditions, and behavior on missing
+information, failure or required human decisions. These remain six sections after its
+`# concorde-<name>` title. Common worker rules precede them in the build; Protocol rules follow
+in the actual system prompt. Instructions are not project Spec context or permission grants.
 
-Every named Agent MUST have an identifiable authored role `spec.md` under `agents/<name>/`. It MUST
-describe its responsibilities, goals, accepted input and feedback, expected results, completion
-conditions, and behavior on missing information, failure or a required human decision, under exactly
-those six headings after a `# concorde-<name>` title. Its rendered instructions are the common worker
-rules followed by that Spec; they MUST remain traceable to both sources and MUST NOT replace the
-Spec as the behavioral authority.
+`PROFILE` MUST have the same identity as its Capability and bind its task contract, workspace,
+tools, children and timeout. There is no independent Agent inventory or `AGENTS` call relation.
+A `WorkerBinding` records exact instruction, profile, child-definition and build digests for one
+model Capability. Stale or inconsistent bindings MUST prevent execution. The serialized `agent`
+field, `concorde-agent-stage-*` types and `generated/agents/` paths are retained compatibility
+spellings, not a second executable model.
 
-One Python module MUST define each named Agent as its worker profile and explicitly bind its Spec,
-task contract, workspace kind, tools, children and timeout. The binding MUST identify the sources and
-versions needed to reproduce execution: the Spec digest, the rendered instructions digest, the
-profile digest (which covers each child definition's bytes), the build manifest digest and the
-timeout. A missing Spec, an inconsistent profile or a stale build MUST prevent the invocation from
-starting. Changing a binding requires fresh admission and invalidates evidence that depended on its
-old identity.
+### A2. Profile and Harness
 
-An Agent's `spec.md` is its responsibility contract. The project task's Spec context and
-implementation context are separate admitted inputs about the work to perform. Neither set
-implicitly grants access to the other's neighboring files. This filename convention adds no filename
-requirement to ordinary Module Specs.
+A model profile selects a `capsule` workspace for Spec-only work or a `project` workspace for
+implementation access. It declares Pi tools and maximum effects. The host adds `submit_result`,
+and adds `subagent` only when the profile declares helpers. `edit` and `write` require a write
+effect; implementation reads require the project workspace. The host compiles each concrete grant
+as a subset of both those effects and its invocation authority.
 
-### A2. Worker profile and Harness
+Project configuration selects model, thinking and timeout, with per-worker/helper overrides.
+These settings are not authority. Pi starts with ambient sessions, context files, Skills, prompt
+templates, themes and discovered extensions disabled. Only the host-issued configuration and
+explicitly admitted tools are loaded. The shared [execution runtime](execution.md) independently
+validates the model profile, input, instruction bytes and permissions before launching a process.
 
-A Harness MUST have an explicit identity and inspectable configuration. The per-worker part is the
-worker profile: its workspace kind (`capsule` for Spec-only work, `project` for work that reads or
-writes implementation files), its Pi tools, its children, its timeout and its contract's effects.
-The shared part is the host environment allowlist, the Pi worker runtime and the LangGraph Flows. A
-profile grants tools from Pi's built-ins (`read`, `grep`, `find`, `ls`, `edit`, `write`, `bash`) and
-`run_checks`; the host adds `submit_result` to every worker and `subagent` to every worker with
-children. `edit` and `write` require a write effect, and implementation reads require a project
-workspace.
+### A3. State and composition
 
-Each invocation MUST receive an effective configuration restricted by the profile and host-issued
-authority. The model, thinking level and timeout are project configuration, resolved per worker and
-per child as defined in [execution](execution.md); they are not authority and cannot widen a grant.
-Ambient discovery MUST NOT silently add tools, context, credentials or environment access: a worker's
-Pi process starts with sessions, context files, skills, prompt templates, themes and discovered
-extensions disabled, and its own configuration directory holds only what the host placed there.
+Every Capability MUST expose a State contract and `run(state, runtime)`. LangGraph nodes read
+only their admitted channels and return State updates. `CapabilityNode` supplies the common
+compiled-node adapter; a compiled graph may be embedded as another node. Different parent/child
+schemas require explicit channel mapping. Concurrent writers require explicit reducers on the
+owning graph; no automatic merge or broad parent-State grant is inferred.
 
-The Harness MUST connect decision, action, observation and feedback through a LangGraph Flow as
-required by [Agent Flows, Agent Loops and feedback](graphs-and-loops.md). Execution evidence MUST
-distinguish model reasoning, tool execution and human decisions. A model adapter, virtual
-environment or bag of tools alone is not the complete Harness.
+The host supplies launchers, configuration and authority through trusted `Runtime.context`, never
+through caller-writable State. Model nodes validate their context and output against the task
+contract as well as its wire schema. Existing public host adapters preserve the complete versioned
+result envelope in a `result` output channel, including errors and blocked outcomes.
 
-### A3. Capability use and composition
+Capabilities MUST declare direct composition through `USES`, including model nodes. The host
+rejects undeclared calls. A worker's granted tools are separate from the host's composition graph:
+being present in `USES` does not install a Capability as a Pi tool. Dependencies must not widen
+context, effects or write authority. Graph nodes, edges and stopping rules are the executable
+control-flow definition; metadata does not repeat their order or branching.
 
-A Capability MUST declare its identity, purpose, inputs, results, effects, constraints and relevant
-failure or retry behavior. Its meaning is the functionality it provides, not the Python file that
-implements it. A deterministic operation, a composed operation or an Agent Flow may provide a
-Capability when its complete contract is explicit.
+### A4. Invocation constraints and evidence
 
-A worker's available tools form part of its capability context together with the Module's declared
-external references. Descriptions supplied to the model and the tools the runtime admits MUST
-resolve to the same contracts. An unavailable or unauthorized tool MUST fail before its effects
-occur.
+Each invocation MUST bind its task, frozen context, Capability profile and instruction digests,
+effective permissions, model settings and fresh identity. Reuse of a Capability never implies
+reuse of its predecessor's conversation. Only explicitly admitted artifacts cross stages.
 
-Composition MUST preserve required input/output contracts and propagate failure and effect limits.
-An outer Capability cannot grant an inner operation more authority than the invoking worker has.
-Runtime host composition and worker-available tools MUST be distinguishable; a host's ability to
-compose an operation does not make it callable by every worker. Existing `capabilities/` modules
-and their exposure and context-selection properties describe Concorde's current host adapter; the
-Development Module registers that inventory.
+Completion MUST distinguish successful output, missing information, required human decisions,
+cancellation, execution failure and exhausted limits. Failures MUST NOT retry with broader
+permissions. A changed goal, context or authority requires new host admission. LangGraph State
+schemas do not replace any of these checks.
 
-### A4. Constraints, context and invocation
+### A5. One-level helper delegation
 
-Constraints/Permissions MUST cover applicable context access, tool calls, file and process effects,
-network and credential use, and execution limits. The trusted runtime MUST enforce the effective
-boundary; instructions alone are insufficient. Effective permissions MUST be a subset of both the
-Agent's contract effects and the host authority for this invocation. How the boundary is enforced
-is defined in [permissions](permissions.md) and [execution](execution.md).
+A model Capability MAY delegate inside its worker only to the helpers its profile declares under
+`capabilities/<name>/children/`. They use replaced, context-free prompts and read/check tools,
+with no model selection embedded in their definitions. They execute in foreground fresh sessions
+under the same grant and tool gate, cannot delegate again and cannot submit the worker's final
+result. Only the verified worker result leaves the process. Helper answers are evidence, not a
+second Framework node result. [Execution](execution.md) defines the capability ceiling and gate.
 
-Every invocation MUST bind its task, admitted context kinds, Agent binding, contract, effective
-policy, model selection and execution identity. State and evidence MUST remain attributable to that
-invocation. A repeated call is a fresh invocation, and resumption admits only the state and artifacts
-authorized by the selected Flow. Raw predecessor conversations are not an implicit context channel.
+### Common worker rules and inventory
 
-Completion MUST distinguish a successful result, a missing-information gap, a required human
-decision, cancellation, an execution failure and exhaustion of the configured execution limits.
-Failure MUST NOT cause an automatic retry with broader permissions. Feedback that requests a new
-goal, different context or additional authority MUST pass admission again before dependent work.
+The build combines `prompts/workers/common.md` with the Capability's own instructions and binds
+its child definitions as sources. Distribution still publishes `generated/agents/<name>.md` to
+preserve the installed instruction layout. The host appends the granted Protocol rule bundle.
 
-### A5. One-level delegation
-
-A worker MAY delegate a focused subtask only to a child its own profile declares, and only through
-its `subagent` tool. A child is a lightweight pi-subagents Markdown definition under
-`agents/<worker>/children/<child>.md`: its frontmatter names it, describes it, lists its tools from
-`read`, `grep`, `find`, `ls`, `bash` and `run_checks`, replaces Pi's base prompt and inherits no
-project context, global context or skills; it names no model or thinking level, which project
-configuration supplies. A child runs as a foreground session inside its worker's process, under the
-same grant and gate, with exactly its declared tools. A child cannot delegate further and cannot
-submit the worker's result.
-
-What a child does is not a Concorde contract. Its answer is evidence the worker verifies against the
-granted files, and only the worker's single submitted result leaves the process. Delegation between
-workers does not exist: Flows compose workers, and one worker never starts another. The capability
-ceiling that bounds delegation, and its enforcement, are defined in [execution](execution.md).
-
-### Common worker rules
-
-Worker instructions have two tiers. The first tier is common to every worker: the rules in
-`prompts/workers/common.md` (how to read the input and the granted files, what the tool gate
-refuses, how to submit exactly one result, how to report gaps and how to use children) and the
-Protocol rule bundle, which the host appends to every system prompt. The second tier is the worker's
-own profile and role Spec, managed with the Flow that launches it; its static model selection is
-exposed in project configuration.
-
-### Registered workers
-
-The twelve workers are each one Python module under the top-level `agents/` package, declared in
-`agents/__init__.py`. Exact Agent source files have the single authoritative owner
-`entity.harness.agent-definitions`; a capability that launches a worker does not own its definition.
-Each rendered `generated/agents/<hyphenated>.md` holds the common worker rules followed by that
-worker's role Spec, and the child definitions are build sources of that output.
-
-The associated metadata records the machine-checked implementation inventory. The reading explanations here define its responsibilities and use.
-
-Deterministic validation requires this block to equal the Agent inventory declared in code: the
-same identifiers, workspace kinds, sorted profile tools, sorted child names and the sorted hyphenated
-names of every capability module whose `AGENTS` includes that worker. The block is intentional
-redundancy so that this Spec explains the catalog without reading Python; it never adds a worker
-that code does not implement. `capabilities` records which Development capabilities launch the
-worker; it is not the worker's capability context.
+The single inventory is defined by [Capability registry](../development/capabilities.md).
+Its metadata includes each model Capability's optional workspace, tools and children alongside
+its State and USES declarations. There is no separate `concorde.agents` metadata collection.
 
 ### Task contracts
 
@@ -217,6 +160,6 @@ The common Development host dispatches the declared provider and Flow contracts 
 invocations. Planning owns plan/task semantics, Implementation owns task fulfillment, and each
 composing Flow owns its ordering and stopping policy. This Module's worker executor verifies and
 launches workers through the Pi worker runtime and admits their results; its permissions service
-compiles effective boundaries; its context service supplies the admitted context kinds; its Agent
-model resolves definitions and bindings. The Distribution build renders and distributes instruction
+compiles effective boundaries; its context service supplies the admitted context kinds; its model-profile
+service resolves definitions and bindings. The Distribution build renders and distributes instruction
 views with source identity.

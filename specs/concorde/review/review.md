@@ -102,7 +102,7 @@ in the reviewing Module's admitted context: a test that declares such a scenario
 exercising its steps is a defect, while a declaration naming a scenario outside that context is
 assessed by the owning Module's review and is neither a defect nor a gap for the reviewing Module.
 A Module never gains a reference to a consumer's documents merely so its reviewer can read them.
-Each reviewer resolves a separate Agent definition and Harness under read-only permissions.
+Each reviewer resolves its model Capability's execution profile and Harness under read-only permissions.
 The host records input versions, coverage, immutable Issue judgments and completion. No-findings,
 findings, incomplete, not-run and skipped are distinct, and all conclusions remain task-specific.
 

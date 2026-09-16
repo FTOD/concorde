@@ -43,8 +43,7 @@ def export():
     from concorde.development.plan_flow import build_plan_flow
     from concorde.development.project_flow import build_project_flow
     from concorde.development.coordination_flow import build_coordination_flow, build_stabilization_flow
-    from concorde.harness.agent_model import agent_definition
-    from concorde.harness.agent_node import AgentNode
+    from concorde.harness.capability_node import CapabilityNode
     from concorde.harness.batch_flow import build_batch_flow
     from concorde.issues.flow import build_issue_flow, build_issue_verification_flow
     factories = {
@@ -56,24 +55,28 @@ def export():
         'Component coordination': build_coordination_flow, 'Shared candidate stabilization': build_stabilization_flow,
         'Issue solving': build_issue_flow, 'Issue verification': build_issue_verification_flow,
         # One worker invocation as a node typed by its contract; every model-backed stage runs one.
-        'Agent invocation node': lambda nodes: AgentNode(agent_definition('planner')).flow(),
+        'Capability node': lambda nodes: CapabilityNode('planner').flow(),
         'Capability admission': build_capability_flow, 'Capability dispatch': build_dispatch_flow,
         'Sequential work items': lambda nodes: build_batch_flow(nodes, name='batch_flow', item_node='execute_item'),
     }
     flows = {name: inspect_flow(factory(lambda node: lambda state: {})) for name, factory in factories.items()}
     import inspect
     factory_sources = sorted({Path(source).relative_to(ROOT).as_posix()
-        for factory in [*factories.values(), build_batch_flow, build_loop_flow, build_studio_flow, AgentNode.flow]
+        for factory in [*factories.values(), build_batch_flow, build_loop_flow, build_studio_flow, CapabilityNode.flow]
         if factory.__name__ != '<lambda>' and (source := inspect.getsourcefile(factory)) is not None})
     paths = sorted(set(factory_sources) | {
         'src/concorde/development/capability_host.py', 'src/concorde/development/review.py',
         'src/concorde/harness/worker_executor.py', 'src/concorde/issues/flow.py',
         'docsite/concorde-only/flows.py'} | {
             Path(module.__file__).relative_to(ROOT).as_posix() for module in modules.values()})
-    capabilities = {name: inspect_flow(build_studio_flow(name, ROOT, ROOT) if module.PUBLIC else
+    capabilities = {name: inspect_flow(
+        build_studio_flow(name, ROOT, ROOT) if module.PUBLIC else
+        CapabilityNode(name).flow() if not hasattr(module, 'REQUEST') else
         build_capability_flow(lambda node: lambda state: {}, name=name)) for name, module in modules.items()}
     metadata = {name: {'public': module.PUBLIC, 'context_selection': module.CONTEXT_SELECTION,
                       'deterministic': module.DETERMINISTIC,
+                      'state': {'input': sorted(module.STATE.input_schema.__annotations__),
+                                'output': sorted(module.STATE.output_schema.__annotations__)},
                       'uses': ['concorde-' + child.replace('_', '-') for child in module.USES]}
                 for name, module in modules.items()}
     return {'loops': loops, 'flows': flows, 'capabilities': capabilities, 'capability_info': metadata,

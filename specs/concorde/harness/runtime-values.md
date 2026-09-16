@@ -1,4 +1,4 @@
-# Agent runtime value and collaborator contracts
+# Capability runtime value and collaborator contracts
 
 This registered local companion document defines the exact public value records used by the
 capability host, permission compiler and worker executor. These are Python in-process contracts;
@@ -46,27 +46,27 @@ Spec-only workers receive only their context role. The programmer additionally r
 `implementation` with writes. Code review and investigation receive the current target's enumerated
 implementation files for reading, with an empty write-role tuple.
 
-### Agent definition and binding
+### Model execution profile and binding
 
 ```python
 Contract(phase: str, context: str, result: str, effects: EffectDeclaration, action: str | None = None,
          stage_inputs: tuple[str, ...] = (), required_inputs: tuple[str, ...] = (),
          output_fields: tuple[str, ...] = (), outcomes: tuple[str, ...] = ())
 Child(name: str, definition: str)
-Agent(name: str, spec: str, workspace: Literal["capsule", "project"], contract: Contract,
+WorkerProfile(name: str, spec: str, workspace: Literal["capsule", "project"], contract: Contract,
       tools: tuple[str, ...], children: tuple[Child, ...] = (), timeout_seconds: int = 1800)
-AgentBinding(agent: str, spec_path: str, spec_digest: str, instructions_path: str,
+WorkerBinding(agent: str, spec_path: str, spec_digest: str, instructions_path: str,
              instructions_digest: str, profile_digest: str, build_manifest_digest: str,
              timeout_seconds: int, digest: str)
 ```
 
 All are frozen records. `name` is the catalog key (for example `code_reviewer`); its external name is
-`concorde-code-reviewer`. `validate_agent(agent)` requires `agents/<name>/spec.md`, a known workspace,
+`concorde-code-reviewer`. `validate_worker_profile(agent)` requires `capabilities/<name>/spec.md`, a known workspace,
 a context type paired with its result type, required inputs among admitted inputs, known result
 fields, writes that are also reads, no network or credential effects, implementation reads only in a
 project workspace, discovery-context reads exactly for discovery contexts, distinct known tools
 including `read`, `edit` or `write` only with a write effect, uniquely named children at
-`agents/<name>/children/<child>.md` and a positive integer timeout; it raises
+`capabilities/<name>/children/<child>.md` and a positive integer timeout; it raises
 `BuildError/invalid_agent_binding`. `child_definitions(package_root, agent)` parses each child's
 frontmatter and returns `ChildDefinition(name, description, tools, text)` records, rejecting a
 missing file, a wrong name, missing description or prompt, tools outside `read`, `grep`, `find`,
@@ -74,8 +74,8 @@ missing file, a wrong name, missing description or prompt, tools outside `read`,
 settings than replace with no inherited project context, global context or skills, and any `model`
 or `thinking` key.
 
-`agent_definition(name)` accepts the bare, hyphenated or external name and raises
-`BuildError/unknown_agent`. `resolve_agent(package_root, name)` verifies build freshness, validates
+`worker_profile(name)` accepts the bare, hyphenated or external name and raises
+`BuildError/unknown_agent`. `resolve_worker(package_root, name)` verifies build freshness, validates
 the profile and its children, requires the Spec and every child definition to be recorded in the
 build manifest, reads the rendered instructions and returns the binding. `profile_digest` covers the
 complete profile and each child definition's bytes. `canonical_binding`/`binding_digest` hash every
@@ -85,18 +85,18 @@ inverse.
 The contract checks are independent of prompt text:
 
 ```python
-validate_agent_input(agent: Agent, value: dict, *, phase: str) -> None
-validate_agent_artifacts(agent: Agent, inputs, *, require_all: bool = True) -> None
-validate_agent_policy(agent: Agent, value: dict, policy: NormalizedPolicy, receipt: dict) -> None
-validate_agent_output(agent: Agent, value: dict) -> None          # raises ContractError(message, code)
+validate_worker_input(agent: WorkerProfile, value: dict, *, phase: str) -> None
+validate_worker_artifacts(agent: WorkerProfile, inputs, *, require_all: bool = True) -> None
+validate_worker_policy(agent: WorkerProfile, value: dict, policy: NormalizedPolicy, receipt: dict) -> None
+validate_worker_output(agent: WorkerProfile, value: dict) -> None  # raises ContractError(message, code)
 ```
 
-`validate_agent_input` checks the typed context, phase, action, admitted artifacts, the absence of
+`validate_worker_input` checks the typed context, phase, action, admitted artifacts, the absence of
 implementation contents for a worker without implementation reads, review-mode binding and the
-absence of implementation patches in a Spec review. `validate_agent_policy` requires one context index
+absence of implementation patches in a Spec review. `validate_worker_policy` requires one context index
 granted with exactly its listed files, implementation grants inside the selected Module (and, for
 read-only workers, inside the frozen files), reference grants inside the snapshot's references, and
-a policy no wider than the contract recompiles. `validate_agent_output` checks the result type,
+a policy no wider than the contract recompiles. `validate_worker_output` checks the result type,
 outcome and permitted populated fields; disallowed authored fields use code `permission_denied`,
 other violations `invalid_completion`.
 

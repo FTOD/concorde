@@ -67,9 +67,16 @@ hidden implementation knowledge or changes outside its responsibility. That is u
 that the Spec is sufficient and the Modules are well decoupled. It is not a proof of correctness;
 tests and review still matter. Missing promises are reported as Spec gaps.
 
-### 4. Use built-in agents for everyday development
+### 4. Compose State-based Capabilities for everyday development
 
-Concorde defines twelve Pi workers, one per lifecycle role: **answerer**, **router** and
+Concorde uses one executable concept: **Capability**, a LangGraph node with declared input State
+and output updates. A Capability can run deterministic code, invoke a model or compose a subgraph.
+All definitions live in `capabilities/`; `USES` is the single composition relation. Model-backed
+Capabilities keep instructions, tools, permissions and timeout in an optional execution profile,
+not a separate Agent registry. Hosts and launchers stay in trusted LangGraph runtime context rather
+than writable State. Public Skills and existing wire envelopes remain the external entry points.
+
+Twelve model-backed Capabilities execute through Pi workers: **answerer**, **router** and
 **topology-designer** for questions, routing and topology design; **spec-author**,
 **topology-author**, **spec-reviewer**, **context-assessor**, **planner** and **task-author** for
 authoring, reviewing, planning and task definition; and **programmer**, **code-reviewer** and
@@ -382,9 +389,9 @@ those capabilities from the developer's agent client.
 | `code-reviewer` | code-review | Independent code review findings; authorized code read-only. |
 | `issue-solver` | issue-solve | Select bounded work or an evidence-grounded disposition from a selected Issue and its Module Spec. |
 
-Each worker is `agents/<name>/spec.md` (its role Spec) plus `agents/<name>/__init__.py` (its
+Each worker is `capabilities/<name>/spec.md` (its role Spec) plus `capabilities/<name>/__init__.py` (its
 profile: task contract, workspace, Pi tools, children, timeout). Definitions live in
-[agents/](agents/__init__.py); the [Agents and Harnesses](specs/concorde/harness/agents-and-harnesses.md)
+[capabilities/](capabilities/__init__.py); the [Agents and Harnesses](specs/concorde/harness/agents-and-harnesses.md)
 Spec is the authoritative catalog. Each worker fulfils exactly one task contract, and each
 invocation receives fresh, explicitly bounded context and permissions.
 

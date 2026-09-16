@@ -4,7 +4,7 @@
 integration-specific Skill files (Codex `.agents/skills` and Claude `.claude/skills`),
 `generated/langgraph.json`, the rule assets (`generated/protocol/principles.md`, its kind
 definition, and `generated/protocol/schemas.json`) deterministically from
-`agents/`, `protocol/`, `prompts/`, `skills/` and the capability contracts. The principles asset
+`capabilities/`, `protocol/`, `prompts/`, `skills/` and the capability contracts. The principles asset
 bundles the Protocol principles, Spec management (including Spec and Context) and Required format
 chapters with the separate Framework execution profile. The kind asset contains the Module chapter
 and its canonical templates. Framework configuration, phase authority and Mermaid authoring
@@ -28,7 +28,7 @@ a Skill does not execute its Capability or add it to a Concorde Agent's Harness.
 
 #### scenario.distribution.build-render — Build renders deterministic projections from authored sources
 
-- GIVEN the current `prompts/`, `skills/`, `capabilities/`, `agents/` and Protocol chapter sources
+- GIVEN the current `prompts/`, `skills/`, `capabilities/` and Protocol chapter sources
 - WHEN build runs for a selected integration
 - THEN it renders Agent instructions, Skill files, the Studio graph configuration, Protocol assets and runtime schemas deterministically
 - AND repeated renders of unchanged inputs are byte-identical and perform no network or process I/O
@@ -76,11 +76,11 @@ The deterministic capabilities `concorde-init`, `concorde-configure`,
 and consume no generated Agent instructions. Loading an Agent still verifies freshness
 independently. This exception does not waive Protocol, input, permission or evidence checks.
 
-#### scenario.distribution.load-agent — load_agent returns one Agent's current admitted binding
+#### scenario.distribution.load-agent — load_model_instructions returns one Agent's current admitted binding
 
 - GIVEN a named Agent and a fresh build
-- WHEN load_agent is called
-- THEN it verifies freshness first and returns the Agent's rendered body, effect declaration and complete `AgentBinding`
+- WHEN load_model_instructions is called
+- THEN it verifies freshness first and returns the Agent's rendered body, effect declaration and complete `WorkerBinding`
 - AND an unknown Agent or an invalid binding fails closed with a typed BuildError (`stale_build`, `unknown_agent`, or `invalid_agent_binding`)
 
 `validate_package(root)` runs the complete prompt, capability-module, Agent, contract,
@@ -89,7 +89,7 @@ Spec-alignment and build-output checks behind `python -m concorde validate` and 
 bind (`--bind-project`) the tracked `protocol/manifest.json` digest to the current build; accepting
 a changed Protocol export is developer-only, and a consumer separately accepts the installed
 manifest version/digest in its own project configuration. Agent responsibility files are bound
-separately by Agent definitions. Protocol adapters and the Framework execution profile are bound by
+separately by their Capability execution profiles. Protocol adapters and the Framework execution profile are bound by
 Protocol assets; the independent standard under `protocol/` is an external normative input, not a
 Module-bound Spec. Protocol adapters alone may include its plain Markdown chapters, which require
 no audience front matter. The build records included chapter bytes in source identities so edits
@@ -101,7 +101,7 @@ prefixes themselves.
 - GIVEN capability modules declaring public exposure, context selection, Agents, host routing and acyclic `USES` composition
 - WHEN package validation checks their metadata
 - THEN each module must declare a boolean `DETERMINISTIC`, rejecting missing values, strings and integers
-- AND the flag must be true exactly when neither its Agents, host routing nor any transitive composed capability can call a model
+- AND the flag must be true exactly when neither its model profile, host routing nor any transitive USES capability can call a model
 - AND a capability declaring no Agent context selection must have no model-call path
 - AND the single registered `concorde-capabilities` block must contain the same boolean `deterministic` for every capability alongside its `id`, `public`, `context_selection` and `skill`
 - BUT a path that skips model execution does not make a model-backed capability deterministic
@@ -119,7 +119,7 @@ These signatures identify public call shapes; bodies and private helpers are out
 Public functions of build:
 
 ```text
-render_agent(project_root: Path, agent: str) -> BuildOutput
+render_model_instructions(project_root: Path, agent: str) -> BuildOutput
 render_skill(project_root: Path, name: str, integration: str, *, framework_prefix: str='') -> BuildOutput
 render_langgraph(project_root: Path) -> BuildOutput
 render_protocol_principles(project_root: Path) -> BuildOutput
@@ -130,13 +130,13 @@ write_build(project_root: str | Path, integration: str='all', *, framework_prefi
 check_build(project_root: str | Path, integration: str='all') -> tuple[bool, tuple[str, ...]]
 recompute_protocol_manifest(project_root: str | Path) -> dict
 verify_fresh(project_root: str | Path) -> None
-load_agent(package_root: str | Path, name: str) -> SkillPrompt
+load_model_instructions(package_root: str | Path, name: str) -> SkillPrompt
 ```
 
 Public functions of prompt_resolver:
 
 ```text
-resolve_agent_spec(project_root: str | Path, relative_path: str) -> ResolvedPrompt
+resolve_model_instructions(project_root: str | Path, relative_path: str) -> ResolvedPrompt
 resolve_role_prompt(project_root: str | Path, relative_path: str) -> ResolvedPrompt
 resolve_skill_source(project_root: str | Path, relative_path: str) -> ResolvedPrompt
 find_unreachable_prompts(project_root: str | Path, roots: list[str] | tuple[str, ...]) -> tuple[str, ...]
@@ -149,13 +149,13 @@ Public functions of package_validation:
 validate_package(root: Path) -> list[Finding]
 ```
 
-The resolver (`resolve_agent_spec`, `resolve_role_prompt`, `resolve_skill_source`,
+The resolver (`resolve_model_instructions`, `resolve_role_prompt`, `resolve_skill_source`,
 `find_unreachable_prompts`, `check_reachability`) expands `@include` directives, enforces
-audience/layering rules, and detects unreachable or diamond-included sources; `resolve_agent_spec`
+audience/layering rules, and detects unreachable or diamond-included sources; `resolve_model_instructions`
 additionally rejects an Agent Spec that carries front matter. `package_validation` attributes its
 findings to `module.distribution` and requires exactly one registered `concorde-capabilities` block
-and one `concorde-agents` block across all Module documents, each equal to the current code
-inventory of capabilities and Agents.
+across all Module documents, equal to the single code inventory of Capabilities, including State,
+USES and optional model execution profiles; no parallel Agent inventory is required.
 
 Failures return structured findings or the declared exception; callers must stop the affected
 transition. Repeating an unchanged read is side-effect free. Mutations require current
@@ -173,12 +173,12 @@ explicit `sources: tuple[str, ...]`; it carries no execution grant.
 
 `SkillPrompt` retains the compatibility record name and fields `name`, `description`,
 `source_path`, `kind="skill"`, `body`, nullable `effects`, and nullable `binding`. String fields
-contain identity, provenance and complete instruction text. `load_agent` supplies non-null effects
+contain identity, provenance and complete instruction text. `load_model_instructions` supplies non-null effects
 and a current Agent binding for a successfully admitted Agent. Effects have `reads` and `writes`
 string tuples, `network: bool` and `credentials: "none"|"declared"`; these describe a ceiling that
 the host must narrow for a concrete invocation, not automatically effective permissions.
 
-`AgentBinding` has string fields `agent`, `spec_path`, `spec_digest`, `instructions_path`,
+`WorkerBinding` has string fields `agent`, `spec_path`, `spec_digest`, `instructions_path`,
 `instructions_digest`, `profile_digest`, `build_manifest_digest` and `digest`, plus
 `timeout_seconds: int`. The profile digest covers the worker's task contract, workspace kind,
 tools, timeout and each declared child definition's bytes. Digest values identify exact admitted
@@ -211,9 +211,9 @@ updates preserve the existing binding until explicitly accepted.
 Agent builds publish twelve independent worker projections and no separate common one. Each
 rendered `generated/agents/<name>.md` concatenates the shared common worker rules
 (`prompts/workers/common.md`) and that worker's own role Spec source; the manifest records both
-sources, together with the bytes of each of that worker's declared child definitions. Package validation compares the `concorde-agents` block's identifiers, workspace
-kinds, sorted profile tools, sorted child names and sorted launching-capability names against the
-Python inventory and rejects any mismatch.
+sources, together with the bytes of each of that worker's declared child definitions. Package
+validation compares the unified `concorde.capabilities` metadata with every executable declaration:
+exposure, context selection, determinism, USES, State and optional workspace/tools/children.
 
 Agent instruction file membership must equal the declared worker inventory. Agent Python bindings,
 role Spec bodies, child definitions and available capability/wire sources are recorded build

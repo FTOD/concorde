@@ -1,57 +1,57 @@
-"""Capability modules (top-level ``capabilities/``) must agree with the contract tables in
-``contracts.py`` (proposal section 6, Stage B1 item 2).
-
-This uses ``contracts.load_capability_inventory()`` rather than a bare
-``import capabilities``: under ``unittest discover -s tests/concorde``, discovery itself imports
-``tests/concorde/development/__init__.py`` as top-level module ``capabilities`` while walking the
-tree, which would otherwise permanently shadow the real repository-root package for this process.
-"""
+"""One executable Capability inventory, one USES relation, and State-based nodes."""
 from __future__ import annotations
 
 import importlib
 import sys
 import unittest
+from types import ModuleType
+from unittest.mock import patch
 
-from tests.concorde.support.paths import RUNTIME_ROOT
+from langgraph.graph import END, START, StateGraph
+from langgraph.runtime import Runtime
 
-sys.path.insert(0, str(RUNTIME_ROOT))
-
-from concorde.spec.contracts import (  # noqa: E402
-    COMPOSITE_CAPABILITIES,
-    PUBLIC_CAPABILITIES,
-    INTERNAL_CAPABILITIES,
-    DETERMINISTIC_CAPABILITIES,
-    DISCOVERY_CAPABILITIES,
-    CAPABILITY_NAMES,
-    SKILL_NAMES,
-    dependencies,
-    load_capability_inventory,
-    schemas,
-)
+from concorde.harness.capability_node import CapabilityNode
+from concorde.harness.capability_state import CapabilityContext, StateContract
+from concorde.harness.worker_profile import WorkerProfile
+from concorde.spec.contracts import (CAPABILITY_NAMES, COMPOSITE_CAPABILITIES, PUBLIC_CAPABILITIES,
+    INTERNAL_CAPABILITIES, DETERMINISTIC_CAPABILITIES, DISCOVERY_CAPABILITIES, SKILL_NAMES,
+    contracts, dependencies, load_capability_inventory, schemas)
+from concorde.spec.typed_data import TypedDataError, typed
+from concorde.spec.verification import verifies
 
 capabilities = load_capability_inventory()
 
 
 def _modules():
-    return {name: importlib.import_module(f"{capabilities.__name__}.{name}") for name in capabilities.CAPABILITIES}
+    return {name: importlib.import_module(f"capabilities.{name}") for name in capabilities.CAPABILITIES}
 
 
 class CapabilityModuleContractTests(unittest.TestCase):
-    def test_capability_names_match_the_capability_registry_exactly(self):
-        external_names = {capabilities.external_name(name) for name in capabilities.CAPABILITIES}
-        self.assertEqual(external_names, set(CAPABILITY_NAMES))
+    @verifies("scenario.development.capability-state")
+    def test_one_inventory_includes_model_code_and_composed_nodes(self):
+        modules = _modules()
+        self.assertEqual(26, len(modules))
+        self.assertEqual(set(CAPABILITY_NAMES), {m.EXTERNAL_NAME for m in modules.values()})
         self.assertEqual(len(capabilities.CAPABILITIES), len(set(capabilities.CAPABILITIES)))
-
-    def test_external_name_helper_is_the_only_naming_rule(self):
-        for name in capabilities.CAPABILITIES:
-            module = importlib.import_module(f"{capabilities.__name__}.{name}")
+        self.assertEqual(12, sum(isinstance(m.PROFILE, WorkerProfile) for m in modules.values()))
+        self.assertFalse(hasattr(capabilities, "AGENTS"))
+        for name, module in modules.items():
             self.assertEqual(module.EXTERNAL_NAME, capabilities.external_name(name))
-            self.assertEqual(module.EXTERNAL_NAME, "concorde-" + name.replace("_", "-"))
+            self.assertFalse(hasattr(module, "AGENTS"))
+            self.assertFalse(hasattr(module, "CLASS"))
+            self.assertIsInstance(module.STATE, StateContract)
+            self.assertTrue(callable(module.run))
+            if module.PROFILE:
+                self.assertEqual(name, module.PROFILE.name)
+                self.assertEqual(module.STATE.input_type, module.PROFILE.contract.context)
+                self.assertEqual(module.STATE.output_type, module.PROFILE.contract.result)
+            node = CapabilityNode(name)
+            self.assertEqual({"__start__", name, "__end__"}, set(node.flow().get_graph().nodes))
 
-    def test_capability_properties_are_independent_and_drive_the_catalog(self):
+    def test_properties_and_transport_contracts_are_independent(self):
+        exported = schemas()
         for module in _modules().values():
             name = module.EXTERNAL_NAME
-            self.assertFalse(hasattr(module, "CLASS"))
             self.assertIs(type(module.PUBLIC), bool)
             self.assertIs(type(module.DETERMINISTIC), bool)
             self.assertIn(module.CONTEXT_SELECTION, {"discover", "bound", "none"})
@@ -59,152 +59,151 @@ class CapabilityModuleContractTests(unittest.TestCase):
             self.assertEqual(not module.PUBLIC, name in INTERNAL_CAPABILITIES)
             self.assertEqual(module.DETERMINISTIC, name in DETERMINISTIC_CAPABILITIES)
             self.assertEqual(module.CONTEXT_SELECTION == "discover", name in DISCOVERY_CAPABILITIES)
+            if hasattr(module, "REQUEST"):
+                self.assertEqual(module.REQUEST, exported[f"{name}-request"])
+                self.assertEqual(module.RESPONSE, exported[f"{name}-response"])
+                self.assertIsNone(module.STATE.output_type)
+            else:
+                self.assertNotIn(name, contracts())
+                self.assertIsNotNone(module.PROFILE)
+        self.assertEqual(14, len(contracts()))  # Existing wire envelopes do not change.
+        self.assertEqual(9, len(SKILL_NAMES))
+        self.assertEqual(set(SKILL_NAMES), {m.EXTERNAL_NAME for m in _modules().values() if m.PUBLIC})
+        self.assertEqual({"concorde-main", "concorde-dev-loop", "concorde-specify-loop", "concorde-review"},
+                         set(DISCOVERY_CAPABILITIES))
 
-    def test_agents_and_uses_match_dependencies_exactly(self):
-        # dependencies() is the deterministic policy source, historically a flattened mix of Agent
-        # identities and (for a composing capability) the external names of the capabilities it
-        # composes. A module's own declared (AGENTS, USES) must reconstruct it exactly: the Agents
-        # it launches itself, plus the external name of every capability it USES, plus (for a
-        # main-routed capability other than main itself) the router Agent main already grants.
+    def test_uses_is_the_only_dependency_relation_and_is_acyclic(self):
         modules = _modules()
-        for name, module in modules.items():
-            external = module.EXTERNAL_NAME
-            declared_agents = {"concorde-" + agent.name.replace("_", "-") for agent in module.AGENTS}
-            used_names = {capabilities.external_name(used) for used in module.USES}
-            expected = declared_agents | used_names
-            if external in DISCOVERY_CAPABILITIES and external != "concorde-main":
-                expected = expected | {"concorde-router"}
-            self.assertEqual(set(dependencies(external)), expected, f"{external}: (AGENTS, USES) do not reconstruct dependencies()")
-
-    def test_uses_matches_the_declared_composition(self):
-        expected = {
-            "main": (),
-            "specify_loop": ("specify", "review"),
-            "dev_loop": ("specify_loop", "review", "plan", "tasks", "implement", "validate"),
-            "issues": ("dev_loop", "specify", "review", "validate"),
-            "init": (),
-            "configure": (),
-            "validate": (),
-            "deliver": (),
-            "specify": (),
-            "review": (),
-            "context_solve": (),
-            "plan": (),
-            "tasks": (),
-            "implement": (),
-        }
-        modules = _modules()
-        self.assertEqual({name: module.USES for name, module in modules.items()}, expected)
-        self.assertEqual(
-            set(COMPOSITE_CAPABILITIES),
-            {capabilities.external_name(name) for name, module in modules.items() if module.USES},
-        )
-
-    def test_every_use_names_a_declared_capability(self):
-        for name in capabilities.CAPABILITIES:
-            module = importlib.import_module(f"{capabilities.__name__}.{name}")
-            for used in module.USES:
-                self.assertIn(used, capabilities.CAPABILITIES, f"{name}.USES names unknown capability {used!r}")
-
-    def test_uses_graph_is_acyclic(self):
-        modules = _modules()
-        visiting: set[str] = set()
-        visited: set[str] = set()
+        self.assertEqual(("context_assessor", "planner"), modules["plan"].USES)
+        self.assertEqual(("spec_author",), modules["specify"].USES)
+        self.assertEqual(set(COMPOSITE_CAPABILITIES), {m.EXTERNAL_NAME for m in modules.values() if m.USES})
+        for module in modules.values():
+            self.assertEqual(dependencies(module.EXTERNAL_NAME),
+                             tuple(capabilities.external_name(n) for n in module.USES))
+        visited = set()
 
         def visit(name, chain):
-            if name in visiting:
-                self.fail(f"cycle in capability USES graph: {' -> '.join(chain + (name,))}")
+            self.assertNotIn(name, chain)
+            self.assertIn(name, modules)
             if name in visited:
                 return
-            visiting.add(name)
-            for used in modules[name].USES:
-                visit(used, chain + (name,))
-            visiting.discard(name)
+            for child in modules[name].USES:
+                visit(child, (*chain, name))
             visited.add(name)
-
-        for name in capabilities.CAPABILITIES:
+        for name in modules:
             visit(name, ())
 
-    def test_request_and_response_are_exactly_the_exported_schemas(self):
-        exported = schemas()
-        for name in capabilities.CAPABILITIES:
-            module = importlib.import_module(f"{capabilities.__name__}.{name}")
-            self.assertEqual(module.REQUEST, exported[f"{module.EXTERNAL_NAME}-request"])
-            self.assertEqual(module.RESPONSE, exported[f"{module.EXTERNAL_NAME}-response"])
+    @verifies("scenario.development.capability-state")
+    def test_model_subgraph_projects_parent_state_and_preserves_unrelated_channels(self):
+        from tests.concorde.harness.test_capability_node import _stage_context
+        node = CapabilityNode("planner")
+        seen = []
 
-    def test_public_capabilities_have_no_module_declared_import_cycle(self):
-        # Capability modules import only roles/contract_shapes/wire_shapes at module load time
-        # (capability_service is imported lazily inside run()); importing every module and calling
-        # its run() attribute (without invoking it) exercises that this loads cleanly.
-        for name in capabilities.CAPABILITIES:
-            module = importlib.import_module(f"{capabilities.__name__}.{name}")
-            self.assertTrue(callable(module.run))
+        def launcher(value):
+            seen.append(value)
+            return {"context_id": value["data"]["snapshot"]["data"]["context_id"],
+                    "outcome": "completed", "answer": "Planned", "blockers": [],
+                    "documents": [], "plan": "The plan", "tasks": []}
 
-    def test_discovery_preserves_the_existing_routing_boundary(self):
-        self.assertEqual(set(DISCOVERY_CAPABILITIES), {"concorde-main", "concorde-dev-loop", "concorde-specify-loop", "concorde-review"})
-        self.assertEqual("bound", _modules()["issues"].CONTEXT_SELECTION)
-        self.assertTrue(_modules()["issues"].PUBLIC)
+        from typing import TypedDict, cast
 
-    def test_only_public_capabilities_are_projected_as_skills(self):
-        self.assertEqual(set(SKILL_NAMES), {module.EXTERNAL_NAME for module in _modules().values() if module.PUBLIC})
-        self.assertEqual({"concorde-specify", "concorde-context-solve", "concorde-plan", "concorde-tasks", "concorde-implement"}, set(INTERNAL_CAPABILITIES))
+        class ParentState(TypedDict, total=False):
+            snapshot: dict
+            change_id: str | None
+            expected_artifacts: list[str]
+            plan: str
+            private_parent_channel: str
+
+        graph = StateGraph(ParentState, context_schema=CapabilityContext)
+        graph.add_node("plan", node.flow())
+        graph.add_edge(START, "plan")
+        graph.add_edge("plan", END)
+        data = _stage_context()["data"]
+        result = graph.compile().invoke(cast(ParentState, {**data, "private_parent_channel": "not admitted"}),
+                                        context=CapabilityContext(launcher=launcher))
+        self.assertEqual("The plan", result["plan"])
+        self.assertEqual("not admitted", result["private_parent_channel"])
+        self.assertEqual([typed(node.input_type, data)], seen)
+        with self.assertRaises(RuntimeError):
+            node.flow().invoke(data)  # State cannot supply the trusted launcher.
+
+    @verifies("scenario.development.capability-state")
+    def test_deterministic_state_only_node_uses_the_same_adapter(self):
+        module = ModuleType("capabilities.normalize_plan")
+        module.__dict__["STATE"] = StateContract("concorde-plan-artifact", "concorde-plan-artifact")
+        module.__dict__["run"] = lambda state, runtime: {"plan": state["plan"].upper()}
+        with patch.object(capabilities, "CAPABILITIES", (*capabilities.CAPABILITIES, "normalize_plan")), \
+                patch.dict(sys.modules, {module.__name__: module}):
+            node = CapabilityNode("normalize_plan")
+            self.assertEqual({"plan": "READY"}, node.flow().invoke({"plan": "ready"}))
+            module.__dict__["run"] = lambda state, runtime: {"plan": "ready", "undeclared": True}
+            with self.assertRaises(TypedDataError):
+                node.flow().invoke({"plan": "ready"})
+
+    @verifies("scenario.development.capability-state")
+    def test_module_run_is_directly_a_langgraph_node(self):
+        from tests.concorde.harness.test_capability_node import _stage_context
+        planner = _modules()["planner"]
+        graph = StateGraph(planner.STATE.input_schema, context_schema=CapabilityContext)
+        graph.add_node("planner", planner.run, input_schema=planner.STATE.input_schema)
+        graph.add_edge(START, "planner")
+        graph.add_edge("planner", END)
+        # Without trusted runtime authority the node fails before any process/model call.
+        with self.assertRaises(RuntimeError):
+            graph.compile().invoke(_stage_context()["data"])
+
+    @verifies("scenario.development.capability-result-state")
+    def test_host_state_node_preserves_failure_envelope_and_runtime_context(self):
+        from capabilities import validate
+        envelope = {"status": "blocked", "output": None, "errors": [{"code": "fixture"}]}
+        host = object()
+        # None is an admitted request to resolve initialized project configuration on the host.
+        context = CapabilityContext(host=host, configuration=None)
+        with patch("concorde.development.capability_service.run_capability", return_value=envelope) as run:
+            result = CapabilityNode("validate").flow().invoke(
+                {"target_id": "module.fixture", "task": "Check"}, context=context)
+        self.assertEqual({"result": envelope}, result)
+        self.assertEqual("concorde-validate", run.call_args.args[0])
+        self.assertIs(host, run.call_args.kwargs["host_context"])
+        with self.assertRaises(RuntimeError):
+            validate.run({"task": "Check"}, Runtime(context=None))
+
+    @verifies("scenario.development.capability-result-state")
+    def test_wire_adapter_rejects_wrong_identity_before_state_projection(self):
+        from concorde.development.capability_host import _run_host_node
+        called = []
+        with self.assertRaises(TypedDataError):
+            _run_host_node(lambda *args: called.append(args), None, {},
+                           typed("concorde-implement-request", {"target_id": "module.x", "task": "Do"}),
+                           "concorde-plan")
+        self.assertEqual([], called)
 
 
 class InProcessCompositionTests(unittest.TestCase):
-    """Every in-process nested dispatch the host can perform must match the declared USES graph.
-
-    ``resolve_child_capability`` is the one place the host resolves a nested capability call
-    (``Invocation.loop``'s stage graph, ``issues``'s composition of ``dev_loop``, and a
-    Domain's own recursive per-component review routing). This exhaustively compares its behavior,
-    for every ordered pair of capabilities, against each capability module's own declared ``USES``:
-    self-recursion (fan-out across component targets, never a composition edge) always resolves;
-    every other pair resolves if and only if the child is declared.
-    """
-
-    def test_resolution_exactly_matches_the_declared_uses_graph(self):
+    def test_unregistered_identity_is_refused_before_dynamic_import(self):
         from concorde.development.capability_host import resolve_child_capability
         from concorde.spec.repository import SpecError
+        for parent, child in (("concorde-main", "concorde-ghost"),
+                              ("concorde-ghost", "concorde-ghost"),
+                              ("concorde-ghost", "concorde-planner")):
+            with patch("concorde.development.capability_host.importlib.import_module") as load:
+                with self.assertRaises(SpecError) as failure:
+                    resolve_child_capability(parent, child)
+                self.assertEqual("unknown_capability", failure.exception.code)
+                load.assert_not_called()
 
+    def test_resolution_exactly_matches_uses_for_every_pair_including_model_nodes(self):
+        from concorde.development.capability_host import resolve_child_capability
+        from concorde.spec.repository import SpecError
         modules = _modules()
-        externals = {name: module.EXTERNAL_NAME for name, module in modules.items()}
-        for parent_name, parent_module in modules.items():
-            declared = {externals[used] for used in parent_module.USES}
-            for child_name, child_external in externals.items():
-                parent_external = externals[parent_name]
-                should_resolve = child_name == parent_name or child_external in declared
-                if should_resolve:
-                    resolved = resolve_child_capability(parent_external, child_external)
-                    self.assertIs(resolved, modules[child_name], (parent_external, child_external))
+        for name, parent in modules.items():
+            for child_name, child in modules.items():
+                if name == child_name or child_name in parent.USES:
+                    self.assertIs(child, resolve_child_capability(parent.EXTERNAL_NAME, child.EXTERNAL_NAME))
                 else:
-                    with self.assertRaises(SpecError, msg=(parent_external, child_external)) as failure:
-                        resolve_child_capability(parent_external, child_external)
-                    self.assertEqual(failure.exception.code, "undeclared_capability")
-
-    def test_undeclared_child_is_refused_with_the_stable_error_code(self):
-        from concorde.development.capability_host import resolve_child_capability
-        from concorde.spec.repository import SpecError
-
-        with self.assertRaises(SpecError) as failure:
-            resolve_child_capability("concorde-specify", "concorde-plan")
-        self.assertEqual(failure.exception.code, "undeclared_capability")
-
-    def test_declared_dev_loop_and_issues_edges_resolve(self):
-        from concorde.development.capability_host import resolve_child_capability
-
-        modules = _modules()
-        for child in ("specify_loop", "review", "plan", "tasks", "implement", "validate"):
-            resolved = resolve_child_capability("concorde-dev-loop", modules[child].EXTERNAL_NAME)
-            self.assertIs(resolved, modules[child])
-        resolved = resolve_child_capability("concorde-issues", "concorde-dev-loop")
-        self.assertIs(resolved, modules["dev_loop"])
-
-    def test_self_recursion_never_requires_a_declared_edge(self):
-        from concorde.development.capability_host import resolve_child_capability
-
-        modules = _modules()
-        for name, module in modules.items():
-            resolved = resolve_child_capability(module.EXTERNAL_NAME, module.EXTERNAL_NAME)
-            self.assertIs(resolved, module)
+                    with self.assertRaises(SpecError) as failure:
+                        resolve_child_capability(parent.EXTERNAL_NAME, child.EXTERNAL_NAME)
+                    self.assertEqual("undeclared_capability", failure.exception.code)
 
 
 if __name__ == "__main__":

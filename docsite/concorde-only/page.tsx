@@ -45,8 +45,8 @@ const specSteps: Record<string, Step> = {
   },
   specify: {
     title: "Write or revise Spec",
-    kind: "Agent invocation",
-    agent: "spec-engineer / specify",
+    kind: "Model-backed capability",
+    agent: "spec-author",
     input:
       "Intended behavior, constraints and complete owned and referenced Module Specs.",
     output: "Proposed replacements for the Module’s owned Spec documents.",
@@ -66,7 +66,7 @@ const specSteps: Record<string, Step> = {
   review_spec: {
     title: "Review Spec",
     kind: "Independent review",
-    agent: "spec-engineer / spec-review",
+    agent: "spec-reviewer",
     input:
       "The complete current Module contract, task and scoped Spec changes.",
     output:
@@ -109,7 +109,7 @@ const steps: Record<string, Step> = {
   specify_loop: {
     title: "Specify Loop",
     kind: "Composed capability",
-    agent: "spec-engineer / specify → spec-review",
+    agent: "spec-author → spec-reviewer",
     input:
       "Intended behavior, constraints, authoring/review flags and the complete Module Specs.",
     output:
@@ -130,8 +130,8 @@ const steps: Record<string, Step> = {
   },
   plan: {
     title: "Plan",
-    kind: "Two Agent invocations",
-    agent: "spec-engineer / context-solve → plan",
+    kind: "Composed capability",
+    agent: "context-assessor → planner",
     input:
       "Complete Specs, intended behavior, constraints and declared implementation file names.",
     output:
@@ -152,8 +152,8 @@ const steps: Record<string, Step> = {
   },
   tasks: {
     title: "Tasks",
-    kind: "Agent invocation",
-    agent: "spec-engineer / tasks",
+    kind: "Model-backed capability",
+    agent: "task-author",
     input:
       "Specs, the accepted plan, reserved task IDs and any admitted repair feedback.",
     output:
@@ -180,8 +180,8 @@ const steps: Record<string, Step> = {
   },
   implement: {
     title: "Implement",
-    kind: "Agent invocation",
-    agent: "programmer / implementation",
+    kind: "Model-backed capability",
+    agent: "programmer",
     input:
       "Specs, the plan and task list, authorized code contents, and any admitted code-review feedback.",
     output:
@@ -228,7 +228,7 @@ const steps: Record<string, Step> = {
   review_code: {
     title: "Review Code",
     kind: "Independent review",
-    agent: "programmer / code-review",
+    agent: "code-reviewer",
     input:
       "Complete Specs, authorized implementation files and scoped changes at the reviewed revision.",
     output:
@@ -278,8 +278,8 @@ const workerDetails: Record<string, Step> = {
   "concorde-implement": steps.implement,
   "concorde-context-solve": {
     title: "Assess context",
-    kind: "Agent invocation",
-    agent: "spec-engineer / context-solve",
+    kind: "Model-backed capability",
+    agent: "context-assessor",
     input:
       "The complete selected Module contract, task, constraints and participant declarations.",
     output: "A sufficiency decision or an attributed contract gap.",
@@ -642,6 +642,11 @@ function CapabilityRelations({ name, data }: { name: string; data: FlowData }) {
         {info.context_selection} ·{" "}
         {info.deterministic ? "No model calls" : "May call a model"}
       </p>
+      <p>
+        <strong>Input State:</strong> <code>{info.state.input.join(", ")}</code>
+        <br />
+        <strong>Output update:</strong> <code>{info.state.output.join(", ")}</code>
+      </p>
       {info.uses.length > 0 && (
         <p>
           <strong>Calls:</strong> {links(info.uses)}
@@ -656,7 +661,7 @@ function CapabilityRelations({ name, data }: { name: string; data: FlowData }) {
   );
 }
 
-export default function AgentFlows({ data }: { data: FlowData }) {
+export default function CapabilityFlows({ data }: { data: FlowData }) {
   const [variant, setVariant] = useState(0);
   const groups = useMemo(() => flowNavigation(data), [data]);
   const [selected, setSelected] = useState("development");
@@ -695,13 +700,13 @@ export default function AgentFlows({ data }: { data: FlowData }) {
   const spec = useBaseUrl("/specs/concorde/query-routing/query-and-routing");
   return (
     <Layout
-      title="Agent Flows"
-      description="Concorde's actual Agent and LangGraph execution, branches and bounded feedback loops."
+      title="Capability Flows"
+      description="Concorde's State-based Capability execution, branches and bounded feedback loops."
     >
       <main className={styles.page}>
         <aside className={styles.sidebar} aria-label="Flow navigation">
           <div className={styles.sidebarHeading}>
-            <strong>Agent Flows</strong>
+            <strong>Capability Flows</strong>
             <button
               type="button"
               className={styles.sidebarToggle}
@@ -757,7 +762,7 @@ export default function AgentFlows({ data }: { data: FlowData }) {
         <div className={styles.content}>
           <header className={styles.header}>
             <p className={styles.eyebrow}>CONCORDE INTERNALS</p>
-            <h1>Inside the Agent Flows.</h1>
+            <h1>Inside the Capability Flows.</h1>
             <p>
               Follow what each step does, what it passes on, and what makes it
               stop. The diagrams come from current Flow factories, without
@@ -956,10 +961,11 @@ export default function AgentFlows({ data }: { data: FlowData }) {
             <div id="handoffs" className={styles.handoffs}>
               <h3>How information moves</h3>
               <p>
-                The host calls each capability with a named JSON request and
-                receives a named JSON response. It checks the result, saves
-                accepted artifacts and creates the next step’s inputs. An arrow
-                does not mean one Agent receives another Agent’s conversation.
+                Every Capability consumes its declared State and returns a State
+                update. The host checks the result, saves accepted artifacts and
+                prepares the next node’s input channels. Hosts, model launchers
+                and permissions stay outside State in trusted runtime context.
+                An arrow never transfers a worker’s private conversation.
               </p>
               <ol className={styles.sequence}>
                 <li>
@@ -969,14 +975,15 @@ export default function AgentFlows({ data }: { data: FlowData }) {
                     <code>concorde-capability-invocation@3</code> with a typed{" "}
                     <code>input</code>. The result is{" "}
                     <code>concorde-capability-result@3</code> with a typed{" "}
-                    <code>output</code> or admission errors. Internal calls use
-                    the same named request/response contracts. The host reads{" "}
+                    <code>output</code> or admission errors. These wire adapters
+                    preserve existing callers while nodes use State contracts.
+                    Host-backed graphs retain the envelope in a result channel. The host reads{" "}
                     <code>outcome</code>,<code>gaps</code>, <code>checks</code>{" "}
                     and <code>artifacts</code> to choose the next step.
                   </span>
                 </li>
                 <li>
-                  <strong>Host → Agent → host</strong>
+                  <strong>Model-backed Capability → worker result</strong>
                   <span>
                     Ordinary workers receive{" "}
                     <code>concorde-agent-stage-context@4</code>
@@ -984,8 +991,8 @@ export default function AgentFlows({ data }: { data: FlowData }) {
                     return <code>concorde-agent-stage-result@2</code>. Reviewers
                     use <code>concorde-review-stage-context@4</code> and{" "}
                     <code>concorde-review-stage-result@2</code> instead. These
-                    are internal Agent exchanges, separate from capability
-                    responses.
+                    remain compatible process envelopes for the model node’s
+                    State fields, not a separate Agent identity or registry.
                   </span>
                 </li>
                 <li>
@@ -1149,9 +1156,9 @@ export default function AgentFlows({ data }: { data: FlowData }) {
               <li>
                 <strong>Independent reviewer</strong>
                 <span>
-                  Code diagnosis uses programmer / code-review with the selected
-                  Module's authorized code. Spec review uses spec-engineer /
-                  spec-review. Both are read-only.
+                  Code diagnosis uses the code-reviewer Capability with the selected
+                  Module's authorized code. Spec review uses spec-reviewer.
+                  Both model Capabilities are read-only.
                 </span>
               </li>
               <li>
@@ -1257,7 +1264,8 @@ export default function AgentFlows({ data }: { data: FlowData }) {
                     <span className={styles.badge}>CAPABILITY</span>
                     <h2>{entry.title}</h2>
                     <CapabilityRelations name={entry.key} data={data} />
-                    <p>{workerDetails[entry.key].detail}</p>
+                    <p>{workerDetails[entry.key]?.detail ??
+                      "This State-based model Capability runs with its own instructions, tools and permission profile. It shares the same inventory and composition relation as deterministic and composed nodes."}</p>
                     <p>
                       This Capability receives its Module from its caller and is
                       available through declared composition. It has no public
@@ -1268,10 +1276,12 @@ export default function AgentFlows({ data }: { data: FlowData }) {
                       name={`${entry.title} capability`}
                       studio
                     />
-                    <StepCards
-                      details={{ [entry.key]: workerDetails[entry.key] }}
-                      anchorPrefix="internal-stage"
-                    />
+                    {workerDetails[entry.key] && (
+                      <StepCards
+                        details={{ [entry.key]: workerDetails[entry.key] }}
+                        anchorPrefix="internal-stage"
+                      />
+                    )}
                     {entry.key === "concorde-specify" ? (
                       <p>
                         Called by <a href="#specify">specify-loop</a>, which
