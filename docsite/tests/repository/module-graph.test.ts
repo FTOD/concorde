@@ -3,7 +3,8 @@ import { describe, it, expect } from "vitest";
 import { loadScopedRegistry } from "../../plugins/scoped-content/model";
 const root = resolve(__dirname, "../../..");
 describe("Module navigation metadata", () => {
- it("scenario.views.load-registry: retains relationships without a graph projection", () => {
+ // verifies: scenario.views.load-registry
+ it("retains relationships without a graph projection", () => {
   const a = loadScopedRegistry(root),
    b = loadScopedRegistry(root);
   expect(a.schema_version).toBe(20);

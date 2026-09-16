@@ -25,8 +25,9 @@ beforeEach(() => {
   });
 });
 
+// verifies: scenario.views.publish-preserves-previous-on-failure scenario.views.build-site
 it.each(['spawn', 'exit', 'validation', 'preparation'])(
-  'scenario.views.build-site / scenario.views.publish-preserves-previous-on-failure: %s failure never promotes',
+  '%s failure never promotes',
   async (failure) => {
     if (failure === 'preparation') mocks.prepare.mockRejectedValue(new Error('preparation failed'));
     if (failure === 'validation') mocks.validate.mockRejectedValue(new Error('stale candidate'));
@@ -43,14 +44,16 @@ it.each(['spawn', 'exit', 'validation', 'preparation'])(
   },
 );
 
-it('scenario.views.build-site: validation precedes directory replacement and production isolates generated modules', async () => {
+// verifies: scenario.views.build-site
+it('validation precedes directory replacement and production isolates generated modules', async () => {
   await buildSite();
   expect(mocks.validate.mock.invocationCallOrder[0]).toBeLessThan(mocks.rename.mock.invocationCallOrder[0]);
   expect(mocks.prepare).toHaveBeenCalledWith(expect.any(String), {mode: 'build'});
   expect(mocks.spawn.mock.calls[0][2].env.DOCUSAURUS_GENERATED_FILES_DIR_NAME).toBe('.generated/docusaurus-production');
 });
 
-it('scenario.views.build-site: failed backup removal attempts to restore the previous destination', async () => {
+// verifies: scenario.views.build-site
+it('failed backup removal attempts to restore the previous destination', async () => {
   mocks.rm.mockResolvedValue(undefined).mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('remove failed'));
   await expect(promoteCandidate('candidate', 'destination', 'backup')).rejects.toThrow('remove failed');
   expect(mocks.rename.mock.calls).toEqual([

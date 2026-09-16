@@ -241,7 +241,8 @@ beforeEach(() => {
  save();
 });
 afterEach(() => rmSync(root, { recursive: true, force: true }));
-it("scenario.views.publish-reference-link: one-level references retain all provenance without transclusion", async () => {
+// verifies: scenario.views.publish-reference-link
+it("one-level references retain all provenance without transclusion", async () => {
  targets[0].references = [
   { kind: "module", id: "service.transfer" },
   { kind: "document", id: "document.specs.transfer.promises" },
@@ -346,7 +347,8 @@ it("rejects wrong-kind references and malformed UTF-8 source bytes", () => {
  writeFileSync(path, Buffer.concat([readFileSync(path), Buffer.from([255])]));
  expect(() => loadScopedRegistry(root)).toThrow();
 });
-it("scenario.views.materialize scenario.views.publish-candidate scenario.views.publish-without-graph: materialized navigation preserves Module category and leaf links", async () => {
+// verifies: scenario.views.materialize scenario.views.publish-candidate scenario.views.publish-without-graph
+it("materialized navigation preserves Module category and leaf links", async () => {
  targets[3].references.push({
   kind: "document",
   id: "document.specs.transfer.promises",
@@ -399,7 +401,8 @@ it("scenario.views.materialize scenario.views.publish-candidate scenario.views.p
   ),
  ).toBe(false);
 });
-it("scenario.views.publish-candidate: ignores retired projections and removes staged copies", async () => {
+// verifies: scenario.views.publish-candidate
+it("ignores retired projections and removes staged copies", async () => {
  const registry = loadScopedRegistry(root);
  for (const name of ["instructions", "wire"]) {
   put("generated/docs/" + name + ".json", "{invalid retired input");
@@ -417,7 +420,8 @@ it("scenario.views.publish-candidate: ignores retired projections and removes st
  ).toBe(false);
  expect(loadScopedRegistry(root).sourceDigest).toBe(registry.sourceDigest);
 });
-it("scenario.views.publish-repeat-without-graph: checked directory replacement removes obsolete output on consecutive promotions", async () => {
+// verifies: scenario.views.publish-repeat-without-graph
+it("checked directory replacement removes obsolete output on consecutive promotions", async () => {
  const obsolete = [
   "graph.html",
   "graph/index.html",
@@ -462,7 +466,8 @@ it("scenario.views.publish-repeat-without-graph: checked directory replacement r
    ).toBe(page.sourcePath);
  }
 });
-it("scenario.views.publish-without-graph: global data retains page metadata without bodies or architecture projections", async () => {
+// verifies: scenario.views.publish-without-graph
+it("global data retains page metadata without bodies or architecture projections", async () => {
  put(
   "docsite/site.json",
   JSON.stringify({
@@ -586,7 +591,8 @@ it("admits arbitrary multi-document collections without frontmatter or ambient d
  expect(r.pages).toHaveLength(5);
  expect(r.pages.some((p) => p.content.includes("UNREGISTERED"))).toBe(false);
 });
-it("scenario.views.load-registry: separates private Module composition from shared sibling dependencies", () => {
+// verifies: scenario.views.load-registry
+it("separates private Module composition from shared sibling dependencies", () => {
  const r = loadScopedRegistry(root);
  expect(r.targets.flatMap((t) => t.uses)).toHaveLength(2);
  expect(r.targets.find((t) => t.id === "module.ledger")?.parent).toBe(
@@ -728,7 +734,8 @@ it("rejects symlink path components", () => {
  );
  expect(() => loadScopedRegistry(root)).toThrow(/Symlink/);
 });
-it("scenario.views.publish-candidate: rewrites only registered navigation to canonical routes and leaves code examples intact", () => {
+// verifies: scenario.views.publish-candidate
+it("rewrites only registered navigation to canonical routes and leaves code examples intact", () => {
  putSpec(
   "specs/transfer/module.md",
   ["service.transfer"],
@@ -741,7 +748,8 @@ it("scenario.views.publish-candidate: rewrites only registered navigation to can
  p.content += "\n[Wrong](unknown.md)";
  expect(() => rewriteLinks(r, p)).toThrow(/Unregistered/);
 });
-it("scenario.views.materialize scenario.views.publish-legacy-redirect: source lookup preserves query and fragment suffixes", async () => {
+// verifies: scenario.views.materialize scenario.views.publish-legacy-redirect
+it("source lookup preserves query and fragment suffixes", async () => {
  const links = [
   [
    "../transfer/promises.md?view=compact#promise",
@@ -802,7 +810,8 @@ it("scenario.views.materialize scenario.views.publish-legacy-redirect: source lo
  }
  expect(readFileSync(resolve(root, "specs/bank/module.md"))).toEqual(original);
 });
-it("scenario.views.materialize: an unknown source with a query still rejects", async () => {
+// verifies: scenario.views.materialize
+it("an unknown source with a query still rejects", async () => {
  putSpec(
   "specs/bank/module.md",
   ["scope.bank"],
@@ -872,7 +881,8 @@ it("requires one local Module entry and treats visibility as metadata", () => {
  updateDocument(main, { owner: "scope.bank", main_visible: false });
  expect(() => loadScopedRegistry(root)).toThrow(/metadata fields/);
 });
-it("scenario.spec.reader-parts-invalid: rejects retired containers, duplicate headings and unreadable entries", () => {
+// Mirrors scenario.spec.reader-parts-invalid in the Spec, which its owner verifies.
+it("rejects retired containers, duplicate headings and unreadable entries", () => {
  const main = targets[0].documents[0],
   original = readFileSync(resolve(root, main), "utf8");
  const cases = [
@@ -903,7 +913,8 @@ it("scenario.spec.reader-parts-invalid: rejects retired containers, duplicate he
  expect(() => loadScopedRegistry(root)).toThrow(/Retired/);
 });
 
-it("scenario.views.id-anchors: keeps entity meaning anchors and adds canonical requirement/scenario IDs", async () => {
+// verifies: scenario.views.id-anchors
+it("keeps entity meaning anchors and adds canonical requirement/scenario IDs", async () => {
  const main = targets[0].documents[0];
  let body = readFileSync(resolve(root, main), "utf8");
  body = body.replace(
@@ -978,7 +989,8 @@ it("rejects sources changed between materialization and plugin loading even when
   changed.sourceDigest,
  );
 });
-it("scenario.views.materialize: invalidates the previous materialization identity before a failed preparation", async () => {
+// verifies: scenario.views.materialize
+it("invalidates the previous materialization identity before a failed preparation", async () => {
  await materializeScoped(loadScopedRegistry(root));
  put(
   "specs/transfer/promises.md",
@@ -994,7 +1006,8 @@ it("scenario.views.materialize: invalidates the previous materialization identit
  );
  await expect(plugin.loadContent!()).rejects.toThrow(/ENOENT/);
 });
-it("scenario.views.publish-candidate: starts with Module roots and nests documents and children by registry ownership", () => {
+// verifies: scenario.views.publish-candidate
+it("starts with Module roots and nests documents and children by registry ownership", () => {
  targets[0].documents.push("specs/bank/routing.md");
  putSpec(
   "specs/bank/routing.md",
@@ -1018,7 +1031,8 @@ it("scenario.views.publish-candidate: starts with Module roots and nests documen
   id: "ledger/module",
  });
 });
-it("scenario.views.materialize: publishes reading without a duplicate Files inventory", async () => {
+// verifies: scenario.views.materialize
+it("publishes reading without a duplicate Files inventory", async () => {
  const registry = loadScopedRegistry(root);
  await materializeScoped(registry);
  const page = readFileSync(
@@ -1117,7 +1131,8 @@ it("allows registered documents under the formerly reserved projections/ prefix"
   ),
  ).toBe(true);
 });
-it("scenario.views.validate-candidate-mismatch: writes a legacy redirect stub for every alias during postBuild, and validateScopedBuild checks them", async () => {
+// verifies: scenario.views.validate-candidate-mismatch
+it("writes a legacy redirect stub for every alias during postBuild, and validateScopedBuild checks them", async () => {
  const registry = loadScopedRegistry(root);
  await materializeScoped(registry);
  const plugin = scopedContent(
@@ -1163,7 +1178,8 @@ it("scenario.views.validate-candidate-mismatch: writes a legacy redirect stub fo
 
 // Exercise the plugin's real post-build hook so no test bypasses route admission
 // by manufacturing a successful manifest.
-it("scenario.views.validate-candidate-mismatch: rejects every altered inventory without repairing it", async () => {
+// verifies: scenario.views.validate-candidate-mismatch
+it("rejects every altered inventory without repairing it", async () => {
  const registry = loadScopedRegistry(root);
  await materializeScoped(registry);
  const plugin = scopedContent(
@@ -1221,7 +1237,8 @@ it("scenario.views.validate-candidate-mismatch: rejects every altered inventory 
  );
 });
 
-it("scenario.views.publish-preserves-previous-on-failure: postBuild refuses missing routes and changed sources before artifacts", async () => {
+// verifies: scenario.views.publish-preserves-previous-on-failure
+it("postBuild refuses missing routes and changed sources before artifacts", async () => {
  const registry = loadScopedRegistry(root);
  await materializeScoped(registry);
  const plugin = scopedContent(
@@ -1247,7 +1264,8 @@ it("scenario.views.publish-preserves-previous-on-failure: postBuild refuses miss
  expect(existsSync(resolve(outDir, "build-manifest.json"))).toBe(false);
 });
 
-it("scenario.views.publish-legacy-redirect: validates current cross-Module links and executes alias redirects", async () => {
+// verifies: scenario.views.publish-legacy-redirect
+it("validates current cross-Module links and executes alias redirects", async () => {
  targets[2].documents = targets[2].documents.filter(
   (path) => path !== "specs/transfer/promises.md",
  );
@@ -1361,8 +1379,9 @@ it("scenario.views.publish-legacy-redirect: validates current cross-Module links
  }
 });
 
+// verifies: scenario.views.build-site scenario.views.publish-preserves-previous-on-failure scenario.views.validate-candidate-mismatch scenario.views.publish-repeat-without-graph
 it.each(["/", "/%E6%96%87%E6%A1%A3/"])(
- "scenario.views.build-site scenario.views.publish-preserves-previous-on-failure scenario.views.validate-candidate-mismatch scenario.views.publish-repeat-without-graph: real pipeline preserves former graph output on failure and replaces it on success (%s)",
+ "real pipeline preserves former graph output on failure and replaces it on success (%s)",
  async (baseUrl) => {
   const identity = parse(
    readFileSync(resolve(root, "docsite/site.json"), "utf8"),
@@ -1512,7 +1531,8 @@ it.each(["/", "/%E6%96%87%E6%A1%A3/"])(
  },
 );
 
-it("scenario.views.materialize scenario.views.build-site: rejects invalid materialization identities before emitting verification artifacts", async () => {
+// verifies: scenario.views.materialize scenario.views.build-site
+it("rejects invalid materialization identities before emitting verification artifacts", async () => {
  const registry = loadScopedRegistry(root);
  await materializeScoped(registry);
  const plugin = scopedContent(
@@ -1544,7 +1564,8 @@ it("scenario.views.materialize scenario.views.build-site: rejects invalid materi
  }
 });
 
-it("scenario.views.custom-docs: rejects registered Spec sources in a custom collection", () => {
+// verifies: scenario.views.custom-docs
+it("rejects registered Spec sources in a custom collection", () => {
  const registry = loadScopedRegistry(root);
  const identity = parseSiteIdentity({
   schema_version: 1,
@@ -1562,7 +1583,8 @@ it("scenario.views.custom-docs: rejects registered Spec sources in a custom coll
  ).toThrow(/includes registered Spec/);
 });
 
-it("scenario.views.custom-docs: rejects a custom page at a registered legacy alias before writing redirects", async () => {
+// verifies: scenario.views.custom-docs
+it("rejects a custom page at a registered legacy alias before writing redirects", async () => {
  const registry = loadScopedRegistry(root);
  await materializeScoped(registry);
  const plugin = scopedContent(
@@ -1585,7 +1607,8 @@ it("scenario.views.custom-docs: rejects a custom page at a registered legacy ali
  );
 });
 
-it("scenario.views.publish-candidate scenario.views.materialize: labels and order ignore headings and directories", async () => {
+// verifies: scenario.views.publish-candidate scenario.views.materialize
+it("labels and order ignore headings and directories", async () => {
  const supplement = "specs/bank/elsewhere/notes.md";
  targets[2].documents.unshift(supplement);
  targets[2].title = "Transfers";
@@ -1631,7 +1654,8 @@ it("scenario.views.publish-candidate scenario.views.materialize: labels and orde
  ).toContain("sidebar_label: notes");
 });
 
-it("scenario.views.custom-docs: adds collection and executable tabs without changing registered context inputs", () => {
+// verifies: scenario.views.custom-docs
+it("adds collection and executable tabs without changing registered context inputs", () => {
  const before = loadScopedRegistry(root);
  put("docsite/custom-docs/guides/index.md", "---\nslug: /\n---\n# Handbook");
  put("docsite/custom-docs/sidebar.js", 'module.exports = {guides: ["index"]};');
@@ -1683,8 +1707,9 @@ it("scenario.views.custom-docs: adds collection and executable tabs without chan
  expect(loadScopedRegistry(root)).toEqual(before);
 });
 
+// verifies: scenario.views.custom-docs
 it.each(["missing", "file", "sidebar"])(
- "scenario.views.custom-docs: rejects unavailable collection input %s",
+ "rejects unavailable collection input %s",
  (kind) => {
   put("docsite/guide-file.md", "# A file");
   put("docsite/guides/index.md", "---\nslug: /\n---\n# Guide");
@@ -1715,7 +1740,8 @@ it.each(["missing", "file", "sidebar"])(
  },
 );
 
-it("scenario.views.materialize: ignores stale unregistered projection inputs", async () => {
+// verifies: scenario.views.materialize
+it("ignores stale unregistered projection inputs", async () => {
  const before = loadScopedRegistry(root);
  put("generated/docs/instructions.json", "invalid stale JSON");
  put("generated/docs/wire.json", "invalid stale JSON");
@@ -1727,8 +1753,9 @@ it("scenario.views.materialize: ignores stale unregistered projection inputs", a
  ).toBe(false);
 });
 
+// verifies: scenario.views.custom-docs
 it.each(["[]", '{plugins: "bad"}', "{navbarItems: {}}"])(
- "scenario.views.custom-docs: rejects malformed executable extension %s",
+ "rejects malformed executable extension %s",
  (value) => {
   put(
    "docsite/custom-docs/index.ts",

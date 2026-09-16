@@ -120,7 +120,8 @@ afterAll(async () => {
 });
 
 describe("a project holding only Profile 14 initialization outputs", () => {
-  it("scenario.views.scaffold-propose: receives the graph-free adapter and identity", async () => {
+  // verifies: scenario.views.scaffold-propose
+  it("receives the graph-free adapter and identity", async () => {
     const files = (
       docsiteProposal.result.proposal as { files: Array<{ path: string }> }
     ).files.map((file) => file.path);
@@ -163,7 +164,8 @@ describe("a project holding only Profile 14 initialization outputs", () => {
     ).toBe(await readFile(resolve(siteDir, "docusaurus.config.ts"), "utf8"));
   });
 
-  it("scenario.views.scaffold-apply: is unchanged on a second proposal and refuses to overwrite", () => {
+  // verifies: scenario.views.scaffold-apply
+  it("is unchanged on a second proposal and refuses to overwrite", () => {
     expect(
       tool(root, "docsite", "--propose", "--allow-primary-worktree").status,
     ).toBe("unchanged");
@@ -179,7 +181,8 @@ describe("a project holding only Profile 14 initialization outputs", () => {
     ).toBe("unchanged");
   });
 
-  it("scenario.views.publish-without-graph / scenario.views.publish-homepage-default: builds the received adapter", async () => {
+  // verifies: scenario.views.publish-homepage-default scenario.views.publish-without-graph
+  it("builds the received adapter", async () => {
     // scenario.views.publish-candidate / scenario.views.id-anchors: Specs remain literal Markdown.
     const sourcePath = resolve(root, "specs/project/module.md");
     await writeFile(
@@ -291,7 +294,8 @@ describe("a project holding only Profile 14 initialization outputs", () => {
       existsSync(resolve(root, "docsite/.generated/docusaurus-production")),
     ).toBe(true);
   }, 240_000);
-  it("scenario.views.custom-docs: a consumer adds a separate docs tab without changing registered pages", async () => {
+  // verifies: scenario.views.custom-docs
+  it("a consumer adds a separate docs tab without changing registered pages", async () => {
     const before = await readFile(
       resolve(root, "docsite/build/build-manifest.json"),
       "utf8",
@@ -392,7 +396,8 @@ describe("a project holding only Profile 14 initialization outputs", () => {
     expect(spec).not.toContain("Module composition");
   }, 240_000);
 
-  it("scenario.views.custom-docs scenario.views.publish-preserves-previous-on-failure: invalid custom candidates preserve the published site", async () => {
+  // verifies: scenario.views.custom-docs scenario.views.publish-preserves-previous-on-failure
+  it("invalid custom candidates preserve the published site", async () => {
     const identityPath = resolve(root, "docsite/site.json");
     const identity = await readFile(identityPath, "utf8");
     const guidePath = resolve(root, "docsite/custom-docs/guides/index.md");

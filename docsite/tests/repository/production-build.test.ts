@@ -24,7 +24,8 @@ beforeAll(async () => {
  expect(result.signal).toBeNull();
  expect(result.status, result.stdout + "\n" + result.stderr).toBe(0);
 }, 120000);
-it("scenario.views.publish-candidate: publishes the current exact registry and verifies the promoted manifest", async () => {
+// verifies: scenario.views.publish-candidate
+it("publishes the current exact registry and verifies the promoted manifest", async () => {
  await validateScopedBuild(root, output);
  const r = loadScopedRegistry(root);
  for (const page of r.pages) {
@@ -81,7 +82,8 @@ it("scenario.views.publish-candidate: publishes the current exact registry and v
  }
 });
 
-it("scenario.views.agent-flows: publishes executable flows with keyboard navigation and source fingerprints", async () => {
+// verifies: scenario.views.agent-flows
+it("publishes executable flows with keyboard navigation and source fingerprints", async () => {
  const html = await readFile(resolve(output, "agent-flows.html"), "utf8");
  expect(html).toContain("The development loop");
  expect(html).toContain("Full Dev Loop invocation");
@@ -98,7 +100,8 @@ it("scenario.views.agent-flows: publishes executable flows with keyboard navigat
  expect(html).toContain('href="#stage-tasks"');
  expect(html).toContain("All transitions");
 });
-it("scenario.views.protocol-docs-tab: publishes the independent standard with chapter navigation and no Spec wrapper", async () => {
+// verifies: scenario.views.protocol-docs-tab
+it("publishes the independent standard with chapter navigation and no Spec wrapper", async () => {
  const overview = await readFile(resolve(output, "protocol.html"), "utf8");
  expect(overview).toContain("Spec Protocol");
  expect(overview).toContain("Spec management");
@@ -123,7 +126,8 @@ it("scenario.views.protocol-docs-tab: publishes the independent standard with ch
   expect(html).not.toContain("provenanceShell");
  }
 });
-it("scenario.views.publish-homepage: publishes the configured introduction at the root while preserving direct Spec navigation", async () => {
+// verifies: scenario.views.publish-homepage
+it("publishes the configured introduction at the root while preserving direct Spec navigation", async () => {
  const home = await readFile(resolve(output, "index.html"), "utf8");
  expect(home).toContain("Specify the architecture.");
  expect(home).toContain("Write and maintain architecture-aware Specs.");
@@ -153,7 +157,8 @@ it("scenario.views.publish-homepage: publishes the configured introduction at th
   manifest.pages.some((page: { route: string }) => page.route === "/"),
  ).toBe(false);
 });
-it("scenario.views.publish-legacy-redirect: preserves every legacy membership route as a redirect stub to its canonical page", async () => {
+// verifies: scenario.views.publish-legacy-redirect
+it("preserves every legacy membership route as a redirect stub to its canonical page", async () => {
  const r = loadScopedRegistry(root);
  for (const page of r.pages)
   for (const alias of page.aliases) {
@@ -165,7 +170,8 @@ it("scenario.views.publish-legacy-redirect: preserves every legacy membership ro
    expect(stub).toContain("refresh");
   }
 });
-it("scenario.views.publish-without-graph: omits graph routes and artifacts", async () => {
+// verifies: scenario.views.publish-without-graph
+it("omits graph routes and artifacts", async () => {
  for (const path of [
   "graph.html",
   "graph/index.html",
@@ -181,7 +187,8 @@ it("does not publish retired unregistered projections", async () => {
   ).rejects.toThrow();
 });
 
-it("scenario.views.publish-repeat-without-graph: a second checked build preserves absence and reading", async () => {
+// verifies: scenario.views.publish-repeat-without-graph
+it("a second checked build preserves absence and reading", async () => {
  const result = captureProcess(
   process.execPath,
   ["--import", "tsx", "scripts/build.ts"],

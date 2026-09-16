@@ -83,9 +83,9 @@ distinct. A changed canonical Spec document requires review for its owner and ev
 resolved context includes it, including Module-reference consumers. Reference and ownership changes
 also invalidate their snapshots, plans and reviews. A change to a file listed by several Modules
 requires checks for all listing Modules, with separate Module contexts and explicit per-consumer
-evidence. Deterministic validation also reads the scenario declarations of the listed Python tests
-and reports every scenario that no test declares; that coverage is evidence about the tests, never a
-change to the contract. No passing structural check proves semantic completeness.
+evidence. Deterministic validation also reads the scenario declarations of the listed tests
+and reports every scenario that no test declares, unless its Module binds no implementation file at
+all; that coverage is evidence about the tests, never a change to the contract. No passing structural check proves semantic completeness.
 
 ### P7. Execution authority is explicit
 
@@ -192,8 +192,13 @@ several successors. The configured Flow Spec check keeps every diagram equal to 
 
 A Python test declares the scenarios it verifies with the `verifies` decorator from
 `concorde.spec.verification`, for example `@verifies("scenario.harness.context-freeze")` on the test
-function or method; a test may name several scenarios, and the declaration is read by parsing, not
-by running the test. No Spec document lists tests. Links inside Specs address definitions by ID
+function or method. A TypeScript test declares them with an own-line `// verifies:` comment above
+the test, for example `// verifies: scenario.views.publish-candidate` above its `it` call; several
+IDs are separated by commas or spaces, and the following `it`, `test` or `describe` title names the
+declaring test. A test may name several scenarios in either language, and the declaration is read by
+parsing, never by compiling or running the test. A Module whose entities bind no implementation file
+has no test to declare its scenarios, and its scenarios are not reported as uncovered. No Spec
+document lists tests. Links inside Specs address definitions by ID
 (`context.md#scenario.harness.context-freeze`, `#req.harness.permission-no-widen`); publication
 turns every scenario, requirement, entity and canonical contract ID into an anchor. Rendered views
 and navigation are derived and create no ownership or context inclusion. Links to canonical shared

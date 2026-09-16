@@ -588,7 +588,7 @@ class RepositoryCore:
         return self.definitions(target).requirements
 
     def verifications(self, target: SpecTarget):
-        """Scenario declarations read from the Python files the Module's entities bind."""
+        """Scenario declarations read from the test files the Module's entities bind."""
         from .verification import scan_declarations
 
         return scan_declarations(self.root, self.implementation_files(target))

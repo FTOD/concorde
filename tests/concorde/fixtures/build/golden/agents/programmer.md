@@ -80,9 +80,10 @@ exact file or a directory prefix ending in `/`: you may create a file anywhere b
 directory, and an exact file where an entity marks it pending, but never a file no entry covers.
 Never edit Module Specs, entity declarations, the registry, configuration, worktree control state or
 unrelated files. Implement the selected Module contract and the shared implementation obligations
-of every other Module that also lists a changed file. Every Python test you write or change declares
-the scenarios it verifies with the `verifies` decorator from `concorde.spec.verification`, naming
-only scenario IDs the Spec context defines; the Spec itself never lists tests.
+of every other Module that also lists a changed file. Every test you write or change declares the
+scenarios it verifies, naming only scenario IDs the Spec context defines: a Python test with the
+`verifies` decorator from `concorde.spec.verification`, a TypeScript test with an own-line
+`// verifies: <ids>` comment above its `it`, `test` or `describe` call. The Spec never lists tests.
 
 Use `bash` to run the checks your workspace supports and `run_checks` to have the host run the
 Module's configured checks. Task completion records implementation evidence, not final readiness:

@@ -63,11 +63,13 @@ Topology preparation stores the exact validated registry/document replacements b
 
 #### scenario.spec.verification-declarations — Verification declarations live with the tests
 
-- GIVEN the Python test files listed by every Module's entities
-- WHEN the validator scans them for scenario verification declarations
+- GIVEN the Python and TypeScript test files listed by every Module's entities
+- WHEN the validator scans them for scenario verification declarations, Python decorators and TypeScript comments alike
 - THEN a declared scenario ID that no registered Module defines is reported as an error
 - AND a declaring file that its scenario's owning Module does not list is reported as a warning
+- AND a scenario that no declaration names is reported as a warning against its defining document, unless its Module binds no implementation entry at all
 - AND a listed Python file the validator cannot read for its declarations is reported as an error
+- AND a malformed declaration, including a TypeScript comment that no test follows, is reported as an error
 - BUT no Spec document lists tests; the declarations live only with the code
 
 #### scenario.spec.reader-parts — Read purpose, usage and design before detailed cases

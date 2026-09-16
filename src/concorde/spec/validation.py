@@ -464,12 +464,17 @@ def verification_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
     """Tests declare the scenarios they verify; report unknown declarations and undeclared scenarios."""
     findings = []
     scenarios: dict[str, tuple[str, str]] = {}
+    # A Module that binds no implementation entry has no test of its own to declare with, so its
+    # scenarios stay unreported; its realization, and their verification, belong to its children.
+    realized: set[str] = set()
     for target in repository.targets.values():
         try:
             for scenario in repository.scenarios(target):
                 scenarios[scenario.id] = (target.id, scenario.document)
         except (ValueError, OSError, KeyError, TypeError):
             return ()
+        if target.files:
+            realized.add(target.id)
     listed: dict[str, set[str]] = {}
     for target in repository.targets.values():
         for path in repository.implementation_files(target):
@@ -478,7 +483,7 @@ def verification_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
         declarations = scan_declarations(repository.root, listed)
     except DeclarationError as problem:
         return (Finding("CONCORDE-VERIFICATION-004", "error", problem.path, str(problem),
-                        "Repair the listed Python file so its scenario declarations can be read.", line=problem.line),)
+                        "Repair the listed test file so its scenario declarations can be read.", line=problem.line),)
     declared: dict[str, list] = {scenario_id: [] for scenario_id in scenarios}
     for declaration in declarations:
         owner = scenarios.get(declaration.scenario_id)
@@ -495,10 +500,10 @@ def verification_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
                 "List the test under an entity of the scenario's Module so its code phases see it.",
                 line=declaration.line, subject_id=declaration.scenario_id))
     for scenario_id, (owner, document) in sorted(scenarios.items()):
-        if not declared[scenario_id]:
+        if not declared[scenario_id] and owner in realized:
             findings.append(Finding("CONCORDE-VERIFICATION-002", "warning", document,
                 f"no test declares that it verifies {scenario_id}",
-                "Add @verifies(\"" + scenario_id + "\") to the tests that exercise this scenario.",
+                "Declare " + scenario_id + " in the tests that exercise this scenario.",
                 subject_id=scenario_id))
     return tuple(findings)
 

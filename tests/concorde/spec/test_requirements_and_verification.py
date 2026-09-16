@@ -225,6 +225,45 @@ class RequirementsAndVerificationTests(unittest.TestCase):
             verifies("req.shop.single-order")
 
     @verifies("scenario.spec.verification-declarations")
+    def test_typescript_tests_declare_their_scenarios_in_a_comment_above_the_test(self):
+        self.write("tests/shop/cart.test.ts",
+                   "describe('cart', () => {\n"
+                   "  // verifies: scenario.shop.submit scenario.shop.other\n"
+                   "  it('submits once', () => {});\n"
+                   "  // verifies: scenario.shop.lock\n"
+                   "  it.each([\n    ['empty', 0],\n  ])(\n"
+                   "    'rejects %s carts',\n    (label, total) => {},\n  );\n"
+                   "  it('carries no declaration', () => {});\n"
+                   "});\n")
+        declarations = scan_declarations(self.root, ["tests/shop/cart.test.ts"])
+        self.assertEqual([("scenario.shop.submit", 2, "submits once"),
+                          ("scenario.shop.other", 2, "submits once"),
+                          ("scenario.shop.lock", 4, "rejects %s carts")],
+                         [(d.scenario_id, d.line, d.name) for d in declarations])
+        report = self.validate()
+        self.assertNotIn(("CONCORDE-VERIFICATION-002", "warning"), self.rules(report))
+        self.assertIn(("CONCORDE-VERIFICATION-001", "error"), self.rules(report))
+        self.write("tests/shop/cart.test.ts", "// verifies: scenario.shop.submit\nconst unused = 1;\n")
+        self.assertIn(("CONCORDE-VERIFICATION-004", "error"), self.rules(self.validate()))
+        self.write("tests/shop/cart.test.ts", "// verifies: req.shop.single-order\nit('x', () => {});\n")
+        self.assertIn(("CONCORDE-VERIFICATION-004", "error"), self.rules(self.validate()))
+
+    @verifies("scenario.spec.verification-declarations")
+    def test_a_module_binding_no_implementation_entry_reports_no_uncovered_scenario(self):
+        self.write("tests/shop/test_cart.py", "def test_nothing():\n    pass\n")
+        self.assertIn(("CONCORDE-VERIFICATION-002", "warning"), self.rules(self.validate()))
+        registry = json.loads((self.root / ".concorde/specs.json").read_text())
+        registry["targets"][0]["files"] = []
+        (self.root / ".concorde/specs.json").write_text(json.dumps(registry))
+        metadata = json.loads((self.root / "specs/shop/module.md.json").read_text())
+        for entity in metadata["entities"]:
+            entity.pop("files", None)
+        (self.root / "specs/shop/module.md.json").write_text(json.dumps(metadata))
+        report = self.validate()
+        self.assertEqual("success", report.status)
+        self.assertNotIn(("CONCORDE-VERIFICATION-002", "warning"), self.rules(report))
+
+    @verifies("scenario.spec.verification-declarations")
     def test_a_declaration_in_a_file_the_module_does_not_list_is_a_warning(self):
         registry = json.loads((self.root / '.concorde/specs.json').read_text())
         registry['targets'].append({'id':'module.other','kind':'module','title':'Other',

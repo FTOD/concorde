@@ -44,7 +44,8 @@ it('extracts Step.spec and quoted, expression, concatenated and base-URL Spec li
       '/specs/example/quoted', '/specs/example/routing', '/specs/example/step#scenario.example.step']);
 });
 
-it('scenario.views.agent-flows: every authored Spec link names a published document and section', () => {
+// verifies: scenario.views.agent-flows
+it('every authored Spec link names a published document and section', () => {
   const source = readFileSync(resolve(root, 'docsite/concorde-only/page.tsx'), 'utf8');
   const registry = loadScopedRegistry(root);
   const paths = specLinks(source);

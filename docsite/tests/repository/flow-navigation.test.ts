@@ -10,7 +10,8 @@ const data: FlowData = JSON.parse(execFileSync(process.env.CONCORDE_PYTHON || 'p
 const groups = flowNavigation(data);
 const entries = groups.flatMap(group => group.entries);
 
-it('scenario.views.agent-flows: every exported Capability and shared Flow has a unique selectable link', () => {
+// verifies: scenario.views.agent-flows
+it('every exported Capability and shared Flow has a unique selectable link', () => {
   expect(new Set(entries.map(entry => entry.id)).size).toBe(entries.length);
   for (const [kind, graphSet] of [['capability', data.capabilities], ['flow', data.flows]] as const) {
     expect(entries.filter(entry => entry.kind === kind).map(entry => entry.key).sort()).toEqual(Object.keys(graphSet).sort());
@@ -20,7 +21,8 @@ it('scenario.views.agent-flows: every exported Capability and shared Flow has a 
   expect(entries.find(entry => entry.key === 'concorde-specify')?.id).toBe('capability-concorde-specify');
 });
 
-it('scenario.views.agent-flows: search finds both the enclosing loop and its composed Capability', () => {
+// verifies: scenario.views.agent-flows
+it('search finds both the enclosing loop and its composed Capability', () => {
   const matches = filterNavigation(groups, 'specify').flatMap(group => group.entries);
   expect(matches.map(entry => entry.key)).toEqual(['concorde-specify-loop', 'concorde-specify']);
   expect(filterNavigation(groups, '  CAPABILITIES specify  ').flatMap(group => group.entries).map(entry => entry.key))
@@ -29,7 +31,8 @@ it('scenario.views.agent-flows: search finds both the enclosing loop and its com
   expect(filterNavigation(groups, '')).toEqual(groups);
 });
 
-it('scenario.views.agent-flows: old detail links select their containing flow and malformed links fall back safely', () => {
+// verifies: scenario.views.agent-flows
+it('old detail links select their containing flow and malformed links fall back safely', () => {
   for (const hash of ['#spec-stage-review_spec', '#specify-studio']) expect(selectionFromHash(hash, groups)).toBe('specify');
   for (const hash of ['#stage-tasks', '#handoffs', '#stages', '#studio', '#unknown', '#%']) {
     expect(selectionFromHash(hash, groups)).toBe('development');

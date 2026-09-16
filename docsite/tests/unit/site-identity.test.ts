@@ -81,6 +81,7 @@ describe('site identity schema 1', () => {
     expect(parseSiteIdentity({...validValue, homepage: {...homepage, title: '  Atlas  '}}).homepage?.title).toBe('Atlas');
   });
 
+  // verifies: scenario.views.publish-homepage-invalid
   it.each([
     ['null', null, /homepage must be an object/],
     ['empty title', {...homepage, title: ' '}, /homepage.title/],
@@ -90,7 +91,7 @@ describe('site identity schema 1', () => {
     ['missing description', {...homepage, features: {...homepage.features, items: [{title: 'Feature'}]}}, /homepage.features.items\[0\].description/],
     ['invalid steps', {...homepage, workflow: {...homepage.workflow, steps: 'steps'}}, /homepage.workflow.steps/],
     ['empty code', {...homepage, quickstart: {...homepage.quickstart, code: ''}}, /homepage.quickstart.code/],
-  ])('scenario.views.publish-homepage-invalid: rejects an invalid homepage: %s', (_label, value, field) => {
+  ])('rejects an invalid homepage: %s', (_label, value, field) => {
     expect(() => parseSiteIdentity({...validValue, homepage: value})).toThrow(/docsite\/site.json/);
     expect(() => parseSiteIdentity({...validValue, homepage: value})).toThrow(field);
   });
@@ -148,7 +149,8 @@ describe('site identity schema 1', () => {
   });
 });
 
-describe('scenario.views.custom-docs: collection admission',()=>{
+// verifies: scenario.views.custom-docs
+describe('collection admission',()=>{
  const collection={id:'guides',label:'Guides',path:'../guides',routeBasePath:'guides'};
  it.each(['default','Uppercase','has_space',''])('rejects invalid ID %s',id=>{
   expect(()=>parseSiteIdentity({...validValue,customDocs:[{...collection,id}]})).toThrow(/id/);
