@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "document": {
-    "id": "document.views.viewer",
+    "id": "document.views.requirements",
     "owner": "module.views"
   },
   "entities": [],

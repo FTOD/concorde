@@ -18,6 +18,7 @@ import {
 } from "./reading-format";
 
 export type Kind = "module";
+export type ReadingCollection = "module" | "implementation";
 export interface Target {
   id: string;
   kind: Kind;
@@ -50,9 +51,10 @@ export interface Page {
   aliases: string[];
   kind: Kind;
   primaryOf: string | null;
+  readingCollection: ReadingCollection;
 }
 export interface ScopedRegistry {
-  schema_version: 20;
+  schema_version: 21;
   projectRoot: string;
   registryPath: string;
   entryTarget: string;
@@ -608,9 +610,30 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
   const routes = new Set<string>();
   const aliases = new Set<string>();
   for (const [path, references] of documentTargets) {
-    const { raw, content, declaration, metadataDigest } = cache.get(path)!;
+    const { raw, content, declaration, metadataDigest, unit } =
+      cache.get(path)!;
     const owner = byId.get(declaration.owner)!;
     const primary = primaryDocument(owner) === path;
+    const publication = unit.extensions?.["concorde.publication"];
+    let readingCollection: ReadingCollection = "module";
+    if (publication !== undefined) {
+      requireThat(
+        publication !== null &&
+          typeof publication === "object" &&
+          !Array.isArray(publication) &&
+          Object.keys(publication).join(",") === "collection" &&
+          "collection" in publication &&
+          (publication.collection === "module" ||
+            publication.collection === "implementation"),
+        `Invalid concorde.publication extension: ${path}.json`,
+      );
+      readingCollection = (publication as { collection: ReadingCollection })
+        .collection;
+    }
+    requireThat(
+      !primary || readingCollection === "module",
+      `Module reading entry must stay in Module Specs: ${path}`,
+    );
     const includedBy = [...contexts]
       .filter(([, context]) => context.has(path))
       .map(([targetId, context]) => ({
@@ -638,6 +661,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
       aliases: pageAliases,
       kind: owner.kind,
       primaryOf: primary ? owner.id : null,
+      readingCollection,
     };
     pages.push(page);
   }
@@ -741,7 +765,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     );
   }
   return {
-    schema_version: 20,
+    schema_version: 21,
     projectRoot: root,
     registryPath: config.registry,
     entryTarget: registry.entry_target,

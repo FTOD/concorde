@@ -3,17 +3,9 @@
     {
       "id": "check.development.flow-specs",
       "target_id": "module.development",
-      "argv": [
-        "{python}",
-        "scripts/development/check-flow-specs.py"
-      ],
+      "argv": ["{python}", "scripts/development/check-flow-specs.py"],
       "timeout_seconds": 120,
-      "inputs": [
-        "scripts",
-        "src/concorde",
-        "capabilities",
-        "specs/concorde"
-      ]
+      "inputs": ["scripts", "src/concorde", "capabilities", "specs/concorde"]
     },
     {
       "argv": [
@@ -44,15 +36,9 @@
     {
       "id": "check.harness.reference-versions",
       "target_id": "module.harness",
-      "argv": [
-        "{python}",
-        "scripts/development/check-reference-versions.py"
-      ],
+      "argv": ["{python}", "scripts/development/check-reference-versions.py"],
       "timeout_seconds": 60,
-      "inputs": [
-        "reference/langgraph/libs/langgraph/pyproject.toml",
-        "uv.lock"
-      ]
+      "inputs": ["reference/langgraph/libs/langgraph/pyproject.toml", "uv.lock"]
     },
     {
       "argv": [
@@ -65,11 +51,7 @@
         "tests.concorde.harness.test_check_executor"
       ],
       "id": "check.harness.runtime",
-      "inputs": [
-        "src",
-        "protocol",
-        "tests/concorde/harness"
-      ],
+      "inputs": ["src", "protocol", "tests/concorde/harness"],
       "target_id": "module.harness",
       "timeout_seconds": 180
     },
@@ -82,19 +64,12 @@
         "tests.concorde.spec.test_module_architecture"
       ],
       "id": "check.spec.model",
-      "inputs": [
-        "src",
-        "protocol",
-        "tests/concorde/spec"
-      ],
+      "inputs": ["src", "protocol", "tests/concorde/spec"],
       "target_id": "module.spec",
       "timeout_seconds": 120
     },
     {
-      "argv": [
-        "{python}",
-        "scripts/development/check-docsite-types.py"
-      ],
+      "argv": ["{python}", "scripts/development/check-docsite-types.py"],
       "id": "check.views.publication-types",
       "inputs": [
         "docsite/tsconfig.json",
@@ -108,10 +83,7 @@
       "timeout_seconds": 120
     },
     {
-      "argv": [
-        "{python}",
-        "docsite/tests/repository/run-checks.py"
-      ],
+      "argv": ["{python}", "docsite/tests/repository/run-checks.py"],
       "id": "check.views.repository-regressions",
       "inputs": [
         "capabilities",
@@ -275,9 +247,7 @@
       "uses": []
     },
     {
-      "checks": [
-        "check.spec.model"
-      ],
+      "checks": ["check.spec.model"],
       "documents": [
         "specs/concorde/spec/module.md",
         "specs/concorde/spec/registry.md",
@@ -316,10 +286,7 @@
       "uses": []
     },
     {
-      "checks": [
-        "check.harness.reference-versions",
-        "check.harness.runtime"
-      ],
+      "checks": ["check.harness.reference-versions", "check.harness.runtime"],
       "documents": [
         "specs/concorde/harness/module.md",
         "specs/concorde/harness/agents-and-harnesses.md",
@@ -427,16 +394,10 @@
         }
       ],
       "title": "Harness",
-      "uses": [
-        "module.spec",
-        "module.distribution"
-      ]
+      "uses": ["module.spec", "module.distribution"]
     },
     {
-      "checks": [
-        "check.development.flow-specs",
-        "check.development.runtime"
-      ],
+      "checks": ["check.development.flow-specs", "check.development.runtime"],
       "documents": [
         "specs/concorde/development/module.md",
         "specs/concorde/development/interfaces.md",
@@ -673,9 +634,7 @@
         }
       ],
       "title": "Distribution",
-      "uses": [
-        "module.spec"
-      ]
+      "uses": ["module.spec"]
     },
     {
       "checks": [
@@ -686,6 +645,7 @@
       ],
       "documents": [
         "specs/concorde/views/module.md",
+        "specs/concorde/views/requirements.md",
         "specs/concorde/views/publication.md",
         "specs/concorde/views/pipeline.md",
         "specs/concorde/views/viewer.md",
@@ -763,11 +723,7 @@
         }
       ],
       "title": "Views",
-      "uses": [
-        "module.spec",
-        "module.distribution",
-        "module.harness"
-      ]
+      "uses": ["module.spec", "module.distribution", "module.harness"]
     },
     {
       "checks": [],
@@ -821,11 +777,7 @@
         }
       ],
       "title": "Planning",
-      "uses": [
-        "module.development",
-        "module.harness",
-        "module.spec"
-      ]
+      "uses": ["module.development", "module.harness", "module.spec"]
     },
     {
       "checks": [],
@@ -884,11 +836,7 @@
         }
       ],
       "title": "Implementation",
-      "uses": [
-        "module.development",
-        "module.harness",
-        "module.spec"
-      ]
+      "uses": ["module.development", "module.harness", "module.spec"]
     },
     {
       "checks": [],
@@ -942,11 +890,7 @@
         }
       ],
       "title": "Spec Authoring",
-      "uses": [
-        "module.development",
-        "module.harness",
-        "module.spec"
-      ]
+      "uses": ["module.development", "module.harness", "module.spec"]
     },
     {
       "checks": [],
@@ -1058,11 +1002,7 @@
         }
       ],
       "title": "Validation",
-      "uses": [
-        "module.development",
-        "module.harness",
-        "module.spec"
-      ]
+      "uses": ["module.development", "module.harness", "module.spec"]
     },
     {
       "checks": [],
@@ -1173,11 +1113,7 @@
         }
       ],
       "title": "Query and Routing",
-      "uses": [
-        "module.development",
-        "module.harness",
-        "module.spec"
-      ]
+      "uses": ["module.development", "module.harness", "module.spec"]
     },
     {
       "checks": [],

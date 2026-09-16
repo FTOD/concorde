@@ -241,6 +241,167 @@ beforeEach(() => {
  save();
 });
 afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+function classify(path: string, value: unknown) {
+ const metadata = parse(readFileSync(resolve(root, path + ".json"), "utf8"));
+ metadata.extensions = { "concorde.publication": value };
+ put(path + ".json", JSON.stringify(metadata));
+}
+
+// verifies: scenario.views.reading-collections
+it("classifies explicit companions without changing routes, ownership or inclusion", async () => {
+ const path = "specs/transfer/promises.md";
+ targets[0].references = [
+  { kind: "document", id: "document.specs.transfer.promises" },
+ ];
+ save();
+ const before = loadScopedRegistry(root);
+ expect(before.pages.every((page) => page.readingCollection === "module")).toBe(
+  true,
+ );
+ await materializeScoped(before);
+ expect(
+  parse(
+   readFileSync(resolve(root, "docsite/.generated/specs-sidebar.json"), "utf8"),
+  ),
+ ).not.toHaveProperty("implementationSpecsSidebar");
+ classify(path, { collection: "implementation" });
+ const after = loadScopedRegistry(root);
+ expect(after.sourceDigest).not.toBe(before.sourceDigest);
+ expect(after.targets).toEqual(before.targets);
+ expect(
+  after.pages.map(
+   ({ readingCollection: _collection, metadataDigest: _digest, ...page }) =>
+    page,
+  ),
+ ).toEqual(
+  before.pages.map(
+   ({ readingCollection: _collection, metadataDigest: _digest, ...page }) =>
+    page,
+  ),
+ );
+ expect(
+  after.pages
+   .filter((page) => page.readingCollection === "implementation")
+   .map((page) => page.sourcePath),
+ ).toEqual([path]);
+ await materializeScoped(after);
+ const sidebars = parse(
+  readFileSync(resolve(root, "docsite/.generated/specs-sidebar.json"), "utf8"),
+ );
+ expect(sidebars.implementationSpecsSidebar).toEqual([
+  {
+   type: "category",
+   label: "service.transfer",
+   collapsed: false,
+   items: [{ type: "doc", id: "transfer/promises", label: "promises" }],
+  },
+ ]);
+ expect(JSON.stringify(sidebars.moduleSpecsSidebar)).not.toContain(
+  '"transfer/promises"',
+ );
+ expect(JSON.stringify(sidebars.implementationSpecsSidebar)).not.toContain(
+  '"scope.bank"',
+ );
+ const docs = (items: SidebarItem[]): string[] =>
+  items.flatMap((item) => [
+   ...(item.id ? [item.id] : []),
+   ...(item.link ? [item.link.id] : []),
+   ...docs(item.items ?? []),
+  ]);
+ const ids = [
+  ...docs(sidebars.moduleSpecsSidebar),
+  ...docs(sidebars.implementationSpecsSidebar),
+ ];
+ expect(ids).toHaveLength(after.pages.length);
+ expect(new Set(ids).size).toBe(after.pages.length);
+ const staged = readFileSync(
+  resolve(root, "docsite/.generated/content/specs/transfer/promises.md"),
+  "utf8",
+ );
+ expect(staged).toContain("displayed_sidebar: implementationSpecsSidebar");
+ expect(staged).toContain("Local rules.");
+ classify(path, { collection: "module" });
+ await materializeScoped(loadScopedRegistry(root));
+ expect(
+  parse(
+   readFileSync(resolve(root, "docsite/.generated/specs-sidebar.json"), "utf8"),
+  ),
+ ).not.toHaveProperty("implementationSpecsSidebar");
+});
+
+// verifies: scenario.views.reading-collections
+it("retains ancestor categories for detail-only descendants and prunes empty branches", () => {
+ const path = "specs/ledger/details.md";
+ targets[3].documents.push(path);
+ putSpec(path, ["module.ledger"], "# Ledger details\n\nPrecise obligations.\n");
+ classify(path, { collection: "implementation" });
+ save();
+ expect(scopedSidebar(loadScopedRegistry(root), "implementation")).toEqual([
+  {
+   type: "category",
+   label: "service.transfer",
+   collapsed: false,
+   items: [
+    {
+     type: "category",
+     label: "module.ledger",
+     collapsed: true,
+     items: [{ type: "doc", id: "ledger/details", label: "details" }],
+    },
+   ],
+  },
+ ]);
+});
+
+// verifies: scenario.views.reject-reading-collection
+it("rejects invalid collection extensions and implementation-classified Module entries", () => {
+ for (const value of [
+  null,
+  [],
+  "implementation",
+  {},
+  { collection: "unknown" },
+  { collection: "implementation", hidden: true },
+  { collection: false },
+ ]) {
+  classify("specs/transfer/promises.md", value);
+  expect(() => loadScopedRegistry(root)).toThrow(
+   /Invalid concorde.publication extension: specs\/transfer\/promises.md.json/,
+  );
+ }
+ classify("specs/transfer/promises.md", { collection: "module" });
+ classify("specs/transfer/module.md", { collection: "implementation" });
+ expect(() => loadScopedRegistry(root)).toThrow(
+  /Module reading entry must stay in Module Specs/,
+ );
+});
+
+// verifies: scenario.views.reading-collections scenario.views.validate-candidate-mismatch
+it("rejects materialization and build evidence after a metadata-only reclassification", async () => {
+ const registry = loadScopedRegistry(root);
+ await materializeScoped(registry);
+ const plugin = scopedContent(
+  { siteDir: resolve(root, "docsite"), baseUrl: "/" } as LoadContext,
+  {},
+ );
+ await plugin.loadContent!();
+ const outDir = resolve(root, "candidate");
+ for (const page of registry.pages)
+  put("candidate/" + page.route.slice(1) + ".html", "<main>Reading</main>");
+ await plugin.postBuild!({
+  outDir,
+  routesPaths: registry.pages.map((page) => page.route),
+ } as any);
+ await validateScopedBuild(root, outDir);
+ classify("specs/transfer/promises.md", { collection: "implementation" });
+ await expect(plugin.loadContent!()).rejects.toThrow(
+  /Materialized Spec source identity differs/,
+ );
+ await expect(validateScopedBuild(root, outDir)).rejects.toThrow(
+  /Build Manifest 21/,
+ );
+});
 // verifies: scenario.views.publish-reference-link
 it("one-level references retain all provenance without transclusion", async () => {
  targets[0].references = [
@@ -494,9 +655,11 @@ it("global data retains page metadata without bodies or architecture projections
    },
   },
  } as any);
- expect(data.schema_version).toBe(20);
+ expect(data.schema_version).toBe(21);
  expect(data.entryTarget).toBe(registry.entryTarget);
- expect(data.pages).toEqual(registry.pages.map(({ content, ...page }) => page));
+ expect(data.pages).toEqual(
+  registry.pages.map(({ content: _content, ...page }) => page),
+ );
  expect(data).not.toHaveProperty("nodes");
  expect(data).not.toHaveProperty("edges");
  expect(data).not.toHaveProperty("targets");
@@ -1166,10 +1329,10 @@ it("writes a legacy redirect stub for every alias during postBuild, and validate
  const manifest = parse(readFileSync(manifestPath, "utf8"));
  writeFileSync(
   manifestPath,
-  JSON.stringify({ ...manifest, schema_version: 17 }),
+  JSON.stringify({ ...manifest, schema_version: 20 }),
  );
  await expect(validateScopedBuild(root, outDir)).rejects.toThrow(
-  /Build Manifest 20/,
+  /Build Manifest 21/,
  );
  writeFileSync(manifestPath, JSON.stringify(manifest));
  const [firstPage] = registry.pages;
@@ -1511,7 +1674,7 @@ it.each(["/", "/%E6%96%87%E6%A1%A3/"])(
   for (const invalid of ["source", "manifest"] as const) {
    failure = invalid;
    await expect(fixtureModule.exports.buildSite()).rejects.toThrow(
-    /Build Manifest 20/,
+    /Build Manifest 21/,
    );
    expect(snapshot(published)).toEqual(previous);
    expect(existsSync(resolve(root, "docsite/.generated/candidate"))).toBe(

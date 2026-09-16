@@ -15,9 +15,10 @@ under `.concorde/` is excluded from published prose.
 The adapter publishes Profile 14 projects only: it reads `plugins/scoped-content` and registry
 schema 5, and refuses any other `profile_version` with an explicit error. Every registered document
 publishes once at a readable source-derived route: `specs/project/module.md` becomes
-`/specs/project/module`. The navbar exposes a single `Module Specs` tab;
-there is no separate Implementation Specs tab, because Implementation Specs no longer exist. A
-Module name opens its `module.md` directly, while its additional documents and child Modules appear
+`/specs/project/module`. The navbar always exposes `Module Specs`; explicitly classified companions
+enable a parallel `Implementation Specs` tab. These are two reading paths into the same complete
+Module specification, not separate ownership or agent-context models. A
+Module name opens its `module.md` directly, while its Module Specs companions and child Modules appear
 underneath; no duplicate main-Spec entry is generated. Module labels use registry titles;
 supplemental document labels use their filenames without `.md`, independently of Markdown headings. Source paths
 remain visible in provenance. Supplementary documents appear under their sole owning Module. References retain one canonical
@@ -29,7 +30,8 @@ Publication validates complete document units: each registered Markdown reading 
 local readable meaning anchors, scoped relationship diagrams and complementary interface bindings.
 The Markdown is the Protocol-defined reading subset, not an independently generated summary.
 
-The entry reads Purpose, Usage, Design and Relationships before precise requirements/scenarios.
+The entry reads Purpose, Usage, Design and Relationships. Precise requirements/scenarios may follow
+or live in owned companions; publication never automatically extracts them or writes a summary.
 The publisher creates one page per reading document and does not append a duplicate Files inventory
 or publish metadata as a second page. An auxiliary Spec metadata disclosure shows document identity,
 owner, inclusion provenance and the separate reading/metadata source digests. Both members participate
@@ -50,10 +52,44 @@ The docsite has no standalone graph page or Graph navigation entry. Understand A
 and viewer commands remain independent of publication; inline Mermaid diagrams remain available
 in the documents that author them.
 
+## Implementation Specs
+
+Keep the Module entry understandable on its own: explain purpose, correct use, significant design,
+collaboration and important guarantees. Put dense normative requirements, scenarios and interface
+details in registered owned companions, linking to their canonical definitions instead of duplicating
+them. Implementation Specs means specifications implementations must satisfy, including external
+behavior, not a record of current code or a temporary implementation plan.
+
+To place a companion in the second tab, add this publisher-owned extension to its `.md.json`:
+
+```json
+"extensions": {
+  "concorde.publication": {"collection": "implementation"}
+}
+```
+
+The extension has exactly one field, `collection`, accepting `module` or `implementation`. Omission
+defaults to `module`; `module.md` must stay in that collection. Invalid shapes, unknown fields and
+values, or a classified implementation entry reject publication. No classification is inferred from
+paths, headings or definition syntax. This uses Protocol 7's existing extension mechanism and does
+not upgrade the accepted Protocol, registry schema or Framework profile.
+
+The second sidebar follows the same registry parentage but contains only classified companions and
+omits empty branches. Each registered document appears in exactly one sidebar at its unchanged
+canonical route. Reading-path links connect implementation pages to the Module entry and explanation
+pages to the owner's implementation companions. Search, provenance and identity anchors remain
+available. Metadata changes invalidate byte-bound context, review and build evidence without changing
+ownership, complete context membership or file permissions. Both collections remain Protocol reading
+content; never configure these companions as `customDocs`.
+
+Without classified companions there is no Implementation Specs tab. Concorde's Views Module is the
+initial pilot; other Modules are unchanged. A source relocation still requires updating source links:
+stable definition IDs do not by themselves redirect old page/fragment URLs.
+
 ## Site identity
 
 The adapter reads `docsite/site.json` (site identity schema 1). Project-specific content is optional;
-without custom docs or a homepage the only documentation tab is **Module Specs**.
+without classified implementation companions or custom docs, the only documentation tab is **Module Specs**.
 
 | Field | Type | Rule |
 | --- | --- | --- |
@@ -203,8 +239,8 @@ Run commands from `docsite/`:
 | `npm run typecheck` | Type-check maintained TypeScript. |
 | `npm run check` | Run typechecking, all tests, source validation, and a production build. |
 
-Successful builds emit `build/build-manifest.json` using Build Manifest 20. It records registered
-document routes, aliases and exact source identities. It neither emits nor requires
+Successful builds emit `build/build-manifest.json` using Build Manifest 21. It records registered
+document routes, aliases, reading collections and exact source identities. It neither emits nor requires
 `architecture-graph.json`; older manifest versions require a fresh build. A stale
 materialization or changed source prevents candidate promotion. The manifest stores no claim that
 a Module's implementation currently satisfies its promises.

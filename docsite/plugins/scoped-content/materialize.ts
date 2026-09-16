@@ -6,6 +6,7 @@ import {
   primaryDocument,
   rewriteLinks,
   type Page,
+  type ReadingCollection,
   type ScopedRegistry,
   type Target,
 } from "./model";
@@ -18,7 +19,10 @@ interface SidebarItem {
   collapsed?: boolean;
   items?: SidebarItem[];
 }
-export function scopedSidebar(registry: ScopedRegistry): SidebarItem[] {
+export function scopedSidebar(
+  registry: ScopedRegistry,
+  collection: ReadingCollection = "module",
+): SidebarItem[] {
   const byPath = new Map(registry.pages.map((p) => [p.sourcePath, p]));
   const id = (page: Page) => page.stagedPath.replace(/\.md$/, "");
   const document = (page: Page): SidebarItem => ({
@@ -26,30 +30,45 @@ export function scopedSidebar(registry: ScopedRegistry): SidebarItem[] {
     id: id(page),
     label: posix.basename(page.sourcePath, ".md"),
   });
-  const item = (target: Target, depth = 0): SidebarItem => {
+  const item = (target: Target, depth = 0): SidebarItem[] => {
     const main = byPath.get(primaryDocument(target))!;
     const items = [
       ...target.documents
         .filter((path) => path !== main.sourcePath)
-        .map((path) => document(byPath.get(path)!)),
+        .map((path) => byPath.get(path)!)
+        .filter((page) => page.readingCollection === collection)
+        .map(document),
       ...registry.targets
         .filter((t) => t.parent === target.id)
-        .map((child) => item(child, depth + 1)),
+        .flatMap((child) => item(child, depth + 1)),
     ];
-    // The Module itself opens module.md; there is no extra main-Spec child entry.
-    return items.length
-      ? {
-          type: "category",
-          label: target.title,
-          link: { type: "doc", id: id(main) },
-          collapsed: depth > 0,
-          items,
-        }
-      : { type: "doc", id: id(main), label: target.title };
+    // Detail navigation retains parentage, but never duplicates the Module entry.
+    if (collection === "implementation")
+      return items.length
+        ? [
+            {
+              type: "category",
+              label: target.title,
+              collapsed: depth > 0,
+              items,
+            },
+          ]
+        : [];
+    return [
+      items.length
+        ? {
+            type: "category",
+            label: target.title,
+            link: { type: "doc", id: id(main) },
+            collapsed: depth > 0,
+            items,
+          }
+        : { type: "doc", id: id(main), label: target.title },
+    ];
   };
   return registry.targets
     .filter((t) => !t.parent)
-    .map((target) => item(target));
+    .flatMap((target) => item(target));
 }
 /** Registry parentage is the only Module Spec navigation hierarchy. */
 export const publicationSidebar = scopedSidebar;
@@ -73,7 +92,10 @@ export async function materializeScoped(registry: ScopedRegistry) {
         slug: page.route.slice("/specs".length),
         title,
         sidebar_label: title,
-        displayed_sidebar: "moduleSpecsSidebar",
+        displayed_sidebar:
+          page.readingCollection === "implementation"
+            ? "implementationSpecsSidebar"
+            : "moduleSpecsSidebar",
         toc_max_heading_level: page.primaryOf ? 2 : 3,
       }),
     );
@@ -81,7 +103,19 @@ export async function materializeScoped(registry: ScopedRegistry) {
   await writeFile(
     resolve(generated, "specs-sidebar.json"),
     JSON.stringify(
-      { moduleSpecsSidebar: publicationSidebar(registry) },
+      {
+        moduleSpecsSidebar: publicationSidebar(registry),
+        ...(registry.pages.some(
+          (page) => page.readingCollection === "implementation",
+        )
+          ? {
+              implementationSpecsSidebar: publicationSidebar(
+                registry,
+                "implementation",
+              ),
+            }
+          : {}),
+      },
       null,
       2,
     ) + "\n",

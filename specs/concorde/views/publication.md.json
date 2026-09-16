@@ -14,5 +14,10 @@
       "peer": "external:docsite-caller",
       "meaning": "#participation.document.views.publication.1"
     }
-  ]
+  ],
+  "extensions": {
+    "concorde.publication": {
+      "collection": "implementation"
+    }
+  }
 }

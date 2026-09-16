@@ -49,9 +49,9 @@ edges. Symlinks in the graph path are rejected.
 - THEN the launcher returns exit code 130
 
 These launcher boundaries are Module-wide requirements, not outcomes of this one scenario; see
-[req.views.no-graph-generation](module.md#req.views.no-graph-generation),
-[req.views.no-dependency-install](module.md#req.views.no-dependency-install) and
-[req.views.cli-syntax-errors](module.md#req.views.cli-syntax-errors) in `module.md`.
+[req.views.no-graph-generation](requirements.md#req.views.no-graph-generation),
+[req.views.no-dependency-install](requirements.md#req.views.no-dependency-install) and
+[req.views.cli-syntax-errors](requirements.md#req.views.cli-syntax-errors) in `requirements.md`.
 
 After admission, the launcher checks Node.js >=18 and runs Node with the installed entrypoint and
 project directory, forwarding the optional flags. The child runs from the project directory. The

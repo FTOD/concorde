@@ -220,7 +220,7 @@ describe("a project holding only Profile 14 initialization outputs", () => {
         "utf8",
       ),
     );
-    expect(manifest.schema_version).toBe(20);
+    expect(manifest.schema_version).toBe(21);
     expect(manifest.pages).toHaveLength(1);
     expect(manifest.pages[0].route).toBe("/specs/project/module");
     expect(manifest.pages[0].owner).toEqual("module.atlas");
@@ -274,6 +274,7 @@ describe("a project holding only Profile 14 initialization outputs", () => {
       "Spec Protocol",
     );
     expect(mainPage).not.toContain("Agent Flows");
+    expect(mainPage).not.toContain("Implementation Specs");
     expect(mainPage).not.toContain("<iframe");
     expect(mainPage).toContain('id="purpose"');
     expect(mainPage).toContain('id="requirements"');

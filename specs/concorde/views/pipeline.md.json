@@ -6,5 +6,10 @@
   },
   "entities": [],
   "dependencies": [],
-  "bindings": []
+  "bindings": [],
+  "extensions": {
+    "concorde.publication": {
+      "collection": "implementation"
+    }
+  }
 }

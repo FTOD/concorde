@@ -215,13 +215,48 @@ For a Module, its unique local `module.md` is the source entry, independent of c
 - AND inline Mermaid fences render in their authored position using the site's locked Mermaid integration
 
 The route is `/specs/<source path with a leading specs/ root removed and .md dropped>`, or the full
-path when a project's Specs are not entirely rooted at `specs/`. The sole Module Specs sidebar
+path when a project's Specs are not entirely rooted at `specs/`. The Module Specs sidebar
 uses registry Module parentage, with root Modules directly at the top level in registry order.
 There is no file-directory tree or outer Module composition category. Every Module opens its
-unique local `module.md`; expanding it reveals its owned supplementary documents in document
+unique local `module.md`; expanding it reveals its owned Module Specs companions in document
 order, followed by child Modules in registry order. Referenced documents remain under their sole
 owner and do not create duplicate pages or sidebar entries. A Module without children or
-supplements is a direct document link.
+Module Specs companions is a direct document link.
+
+#### scenario.views.reading-collections — Separate reading paths preserve complete Module specifications
+
+- GIVEN registered companion documents whose metadata explicitly selects the implementation reading collection
+- WHEN the site is built
+- THEN the navbar exposes Module Specs and Implementation Specs as parallel reading tabs
+- AND each registered reading document publishes once at its existing source-derived canonical route with all stable anchors, ownership and inclusion provenance retained
+- AND Module Specs contains every Module entry and its unclassified or module-classified companions, while Implementation Specs contains only implementation-classified companions under the same registry parentage, omitting empty branches
+- AND a detail page links back to its Module entry and that Module's explanation pages link to its Implementation Specs
+- AND both collections remain searchable human-readable normative content in the same complete Module Spec context
+- BUT a reference never duplicates a provider document into the consumer's sidebar or transfers ownership
+
+The publisher owns the optional `concorde.publication` metadata extension. Its value is exactly
+`{"collection": "module"}` or `{"collection": "implementation"}`. Absence defaults to `module`;
+an empty implementation collection creates neither a sidebar nor a tab. A Module's `module.md`
+entry must remain in the module collection. The selection is never inferred from filenames,
+headings, definition syntax, implementation bindings or ordinary links. Classification changes
+metadata bytes and therefore invalidates source-bound context, review and publication evidence,
+even though it changes neither context membership nor canonical page routes. The extension uses
+Protocol 7's existing metadata extension mechanism, not a new Spec kind or reading-membership rule.
+
+Implementation Specs means precise normative specifications that implementations must satisfy,
+including external guarantees, not merely internal code details or temporary implementation plans.
+Authors keep purpose, correct use, significant design and important guarantees understandable in
+the Module entry, and link to canonical exact definitions in companions instead of copying them.
+The publisher preserves authored content; it does not automatically split sections or generate a
+replacement summary. Requirements and scenarios can remain in Module Specs when appropriate.
+Concorde initially applies this organization to Views; other Modules retain their existing layout.
+
+#### scenario.views.reject-reading-collection — Invalid publication classification fails admission
+
+- GIVEN a concorde.publication extension with unknown fields, an invalid collection value or shape, or an implementation classification on a Module reading entry
+- WHEN the publication registry is loaded
+- THEN admission fails with the source metadata or reading entry identified
+- AND no candidate is materialized or promoted
 
 #### scenario.views.publish-without-graph — Publishing retains reading and navigation without a graph view
 
@@ -340,7 +375,9 @@ fails with its field path; omitting the object preserves the homepage without a 
 - AND custom pages do not register Spec ownership, appear in the registered-page manifest or grant agent Spec context
 - BUT a collection containing a registered Spec, a conflicting route, missing enabled content or broken internal link rejects the build
 
-The generic template defaults to one documentation tab, **Module Specs**. Optional `customDocs`
+Without classified implementation companions, the generic template defaults to one documentation
+tab, **Module Specs**. **Implementation Specs**, when present, is registered normative content,
+not a custom docs collection. Optional `customDocs`
 in site identity is an array of collections with nonempty `id`, `label`, `path` and
 `routeBasePath`, plus optional `sidebarPath`. IDs are unique lowercase slug names other than
 `default`. Route bases are distinct, non-overlapping slash-separated alphanumeric/underscore/hyphen

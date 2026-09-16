@@ -24,6 +24,14 @@ link, invalid document or stale input prevents promotion and preserves the previ
 [Publication](publication.md) explains scaffolding, custom documentation and reading behavior;
 [pipeline](pipeline.md) defines the build API and records.
 
+For reading, start with **Module Specs** to understand a Module's purpose, correct use and design.
+When its author explicitly classifies detailed companions, **Implementation Specs** provides a
+parallel tab for precise obligations and interfaces, with links back to the owning Module.
+Both tabs read from the same registry: references never duplicate a document, and changing its tab
+neither changes its canonical route nor removes it from complete agent Spec context.
+Classification is explicit, never inferred from a filename or the presence of SHALL statements.
+The [publication contract](publication.md#scenario.views.reading-collections) specifies the details.
+
 The Spec reader presents Usage before Design, so using a Module
 does not require first reading its entity/file inventory. Both explanations remain canonical reading content.
 Custom docs are separate human documentation and grant no Spec context. For graphs, use
@@ -42,6 +50,11 @@ Module parentage rather than directory structure. The Docsite build interface se
 materialization, candidate build, source/link validation and promotion. Only a current validated
 Candidate site replaces the Published site; a failure preserves the last successful build.
 Metadata participates in source identity and auxiliary provenance, not an appended file inventory.
+A publisher-owned metadata extension assigns a companion to a reading collection. It changes only
+navigation: both sidebars derive from the same Module parentage, each document appears once, and
+shared provider definitions stay at their owner's canonical page. Main entries retain an explanatory
+reading path; exact requirements and scenarios can be authored once in owned companions rather
+than repeated or extracted into a second generated specification.
 The [pipeline design](pipeline.md#design) defines these identities and promotion mechanics.
 
 <a id="entity.views.publication-scaffold"></a><a id="entity.views.docsite-scaffold-command"></a><a id="entity.views.file-transactions"></a>
@@ -140,136 +153,14 @@ flowchart LR
     launcher -->|starts| process
 ```
 
-## Requirements
+## Precise specifications
 
-### req.views.registry-derived-pages — Pages and navigation derive from the registry
-
-Publication SHALL derive Module Spec pages and their navigation only from the explicit registry.
-
-Every published Module Spec is traceable to a registered entry. The optional project introduction
-and project-owned custom docs are presentation surfaces outside that membership.
-The Module Specs sidebar follows registry parentage alone; custom docs use independent tabs. See
-[req.views.no-directory-scanning](#req.views.no-directory-scanning).
-
-### req.views.custom-docs — Separate project documentation
-
-Publication SHALL support project-owned custom docs through independent tabs outside Module Spec registration and agent Spec context.
-
-The generic template defaults to Module Specs alone and publishes no unregistered Projections
-section. See [custom docs](publication.md#scenario.views.custom-docs) for configuration and migration.
-
-### req.views.no-directory-scanning — No directory scanning or link-based discovery
-
-Publication SHALL NOT discover Spec documents by scanning directories or following links.
-
-### req.views.one-page-per-document — One canonical page per registered document
-
-A physical Spec document SHALL publish at exactly one canonical page regardless of how many Modules reference it.
-
-### req.views.current-internal-links — Published internal links resolve
-
-Publication SHALL promote only a candidate in which every internal navigation link retained in its published documents resolves to an available destination and, when specified, an existing anchor.
-
-The guarantee covers the site's own published pages, including enabled reading collections.
-Cross-Module references are valid navigation and do not establish document ownership and references or expand
-Spec context. External destinations retain their existing handling; publication does not promise
-the continued availability of another website. Current-owner legacy aliases and failure
-behavior are defined in [publication](publication.md#scenario.views.publish-legacy-redirect)
-and [pipeline](pipeline.md#scenario.views.validate-candidate-mismatch).
-
-### req.views.no-agent-context-grant — No extra agent context from a rendered view
-
-A rendered page or generated view SHALL NOT itself grant an agent invocation additional Spec context beyond its own host-bound target snapshot.
-
-### req.views.diagram-source-identity — Mermaid fence is the sole diagram source
-
-An inline Mermaid fence in a Module's Relationships subsection SHALL be its sole authored diagram source.
-
-### req.views.no-external-diagram-record — No external diagram record or output
-
-Publication SHALL create no external diagram record or `generated/diagrams` output.
-
-The authored fence is the sole source; publication produces no external record derived from it.
-
-### req.views.no-docsite-graph-view — No docsite graph view
-
-Publication SHALL NOT expose the former Module, Scenario or entity-relationship graph view.
-
-This removes the docsite graph page and route, Graph navigation entry, graph-specific UI,
-architecture-graph projection and artifact, and resources or dependencies used exclusively for that
-feature. It also applies to the publishing template supplied to consumer projects. Dependencies
-and resources still needed for ordinary reading, navigation or inline Mermaid rendering remain.
-The UA exporter and official viewer remain separate non-docsite facilities.
-
-Concorde's own source-checkout site has an independent Agent Flows page describing actual runtime
-execution. It is excluded from the consumer template and does not derive a graph from the Spec
-registry. See [Agent execution publication](pipeline.md#scenario.views.agent-flows).
-
-### req.views.agent-flows — Concorde-only execution diagrams
-
-Concorde's own docsite SHALL publish an Agent Flows tab whose LangGraph nodes and edges come from
-the current executable factories and whose explanations distinguish execution, wrappers and
-unimplemented design.
-
-### req.views.production-preview-isolation — Production builds preserve preview output
-
-A production build SHALL NOT clear or overwrite the development preview's generated directory.
-
-### req.views.hash-format — Digests use the sha256 hex format
-
-Every content or source digest SHALL be `sha256:` followed by 64 lowercase hexadecimal digits.
-
-### req.views.safe-relative-paths — Member paths are safe relative POSIX paths
-
-Every member path SHALL use POSIX separators without absolute paths, backslashes, empty, dot or traversal components, or symlinks.
-
-### req.views.promote-atomic — Promotion restores the prior destination on failure
-
-`promoteCandidate` SHALL attempt to restore the prior destination on a failed move or removal.
-
-### req.views.promote-requires-checked-candidate — Promotion runs only on checked candidates
-
-`promoteCandidate` SHALL NOT be called on unchecked or stale output.
-
-### req.views.no-contract-context-expansion — Contract edges do not expand loaded context
-
-The registry loader SHALL NOT follow a `concorde-contract` edge to import additional Module context.
-
-### req.views.no-graph-generation — Launcher leaves graph contents unchanged
-
-The viewer launcher SHALL NOT modify graph contents, including generating or rewriting the graph it opens.
-
-### req.views.no-graph-freshness-verification — Launcher never verifies graph freshness
-
-The viewer launcher SHALL NOT verify the freshness of the graph it opens against source.
-
-### req.views.no-dependency-install — Launcher resolves no dependencies or network access
-
-The viewer launcher SHALL NOT resolve dependencies or perform network acquisition.
-
-### req.views.cli-syntax-errors — Argument errors exit separately from launch failures
-
-Invalid launch syntax or a port outside 0-65535 SHALL exit through argument parsing with code 2, distinct from a failed launch's exit code 3.
-
-### req.views.ua-graph-registry-only — Exported skeleton derives only from the registry
-
-The UA graph exporter SHALL limit derivation inputs to the explicit registry, registered documents, declared implementation listings and an admitted existing graph.
-
-The existing graph supplies foreign-node reuse and the unlisted-file layer under the local overlay
-rules; it does not authorize discovery of additional project files or Spec membership. Fresh
-skeletons derive their structure solely from registered inputs, with initial project metadata as
-defined in the local serialized graph contract.
-
-### req.views.ua-graph-idempotent — Re-export replaces only Concorde-owned elements
-
-A repeated export SHALL replace only the nodes, edges and layers in the ownership scope defined by scenario.views.ua-graph-overlay, leaving every other element of an existing graph unchanged.
-
-## Scenarios
-
-Scaffold and top-level publication scenarios are defined in [publication](publication.md).
-Registry loading, materialization and build/promotion scenarios are defined in
-[pipeline](pipeline.md). Viewer launch scenarios are defined in [viewer](viewer.md), and UA graph
-export scenarios in [ua-graph](ua-graph.md).
+The explanation above is the entry to the Views specification. Its
+[Module-wide requirements](requirements.md), [publication behavior](publication.md),
+[build pipeline](pipeline.md), [viewer launch](viewer.md) and [UA export](ua-graph.md)
+provide the precise obligations, concrete scenarios and interface definitions used for implementation
+and verification. The docsite groups these owned companions under **Implementation Specs**.
+They remain normative parts of this same Module, not code documentation or a separate context.
 
 ## Dependencies and composition
 
@@ -316,4 +207,4 @@ such a project is a separate, explicit topology change that this Module does not
 
 ## Ownership, context and implementation status
 
-The loaders and exporters implement publication schema 20, unique owners, reference provenance, canonical contract anchors and UA reference edges. Reference inclusion creates no transclusion, implementation grant or new page authority.
+The loaders and exporters implement publication schema 21, unique owners, reference provenance, canonical contract anchors and UA reference edges. Reference inclusion creates no transclusion, implementation grant or new page authority.

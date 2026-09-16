@@ -33,6 +33,7 @@ function manifestPages(registry: ScopedRegistry) {
       contentDigest,
       metadataPath,
       metadataDigest,
+      readingCollection,
       owner,
       includedBy,
       aliases,
@@ -42,6 +43,7 @@ function manifestPages(registry: ScopedRegistry) {
       contentDigest,
       metadataPath,
       metadataDigest,
+      readingCollection,
       owner,
       includedBy,
       aliases,
@@ -79,11 +81,11 @@ export async function validateScopedBuild(root: string, directory: string) {
   );
   const expected = manifestPages(registry);
   if (
-    manifest.schema_version !== 20 ||
+    manifest.schema_version !== 21 ||
     manifest.sourceDigest !== registry.sourceDigest ||
     JSON.stringify(manifest.pages) !== JSON.stringify(expected)
   )
-    throw new Error("Stale or incomplete Build Manifest 20");
+    throw new Error("Stale or incomplete Build Manifest 21");
   for (const page of registry.pages)
     for (const alias of page.aliases) {
       const stubPath = resolve(directory, alias.replace(/^\//, "") + ".html");

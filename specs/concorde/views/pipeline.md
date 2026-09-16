@@ -86,13 +86,13 @@ publication removes only the ID and separator from the displayed heading, not th
 - THEN it rejects without repairing the artifacts or promoting output
 
 Digest format and path safety are Module-wide requirements; see
-[req.views.hash-format](module.md#req.views.hash-format) and
-[req.views.safe-relative-paths](module.md#req.views.safe-relative-paths). Promotion and loader
-isolation are specified by [req.views.promote-atomic](module.md#req.views.promote-atomic),
-[req.views.promote-requires-checked-candidate](module.md#req.views.promote-requires-checked-candidate)
-and [req.views.no-contract-context-expansion](module.md#req.views.no-contract-context-expansion).
+[req.views.hash-format](requirements.md#req.views.hash-format) and
+[req.views.safe-relative-paths](requirements.md#req.views.safe-relative-paths). Promotion and loader
+isolation are specified by [req.views.promote-atomic](requirements.md#req.views.promote-atomic),
+[req.views.promote-requires-checked-candidate](requirements.md#req.views.promote-requires-checked-candidate)
+and [req.views.no-contract-context-expansion](requirements.md#req.views.no-contract-context-expansion).
 The absence of a standalone graph is specified by
-[req.views.no-docsite-graph-view](module.md#req.views.no-docsite-graph-view).
+[req.views.no-docsite-graph-view](requirements.md#req.views.no-docsite-graph-view).
 
 ### Interface signatures
 
@@ -106,7 +106,7 @@ hash(value: string | Buffer): string;
 legacyAliasRoute(targetId: string, sourcePath: string): string;
 primaryDocument(target: Target): string;
 // plugins/scoped-content/materialize.ts
-scopedSidebar(registry: ScopedRegistry): object[];
+scopedSidebar(registry: ScopedRegistry, collection?: ReadingCollection): object[];
 materializeScoped(registry: ScopedRegistry): Promise<void>;
 // plugins/scoped-content/index.ts
 validateScopedBuild(root: string, directory: string): Promise<void>;
@@ -144,6 +144,7 @@ does not remove ownership, reference or agreement validation responsibilities.
 
 ```typescript
 type Kind = 'module';
+type ReadingCollection = 'module' | 'implementation';
 interface Target {
   id: string; kind: Kind; title: string; documents: string[];
   references: {kind: "module" | "document"; id: string}[];
@@ -153,16 +154,19 @@ interface Page {
   sourcePath: string; route: string; stagedPath: string; title: string; content: string;
   contentDigest: string; documentId: string; owner: string; metadataPath: string; metadataDigest: string;
   includedBy: {targetId: string; reasons: {kind: 'owned' | 'module' | 'document'; id: string}[]}[];
-  aliases: string[]; kind: Kind; primaryOf: string | null;
+  aliases: string[]; kind: Kind; primaryOf: string | null; readingCollection: ReadingCollection;
 }
 interface ScopedRegistry {
-  schema_version: 20; projectRoot: string; registryPath: string; entryTarget: string;
+  schema_version: 21; projectRoot: string; registryPath: string; entryTarget: string;
   sourceDigest: string; targets: Target[]; pages: Page[];
 }
 ```
 
-Publication model schema 20 binds both reading and metadata source identities, removes presentation
-visibility from the Protocol record and retains explicit ownership/inclusion provenance. It retains the absence of the former graph `edges` projection and `Edge` type.
+Publication model schema 21 adds the explicitly classified `readingCollection` to each page and
+build-manifest entry. It binds both reading and metadata source identities and retains explicit
+ownership/inclusion provenance. The optional publisher-owned extension selects navigation, never
+Protocol reading membership or agent context. The former graph `edges` projection and `Edge` type
+remain absent.
 `Target.parent` and `Target.uses` remain registry metadata for navigation, provenance and validation.
 This change does not change registry schema 5, Profile 14 or any UA graph format.
 
@@ -180,7 +184,9 @@ route. The former `projections/` source prefix is no longer reserved.
 A referenced physical document retains one Page and one sole `owner`. `includedBy` records every
 Module whose one-level context includes it, in registry order, with all sorted inclusion reasons.
 `kind` is `module`; `primaryOf` is the owner only when this page is its unique module.md, otherwise
-null. `aliases` lists the legacy-format route for the current owner only:
+null. `readingCollection` comes from the optional `concorde.publication` metadata extension,
+defaulting to `module`, under the [collection agreement](publication.md#scenario.views.reading-collections).
+`aliases` lists the legacy-format route for the current owner only:
 `/specs/<owner-id>/<key>`, where `key` is the first 16 hex digits of `hash(sourcePath)` after
 `sha256:`. References contribute no ownership alias. Removed owners contribute no alias and no
 historical aliases are inferred. Retained links to a removed alias must be corrected or fail the
@@ -206,7 +212,9 @@ registered-page manifest retains its registry-derived meaning.
 
 ### Project-owned custom documentation
 
-The generic template defaults to the Module Specs tab and registry-parent sidebar. Optional
+The generic template defaults to the Module Specs tab and registry-parent sidebar; explicitly
+classified implementation companions enable the parallel Implementation Specs tab. Both are
+registered Spec reading, not custom docs. Optional
 `customDocs` collections and `custom-docs/index.ts` supply independent project documentation
 and executable pages under the [custom docs agreement](publication.md#scenario.views.custom-docs).
 They remain outside registered-page identity, ownership and agent context. Collection paths cannot
@@ -249,7 +257,7 @@ Moving a definition requires updating retained source links; it creates no inven
 The materialization identity is the UTF-8 JSON file
 `docsite/.generated/scoped-materialization.json`, relative to the project root, containing
 `{schema_version: 1, sourceDigest: string}`. Its version 1 is independent of `ScopedRegistry`
-schema 20. Materialization writes compact JSON followed by a newline, after the assets and
+schema 21. Materialization writes compact JSON followed by a newline, after the assets and
 sidebar succeed as specified in [materialization](#scenario.views.materialize). `sourceDigest`
 is the loaded registry's source digest, with the digest format defined above; the record adds no
 page inventory or projection-content identity.
@@ -260,14 +268,22 @@ Read failures, JSON parse failures and version or digest mismatches reject post-
 verification artifacts are emitted; the normal build failure rules preserve the previously
 promoted site. This retains the existing identity format and comparisons.
 
-The only Module Spec navigation follows registry `parent` relationships. Root Modules are top-level
-items; each Module opens its `module.md` and expands to its owned supplementary documents and child
-Modules. No file-directory tree or outer composition category is generated. References remain
+Both Spec sidebars follow registry `parent` relationships. In `moduleSpecsSidebar`, root Modules
+are top-level items; each Module opens its `module.md` and expands to its owned module-collection
+companions and child Modules. `implementationSpecsSidebar` contains only explicitly classified
+implementation companions, in document order, nested under owner and ancestor Module categories
+in registry order. Its categories have no duplicated Module-entry doc links; empty branches are
+omitted. No file-directory tree or outer composition category is generated. References remain
 navigation to the sole owner's canonical page and never create extra sidebar document entries.
+`scopedSidebar` defaults to the module collection and `publicationSidebar` aliases it.
+Materialization selects each page's displayed sidebar from its collection, and omits the
+implementation sidebar entirely when there are no such pages. The navbar uses the same condition.
+Provenance navigation links explanation pages to their owner's implementation companions and detail
+pages back to their Module entry; links honor the configured site base URL.
 
-A Module category links directly to its `module.md` through a Docusaurus category `link` of type
-`doc`. Its child items contain only additional registered documents and child Modules, never a
-second entry for `module.md`. A Module with no child items is a direct document link. The Module
+In Module Specs, a Module category links directly to its `module.md` through a Docusaurus category
+`link` of type `doc`. Its child items contain only additional module-collection documents and child
+Modules, never a second entry for `module.md`. A Module with no child items is a direct document link. The Module
 page displays its complete authored content, including Usage and Design,
 with section navigation. Mermaid diagrams render exactly where their fences occur in the authored
 Markdown; the renderer does not inject or duplicate an overview before or after the article.
@@ -326,17 +342,17 @@ Successful plugin post-build writes this JSON verification artifact in `outDir`:
 
 ```typescript
 // build-manifest.json
-{ schema_version: 20, sourceDigest: string,
-  pages: {sourcePath: string; route: string; contentDigest: string; metadataPath: string; metadataDigest: string; owner: string; includedBy: Page["includedBy"]; aliases: string[]}[] }
+{ schema_version: 21, sourceDigest: string,
+  pages: {sourcePath: string; route: string; contentDigest: string; metadataPath: string; metadataDigest: string; readingCollection: ReadingCollection; owner: string; includedBy: Page["includedBy"]; aliases: string[]}[] }
 ```
 
-Build-manifest schema 20 identifies the paired-source publication contract without an architecture-graph
-artifact. Older manifests require a fresh build. Publication neither produces nor requires
+Build-manifest schema 21 identifies paired-source publication and explicit reading collections
+without an architecture-graph artifact. Older manifests require a fresh build. Publication neither produces nor requires
 `architecture-graph.json`; it has no replacement graph artifact. UA export remains independent.
 
 `validateScopedBuild(root, directory)` reloads the current model and reads the manifest from the
 candidate directory. It resolves with no value only when its schema version, source digest and
-ordered page path/route/digest/owner/includedBy/aliases entries match exactly, and every alias has a redirect
+ordered page path/route/digest/readingCollection/owner/includedBy/aliases entries match exactly, and every alias has a redirect
 stub in the candidate directory whose content contains that page's canonical route. A stale or
 incomplete manifest, missing manifest, missing or non-matching redirect stub, or malformed JSON
 rejects. It also validates internal navigation links in the completed candidate after redirect
@@ -420,7 +436,7 @@ module graph refers to its internal build machinery, not a published graph view.
 
 ### Publication compatibility status
 
-The TypeScript loader admits Profile 14/schema 5 and publishes schema 20 with unique owner and
+The TypeScript loader admits Profile 14/schema 5 and publishes schema 21 with unique owner and
 includedBy provenance. It validates one-level references and canonical definition/binding agreement,
 exposes canonical definition anchors and renders links without transclusion. Manifest identity and
 watched registry/source inputs invalidate publication when ownership or references change.

@@ -288,8 +288,8 @@ defines the existing independent export behavior and adds no docsite graph funct
 - AND it does not write any change to that file
 
 These exporter boundaries are Module-wide requirements; see
-[req.views.ua-graph-registry-only](module.md#req.views.ua-graph-registry-only) and
-[req.views.ua-graph-idempotent](module.md#req.views.ua-graph-idempotent) in `module.md`.
+[req.views.ua-graph-registry-only](requirements.md#req.views.ua-graph-registry-only) and
+[req.views.ua-graph-idempotent](requirements.md#req.views.ua-graph-idempotent) in `requirements.md`.
 
 Context references are distinct graph edges and never acquire contains/depends_on meaning. A
 referenced document stays in its owner's layer; neither its implementation files nor its owner's

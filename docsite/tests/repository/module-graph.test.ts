@@ -7,7 +7,7 @@ describe("Module navigation metadata", () => {
  it("retains relationships without a graph projection", () => {
   const a = loadScopedRegistry(root),
    b = loadScopedRegistry(root);
-  expect(a.schema_version).toBe(20);
+  expect(a.schema_version).toBe(21);
   expect(a).not.toHaveProperty("edges");
   expect(a.targets.some((t) => t.parent !== null)).toBe(true);
   expect(a.targets.some((t) => t.uses.length > 0)).toBe(true);
