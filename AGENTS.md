@@ -29,6 +29,26 @@ instead, read its rendered file under `.claude/skills/<name>/SKILL.md` and submi
 it describes through `scripts/run-capability.py`. An explicitly requested flow keeps every rule of
 this policy, including the worktree ownership and handoff rules below.
 
+## Format before committing
+
+Format changed source files **before verification, staging and committing**. In Pi, pi-lens can
+queue formatting and safe autofixes until `agent_end`, after the agent has already run its commit
+command and final status check. Its smart-default formatter can run even without a repository
+formatter config; a clean status before the final response does not prove no deferred write remains.
+In the observed TypeScript case, pi-lens selected Biome and reformatted tests after the commit.
+
+- Run the configured formatter explicitly on the changed files before the final checks. When an
+  active runtime selects a formatter automatically, use that same formatter and effective options,
+  including each file's existing indentation; do not substitute an arbitrary formatter or reformat
+  the whole repository. pi-lens records `formatter_selected` and `deferred_format_file` events in
+  `~/.pi-lens/latency.log` when diagnosing unexpected changes.
+- Re-read the resulting diff, run the relevant checks on the final bytes, and confirm a second
+  formatter pass is a no-op before staging. Repeat this sequence after any further source edit.
+  `git diff --check` detects whitespace errors, not formatter compliance.
+- Inspect the staged diff before committing and `git status --short` afterwards. If a deferred
+  formatter still changes files, inspect and verify those changes rather than discarding them or
+  assuming they are unrelated; include them in the authorized change before declaring it complete.
+
 ## Spec language
 
 Concorde's own Specs under `specs/` MUST use English, including diagram labels, descriptions,

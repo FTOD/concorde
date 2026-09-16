@@ -940,20 +940,20 @@ it("publishes definition titles with canonical IDs and preserves source and enti
   resolve(root, "docsite/.generated/content/specs/bank/module.md"),
   "utf8",
  );
- expect(page).toContain(
-  "### Repeated requests {#req.bank.retry}",
- );
- expect(page).toContain(
-  "### Settlement {#scenario.bank.settle}",
- );
+ expect(page).toContain("### Repeated requests {#req.bank.retry}");
+ expect(page).toContain("### Settlement {#scenario.bank.settle}");
  expect(page).toContain(
   '<a id="entity.bank.core"></a><a id="entity.bank.request"></a>',
  );
  expect(page).not.toContain("concorde-entities");
  expect(page).not.toContain("{#req.bank.example}");
  expect(page).toContain("### req.bank.example — Not a definition");
- expect(page).toContain("Banking SHALL treat a repeated request as a new decision.");
- expect(page).toContain("- GIVEN a sender\n- WHEN a transfer is accepted\n- THEN both accounts settle");
+ expect(page).toContain(
+  "Banking SHALL treat a repeated request as a new decision.",
+ );
+ expect(page).toContain(
+  "- GIVEN a sender\n- WHEN a transfer is accepted\n- THEN both accounts settle",
+ );
  expect(page).toContain("[retry](#req.bank.retry)");
  expect(page).toContain("[ledger](/specs/ledger/module#entity.ledger.core)");
  expect(readFileSync(resolve(root, main), "utf8")).toBe(body);
