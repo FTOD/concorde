@@ -22,6 +22,12 @@ This is a record of the earlier capability-ownership split, preserved from the p
 source baseline. Version numbers and “current” entries below describe that migration, not the
 current runtime agreement. Read each owning Module for present behavior.
 
+In the later explanation-page consolidation, the Delivery, Development Flow, Query and Routing,
+and Topology topics listed below were retired into their existing Module entries. Their historical
+document IDs are not aliases for those entries. The table retains the migration's source locators
+as text and links to the surviving reading entries; requirements, scenarios and contracts retain
+their identities and ownership.
+
 ## Design
 
 This ledger records the explicitly authorized direct Spec maintenance against the saved current-byte
@@ -34,11 +40,11 @@ Review-result remains the same version-1 wire value, now owned by Review.
 
 | Stable definition | Previous owner and source | Current owner and definition |
 | --- | --- | --- |
-| `document.development.delivery` | `module.development` · `specs/concorde/development/delivery.md` | `module.delivery` · [definition](delivery/delivery.md) |
-| `document.development.development` | `module.development` · `specs/concorde/development/development.md` | `module.dev-loop` · [definition](dev-loop/development.md) |
-| `document.development.query-and-routing` | `module.development` · `specs/concorde/development/query-and-routing.md` | `module.query-routing` · [definition](query-routing/query-and-routing.md) |
+| `document.development.delivery` | `module.development` · `specs/concorde/development/delivery.md` | `module.delivery` · `delivery/delivery.md` (now [Module entry](delivery/module.md)) |
+| `document.development.development` | `module.development` · `specs/concorde/development/development.md` | `module.dev-loop` · `dev-loop/development.md` (now [Module entry](dev-loop/module.md)) |
+| `document.development.query-and-routing` | `module.development` · `specs/concorde/development/query-and-routing.md` | `module.query-routing` · `query-routing/query-and-routing.md` (now [Module entry](query-routing/module.md)) |
 | `document.development.review-result` | `module.development` · `specs/concorde/development/review-result.md` | `module.review` · [definition](review/review-result.md) |
-| `document.development.topology` | `module.development` · `specs/concorde/development/topology.md` | `module.topology` · [definition](topology/topology.md) |
+| `document.development.topology` | `module.development` · `specs/concorde/development/topology.md` | `module.topology` · `topology/topology.md` (now [Module entry](topology/module.md)) |
 | `req.development.check-isolation` | `module.development` · `specs/concorde/development/module.md` | `module.validation` · [definition](validation/requirements.md#req.development.check-isolation) |
 | `req.development.explicit-skip-sticky` | `module.development` · `specs/concorde/development/module.md` | `module.dev-loop` · [definition](dev-loop/requirements.md#req.development.explicit-skip-sticky) |
 | `req.development.global-discovery` | `module.development` · `specs/concorde/development/module.md` | `module.query-routing` · [definition](query-routing/requirements.md#req.development.global-discovery) |

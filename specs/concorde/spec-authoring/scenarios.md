@@ -24,7 +24,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 - THEN the host applies the accepted replacements after the required affected-consumer compatibility checks
 - AND the author has no direct project write authority and the response retains artifact references to accepted output
 
-The detailed contract is [Owner-only Spec replacements](authoring.md).
+The detailed contract is [Owner-only Spec replacements](execution-reference.md#authoring-spec-authoring-capability).
 
 ## Spec authoring capability
 

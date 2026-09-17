@@ -22,16 +22,19 @@ Delivery publishes a verified candidate as an independent branch and normally re
 Request `concorde-deliver` with the ready candidate's change_id from either its source worktree
 or the primary worktree. A third-worktree session cannot initiate that delivery. Default delivery
 verifies current evidence and actual integration, publishes `concorde/delivered/<change_id>`, and
-removes the source worktree. It does not advance primary or modify its index or project files.
+**removes the source worktree**. It does not advance primary or modify its index or project files.
 Supply `keep_worktree:true` explicitly to retain the source. A source session must end after
 removal; retries then use the primary session and recorded change ID.
 
 Merging primary is a separate `merge_primary:true` request after delivery, authorized explicitly
-and issued by the sole primary writer. Conflicts, failed checks or stale evidence block the
-transition; unrelated edits are never discarded. Receipts distinguish publication, cleanup and
+and issued by the sole primary writer. Conflicts, local primary edits, failed checks or stale evidence
+block the transition; unrelated edits are never discarded. Receipts distinguish publication, cleanup and
 merge: cleanup retries do not republish and accepted merge retries do not merge again. The producer
-need not be dev-loop, but every candidate must meet the same evidence gates. Read
-[participating-session delivery](delivery.md) before invoking this destructive cleanup boundary.
+need not be dev-loop, but every candidate must meet the same evidence gates.
+
+For example, ready means a proposed change has passed its required gates. Delivering it makes a
+separate verified branch available; neither state means it is already merged into the main development
+line. Before a later primary merge, the host checks integration again because primary may have advanced.
 
 ## Design
 
@@ -45,7 +48,8 @@ writers. [Integration verification](execution-reference.md#delivery-integration-
 and current-consumer checks.
 
 Recording retention and recovery state before destructive transitions permits cleanup retries
-without republishing and merge recovery without repeating an accepted update. Consumer evidence
+without republishing and merge recovery without repeating an accepted update. Recovery verifies
+actual state rather than assuming that a missing acknowledgement means nothing happened. Consumer evidence
 and pending-entry confirmation remain currentness gates, not inferred success from a branch name.
 
 ## Relationships
@@ -118,5 +122,6 @@ This collaboration applies when the actual integration tree contains concorde.js
 
 ## Precise specifications
 
-The Delivery Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+The Delivery Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
+[execution and record contracts](execution-reference.md#delivery-delivery-capability).
 These companions are part of the same complete Module specification, not separate topic owners.

@@ -81,7 +81,7 @@ it("every authored Spec link names a published document and section", () => {
       "/specs/concorde/specify-loop/scenarios#scenario.development.specify-loop",
       "/specs/concorde/dev-loop/scenarios#scenario.development.dev-loop-ready",
       "/specs/concorde/development/interfaces#wire-contracts",
-      "/specs/concorde/query-routing/query-and-routing",
+      "/specs/concorde/query-routing/module#usage",
       "/specs/concorde/review/scenarios#scenario.development.standalone-review",
     ]),
   );

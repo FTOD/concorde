@@ -32,7 +32,10 @@ validation evaluates current inputs; prior passing results are not permanent. Ch
 project files but must write temporary output only to issued external scratch. Unsupported check
 isolation fails closed with private diagnostics, not a less restricted fallback. Validation
 neither repairs defects nor delivers a change, and structural success or scenario coverage does
-not prove semantics. See [validation](validation.md) for results and operational prerequisites.
+not prove semantics.
+
+For example, if code changes after a passing check, the old result is no longer evidence for those
+new bytes. Validation recomputes or rechecks the relevant evidence before reporting readiness.
 
 ## Design
 
@@ -41,7 +44,12 @@ not prove semantics. See [validation](validation.md) for results and operational
 Validation resolves affected Spec consumers and changed-file users before collecting evidence.
 The host admits configured commands and delegates execution to [Harness Module](../harness/module.md)'s OS-enforced read-only
 executor; only the outside host persists logs and digest-bound results. [Check execution](execution-reference.md#validation-configured-check-execution)
-describes scratch, private diagnostics and concurrent-change rechecks.
+describes scratch, private diagnostics and concurrent-change rechecks. Child processes share the
+read-only boundary; caches and reports go to issued storage. Formatting source is an implementation
+action, not something a check may silently do while claiming to verify the original bytes.
+
+Currently the isolated runner requires Linux, system bubblewrap and working namespace/pidfd support.
+If that boundary is unavailable, validation stops instead of running unrestricted commands.
 
 Readiness combines current structural/check evidence with existing task completion and required
 reviews, without inventing a plan for a manual candidate. Unavailable isolation fails closed.
@@ -110,5 +118,6 @@ This collaboration applies when computing structural evidence and the affected M
 
 ## Precise specifications
 
-The Validation Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+The Validation Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
+[execution and record contracts](execution-reference.md#validation-validation-capability).
 These companions are part of the same complete Module specification, not separate topic owners.

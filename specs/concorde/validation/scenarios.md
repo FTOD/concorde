@@ -39,4 +39,4 @@ Subject headings organize the Module's obligations; they do not create separate 
 - AND unavailable enforcement blocks readiness with check_sandbox_unavailable while raw diagnostics stay in the host log
 - AND check input, candidate tree and affected Module freshness checks still reject external changes
 
-The detailed contract is [Current deterministic evidence](validation.md).
+The detailed contract is [Current deterministic evidence](execution-reference.md#validation-validation-capability).

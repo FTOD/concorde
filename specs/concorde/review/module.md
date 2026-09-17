@@ -31,7 +31,12 @@ gaps and exact revision. No findings is a bounded conclusion, not universal proo
 not-run and incomplete are distinct from success. Missing necessary contracts pause dependent work,
 while independent defects can remain advisory. Explicit standalone review is fresh; a composing
 Flow can reuse only current evidence for the same intent. Failure, cancellation and invalid output
-cannot masquerade as clean review. See [review](review.md) for selection, scope and outcome rules.
+cannot masquerade as clean review. The caller decides whether an admitted repair is appropriate;
+the reviewer itself does not execute it.
+
+For example, reviewing a retry change includes its promised failure behavior and affected consumers.
+An unrelated pre-existing limitation may be reported as advisory rather than automatically becoming
+work required by this change. A missing contract necessary for the retry decision can block it.
 
 ## Design
 
@@ -42,8 +47,11 @@ then launches a fresh Spec or code reviewer under a read-only grant. Result admi
 identity, coverage, locations and gap/finding consistency before retaining a typed report. Peer
 reviews run separately and aggregate only results, not provider code or private conversation.
 
-These mechanisms support [review scope and freshness](review.md), including exact-intent reuse by
-composing flows and fresh standalone review. A report remains evidence about one task and revision;
+A review of yesterday's code cannot establish today's changed revision. Binding results to current
+inputs supports exact-intent reuse by composing flows and fresh standalone review. Each reviewer
+gets a fresh conversation so an author's assumptions cannot silently become review evidence. When a
+changed file serves several Modules, each affected owner is reviewed against its own contract;
+one reviewer does not acquire another Module's code. A report remains evidence about one task and revision;
 its wire representation does not authorize a repair or override lifecycle gates.
 
 ## Relationships
@@ -111,9 +119,10 @@ Select one owning Module for a new standalone review while preserving its origin
 
 This collaboration applies when a new standalone review has neither a trusted bound target nor a bound current-change resumption.
 
-- [Explicit discovery and routing](../query-routing/query-and-routing.md); Preserve submitted task and constraints; accept only admitted selections and stop on gaps, ambiguity or discovery limits.
+- [Explicit discovery and routing](../query-routing/module.md#usage); Preserve submitted task and constraints; accept only admitted selections and stop on gaps, ambiguity or discovery limits.
 
 ## Precise specifications
 
-The Review Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+The Review Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
+[execution and record contracts](execution-reference.md#review-independent-review-capability).
 These companions are part of the same complete Module specification, not separate topic owners.

@@ -30,8 +30,11 @@ where no requirement already exists. Accepted authoring for the same intent and 
 evidence can be reused; an unrelated review cannot stand in for authoring. Missing meaning or a
 blocking review stops for an explicit decision, without an automatic Spec-repair loop. Completion
 returns Spec-stage artifacts and blockers, not tasks, code-check evidence, readiness or delivery.
-[Development Flow](../dev-loop/module.md) can continue the same task/change afterward. See [specification flow](specify-loop.md)
-for request fields, reuse and failure behavior.
+[Development Flow](../dev-loop/module.md) can continue the same task/change afterward.
+
+For example, clarifying which failures allow a retry can be completed here without also writing the
+retry mechanism. Development may later use that current accepted Spec work for the same task and
+change, rather than starting a second unrelated authoring attempt.
 
 ## Design
 
@@ -45,7 +48,8 @@ reviews are rechecked against applied bytes rather than repeated blindly.
 The candidate records authoring intent separately from review requirements. This prevents a
 standalone review from substituting for authoring and makes prior required reviews sticky across
 skips. There is no automatic Spec-repair edge and no implementation/readiness node; consumers decide
-whether to continue into development.
+whether to continue into development. Fresh author and reviewer invocations preserve independence
+even when the host reuses current evidence.
 
 ## Relationships
 
@@ -115,7 +119,7 @@ Select the owning Module for a new unbound Spec task while preserving the submit
 
 This collaboration applies when no trusted bound owner or compatible persisted owner is available.
 
-- [Explicit discovery and routing](../query-routing/query-and-routing.md); Preserve submitted task and constraints; accept only admitted selections and stop on gaps, ambiguity or discovery limits.
+- [Explicit discovery and routing](../query-routing/module.md#usage); Preserve submitted task and constraints; accept only admitted selections and stop on gaps, ambiguity or discovery limits.
 
 ### Spec Authoring
 
@@ -125,7 +129,7 @@ Produce complete replacements for owned Spec documents and return attributed gap
 
 This collaboration applies when specify is enabled and accepted authoring for the same current intent is not already available.
 
-- [Owned replacement admission](../spec-authoring/authoring.md); Admit only owned current replacements; rejected output or necessary gaps stop dependent Spec completion.
+- [Owned replacement admission](../spec-authoring/module.md#usage); Admit only owned current replacements; rejected output or necessary gaps stop dependent Spec completion.
 
 ### Review
 
@@ -135,9 +139,10 @@ Independently review the complete current Spec and affected consumers with revis
 
 This collaboration applies after accepted or explicitly skipped authoring when Spec review is enabled or already required.
 
-- [Independent review](../review/review.md); Supply the exact review intent and current scope; incomplete coverage, gaps or blocking findings cannot satisfy the required gate.
+- [Independent review](../review/module.md#usage); Supply the exact review intent and current scope; incomplete coverage, gaps or blocking findings cannot satisfy the required gate.
 
 ## Precise specifications
 
-The Specification Flow Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+The Specification Flow Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
+[execution and record contracts](execution-reference.md#specify-loop-specification-flow).
 These companions are part of the same complete Module specification, not separate topic owners.

@@ -86,4 +86,4 @@ See [code-review repair is the only automatic edge](requirements.md#req.developm
 - THEN each component is specified, planned and implemented from its own complete Module contract and the files its own entries bind, and the coordinator waits for every writer, including its own coordination code, before checking the final candidate
 - AND a repair that changes a file listed by several Modules invalidates the already-recorded evidence of every listing Module, and finalization repeats until every participant is stable
 
-The detailed contract is [Ready-only bounded development](development.md).
+The detailed contract is [Ready-only bounded development](execution-reference.md#development-development-agent-flow-and-revision-loops).

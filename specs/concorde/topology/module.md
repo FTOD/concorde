@@ -28,12 +28,38 @@ design-topology. Review the proposed registry before accept-topology prepares ow
 compatibility evidence; review that exact prepared application before apply-topology changes files.
 The two acceptances concern different artifacts and neither can be inferred from elapsed time.
 
-Authors receive their own candidate contexts and may replace only candidate-owned documents.
-A shared definition is authored once; affected consumers are reviewed independently. Rejected,
+Authors receive their own candidate contexts and may replace only candidate-owned documents;
+they cannot read implementation to fill missing meaning. A shared definition is authored once;
+affected consumers are reviewed independently. Rejected,
 stale or conflicting input leaves the pre-application project unchanged rather than partially
 changing ownership. New Modules need usable external contracts and internal designs, not merely
 new directories. The existing main adapter supplies these actions without adding a new callable
-flow entry. See [topology](topology.md) for preparation, application and recovery.
+flow entry.
+
+For example, moving a shared interface from one owner to another requires more than moving a file.
+Its stable identity must remain unique, its consumers must include the new canonical unit, and their
+local obligations must still make sense. Consumers do not copy it into competing contracts.
+
+### Two decisions
+
+This conceptual view explains the two human decisions, not the runtime's exact nodes or error edges.
+The [executable Flow](execution-reference.md#topology-topology-preparation-flow-topology-flow)
+is defined once in Implementation Specs.
+
+```mermaid
+flowchart LR
+    accTitle: Two acceptances for a topology change
+    accDescr: Agree on the responsibility design, prepare and review the affected specifications, then approve and apply the exact edits.
+    design["Propose responsibilities"]
+    agree["Accept the design"]
+    prepare["Prepare and review Specs"]
+    approve["Accept exact edits"]
+    apply["Apply together"]
+    design -->|developer decides| agree
+    agree -->|authors and reviewers work| prepare
+    prepare -->|developer inspects| approve
+    approve -->|host verifies and writes| apply
+```
 
 ## Design
 
@@ -47,8 +73,10 @@ boundaries and stop conditions.
 
 Each candidate definition has one author/owner. Comparing old and candidate contexts captures
 consumers affected by reference or ownership changes even when the path set is unchanged. Keeping
-prepared bytes separate from accepted effects supports the external two-acceptance and no-partial-
-application promises; it does not add arbitrary flow configuration or provider write grants.
+prepared bytes separate from accepted effects lets validation and review find conflicts without
+exposing a half-updated registry. Rechecking inputs prevents an old proposal from overwriting a
+later edit. These boundaries support the two-acceptance and no-partial-application promises; they
+do not add arbitrary flow configuration or provider write grants.
 
 ## Relationships
 
@@ -113,9 +141,10 @@ Supply explicit complete-context discovery for topology design without reading i
 
 This collaboration applies when design-topology selects or expands the complete Module contexts needed to propose a registry.
 
-- [Explicit discovery and routing](../query-routing/query-and-routing.md); Preserve submitted task and constraints; accept only admitted selections and stop on gaps, ambiguity or discovery limits.
+- [Explicit discovery and routing](../query-routing/module.md#usage); Preserve submitted task and constraints; accept only admitted selections and stop on gaps, ambiguity or discovery limits.
 
 ## Precise specifications
 
-The Topology Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+The Topology Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
+[execution and record contracts](execution-reference.md#topology-topology-evolution-agent-flow).
 These companions are part of the same complete Module specification, not separate topic owners.

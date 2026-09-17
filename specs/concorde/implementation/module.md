@@ -31,12 +31,16 @@ bind, and must return every admitted task with unchanged identity and acceptance
 tasks are complete; completion is not validation, readiness or delivery.
 
 Missing tasks reject before launch. Incomplete output cannot establish fulfillment. Authorized
-edits may remain after execution failure, so inspect preserved candidate state and re-admit current
-artifacts rather than assuming rollback. A listed test does not grant its transitive inputs:
+edits may remain after a failed or cancelled run, so inspect preserved candidate state and re-admit
+current artifacts rather than assuming rollback. A listed test does not grant its transitive inputs:
 record unavailable repository-level execution as deferred host verification, not as a pass.
 Coordination with other Modules requires their separate contexts and the existing enclosing-flow
-adapter; no arbitrary scheduler is accepted. See [implementation](implementation.md) for writable
-boundaries, deferred checks, component limits and recovery.
+adapter; no arbitrary scheduler is accepted.
+
+For example, a test may import a fixture outside the programmer's allowed files. That import does
+not grant access. The programmer records why execution must be deferred to a host-level check and
+continues independent work. Deferred execution is not a passing test, while an actual defect still
+prevents task completion. Final host checks remain required.
 
 ## Design
 
@@ -50,8 +54,9 @@ fictional rollback guarantee.
 
 [Component coordination](execution-reference.md#implementation-component-coordination-and-current-adapter-limit)
 separates local tasks from participant work and delegates scheduling/final shared-consumer checks
-to the existing enclosing Flow. This shared realization does not transfer those Flow completion
-conditions to the reusable local task contract.
+to the existing enclosing Flow. Final checks wait for every writer so partly changed shared files
+do not produce misleading consumer evidence. This shared realization does not transfer those Flow
+completion conditions to the reusable local task contract.
 
 ## Relationships
 
@@ -110,5 +115,6 @@ This collaboration applies when deriving a local code grant or admitting separat
 
 ## Precise specifications
 
-The Implementation Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+The Implementation Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
+[execution and record contracts](execution-reference.md#implementation-implementation-capability).
 These companions are part of the same complete Module specification, not separate topic owners.

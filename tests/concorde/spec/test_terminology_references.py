@@ -204,7 +204,7 @@ class TerminologyReferenceTests(unittest.TestCase):
             "issues/requirements.md": {"Disposition", "Ready"},
             "distribution/module.md": {"Protocol binding"},
             "distribution/build.md": {"Public capability", "Skill"},
-            "spec-authoring/authoring.md": {
+            "spec-authoring/module.md": {
                 "Module Specs",
                 "Implementation Specs",
                 "Ownership",
@@ -221,7 +221,7 @@ class TerminologyReferenceTests(unittest.TestCase):
                 "Delivered branch",
                 "Evidence",
             },
-            "query-routing/query-and-routing.md": {"Spec context"},
+            "query-routing/module.md": {"Spec context"},
             "topology/module.md": {
                 "Ownership",
                 "Composition",
@@ -276,7 +276,7 @@ class TerminologyReferenceTests(unittest.TestCase):
         )
         self.assertIn(
             "both document roles and metadata",
-            self.pages[PREFIX + "query-routing/query-and-routing.md"],
+            self.pages[PREFIX + "query-routing/module.md"],
         )
 
     def test_orientation_precedes_interface_fields_and_examples(self):

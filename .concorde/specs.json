@@ -410,10 +410,6 @@
           "kind": "module"
         },
         {
-          "kind": "document",
-          "id": "document.review.review"
-        },
-        {
           "kind": "external",
           "path": "reference/langchain-docs/"
         },
@@ -992,7 +988,6 @@
       "checks": [],
       "documents": [
         "specs/concorde/implementation/module.md",
-        "specs/concorde/implementation/implementation.md",
         "specs/concorde/implementation/requirements.md",
         "specs/concorde/implementation/scenarios.md",
         "specs/concorde/implementation/execution-reference.md"
@@ -1041,10 +1036,6 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.review.review"
         },
         {
           "kind": "document",
@@ -1098,7 +1089,6 @@
       "checks": [],
       "documents": [
         "specs/concorde/spec-authoring/module.md",
-        "specs/concorde/spec-authoring/authoring.md",
         "specs/concorde/spec-authoring/requirements.md",
         "specs/concorde/spec-authoring/scenarios.md",
         "specs/concorde/spec-authoring/execution-reference.md"
@@ -1199,7 +1189,6 @@
       "checks": [],
       "documents": [
         "specs/concorde/review/module.md",
-        "specs/concorde/review/review.md",
         "specs/concorde/review/review-result.md",
         "specs/concorde/review/requirements.md",
         "specs/concorde/review/scenarios.md",
@@ -1301,7 +1290,6 @@
       "checks": [],
       "documents": [
         "specs/concorde/validation/module.md",
-        "specs/concorde/validation/validation.md",
         "specs/concorde/validation/requirements.md",
         "specs/concorde/validation/scenarios.md",
         "specs/concorde/validation/execution-reference.md"
@@ -1397,7 +1385,6 @@
       "checks": [],
       "documents": [
         "specs/concorde/delivery/module.md",
-        "specs/concorde/delivery/delivery.md",
         "specs/concorde/delivery/requirements.md",
         "specs/concorde/delivery/scenarios.md",
         "specs/concorde/delivery/execution-reference.md"
@@ -1495,7 +1482,6 @@
       "checks": [],
       "documents": [
         "specs/concorde/query-routing/module.md",
-        "specs/concorde/query-routing/query-and-routing.md",
         "specs/concorde/query-routing/requirements.md",
         "specs/concorde/query-routing/scenarios.md",
         "specs/concorde/query-routing/execution-reference.md"
@@ -1594,7 +1580,6 @@
       "checks": [],
       "documents": [
         "specs/concorde/topology/module.md",
-        "specs/concorde/topology/topology.md",
         "specs/concorde/topology/requirements.md",
         "specs/concorde/topology/scenarios.md",
         "specs/concorde/topology/execution-reference.md"
@@ -1642,10 +1627,6 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
-        },
-        {
-          "kind": "document",
-          "id": "document.review.review"
         },
         {
           "kind": "document",
@@ -1704,7 +1685,6 @@
       "checks": [],
       "documents": [
         "specs/concorde/dev-loop/module.md",
-        "specs/concorde/dev-loop/development.md",
         "specs/concorde/dev-loop/requirements.md",
         "specs/concorde/dev-loop/scenarios.md",
         "specs/concorde/dev-loop/execution-reference.md"
@@ -1831,7 +1811,6 @@
       "checks": [],
       "documents": [
         "specs/concorde/specify-loop/module.md",
-        "specs/concorde/specify-loop/specify-loop.md",
         "specs/concorde/specify-loop/requirements.md",
         "specs/concorde/specify-loop/scenarios.md",
         "specs/concorde/specify-loop/execution-reference.md"

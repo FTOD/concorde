@@ -72,8 +72,8 @@ Harness also provides other services, such as isolated checks, which this worker
 does not represent.
 
 Candidate sequencing, repairs and ready/stop policy belong to
-[Development Flow](../dev-loop/development.md); independent Spec preparation belongs to
-[Specification Flow](../specify-loop/specify-loop.md). Providers are linked in the
+[Development Flow](../dev-loop/module.md#usage); independent Spec preparation belongs to
+[Specification Flow](../specify-loop/module.md#usage). Providers are linked in the
 [capability inventory](capabilities.md) and can serve other declared callers under their contracts.
 
 ```mermaid

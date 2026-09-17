@@ -27,4 +27,4 @@ Subject headings organize the Module's obligations; they do not create separate 
 - AND the host returns typed review coverage, findings, gaps and completion status, persisting the review report without creating a development change or changing project Specs or implementation
 - AND an unmanaged Git checkout uses HEAD as the scoped change baseline
 
-The detailed contract is [Independent current review](review.md).
+The detailed contract is [Independent current review](execution-reference.md#review-independent-review-capability).

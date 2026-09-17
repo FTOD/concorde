@@ -113,12 +113,12 @@ audit which worker definition and model a launch would use without reading its r
 instructions. Complete cognitive snapshots never cross
 the Skill result boundary.
 
-Provider contracts are [Spec Authoring](../spec-authoring/authoring.md),
+Provider contracts are [Spec Authoring](../spec-authoring/module.md#usage),
 [Planning](../planning/plan.md), [Tasks](../planning/tasks.md),
-[Implementation](../implementation/implementation.md), [Review](../review/review.md),
-[Validation](../validation/validation.md) and [Delivery](../delivery/delivery.md).
-The [Specification Flow](../specify-loop/specify-loop.md) and
-[Development Flow](../dev-loop/development.md) own ordering and lifecycle policy.
+[Implementation](../implementation/module.md#usage), [Review](../review/module.md#usage),
+[Validation](../validation/module.md#usage) and [Delivery](../delivery/module.md#usage).
+The [Specification Flow](../specify-loop/module.md#usage) and
+[Development Flow](../dev-loop/module.md#usage) own ordering and lifecycle policy.
 The host rechecks registry, context and initialized configuration after every stage.
 
 The canonical [context selection agreement](../harness/contracts.md#contract.context.selection)
@@ -368,15 +368,15 @@ summaries are frozen observations and their progress does not invalidate unrelat
 
 ### Configured check execution
 
-The canonical configured-check and evidence contract is owned by [Validation](../validation/validation.md).
+The canonical configured-check and evidence contract is owned by [Validation](../validation/execution-reference.md#validation-configured-check-execution).
 
 ### Independent review contract
 
-The canonical contract is owned by [Review](../review/review.md).
+The canonical contract is owned by [Review](../review/execution-reference.md#review-independent-review-capability).
 
 ### Review gates, gap history and recovery
 
-[Development Flow](../dev-loop/development.md) owns its review gates; [Specification Flow](../specify-loop/specify-loop.md) owns Spec-only completion. Common attributed gap retention is defined in [Gap handling](review-and-gaps.md).
+[Development Flow](../dev-loop/module.md#usage) owns its review gates; [Specification Flow](../specify-loop/module.md#usage) owns Spec-only completion. Common attributed gap retention is defined in [Gap handling](review-and-gaps.md).
 
 ### Canonical review-result value
 

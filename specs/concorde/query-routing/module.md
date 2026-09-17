@@ -23,14 +23,21 @@ Query and Routing answers questions from selected specifications and identifies 
 Use `concorde-main` to ask a Spec-grounded question; composing discovery callers can request one
 owning Module route for an unchanged task and constraints. Target/focus hints guide selection but
 supply no additional reading authority. Discovery begins with the entry Module's complete context
-and explicitly selects additional complete contexts only when needed. It does not inspect code to
-invent missing behavior. [Topology Module](../topology/module.md) actions sharing the main entry have their own provider contract.
+including both document roles and metadata, and explicitly selects additional complete contexts
+only when needed. It does not inspect code to invent missing behavior.
+[Topology Module](../topology/module.md) actions sharing the main entry have their own provider contract.
 
 An answer includes limitations; a route retains the caller's task rather than rewriting it.
 Missing necessary promises produce attributed gaps, contradictions and prohibitions remain
 distinct, and exhausted discovery returns an explicit limit outcome. Queries author no files and
 create no candidate. Human clarification requires fresh admitted input, not unbounded expansion.
-See [query and routing](query-and-routing.md) for exact selection and outcome behavior.
+A saved candidate with a bound owner resumes that identity rather than silently rerouting to
+another Module. A route selects responsibility; it is not implementation completion or permission
+to change a provider's files.
+
+For example, a checkout question may require Inventory's reservation contract. The selection must
+include that knowledge explicitly. Inventory's own unrelated references do not recursively enter
+the reader's context merely because Inventory was selected.
 
 ## Design
 
@@ -101,5 +108,6 @@ This collaboration applies when selecting discovery inputs, validating target/fo
 
 ## Precise specifications
 
-The Query and Routing Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+The Query and Routing Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
+[execution and record contracts](execution-reference.md#query-and-routing-query-and-routing-agent-flow).
 These companions are part of the same complete Module specification, not separate topic owners.

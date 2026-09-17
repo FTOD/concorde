@@ -94,7 +94,7 @@ This collaboration applies when the request concerns Planning.
 
 This collaboration applies when the request concerns Implementation.
 
-- [Implementation contract](../implementation/implementation.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
+- [Implementation contract](../implementation/module.md#usage); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
 
 ### Spec Authoring
 
@@ -104,7 +104,7 @@ This collaboration applies when the request concerns Implementation.
 
 This collaboration applies when the request concerns Spec Authoring.
 
-- [Spec Authoring contract](../spec-authoring/authoring.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
+- [Spec Authoring contract](../spec-authoring/module.md#usage); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
 
 ### Review
 
@@ -114,7 +114,7 @@ This collaboration applies when the request concerns Spec Authoring.
 
 This collaboration applies when the request concerns Review.
 
-- [Review contract](../review/review.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
+- [Review contract](../review/module.md#usage); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
 
 ### Validation
 
@@ -124,7 +124,7 @@ This collaboration applies when the request concerns Review.
 
 This collaboration applies when the request concerns Validation.
 
-- [Validation contract](../validation/validation.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
+- [Validation contract](../validation/module.md#usage); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
 
 ### Delivery
 
@@ -134,7 +134,7 @@ This collaboration applies when the request concerns Validation.
 
 This collaboration applies when the request concerns Delivery.
 
-- [Delivery contract](../delivery/delivery.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
+- [Delivery contract](../delivery/module.md#usage); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
 
 ### Query and Routing
 
@@ -144,7 +144,7 @@ This collaboration applies when the request concerns Delivery.
 
 This collaboration applies when the request concerns Query and Routing.
 
-- [Query and Routing contract](../query-routing/query-and-routing.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
+- [Query and Routing contract](../query-routing/module.md#usage); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
 
 ### Topology
 
@@ -154,7 +154,7 @@ This collaboration applies when the request concerns Query and Routing.
 
 This collaboration applies when the request concerns Topology.
 
-- [Topology contract](../topology/topology.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
+- [Topology contract](../topology/module.md#usage); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
 
 ### Development Flow
 
@@ -164,7 +164,7 @@ This collaboration applies when the request concerns Topology.
 
 This collaboration applies when the request concerns Development Flow.
 
-- [Development Flow contract](../dev-loop/development.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
+- [Development Flow contract](../dev-loop/module.md#usage); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
 
 ### Specification Flow
 
@@ -174,4 +174,4 @@ This collaboration applies when the request concerns Development Flow.
 
 This collaboration applies when the request concerns Specification Flow.
 
-- [Specification Flow contract](../specify-loop/specify-loop.md); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.
+- [Specification Flow contract](../specify-loop/module.md#usage); preserve its admission conditions, retain distinct blockers and do not infer wider authority from composition.

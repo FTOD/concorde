@@ -112,25 +112,25 @@ need not remain in a later registry. Invalid current target selections stop solv
 
 <a id="entity.issues.dev-loop"></a>
 
-[Development Flow](../dev-loop/module.md) supplies [ordinary development](../dev-loop/development.md) for the selected goal.
+[Development Flow](../dev-loop/module.md) supplies [ordinary development](../dev-loop/module.md#usage) for the selected goal.
 The Issue runtime preserves the goal, constraints, file boundaries, required checks and independent
 reviews. A blocked child yields a new bounded decision rather than automatic delivery or wider access.
 
 <a id="entity.issues.spec-authoring"></a>
 
-[Spec Authoring](../spec-authoring/module.md) supplies [owner-only contract changes](../spec-authoring/authoring.md) when an
+[Spec Authoring](../spec-authoring/module.md) supplies [owner-only contract changes](../spec-authoring/module.md#usage) when an
 admitted decision can settle a required contract. The author receives intended behavior, not code
 investigation. Missing product choices remain explicit; shared changes retain consumer checks.
 
 <a id="entity.issues.review"></a>
 
-[Review Module](../review/module.md) supplies [fresh read-only assessments](../review/review.md). Issue-specific verification
+[Review Module](../review/module.md) supplies [fresh read-only assessments](../review/module.md#usage). Issue-specific verification
 checks the selected problem, not just unrelated passing tests. Failed, incomplete or stale reviews
 cannot justify resolved disposition. Canonical report references retain their exact observations.
 
 <a id="entity.issues.validation"></a>
 
-[Validation Module](../validation/module.md) supplies [candidate checks](../validation/validation.md). The disposition is written
+[Validation Module](../validation/module.md) supplies [candidate checks](../validation/module.md#usage). The disposition is written
 before final validation so ready evidence includes those bytes. A failed final validation restores
 only the runtime's own unchanged disposition write, preserves other work and leaves the Issue open.
 If concurrent edits prevent restoration, the host reports the conflict rather than overwriting them.

@@ -9,6 +9,8 @@ Spec Authoring proposes changes to a Module’s intended behavior and design. It
 | Term | Meaning / definition |
 | --- | --- |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -26,16 +28,20 @@ Use `specify` from a declared composing capability to author or revise the selec
 Spec documents. Supply the task, constraints and current complete owned/direct-reference context;
 this private bound provider has no direct Skill/CLI entry and does not select a different owner.
 Its author returns full Markdown replacements for host acceptance, never direct project writes.
-Write consumer usage and guarantees first, then the design and internal constraints that fulfill
-them, keeping each definition canonical and preserving stable identities.
+Explain consumer usage, important guarantees and design in Module Specs; define exact obligations
+and internal constraints in Implementation Specs. Keep Terminology definitions canonical and
+preserve stable identities.
 
 Unknown meaning returns attributed gaps without replacements. Foreign, malformed or stale output
 is rejected with prior document bytes and blockers preserved. Referencing a provider permits
 reading, not replacing its Spec. Ordinary authoring retains metadata and membership; ownership or
 reference changes require topology reconciliation. Shared changes require separate affected-consumer
 compatibility checks. Independent review, accepted-authoring reuse and completion belong to the
-calling Flow, not to this author. See [authoring](authoring.md) for the precise input/output and
-failure contract.
+calling Flow, not to this author.
+
+For example, a consumer can rely on a provider's documented reservation result, but cannot replace
+the provider's contract while editing its own Spec. A shared contract change is authored by its owner
+and checked against affected consumers in their separate contexts.
 
 ## Design
 
@@ -47,9 +53,9 @@ allowed paths before applying them as one accepted change. Independent candidate
 affected consumers in their own contexts, preserving provider ownership and preventing copied
 shared definitions from becoming competing authorities.
 
-This proposal/acceptance split realizes the [authoring boundary](authoring.md) without trusting
-model-authored paths as permission. Ordinary authoring preserves registered metadata; topology
-reconciliation remains the separate mechanism for structural changes. Accepted-output reuse and
+This proposal/acceptance split protects ownership without trusting model-authored paths as
+permission. Ordinary authoring preserves registered metadata; [Topology](../topology/module.md)
+reconciles structural changes so registrations and references change together. Accepted-output reuse and
 independent review ordering belong to the consuming Flow.
 
 ## Relationships
@@ -107,5 +113,6 @@ This collaboration applies when determining allowed replacement documents and ch
 
 ## Precise specifications
 
-The Spec Authoring Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+The Spec Authoring Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
+[execution and record contracts](execution-reference.md#authoring-spec-authoring-capability).
 These companions are part of the same complete Module specification, not separate topic owners.

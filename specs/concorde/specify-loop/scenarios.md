@@ -25,4 +25,4 @@ Subject headings organize the Module's obligations; they do not create separate 
 - AND a required review with blocking findings, gaps, incomplete coverage or failed execution stops with inspectable progress
 - AND repeating the same intent resumes accepted authoring and current reviews, including when concorde-dev-loop calls specify-loop before continuing development
 
-The detailed contract is [Independent Spec completion](specify-loop.md).
+The detailed contract is [Independent Spec completion](execution-reference.md#specify-loop-specification-flow).

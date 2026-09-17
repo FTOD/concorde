@@ -61,7 +61,7 @@ const specSteps: Record<string, Step> = {
     ),
     stops:
       "Missing contract meaning, invalid document structure, foreign document writes or incompatible consumer contracts stop advancement. Accepted progress stays in the candidate.",
-    spec: "/specs/concorde/spec-authoring/authoring",
+    spec: "/specs/concorde/spec-authoring/module#usage",
   },
   review_spec: {
     title: "Review Spec",
@@ -82,7 +82,7 @@ const specSteps: Record<string, Step> = {
     ),
     stops:
       "Necessary gaps, blocking findings, incomplete coverage and execution failures prevent Spec completion. Advisory findings remain in the result. Repair the contract and resume with fresh context.",
-    spec: "/specs/concorde/review/review",
+    spec: "/specs/concorde/review/module#usage",
   },
   summarize: {
     title: "Return Spec result",
@@ -126,7 +126,7 @@ const steps: Record<string, Step> = {
     ),
     stops:
       "Necessary gaps, blocking findings, incomplete coverage or failed execution stop advancement. specify=false skips authoring; run_reviews=false records a Spec skip only if review was not already required. Accepted authoring and current reviews can be reused. There is no automatic Spec-repair edge.",
-    spec: "/specs/concorde/specify-loop/specify-loop",
+    spec: "/specs/concorde/specify-loop/module#usage",
   },
   plan: {
     title: "Plan",
@@ -199,7 +199,7 @@ const steps: Record<string, Step> = {
     ),
     stops:
       "Missing or stale tasks, unauthorized writes, necessary Spec gaps, execution errors, changed task identities or unmet acceptance stop advancement. A test requiring inputs outside the grant is recorded as deferred to Host verification, not as a passing test; an actual implementation defect remains incomplete.",
-    spec: "/specs/concorde/implementation/implementation",
+    spec: "/specs/concorde/implementation/module#usage",
   },
   validate: {
     title: "Validate",
@@ -223,7 +223,7 @@ const steps: Record<string, Step> = {
     ),
     stops:
       "Invalid Spec structure, failed check commands or timeouts return failed. Changes during verification produce stale_evidence; unenforceable check permissions block execution. Shared implementation users need current evidence too. This stage has no automatic repair edge.",
-    spec: "/specs/concorde/validation/validation",
+    spec: "/specs/concorde/validation/module#usage",
   },
   review_code: {
     title: "Review Code",
@@ -245,7 +245,7 @@ const steps: Record<string, Step> = {
     ),
     stops:
       "Local blocking code findings without a Spec gap can trigger bounded repair. Spec gaps, incomplete reviews, execution failures or another consumer’s blocking findings stop. Repeated identical feedback waits; exhausting the repair limit stops. Advisory findings do not block readiness.",
-    spec: "/specs/concorde/review/review",
+    spec: "/specs/concorde/review/module#usage",
   },
   ready: {
     title: "Ready",
@@ -698,7 +698,7 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
     return () => cancelAnimationFrame(frame);
   }, [selected]);
   const sourceBase = "https://github.com/FTOD/concorde/blob/main/";
-  const spec = useBaseUrl("/specs/concorde/query-routing/query-and-routing");
+  const spec = useBaseUrl("/specs/concorde/query-routing/module#usage");
   return (
     <Layout
       title="Capability Flows"

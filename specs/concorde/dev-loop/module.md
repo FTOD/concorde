@@ -25,14 +25,21 @@ implementation, validation and code review. Supply task and constraints; optiona
 hints help initial routing. New primary-worktree mutations return a committed-base worktree
 handoff and require a fresh owning session there. Resume with the recorded change identity and
 compatible intent; a bound candidate does not reroute to another owner.
+[Specification Flow](../specify-loop/module.md) can run first on its own; development reuses its
+accepted work for the same task when inputs remain unchanged.
+
+For example, adding retries first needs a clear rule for retryable failures. A missing rule pauses
+the dependent work. Once specified, planning describes the change, implementation fulfills its tasks,
+and checks and review assess the result. A stopped attempt retains the candidate and its progress.
 
 Both `specify` and `run_reviews` default true. `specify=false` skips authoring, not missing-contract
 gates; `run_reviews=false` records explicit skips but cannot cancel reviews already required.
 Success is a ready candidate, never automatic delivery. Necessary Spec gaps, failed checks and
 execution failures preserve progress and stop dependent work. Blocking code review has one bounded
 repair path; unchanged feedback or exhausted budget stops it. Explicit task-scope recovery is a
-separate digest-bound action. See [development and recovery](development.md), including coordination
-and the completion policy, before resuming partial work.
+separate digest-bound action. A Spec gap needs clarification; a failed check needs inspection;
+an incompatible task or changed input needs fresh admission. These stops do not all mean that the
+Spec is incomplete. Other non-successful outcomes wait for a decision or explicit correction.
 
 ## Design
 
@@ -48,6 +55,10 @@ Only blocking code review can select the automatic tasks/implementation repair e
 writers retain separate contexts; finalization waits for all writers, then repeats current
 consumer checks while shared implementations change. Those internal scheduling rules fulfill the
 ready-only, bounded-repair and evidence-preservation promises without importing private transcripts.
+
+Authoring decides intended meaning, implementation fulfills it, and independent review challenges
+that result. Keeping their authority and conversations separate helps prevent a worker from silently
+weakening the contract to fit its own code. An explicit delivery decision follows readiness.
 
 ## Relationships
 
@@ -126,7 +137,7 @@ Select one root owner for a new or still-unbound change while preserving recorde
 
 This collaboration applies when the candidate has no persisted owner; a bound resume does not reroute.
 
-- [Explicit discovery and routing](../query-routing/query-and-routing.md); Preserve submitted task and constraints; accept only admitted selections and stop on gaps, ambiguity or discovery limits.
+- [Explicit discovery and routing](../query-routing/module.md#usage); Preserve submitted task and constraints; accept only admitted selections and stop on gaps, ambiguity or discovery limits.
 
 ### Specification Flow
 
@@ -136,7 +147,7 @@ Prepare or review the selected Spec and return current accepted Spec-stage evide
 
 This collaboration applies at the Spec preparation entry with the admitted specify and run_reviews flags, reusing only current accepted work.
 
-- [Spec-stage completion](../specify-loop/specify-loop.md); Continue only after current successful Spec preparation; retain explicit skips and stop on blockers.
+- [Spec-stage completion](../specify-loop/module.md#usage); Continue only after current successful Spec preparation; retain explicit skips and stop on blockers.
 
 ### Planning
 
@@ -157,7 +168,7 @@ Fulfill accepted local tasks or coordinate separately admitted participants with
 
 This collaboration applies when current incomplete tasks require code work and component contract reconciliation permits it.
 
-- [Exact task fulfillment](../implementation/implementation.md); Supply exact current tasks and their grant; incomplete tasks or failed execution cannot satisfy finalization.
+- [Exact task fulfillment](../implementation/module.md#usage); Supply exact current tasks and their grant; incomplete tasks or failed execution cannot satisfy finalization.
 
 ### Validation
 
@@ -167,7 +178,7 @@ Collect deterministic Spec and configured code evidence for the affected candida
 
 This collaboration applies after the relevant writers finish and during finalization before the ready decision.
 
-- [Candidate checks and readiness gates](../validation/validation.md); Require current evidence for every affected participant; failures or stale required evidence prevent ready.
+- [Candidate checks and readiness gates](../validation/module.md#usage); Require current evidence for every affected participant; failures or stale required evidence prevent ready.
 
 ### Review
 
@@ -177,9 +188,10 @@ Review independently reviews current code and returns coverage, findings and gap
 
 This collaboration applies after implementation checks when code review is enabled or already required, including final component review.
 
-- [Independent review](../review/review.md); Supply the exact review intent and current scope; incomplete coverage, gaps or blocking findings cannot satisfy the required gate.
+- [Independent review](../review/module.md#usage); Supply the exact review intent and current scope; incomplete coverage, gaps or blocking findings cannot satisfy the required gate.
 
 ## Precise specifications
 
-The Development Flow Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+The Development Flow Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
+[execution and record contracts](execution-reference.md#development-development-agent-flow-and-revision-loops).
 These companions are part of the same complete Module specification, not separate topic owners.
