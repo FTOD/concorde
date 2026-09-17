@@ -1,12 +1,14 @@
 # Spec Protocol
 
-Concorde Spec Protocol **7.0.0** describes software responsibilities through one Module Spec model.
+Concorde Spec Protocol **8.0.0** describes software responsibilities through one Module Spec model.
 It defines the complete specification content and **the subset intended for human reading**. It
 does not prescribe a docsite's page, navigation or interaction design.
 
-Reading starts with Purpose, Usage, Design and Relationships, followed by precise requirements,
-scenarios and other necessary detail. Internal constraints and infrequent failures remain readable,
-binding obligations. Identity, ownership and implementation mappings live in associated metadata,
+Module Specs start with Purpose, Usage, Design and Relationships and continue in explanatory topic
+pages. Implementation Specs contain the same Module's precise requirements, scenarios and canonical
+interface contracts. Both are explicit document roles within one complete Module specification,
+not independent owners or context filters. Formal definitions are forbidden in entries and topic
+pages. Internal constraints and infrequent failures remain readable, binding obligations. Identity, ownership and implementation mappings live in associated metadata,
 not giant inventories mixed into the main explanation. Schemas and examples can remain reading
 when they express an interface developers need to understand.
 
@@ -29,17 +31,22 @@ Concorde Framework, a particular publisher or a particular agent runtime to unde
 Configuration, registry serialization, worker wire versions and execution permissions are separate
 implementation agreements, not additional Protocol versions.
 
-## Upgrade from Protocol 6
+## Upgrade from Protocol 7
 
-Version 7 is intentionally incompatible with the enclosing two-part format. Migration must:
+Version 8 makes document roles and formal-definition placement mandatory. Migration must:
 
-- separate reading from mechanical declarations while preserving readable duties and stable IDs;
-- register and validate paired source members with one owner and one-level reference semantics;
-- reorganize entry reading as Purpose, Usage, Design, Relationships, then detailed obligations;
-- replace the entity-inventory chapter with coherent design/collaboration explanations;
-- permit scoped diagrams without inventing entities or weakening relationship meaning;
-- reconcile anchors, references, file exclusions, metadata edits and all dependent evidence;
-- explicitly update the accepted Protocol binding and the tool's corresponding format versions.
+- upgrade every paired metadata source to schema 2 with explicit `document.role`;
+- retain `module.md` and explanatory topics as module-role reading, with coherent explanations;
+- move all formal requirements, scenarios and canonical structured contracts to implementation-role
+  units owned directly by their existing Module; topic names do not become owners;
+- preserve definition IDs and valid obligations, and assign new document IDs to new split units;
+- remove the retired publisher-only `concorde.publication` classification extension;
+- reconcile links, references, local meaning anchors, paired ownership and all dependent evidence;
+- explicitly accept the new Protocol binding; no runtime silently migrates old metadata.
+
+The one-level complete-context model is unchanged: both roles and both source members remain in
+scope. Implementation Specs are not implementation code and do not grant code access. Tool registry,
+configuration and wire versions need change only when their own representation changes.
 
 Do not treat mechanical conversion as completed semantic editing. Preserve valid guarantees and
 name contradictions or unresolved facts. Moving a definition does not by itself change interface

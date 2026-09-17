@@ -32,10 +32,15 @@ describe("Explicit Concorde self specification", () => {
   expect(host).toContain("concorde-context-solve-request");
   expect(host).toContain("concorde-capability-invocation");
   const hostEntry = r.pages.find((p) => p.primaryOf === "module.development")!;
-  expect(hostEntry.content).toContain(
-   "scenario.development.execute-capability",
-  );
-  const specFlow = r.pages.find((p) => p.primaryOf === "module.specify-loop")!;
+  expect(hostEntry.content).not.toMatch(/^#{2,5} (?:req|scenario)\./m);
+  expect(
+   r.pages.find((p) => p.documentId === "document.development.scenarios")!
+    .content,
+  ).toContain("scenario.development.execute-capability");
+  const specFlow = r.pages.find(
+   (p) => p.documentId === "document.specify-loop.scenarios",
+  )!;
+  expect(specFlow.readingCollection).toBe("implementation");
   expect(specFlow.content).toContain("scenario.development.specify-loop");
   for (const module of r.targets.filter((t) => t.kind === "module")) {
    expect(

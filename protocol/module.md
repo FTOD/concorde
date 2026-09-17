@@ -9,8 +9,11 @@ without becoming another authority over the specification.
 
 A developer must be able to understand the responsibility, use it correctly and maintain its
 realization without assembling meaning from an inventory. Reading begins with Purpose, Usage,
-Design and Relationships. Precise requirements, scenarios and interface agreements remain reading
-content, whether placed later in the entry or in registered companion documents.
+Design and Relationships. The entry and its explanatory topic companions have role `module`.
+Precise requirements, scenarios and canonical interface agreements belong in owned role
+`implementation` companions, never in the entry or topic pages. Both roles remain reading content
+and together form one complete Module specification; neither role is a separate owner or context.
+A Module may use several implementation documents rather than one oversized specification file.
 
 ### Purpose
 
@@ -59,6 +62,12 @@ navigation tree is derived, not an independent authority.
 
 ## Precise obligations
 
+Define these only in implementation-role units owned directly by the Module. Topic names can group
+related definitions but do not own them. Module Specs explain the important guarantees and link to
+these canonical definitions; readers should not need to read every acceptance case to understand
+the Module. Do not move coherent topic explanations wholesale merely because they once contained
+formal definitions.
+
 ### Requirements
 
 A requirement has a stable identity, a title and one decidable statement containing SHALL or
@@ -103,7 +112,7 @@ agreement explains inputs, outputs, effects, failures, compatibility and repeat 
 scenarios. A structured contract may use a readable schema and example; structured syntax is not a
 reason to classify useful contract content as machine-only metadata.
 
-A shared interface can occupy an ordinary owned companion referenced by many Modules. It retains
+A shared interface's canonical definition occupies an owned implementation-role companion referenced by many Modules. It retains
 one definition and one owner. Participant metadata names ID, version, role and peer and points to
 local readable participation conditions, relied-upon guarantees and obligations. It does not copy
 the canonical schema or common semantics, and does not override that agreement.

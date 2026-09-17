@@ -39,33 +39,7 @@ symlink or unsafe source is refused without deleting either copy. Installation p
 user data but does not install an active Reflection queue. The archive is outside active validation
 and normal worker grants; continued work requires an explicit new Issue citing the old evidence.
 
-## Scenarios
+## Precise specifications
 
-### scenario.issues.inspect — Inspect without starting work
-
-- GIVEN an initialized project, with or without Issue records
-- WHEN list or show is requested
-- THEN the current records are returned without a model invocation, candidate creation or issue mutation
-
-### scenario.issues.reference — Admit only observed or granted Issue references
-
-- GIVEN a bounded worker with reporting authority and optional admitted repair feedback
-- WHEN it submits task blockers or review judgments
-- THEN every reference resolves to an observation it reported or was explicitly granted
-- AND missing, foreign and fabricated references fail admission without removing saved reports
-
-### scenario.issues.blocker-history — Track dependencies without task-text identity
-
-- GIVEN a candidate with an Issue blocking a Module phase
-- WHEN the same work is replanned and a fresh successful assessment releases that dependency
-- THEN its stable Issue relation remains in history without depending on old task wording
-- AND the Issue itself remains open unless separately disposed with evidence
-- AND another Module's blocker is absent from the worker's bounded workspace context
-
-### scenario.issues.archive — Preserve legacy history explicitly
-
-- GIVEN legacy Reflection data and no archive destination
-- WHEN the developer explicitly requests archival
-- THEN the complete directory is moved without altering its records or relative evidence links
-- AND no active Issue is created or marked resolved
-- AND conflicting destinations and symlinks are refused without discarding data
+The Issues Module owns the exact obligations and interface details in [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

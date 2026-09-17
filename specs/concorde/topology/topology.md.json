@@ -1,8 +1,9 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "document": {
     "id": "document.development.topology",
-    "owner": "module.topology"
+    "owner": "module.topology",
+    "role": "module"
   },
   "entities": [],
   "dependencies": [],

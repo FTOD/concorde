@@ -13,9 +13,11 @@ one stable document ID and one owner, recorded in its metadata and consistent wi
 The two members cannot have different owners or be referenced independently. Aliases, duplicate
 ownership, duplicate IDs, unregistered members and missing partners are invalid.
 
-Requirements and scenarios are defined in reading; entity declarations bind identities to readable
-meaning; canonical interfaces retain their single readable definition. All belong to the owner of
-their defining unit. A document relocation or title change does not itself change identity. Links
+Every unit declares role `module` (entry or explanatory topic) or `implementation` (precise
+specifications). Requirements, scenarios and canonical structured interfaces are defined only in
+implementation-role reading; entity declarations bind identities to readable meaning in either role.
+All belong directly to the Module owner of their defining unit, not to a topical page or group.
+Roles are document organization, never structural parentage, Spec kinds or context filters. A document relocation or title change does not itself change identity. Links
 use the reading path and the definition ID as fragment; a publisher must expose those anchors.
 
 Reading membership is defined by the Protocol, not a visibility preference. All reading members
@@ -88,7 +90,7 @@ commands or grants to read a provider implementation.
 
 ## Shared interfaces and participants
 
-An interface remains a local entity with one canonical readable contract. It may occupy an ordinary
+An interface remains a local entity with one canonical readable contract in an implementation-role
 companion unit owned by one Module and referenced by many. Each canonical contract has a stable ID,
 positive version, offline schema, semantics and conforming example, plus readable behavior and
 scenarios. Definition ownership need not equal every provider's identity.

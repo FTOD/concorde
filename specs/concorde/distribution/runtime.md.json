@@ -1,8 +1,9 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "document": {
     "id": "document.distribution.runtime",
-    "owner": "module.distribution"
+    "owner": "module.distribution",
+    "role": "module"
   },
   "entities": [],
   "dependencies": [],

@@ -111,8 +111,8 @@ function putSpec(path: string, references: string[], body: string) {
    .replace(/[^a-z0-9.-]/g, "-");
  const owner = targets.find((t) => primaryDocumentSafe(t) === path);
  const metadata: any = {
-  schema_version: 1,
-  document: { id, owner: references[0] },
+  schema_version: 2,
+  document: { id, owner: references[0], role: "module" },
   entities: [],
   dependencies: [],
   bindings: [],
@@ -244,7 +244,7 @@ afterEach(() => rmSync(root, { recursive: true, force: true }));
 
 function classify(path: string, value: unknown) {
  const metadata = parse(readFileSync(resolve(root, path + ".json"), "utf8"));
- metadata.extensions = { "concorde.publication": value };
+ metadata.document.role = value;
  put(path + ".json", JSON.stringify(metadata));
 }
 
@@ -265,7 +265,7 @@ it("classifies explicit companions without changing routes, ownership or inclusi
    readFileSync(resolve(root, "docsite/.generated/specs-sidebar.json"), "utf8"),
   ),
  ).not.toHaveProperty("implementationSpecsSidebar");
- classify(path, { collection: "implementation" });
+ classify(path, "implementation");
  const after = loadScopedRegistry(root);
  expect(after.sourceDigest).not.toBe(before.sourceDigest);
  expect(after.targets).toEqual(before.targets);
@@ -321,7 +321,7 @@ it("classifies explicit companions without changing routes, ownership or inclusi
  );
  expect(staged).toContain("displayed_sidebar: implementationSpecsSidebar");
  expect(staged).toContain("Local rules.");
- classify(path, { collection: "module" });
+ classify(path, "module");
  await materializeScoped(loadScopedRegistry(root));
  expect(
   parse(
@@ -335,7 +335,7 @@ it("retains ancestor categories for detail-only descendants and prunes empty bra
  const path = "specs/ledger/details.md";
  targets[3].documents.push(path);
  putSpec(path, ["module.ledger"], "# Ledger details\n\nPrecise obligations.\n");
- classify(path, { collection: "implementation" });
+ classify(path, "implementation");
  save();
  expect(scopedSidebar(loadScopedRegistry(root), "implementation")).toEqual([
   {
@@ -355,25 +355,17 @@ it("retains ancestor categories for detail-only descendants and prunes empty bra
 });
 
 // verifies: scenario.views.reject-reading-collection
-it("rejects invalid collection extensions and implementation-classified Module entries", () => {
- for (const value of [
-  null,
-  [],
-  "implementation",
-  {},
-  { collection: "unknown" },
-  { collection: "implementation", hidden: true },
-  { collection: false },
- ]) {
+it("rejects invalid document roles and implementation-classified Module entries", () => {
+ for (const value of [null, [], "unknown", {}, false, 1]) {
   classify("specs/transfer/promises.md", value);
   expect(() => loadScopedRegistry(root)).toThrow(
-   /Invalid concorde.publication extension: specs\/transfer\/promises.md.json/,
+   /Invalid document.role: specs\/transfer\/promises.md.json/,
   );
  }
- classify("specs/transfer/promises.md", { collection: "module" });
- classify("specs/transfer/module.md", { collection: "implementation" });
+ classify("specs/transfer/promises.md", "module");
+ classify("specs/transfer/module.md", "implementation");
  expect(() => loadScopedRegistry(root)).toThrow(
-  /Module reading entry must stay in Module Specs/,
+  /module.md must have document.role module/,
  );
 });
 
@@ -394,7 +386,7 @@ it("rejects materialization and build evidence after a metadata-only reclassific
   routesPaths: registry.pages.map((page) => page.route),
  } as any);
  await validateScopedBuild(root, outDir);
- classify("specs/transfer/promises.md", { collection: "implementation" });
+ classify("specs/transfer/promises.md", "implementation");
  await expect(plugin.loadContent!()).rejects.toThrow(
   /Materialized Spec source identity differs/,
  );
@@ -470,11 +462,15 @@ it("canonical contracts have one definition anchor and bindings require their in
  };
  const fence = (kind: string, value: unknown) =>
   "\n```" + kind + "\n" + JSON.stringify(value) + "\n```\n";
- put(
-  "specs/ledger/module.md",
-  readFileSync(resolve(root, "specs/ledger/module.md"), "utf8") +
-   fence("concorde-contract", definition),
+ const contractPath = "specs/ledger/contracts.md";
+ targets[3].documents.push(contractPath);
+ putSpec(
+  contractPath,
+  ["module.ledger"],
+  "# Ledger contracts\n" + fence("concorde-contract", definition),
  );
+ classify(contractPath, "implementation");
+ save();
  bind("specs/ledger/module.md", binding);
  bind("specs/transfer/module.md", {
   ...binding,
@@ -483,13 +479,13 @@ it("canonical contracts have one definition anchor and bindings require their in
  });
  expect(() => loadScopedRegistry(root)).toThrow(/Missing context definition/);
  targets[2].references = [
-  { kind: "document", id: "document.specs.ledger.module" },
+  { kind: "document", id: "document.specs.ledger.contracts" },
  ];
  save();
  const r = loadScopedRegistry(root);
  expect(
   injectAnchors(
-   r.pages.find((p) => p.owner === "module.ledger")!.content,
+   r.pages.find((p) => p.sourcePath === contractPath)!.content,
   ).match(/<a id="contract.read"><\/a>/g),
  ).toHaveLength(1);
  expect(
@@ -692,15 +688,20 @@ it("missing metadata and duplicate JSON fields cannot produce a partial page mod
  put(
   path,
   original.replace(
-   /"schema_version":\s*1/,
-   '"schema_version":1,"schema_version":1',
+   /"schema_version":\s*2/,
+   '"schema_version":2,"schema_version":2',
   ),
  );
  expect(() => loadScopedRegistry(root)).toThrow(/Duplicate JSON key/);
 });
 it("malformed precise reading definitions are rejected before publication", () => {
- const path = "specs/bank/module.md",
-  original = readFileSync(resolve(root, path), "utf8");
+ const path = "specs/bank/obligations.md",
+  original = "# Bank obligations\n";
+ targets[0].documents.push(path);
+ putSpec(path, ["scope.bank"], original);
+ classify(path, "implementation");
+ save();
+ expect(() => loadScopedRegistry(root)).not.toThrow();
  for (const fragment of [
   "### req.bank.bad — Two obligations\n\nBank SHALL act and SHALL record.",
   "### scenario.bank.bad — Missing trigger\n\n- GIVEN input\n- THEN a result",
@@ -711,8 +712,13 @@ it("malformed precise reading definitions are rejected before publication", () =
  }
 });
 it("canonical schema examples are checked offline rather than merely displayed", () => {
- const path = "specs/bank/module.md",
-  original = readFileSync(resolve(root, path), "utf8");
+ const path = "specs/bank/contracts.md",
+  original = "# Bank contracts\n";
+ targets[0].documents.push(path);
+ putSpec(path, ["scope.bank"], original);
+ classify(path, "implementation");
+ save();
+ expect(() => loadScopedRegistry(root)).not.toThrow();
  for (const [schema, example] of [
   [{ type: "integer" }, "wrong"],
   [{ $ref: "https://example.test/schema" }, 1],
@@ -1078,11 +1084,19 @@ it("rejects retired containers, duplicate headings and unreadable entries", () =
 
 // verifies: scenario.views.id-anchors
 it("publishes definition titles with canonical IDs and preserves source and entity anchors", async () => {
- const main = targets[0].documents[0];
+ const main = "specs/bank/obligations.md";
+ targets[0].documents.push(main);
+ putSpec(
+  main,
+  ["scope.bank"],
+  '# Bank obligations\n\n<a id="entity.bank.detail"></a>\n\nThe detail describes repeated requests.\n',
+ );
+ classify(main, "implementation");
+ save();
  let body = readFileSync(resolve(root, main), "utf8");
  body = body.replace(
-  '<a id="entity.bank.core"></a>',
-  '<a id="entity.bank.core"></a><a id="entity.bank.request"></a>',
+  '<a id="entity.bank.detail"></a>',
+  '<a id="entity.bank.detail"></a><a id="entity.bank.request"></a>',
  );
  body +=
   "\n### req.bank.retry — Repeated requests\n\nBanking SHALL treat a repeated request as a new decision.\n" +
@@ -1100,13 +1114,13 @@ it("publishes definition titles with canonical IDs and preserves source and enti
  put(main + ".json", JSON.stringify(m));
  await materializeScoped(loadScopedRegistry(root));
  const page = readFileSync(
-  resolve(root, "docsite/.generated/content/specs/bank/module.md"),
+  resolve(root, "docsite/.generated/content/specs/bank/obligations.md"),
   "utf8",
  );
  expect(page).toContain("### Repeated requests {#req.bank.retry}");
  expect(page).toContain("### Settlement {#scenario.bank.settle}");
  expect(page).toContain(
-  '<a id="entity.bank.core"></a><a id="entity.bank.request"></a>',
+  '<a id="entity.bank.detail"></a><a id="entity.bank.request"></a>',
  );
  expect(page).not.toContain("concorde-entities");
  expect(page).not.toContain("{#req.bank.example}");

@@ -96,7 +96,7 @@ effect, never worker filesystem write authority or permission to advance a faile
 <a id="entity.issues.spec"></a>
 
 Spec resolves Module/scenario ownership and validates paired contracts. Issue attribution uses the
-[current registered context](../spec/registry.md#stable-id-spec-context-queries), not a path guess.
+[current registered context](../spec/contracts.md#registry-stable-id-spec-context-queries), not a path guess.
 Included definitions retain their owner; unknown ownership remains null. Historical report owners
 need not remain in a later registry. Invalid current target selections stop solving.
 
@@ -125,20 +125,7 @@ before final validation so ready evidence includes those bytes. A failed final v
 only the runtime's own unchanged disposition write, preserves other work and leaves the Issue open.
 If concurrent edits prevent restoration, the host reports the conflict rather than overwriting them.
 
-## Requirements
+## Precise specifications
 
-### req.issues.report-control — Reporting does not control execution
-
-Accepting an Issue report SHALL NOT itself stop a worker, start repair or change task completion.
-
-### req.issues.scope — Issue routing preserves authority
-
-Selecting or reporting an Issue SHALL NOT widen the selected worker's Spec, implementation or command grant.
-
-### req.issues.retention — Closing preserves observations
-
-Issue disposition SHALL preserve the record and every original observation.
-
-### req.issues.ready-boundary — Solving stops before delivery
-
-A successful solving flow SHALL stop at ready without delivery or primary merge.
+The Issues Module owns the exact obligations and interface details in [requirements](requirements.md).
+These companions are part of the same complete Module specification, not separate topic owners.

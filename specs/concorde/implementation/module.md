@@ -60,25 +60,6 @@ flowchart TB
     e0 -->|reports fulfilled acceptance as| domain_completion
 ```
 
-## Requirements
-
-### req.implementation.admitted-contract — Preserve task identity and acceptance
-
-Implementation SHALL preserve every admitted task identity and acceptance condition when reporting completion.
-
-## Scenarios
-
-### scenario.implementation.admitted-work — Return complete fulfillment of the admitted tasks
-
-- GIVEN a current accepted plan and nonempty task list bound to a selected Module
-- WHEN the worker fulfills every task's acceptance within that Module's implementation grant and returns the complete task list
-- THEN the host accepts completion only for those same tasks with their IDs and acceptance preserved and all complete flags true
-- AND the host records accepted progress without declaring ready or changing Specs
-
-The detailed contract is [Exact tasks and bounded code effects](implementation.md).
-
-## Dependencies and composition
-
 ### Development
 
 <a id="entity.implementation.development"></a><a id="agreement.document.implementation.module.1"></a>
@@ -97,7 +78,7 @@ Bind a fresh programmer to the complete selected contract and enforce writes onl
 
 This collaboration applies when launching the programmer or admitting its matching completion under the current grant.
 
-- [Complete context selection](../harness/context.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
 
 ### Spec
 
@@ -107,7 +88,7 @@ Resolve the selected Module's implementation entries, current files, contract an
 
 This collaboration applies when deriving a local code grant or admitting separately bound component work and rechecking revisions.
 
-- [Owner and context resolution](../spec/registry.md#stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
+- [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
 
 ## Realization and reuse limits
 
@@ -117,3 +98,8 @@ Agent grant or configurable arbitrary flow is created by this Spec boundary. Hos
 phase artifacts and permissions remain mandatory. A new flow requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.
+
+## Precise specifications
+
+The Implementation Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

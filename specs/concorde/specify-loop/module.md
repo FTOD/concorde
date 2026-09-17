@@ -64,28 +64,6 @@ flowchart TB
     e0 -->|returns current Spec evidence as| domain_completion
 ```
 
-## Requirements
-
-### req.development.specify-loop-boundary — Spec completion is independently available
-
-Concorde-specify-loop SHALL complete Spec preparation independently of implementation readiness.
-
-## Scenarios
-
-### scenario.development.specify-loop — Author and review a Spec independently
-
-- GIVEN a developer supplies a Spec-writing or Spec-revision task and constraints
-- WHEN concorde-specify-loop routes the owning Module and runs the selected Spec stages
-- THEN only owned Spec replacements are accepted and independent reviews cover the complete contract and affected consumers
-- AND successful stages return completed with artifact references, without planning, implementation, code checks, code review requirements or readiness
-- AND specify=false skips authoring while run_reviews=false records a Spec review skip only where no requirement already exists
-- AND a required review with blocking findings, gaps, incomplete coverage or failed execution stops with inspectable progress
-- AND repeating the same intent resumes accepted authoring and current reviews, including when concorde-dev-loop calls specify-loop before continuing development
-
-The detailed contract is [Independent Spec completion](specify-loop.md).
-
-## Dependencies and composition
-
 ### Development
 
 <a id="entity.specify-loop.development"></a><a id="agreement.document.specify-loop.module.1"></a>
@@ -104,7 +82,7 @@ Bind the router, author and each independent Spec reviewer to separate fresh Spe
 
 This collaboration applies when routing or a composed authoring/review stage requires an Agent; reviewers inherit no author artifacts.
 
-- [Complete context selection](../harness/context.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
 
 ### Spec
 
@@ -114,7 +92,7 @@ Resolve the owner's complete contract and old/candidate direct consumers affecte
 
 This collaboration applies when binding the Spec task, determining compatibility-review scope or rejecting stale saved evidence.
 
-- [Owner and context resolution](../spec/registry.md#stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
+- [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
 
 ### Query and Routing
 
@@ -154,3 +132,8 @@ Agent grant or configurable arbitrary flow is created by this Spec boundary. Hos
 phase artifacts and permissions remain mandatory. A new flow requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.
+
+## Precise specifications
+
+The Specification Flow Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

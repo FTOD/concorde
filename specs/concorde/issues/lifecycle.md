@@ -56,58 +56,6 @@ restoration and is reported rather than overwritten, including an independent de
 A lost completion checkpoint after validation still requires recovery, not an already-closed success.
 Candidate-local completion does not mean primary was changed; delivery remains separately authorized.
 
-### scenario.issues.solve-ready — Resolve and verify the candidate
-
-- GIVEN an explicitly selected open Issue with current evidence
-- WHEN bounded development and Issue-specific verification succeed
-- THEN the authorized solver can resolve the Issue and final checks bind the disposition bytes
-- AND the result is a ready candidate without automatic delivery or primary merge
-
-### scenario.issues.solve-spec-repair — Route contract repair to the ordinary author
-
-- GIVEN an admitted solver decision with action spec-repair
-- WHEN the flow selects the next operation
-- THEN it enters the declared repair_spec node and invokes the owner-only Spec author
-- AND the author receives intended behavior without the solver's selection or prior transcript
-- AND accepted repair can continue to development or, for a code-free Module, Spec-only verification
-
-### scenario.issues.solve-decision — Ask only for genuinely unsettled decisions
-
-- GIVEN a selected Issue whose required product or design choice cannot be determined from its context
-- WHEN the solver returns needs-decision
-- THEN the Issue remains open and the precise question is returned without inventing a fix
-- AND an explicit solve note supplies developer clarification and permits a fresh bounded attempt
-
-### scenario.issues.solve-stale — Refuse changed selections and retain failed work
-
-- GIVEN selected Issue bytes or verification inputs that change during solving
-- WHEN a dependent solve or disposition step is attempted
-- THEN stale evidence is rejected and unrelated work is preserved
-- AND failed final candidate verification cannot leave the runtime's unchanged disposition presented as completed
-
-### scenario.issues.disposition-recovery — Recover an interrupted closing transaction
-
-- GIVEN a selected Issue whose disposition is about to be published
-- WHEN execution or persistence fails before publication, after publication or before the completed checkpoint
-- THEN a journal is durable before any closing write and an unjournaled failed preparation leaves the Issue open
-- AND retry first invalidates old readiness and restores only the exact journaled write before fresh solving and validation
-- AND a rollback whose acknowledgement is lost can be retried without another restoration write
-- AND the original selected request can resume across its own journaled revision without automatic delivery
-
-### scenario.issues.disposition-recovery-stale — Refuse unprovable restoration
-
-- GIVEN an interrupted solver disposition
-- WHEN a retry finds changed Issue bytes, a corrupt journal or a legacy unfinished close without a journal
-- THEN it rejects recovery without overwriting the record or treating it as an ordinary completed close
-- AND no solver worker is launched before those checks succeed
-
-### scenario.issues.solve-handoff — Carry an uncommitted selected report
-
-- GIVEN an open report not yet present in the committed base
-- WHEN the host prepares a candidate for its explicit solve request
-- THEN that record's exact selected bytes are copied to the candidate before the session handoff
-- AND unrelated local edits and the source worktree's index are preserved
-
 ## Design
 
 ### Issue Flow (`issue_flow`)
@@ -208,3 +156,8 @@ flowchart TB
     review_item -->|reviews remain| review_item
     review_item -->|finished or blocked| __end__
 ```
+
+## Precise specifications
+
+The Issues Module owns the exact obligations and interface details in [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

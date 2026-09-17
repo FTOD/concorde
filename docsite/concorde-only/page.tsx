@@ -102,7 +102,7 @@ const specSteps: Record<string, Step> = {
     ),
     stops:
       "This is the end of the Spec flow. Planning, implementation, code checks and delivery belong to subsequent workflows.",
-    spec: "/specs/concorde/specify-loop/module#scenario.development.specify-loop",
+    spec: "/specs/concorde/specify-loop/scenarios#scenario.development.specify-loop",
   },
 };
 const steps: Record<string, Step> = {
@@ -267,7 +267,7 @@ const steps: Record<string, Step> = {
     ),
     stops:
       "Open contract gaps, unfinished tasks, absent or blocking required reviews, failed/missing checks or stale evidence prevent ready. Changing the candidate during completion verification also stops with stale_evidence.",
-    spec: "/specs/concorde/dev-loop/module#scenario.development.dev-loop-ready",
+    spec: "/specs/concorde/dev-loop/scenarios#scenario.development.dev-loop-ready",
   },
 };
 
@@ -1191,7 +1191,7 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
             {" · "}
             <Link
               to={
-                "/specs/concorde/review/module#scenario.development.standalone-review"
+                "/specs/concorde/review/scenarios#scenario.development.standalone-review"
               }
             >
               Standalone review scenario →

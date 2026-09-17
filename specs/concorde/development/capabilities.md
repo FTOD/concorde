@@ -116,18 +116,7 @@ registry `uses` describes Module responsibility dependencies. Shared model execu
 not merge provider contracts. Every phase, target and independent review retains a fresh invocation
 and its own grant. Only admitted structured artifacts cross node boundaries.
 
-### scenario.development.capability-state — One executable identity and State boundary
+## Precise specifications
 
-- GIVEN a registered deterministic, model-backed or composed Capability
-- WHEN its node is embedded in a LangGraph with a larger parent State
-- THEN only declared input channels reach its implementation and only declared output updates leave it
-- AND trusted hosts and launchers remain in Runtime context rather than State
-- AND a model invocation still validates phase, artifacts, output fields and effective authority
-- AND its composition dependencies use the same Capability inventory
-
-### scenario.development.capability-result-state — Host graph failures remain explicit
-
-- GIVEN a host-backed Capability invoked through its State interface
-- WHEN admission or execution returns a blocked or failed capability envelope
-- THEN the result channel preserves that envelope and its errors without inventing successful output
-- AND its external Skill adapter preserves the existing versioned wire contract
+The Development Module owns the exact obligations and interface details in [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

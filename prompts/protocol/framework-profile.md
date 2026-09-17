@@ -76,7 +76,7 @@ snapshot; continue only independent work. Implementation source cannot resolve t
 A failed execution, an explicit prohibition and a missing runtime value with defined failure
 behavior are distinct from an unspecified contract.
 
-Spec review uses Module Specs. Code review uses the same Module contracts and authorized code in a
+Spec review uses complete Module specifications, including both document roles. Code review uses the same Module contracts and authorized code in a
 fresh read-only invocation. A review records its exact inputs, coverage, findings and completion.
 Changed relevant inputs invalidate it. Skipped, failed, incomplete and successful reviews remain
 distinct. A changed canonical Spec document requires review for its owner and every Module whose
@@ -163,10 +163,12 @@ handoff solely because it updates the Framework's own instructions.
 ### Framework authoring and publication conventions
 
 Every Concorde Module's `module.md` starts with Purpose, Usage, Design and Relationships as
-level-2 headings. Requirements, Scenarios and other precise details follow or live in owned
-companions; companions do not repeat a mandatory template. Reading is the Protocol-defined subset
-of complete content, not a publisher summary. Each Markdown source has one `.md.json` companion
-with document identity/owner and entity, dependency and participant declarations. Mechanical fields
+level-2 headings. The entry and explanatory topic companions have `document.role: module` and
+contain no formal requirement/scenario definitions or canonical structured contracts. Those belong
+in directly Module-owned implementation-role companions. Both roles remain complete Spec reading,
+not separate ownership or context scopes. Companion topics do not repeat a mandatory entry template.
+Each Markdown source has one schema-2 `.md.json` companion with explicit document identity, owner,
+role, and entity, dependency and participant declarations. Mechanical fields
 stay there; readable responsibilities, conditions, guarantees and obligations have local anchors
 referenced by metadata. Group adjacent anchors on one line when a coherent explanation covers
 several entities. Do not replace the retired JSON inventory with another giant human inventory.
@@ -204,7 +206,7 @@ declaring test. A test may name several scenarios in either language, and the de
 parsing, never by compiling or running the test. A Module whose entities bind no implementation file
 has no test to declare its scenarios, and its scenarios are not reported as uncovered. No Spec
 document lists tests. Links inside Specs address definitions by ID
-(`context.md#scenario.harness.context-freeze`, `#req.harness.permission-no-widen`); publication
+(`scenarios.md#scenario.harness.context-freeze`, `requirements.md#req.harness.permission-no-widen`); publication
 turns every scenario, requirement, entity and canonical contract ID into an anchor. Rendered views
 and navigation are derived and create no ownership or context inclusion. Links to canonical shared
 definitions remain links in rendered pages, never transclusions; the site exposes owner and

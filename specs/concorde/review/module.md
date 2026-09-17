@@ -59,28 +59,6 @@ flowchart TB
     e0 -->|publishes coverage and findings as| domain_result
 ```
 
-## Requirements
-
-### req.review.admitted-contract — Bind independent findings to current review inputs
-
-Review SHALL return independent findings bound to its exact admitted task and current input revision.
-
-## Scenarios
-
-### scenario.development.standalone-review — Public review without a development change
-
-- GIVEN an initialized project without a managed development change or preexisting Issue record
-- AND a task with review_mode spec or code and optional target/focus routing hints
-- WHEN the user invokes the public `concorde-review` Skill or its Studio entry
-- THEN a Spec-only router selects one owning Module and a separate fresh reviewer receives its complete contract and, in code mode, only its admitted implementation files and scoped changes
-- AND neither Agent receives write, network or credential authority
-- AND the host returns typed review coverage, findings, gaps and completion status, persisting the review report without creating a development change or changing project Specs or implementation
-- AND an unmanaged Git checkout uses HEAD as the scoped change baseline
-
-The detailed contract is [Independent current review](review.md).
-
-## Dependencies and composition
-
 ### Development
 
 <a id="entity.review.development"></a><a id="agreement.document.review.module.1"></a>
@@ -99,7 +77,7 @@ Run independent fresh Spec or code reviewers with read-only grants and no author
 
 This collaboration applies before each selected review mode and target is invoked, including recorded component reviews.
 
-- [Complete context selection](../harness/context.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
 
 ### Spec
 
@@ -109,7 +87,7 @@ Resolve complete review contracts, sole finding owners and the current implement
 
 This collaboration applies when freezing a review scope, attributing findings or rechecking its Spec and code revision.
 
-- [Owner and context resolution](../spec/registry.md#stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
+- [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
 
 ### Query and Routing
 
@@ -129,3 +107,8 @@ Agent grant or configurable arbitrary flow is created by this Spec boundary. Hos
 phase artifacts and permissions remain mandatory. A new flow requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.
+
+## Precise specifications
+
+The Review Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

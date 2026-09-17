@@ -21,6 +21,9 @@ Only `R(M)` expands. Never recursively resolve a provider's context. Neither lin
 uses, directory neighbors, entity target IDs nor implementation bindings add sources. Each selected
 unit contributes both exact members, even when a publisher puts its reading on an auxiliary page.
 No excerpt, summary, diagram export or reading-only projection replaces a complete unit.
+`D(M)` includes both module-role explanations and implementation-role precise specifications.
+A document's role never filters this union, including during discovery, planning or Spec review.
+Implementation Specs are Spec context, not the separately authorized implementation source context.
 
 ```text
 resolve(registry, query):

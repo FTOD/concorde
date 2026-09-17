@@ -59,25 +59,6 @@ flowchart TB
     e0 -->|proposes and applies accepted| domain_replacements
 ```
 
-## Requirements
-
-### req.spec-authoring.admitted-contract — Propose only owned Spec replacements
-
-Spec Authoring SHALL propose replacements only for the selected Module's owned documents.
-
-## Scenarios
-
-### scenario.spec-authoring.admitted-work — Apply valid owner-bound replacements
-
-- GIVEN a selected Module's complete current Spec and an explicit authoring task
-- WHEN a fresh Spec author returns complete owned replacements whose identity, metadata and before-state remain valid
-- THEN the host applies the accepted replacements after the required affected-consumer compatibility checks
-- AND the author has no direct project write authority and the response retains artifact references to accepted output
-
-The detailed contract is [Owner-only Spec replacements](authoring.md).
-
-## Dependencies and composition
-
 ### Development
 
 <a id="entity.spec-authoring.development"></a><a id="agreement.document.spec-authoring.module.1"></a>
@@ -96,7 +77,7 @@ Run a fresh isolated Spec author with complete Spec inputs, no inherited artifac
 
 This collaboration applies before launching spec-engineer specify mode and when validating its completion.
 
-- [Complete context selection](../harness/context.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
 
 ### Spec
 
@@ -106,7 +87,7 @@ Resolve sole document ownership, complete references and affected consumers, and
 
 This collaboration applies when determining allowed replacement documents and checking their current contract and consumer set.
 
-- [Owner and context resolution](../spec/registry.md#stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
+- [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
 
 ## Realization and reuse limits
 
@@ -116,3 +97,8 @@ Agent grant or configurable arbitrary flow is created by this Spec boundary. Hos
 phase artifacts and permissions remain mandatory. A new flow requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.
+
+## Precise specifications
+
+The Spec Authoring Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

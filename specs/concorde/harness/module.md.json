@@ -1,8 +1,9 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "document": {
     "id": "document.harness.module",
-    "owner": "module.harness"
+    "owner": "module.harness",
+    "role": "module"
   },
   "entities": [
     {
@@ -21,10 +22,7 @@
       "id": "entity.harness.agent-model",
       "title": "Capability and Harness model",
       "kind": "program",
-      "files": [
-        "src/concorde/harness/",
-        "tests/concorde/harness/"
-      ],
+      "files": ["src/concorde/harness/", "tests/concorde/harness/"],
       "meaning": "#entity.harness.agent-model"
     },
     {

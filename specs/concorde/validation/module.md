@@ -59,45 +59,9 @@ flowchart TB
     e0 -->|evaluates current gates for| domain_readiness
 ```
 
-## Requirements
+## Provider collaboration
 
-The consumer guarantees are stated by the scenarios below and their detailed contract.
-
-## Scenarios
-
-### scenario.development.validate-ready — Deterministic checks record readiness
-
-- GIVEN the current candidate
-- WHEN `concorde-validate` runs
-- THEN the host runs deterministic Spec validation and every configured implementation check of every affected Module, and records readiness evidence bound to the exact candidate bytes
-- AND validation never claims semantic completeness
-
-### scenario.development.validate-blocked — A failed or stale check blocks readiness
-
-- GIVEN a configured implementation check fails, is missing, or its previously recorded evidence no longer matches the current candidate bytes
-- WHEN readiness is evaluated
-- THEN the candidate is not recorded ready and the failing or stale check is reported
-
-## Internal constraints
-
-### req.development.check-isolation — Configured checks use enforced read-only execution
-
-Validation SHALL execute configured checks through Harness's OS-enforced project-read-only executor.
-
-## Internal verification scenarios
-
-### scenario.development.validate-check-isolation — Checks cannot write their inputs or host logs
-
-- GIVEN a configured implementation check and the current candidate
-- WHEN validation runs the check
-- THEN project writes, including writes to lifecycle records and logs, are denied by Harness
-- AND the outside host saves private stdout/stderr and records passed, failed or timeout evidence with exit and digest identities
-- AND unavailable enforcement blocks readiness with check_sandbox_unavailable while raw diagnostics stay in the host log
-- AND check input, candidate tree and affected Module freshness checks still reject external changes
-
-The detailed contract is [Current deterministic evidence](validation.md).
-
-## Dependencies and composition
+Validation relies on these providers while retaining responsibility for its own readiness decision.
 
 ### Development
 
@@ -127,8 +91,8 @@ Validate Spec structure and resolve every affected contract consumer and impleme
 
 This collaboration applies when computing structural evidence and the affected Module set for current validation.
 
-- [Owner and context resolution](../spec/registry.md#stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
-- [Structural validation](../spec/structure.md#scenario.spec.validate-success); require consistent registered state without claiming semantic completeness.
+- [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
+- [Structural validation](../spec/scenarios.md#scenario.spec.validate-success); require consistent registered state without claiming semantic completeness.
 
 ## Realization and reuse limits
 
@@ -138,3 +102,8 @@ Agent grant or configurable arbitrary flow is created by this Spec boundary. Hos
 phase artifacts and permissions remain mandatory. A new flow requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.
+
+## Precise specifications
+
+The Validation Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

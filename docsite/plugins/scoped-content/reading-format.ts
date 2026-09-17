@@ -1,4 +1,4 @@
-/** Protocol 7 reading and metadata admission. Publication layout is deliberately absent. */
+/** Protocol 8 reading, document roles and metadata admission. Publication layout is deliberately absent. */
 export const identityPattern = /^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$/;
 export function requireThat(value: unknown, message: string): asserts value {
   if (!value) throw new Error(message);
@@ -200,6 +200,7 @@ export function requireReading(
   content: string,
   path: string,
   primary: boolean,
+  role: "module" | "implementation" = "module",
 ): Map<string, string> {
   const headings = headingList(content),
     fences = fenceRanges(content);
@@ -262,6 +263,16 @@ export function requireReading(
         );
     }
   }
+  requireThat(
+    !primary || role === "module",
+    `module.md must have document.role module: ${path}`,
+  );
+  requireThat(
+    role === "implementation" ||
+      (!headings.some((h) => /^(?:req|scenario)\./.test(h.text)) &&
+        !fences.some((f) => f.language === "concorde-contract")),
+    `Formal definitions belong in an implementation-role document, not a Module entry or topic: ${path}`,
+  );
   requireDefinitions(content, path);
   return readingMeanings(content, path);
 }
@@ -349,8 +360,8 @@ export interface Binding {
   meaning: string;
 }
 export interface UnitMetadata {
-  schema_version: 1;
-  document: { id: string; owner: string };
+  schema_version: 2;
+  document: { id: string; owner: string; role: "module" | "implementation" };
   entities: Entity[];
   dependencies: Dependency[];
   bindings: Binding[];
@@ -377,13 +388,23 @@ export function metadata(
     ["schema_version", "document", "entities", "dependencies", "bindings"],
     ["extensions"],
   );
-  fields(value.document, ["id", "owner"]);
+  fields(value.document, ["id", "owner", "role"]);
   requireThat(
-    value.schema_version === 1 &&
+    value.schema_version === 2 &&
       typeof value.document.id === "string" &&
       identityPattern.test(value.document.id) &&
       value.document.owner === owner,
-    `Invalid metadata version/identity/owner: ${path}`,
+    `Invalid metadata version/identity/owner; migrate explicitly to Protocol 8 schema 2: ${path}`,
+  );
+  requireThat(
+    value.document.role === "module" ||
+      value.document.role === "implementation",
+    `Invalid document.role: ${path}`,
+  );
+  requireThat(
+    !value.extensions ||
+      !Object.hasOwn(value.extensions, "concorde.publication"),
+    `Retired concorde.publication extension; migrate to document.role: ${path}`,
   );
   if (value.extensions !== undefined)
     requireThat(

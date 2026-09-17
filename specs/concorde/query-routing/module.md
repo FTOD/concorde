@@ -55,49 +55,6 @@ flowchart TB
     e0 -->|expands only explicitly admitted| domain_selection
 ```
 
-## Requirements
-
-### req.development.global-discovery — Discovery workers discover complete Module contexts
-
-A Capability with discover context selection SHALL use a discovery-phase worker to discover complete Module Spec contexts.
-
-### req.development.routing-hint-not-context — Routing hints only steer selection
-
-A target or focus hint SHALL only steer selection.
-
-### req.development.routing-hint-no-grant — Routing hints never grant context
-
-A target or focus hint SHALL NOT itself grant context or replace explicit resolution.
-
-## Scenarios
-
-### scenario.development.answer-question — Direct answer from selected Module contexts
-
-- GIVEN a question with an optional target or focus routing hint
-- WHEN `concorde-main` runs with `action: ask`
-- THEN the host deterministically resolves the explicitly selected Modules' complete Spec contexts, indexes each selected Module's original documents once and grants them read-only to the answerer, and the answerer opens them on demand and returns a direct answer
-- AND the response contains no authored project file changes
-
-See [routing hints only steer selection](#req.development.routing-hint-not-context) and
-[routing hints never grant context](#req.development.routing-hint-no-grant).
-
-### scenario.development.answer-gap — Missing promise reported as a Spec gap
-
-- GIVEN the answerer's selected complete Module contexts do not contain a promise the question needs
-- WHEN the answerer would otherwise have to guess or consult an unselected source
-- THEN the response reports a Spec gap naming the blocked question, the owning Module and the current context identity
-- AND the answerer does not read implementation files or search code to supply the missing meaning
-
-### scenario.development.discovery-limit — Discovery stops at its declared limit
-
-- GIVEN repeated context expansion has not resolved the question
-- WHEN a discovery worker's bounded expansion-step limit is reached
-- THEN the host returns the `context_limit` outcome instead of expanding context further
-
-The detailed contract is [Complete-context question and route](query-and-routing.md).
-
-## Dependencies and composition
-
 ### Development
 
 <a id="entity.query-routing.development"></a><a id="agreement.document.query-routing.module.1"></a>
@@ -116,7 +73,7 @@ Freeze explicitly selected complete contexts and run fresh isolated discovery-wo
 
 This collaboration applies at the initial discovery-worker call and each admitted discovery expansion.
 
-- [Explicit complete-context discovery](../harness/context.md#global-spec-context-assembly); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Explicit complete-context discovery](../harness/contracts.md#context-global-spec-context-assembly); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
 
 ### Spec
 
@@ -126,7 +83,7 @@ Resolve entry and explicitly selected Module contexts with unique document owner
 
 This collaboration applies when selecting discovery inputs, validating target/focus hints or resolving an additional admitted context.
 
-- [Owner and context resolution](../spec/registry.md#stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
+- [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
 
 ## Realization and reuse limits
 
@@ -136,3 +93,8 @@ Agent grant or configurable arbitrary flow is created by this Spec boundary. Hos
 phase artifacts and permissions remain mandatory. A new flow requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.
+
+## Precise specifications
+
+The Query and Routing Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

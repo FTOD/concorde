@@ -56,8 +56,8 @@ it("publishes the current exact registry and verifies the promoted manifest", as
  expect(navbar).toContain("Agent Flows");
  expect(navbar).not.toContain(">Graph<");
  expect(html).toContain('id="purpose"');
- expect(html).toContain('id="scenarios"');
- expect(html).toContain('id="req.concorde.routing-no-access"');
+ expect(html).not.toContain('id="scenarios"');
+ expect(html).not.toContain('id="req.concorde.routing-no-access"');
  expect(html).not.toContain("<iframe");
  for (const module of r.targets) {
   const page = r.pages.find((p) => p.primaryOf === module.id)!;
@@ -84,17 +84,35 @@ it("publishes the current exact registry and verifies the promoted manifest", as
 });
 
 // verifies: scenario.views.reading-collections
-it("publishes Views as two linked reading paths with one canonical definition", async () => {
+it("publishes every Module as two reading paths and retains Views topics", async () => {
  const registry = loadScopedRegistry(root);
  const owned = registry.pages.filter((page) => page.owner === "module.views");
  expect(
   owned
    .filter((page) => page.readingCollection === "module")
    .map((page) => page.documentId),
- ).toEqual(["document.views.module"]);
+ ).toEqual([
+  "document.views.module",
+  "document.views.publication",
+  "document.views.pipeline",
+  "document.views.viewer",
+  "document.views.ua-graph",
+ ]);
  expect(
   owned.filter((page) => page.readingCollection === "implementation"),
- ).toHaveLength(5);
+ ).toHaveLength(3);
+ for (const target of registry.targets) {
+  const documents = registry.pages.filter((page) => page.owner === target.id);
+  expect(
+   documents.some((page) => page.readingCollection === "implementation"),
+  ).toBe(true);
+  for (const page of documents.filter(
+   (page) => page.readingCollection === "module",
+  )) {
+   expect(page.content).not.toMatch(/^#{2,5}\s+(?:req|scenario)\./m);
+   expect(page.content).not.toContain("```concorde-contract");
+  }
+ }
  const entry = await readFile(
   resolve(output, "specs/concorde/views/module.html"),
   "utf8",
@@ -122,7 +140,7 @@ it("publishes Views as two linked reading paths with one canonical definition", 
  );
  expect(requirements).toContain('id="req.views.registry-derived-pages"');
  const publication = await readFile(
-  resolve(output, "specs/concorde/views/publication.html"),
+  resolve(output, "specs/concorde/views/scenarios.html"),
   "utf8",
  );
  expect(publication).toContain('id="scenario.views.reading-collections"');
@@ -135,7 +153,10 @@ it("publishes Views as two linked reading paths with one canonical definition", 
    (page: { readingCollection: string }) =>
     page.readingCollection === "implementation",
   ),
- ).toHaveLength(5);
+ ).toHaveLength(
+  registry.pages.filter((page) => page.readingCollection === "implementation")
+   .length,
+ );
 });
 
 // verifies: scenario.views.agent-flows

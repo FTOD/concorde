@@ -14,7 +14,7 @@ file names are visible and implementation contents remain excluded from non-code
 missing_change; an absent plan is missing_plan. A fresh task author invocation receives
 concorde-plan-artifact@1 and concorde-task-identity-constraints@1, even when the reservation list
 is empty. Optional prior tasks and semantic scope/review feedback require explicit repair admission.
-The [transport shapes](../spec/values.md#task-authoring-transport-values) are canonical there.
+The [transport shapes](../spec/contracts.md#values-task-authoring-transport-values) are canonical there.
 
 Task acceptance describes software behavior and implementation evidence within the programmer's
 granted files and runtime. Host production/scaffold/export validation, independent reviews,
@@ -42,39 +42,7 @@ be supplied. The current adapter admits that feedback through dev-loop's bounded
 this is an adapter restriction, not permission for a new caller to invent a repair transition.
 The caller owns ordering and invalidation, while this provider owns admissible input and new tasks.
 
-### Requirements
+## Precise specifications
 
-#### req.planning.tasks-require-plan — Tasks require an accepted current plan
-
-Planning SHALL reject task authoring without an accepted current plan.
-
-#### req.planning.tasks-admission — Accept only valid new task lists
-
-Planning SHALL accept only nonempty, internally unique, initially incomplete task lists whose IDs are disjoint from the admitted reserved IDs.
-
-#### req.planning.task-collision-preserves — Identity collisions preserve task history
-
-Planning SHALL preserve the prior task list and retained history when it rejects colliding task IDs.
-
-### Scenarios
-
-#### scenario.planning.tasks-from-plan — Accepted plan yields implementation tasks
-
-- GIVEN a current managed change, accepted plan and complete reserved task-ID input
-- WHEN a fresh task author returns a nonempty, internally unique, initially incomplete acceptance-task list disjoint from the reserved IDs
-- THEN the host accepts and persists the list with its plan as the implementation task artifact
-- AND its response supplies artifact references without completing tasks or granting the author project writes
-
-#### scenario.planning.tasks-missing-plan — Task authoring has no prerequisite plan
-
-- GIVEN a current managed change with no authored plan for the selected target
-- WHEN a declared composing caller requests task authoring
-- THEN the host rejects the request with missing_plan before launching a task author
-- AND it does not create a task list or discard retained task history
-
-#### scenario.planning.tasks-id-conflict — New output reuses a reserved identity
-
-- GIVEN an accepted plan, prior tasks and retained history with IDs reserved for a fresh task author
-- WHEN the returned task list reuses an admitted reserved ID
-- THEN the host rejects the list and reports the conflicting IDs without rewriting author output
-- AND the prior task list and retained history remain unchanged
+The Planning Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

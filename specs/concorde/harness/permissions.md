@@ -42,40 +42,7 @@ effective)` rejects an effective policy that widens a declared one. `require_iso
 allow_primary_worktree=False)` rejects unsafe mutation environments unless the trusted host grants the
 explicit exception. Task JSON cannot override any permission.
 
-### Interface signatures
+## Precise specifications
 
-These signatures identify public call shapes; bodies and private helpers are outside this Spec.
-
-Public functions of permissions:
-
-```text
-compile_policy(effects: EffectDeclaration, binding: PolicyBinding, role_paths: Mapping[str, tuple[str, ...]], *, deny_paths: tuple[str, ...]=(), outer_sandbox_required: bool=False) -> NormalizedPolicy
-verify_effective_subset(declared: NormalizedPolicy, effective: NormalizedPolicy) -> None
-```
-
-Public functions of worktree:
-
-```text
-inspect_worktree(project_root: str | Path) -> WorktreeBoundary
-require_isolated_worktree(project_root: str | Path, *, allow_primary_worktree: bool=False) -> WorktreeBoundary
-```
-
-`WorktreeBoundary` is a frozen record with string fields `project_root`, `repository_root`, `head`,
-`git_dir` and `common_dir`, and boolean `isolated`; `to_dict() -> dict[str, Any]` returns those exact
-fields. Successful Git inspection uses resolved absolute paths and a verified commit ID for `head`.
-`isolated` means that the worktree's Git directory differs from its shared common directory.
-`inspect_worktree` observes this identity without changing files or checking for local dirt; it
-does not require isolation and may inspect a directory within a worktree. A symlink root, missing
-directory, unavailable/failing Git command, empty Git identity or absent committed HEAD raises
-`WorktreeBoundaryError(ValueError)`.
-
-`require_isolated_worktree` returns the inspected record for a committed linked worktree. With
-`allow_primary_worktree=False`, it rejects a primary worktree or non-worktree directory with the
-same exception. The trusted host's explicit `True` exception also accepts a committed primary
-worktree. If the initial Git probe cannot establish any worktree (including an unavailable Git
-executable), this exception returns the resolved `project_root`, empty other string fields and
-`isolated=False`. It never accepts a symlink or missing directory, and a subsequent inspection
-failure inside an identified Git worktree still raises. The exception is not a task-input
-permission and does not alter delivery's separate preservation requirements.
-
-Failures return structured findings or the declared exception; callers must stop the affected transition. Repeating an unchanged read is side-effect free. Mutations require current preconditions and explicit caller-owned paths. Local contract facts above remain authoritative without reading the parent or collaborating Specs.
+The Harness Module owns the exact obligations and interface details in [contracts](contracts.md).
+These companions are part of the same complete Module specification, not separate topic owners.

@@ -46,20 +46,10 @@ flowchart LR
 [Explain the provider's responsibility, when it is selected and which included canonical guarantees
 this Module relies on. Link to those guarantees, and state local duties and failure reactions.]
 
-## Requirements
+## Precise specifications
 
-### req.example.promise — [Requirement title]
-
-[One decidable sentence containing SHALL or SHALL NOT exactly once.]
-
-## Scenarios
-
-### scenario.example.situation — [Scenario title]
-
-- GIVEN [the precondition]
-- WHEN [the trigger]
-- THEN [the promised outcome]
-- BUT [an outcome that must not happen]
+[Explain the important guarantees above and link to the Module's owned requirements, scenarios
+and interface contracts. Do not define formal obligations in this entry or explanatory topic pages.]
 
 ## Unresolved information
 
@@ -75,8 +65,8 @@ the owned reading. A diagram must not invent entities or import every included p
 
 ```json
 {
-  "schema_version": 1,
-  "document": {"id": "document.example.module", "owner": "module.example"},
+  "schema_version": 2,
+  "document": {"id": "document.example.module", "owner": "module.example", "role": "module"},
   "entities": [
     {"id": "entity.example.coordinator", "title": "Coordinator", "kind": "program",
      "meaning": "#entity.example.coordinator", "files": ["src/example/"]},
@@ -98,11 +88,36 @@ of inventing a provider, file or interface merely to fill this starter.
 
 ## Companion documents and interfaces
 
-A companion has its own metadata pair and sole owner but no mandatory entry sections. Put precise
-scenarios or interface definitions there when this improves reading. Register the reading path in
-its owner's collection; consumers reference its document ID or the owner's Module ID.
+A companion has its own metadata pair and sole Module owner but no mandatory entry sections.
+Use role `module` for explanatory topics such as Registry or Publication. Use role `implementation`
+for the Module's requirements, scenarios and precise interfaces. Never place formal definitions in
+explanatory topics. Register every reading path in the same owner's collection; consumers reference
+its document ID or the owner's Module ID. A split requires explicit references to the units now
+containing relied-upon definitions; following Markdown links does not include them.
 
-A readable structured agreement is defined once:
+For example, `requirements.md` has schema-2 metadata:
+
+```json
+{
+  "schema_version": 2,
+  "document": {"id": "document.example.requirements", "owner": "module.example", "role": "implementation"},
+  "entities": [], "dependencies": [], "bindings": []
+}
+```
+
+Its reading member can define:
+
+```markdown
+# Example requirements
+
+### req.example.promise — [Requirement title]
+
+[One decidable sentence containing SHALL or SHALL NOT exactly once.]
+```
+
+Use the [scenario fragment](scenario.md) in another registered implementation-role unit, or in the
+same unit when this keeps the Module's precise specification readable. A canonical structured
+agreement is also defined once in an implementation-role unit:
 
 ````markdown
 ```concorde-contract

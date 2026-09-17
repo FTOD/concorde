@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 7.0.0 defines Module specifications, their complete content and the subset
+Concorde Spec Protocol 8.0.0 defines Module specifications, their complete content and the subset
 intended for human reading. It applies to project Specs, including those of software implementing
 this Protocol. The standard's own chapters need not describe themselves as software Modules.
 
@@ -46,10 +46,29 @@ responsibility or obligation is stated. This distinction is about information, n
 interface schemas and examples can be reading content; a file listing written as a Markdown table
 is still implementation metadata. A publisher MAY expose metadata as an auxiliary inspection view.
 
-The reading entry follows **Purpose, Usage, Design, Relationships**. Remaining topics may be
-organized afterwards or in registered companions. There are no mandatory enclosing usage/architecture
-parts and no standalone entity-inventory chapter. Consumers and implementers still have different
-questions, but those questions do not require disjoint document containers or context filters.
+The complete Module specification has two explicit document roles, both within Reading(M):
+
+- **Module Specs** (`module`): the reading entry and explanatory topic documents. The entry follows
+  **Purpose, Usage, Design, Relationships**. Topics explain concepts, correct use, collaborations,
+  significant design and important guarantees. Together these explanations MUST establish a usable
+  mental model without requiring readers to reconstruct it from formal definitions. They MUST NOT
+  become empty link indexes or independently maintained summaries.
+- **Implementation Specs** (`implementation`): the precise normative requirements, scenarios and
+  interface contracts that implementations must satisfy, including external behavior and internal
+  constraints. They are not implementation source, temporary plans or descriptions of incidental code.
+
+Formal requirement and scenario definitions MUST occur only in implementation-role document units.
+The entry and module-role topics MUST NOT define them. Canonical structured interface contracts
+MUST also be defined in implementation-role units; explanation, usage examples and links to those
+contracts belong in Module Specs. Define each precise obligation once. Explanations retain important
+meaning and link to its exact definition rather than duplicating a second formal contract.
+
+Both roles belong directly to the same owning Module. A topic such as Registry is an explanation,
+not a new owner, sub-Module or requirements container. Implementation Specs MAY be split into several
+owned units and grouped by subject, but requirements and scenarios remain Module-owned. Roles
+MUST be explicit metadata, never inferred from paths, headings, body syntax or publishing preferences.
+Roles change neither complete context inclusion nor execution authority. There are no mandatory
+usage/architecture wrappers or standalone entity-inventory chapters.
 
 A **requirement** is one decidable Module-wide SHALL statement with a stable identity. A **scenario**
 is one testable situation expressed through GIVEN, WHEN and THEN steps. A situation-specific
@@ -124,8 +143,8 @@ gap; a reader MUST NOT silently fetch more files to repair it.
 ### P4. Conformance covers content, reading, structure and consistency
 
 A conformance claim identifies its Protocol version. Stable identities, unique unit ownership,
-complete paired source inclusion, explicit one-level references, consistent declarations, required
-reading structure, one statement per requirement and consistent file listings are structural
+complete paired source inclusion, explicit document roles and definition placement, explicit
+one-level references, consistent declarations, required reading structure, one statement per requirement and consistent file listings are structural
 requirements. Complete and mutually consistent readable obligations, design and relationships,
 including decidable requirements, are semantic requirements.
 

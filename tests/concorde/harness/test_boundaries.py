@@ -1,4 +1,5 @@
 """Behavioral regression gates replacing Profile 7 ambient/ancestor context contracts."""
+
 import copy
 import json
 import shutil
@@ -6,225 +7,519 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
-from concorde.spec.typed_data import typed,validate_typed,TypedDataError
+from concorde.spec.typed_data import typed, validate_typed, TypedDataError
 from concorde.spec.verification import verifies
-from concorde.development.capability_service import CapabilityHost,run_capability
+from concorde.development.capability_service import CapabilityHost, run_capability
 from concorde.development.capability_host import Invocation
-from concorde.spec.repository import SpecRepository,SpecError
-from concorde.harness.context import resolve_context,recheck_context
-from concorde.spec.changes import file_change,apply_files
-from concorde.spec.schema import admit,ContractError
-from tests.concorde.spec.support import project,PACKAGE,CONFIGURATION,ModelProcessDouble,update_document_declaration
+from concorde.spec.repository import SpecRepository, SpecError
+from concorde.harness.context import resolve_context, recheck_context
+from concorde.spec.changes import file_change, apply_files
+from concorde.spec.schema import admit, ContractError
+from tests.concorde.spec.support import (
+    project,
+    PACKAGE,
+    CONFIGURATION,
+    ModelProcessDouble,
+    update_document_declaration,
+)
+
 
 class BoundaryTests(unittest.TestCase):
     def setUp(self):
-        self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.root=Path(self.tmp.name)
-        self.registry=project(self.root);self.task={'target_id':'service.transfer','task':'Implement the specified transfer'}
-    def save(self): (self.root/'.concorde/specs.json').write_text(json.dumps(self.registry))
-    def entities(self,path):
-        document=self.root/(path+'.json');metadata=json.loads(document.read_text())
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.registry = project(self.root)
+        self.task = {
+            "target_id": "service.transfer",
+            "task": "Implement the specified transfer",
+        }
+
+    def save(self):
+        (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
+
+    def entities(self, path):
+        document = self.root / (path + ".json")
+        metadata = json.loads(document.read_text())
+
         def save(value):
-            metadata['entities']=value
-            document.write_text(json.dumps(metadata,indent=2)+'\n')
-        return metadata['entities'],save
-    def call_capability(self,name,data=None,callback=None,mode='execute'):
-        double=ModelProcessDouble(callback);self.double=double
-        self.host=CapabilityHost(self.root,PACKAGE,executor=double.executor,allow_primary_worktree=True,mode=mode)
-        return run_capability(name,CONFIGURATION,typed(name+'-request',data or self.task),host_context=self.host)
+            metadata["entities"] = value
+            document.write_text(json.dumps(metadata, indent=2) + "\n")
+
+        return metadata["entities"], save
+
+    def call_capability(self, name, data=None, callback=None, mode="execute"):
+        double = ModelProcessDouble(callback)
+        self.double = double
+        self.host = CapabilityHost(
+            self.root,
+            PACKAGE,
+            executor=double.executor,
+            allow_primary_worktree=True,
+            mode=mode,
+        )
+        return run_capability(
+            name,
+            CONFIGURATION,
+            typed(name + "-request", data or self.task),
+            host_context=self.host,
+        )
+
     def change(self):
-        result=self.call_capability('concorde-plan');self.assertEqual('succeeded',result['status'],result)
-        return {**self.task,'change_id':result['output']['data']['change_id']}
+        result = self.call_capability("concorde-plan")
+        self.assertEqual("succeeded", result["status"], result)
+        return {**self.task, "change_id": result["output"]["data"]["change_id"]}
+
     def completion(self, task):
-        return Invocation('concorde-validate', CONFIGURATION, task, self.host).verify_completion()
+        return Invocation(
+            "concorde-validate", CONFIGURATION, task, self.host
+        ).verify_completion()
+
     @verifies("scenario.harness.context-freeze")
     def test_shared_physical_markdown_is_one_hop_context_not_entity_expansion(self):
-        self.registry['targets'][3]['references'].append({'kind':'document','id':'document.transfer.promises'});self.save()
-        update_document_declaration(self.root,'specs/transfer/promises.md',
-                                    owner='service.transfer')
-        repo=SpecRepository(self.root)
-        service=resolve_context(repo,'service.transfer').value
-        module=resolve_context(repo,'module.ledger').value
-        self.assertEqual(['specs/transfer/promises.md'],[item['path'] for item in service['spec_resolution']['sources'] if item['path'].endswith('promises.md')])
-        self.assertEqual(['specs/transfer/promises.md','specs/transfer/promises.md.json'],[item['path'] for item in module['spec_resolution']['sources'] if item['owner'] != 'module.ledger'])
-        self.assertEqual(['specs/ledger/module.md','specs/ledger/module.md.json'],[item['path'] for item in module['spec_resolution']['sources'] if item['owner'] == 'module.ledger'])
-        self.assertNotIn('specs/transfer/module.md',json.dumps(module))
+        self.registry["targets"][3]["references"].append(
+            {"kind": "document", "id": "document.transfer.promises"}
+        )
+        self.save()
+        update_document_declaration(
+            self.root, "specs/transfer/promises.md", owner="service.transfer"
+        )
+        repo = SpecRepository(self.root)
+        service = resolve_context(repo, "service.transfer").value
+        module = resolve_context(repo, "module.ledger").value
+        self.assertEqual(
+            ["specs/transfer/promises.md"],
+            [
+                item["path"]
+                for item in service["spec_resolution"]["sources"]
+                if item["path"].endswith("promises.md")
+            ],
+        )
+        self.assertEqual(
+            ["specs/transfer/promises.md", "specs/transfer/promises.md.json"],
+            [
+                item["path"]
+                for item in module["spec_resolution"]["sources"]
+                if item["owner"] != "module.ledger"
+            ],
+        )
+        self.assertEqual(
+            [
+                "specs/ledger/module.md",
+                "specs/ledger/module.md.json",
+                "specs/ledger/obligations.md",
+                "specs/ledger/obligations.md.json",
+            ],
+            [
+                item["path"]
+                for item in module["spec_resolution"]["sources"]
+                if item["owner"] == "module.ledger"
+            ],
+        )
+        self.assertNotIn("specs/transfer/module.md", json.dumps(module))
+
     @verifies("scenario.spec-authoring.foreign-output")
     def test_consumer_author_cannot_change_provider_truth(self):
-        self.registry['targets'][3]['references'].append({'kind':'document','id':'document.transfer.promises'});self.save()
-        update_document_declaration(self.root,'specs/transfer/promises.md',
-                                    owner='service.transfer')
-        path=self.root/'specs/transfer/promises.md';before=path.read_bytes()
-        def cb(stage,snap,data,cwd):
-            if stage=='specify':data['documents']=[{'path':'specs/transfer/promises.md',
-                'content':path.read_text()+'\nChanged by one target.\n'}]
-        result=self.call_capability('concorde-specify',data={'target_id':'module.ledger','task':'Clarify consumer'},callback=cb)
-        self.assertEqual('blocked',result['status'],result);self.assertEqual(before,path.read_bytes())
-        self.assertEqual('permission_denied',result['errors'][0]['code'])
+        self.registry["targets"][3]["references"].append(
+            {"kind": "document", "id": "document.transfer.promises"}
+        )
+        self.save()
+        update_document_declaration(
+            self.root, "specs/transfer/promises.md", owner="service.transfer"
+        )
+        path = self.root / "specs/transfer/promises.md"
+        before = path.read_bytes()
+
+        def cb(stage, snap, data, cwd):
+            if stage == "specify":
+                data["documents"] = [
+                    {
+                        "path": "specs/transfer/promises.md",
+                        "content": path.read_text() + "\nChanged by one target.\n",
+                    }
+                ]
+
+        result = self.call_capability(
+            "concorde-specify",
+            data={"target_id": "module.ledger", "task": "Clarify consumer"},
+            callback=cb,
+        )
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual(before, path.read_bytes())
+        self.assertEqual("permission_denied", result["errors"][0]["code"])
+
     def test_target_author_cannot_persist_duplicate_document_identity(self):
-        path=self.root/'specs/transfer/module.md.json';before=path.read_bytes()
-        replacement=path.read_text().replace('"id": "document.transfer.feature"',
-                                             '"id": "document.ledger.api"')
-        def cb(stage,snap,data,cwd):
-            if stage=='specify':data['documents']=[{'path':'specs/transfer/module.md.json','content':replacement}]
-        result=self.call_capability('concorde-specify',callback=cb)
-        self.assertEqual('blocked',result['status'],result);self.assertEqual(before,path.read_bytes())
-        self.assertIn('identity',result['errors'][0]['message'])
-    def test_target_author_can_change_local_truth_without_changing_its_declaration(self):
-        path=self.root/'specs/transfer/module.md';replacement=path.read_text()+'\nA clarified local promise.\n'
-        def cb(stage,snap,data,cwd):
-            if stage=='specify':data['documents']=[{'path':'specs/transfer/module.md','content':replacement}]
-        result=self.call_capability('concorde-specify',callback=cb)
-        self.assertEqual('succeeded',result['status'],result);self.assertEqual(replacement,path.read_text())
+        path = self.root / "specs/transfer/module.md.json"
+        before = path.read_bytes()
+        replacement = path.read_text().replace(
+            '"id": "document.transfer.feature"', '"id": "document.ledger.api"'
+        )
+
+        def cb(stage, snap, data, cwd):
+            if stage == "specify":
+                data["documents"] = [
+                    {"path": "specs/transfer/module.md.json", "content": replacement}
+                ]
+
+        result = self.call_capability("concorde-specify", callback=cb)
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual(before, path.read_bytes())
+        self.assertIn("identity", result["errors"][0]["message"])
+
+    def test_target_author_can_change_local_truth_without_changing_its_declaration(
+        self,
+    ):
+        path = self.root / "specs/transfer/module.md"
+        replacement = path.read_text() + "\nA clarified local promise.\n"
+
+        def cb(stage, snap, data, cwd):
+            if stage == "specify":
+                data["documents"] = [
+                    {"path": "specs/transfer/module.md", "content": replacement}
+                ]
+
+        result = self.call_capability("concorde-specify", callback=cb)
+        self.assertEqual("succeeded", result["status"], result)
+        self.assertEqual(replacement, path.read_text())
+
     def test_a_directory_is_listed_only_with_an_explicit_trailing_slash(self):
-        self.registry['targets'][3]['files']=['app'];self.save()
-        with self.assertRaisesRegex(SpecError,'use a trailing slash for a directory'):SpecRepository(self.root)
+        self.registry["targets"][3]["files"] = ["app"]
+        self.save()
+        with self.assertRaisesRegex(SpecError, "use a trailing slash for a directory"):
+            SpecRepository(self.root)
         # The trailing slash binds every regular file below the directory, including a new one.
-        self.registry['targets'][3]['files']=['app/'];self.save()
-        entities,save=self.entities('specs/ledger/module.md')
-        entities[1]['files']=['app/']
+        self.registry["targets"][3]["files"] = ["app/"]
+        self.save()
+        entities, save = self.entities("specs/ledger/module.md")
+        entities[1]["files"] = ["app/"]
         save(entities)
-        repo=SpecRepository(self.root);ledger=repo.select('module.ledger')
-        self.assertEqual(('app/',),repo.implementation_entries(ledger))
-        self.assertEqual(('app',),repo.implementation_paths(ledger))
-        self.assertEqual(('app/ledger.py','app/transfer.py'),repo.implementation_files(ledger))
-        entity=repo.entity_for_path(ledger,'app/transfer.py');assert entity is not None
-        self.assertEqual('entity.ledger.store',entity.id)
-        self.assertEqual(('service.transfer','module.ledger'),
-                         tuple(t.id for t in repo.affected_modules(['app/transfer.py'])))
+        repo = SpecRepository(self.root)
+        ledger = repo.select("module.ledger")
+        self.assertEqual(("app/",), repo.implementation_entries(ledger))
+        self.assertEqual(("app",), repo.implementation_paths(ledger))
+        self.assertEqual(
+            ("app/ledger.py", "app/transfer.py"), repo.implementation_files(ledger)
+        )
+        entity = repo.entity_for_path(ledger, "app/transfer.py")
+        assert entity is not None
+        self.assertEqual("entity.ledger.store", entity.id)
+        self.assertEqual(
+            ("service.transfer", "module.ledger"),
+            tuple(t.id for t in repo.affected_modules(["app/transfer.py"])),
+        )
+
     def test_control_and_spec_paths_cannot_be_listed_implementation_entries(self):
-        for path,message in (('.concorde/config.json','control or generated path'),
-                             ('.concorde/','control or generated path'),
-                             ('generated/protocol/principles.md','control or generated path'),
-                             ('specs/ledger/module.md','listed file cannot be a project Spec document'),
-                             ('specs/','listed directory cannot contain a project Spec document')):
+        for path, message in (
+            (".concorde/config.json", "control or generated path"),
+            (".concorde/", "control or generated path"),
+            ("generated/protocol/principles.md", "control or generated path"),
+            ("specs/ledger/module.md", "listed file cannot be a project Spec document"),
+            ("specs/", "listed directory cannot contain a project Spec document"),
+        ):
             with self.subTest(path=path):
-                self.registry['targets'][2]['files']=[path];self.save()
-                with self.assertRaisesRegex(SpecError,message):
+                self.registry["targets"][2]["files"] = [path]
+                self.save()
+                with self.assertRaisesRegex(SpecError, message):
                     SpecRepository(self.root)
+
     def test_module_and_scenario_share_one_global_identity_namespace(self):
         from concorde.spec.validation import validate_repository
-        path=self.root/'specs/transfer/module.md'
-        path.write_text(path.read_text().replace('scenario.transfer.debit','scenario.ledger.read'))
-        report=validate_repository(self.root,package_root=PACKAGE)
-        self.assertEqual('invalid',report.status)
-        self.assertIn('CONCORDE-IDENTITY-001',{finding.rule_id for finding in report.findings})
+
+        path = self.root / "specs/transfer/obligations.md"
+        path.write_text(
+            path.read_text().replace("scenario.transfer.debit", "scenario.ledger.read")
+        )
+        report = validate_repository(self.root, package_root=PACKAGE)
+        self.assertEqual("invalid", report.status)
+        self.assertIn(
+            "CONCORDE-IDENTITY-001", {finding.rule_id for finding in report.findings}
+        )
+
     @verifies("scenario.harness.context-freeze")
     def test_code_is_digest_only_and_only_in_implementation_snapshot(self):
-        repo=SpecRepository(self.root)
-        plain=resolve_context(repo,'service.transfer').value;impl=resolve_context(repo,'service.transfer',phase='implementation').value
-        self.assertEqual([],plain['implementation_artifacts']);self.assertTrue(impl['implementation_artifacts'])
-        self.assertNotIn('def transfer',json.dumps(impl))
+        repo = SpecRepository(self.root)
+        plain = resolve_context(repo, "service.transfer").value
+        impl = resolve_context(repo, "service.transfer", phase="implementation").value
+        self.assertEqual([], plain["implementation_artifacts"])
+        self.assertTrue(impl["implementation_artifacts"])
+        self.assertNotIn("def transfer", json.dumps(impl))
+
     @verifies("scenario.harness.context-invalid-input")
     def test_unsupported_phase_or_blank_task_yields_no_snapshot(self):
-        repo=SpecRepository(self.root);snapshots=[]
-        for arguments,code in (({'phase':'audit'},'invalid_phase'),({'phase':'route'},'invalid_phase'),({'task':''},'invalid_input'),({'task':'  \n'},'invalid_input')):
+        repo = SpecRepository(self.root)
+        snapshots = []
+        for arguments, code in (
+            ({"phase": "audit"}, "invalid_phase"),
+            ({"phase": "route"}, "invalid_phase"),
+            ({"task": ""}, "invalid_input"),
+            ({"task": "  \n"}, "invalid_input"),
+        ):
             with self.subTest(**arguments):
                 invalid_input: dict[str, Any] = dict(arguments)
                 with self.assertRaises(SpecError) as raised:
-                    snapshots.append(resolve_context(repo, 'service.transfer', **invalid_input))
-                self.assertEqual(code,raised.exception.code)
+                    snapshots.append(
+                        resolve_context(repo, "service.transfer", **invalid_input)
+                    )
+                self.assertEqual(code, raised.exception.code)
         # Nothing partial is returned, and the refusal precedes Module selection, so nothing was resolved.
-        self.assertEqual([],snapshots)
-        with self.assertRaises(SpecError) as raised:resolve_context(repo,'module.absent',phase='audit')
-        self.assertEqual('invalid_phase',raised.exception.code)
+        self.assertEqual([], snapshots)
+        with self.assertRaises(SpecError) as raised:
+            resolve_context(repo, "module.absent", phase="audit")
+        self.assertEqual("invalid_phase", raised.exception.code)
+
     def test_unknown_stage_input_cannot_be_a_hidden_read_channel(self):
-        with self.assertRaises(ValueError):resolve_context(SpecRepository(self.root),'service.transfer',stage_inputs=({'type_id':'opaque','schema_version':1,'data':{'code':'secret'}},))
+        with self.assertRaises(ValueError):
+            resolve_context(
+                SpecRepository(self.root),
+                "service.transfer",
+                stage_inputs=(
+                    {
+                        "type_id": "opaque",
+                        "schema_version": 1,
+                        "data": {"code": "secret"},
+                    },
+                ),
+            )
+
     def test_protocol_tampering_invalidates_binding(self):
         from concorde.distribution.build import write_build
-        package=self.root/'package'
-        shutil.copytree(PACKAGE/'prompts',package/'prompts')
-        shutil.copytree(PACKAGE/'skills',package/'skills')
-        shutil.copytree(PACKAGE/'capabilities',package/'capabilities')
-        shutil.copytree(PACKAGE/'protocol',package/'protocol')
-        write_build(package,'all')
-        SpecRepository(self.root,package)
+
+        package = self.root / "package"
+        shutil.copytree(PACKAGE / "prompts", package / "prompts")
+        shutil.copytree(PACKAGE / "skills", package / "skills")
+        shutil.copytree(PACKAGE / "capabilities", package / "capabilities")
+        shutil.copytree(PACKAGE / "protocol", package / "protocol")
+        write_build(package, "all")
+        SpecRepository(self.root, package)
         # The project's accepted copy is what is admitted and granted; tampering with it is a mismatch.
-        (self.root/'.concorde/protocol/kinds/module.md').write_text('changed')
-        with self.assertRaises(SpecError) as raised:SpecRepository(self.root,package)
-        self.assertEqual('protocol_mismatch',raised.exception.code)
+        (self.root / ".concorde/protocol/kinds/module.md").write_text("changed")
+        with self.assertRaises(SpecError) as raised:
+            SpecRepository(self.root, package)
+        self.assertEqual("protocol_mismatch", raised.exception.code)
+
     def test_configuration_cannot_replace_initialized_authority(self):
-        other=typed('concorde-capability-configuration',{'model':CONFIGURATION['data']['model'],'thinking':'high'})
-        result=run_capability('concorde-main',other,typed('concorde-main-request',self.task),host_context=CapabilityHost(self.root,PACKAGE))
-        self.assertEqual('configuration_mismatch',result['errors'][0]['code'])
+        other = typed(
+            "concorde-capability-configuration",
+            {"model": CONFIGURATION["data"]["model"], "thinking": "high"},
+        )
+        result = run_capability(
+            "concorde-main",
+            other,
+            typed("concorde-main-request", self.task),
+            host_context=CapabilityHost(self.root, PACKAGE),
+        )
+        self.assertEqual("configuration_mismatch", result["errors"][0]["code"])
+
     @verifies("scenario.harness.typed-reject")
     def test_wrong_version_and_extra_fields_are_rejected(self):
-        for value in [dict(typed('concorde-main-request',self.task),schema_version=True),dict(typed('concorde-main-request',self.task),schema_version=7),{'type_id':'concorde-main-request','schema_version':1,'data':{**self.task,'read_paths':['secret.py']}}]:
-            with self.subTest(value=value),self.assertRaises(TypedDataError):validate_typed(value,'concorde-main-request')
+        for value in [
+            dict(typed("concorde-main-request", self.task), schema_version=True),
+            dict(typed("concorde-main-request", self.task), schema_version=7),
+            {
+                "type_id": "concorde-main-request",
+                "schema_version": 1,
+                "data": {**self.task, "read_paths": ["secret.py"]},
+            },
+        ]:
+            with self.subTest(value=value), self.assertRaises(TypedDataError):
+                validate_typed(value, "concorde-main-request")
+
     def test_unsupported_is_not_spec_incomplete(self):
-        def cb(stage,snapshot,data,cwd):
-            if stage=='context-solve':data.update(outcome='unsupported',answer='The Spec prohibits this use.')
-        result=self.call_capability('concorde-plan',callback=cb)
-        self.assertEqual('unsupported',result['output']['data']['outcome']);self.assertEqual([],result['output']['data']['blockers']);self.assertFalse((self.root/'.concorde/attempts').exists())
-    def assertSpecOnlyReads(self,read_paths):
+        def cb(stage, snapshot, data, cwd):
+            if stage == "context-solve":
+                data.update(
+                    outcome="unsupported", answer="The Spec prohibits this use."
+                )
+
+        result = self.call_capability("concorde-plan", callback=cb)
+        self.assertEqual("unsupported", result["output"]["data"]["outcome"])
+        self.assertEqual([], result["output"]["data"]["blockers"])
+        self.assertFalse((self.root / ".concorde/attempts").exists())
+
+    def assertSpecOnlyReads(self, read_paths):
         # A Spec-only phase reads the frozen index plus the granted Spec documents and the accepted
         # Protocol copy it lists, and no implementation file.
-        self.assertIn('context.json',[Path(p).name for p in read_paths])
-        others=[p for p in read_paths if Path(p).name!='context.json']
-        self.assertTrue(others,read_paths)
-        self.assertTrue(all(p.startswith(('specs/','.concorde/protocol/')) for p in others),read_paths)
+        self.assertIn("context.json", [Path(p).name for p in read_paths])
+        others = [p for p in read_paths if Path(p).name != "context.json"]
+        self.assertTrue(others, read_paths)
+        self.assertTrue(
+            all(p.startswith(("specs/", ".concorde/protocol/")) for p in others),
+            read_paths,
+        )
+
     def test_describe_policy_launches_no_model_and_lists_exact_capsule(self):
-        result=self.call_capability('concorde-dev-loop',mode='describe-policy')
-        self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
+        result = self.call_capability("concorde-dev-loop", mode="describe-policy")
+        self.assertEqual("described", result["status"])
+        self.assertEqual([], self.double.calls)
         for policy in self.host.descriptions:
-            if policy['phase'] not in {'implementation','code-review'}:self.assertSpecOnlyReads(policy['read_paths']);self.assertEqual([],policy['write_paths'])
+            if policy["phase"] not in {"implementation", "code-review"}:
+                self.assertSpecOnlyReads(policy["read_paths"])
+                self.assertEqual([], policy["write_paths"])
+
     def test_ask_policy_describes_only_the_route_phase_without_launching(self):
-        result=self.call_capability('concorde-main',{'task':'Explain transfer','target_id':'service.transfer'},mode='describe-policy')
-        self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
-        self.assertEqual(['route'],[item['phase'] for item in self.host.descriptions])
-        self.assertSpecOnlyReads(self.host.descriptions[0]['read_paths'])
-        self.assertEqual(['scope.bank'],self.host.descriptions[0]['discovered_targets'])
-        self.assertTrue(all(item['write_paths']==[] for item in self.host.descriptions))
+        result = self.call_capability(
+            "concorde-main",
+            {"task": "Explain transfer", "target_id": "service.transfer"},
+            mode="describe-policy",
+        )
+        self.assertEqual("described", result["status"])
+        self.assertEqual([], self.double.calls)
+        self.assertEqual(["route"], [item["phase"] for item in self.host.descriptions])
+        self.assertSpecOnlyReads(self.host.descriptions[0]["read_paths"])
+        self.assertEqual(
+            ["scope.bank"], self.host.descriptions[0]["discovered_targets"]
+        )
+        self.assertTrue(
+            all(item["write_paths"] == [] for item in self.host.descriptions)
+        )
+
     def test_changed_spec_requires_replanning_the_change(self):
-        task=self.change();p=self.root/'specs/transfer/module.md';p.write_text(p.read_text()+'\nChanged obligations.\n')
-        self.assertEqual('blocked',self.call_capability('concorde-tasks',task)['status']);self.assertEqual([],self.double.calls)
+        task = self.change()
+        p = self.root / "specs/transfer/module.md"
+        p.write_text(p.read_text() + "\nChanged obligations.\n")
+        self.assertEqual(
+            "blocked", self.call_capability("concorde-tasks", task)["status"]
+        )
+        self.assertEqual([], self.double.calls)
+
     def test_changed_intent_cannot_reuse_the_worktree_change(self):
-        task=self.change();task['task']='Different behavior'
-        self.assertEqual('blocked',self.call_capability('concorde-tasks',task)['status'])
+        task = self.change()
+        task["task"] = "Different behavior"
+        self.assertEqual(
+            "blocked", self.call_capability("concorde-tasks", task)["status"]
+        )
+
     def test_spec_author_cannot_edit_provider_or_registry(self):
-        def cb(stage,snap,data,cwd):
-            if stage=='specify':data['documents']=[{'path':'specs/ledger/module.md','content':'Changed'}]
-        old=(self.root/'specs/ledger/module.md').read_bytes();result=self.call_capability('concorde-specify',callback=cb)
-        self.assertEqual('blocked',result['status']);self.assertEqual(old,(self.root/'specs/ledger/module.md').read_bytes())
+        def cb(stage, snap, data, cwd):
+            if stage == "specify":
+                data["documents"] = [
+                    {"path": "specs/ledger/module.md", "content": "Changed"}
+                ]
+
+        old = (self.root / "specs/ledger/module.md").read_bytes()
+        result = self.call_capability("concorde-specify", callback=cb)
+        self.assertEqual("blocked", result["status"])
+        self.assertEqual(old, (self.root / "specs/ledger/module.md").read_bytes())
+
     def test_domain_author_cannot_persist_missing_participant_routing(self):
-        path=self.root/'specs/bank/module.md.json';old=path.read_bytes()
-        metadata=json.loads(old);metadata['dependencies']=[]
-        def cb(stage,snap,data,cwd):
-            if stage=='specify':data['documents']=[{'path':'specs/bank/module.md.json','content':json.dumps(metadata)}]
-        result=self.call_capability('concorde-specify',{'target_id':'scope.bank','task':'Edit banking rules'},cb)
-        self.assertEqual('blocked',result['status'],result);self.assertEqual(old,path.read_bytes())
-        self.assertIn('dependency promises',result['errors'][0]['message'])
+        path = self.root / "specs/bank/module.md.json"
+        old = path.read_bytes()
+        metadata = json.loads(old)
+        metadata["dependencies"] = []
+
+        def cb(stage, snap, data, cwd):
+            if stage == "specify":
+                data["documents"] = [
+                    {
+                        "path": "specs/bank/module.md.json",
+                        "content": json.dumps(metadata),
+                    }
+                ]
+
+        result = self.call_capability(
+            "concorde-specify",
+            {"target_id": "scope.bank", "task": "Edit banking rules"},
+            cb,
+        )
+        self.assertEqual("blocked", result["status"], result)
+        self.assertEqual(old, path.read_bytes())
+        self.assertIn("dependency promises", result["errors"][0]["message"])
+
     def test_planner_cannot_emit_spec_replacements(self):
-        def cb(stage,snap,data,cwd):
-            if stage=='plan':data['documents']=[{'path':'specs/transfer/module.md','content':'Changed'}]
-        self.assertEqual('blocked',self.call_capability('concorde-plan',callback=cb)['status'])
+        def cb(stage, snap, data, cwd):
+            if stage == "plan":
+                data["documents"] = [
+                    {"path": "specs/transfer/module.md", "content": "Changed"}
+                ]
+
+        self.assertEqual(
+            "blocked", self.call_capability("concorde-plan", callback=cb)["status"]
+        )
+
     def test_delivery_requires_real_current_checks(self):
-        task=self.change();self.call_capability('concorde-tasks',task);self.call_capability('concorde-implement',task)
-        with self.assertRaises(SpecError):self.completion(task)
-        self.assertEqual('succeeded',self.call_capability('concorde-validate',task)['status'])
+        task = self.change()
+        self.call_capability("concorde-tasks", task)
+        self.call_capability("concorde-implement", task)
+        with self.assertRaises(SpecError):
+            self.completion(task)
+        self.assertEqual(
+            "succeeded", self.call_capability("concorde-validate", task)["status"]
+        )
         self.completion(task)
-        (self.root/'checks/transfer_check.py').write_text('raise AssertionError("new expectation")')
-        with self.assertRaisesRegex(SpecError,'changed|stale'):self.completion(task)
+        (self.root / "checks/transfer_check.py").write_text(
+            'raise AssertionError("new expectation")'
+        )
+        with self.assertRaisesRegex(SpecError, "changed|stale"):
+            self.completion(task)
+
     def test_separate_check_inputs_invalidate_evidence(self):
-        check=self.registry['checks'][0];check['inputs']=['acceptance.json'];self.save();(self.root/'acceptance.json').write_text('{}')
-        task=self.change();self.call_capability('concorde-tasks',task);self.call_capability('concorde-implement',task);self.call_capability('concorde-validate',task)
-        (self.root/'acceptance.json').write_text('{"revision":2}')
-        with self.assertRaisesRegex(SpecError,'stale'):self.completion(task)
+        check = self.registry["checks"][0]
+        check["inputs"] = ["acceptance.json"]
+        self.save()
+        (self.root / "acceptance.json").write_text("{}")
+        task = self.change()
+        self.call_capability("concorde-tasks", task)
+        self.call_capability("concorde-implement", task)
+        self.call_capability("concorde-validate", task)
+        (self.root / "acceptance.json").write_text('{"revision":2}')
+        with self.assertRaisesRegex(SpecError, "stale"):
+            self.completion(task)
+
     def test_atomic_replacements_rollback_after_failed_verification(self):
-        original=(self.root/'specs/transfer/module.md').read_bytes()
-        changes=[file_change(self.root,'specs/transfer/module.md','changed'),file_change(self.root,'new.md','new')]
-        def reject():raise ValueError('invalid target')
-        with self.assertRaises(ValueError):apply_files(self.root,changes,{'specs/transfer/module.md','new.md'},verify=reject)
-        self.assertEqual(original,(self.root/'specs/transfer/module.md').read_bytes());self.assertFalse((self.root/'new.md').exists())
+        original = (self.root / "specs/transfer/module.md").read_bytes()
+        changes = [
+            file_change(self.root, "specs/transfer/module.md", "changed"),
+            file_change(self.root, "new.md", "new"),
+        ]
+
+        def reject():
+            raise ValueError("invalid target")
+
+        with self.assertRaises(ValueError):
+            apply_files(
+                self.root,
+                changes,
+                {"specs/transfer/module.md", "new.md"},
+                verify=reject,
+            )
+        self.assertEqual(
+            original, (self.root / "specs/transfer/module.md").read_bytes()
+        )
+        self.assertFalse((self.root / "new.md").exists())
+
     def test_stale_file_proposal_never_overwrites_newer_content(self):
-        change=file_change(self.root,'specs/transfer/module.md','proposed');(self.root/'specs/transfer/module.md').write_text('user change')
-        with self.assertRaises(ValueError):apply_files(self.root,[change],{'specs/transfer/module.md'})
-        self.assertEqual('user change',(self.root/'specs/transfer/module.md').read_text())
+        change = file_change(self.root, "specs/transfer/module.md", "proposed")
+        (self.root / "specs/transfer/module.md").write_text("user change")
+        with self.assertRaises(ValueError):
+            apply_files(self.root, [change], {"specs/transfer/module.md"})
+        self.assertEqual(
+            "user change", (self.root / "specs/transfer/module.md").read_text()
+        )
+
     @verifies("scenario.harness.typed-validate")
     def test_unsupported_and_malformed_contract_schemas_fail_admission(self):
-        for schema in [{'type':'object','unevaluatedProperties':False},{'$ref':'https://example.invalid/schema'},{'minLength':True},{'enum':[]},{'minimum':3,'maximum':1}]:
-            with self.subTest(schema=schema),self.assertRaises(ContractError):admit(schema)
+        for schema in [
+            {"type": "object", "unevaluatedProperties": False},
+            {"$ref": "https://example.invalid/schema"},
+            {"minLength": True},
+            {"enum": []},
+            {"minimum": 3, "maximum": 1},
+        ]:
+            with self.subTest(schema=schema), self.assertRaises(ContractError):
+                admit(schema)
+
     def downgrade_to_profile7(self):
-        config=json.loads((self.root/'.concorde/config.json').read_text());config={'profile_version':7,'specification_root':'specs','root_module_id':'module.old','capability_configuration':config['capability_configuration']}
-        (self.root/'.concorde/config.json').write_text(json.dumps(config))
+        config = json.loads((self.root / ".concorde/config.json").read_text())
+        config = {
+            "profile_version": 7,
+            "specification_root": "specs",
+            "root_module_id": "module.old",
+            "capability_configuration": config["capability_configuration"],
+        }
+        (self.root / ".concorde/config.json").write_text(json.dumps(config))
+
     def test_profile7_cannot_be_silently_used_by_new_agent_runtime(self):
-        self.downgrade_to_profile7();result=self.call_capability('concorde-main');self.assertEqual('blocked',result['status']);self.assertEqual([],self.double.calls)
+        self.downgrade_to_profile7()
+        result = self.call_capability("concorde-main")
+        self.assertEqual("blocked", result["status"])
+        self.assertEqual([], self.double.calls)

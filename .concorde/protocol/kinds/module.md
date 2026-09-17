@@ -9,8 +9,11 @@ without becoming another authority over the specification.
 
 A developer must be able to understand the responsibility, use it correctly and maintain its
 realization without assembling meaning from an inventory. Reading begins with Purpose, Usage,
-Design and Relationships. Precise requirements, scenarios and interface agreements remain reading
-content, whether placed later in the entry or in registered companion documents.
+Design and Relationships. The entry and its explanatory topic companions have role `module`.
+Precise requirements, scenarios and canonical interface agreements belong in owned role
+`implementation` companions, never in the entry or topic pages. Both roles remain reading content
+and together form one complete Module specification; neither role is a separate owner or context.
+A Module may use several implementation documents rather than one oversized specification file.
 
 ### Purpose
 
@@ -59,6 +62,12 @@ navigation tree is derived, not an independent authority.
 
 ## Precise obligations
 
+Define these only in implementation-role units owned directly by the Module. Topic names can group
+related definitions but do not own them. Module Specs explain the important guarantees and link to
+these canonical definitions; readers should not need to read every acceptance case to understand
+the Module. Do not move coherent topic explanations wholesale merely because they once contained
+formal definitions.
+
 ### Requirements
 
 A requirement has a stable identity, a title and one decidable statement containing SHALL or
@@ -103,7 +112,7 @@ agreement explains inputs, outputs, effects, failures, compatibility and repeat 
 scenarios. A structured contract may use a readable schema and example; structured syntax is not a
 reason to classify useful contract content as machine-only metadata.
 
-A shared interface can occupy an ordinary owned companion referenced by many Modules. It retains
+A shared interface's canonical definition occupies an owned implementation-role companion referenced by many Modules. It retains
 one definition and one owner. Participant metadata names ID, version, role and peer and points to
 local readable participation conditions, relied-upon guarantees and obligations. It does not copy
 the canonical schema or common semantics, and does not override that agreement.
@@ -210,20 +219,10 @@ flowchart LR
 [Explain the provider's responsibility, when it is selected and which included canonical guarantees
 this Module relies on. Link to those guarantees, and state local duties and failure reactions.]
 
-## Requirements
+## Precise specifications
 
-### req.example.promise — [Requirement title]
-
-[One decidable sentence containing SHALL or SHALL NOT exactly once.]
-
-## Scenarios
-
-### scenario.example.situation — [Scenario title]
-
-- GIVEN [the precondition]
-- WHEN [the trigger]
-- THEN [the promised outcome]
-- BUT [an outcome that must not happen]
+[Explain the important guarantees above and link to the Module's owned requirements, scenarios
+and interface contracts. Do not define formal obligations in this entry or explanatory topic pages.]
 
 ## Unresolved information
 
@@ -239,8 +238,8 @@ the owned reading. A diagram must not invent entities or import every included p
 
 ```json
 {
-  "schema_version": 1,
-  "document": {"id": "document.example.module", "owner": "module.example"},
+  "schema_version": 2,
+  "document": {"id": "document.example.module", "owner": "module.example", "role": "module"},
   "entities": [
     {"id": "entity.example.coordinator", "title": "Coordinator", "kind": "program",
      "meaning": "#entity.example.coordinator", "files": ["src/example/"]},
@@ -262,11 +261,36 @@ of inventing a provider, file or interface merely to fill this starter.
 
 ## Companion documents and interfaces
 
-A companion has its own metadata pair and sole owner but no mandatory entry sections. Put precise
-scenarios or interface definitions there when this improves reading. Register the reading path in
-its owner's collection; consumers reference its document ID or the owner's Module ID.
+A companion has its own metadata pair and sole Module owner but no mandatory entry sections.
+Use role `module` for explanatory topics such as Registry or Publication. Use role `implementation`
+for the Module's requirements, scenarios and precise interfaces. Never place formal definitions in
+explanatory topics. Register every reading path in the same owner's collection; consumers reference
+its document ID or the owner's Module ID. A split requires explicit references to the units now
+containing relied-upon definitions; following Markdown links does not include them.
 
-A readable structured agreement is defined once:
+For example, `requirements.md` has schema-2 metadata:
+
+```json
+{
+  "schema_version": 2,
+  "document": {"id": "document.example.requirements", "owner": "module.example", "role": "implementation"},
+  "entities": [], "dependencies": [], "bindings": []
+}
+```
+
+Its reading member can define:
+
+```markdown
+# Example requirements
+
+### req.example.promise — [Requirement title]
+
+[One decidable sentence containing SHALL or SHALL NOT exactly once.]
+```
+
+Use the [scenario fragment](scenario.md) in another registered implementation-role unit, or in the
+same unit when this keeps the Module's precise specification readable. A canonical structured
+agreement is also defined once in an implementation-role unit:
 
 ````markdown
 ```concorde-contract
@@ -311,8 +335,9 @@ record nor this template grants access to implementation or undeclared external 
 
 A scenario belongs to the Module owning its defining document unit. It can describe boundary use or
 an internal verification situation. It is not another Spec kind, document owner or context filter.
-If saved in a companion, register its Markdown reading path and author the paired metadata file
-with the owner's identity and explicit declaration arrays. No enclosing usage/architecture parts
+Define it only in an implementation-role companion, never in `module.md` or a module-role topic.
+Register its Markdown reading path and author schema-2 metadata with the owner's identity,
+`document.role: implementation` and explicit declaration arrays. No enclosing usage/architecture parts
 are required. The [required format](../format.md) applies.
 
 ````markdown

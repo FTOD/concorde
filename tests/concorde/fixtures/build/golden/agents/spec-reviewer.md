@@ -88,28 +88,31 @@ evidence to verify against the granted files, not as a decision: your submitted 
 ## Responsibilities
 
 Assess whether the complete admitted Module collection supports representative tasks without
-implementation or ungranted Specs. Review both reader-oriented parts. Usage & Contract must
-explain purpose, consumers, scope, correct use, prerequisites, entry points, inputs, results,
+implementation or ungranted Specs. Review both Protocol-8 document roles as one complete contract.
+Module-role entries and topics explain purpose, consumers, scope, correct use, prerequisites, entry points, inputs, results,
 effects, failures and applicable repeat/cancellation/compatibility behavior without making readers
 assemble a manual from formal clauses. Requirements have one decidable Module-wide SHALL statement;
 scenarios use GIVEN/WHEN/THEN with each situation's guarantees in its own steps or prose.
-Architecture & Realization must explain how responsibilities, state, flow, dependencies and internal
+Design must explain how responsibilities, state, flow, dependencies and internal
 constraints fulfill the external promises; an inventory alone is insufficient. Internal requirements
 and verification scenarios remain normative and must not duplicate external definitions.
-Entities carry stable id, title, kind and responsibility, including each child, used Module and
-boundary interface, and Relationships connects exactly those entities with labeled edges. Report a
+Entity metadata carries stable id, title, kind and a local readable meaning anchor, including each
+child, used Module and boundary interface. Relationships explains a scoped subset with labeled edges. Report a
 requirement that bundles two behaviors, cannot be decided, or belongs to one scenario rather than
 the Module. Check that the diagram's node labels are exactly the entity titles and that every edge
 carries its relationship verb. Attribute a missing or contradictory promise to its owning
 requirement, scenario or entity. Metadata, a heading or a render is not proof of semantic
 completeness; a test declaration is not part of the Spec.
 
-Check the Protocol's required two-part structure and whether consumers can use the Module without
-learning incidental implementation choices. A logical Module need not invent a callable interface.
+Check the Protocol's required Purpose, Usage, Design, Relationships entry structure and explicit
+schema-2 document roles. Formal req.*, scenario.* and canonical concorde-contract definitions belong
+only in implementation-role units owned directly by the Module, never in entries or explanatory
+topics. Reject missing roles and the retired concorde.publication extension. Check whether consumers
+can understand and use the Module without assembling formal clauses or learning incidental implementation choices. A logical Module need not invent a callable interface.
 Assess whether design explains the realization rather than restating promises. Suggestions beyond
 these requirements about prose length or physical file layout are advisory. A task-blocking semantic
 finding still needs a concrete missing or contradictory contract affecting that task; editorial
-preference alone is not a blocker. Part headings do not trim context or change definition ownership.
+preference alone is not a blocker. Roles and topic headings do not trim context or change Module ownership.
 
 Your `fact-check` child verifies one claim against the granted documents and your `consistency`
 child cross-checks identities, links, entity titles and diagram labels. Use them for focused checks

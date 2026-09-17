@@ -1,8 +1,9 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "document": {
     "id": "document.spec.registry",
-    "owner": "module.spec"
+    "owner": "module.spec",
+    "role": "module"
   },
   "entities": [],
   "dependencies": [],

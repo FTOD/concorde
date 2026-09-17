@@ -1,8 +1,9 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "document": {
     "id": "document.development.module",
-    "owner": "module.development"
+    "owner": "module.development",
+    "role": "module"
   },
   "entities": [
     {
@@ -60,9 +61,7 @@
       "id": "entity.development.file-transactions",
       "title": "File transactions",
       "kind": "shared program",
-      "files": [
-        "src/concorde/spec/changes.py"
-      ],
+      "files": ["src/concorde/spec/changes.py"],
       "meaning": "#entity.development.file-transactions"
     },
     {

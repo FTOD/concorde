@@ -1,15 +1,11 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "document": {
     "id": "document.views.requirements",
-    "owner": "module.views"
+    "owner": "module.views",
+    "role": "implementation"
   },
   "entities": [],
   "dependencies": [],
-  "bindings": [],
-  "extensions": {
-    "concorde.publication": {
-      "collection": "implementation"
-    }
-  }
+  "bindings": []
 }

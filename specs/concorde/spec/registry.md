@@ -1,195 +1,57 @@
 # Registry
 
-This document defines `SpecRepository`'s selection and query behavior: what a caller receives when it selects a Module, reads its documents and structured declarations, or resolves a stable ID to its complete Spec file set. [values](values.md) defines the exact returned records and Framework configuration versions; [structure](structure.md) defines validation; [initialize](initialize.md) defines project initialization.
+The registry makes a project's Module boundaries explicit. It lets developers and tools select the
+contract for a responsibility without inferring ownership from directories, packages or links.
+This is a topic of the [Spec Module](module.md), not another Module or a separate owner of rules.
 
-### Scenarios
+## Independent relationships
 
-#### scenario.spec.select-module — Selecting a Module's complete context
+Ownership answers which Module authors a document. Composition answers which responsibility
+contains another. A use identifies a separately owned provider, while a reference selects knowledge
+needed to understand the current Module. None of those relations substitutes for the others: using
+a provider does not make it a child, and reading its contract does not grant its implementation.
 
-- GIVEN a registered Module identity
-- WHEN a caller selects it
-- THEN the repository returns that Module's complete descriptor including its owned documents and explicit references
-- AND resolving its context includes only the full documents selected by those declarations, with original ownership retained
+A Module registers both its explanatory documents and its precise implementation specifications in
+one owned collection. Each reading path has one metadata companion; the two members share document
+identity and Module ownership. The explicit role organizes the reader's path through the collection,
+not which obligations apply. A topic called Registry does not own the requirements that describe it.
 
-#### scenario.spec.select-scenario-focus — Selecting through a scenario focus
+Implementation bindings answer a different question: where the responsibility is realized. An entity
+can name exact files or directory prefixes, and several Modules can list shared code without merging
+their contracts. Pending entries record intent, not existing implementation or proof of completion.
+The [value model](values.md) explains how these identities differ from snapshot and evidence records.
 
-- GIVEN a registered scenario identity that belongs to a Module
-- WHEN a caller selects the Module with that scenario as focus
-- THEN the repository returns the same complete Module descriptor as an unfocused selection
-- AND the focus narrows attention only, never the returned file set
+## Selecting context
 
-#### scenario.spec.reject-foreign-focus — Rejecting a focus that is not the target's own
+Construct a repository from the initialized project's explicit configuration and accepted Protocol.
+Select a Module to obtain its descriptor and use its Spec context query to obtain complete sources.
+Selecting a scenario chooses the same owner's complete context; the focus narrows the question, not
+the available specification. The source index retains each unit's owner and inclusion provenance.
 
-- GIVEN a scenario identity that belongs to a different Module than the one being selected
-- WHEN a caller selects the target with that focus
-- THEN selection fails with an invalid-focus error
-- AND no descriptor is returned
+References expand only once from the selected Module. A Module reference includes that provider's
+owned collection; a document reference includes one whole paired unit. Provider references, ordinary
+Markdown links and neighboring files do not expand the result. This makes missing necessary meaning
+an explicit contract gap rather than an invitation to read more code or documentation implicitly.
 
-#### scenario.spec.query-files — Resolving a stable ID to its complete file set
+The distinction matters after a document split: a consumer referencing only the old topic needs an
+explicit reference to any new unit containing a relied-upon definition. A consumer referencing the
+whole owner already includes its new owned units. A link is navigation, not that inclusion decision.
 
-- GIVEN a registered Module identity or a registered scenario identity
-- WHEN a caller queries its Spec file set
-- THEN the query returns the owning Module's complete resolved document context, deduplicated and sorted by canonical path
-- BUT it neither follows uses, parentage nor entity listing entries, and it never reads the returned files' contents
+## Changes and affected consumers
 
-### Requirements
+Treat a repository instance as a snapshot. Reconstruct it after authored sources or registrations
+change rather than mixing old declarations with new content. Metadata edits matter as much as prose
+edits because roles, ownership, references and exact source bytes participate in context identity.
 
-#### req.spec.no-writes — No writes during construction or queries
+The context-user index identifies consumers of a changed Spec unit; the implementation reverse index
+identifies Modules whose contracts concern a changed code file. Those indexes serve different review
+questions and neither grants a writer permission to edit another owner's sources. Invalid or
+ambiguous declarations stop admission instead of yielding a partially trustworthy repository.
 
-SpecRepository construction and every query method SHALL NOT write project files.
+## Precise specifications
 
-#### req.spec.snapshot-reconstruct — A repository instance is an immutable snapshot
-
-A repository instance SHALL be treated as a snapshot.
-
-#### req.spec.reconstruct-for-changes — Reconstruct the repository to see changes
-
-A caller SHALL reconstruct the repository to observe source changes.
-
-#### req.spec.deterministic-order — Deterministic order for repeated queries
-
-Repeated queries against the same admitted repository SHALL return results in the same order.
-
-#### req.spec.local-contracts-only — Definition ownership stays local
-
-contracts(target) SHALL return only canonical definitions in documents owned by the target.
-
-#### req.spec.contracts-defer-agreement-checks — Cross-Module checks stay with the validator
-
-contracts(target) SHALL leave canonical-definition uniqueness and cross-Module binding checks to the
-repository validator.
-
-### Interface signatures
-
-```python
-SpecRepository(project_root: Path | str, package_root: Path | str | None = None, *,
-               registry_bytes: bytes | None = None,
-               document_overrides: dict[str, bytes] | None = None)
-SpecRepository.select(target_id: str, focus_id: str | None = None) -> SpecTarget
-SpecRepository.document(path: str) -> SpecDocument
-SpecRepository.documents(target: SpecTarget) -> tuple[SpecDocument, ...]
-SpecRepository.contracts(target: SpecTarget) -> tuple[dict, ...]
-SpecRepository.dependencies(target: SpecTarget) -> tuple[dict, ...]
-SpecRepository.definitions(target: SpecTarget) -> ModuleDefinitions
-SpecRepository.entities(target: SpecTarget) -> tuple[SpecEntity, ...]
-SpecRepository.scenarios(target: SpecTarget) -> tuple[Scenario, ...]
-SpecRepository.entity_files(target: SpecTarget) -> dict[str, SpecEntity]
-SpecRepository.entity_for_path(target: SpecTarget, path: str) -> SpecEntity | None
-SpecRepository.external_references(target: SpecTarget) -> tuple[str, ...]
-SpecRepository.external_reference_paths(target: SpecTarget) -> tuple[str, ...]
-SpecRepository.external_reference_files(entry: str) -> tuple[str, ...]
-SpecRepository.external_reference_digest(entry: str) -> str
-SpecRepository.external_reference_records(target: SpecTarget) -> list[dict]
-SpecRepository.missing_external_references(target: SpecTarget) -> tuple[str, ...]
-SpecRepository.implementation_entries(target: SpecTarget) -> tuple[str, ...]
-SpecRepository.implementation_paths(target: SpecTarget) -> tuple[str, ...]
-SpecRepository.implementation_files(target: SpecTarget) -> tuple[str, ...]
-SpecRepository.missing_entries(target: SpecTarget) -> tuple[str, ...]
-SpecRepository.children(target: SpecTarget) -> tuple[SpecTarget, ...]
-SpecRepository.descendants(target: SpecTarget) -> tuple[SpecTarget, ...]
-SpecRepository.listing_users(path: str) -> tuple[str, ...]
-SpecRepository.affected_modules(paths: tuple[str, ...]) -> tuple[SpecTarget, ...]
-SpecRepository.covering_modules(target: SpecTarget) -> tuple[SpecTarget, ...]
-digest(value: bytes | Any) -> str
-read_file(root: Path, relative: str) -> bytes
-strings(value: Any, label: str, *, nonempty: bool = False) -> tuple[str, ...]
-identifier(value: Any) -> str
-```
-
-Listing queries separate declarations from current disk state. `implementation_entries` returns the
-declared entries unchanged, exact files and directory prefixes alike; `implementation_paths` returns
-their base paths without a trailing slash, for permission and history roots; `implementation_files`
-expands each directory entry into the existing regular files below it, skipping the Framework's
-skipped directories, dot-prefixed names, symlinks and skipped suffixes; `missing_entries` returns the
-entries whose file or directory does not exist yet. `entity_files` is keyed by declared entry, and
-`entity_for_path` answers which entity owns a concrete file through the most specific covering entry.
-`listing_users` and `affected_modules` resolve a path or entry through the reverse index, in which a
-directory prefix covers every path below it, and `covering_modules` answers the same question for one
-Module's whole listing, so a peer that binds a file inside a listed directory is found as well.
-The external-reference queries serve a Module's `references` of kind `external`, the Protocol's
-external references: `external_references` and `external_reference_paths` return the declared
-entries and their base paths, `external_reference_files` expands one entry with the ordinary
-exclusions plus media and archive suffixes, `external_reference_digest` is one digest over those
-files' paths and bytes (cached per repository), `external_reference_records` is the snapshot form
-(entry, directory flag, digest), and `missing_external_references` names entries that do not
-exist. Admission rejects an external reference that is or contains a Spec document, that overlaps
-the Module's own files, or that is declared twice; context resolution skips external references
-entirely.
-
-No call above writes project files. Host candidate overlays stay in memory. A repository is a snapshot-oriented reader with document caching; reconstruct it after source changes. Selection returns the full target descriptor even with a scenario focus. Ownership and references are explicit; context expands references once. Paths, links and entity file listings do not add files.
-
-### Required collaborator promises
-
-The wire boundary's `decode(text: str) -> Any` rejects duplicate JSON keys and non-finite numbers;
-`canonical(value: Any) -> str` produces stable sorted-key compact JSON. Its
-`safe_path(value: str, field: str = "") -> str` and
-`checked_path(project: Path, relative: str, field: str = "") -> Path` reject absolute paths, traversal,
-backslashes and symlink components. Failures raise `TypedDataError(ValueError)` carrying `code`
-and `field`; they never retry through a different path. The offline schema boundary provides
-`admit(schema: Any, root: dict | None = None) -> None` and
-`validate(value: Any, schema: Any, field: str = "", *, root: dict | None = None, depth: int = 0) -> None`.
-This is a bounded offline subset, not a full JSON Schema dialect. Schemas are objects or booleans.
-The admitted keywords are `$schema`, `$id`, `$defs`, `$ref`, `title`, `description`, `examples`,
-`default`, `type`, `properties`, `required`, `additionalProperties`, `items`, `minItems`, `maxItems`,
-`uniqueItems`, `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `enum`, `const`, `anyOf`,
-`oneOf`, `allOf` and `format`. The metadata keywords do not select a dialect or fetch resources.
-Types are object, array, string, integer, number, boolean and null, individually or in a nonempty
-array; integers satisfy number, while booleans do not satisfy numeric types. References must be
-direct `#/$defs/<name>` references to the supplied root's definitions; nested pointers and remote
-references are rejected. Object properties, required fields and additional-properties rules,
-homogeneous array items and uniqueness, inclusive size/numeric bounds, Python-regex string patterns,
-exact typed enum/const values and the three schema combinators are enforced. Only `project-path`
-format is supported and delegates to the safe-path boundary. Bounds must be valid finite numbers
-or nonnegative integer lengths with minimum no greater than maximum. Unknown keywords, invalid
-types, unresolved references and malformed rule values fail admission; schema/value recursion beyond
-100 validation levels fails validation. `validate` expects an admitted schema.
-
-Schema admission or example-validation failures raise `ContractError(ValueError)` with a `field`
-JSON pointer (empty for an admission/root error). Invalid `project-path` values instead propagate
-`TypedDataError` from the path boundary. `contracts()` propagates both without wrapping, returns
-no partial tuple on any error, and separately raises `SpecError` for malformed contract metadata.
-It rejects unknown keywords, remote references, invalid schemas and invalid examples without network
-access. Local `contracts` includes every block from the target's own registered documents, returns an
-empty tuple when no blocks exist, and leaves canonical-definition uniqueness and global binding checks to the
-separate repository validator. This is the canonical offline schema and path boundary used by interface definitions; consumers
-include this document explicitly and link to it without copying its vocabulary.
-
-### Stable-ID Spec context queries
-
-`spec_files(entity_id: str) -> tuple[str, ...]` is the metadata-only locator query. Module and
-scenario identities resolve to the selected owner's full context, sorted by canonical path:
-owned document units plus one-level Module/document references, each expanded to its reading and metadata member. Identity resolution reads declared metadata, not unselected reading bodies.
-A scenario's defining document never trims the result or transfers the scenario to a consumer.
-Document IDs, requirements, entities and paths are unsupported query kinds (`SpecError/invalid_target`).
-Unknown references, wrong kinds, ambiguous ownership and unsafe aliases reject the selection.
-
-`spec_context(entity_id: str) -> SpecResolution` reads the resolved files and supplies exact byte
-digests, original owner and every inclusion reason. It rejects unavailable required bytes rather
-than returning a partial success. Reconstruct the repository after source changes. Both APIs are
-read-only, offline and deterministic. Neither follows links, parentage, uses, referenced Modules'
-references or implementation listings.
-
-`SpecResolution` is a closed version-1 record with `schema_version`, `registration` (the selecting Module descriptor), `query_id`, `query_kind` (`module` or `scenario`),
-`module_id`, `reading_entry` (the selected owner's `module.md` path), `documents` (the selected
-owner's ordered registered paths), `references` (its typed reference pairs) and `sources` (sorted
-index records). Each source has `document_id`, `path`, `owner`, `digest`, `role` (`reading` or `metadata`) and
-`reasons`; no source carries its body, which a consumer reads from the file the record identifies. A reason is `{kind, id}`: kind `owned`
-names the selected Module, kind `module` names a direct referenced Module, and kind `document`
-names a direct referenced document unit. Both members have identical ownership and provenance. Reasons are unique and sorted by kind then ID. Digests hash
-exact bytes before UTF-8 decoding; invalid UTF-8 rejects resolution. The record is bound into
-the Harness snapshot, not independently authored as another context inventory.
-
-`context_contracts(target)` returns canonical contracts in this resolution with owner/document
-provenance; `contract_bindings(target)` returns only owned bindings. `definitions`, `entities`,
-`scenarios`, dependency and implementation queries remain ownership-only. Reference inclusion
-never affects their entity union, diagram requirements or code permissions.
-
-`context_users(document_id)` returns the owner plus every Module whose one-level context includes
-the document, sorted by Module ID. It drives review/invalidation, separately from the implementation
-reverse index. Ownership or reference edits compare both old and candidate users, even when the
-resulting file set is unchanged. A Module reference tracks additions/removals to the provider's
-owned documents; changes only to the provider's references do not expand the consumer.
-
-The runtime implements these resolution and binding interfaces under Protocol 7.0.0/Profile 14/
-schema 5. Older profiles and membership-based declarations fail admission. Owned-definition and
-implementation queries remain separate from the explicit context resolver.
+The Spec Module owns the [requirements](requirements.md#registry),
+[scenarios](scenarios.md#registry) and [query interfaces](contracts.md#registry-interface-signatures).
+The [context record](contracts.md#registry-stable-id-spec-context-queries) defines exact fields,
+ordering and failures; [structural validation](structure.md) explains what deterministic evidence
+can and cannot establish. These are parts of the same complete Module specification.

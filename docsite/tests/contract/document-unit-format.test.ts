@@ -13,8 +13,8 @@ const reading =
  '<a id="entity.example.a"></a><a id="entity.example.b"></a>\n\nA produces the record B after admission.\n\n' +
  '## Relationships\n\nThis view shows result production.\n\n```mermaid\nflowchart LR\n    producer["A"]\n    b["B"]\n    producer -->|produces| b\n```\n';
 const declaration = {
- schema_version: 1,
- document: { id: "document.example", owner: "module.example" },
+ schema_version: 2,
+ document: { id: "document.example", owner: "module.example", role: "module" },
  entities: [
   {
    id: "entity.example.a",
@@ -34,6 +34,59 @@ const declaration = {
 };
 
 describe("Protocol-defined reading and document metadata", () => {
+ // verifies: scenario.views.reject-reading-collection
+ it("requires explicit schema-2 roles and rejects formal definitions in entries and topics", () => {
+  const meanings = readingMeanings(reading, "example/module.md");
+  for (const value of [
+   { ...declaration, schema_version: 1 },
+   {
+    ...declaration,
+    document: { id: "document.example", owner: "module.example" },
+   },
+   { ...declaration, document: { ...declaration.document, role: "topic" } },
+   {
+    ...declaration,
+    extensions: { "concorde.publication": { collection: "module" } },
+   },
+  ])
+   expect(() =>
+    metadata(
+     JSON.stringify(value),
+     "example/module.md.json",
+     "module.example",
+     meanings,
+    ),
+   ).toThrow();
+  const fragments = [
+   "\n### req.example.once — One result\n\nExample SHALL return one result.\n",
+   "\n### scenario.example.once — One result\n\n- GIVEN input\n- WHEN called\n- THEN one result\n",
+   '\n```concorde-contract\n{"id":"contract.example.result"}\n```\n',
+  ];
+  for (const fragment of fragments) {
+   for (const primary of [true, false])
+    expect(() =>
+     requireReading(reading + fragment, "example/topic.md", primary, "module"),
+    ).toThrow(/implementation-role/);
+   expect(() =>
+    requireReading(
+     reading + fragment,
+     "example/contracts.md",
+     false,
+     "implementation",
+    ),
+   ).not.toThrow();
+   expect(() =>
+    requireReading(
+     reading + "\n````markdown\n" + fragment + "\n````\n",
+     "example/module.md",
+     true,
+    ),
+   ).not.toThrow();
+  }
+  expect(() =>
+   requireReading(reading, "example/module.md", true, "implementation"),
+  ).toThrow(/module.md must have/);
+ });
  it("reads grouped anchors without copying semantic strings into metadata", () => {
   const meanings = requireReading(reading, "example/module.md", true);
   expect(meanings.get("entity.example.a")).toBe(

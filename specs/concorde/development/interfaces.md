@@ -34,7 +34,7 @@ capabilities `concorde-init`, `concorde-configure`, `concorde-validate` and
 generated worker instructions. Loading an Agent independently verifies build freshness before
 trusting its generated binding. The deterministic-entry exception does not waive Protocol, input,
 permission, validation or delivery-evidence checks; see the canonical
-[build admission scenario](../distribution/build.md#scenario.distribution.build-stale-blocks-execution).
+[build admission scenario](../distribution/scenarios.md#scenario.distribution.build-stale-blocks-execution).
 
 The invocation's project root is the working directory of that entry process, exactly as resolved
 and without searching parent directories. The registry, Spec collections, lifecycle state and listed
@@ -93,7 +93,7 @@ The [Specification Flow](../specify-loop/specify-loop.md) and
 [Development Flow](../dev-loop/development.md) own ordering and lifecycle policy.
 The host rechecks registry, context and initialized configuration after every stage.
 
-The canonical [context selection agreement](../harness/context.md#contract.context.selection)
+The canonical [context selection agreement](../harness/contracts.md#contract.context.selection)
 is included through Development's Module reference to Harness.
 
 <a id="participation.document.development.interfaces.1"></a>
@@ -102,7 +102,7 @@ is included through Development's Module reference to Harness.
 
 **When this applies.** Before assessment, planning, authoring or review for a selected Module.
 
-**Relied-upon guarantee.** [Selection](../harness/context.md#contract.context.selection) determines the complete admitted contract and its original owners.
+**Relied-upon guarantee.** [Selection](../harness/contracts.md#contract.context.selection) determines the complete admitted contract and its original owners.
 
 **Local obligation.** Supply the explicit Module and task; stop dependent transitions on gaps or stale context, and never treat included provider definitions as writable local Specs.
 
@@ -124,7 +124,7 @@ proposal and the stage-input artifacts that pass between stages inside one capab
 | --- | --- | --- |
 | `concorde-capability-invocation@3` | Every request, on stdin | `{type_id, schema_version: 3, capability_id, mode: execute\|describe-policy, configuration, input}`. `capability_id` must name a Skill; a non-public or unknown name is refused with `unknown_capability`. `configuration` is a `concorde-capability-configuration@1` TypedValue or null (falls back to the initialized project settings); `input` is the named capability's own request TypedValue. Any other `schema_version` is refused with `unsupported_version`. |
 | `concorde-capability-result@3` | Every response, on stdout | `{type_id, schema_version: 3, capability_id, invocation_id, mode, status: succeeded\|blocked\|failed\|described, workspace, output, errors: [{code,field,message}]}`. `output` is the named capability's own response TypedValue or null; `workspace` is null or host-supplied worktree metadata. Exit code 0 means `succeeded`/`described`; 3 means `blocked`/`failed`. |
-| `concorde-capability-configuration@1` | The invocation's `configuration` field, and `concorde-configure-request@1`/`-response@1` | `{model?, thinking?: off\|minimal\|low\|medium\|high\|xhigh\|max, timeout_seconds?, workers?: {<worker> or <worker>/<child>: {model?, thinking?, timeout_seconds?}}}`; `model` is Pi's `provider/id`. The top-level values are the project default; a worker entry overrides them for one worker and a child entry for one worker child, which inherits its worker's entry (see [the worker selection scenario](../harness/module.md#scenario.harness.worker-selection)). An absent model or thinking level keeps Pi's default and an absent timeout the worker profile's. A key naming no worker or worker child, a timeout on a child, a nonpositive timeout or a model without a provider is rejected. Stored at initialization under `.concorde/config.json`'s `capability_configuration` key; an invocation or child stage whose configuration differs from that stored snapshot stops with `configuration_mismatch`. |
+| `concorde-capability-configuration@1` | The invocation's `configuration` field, and `concorde-configure-request@1`/`-response@1` | `{model?, thinking?: off\|minimal\|low\|medium\|high\|xhigh\|max, timeout_seconds?, workers?: {<worker> or <worker>/<child>: {model?, thinking?, timeout_seconds?}}}`; `model` is Pi's `provider/id`. The top-level values are the project default; a worker entry overrides them for one worker and a child entry for one worker child, which inherits its worker's entry (see [the worker selection scenario](../harness/scenarios.md#scenario.harness.worker-selection)). An absent model or thinking level keeps Pi's default and an absent timeout the worker profile's. A key naming no worker or worker child, a timeout on a child, a nonpositive timeout or a model without a provider is rejected. Stored at initialization under `.concorde/config.json`'s `capability_configuration` key; an invocation or child stage whose configuration differs from that stored snapshot stops with `configuration_mismatch`. |
 
 #### Capability requests and responses
 
@@ -156,7 +156,7 @@ an immutable Issue receipt plus its task-local blocked_step, never a second copy
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-context-snapshot@6` | Every bound worker invocation's frozen input | [Canonical snapshot](../harness/context.md#context-snapshot-resolution); preserve its resolution provenance and reject stale inputs. |
+| `concorde-context-snapshot@6` | Every bound worker invocation's frozen input | [Canonical snapshot](../harness/contracts.md#context-context-snapshot-resolution); preserve its resolution provenance and reject stale inputs. |
 | `concorde-agent-stage-context@4` | Host to worker, wrapping the launch | `{snapshot: concorde-context-snapshot@6, change_id, expected_artifacts}`. |
 | `concorde-agent-stage-result@2` | Worker to host, the completion | `{context_id, outcome, answer, blockers, documents, plan, tasks, issue_decision?}`; `documents`/`plan`/`tasks`/`issue_decision` are populated only by the phase that produces them. A mismatched `context_id` is rejected as `incompatible_handoff`. |
 
@@ -173,7 +173,7 @@ an immutable Issue receipt plus its task-local blocked_step, never a second copy
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-discovery-context@5` | Host to discovery worker | [Canonical discovery context](../harness/context.md#global-spec-context-assembly); only explicit selections may expand discovery. |
+| `concorde-discovery-context@5` | Host to discovery worker | [Canonical discovery context](../harness/contracts.md#context-global-spec-context-assembly); only explicit selections may expand discovery. |
 | `concorde-main-stage-context@4` | Wraps the discovery context for launch | `{snapshot: concorde-discovery-context@5}`. |
 | `concorde-main-stage-result@2` | Discovery worker to host, the completion | `{context_id, outcome, answer, expand_targets, routes, blockers, topology_design (nullable)}`. |
 | `concorde-topology-design@1` | design-topology's output, embedded in the main stage result | `{summary, registry, spec_tasks (nonempty), migration_constraints, acceptance (nonempty)}`. |
@@ -182,7 +182,7 @@ an immutable Issue receipt plus its task-local blocked_step, never a second copy
 | `concorde-topology-author-result@2` | Author to host, the completion | `{context_id, target_id, outcome, answer, blockers, documents}`. |
 | `concorde-topology-application@1` | Host-private, produced by accept-topology and consumed by apply-topology | `{application_id, topology_proposal: concorde-topology-proposal@1, base_registry_digest, protocol_binding, files (nonempty)}`; the public response exposes only its ArtifactRef, never these bytes. |
 
-The canonical [discovery record](../harness/context.md#global-spec-context-assembly) defines
+The canonical [discovery record](../harness/contracts.md#context-global-spec-context-assembly) defines
 deduplicated source pools and per-Module provenance. Development retains it unchanged in each
 handoff and checks currentness before using its result; it does not define a second record shape.
 The topology-author context's `candidate_references` is the candidate Module's explicit references;
@@ -377,7 +377,7 @@ links state local uses and obligations; providers own the definitions, schemas a
 | Provider definition | Development use and obligation |
 | --- | --- |
 | [Registry and resolution](../spec/registry.md), [values](../spec/values.md) | Select the unique task owner, freeze its complete resolved context, reconstruct after changes and stop on failed admission. |
-| [Context](../harness/context.md#contract.context.selection) | Bind every stage to the current task and exact snapshot; handle gaps and stale-context failures before progressing. |
+| [Context](../harness/contracts.md#contract.context.selection) | Bind every stage to the current task and exact snapshot; handle gaps and stale-context failures before progressing. |
 | [Runtime values](../harness/runtime-values.md) and [permissions](../harness/permissions.md) | Compile bounded role permissions and preserve empty reviewer writes; never widen a policy after rejection. |
 | [Execution](../harness/execution.md) | Require the bound fresh worker process and its single matching result; stop on failure and retain private evidence. |
 | [Typed values](../harness/typed-values.md) | Validate every handoff before state mutation; never use raw logs or code as later Spec-only input. |

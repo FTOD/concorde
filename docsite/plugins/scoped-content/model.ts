@@ -12,6 +12,7 @@ import {
   headingList,
   declarations,
   requireReading,
+  readingMeanings,
   metadata,
   relationshipLabels,
   type UnitMetadata,
@@ -345,12 +346,14 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
       requireThat(!physical.has(key), `Physical source alias: ${member}`);
       physical.add(key);
     }
-    const meanings = requireReading(
+    const meanings = readingMeanings(content, path);
+    const unit = metadata(metadataRaw, path + ".json", references[0], meanings);
+    requireReading(
       content,
       path,
       path === primaryDocument(byId.get(references[0])!),
+      unit.document.role,
     );
-    const unit = metadata(metadataRaw, path + ".json", references[0], meanings);
     const declaration = unit.document;
     requireThat(
       !allIds.has(declaration.id),
@@ -614,26 +617,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
       cache.get(path)!;
     const owner = byId.get(declaration.owner)!;
     const primary = primaryDocument(owner) === path;
-    const publication = unit.extensions?.["concorde.publication"];
-    let readingCollection: ReadingCollection = "module";
-    if (publication !== undefined) {
-      requireThat(
-        publication !== null &&
-          typeof publication === "object" &&
-          !Array.isArray(publication) &&
-          Object.keys(publication).join(",") === "collection" &&
-          "collection" in publication &&
-          (publication.collection === "module" ||
-            publication.collection === "implementation"),
-        `Invalid concorde.publication extension: ${path}.json`,
-      );
-      readingCollection = (publication as { collection: ReadingCollection })
-        .collection;
-    }
-    requireThat(
-      !primary || readingCollection === "module",
-      `Module reading entry must stay in Module Specs: ${path}`,
-    );
+    const readingCollection = unit.document.role;
     const includedBy = [...contexts]
       .filter(([, context]) => context.has(path))
       .map(([targetId, context]) => ({

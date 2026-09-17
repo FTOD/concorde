@@ -2,8 +2,9 @@
 
 A scenario belongs to the Module owning its defining document unit. It can describe boundary use or
 an internal verification situation. It is not another Spec kind, document owner or context filter.
-If saved in a companion, register its Markdown reading path and author the paired metadata file
-with the owner's identity and explicit declaration arrays. No enclosing usage/architecture parts
+Define it only in an implementation-role companion, never in `module.md` or a module-role topic.
+Register its Markdown reading path and author schema-2 metadata with the owner's identity,
+`document.role: implementation` and explicit declaration arrays. No enclosing usage/architecture parts
 are required. The [required format](../format.md) applies.
 
 ````markdown

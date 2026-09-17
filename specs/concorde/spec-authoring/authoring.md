@@ -29,33 +29,7 @@ are the composing flow's decisions. This capability alone neither reviews its ow
 implements or marks a candidate ready. Topology's special candidate-author context is a distinct
 existing mode, not an undeclared call to this ordinary specify adapter.
 
-### Scenarios
+## Precise specifications
 
-#### scenario.spec-authoring.gap — Missing meaning prevents replacements
-
-- GIVEN the selected Module's complete Spec lacks meaning necessary for the authoring task
-- WHEN the fresh author cannot complete its owned replacements without inventing that meaning
-- THEN it returns attributed gaps with no document replacements
-- AND existing document bytes and unresolved blockers remain available for explicit repair
-
-#### scenario.spec-authoring.foreign-output — A consumer cannot replace its provider's document
-
-- GIVEN a selected Module references a document owned by another Module
-- WHEN its author proposes a replacement for that foreign document
-- THEN the host rejects the replacement rather than treating reference inclusion as ownership
-- AND project document bytes and prior blockers remain unchanged
-
-#### scenario.spec-authoring.stale-output — Changed inputs reject author output
-
-- GIVEN an author prepared owned replacements from a frozen current context
-- AND admitted source bytes, context or configuration change before acceptance
-- WHEN the host rechecks those replacements
-- THEN it rejects the stale or incompatible output without applying replacements
-- AND previous document bytes and blockers remain available for a fresh authoring invocation
-
-#### scenario.spec-authoring.invalid-output — Invalid metadata prevents application
-
-- GIVEN a selected Module and its currently registered document identities and metadata
-- WHEN ordinary authoring returns replacements with invalid identity or metadata
-- THEN the host rejects the replacements without applying them
-- AND successful assessment alone does not clear the previous authoring blockers
+The Spec Authoring Module owns the exact obligations and interface details in [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

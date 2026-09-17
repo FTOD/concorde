@@ -3,10 +3,8 @@
 These are the precise Module-wide obligations of [Views](module.md). They constrain implementations,
 including externally observable behavior; they are not a description of current code or a separate
 Spec owner. Read the Module entry first for purpose, correct use and design. Concrete situations and
-interface definitions live in [publication](publication.md), [pipeline](pipeline.md),
-[viewer](viewer.md) and [UA export](ua-graph.md).
-
-## Requirements
+interface definitions live in the Module-owned [scenarios](scenarios.md) and [contracts](contracts.md),
+with explanatory topics linked from the Module entry.
 
 ### req.views.registry-derived-pages — Pages and navigation derive from the registry
 
@@ -24,7 +22,7 @@ Publication SHALL support project-owned custom docs through independent tabs out
 
 The generic template defaults to Module Specs alone until a registered companion explicitly selects
 Implementation Specs, and publishes no unregistered Projections section. See
-[custom docs](publication.md#scenario.views.custom-docs) for configuration and migration.
+[custom docs](scenarios.md#scenario.views.custom-docs) for configuration and migration.
 
 ### req.views.reading-collections — Reading tabs preserve one complete Module specification
 
@@ -33,8 +31,8 @@ Publication SHALL preserve the same document ownership, canonical definitions an
 Module Specs is the explanation-first reading path; Implementation Specs contains precise normative
 obligations, scenarios and interface details. Both remain human-readable specification content.
 Publication classification never makes a document optional for context resolution or review.
-The [collection scenarios](publication.md#scenario.views.reading-collections) define admission,
-navigation and the default for unclassified documents.
+The [collection scenarios](scenarios.md#scenario.views.reading-collections) define admission,
+navigation and rejection of missing or invalid document roles.
 
 ### req.views.no-directory-scanning — No directory scanning or link-based discovery
 
@@ -52,8 +50,8 @@ The guarantee covers the site's own published pages, including enabled reading c
 Cross-Module references are valid navigation and do not establish document ownership and references or expand
 Spec context. External destinations retain their existing handling; publication does not promise
 the continued availability of another website. Current-owner legacy aliases and failure
-behavior are defined in [publication](publication.md#scenario.views.publish-legacy-redirect)
-and [pipeline](pipeline.md#scenario.views.validate-candidate-mismatch).
+behavior are defined in [publication](scenarios.md#scenario.views.publish-legacy-redirect)
+and [pipeline](scenarios.md#scenario.views.validate-candidate-mismatch).
 
 ### req.views.no-agent-context-grant — No extra agent context from a rendered view
 
@@ -81,7 +79,7 @@ The UA exporter and official viewer remain separate non-docsite facilities.
 
 Concorde's own source-checkout site has an independent Agent Flows page describing actual runtime
 execution. It is excluded from the consumer template and does not derive a graph from the Spec
-registry. See [Agent execution publication](pipeline.md#scenario.views.agent-flows).
+registry. See [Agent execution publication](scenarios.md#scenario.views.agent-flows).
 
 ### req.views.agent-flows — Concorde-only execution diagrams
 

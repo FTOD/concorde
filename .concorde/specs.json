@@ -162,7 +162,9 @@
       "checks": [],
       "documents": [
         "specs/concorde/module.md",
-        "specs/concorde/ownership-migration.md"
+        "specs/concorde/ownership-migration.md",
+        "specs/concorde/requirements.md",
+        "specs/concorde/scenarios.md"
       ],
       "files": [
         "tests/concorde/development/test_review.py",
@@ -253,7 +255,10 @@
         "specs/concorde/spec/registry.md",
         "specs/concorde/spec/values.md",
         "specs/concorde/spec/structure.md",
-        "specs/concorde/spec/initialize.md"
+        "specs/concorde/spec/initialize.md",
+        "specs/concorde/spec/requirements.md",
+        "specs/concorde/spec/scenarios.md",
+        "specs/concorde/spec/contracts.md"
       ],
       "files": [
         "capabilities/init.py",
@@ -296,7 +301,10 @@
         "specs/concorde/harness/execution.md",
         "specs/concorde/harness/host.md",
         "specs/concorde/harness/runtime-values.md",
-        "specs/concorde/harness/typed-values.md"
+        "specs/concorde/harness/typed-values.md",
+        "specs/concorde/harness/requirements.md",
+        "specs/concorde/harness/scenarios.md",
+        "specs/concorde/harness/contracts.md"
       ],
       "files": [
         "capabilities/",
@@ -391,6 +399,10 @@
         {
           "kind": "external",
           "path": "reference/pi-subagents/"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.scenarios"
         }
       ],
       "title": "Harness",
@@ -403,7 +415,9 @@
         "specs/concorde/development/interfaces.md",
         "specs/concorde/development/capabilities.md",
         "specs/concorde/development/review-and-gaps.md",
-        "specs/concorde/development/flows.md"
+        "specs/concorde/development/flows.md",
+        "specs/concorde/development/requirements.md",
+        "specs/concorde/development/scenarios.md"
       ],
       "files": [
         "capabilities/context_solve.py",
@@ -528,7 +542,9 @@
         "specs/concorde/issues/module.md",
         "specs/concorde/issues/interfaces.md",
         "specs/concorde/issues/lifecycle.md",
-        "specs/concorde/issues/issues.md"
+        "specs/concorde/issues/issues.md",
+        "specs/concorde/issues/requirements.md",
+        "specs/concorde/issues/scenarios.md"
       ],
       "files": [
         "capabilities/issue_solver/",
@@ -588,7 +604,10 @@
         "specs/concorde/distribution/module.md",
         "specs/concorde/distribution/installation.md",
         "specs/concorde/distribution/build.md",
-        "specs/concorde/distribution/runtime.md"
+        "specs/concorde/distribution/runtime.md",
+        "specs/concorde/distribution/requirements.md",
+        "specs/concorde/distribution/scenarios.md",
+        "specs/concorde/distribution/contracts.md"
       ],
       "files": [
         "capabilities/__init__.py",
@@ -649,7 +668,9 @@
         "specs/concorde/views/publication.md",
         "specs/concorde/views/pipeline.md",
         "specs/concorde/views/viewer.md",
-        "specs/concorde/views/ua-graph.md"
+        "specs/concorde/views/ua-graph.md",
+        "specs/concorde/views/scenarios.md",
+        "specs/concorde/views/contracts.md"
       ],
       "files": [
         "docsite/",
@@ -731,7 +752,9 @@
         "specs/concorde/planning/module.md",
         "specs/concorde/planning/assessment.md",
         "specs/concorde/planning/plan.md",
-        "specs/concorde/planning/tasks.md"
+        "specs/concorde/planning/tasks.md",
+        "specs/concorde/planning/requirements.md",
+        "specs/concorde/planning/scenarios.md"
       ],
       "files": [
         "capabilities/context_solve.py",
@@ -774,6 +797,22 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.contracts"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.scenarios"
         }
       ],
       "title": "Planning",
@@ -783,7 +822,9 @@
       "checks": [],
       "documents": [
         "specs/concorde/implementation/module.md",
-        "specs/concorde/implementation/implementation.md"
+        "specs/concorde/implementation/implementation.md",
+        "specs/concorde/implementation/requirements.md",
+        "specs/concorde/implementation/scenarios.md"
       ],
       "files": [
         "capabilities/implement.py",
@@ -833,6 +874,22 @@
         {
           "kind": "document",
           "id": "document.review.review"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.contracts"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.scenarios"
         }
       ],
       "title": "Implementation",
@@ -842,7 +899,9 @@
       "checks": [],
       "documents": [
         "specs/concorde/spec-authoring/module.md",
-        "specs/concorde/spec-authoring/authoring.md"
+        "specs/concorde/spec-authoring/authoring.md",
+        "specs/concorde/spec-authoring/requirements.md",
+        "specs/concorde/spec-authoring/scenarios.md"
       ],
       "files": [
         "capabilities/specify.py",
@@ -887,6 +946,22 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.contracts"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.scenarios"
         }
       ],
       "title": "Spec Authoring",
@@ -897,7 +972,9 @@
       "documents": [
         "specs/concorde/review/module.md",
         "specs/concorde/review/review.md",
-        "specs/concorde/review/review-result.md"
+        "specs/concorde/review/review-result.md",
+        "specs/concorde/review/requirements.md",
+        "specs/concorde/review/scenarios.md"
       ],
       "files": [
         "capabilities/review.py",
@@ -941,6 +1018,22 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.contracts"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.scenarios"
         }
       ],
       "title": "Review",
@@ -955,7 +1048,9 @@
       "checks": [],
       "documents": [
         "specs/concorde/validation/module.md",
-        "specs/concorde/validation/validation.md"
+        "specs/concorde/validation/validation.md",
+        "specs/concorde/validation/requirements.md",
+        "specs/concorde/validation/scenarios.md"
       ],
       "files": [
         "capabilities/validate.py",
@@ -999,6 +1094,22 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.contracts"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.scenarios"
         }
       ],
       "title": "Validation",
@@ -1008,7 +1119,9 @@
       "checks": [],
       "documents": [
         "specs/concorde/delivery/module.md",
-        "specs/concorde/delivery/delivery.md"
+        "specs/concorde/delivery/delivery.md",
+        "specs/concorde/delivery/requirements.md",
+        "specs/concorde/delivery/scenarios.md"
       ],
       "files": [
         "capabilities/deliver.py",
@@ -1053,6 +1166,22 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.contracts"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.scenarios"
         }
       ],
       "title": "Delivery",
@@ -1067,7 +1196,9 @@
       "checks": [],
       "documents": [
         "specs/concorde/query-routing/module.md",
-        "specs/concorde/query-routing/query-and-routing.md"
+        "specs/concorde/query-routing/query-and-routing.md",
+        "specs/concorde/query-routing/requirements.md",
+        "specs/concorde/query-routing/scenarios.md"
       ],
       "files": [
         "capabilities/main.py",
@@ -1110,6 +1241,22 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.contracts"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.scenarios"
         }
       ],
       "title": "Query and Routing",
@@ -1119,7 +1266,9 @@
       "checks": [],
       "documents": [
         "specs/concorde/topology/module.md",
-        "specs/concorde/topology/topology.md"
+        "specs/concorde/topology/topology.md",
+        "specs/concorde/topology/requirements.md",
+        "specs/concorde/topology/scenarios.md"
       ],
       "files": [
         "capabilities/main.py",
@@ -1168,6 +1317,22 @@
         {
           "kind": "document",
           "id": "document.review.review"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.contracts"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.scenarios"
         }
       ],
       "title": "Topology",
@@ -1182,7 +1347,9 @@
       "checks": [],
       "documents": [
         "specs/concorde/dev-loop/module.md",
-        "specs/concorde/dev-loop/development.md"
+        "specs/concorde/dev-loop/development.md",
+        "specs/concorde/dev-loop/requirements.md",
+        "specs/concorde/dev-loop/scenarios.md"
       ],
       "files": [
         "capabilities/dev_loop.py",
@@ -1251,6 +1418,22 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.contracts"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.scenarios"
         }
       ],
       "title": "Development Flow",
@@ -1270,7 +1453,9 @@
       "checks": [],
       "documents": [
         "specs/concorde/specify-loop/module.md",
-        "specs/concorde/specify-loop/specify-loop.md"
+        "specs/concorde/specify-loop/specify-loop.md",
+        "specs/concorde/specify-loop/requirements.md",
+        "specs/concorde/specify-loop/scenarios.md"
       ],
       "files": [
         "capabilities/specify_loop.py",
@@ -1325,6 +1510,22 @@
         {
           "kind": "document",
           "id": "document.issues.interfaces"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.contracts"
+        },
+        {
+          "kind": "document",
+          "id": "document.distribution.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.scenarios"
         }
       ],
       "title": "Specification Flow",

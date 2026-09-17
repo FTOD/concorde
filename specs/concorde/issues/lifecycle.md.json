@@ -1,8 +1,9 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "document": {
     "id": "document.issues.lifecycle",
-    "owner": "module.issues"
+    "owner": "module.issues",
+    "role": "module"
   },
   "entities": [],
   "dependencies": [],

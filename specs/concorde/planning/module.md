@@ -61,27 +61,6 @@ flowchart TB
     e0 -->|derives implementation obligations as| domain_tasks
 ```
 
-## Requirements
-
-### req.planning.admitted-contract — Assess sufficiency before saving a plan
-
-Planning SHALL persist a plan only after sufficient assessment of the selected current Module contract.
-
-## Scenarios
-
-### scenario.development.task-history-identities — Task authors receive reserved identities
-
-- GIVEN a target may retain task lists from earlier repair rounds
-- WHEN the Host invokes a fresh task author, including after replanning
-- THEN its typed stage inputs include every retained historical task ID and, for a scope or code-review repair, every ID in the list being replaced
-- AND those reserved IDs constrain identity only and add no software obligations or implementation contents
-- AND returned tasks must be nonempty, internally unique, initially incomplete and disjoint from the reserved IDs
-- AND a collision reports the conflicting IDs without rewriting the result, replacing tasks or discarding history
-
-The independent contracts are [Assessment](assessment.md), [Plan](plan.md) and [Tasks](tasks.md).
-
-## Dependencies and composition
-
 ### Development
 
 <a id="entity.planning.development"></a><a id="agreement.document.planning.module.1"></a>
@@ -100,7 +79,7 @@ Freeze Spec-only inputs and run separate isolated context assessors, planners an
 
 This collaboration applies before invoking the context assessor, planner or task author, including admitted repair task authoring.
 
-- [Complete context selection](../harness/context.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
+- [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
 
 ### Spec
 
@@ -110,7 +89,7 @@ Resolve the selected complete Module contract, declared participant relationship
 
 This collaboration applies when selecting planning inputs, checking local dependency declarations or rechecking the plan revision.
 
-- [Owner and context resolution](../spec/registry.md#stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
+- [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
 
 ## Realization and reuse limits
 
@@ -120,3 +99,8 @@ Agent grant or configurable arbitrary flow is created by this Spec boundary. Hos
 phase artifacts and permissions remain mandatory. A new flow requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.
+
+## Precise specifications
+
+The Planning Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

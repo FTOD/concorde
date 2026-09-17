@@ -1,6 +1,7 @@
 # Required format
 
-Protocol 7 separates complete content from its human-readable subset. This chapter defines the
+Protocol 8 separates complete content from its human-readable subset and assigns each document
+unit an explicit explanatory or precise-specification role. This chapter defines the
 representation of both. It does not define a documentation site's navigation or layout. Templates
 are starters; satisfying syntax does not establish semantic completeness.
 
@@ -35,16 +36,23 @@ Relationships each contain explanatory prose, not only links, headings or diagra
 contains at least one Mermaid flowchart for the principal collaboration. Honest unknowns are stated
 explicitly; the presence of prose is not proof that its explanation is sufficient.
 
-Requirements, Scenarios, interface details, rationale and unresolved facts may follow, in an order
-suited to the Module. Canonical definitions may live in registered companions. Companions have no
-mandatory entry template or enclosing parts. The former `Usage & Contract`, `Architecture &
-Realization` and standalone `Entities` reading structure is not admitted.
+`module.md` has role `module`. Its additional sections and module-role companions explain topics,
+rationale, correct use and unresolved facts. They MUST NOT contain formal `req.*` or `scenario.*`
+definitions or canonical `concorde-contract` fences. Usage examples and links to precise definitions
+are permitted. A topic remains an explanation owned by its Module, not a nested specification owner.
+
+Role `implementation` contains the Module's formal requirements, scenarios and canonical interface
+contracts. Units may group definitions by subject without creating a second ownership hierarchy.
+Both roles are registered, paired human-readable Spec content. Companions have no mandatory entry
+template or enclosing parts. Implementation details that do not constrain behavior or significant
+design do not become obligations merely by appearing in code. The former `Usage & Contract`,
+`Architecture & Realization` and standalone `Entities` entry structure is not admitted.
 
 Machine management blocks `concorde-document`, `concorde-entities`, `concorde-dependencies` and
 `concorde-contract-binding` are not reading declarations. They must be migrated to metadata with
 readable meaning references. Examples inside enclosing fences remain opaque. Interface schemas,
-examples and `concorde-contract` definitions remain readable where useful; this is not a blanket
-ban on structured content.
+examples and `concorde-contract` definitions remain human-readable content; canonical definitions
+belong in implementation-role units. Fenced examples of Spec syntax do not declare definitions.
 
 ## Metadata representation
 
@@ -52,8 +60,8 @@ The companion has these required fields and optional `extensions`:
 
 ```json
 {
-  "schema_version": 1,
-  "document": {"id": "document.checkout.module", "owner": "module.checkout"},
+  "schema_version": 2,
+  "document": {"id": "document.checkout.module", "owner": "module.checkout", "role": "module"},
   "entities": [
     {"id": "entity.checkout.service", "title": "Checkout service", "kind": "program",
      "meaning": "#entity.checkout.service", "files": ["src/checkout/"], "pending": []}
@@ -68,9 +76,13 @@ The companion has these required fields and optional `extensions`:
 }
 ```
 
-`schema_version` is the integer 1. `document` has exactly `id` and `owner`, agreeing with
-registration. The three declaration arrays are explicit and may be empty. There is no
-`main_visible` property: Protocol reading membership is not a publishing preference.
+`schema_version` is the integer 2. `document` has exactly `id`, `owner` and `role`. Identity and
+owner agree with registration; `role` is exactly `module` or `implementation`, with no implicit
+default. The unique `module.md` entry MUST have role `module`. Unknown/missing roles, version-1
+metadata and an implementation-role entry require explicit migration and are invalid. The three
+declaration arrays are explicit and may be empty. There is no `main_visible` property: both roles
+remain Protocol reading content. The retired `concorde.publication` classification extension MUST
+NOT be used: publishers derive classification from `document.role`, not a competing role declaration.
 `extensions`, if present, is a nonempty object keyed by stable names. An implementation must define
 and validate the extension vocabulary it uses; an extension cannot change Protocol ownership,
 inclusion or the required reading subset. Essential meaning cannot be hidden in extension payloads.
@@ -130,7 +142,7 @@ participant's complete context includes the exact canonical definition version.
 
 ## Requirements
 
-A definition is a level-2 through level-5 ATX heading `req.<identity> — Title`, followed by a
+In an implementation-role unit, a definition is a level-2 through level-5 ATX heading `req.<identity> — Title`, followed by a
 statement. A spaced en dash or hyphen is also accepted. The first paragraph is one sentence with
 uppercase SHALL or SHALL NOT exactly once. A requirement section ends at the next heading of any
 level and has no nested heading. It cannot be defined inside a scenario. Subsequent paragraphs,
@@ -138,7 +150,7 @@ lists and fences explain the statement; a list item beginning with a requirement
 
 ## Scenarios
 
-A definition is a level-2 through level-5 ATX heading `scenario.<identity> — Title`, with the same
+In an implementation-role unit, a definition is a level-2 through level-5 ATX heading `scenario.<identity> — Title`, with the same
 dash choices. Its section ends at the next heading of any level and has no nested heading. Every
 list item in that section is a step beginning with GIVEN, WHEN, THEN, AND or BUT and a space.
 The first step is GIVEN or WHEN; at least one WHEN and one THEN are required. AND and BUT continue
@@ -147,7 +159,7 @@ Requirements and scenarios belong to the sole owner of their defining unit.
 
 ## Canonical structured contracts
 
-A `concorde-contract` JSON fence defines exactly `id`, `version`, `schema`, `semantics`, `example`.
+An implementation-role unit's `concorde-contract` JSON fence defines exactly `id`, `version`, `schema`, `semantics`, `example`.
 The version is a positive integer, semantics is nonempty, and the example satisfies the schema.
 The tool's schema vocabulary is explicit and offline: schema references cannot load Spec units or
 remote resources. The contract ID has one canonical definition; its anchor is exposed in reading.
@@ -188,8 +200,13 @@ not another source of specification obligations.
 ## Drafts and migration
 
 Unresolved facts are explicit gaps. Templates do not invent behavior or establish completeness.
-Migrating the old representation requires preserving identities and valid obligations, moving
-mechanical declarations to companions and retaining readable meaning. It also reconciles owned
+Migrating Protocol 7 requires explicit schema-2 roles for every unit, moving all formal requirements,
+scenarios and canonical structured contracts out of entries and explanatory topics into Module-owned
+implementation units, and removing publisher-specific classification extensions. Preserve definition
+IDs, Module ownership and valid obligations; retain coherent explanatory meaning in topic documents.
+If a unit is split, the retained unit keeps its document identity and each new unit gets a new one.
+Update references to include moved definitions explicitly; links alone cannot repair context.
+Moving a definition does not change interface behavior or require a behavior-version increment. It also reconciles owned
 pairs, reference sets, links, file exclusions, context digests and affected evidence. A format
 migration is an explicit project change, never an installer's silent reinterpretation. Registry,
 Framework configuration and worker-wire versions are separate implementation compatibility gates.

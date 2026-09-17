@@ -87,7 +87,7 @@ so callers must still use typed validation for project-path and contextual admis
 
 ### Offline schema and artifact contracts
 
-Harness relies on the [canonical offline schema and path boundary](../spec/registry.md#required-collaborator-promises),
+Harness relies on the [canonical offline schema and path boundary](../spec/contracts.md#registry-required-collaborator-promises),
 included through its Module reference to Spec. It admits schemas before validating examples and
 propagates the provider's errors without fetching remote resources or widening file authority.
 
@@ -103,51 +103,7 @@ key set `{id, path, digest}`, validates their shape and recomputes each artifact
 bytes fail with `stale_reference`; unsafe paths fail with `invalid_field`. It returns `None` on
 success, ignores scalar leaves, and creates no read authority beyond the caller's trusted root.
 
-### Interface signatures
+## Precise specifications
 
-These signatures identify public call shapes; bodies and private helpers are outside this Spec.
-
-Public functions of typed_data:
-
-```text
-canonical(value: Any) -> str
-decode(text: str) -> Any
-obj(properties: dict, optional: tuple[str, ...]=()) -> dict
-array(items: dict, *, unique: bool=False) -> dict
-typed_schema(type_id: str) -> dict
-check_schema(value: Any, schema: dict, field: str='') -> None
-safe_path(value: str, field: str='') -> str
-checked_path(project: Path, relative: str, field: str='') -> Path
-typed(type_id: str, data: dict) -> dict
-validate_typed(value: Any, expected: str | None=None, field: str='') -> dict
-artifact(project: Path, identifier: str, relative: str) -> dict
-verify_artifacts(project: Path, value: Any, field: str='') -> None
-json_schema(type_id: str) -> dict
-```
-
-Public functions of contracts:
-
-```text
-dependencies(capability: str) -> tuple[str, ...]
-contracts() -> dict[str, tuple[str, str]]
-schemas() -> dict
-exported_types() -> tuple[str, ...]
-```
-
-Public functions of wire_shapes:
-
-```text
-obj(properties: dict, optional: tuple[str, ...]=()) -> dict
-array(items: dict, *, unique: bool=False) -> dict
-typed_schema(type_id: str) -> dict
-```
-
-Public functions of schema:
-
-```text
-pointer(base: str, key: Any) -> str
-admit(schema: Any, root: dict | None=None) -> None
-validate(value: Any, schema: Any, field: str='', *, root: dict | None=None, depth: int=0) -> None
-```
-
-Failures return structured findings or the declared exception; callers must stop the affected transition. Repeating an unchanged read is side-effect free. Mutations require current preconditions and explicit caller-owned paths. Local contract facts above remain authoritative without reading the parent or collaborating Specs.
+The Harness Module owns the exact obligations and interface details in [contracts](contracts.md).
+These companions are part of the same complete Module specification, not separate topic owners.

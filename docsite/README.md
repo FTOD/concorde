@@ -30,8 +30,9 @@ Publication validates complete document units: each registered Markdown reading 
 local readable meaning anchors, scoped relationship diagrams and complementary interface bindings.
 The Markdown is the Protocol-defined reading subset, not an independently generated summary.
 
-The entry reads Purpose, Usage, Design and Relationships. Precise requirements/scenarios may follow
-or live in owned companions; publication never automatically extracts them or writes a summary.
+The entry reads Purpose, Usage, Design and Relationships. Formal requirements/scenarios belong
+only in owned implementation-role companions; publication never automatically extracts them or
+writes a summary.
 The publisher creates one page per reading document and does not append a duplicate Files inventory
 or publish metadata as a second page. An auxiliary Spec metadata disclosure shows document identity,
 owner, inclusion provenance and the separate reading/metadata source digests. Both members participate
@@ -60,19 +61,22 @@ details in registered owned companions, linking to their canonical definitions i
 them. Implementation Specs means specifications implementations must satisfy, including external
 behavior, not a record of current code or a temporary implementation plan.
 
-To place a companion in the second tab, add this publisher-owned extension to its `.md.json`:
+Protocol 8 requires every `.md.json` to use schema 2 and declare `document.role` explicitly:
 
 ```json
-"extensions": {
-  "concorde.publication": {"collection": "implementation"}
+{
+  "schema_version": 2,
+  "document": {"id": "document.example.requirements", "owner": "module.example", "role": "implementation"},
+  "entities": [], "dependencies": [], "bindings": []
 }
 ```
 
-The extension has exactly one field, `collection`, accepting `module` or `implementation`. Omission
-defaults to `module`; `module.md` must stay in that collection. Invalid shapes, unknown fields and
-values, or a classified implementation entry reject publication. No classification is inferred from
-paths, headings or definition syntax. This uses Protocol 7's existing extension mechanism and does
-not upgrade the accepted Protocol, registry schema or Framework profile.
+Use `module` for the entry and explanatory topics and `implementation` for precise specifications.
+Missing or invalid roles, schema-1 metadata, an implementation-role `module.md`, or formal
+requirement/scenario/structured-contract definitions in module-role reading reject publication.
+The pilot's `concorde.publication` extension is retired and rejected even when it agrees with the
+role. Classification is never inferred from paths or headings. Both Python admission and the
+publisher enforce this Protocol rule; registry schema 5 and Framework Profile 14 remain unchanged.
 
 The second sidebar follows the same registry parentage but contains only classified companions and
 omits empty branches. Each registered document appears in exactly one sidebar at its unchanged
@@ -82,8 +86,10 @@ available. Metadata changes invalidate byte-bound context, review and build evid
 ownership, complete context membership or file permissions. Both collections remain Protocol reading
 content; never configure these companions as `customDocs`.
 
-Without classified companions there is no Implementation Specs tab. Concorde's Views Module is the
-initial pilot; other Modules are unchanged. A source relocation still requires updating source links:
+Without implementation-role companions there is no Implementation Specs tab; an honest newly
+initialized draft can have only its explanatory entry until actual obligations are authored.
+All 17 Concorde Modules have migrated, with requirements and scenarios directly owned by each
+Module and explanatory topics retained in Module Specs. A source relocation still requires updating source links:
 stable definition IDs do not by themselves redirect old page/fragment URLs.
 
 ## Site identity

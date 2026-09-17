@@ -30,7 +30,7 @@ parallel tab for precise obligations and interfaces, with links back to the owni
 Both tabs read from the same registry: references never duplicate a document, and changing its tab
 neither changes its canonical route nor removes it from complete agent Spec context.
 Classification is explicit, never inferred from a filename or the presence of SHALL statements.
-The [publication contract](publication.md#scenario.views.reading-collections) specifies the details.
+The [publication contract](scenarios.md#scenario.views.reading-collections) specifies the details.
 
 The Spec reader presents Usage before Design, so using a Module
 does not require first reading its entity/file inventory. Both explanations remain canonical reading content.
@@ -50,8 +50,9 @@ Module parentage rather than directory structure. The Docsite build interface se
 materialization, candidate build, source/link validation and promotion. Only a current validated
 Candidate site replaces the Published site; a failure preserves the last successful build.
 Metadata participates in source identity and auxiliary provenance, not an appended file inventory.
-A publisher-owned metadata extension assigns a companion to a reading collection. It changes only
-navigation: both sidebars derive from the same Module parentage, each document appears once, and
+The Protocol's explicit document role assigns each source to a reading collection; the publisher
+validates that formal definitions occur only in Implementation Specs. Role-based navigation retains
+one complete Module specification: both sidebars derive from the same Module parentage, each document appears once, and
 shared provider definitions stay at their owner's canonical page. Main entries retain an explanatory
 reading path; exact requirements and scenarios can be authored once in owned companions rather
 than repeated or extracted into a second generated specification.
@@ -156,10 +157,10 @@ flowchart LR
 ## Precise specifications
 
 The explanation above is the entry to the Views specification. Its
-[Module-wide requirements](requirements.md), [publication behavior](publication.md),
-[build pipeline](pipeline.md), [viewer launch](viewer.md) and [UA export](ua-graph.md)
-provide the precise obligations, concrete scenarios and interface definitions used for implementation
-and verification. The docsite groups these owned companions under **Implementation Specs**.
+[Module-wide requirements](requirements.md), [scenarios](scenarios.md) and
+[interface contracts](contracts.md) provide the precise obligations used for implementation and
+verification under **Implementation Specs**. Publication, pipeline, viewer and UA-export pages
+remain explanatory topics under **Module Specs**.
 They remain normative parts of this same Module, not code documentation or a separate context.
 
 ## Dependencies and composition
@@ -175,7 +176,7 @@ Supply the explicit registry, document ownership and references, relationships a
 This collaboration applies when loading publication inputs, materializing pages or navigation, or exporting the UA graph skeleton.
 
 - [Derive pages and graph structure from explicit unique ownership, references and entity listings](../spec/structure.md#registry-shape)
-- [Resolve inclusion provenance without recursive reads](../spec/registry.md#stable-id-spec-context-queries)
+- [Resolve inclusion provenance without recursive reads](../spec/contracts.md#registry-stable-id-spec-context-queries)
 
 ### Distribution
 

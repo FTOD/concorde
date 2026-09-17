@@ -1,4 +1,5 @@
 """Deterministic checks establish structure/contract evidence, never semantic completeness."""
+
 from __future__ import annotations
 
 import os
@@ -7,8 +8,22 @@ from collections import Counter
 from pathlib import Path
 
 from .model import Finding, ToolResult
-from .repository_base import (ANCHOR_PREFIXES, HEADING, IDENTITY, LIST_ITEM, SKIPPED_DIRECTORIES,
-    SKIPPED_SUFFIXES, RepositoryCore, SpecError, SpecTarget, digest, entry_exists, is_directory_entry, read_file, walk_lines)
+from .repository_base import (
+    ANCHOR_PREFIXES,
+    HEADING,
+    IDENTITY,
+    LIST_ITEM,
+    SKIPPED_DIRECTORIES,
+    SKIPPED_SUFFIXES,
+    RepositoryCore,
+    SpecError,
+    SpecTarget,
+    digest,
+    entry_exists,
+    is_directory_entry,
+    read_file,
+    walk_lines,
+)
 from .repository import SpecRepository
 from .content_model import reading_problems
 
@@ -19,12 +34,28 @@ from .verification import DeclarationError, scan_declarations
 LINK = re.compile(r"!?\[[^\]]*\]\(([^\s)]+)\)")
 
 
-DIAGRAM_KEYWORDS = ("flowchart", "graph", "subgraph", "end", "classDef", "class", "style",
-                    "linkStyle", "direction", "click", "accTitle", "accDescr")
-EDGE = re.compile(r"(?P<op>x--x|o--o|<-->|-->|---|-\.->|-\.-|==>|===|--x|--o|<--|<==)"
-                  r"(?:[ \t]*\|(?P<label>[^|]*)\|)?")
-INLINE_EDGE = re.compile(r"--[ \t]+(?P<label>[^-]+?)[ \t]+-->|-\.[ \t]+(?P<label2>[^.]+?)[ \t]+\.->"
-                         r"|==[ \t]+(?P<label3>[^=]+?)[ \t]+==>")
+DIAGRAM_KEYWORDS = (
+    "flowchart",
+    "graph",
+    "subgraph",
+    "end",
+    "classDef",
+    "class",
+    "style",
+    "linkStyle",
+    "direction",
+    "click",
+    "accTitle",
+    "accDescr",
+)
+EDGE = re.compile(
+    r"(?P<op>x--x|o--o|<-->|-->|---|-\.->|-\.-|==>|===|--x|--o|<--|<==)"
+    r"(?:[ \t]*\|(?P<label>[^|]*)\|)?"
+)
+INLINE_EDGE = re.compile(
+    r"--[ \t]+(?P<label>[^-]+?)[ \t]+-->|-\.[ \t]+(?P<label2>[^.]+?)[ \t]+\.->"
+    r"|==[ \t]+(?P<label3>[^=]+?)[ \t]+==>"
+)
 NODE = re.compile(r"(?P<id>[A-Za-z0-9_]+)(?::::\w+)?")
 OPENERS = ("(((", "[[", "[(", "((", "{{", "[/", "[\\", "[", "(", "{", ">")
 CLOSERS = (")))", "]]", ")]", "))", "}}", "/]", "\\]", "]", ")", "}")
@@ -45,24 +76,34 @@ def _first_line(label: str) -> str:
 def _scan_node(line: str, position: int) -> tuple[str, str | None, int]:
     match = NODE.match(line, position)
     if not match:
-        raise DiagramError(f"cannot interpret diagram text near {line[position:position + 20]!r}")
+        raise DiagramError(
+            f"cannot interpret diagram text near {line[position : position + 20]!r}"
+        )
     node_id = match.group("id")
     if node_id in DIAGRAM_KEYWORDS:
-        raise DiagramError(f"reserved Mermaid keyword cannot be a node identifier: {node_id}")
+        raise DiagramError(
+            f"reserved Mermaid keyword cannot be a node identifier: {node_id}"
+        )
     position = match.end()
     rest = line[position:]
     for opener in OPENERS:
         if rest.startswith(opener):
             inner_start = position + len(opener)
-            if line[inner_start:inner_start + 1] == '"':
+            if line[inner_start : inner_start + 1] == '"':
                 end = line.find('"', inner_start + 1)
                 if end < 0:
                     raise DiagramError("unterminated quoted node label")
-                label = line[inner_start + 1:end]
+                label = line[inner_start + 1 : end]
                 after = end + 1
             else:
-                closer_index = min((line.find(c, inner_start) for c in CLOSERS
-                                    if line.find(c, inner_start) >= 0), default=-1)
+                closer_index = min(
+                    (
+                        line.find(c, inner_start)
+                        for c in CLOSERS
+                        if line.find(c, inner_start) >= 0
+                    ),
+                    default=-1,
+                )
                 if closer_index < 0:
                     raise DiagramError("unterminated node label")
                 label = line[inner_start:closer_index]
@@ -82,7 +123,9 @@ def _scan_node(line: str, position: int) -> tuple[str, str | None, int]:
     return node_id, None, position
 
 
-def flowchart_model(text: str) -> tuple[dict[str, str], list[tuple[str, str | None, str]]]:
+def flowchart_model(
+    text: str,
+) -> tuple[dict[str, str], list[tuple[str, str | None, str]]]:
     """Node labels and labeled edges of one Mermaid flowchart; raises DiagramError when unreadable."""
     nodes: dict[str, str] = {}
     edges: list[tuple[str, str | None, str]] = []
@@ -107,7 +150,11 @@ def flowchart_model(text: str) -> tuple[dict[str, str], list[tuple[str, str | No
                 continue
             inline = INLINE_EDGE.match(line, position)
             if inline:
-                label = inline.group("label") or inline.group("label2") or inline.group("label3")
+                label = (
+                    inline.group("label")
+                    or inline.group("label2")
+                    or inline.group("label3")
+                )
                 groups.append(current)
                 current = []
                 pending_edges.append(label.strip() if label and label.strip() else None)
@@ -137,7 +184,9 @@ def flowchart_model(text: str) -> tuple[dict[str, str], list[tuple[str, str | No
     return nodes, edges
 
 
-def _section_ranges(body: str) -> tuple[list[tuple[str, int, int, int]], list[tuple[int, str, str]]]:
+def _section_ranges(
+    body: str,
+) -> tuple[list[tuple[str, int, int, int]], list[tuple[int, str, str]]]:
     """Heading sections of prose as (text, level, start line, end line) with the walked lines."""
     lines = walk_lines(body)
     headings = []
@@ -151,7 +200,7 @@ def _section_ranges(body: str) -> tuple[list[tuple[str, int, int, int]], list[tu
     sections = []
     for index, (text, level, start) in enumerate(headings):
         end = total
-        for later_text, later_level, later_start in headings[index + 1:]:
+        for later_text, later_level, later_start in headings[index + 1 :]:
             if later_level <= level:
                 end = later_start - 1
                 break
@@ -159,11 +208,11 @@ def _section_ranges(body: str) -> tuple[list[tuple[str, int, int, int]], list[tu
     return sections, lines
 
 
-
-
-def reading_part_problems(body: str, *, primary: bool = False) -> list[str]:
+def reading_part_problems(
+    body: str, *, primary: bool = False, role: str = "module"
+) -> list[str]:
     """Protocol reading completeness has a structural subset, independent of publication layout."""
-    return list(reading_problems(body, primary=primary))
+    return list(reading_problems(body, primary=primary, role=role))
 
 
 def _fences_in_range(lines, start: int, end: int, language: str) -> list[str]:
@@ -173,7 +222,13 @@ def _fences_in_range(lines, start: int, end: int, language: str) -> list[str]:
         if number < start or number > end:
             continue
         if kind == "fence-open":
-            current = [] if re.match(r"^ {0,3}(?:`{3,}|~{3,})\s*" + re.escape(language) + r"\s*$", line) else None
+            current = (
+                []
+                if re.match(
+                    r"^ {0,3}(?:`{3,}|~{3,})\s*" + re.escape(language) + r"\s*$", line
+                )
+                else None
+            )
         elif kind == "fenced" and current is not None:
             current.append(line)
         elif kind == "fence-close" and current is not None:
@@ -184,10 +239,19 @@ def _fences_in_range(lines, start: int, end: int, language: str) -> list[str]:
 
 def _relationship_fences(body: str) -> list[str]:
     sections, lines = _section_ranges(body)
-    relationships = next((s for s in sections if s[0] == "Relationships" and s[1] == 2), None)
-    return _fences_in_range(lines, relationships[2], relationships[3], "mermaid") if relationships else []
+    relationships = next(
+        (s for s in sections if s[0] == "Relationships" and s[1] == 2), None
+    )
+    return (
+        _fences_in_range(lines, relationships[2], relationships[3], "mermaid")
+        if relationships
+        else []
+    )
 
-def module_findings(repository: RepositoryCore, target_id: str | None = None) -> tuple[Finding, ...]:
+
+def module_findings(
+    repository: RepositoryCore, target_id: str | None = None
+) -> tuple[Finding, ...]:
     """Check the reading entry and companion reading parts, not semantic sufficiency."""
     findings = []
     for target in repository.targets.values():
@@ -197,22 +261,46 @@ def module_findings(repository: RepositoryCore, target_id: str | None = None) ->
         try:
             document = repository.document(path)
         except (ValueError, OSError, KeyError, TypeError) as problem:
-            findings.append(Finding("CONCORDE-MODULE-001", "error", path, str(problem),
-                "Register a readable module.md reading entry.", subject_id=target.id))
+            findings.append(
+                Finding(
+                    "CONCORDE-MODULE-001",
+                    "error",
+                    path,
+                    str(problem),
+                    "Register a readable module.md reading entry.",
+                    subject_id=target.id,
+                )
+            )
             continue
         for owned_path in target.documents:
             try:
-                body = document.body if owned_path == path else repository.document(owned_path).body
-                problems = reading_part_problems(body, primary=owned_path == path)
+                owned = (
+                    document if owned_path == path else repository.document(owned_path)
+                )
+                problems = reading_part_problems(
+                    owned.body,
+                    primary=owned_path == path,
+                    role=owned.metadata["document"]["role"],
+                )
             except (ValueError, OSError, KeyError, TypeError) as problem:
                 problems = [str(problem)]
             for problem in problems:
-                findings.append(Finding("CONCORDE-MODULE-001", "error", owned_path, problem,
-                    "Start the reading entry with Purpose, Usage, Design and Relationships; keep machine declarations in its metadata companion.",
-                    subject_id=target.id))
+                findings.append(
+                    Finding(
+                        "CONCORDE-MODULE-001",
+                        "error",
+                        owned_path,
+                        problem,
+                        "Start the reading entry with Purpose, Usage, Design and Relationships; keep machine declarations in its metadata companion.",
+                        subject_id=target.id,
+                    )
+                )
     return tuple(findings)
 
-def definition_findings(repository: RepositoryCore, target_id: str | None = None) -> tuple[Finding, ...]:
+
+def definition_findings(
+    repository: RepositoryCore, target_id: str | None = None
+) -> tuple[Finding, ...]:
     """Parse scenarios, requirements and entities; check listings, identities and diagrams."""
     findings = []
     identities: dict[str, tuple[str, str]] = {}
@@ -229,9 +317,16 @@ def definition_findings(repository: RepositoryCore, target_id: str | None = None
             for contract in repository.contracts(target):
                 previous = identities.get(contract["id"])
                 if previous is not None:
-                    findings.append(Finding("CONCORDE-IDENTITY-001", "error", contract["source"],
-                        f"canonical contract identity {contract['id']} is already used by {previous}",
-                        "Keep one globally unique identity for each definition.", subject_id=contract["id"]))
+                    findings.append(
+                        Finding(
+                            "CONCORDE-IDENTITY-001",
+                            "error",
+                            contract["source"],
+                            f"canonical contract identity {contract['id']} is already used by {previous}",
+                            "Keep one globally unique identity for each definition.",
+                            subject_id=contract["id"],
+                        )
+                    )
                 identities[contract["id"]] = ("contract", contract["source"])
         except (ValueError, OSError):
             continue
@@ -241,65 +336,122 @@ def definition_findings(repository: RepositoryCore, target_id: str | None = None
         try:
             definitions = repository.definitions(target)
         except (ValueError, OSError, KeyError, TypeError) as problem:
-            findings.append(Finding("CONCORDE-DEFINITION-001", "error", target.primary_document, str(problem),
-                "Repair the scenario, requirement or entity definitions of this Module's documents.",
-                subject_id=target.id))
+            findings.append(
+                Finding(
+                    "CONCORDE-DEFINITION-001",
+                    "error",
+                    target.primary_document,
+                    str(problem),
+                    "Repair the scenario, requirement or entity definitions of this Module's documents.",
+                    subject_id=target.id,
+                )
+            )
             continue
-        for kind, items in (("scenario", definitions.scenarios), ("requirement", definitions.requirements),
-                            ("entity", definitions.entities)):
+        for kind, items in (
+            ("scenario", definitions.scenarios),
+            ("requirement", definitions.requirements),
+            ("entity", definitions.entities),
+        ):
             for item in items:
                 previous = identities.get(item.id)
                 if previous is not None and previous != (kind, item.document):
-                    findings.append(Finding("CONCORDE-IDENTITY-001", "error", item.document,
-                        f"{kind} identity {item.id} is also used by a {previous[0]} in {previous[1]}",
-                        "Give every Module, document, scenario, requirement and entity a unique stable ID.",
-                        subject_id=item.id))
+                    findings.append(
+                        Finding(
+                            "CONCORDE-IDENTITY-001",
+                            "error",
+                            item.document,
+                            f"{kind} identity {item.id} is also used by a {previous[0]} in {previous[1]}",
+                            "Give every Module, document, scenario, requirement and entity a unique stable ID.",
+                            subject_id=item.id,
+                        )
+                    )
                 else:
                     identities[item.id] = (kind, item.document)
         entity_files = repository.entity_files(target)
         declared = tuple(sorted(entity_files))
         if declared != target.files:
-            findings.append(Finding("CONCORDE-ENTITY-003", "error", target.primary_document,
-                f"registry files for {target.id} differ from the union of its entity files: "
-                f"registry has {sorted(set(target.files) - set(declared))} extra and lacks {sorted(set(declared) - set(target.files))}",
-                "Keep the registry files of a Module equal to the sorted union of its entity files.",
-                subject_id=target.id))
-        represented = {entity.target_id for entity in definitions.entities if entity.target_id}
-        expected = {child.id for child in repository.children(target)} | set(target.uses)
+            findings.append(
+                Finding(
+                    "CONCORDE-ENTITY-003",
+                    "error",
+                    target.primary_document,
+                    f"registry files for {target.id} differ from the union of its entity files: "
+                    f"registry has {sorted(set(target.files) - set(declared))} extra and lacks {sorted(set(declared) - set(target.files))}",
+                    "Keep the registry files of a Module equal to the sorted union of its entity files.",
+                    subject_id=target.id,
+                )
+            )
+        represented = {
+            entity.target_id for entity in definitions.entities if entity.target_id
+        }
+        expected = {child.id for child in repository.children(target)} | set(
+            target.uses
+        )
         for missing in sorted(expected - represented):
-            findings.append(Finding("CONCORDE-ENTITY-004", "error", target.primary_document,
-                f"child or used Module {missing} has no entity with that target_id in {target.id}",
-                "Declare an entity with target_id for every child and used Module.",
-                subject_id=target.id))
+            findings.append(
+                Finding(
+                    "CONCORDE-ENTITY-004",
+                    "error",
+                    target.primary_document,
+                    f"child or used Module {missing} has no entity with that target_id in {target.id}",
+                    "Declare an entity with target_id for every child and used Module.",
+                    subject_id=target.id,
+                )
+            )
         for entry, entity in sorted(entity_files.items()):
             exists = entry_exists(repository.root, entry)
             kind = "directory" if is_directory_entry(entry) else "file"
             if not exists and entry not in entity.pending:
-                findings.append(Finding("CONCORDE-ENTITY-002", "error", entity.document,
-                    f"entity {entity.id} lists {entry}, a {kind} that does not exist and is not marked pending",
-                    f"Create the {kind} or mark it pending.", subject_id=entity.id))
+                findings.append(
+                    Finding(
+                        "CONCORDE-ENTITY-002",
+                        "error",
+                        entity.document,
+                        f"entity {entity.id} lists {entry}, a {kind} that does not exist and is not marked pending",
+                        f"Create the {kind} or mark it pending.",
+                        subject_id=entity.id,
+                    )
+                )
             elif exists and entry in entity.pending:
-                findings.append(Finding("CONCORDE-ENTITY-005", "warning", entity.document,
-                    f"entity {entity.id} still marks {entry} pending although the {kind} exists",
-                    "Delivery confirms created files and removes the marker.", subject_id=entity.id))
+                findings.append(
+                    Finding(
+                        "CONCORDE-ENTITY-005",
+                        "warning",
+                        entity.document,
+                        f"entity {entity.id} still marks {entry} pending although the {kind} exists",
+                        "Delivery confirms created files and removes the marker.",
+                        subject_id=entity.id,
+                    )
+                )
         for entry in repository.missing_external_references(target):
             kind = "directory" if is_directory_entry(entry) else "file"
-            findings.append(Finding("CONCORDE-REFERENCE-001", "error", target.primary_document,
-                f"external reference {entry} of {target.id} is a {kind} that does not exist",
-                f"Check out or vendor the {kind} (for a submodule, run scripts/development/init-references.py) "
-                "or remove the reference; external references are never pending.", subject_id=target.id))
+            findings.append(
+                Finding(
+                    "CONCORDE-REFERENCE-001",
+                    "error",
+                    target.primary_document,
+                    f"external reference {entry} of {target.id} is a {kind} that does not exist",
+                    f"Check out or vendor the {kind} (for a submodule, run scripts/development/init-references.py) "
+                    "or remove the reference; external references are never pending.",
+                    subject_id=target.id,
+                )
+            )
         findings.extend(architecture_findings(repository, target, definitions.entities))
     return tuple(findings)
 
 
-def architecture_findings(repository: RepositoryCore, target: SpecTarget, entities) -> tuple[Finding, ...]:
+def architecture_findings(
+    repository: RepositoryCore, target: SpecTarget, entities
+) -> tuple[Finding, ...]:
     findings = []
     path = target.primary_document
     try:
         fences = _relationship_fences(repository.document(path).body)
     except (ValueError, OSError):
         return ()
-    flowcharts = [fence for fence in fences if re.match(r"^\s*(flowchart|graph)\b", fence)]
+    flowcharts = [
+        fence for fence in fences if re.match(r"^\s*(flowchart|graph)\b", fence)
+    ]
     if not flowcharts:
         return ()
     labels: set[str] = set()
@@ -307,42 +459,82 @@ def architecture_findings(repository: RepositoryCore, target: SpecTarget, entiti
         try:
             nodes, edges = flowchart_model(fence)
         except DiagramError as problem:
-            findings.append(Finding("CONCORDE-ARCHITECTURE-002", "error", path, str(problem),
-                "Use the Mermaid flowchart node and labeled edge forms the Protocol defines.", subject_id=target.id))
+            findings.append(
+                Finding(
+                    "CONCORDE-ARCHITECTURE-002",
+                    "error",
+                    path,
+                    str(problem),
+                    "Use the Mermaid flowchart node and labeled edge forms the Protocol defines.",
+                    subject_id=target.id,
+                )
+            )
             continue
         labels.update(_first_line(label) for label in nodes.values())
         for source, label, destination in edges:
             if label is None:
-                findings.append(Finding("CONCORDE-ARCHITECTURE-002", "error", path,
-                    f"relationship {source} -> {destination} has no label",
-                    "Label every edge with its relationship verb.", subject_id=target.id))
+                findings.append(
+                    Finding(
+                        "CONCORDE-ARCHITECTURE-002",
+                        "error",
+                        path,
+                        f"relationship {source} -> {destination} has no label",
+                        "Label every edge with its relationship verb.",
+                        subject_id=target.id,
+                    )
+                )
     titles = {entity.title for entity in entities}
     if not labels or not labels <= titles:
-        findings.append(Finding("CONCORDE-ARCHITECTURE-001", "error", path,
-            f"diagram contains unknown or no local entities: {sorted(labels - titles)}",
-            "Use declared local entities within the stated diagram scope; label every edge.", subject_id=target.id))
+        findings.append(
+            Finding(
+                "CONCORDE-ARCHITECTURE-001",
+                "error",
+                path,
+                f"diagram contains unknown or no local entities: {sorted(labels - titles)}",
+                "Use declared local entities within the stated diagram scope; label every edge.",
+                subject_id=target.id,
+            )
+        )
     return tuple(findings)
 
 
 def unlisted_file_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
     """Warn about regular files under listed roots that no Module's entries cover."""
-    roots = sorted({entry.split("/", 1)[0] for entry in repository.file_users if "/" in entry})
+    roots = sorted(
+        {entry.split("/", 1)[0] for entry in repository.file_users if "/" in entry}
+    )
     findings = []
     for root_name in roots:
         base = repository.root / root_name
         if base.is_symlink() or not base.is_dir():
             continue
         for directory, names, files in os.walk(base):
-            names[:] = sorted(name for name in names if name not in SKIPPED_DIRECTORIES
-                              and not name.startswith(".") and not (Path(directory) / name).is_symlink())
+            names[:] = sorted(
+                name
+                for name in names
+                if name not in SKIPPED_DIRECTORIES
+                and not name.startswith(".")
+                and not (Path(directory) / name).is_symlink()
+            )
             for name in sorted(files):
                 if name.startswith(".") or name.endswith(SKIPPED_SUFFIXES):
                     continue
-                relative = (Path(directory) / name).relative_to(repository.root).as_posix()
-                if relative in repository.document_targets or repository.listing_users(relative):
+                relative = (
+                    (Path(directory) / name).relative_to(repository.root).as_posix()
+                )
+                if relative in repository.document_targets or repository.listing_users(
+                    relative
+                ):
                     continue
-                findings.append(Finding("CONCORDE-ENTITY-006", "warning", relative,
-                    "no Module entity lists this file", "List the file under the entity it realizes, or leave it unlisted deliberately."))
+                findings.append(
+                    Finding(
+                        "CONCORDE-ENTITY-006",
+                        "warning",
+                        relative,
+                        "no Module entity lists this file",
+                        "List the file under the entity it realizes, or leave it unlisted deliberately.",
+                    )
+                )
     return tuple(findings)
 
 
@@ -356,34 +548,47 @@ def document_context_findings(repository: RepositoryCore) -> tuple[Finding, ...]
         try:
             document = repository.document(path)
         except (ValueError, OSError, KeyError, TypeError) as problem:
-            findings.append(Finding(
-                "CONCORDE-DOCUMENT-001", "error", path,
-                f"invalid Spec document context declaration: {problem}",
-                "Provide the matching metadata companion with the registered document identity and owner.",
-            ))
+            findings.append(
+                Finding(
+                    "CONCORDE-DOCUMENT-001",
+                    "error",
+                    path,
+                    f"invalid Spec document context declaration: {problem}",
+                    "Provide the matching metadata companion with the registered document identity and owner.",
+                )
+            )
             continue
         previous = identifiers.get(document.document_id)
         if document.document_id in reserved_ids:
-            findings.append(Finding(
-                "CONCORDE-DOCUMENT-002", "error", path,
-                f"document identity {document.document_id} collides with a Module identity",
-                "Use one globally unique stable document ID.",
-                subject_id=document.document_id,
-            ))
+            findings.append(
+                Finding(
+                    "CONCORDE-DOCUMENT-002",
+                    "error",
+                    path,
+                    f"document identity {document.document_id} collides with a Module identity",
+                    "Use one globally unique stable document ID.",
+                    subject_id=document.document_id,
+                )
+            )
         elif previous is not None and previous != path:
-            findings.append(Finding(
-                "CONCORDE-DOCUMENT-002", "error", path,
-                f"document identity {document.document_id} is also declared by {previous}",
-                "Give every physical Spec truth one globally unique stable document ID.",
-                subject_id=document.document_id,
-            ))
+            findings.append(
+                Finding(
+                    "CONCORDE-DOCUMENT-002",
+                    "error",
+                    path,
+                    f"document identity {document.document_id} is also declared by {previous}",
+                    "Give every physical Spec truth one globally unique stable document ID.",
+                    subject_id=document.document_id,
+                )
+            )
         else:
             identifiers[document.document_id] = path
     return tuple(findings)
 
 
-def module_dependency_findings(repository: RepositoryCore,
-                               target_id: str | None = None) -> tuple[Finding, ...]:
+def module_dependency_findings(
+    repository: RepositoryCore, target_id: str | None = None
+) -> tuple[Finding, ...]:
     """Match local relied-upon promises to Module dependencies and direct children."""
     findings = []
     for target in repository.targets.values():
@@ -392,21 +597,34 @@ def module_dependency_findings(repository: RepositoryCore,
         try:
             declarations = repository.dependencies(target)
             seen = set()
-            expected = set(target.uses) | {child.id for child in repository.children(target)}
+            expected = set(target.uses) | {
+                child.id for child in repository.children(target)
+            }
             for declaration in declarations:
                 peer = declaration["target_id"]
                 if peer in seen:
                     raise SpecError(f"duplicate dependency declaration: {peer}")
                 if peer not in expected:
-                    raise SpecError(f"dependency is not a declared use or direct submodule: {peer}")
+                    raise SpecError(
+                        f"dependency is not a declared use or direct submodule: {peer}"
+                    )
                 seen.add(peer)
             missing = expected - seen
             if missing:
-                raise SpecError("missing local dependency promises: " + ", ".join(sorted(missing)))
+                raise SpecError(
+                    "missing local dependency promises: " + ", ".join(sorted(missing))
+                )
         except (ValueError, OSError, KeyError, TypeError) as problem:
-            findings.append(Finding("CONCORDE-DEPENDENCY-001", "error", target.primary_document,
-                str(problem), "Declare each direct dependency's responsibility, selection condition and relied-upon promises locally.",
-                subject_id=target.id))
+            findings.append(
+                Finding(
+                    "CONCORDE-DEPENDENCY-001",
+                    "error",
+                    target.primary_document,
+                    str(problem),
+                    "Declare each direct dependency's responsibility, selection condition and relied-upon promises locally.",
+                    subject_id=target.id,
+                )
+            )
     return tuple(findings)
 
 
@@ -426,9 +644,17 @@ def link_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
         except (ValueError, OSError, KeyError, TypeError):
             continue
         from urllib.parse import urlsplit, unquote
-        lines = [(number, False, line) for number, kind, line in walk_lines(document.body) if kind == "prose"]
+
+        lines = [
+            (number, False, line)
+            for number, kind, line in walk_lines(document.body)
+            if kind == "prose"
+        ]
         unit = repository.unit(path)
-        for entry in (*unit.declarations["dependencies"], *unit.declarations["bindings"]):
+        for entry in (
+            *unit.declarations["dependencies"],
+            *unit.declarations["bindings"],
+        ):
             meaning = unit.meaning(entry["meaning"])
             lines.append((meaning.line, True, meaning.text))
         for number, required, line in lines:
@@ -438,25 +664,53 @@ def link_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
                 if parsed.scheme or parsed.netloc or parsed.path.startswith("/"):
                     continue
                 location, fragment = unquote(parsed.path), unquote(parsed.fragment)
-                linked = path if not location else os.path.normpath(os.path.join(os.path.dirname(path), location)).replace(os.sep, "/")
-                if fragment.startswith(ANCHOR_PREFIXES) and IDENTITY.fullmatch(fragment):
+                linked = (
+                    path
+                    if not location
+                    else os.path.normpath(
+                        os.path.join(os.path.dirname(path), location)
+                    ).replace(os.sep, "/")
+                )
+                if fragment.startswith(ANCHOR_PREFIXES) and IDENTITY.fullmatch(
+                    fragment
+                ):
                     defining = anchors.get(fragment)
                     if defining is None or linked != defining:
-                        findings.append(Finding("CONCORDE-LINK-001", "error", path,
-                            (f"link {url} addresses #{fragment}, which is defined in {defining}" if defining else
-                             f"link fragment #{fragment} names no scenario, requirement, entity or contract"),
-                            "Point the link at the document that defines the ID.", line=number, subject_id=fragment))
+                        findings.append(
+                            Finding(
+                                "CONCORDE-LINK-001",
+                                "error",
+                                path,
+                                (
+                                    f"link {url} addresses #{fragment}, which is defined in {defining}"
+                                    if defining
+                                    else f"link fragment #{fragment} names no scenario, requirement, entity or contract"
+                                ),
+                                "Point the link at the document that defines the ID.",
+                                line=number,
+                                subject_id=fragment,
+                            )
+                        )
                 if required:
                     try:
                         included = linked in repository.spec_files(document.owner)
                     except (ValueError, OSError):
                         included = False
                     if not included:
-                        owner = repository.document_targets.get(linked, ["unknown owner"])[0]
-                        findings.append(Finding("CONCORDE-CONTEXT-001", "error", path,
-                            f"{document.owner} cannot rely on excluded definition {url}, owned by {owner}",
-                            "Declare the necessary reference or repair the consumer's local obligation; do not fetch undeclared context.",
-                            line=number, subject_id=document.owner))
+                        owner = repository.document_targets.get(
+                            linked, ["unknown owner"]
+                        )[0]
+                        findings.append(
+                            Finding(
+                                "CONCORDE-CONTEXT-001",
+                                "error",
+                                path,
+                                f"{document.owner} cannot rely on excluded definition {url}, owned by {owner}",
+                                "Declare the necessary reference or repair the consumer's local obligation; do not fetch undeclared context.",
+                                line=number,
+                                subject_id=document.owner,
+                            )
+                        )
     return tuple(findings)
 
 
@@ -482,29 +736,59 @@ def verification_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
     try:
         declarations = scan_declarations(repository.root, listed)
     except DeclarationError as problem:
-        return (Finding("CONCORDE-VERIFICATION-004", "error", problem.path, str(problem),
-                        "Repair the listed test file so its scenario declarations can be read.", line=problem.line),)
+        return (
+            Finding(
+                "CONCORDE-VERIFICATION-004",
+                "error",
+                problem.path,
+                str(problem),
+                "Repair the listed test file so its scenario declarations can be read.",
+                line=problem.line,
+            ),
+        )
     declared: dict[str, list] = {scenario_id: [] for scenario_id in scenarios}
     for declaration in declarations:
         owner = scenarios.get(declaration.scenario_id)
         if owner is None:
-            findings.append(Finding("CONCORDE-VERIFICATION-001", "error", declaration.path,
-                f"test {declaration.name} declares unknown scenario {declaration.scenario_id}",
-                "Declare a scenario that a registered Module defines.", line=declaration.line,
-                subject_id=declaration.scenario_id))
+            findings.append(
+                Finding(
+                    "CONCORDE-VERIFICATION-001",
+                    "error",
+                    declaration.path,
+                    f"test {declaration.name} declares unknown scenario {declaration.scenario_id}",
+                    "Declare a scenario that a registered Module defines.",
+                    line=declaration.line,
+                    subject_id=declaration.scenario_id,
+                )
+            )
             continue
         declared[declaration.scenario_id].append(declaration)
         if owner[0] not in listed.get(declaration.path, set()):
-            findings.append(Finding("CONCORDE-VERIFICATION-003", "warning", declaration.path,
-                f"test {declaration.name} verifies {declaration.scenario_id}, but {owner[0]} does not list this file",
-                "List the test under an entity of the scenario's Module so its code phases see it.",
-                line=declaration.line, subject_id=declaration.scenario_id))
+            findings.append(
+                Finding(
+                    "CONCORDE-VERIFICATION-003",
+                    "warning",
+                    declaration.path,
+                    f"test {declaration.name} verifies {declaration.scenario_id}, but {owner[0]} does not list this file",
+                    "List the test under an entity of the scenario's Module so its code phases see it.",
+                    line=declaration.line,
+                    subject_id=declaration.scenario_id,
+                )
+            )
     for scenario_id, (owner, document) in sorted(scenarios.items()):
         if not declared[scenario_id] and owner in realized:
-            findings.append(Finding("CONCORDE-VERIFICATION-002", "warning", document,
-                f"no test declares that it verifies {scenario_id}",
-                "Declare " + scenario_id + " in the tests that exercise this scenario.",
-                subject_id=scenario_id))
+            findings.append(
+                Finding(
+                    "CONCORDE-VERIFICATION-002",
+                    "warning",
+                    document,
+                    f"no test declares that it verifies {scenario_id}",
+                    "Declare "
+                    + scenario_id
+                    + " in the tests that exercise this scenario.",
+                    subject_id=scenario_id,
+                )
+            )
     return tuple(findings)
 
 
@@ -519,17 +803,33 @@ def definition_ids(repository: RepositoryCore) -> set[str]:
     return ids
 
 
-def validate_repository(root: str | Path, target_id: str | None = None,
-                        package_root: Path | None = None, *, registry_bytes: bytes | None = None,
-                        document_overrides: dict[str, bytes] | None = None) -> ToolResult:
+def validate_repository(
+    root: str | Path,
+    target_id: str | None = None,
+    package_root: Path | None = None,
+    *,
+    registry_bytes: bytes | None = None,
+    document_overrides: dict[str, bytes] | None = None,
+) -> ToolResult:
     findings = []
     artifacts = []
     inputs = []
+
     def error(code, path, message):
-        findings.append(Finding(code, "error", path, message, "Reconcile the registered Spec and retry."))
+        findings.append(
+            Finding(
+                code, "error", path, message, "Reconcile the registered Spec and retry."
+            )
+        )
+
     try:
-        repository = SpecRepository(root, package_root, registry_bytes=registry_bytes,
-                                    document_overrides=document_overrides, _defer_document_admission=True)
+        repository = SpecRepository(
+            root,
+            package_root,
+            registry_bytes=registry_bytes,
+            document_overrides=document_overrides,
+            _defer_document_admission=True,
+        )
         if target_id and target_id != ".":
             repository.select(target_id)
         definitions = {}
@@ -539,12 +839,19 @@ def validate_repository(root: str | Path, target_id: str | None = None,
             try:
                 documents = repository.documents(target)
                 artifacts.extend(target.sources)
-                inputs.extend((record["path"], record["digest"]) for path in target.documents
-                              for record in repository.source_records(path, []))
+                inputs.extend(
+                    (record["path"], record["digest"])
+                    for path in target.documents
+                    for record in repository.source_records(path, [])
+                )
                 contexts[target.id] = set(repository.spec_files(target.id))
                 for contract in repository.contracts(target):
                     if contract["id"] in definitions:
-                        error("CONCORDE-CONTRACT-001", contract["source"], f"duplicate canonical definition: {contract['id']}")
+                        error(
+                            "CONCORDE-CONTRACT-001",
+                            contract["source"],
+                            f"duplicate canonical definition: {contract['id']}",
+                        )
                     definitions[contract["id"]] = contract
                 bindings.extend(repository.contract_bindings(target))
             except (ValueError, OSError) as problem:
@@ -553,18 +860,38 @@ def validate_repository(root: str | Path, target_id: str | None = None,
         for binding in bindings:
             key = (binding["owner"], binding["id"], binding["role"], binding["peer"])
             if key in seen_bindings:
-                error("CONCORDE-CONTRACT-001", binding["source"], "duplicate participant binding")
+                error(
+                    "CONCORDE-CONTRACT-001",
+                    binding["source"],
+                    "duplicate participant binding",
+                )
             seen_bindings.add(key)
             definition = definitions.get(binding["id"])
-            if (not definition or definition["version"] != binding["version"]
-                    or definition["source"] not in contexts.get(binding["owner"], set())):
-                error("CONCORDE-CONTRACT-002", binding["source"], f"canonical definition/version absent from {binding['owner']} context: {binding['id']}")
+            if (
+                not definition
+                or definition["version"] != binding["version"]
+                or definition["source"] not in contexts.get(binding["owner"], set())
+            ):
+                error(
+                    "CONCORDE-CONTRACT-002",
+                    binding["source"],
+                    f"canonical definition/version absent from {binding['owner']} context: {binding['id']}",
+                )
             if binding["peer"].startswith("external:") and len(binding["peer"]) > 9:
                 continue
-            if not any(peer["owner"] == binding["peer"] and peer["peer"] == binding["owner"]
-                       and peer["id"] == binding["id"] and peer["version"] == binding["version"]
-                       and peer["role"] != binding["role"] for peer in bindings):
-                error("CONCORDE-CONTRACT-003", binding["source"], f"missing complementary peer binding: {binding['id']}")
+            if not any(
+                peer["owner"] == binding["peer"]
+                and peer["peer"] == binding["owner"]
+                and peer["id"] == binding["id"]
+                and peer["version"] == binding["version"]
+                and peer["role"] != binding["role"]
+                for peer in bindings
+            ):
+                error(
+                    "CONCORDE-CONTRACT-003",
+                    binding["source"],
+                    f"missing complementary peer binding: {binding['id']}",
+                )
         findings.extend(document_context_findings(repository))
         findings.extend(module_findings(repository))
         findings.extend(definition_findings(repository))
@@ -573,27 +900,55 @@ def validate_repository(root: str | Path, target_id: str | None = None,
         findings.extend(unlisted_file_findings(repository))
         findings.extend(verification_findings(repository))
         from ..issues.store import list_issues, issue_path
+
         try:
-            inputs.extend((issue_path(item["id"]), item["revision"]) for item in list_issues(repository.root))
+            inputs.extend(
+                (issue_path(item["id"]), item["revision"])
+                for item in list_issues(repository.root)
+            )
         except (ValueError, OSError) as problem:
             error("CONCORDE-ISSUE-001", ".concorde/issues", str(problem))
-        if (repository.root/"concorde.json").is_file():
+        if (repository.root / "concorde.json").is_file():
             from ..distribution.package_validation import validate_package
+
             findings.extend(validate_package(repository.root))
-        inputs.append((".concorde/config.json",digest(read_file(repository.root,".concorde/config.json"))))
+        inputs.append(
+            (
+                ".concorde/config.json",
+                digest(read_file(repository.root, ".concorde/config.json")),
+            )
+        )
         inputs.append((repository.registry_path, digest(repository.registry_bytes)))
         inputs.append(("protocol", repository.config["protocol"]["digest"]))
     except (ValueError, OSError, KeyError, TypeError) as problem:
         error("CONCORDE-SOURCE-008", ".concorde/config.json", str(problem))
     counts = Counter(f.severity for f in findings)
-    return ToolResult("validate", target_id or ".", "invalid" if counts["error"] else "success",
-        tuple(sorted(set(artifacts))), tuple(findings), {"summary": {
-            "errors": counts["error"], "warnings": counts["warning"], "infos": counts["info"]},
+    return ToolResult(
+        "validate",
+        target_id or ".",
+        "invalid" if counts["error"] else "success",
+        tuple(sorted(set(artifacts))),
+        tuple(findings),
+        {
+            "summary": {
+                "errors": counts["error"],
+                "warnings": counts["warning"],
+                "infos": counts["info"],
+            },
             "source_digest": digest(sorted(inputs)),
-            "claims": ["registry structure", "document-unit identity/ownership and complete source members",
-                       "Protocol-defined reading subset and reading-entry structure", "requirement, scenario and entity syntax",
-                       "ID anchors in local links", "entity file listings and registry files",
-                       "scoped relationship diagram entities and labeled edges", "contract examples",
-                       "canonical definitions and complementary participant bindings", "Module dependency promises",
-                       "scenario verification declarations"],
-            "semantic_completeness": "not_proven"})
+            "claims": [
+                "registry structure",
+                "document-unit identity/ownership and complete source members",
+                "Protocol-defined reading subset and reading-entry structure",
+                "requirement, scenario and entity syntax",
+                "ID anchors in local links",
+                "entity file listings and registry files",
+                "scoped relationship diagram entities and labeled edges",
+                "contract examples",
+                "canonical definitions and complementary participant bindings",
+                "Module dependency promises",
+                "scenario verification declarations",
+            ],
+            "semantic_completeness": "not_proven",
+        },
+    )

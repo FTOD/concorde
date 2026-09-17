@@ -61,54 +61,6 @@ flowchart TB
     e0 -->|records publication cleanup and merge in| domain_receipt
 ```
 
-## Requirements
-
-### req.development.single-primary-writer — Only one agent writes to primary
-
-At most one agent SHALL own writes in the primary worktree at a time.
-
-## Scenarios
-
-### scenario.development.deliver-branch — Publish an independent delivery branch
-
-- GIVEN a ready change selected by `change_id`, requested from its source or the primary worktree
-- WHEN `concorde-deliver` runs
-- THEN the host verifies participation, candidate evidence and actual integration, then publishes an independent `concorde/delivered/<change_id>` branch and removes the source worktree unless `keep_worktree:true`
-- AND default delivery leaves the primary branch, index and project files unchanged
-
-### scenario.development.deliver-merge-primary — Explicit primary merge
-
-- GIVEN an already delivered receipt and an explicit user-authorized `merge_primary:true` request from the primary worktree's owning session
-- WHEN the host processes that request
-- THEN it verifies current integration against the latest primary commit and merges the delivered branch, recording its own commit, tree and checks separately from staging evidence
-- BUT a generic delivery request without `merge_primary:true` never merges into the primary branch
-
-See [only one agent writes to primary](#req.development.single-primary-writer) and
-[repository lock serializes primary writes](#req.development.primary-writes-serialized).
-
-### scenario.development.deliver-session-rejected — Delivery refused from an unrelated worktree
-
-- GIVEN a session whose worktree is neither the change's selected source nor the primary worktree
-- WHEN it requests delivery or final merging for that change
-- THEN the host refuses it with `delivery_session_required` or `primary_session_required`
-- AND no branch is published or merged
-
-### scenario.development.deliver-conflict — Integration conflict blocks final merge
-
-- GIVEN the candidate's actual integration against the latest primary commit fails its configured checks or conflicts
-- WHEN final merging runs
-- THEN the host blocks the merge with `merge_conflict` or `failed_merge_checks`, preserves the delivered branch, and leaves the primary branch, index and project files unchanged
-
-The detailed contract is [Participating-session delivery](delivery.md).
-
-## Internal constraints
-
-### req.development.primary-writes-serialized — Repository lock serializes primary writes
-
-The host SHALL serialize shared lifecycle writes and final primary merges with the repository lock.
-
-## Dependencies and composition
-
 ### Development
 
 <a id="entity.delivery.development"></a><a id="agreement.document.delivery.module.1"></a>
@@ -138,8 +90,8 @@ Resolve changed Spec consumers and shared-file users and validate the actual int
 
 This collaboration applies before accepting candidate or integration evidence and confirming declared pending entries.
 
-- [Owner and context resolution](../spec/registry.md#stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
-- [Structural validation](../spec/structure.md#scenario.spec.validate-success); require consistent registered state without claiming semantic completeness.
+- [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
+- [Structural validation](../spec/scenarios.md#scenario.spec.validate-success); require consistent registered state without claiming semantic completeness.
 
 ### Distribution
 
@@ -159,3 +111,8 @@ Agent grant or configurable arbitrary flow is created by this Spec boundary. Hos
 phase artifacts and permissions remain mandatory. A new flow requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.
+
+## Precise specifications
+
+The Delivery Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

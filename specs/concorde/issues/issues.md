@@ -80,28 +80,6 @@ limits. The host emits `issue_reported` receipts even when the worker fails; the
 establish stage completion. The host never rolls back accepted reports merely because a later
 `submit_result` fails.
 
-### scenario.issues.report-authority — Bind reporting without granting arbitrary writes
-
-- GIVEN a worker with a frozen context and host reporting service
-- WHEN it reports an admitted observation or attempts foreign evidence, ownership or provenance
-- THEN the host saves the admitted observation without granting the worker project writes
-- AND foreign evidence, forged provenance and appends to unselected issues are rejected
-- AND policy preview launches no reporting service and creates no issue
-
-### scenario.issues.report-independent — Report without ending the task
-
-- GIVEN a worker or question-answering invocation with reporting authority
-- WHEN it reports issues and then completes its own task
-- THEN the reports remain available and the task can complete successfully
-- AND the reporting tool itself neither terminates the worker nor starts a repair
-
-### scenario.issues.report-survives-failure — Retain observations from interrupted work
-
-- GIVEN a worker whose issue report was acknowledged by the host
-- WHEN its final result is invalid or its execution is interrupted
-- THEN the issue observation remains persisted independently of the failed stage
-- AND the failed or incomplete stage is not represented as successful
-
 ## Persistence and concurrency
 
 A host-local file lock under `.concorde/runs/` serializes read-modify-write transactions in the
@@ -138,7 +116,7 @@ operation: under the same store lock it restores a valid open before-image only 
 expected closing revision, or does nothing when that before-image is already present. Other bytes
 are stale, not permission to overwrite. The caller must bind both images and their digests to its
 own pending transaction and invalidate any readiness receipt before restoring. Neither helper is
-an agent tool or a general-purpose record editing grant. See [recovery](lifecycle.md#scenario.issues.disposition-recovery).
+an agent tool or a general-purpose record editing grant. See [recovery](scenarios.md#scenario.issues.disposition-recovery).
 
 The store cannot establish semantic truth from an evidence string. Merely not reproducing once,
 using a workaround, writing code without validation or completing an unrelated task is not a
@@ -147,33 +125,7 @@ An authorized solving flow may make evidence-grounded dispositions without manda
 approval; genuinely unresolved design or product decisions remain for the developer. Solving-flow
 admission and verification are separate from this storage boundary.
 
-## Scenarios
+## Precise specifications
 
-### scenario.issues.store-report — Persist and reference classified observations
-
-- GIVEN a host-issued reporting context and a classified issue report
-- WHEN the host records it and retries the identical report
-- THEN one branch-local issue and one immutable observation exist with the same returned receipt
-- AND appending current evidence can revise the classification without changing the original report
-- AND querying an absent collection creates no record or directory
-
-### scenario.issues.store-concurrency — Serialize writes without coupling branches
-
-- GIVEN concurrent reports in one worktree and an independent branch copy
-- WHEN the host accepts reports and disposes a record in one branch
-- THEN accepted observations are not lost or duplicated by identical retries
-- AND another branch's copy retains its own disposition until explicit integration
-
-### scenario.issues.store-disposition — Retain evidence-bound disposition history
-
-- GIVEN an open issue with its current byte revision
-- WHEN an authorized host supplies a valid disposition with rationale and evidence
-- THEN the record is retained with the requested disposition and unchanged original observations
-- AND stale revisions, empty evidence, self-duplicates and invalid transitions are rejected
-
-### scenario.issues.store-boundary — Reject malformed and unsafe persistence
-
-- GIVEN a malformed report, unsafe path, corrupted observation or failed publication
-- WHEN the host attempts to admit or persist it
-- THEN it does not acknowledge successful recording of that invalid operation
-- AND existing valid observations remain available without widening file authority
+The Issues Module owns the exact obligations and interface details in [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

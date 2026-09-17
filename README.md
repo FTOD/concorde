@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
-  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-7.0.0-6264e8" alt="Spec Protocol 7.0.0" /></a>
+  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-8.0.0-6264e8" alt="Spec Protocol 8.0.0" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/agents-Codex_%C2%B7_Claude-273449" alt="Integrations: Codex and Claude" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
 </p>
@@ -307,16 +307,16 @@ See the [Studio guide](scripts/development/STUDIO.md) for debugging, results and
 
 ## The contract at the center
 
-Concorde's independent **Spec Protocol 7.0.0** defines one specification category: a **Module Spec**.
+Concorde's independent **Spec Protocol 8.0.0** defines one specification category: a **Module Spec**.
 A Module describes a cohesive software responsibility; its implementation may span packages,
 services or shared files. Each Spec document has one owning Module. A Module's explicit
 `references` includes other Module-owned documents or one registered document, expanded once;
 Markdown links remain navigation. Shared interfaces have one definition and local participant bindings.
 
 The repository's Specs, runtime admission, context serialization and publication support
-Protocol 7/Profile 14/registry schema 5. Resolved contexts retain unique owners, one-level reference
+Protocol 8/Profile 14/registry schema 5, with document metadata schema 2. Resolved contexts retain unique owners, one-level reference
 provenance and exact byte digests without granting provider implementation access; see
-[Spec context queries](specs/concorde/spec/registry.md#stable-id-spec-context-queries).
+[Spec context queries](specs/concorde/spec/contracts.md#registry-stable-id-spec-context-queries).
 Runtime and publication tests verify these boundaries separately from the rule build.
 
 Concorde's own docsite includes an **Agent Flows** tab at `/concorde/agent-flows`, showing the actual
@@ -337,8 +337,13 @@ and a metadata-only edit invalidates affected context/review identities.
 | **Design** | How do responsibilities, state, flow and constraints fulfill its guarantees? |
 | **Relationships** | Which entities collaborate, under which conditions, and how does dependency differ from composition? |
 
-Requirements, scenarios and interface agreements remain precise readable obligations, placed later
-or in registered companions. Internal constraints are not weakened by their location. Diagrams
+**Module Specs** contain explanatory entries and topics with `document.role: module`.
+**Implementation Specs** contain the same Module's formal requirements, scenarios and canonical
+interface contracts with `document.role: implementation`. Formal definitions are forbidden in entries
+and topic pages; topics such as Registry do not become separate owners. Both roles remain normative,
+human-readable parts of one complete Module specification, and both enter agent context unchanged.
+The docsite presents them in parallel tabs under the same Module hierarchy. Internal constraints
+are not weakened by their location. Diagrams
 may show a scoped subset of entities; there is no separate entity-inventory reading chapter.
 A logical Module need not invent a public API. The Protocol defines reading membership and
 completeness, not docsite pages, sidebars, folding or interactions.

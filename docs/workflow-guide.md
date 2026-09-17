@@ -16,10 +16,13 @@ implementation, code review and investigation — support this work through inst
 Issue system retains classified problems and persistent
 Spec gaps, coordinates investigation and routes approved resolutions into new development tasks.
 
-The development and delivery workflows below use **Spec Protocol 7.0.0**. It defines one Module
+The development and delivery workflows below use **Spec Protocol 8.0.0**. It defines one Module
 Spec content model and the human-readable subset of that content. Reading begins with Purpose,
-Usage, Design and Relationships; requirements, scenarios and interface definitions remain precise
-readable obligations. Identity, mappings and file bindings live in paired `.md.json` metadata,
+Usage, Design and Relationships in module-role entries and explanatory topics. Formal requirements,
+scenarios and canonical interfaces belong only in implementation-role companions owned directly by
+the same Module. Both roles remain normative reading and complete agent context; a topic does not
+own a separate set of obligations. Identity, explicit roles, mappings and file bindings live in
+paired schema-2 `.md.json` metadata,
 which points to canonical readable meaning. Neither an inventory nor a summary replaces design.
 
 Each Module has one structural parent at most. Shared capabilities are independent siblings;
@@ -235,7 +238,8 @@ Concorde 7 uses Package Manifest 3, Architecture Profile 14, registry schema 5, 
 15 and Delivery Proposal 10. Older profiles require an explicit migration; normal execution never
 reinterprets old formats. The offline migration planner is not a second supported runtime.
 
-The docsite publishes one canonical reading page per document unit, with a Module-parent sidebar,
+The docsite publishes one canonical reading page per document unit, with parallel Module Specs and
+Implementation Specs tabs sharing the same Module-parent hierarchy,
 inline scoped diagrams and optional source-provenance disclosure. Reading and metadata both bind
 build identity, but machine inventories do not appear in the main reading flow. Spec Protocol and
 Concorde-only Agent Flows use independent custom-document tabs. There is no docsite Graph page or
@@ -245,7 +249,7 @@ validation precede candidate promotion; human navigation grants no extra agent c
 ## Concorde Spec Protocol entry and upgrades
 
 The Framework execution profile defines session handoffs in [P10](../prompts/protocol/framework-profile.md#p10-explicit-session-handoffs).
-Concorde Spec Protocol 7.0.0 defines readable Module Specs with paired metadata whose entities bind the
+Concorde Spec Protocol 8.0.0 defines readable Module specifications with paired metadata whose entities bind the
 files that realize them, as exact paths or directory prefixes, and whose scenarios are declared by
 the tests that verify them. Root instructions and runtime drafts refer to that rule; public Skills do
 not carry another copy.

@@ -2,6 +2,7 @@
 outputs (proposal §11). One test class per rule, using temporary fixture packages, plus an
 end-to-end run against the real package.
 """
+
 from __future__ import annotations
 
 import json
@@ -21,14 +22,14 @@ from concorde.distribution.build import write_build  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
 
 
-VALID_CAPABILITY_INIT = '''CAPABILITIES = ("alpha",)
+VALID_CAPABILITY_INIT = """CAPABILITIES = ("alpha",)
 
 
 def external_name(name):
     return "concorde-" + name.replace("_", "-")
-'''
+"""
 
-VALID_ALPHA = '''from concorde.spec import contract_shapes as shapes
+VALID_ALPHA = """from concorde.spec import contract_shapes as shapes
 from capabilities import planner
 from . import external_name
 from concorde.harness.capability_state import StateContract
@@ -46,10 +47,15 @@ STATE = StateContract("concorde-agent-stage-context", "concorde-agent-stage-resu
 
 def run(state, runtime):
     return {}
-'''
+"""
 
 
-def _capabilities_package(root: Path, *, alpha_source: str = VALID_ALPHA, init_source: str = VALID_CAPABILITY_INIT) -> None:
+def _capabilities_package(
+    root: Path,
+    *,
+    alpha_source: str = VALID_ALPHA,
+    init_source: str = VALID_CAPABILITY_INIT,
+) -> None:
     package = root / "capabilities"
     package.mkdir(parents=True, exist_ok=True)
     (package / "__init__.py").write_text(init_source, encoding="utf-8")
@@ -65,14 +71,14 @@ def _skill(root: Path, *, capability: str = "alpha") -> None:
     )
 
 
-VALID_AGENT_INIT = '''CAPABILITIES = ("alpha",)
+VALID_AGENT_INIT = """CAPABILITIES = ("alpha",)
 
 
 def external_name(name):
     return "concorde-" + name.replace("_", "-")
-'''
+"""
 
-VALID_AGENT_ALPHA_MODULE = '''from concorde.harness.worker_profile import WorkerProfile, Child, Contract
+VALID_AGENT_ALPHA_MODULE = """from concorde.harness.worker_profile import WorkerProfile, Child, Contract
 from concorde.harness.effects import EffectDeclaration
 
 PROFILE = WorkerProfile(
@@ -89,13 +95,14 @@ PROFILE = WorkerProfile(
     tools=("read", "grep", "find", "ls"),
     children=(),
 )
-'''
+"""
 
 VALID_AGENT_ALPHA_MODULE_WITH_CHILD = VALID_AGENT_ALPHA_MODULE.replace(
-    "children=(),", 'children=(Child("scout", "capabilities/alpha/children/scout.md"),),'
+    "children=(),",
+    'children=(Child("scout", "capabilities/alpha/children/scout.md"),),',
 )
 
-VALID_CHILD_SCOUT = '''---
+VALID_CHILD_SCOUT = """---
 name: scout
 description: Searches the granted read-only files for one focused question.
 tools: read, grep
@@ -106,9 +113,9 @@ inheritSkills: false
 ---
 
 You are the scout child of a fixture worker. Search only the granted files.
-'''
+"""
 
-VALID_AGENT_ALPHA_SPEC = '''# concorde-alpha
+VALID_AGENT_ALPHA_SPEC = """# concorde-alpha
 
 Fixture WorkerProfile summary.
 
@@ -135,7 +142,7 @@ Fixture completion.
 ## Missing information, failure and human decisions
 
 Fixture gaps.
-'''
+"""
 
 
 def _agents_package(
@@ -177,30 +184,55 @@ class PromptRuleTests(unittest.TestCase):
 
     def test_resolver_error_is_reported_with_its_rule_id(self) -> None:
         edited = self.root / "skills/concorde-main/SKILL.md"
-        edited.write_text(edited.read_text(encoding="utf-8") + "\nUnbound {SOMETHING}.\n", encoding="utf-8")
+        edited.write_text(
+            edited.read_text(encoding="utf-8") + "\nUnbound {SOMETHING}.\n",
+            encoding="utf-8",
+        )
         findings = package_validation._validate_prompts(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-PROMPT-UNRESOLVED-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-PROMPT-UNRESOLVED-001" for f in findings),
+            findings,
+        )
 
     def test_unreachable_prompt_is_reported(self) -> None:
         dead = self.root / "prompts/workflow-host/dead-text.md"
-        dead.write_text("---\naudience: worker\n---\n\nDead text nobody includes.\n", encoding="utf-8")
+        dead.write_text(
+            "---\naudience: worker\n---\n\nDead text nobody includes.\n",
+            encoding="utf-8",
+        )
         findings = package_validation._validate_prompts(self.root)
         self.assertTrue(
-            any(f.rule_id == "CONCORDE-PROMPT-UNREACHABLE-001" and "dead-text.md" in f.source for f in findings),
+            any(
+                f.rule_id == "CONCORDE-PROMPT-UNREACHABLE-001"
+                and "dead-text.md" in f.source
+                for f in findings
+            ),
             findings,
         )
 
     def test_name_lint_catches_an_unknown_concorde_token(self) -> None:
         edited = self.root / "prompts/workflow-host/gap-reporting.md"
-        edited.write_text(edited.read_text(encoding="utf-8") + "\nSee concorde-not-a-real-identity.\n", encoding="utf-8")
+        edited.write_text(
+            edited.read_text(encoding="utf-8")
+            + "\nSee concorde-not-a-real-identity.\n",
+            encoding="utf-8",
+        )
         findings = package_validation._validate_prompts(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-PROMPT-NAME-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-PROMPT-NAME-001" for f in findings), findings
+        )
 
     def test_name_lint_catches_an_unknown_token_in_an_agent_spec(self) -> None:
         edited = self.root / "capabilities/planner/spec.md"
-        edited.write_text(edited.read_text(encoding="utf-8") + "\nSee concorde-not-a-real-identity.\n", encoding="utf-8")
+        edited.write_text(
+            edited.read_text(encoding="utf-8")
+            + "\nSee concorde-not-a-real-identity.\n",
+            encoding="utf-8",
+        )
         findings = package_validation._validate_prompts(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-PROMPT-NAME-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-PROMPT-NAME-001" for f in findings), findings
+        )
 
 
 class CapabilityModuleRuleTests(unittest.TestCase):
@@ -217,49 +249,91 @@ class CapabilityModuleRuleTests(unittest.TestCase):
         self.assertEqual([], findings)
 
     def test_inventory_mismatch_is_reported(self) -> None:
-        init = VALID_CAPABILITY_INIT.replace('CAPABILITIES = ("alpha",)', 'CAPABILITIES = ("alpha", "missing")')
+        init = VALID_CAPABILITY_INIT.replace(
+            'CAPABILITIES = ("alpha",)', 'CAPABILITIES = ("alpha", "missing")'
+        )
         _capabilities_package(self.root, init_source=init)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-INVENTORY-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-INVENTORY-001" for f in findings),
+            findings,
+        )
 
     def test_missing_mandatory_constant_is_reported(self) -> None:
-        broken = VALID_ALPHA.replace('STATE = StateContract("concorde-agent-stage-context", "concorde-agent-stage-result")\n', "")
+        broken = VALID_ALPHA.replace(
+            'STATE = StateContract("concorde-agent-stage-context", "concorde-agent-stage-result")\n',
+            "",
+        )
         _capabilities_package(self.root, alpha_source=broken)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings),
+            findings,
+        )
 
     def test_wrong_constant_type_is_reported(self) -> None:
         broken = VALID_ALPHA.replace("USES = ()", "USES = []")
         _capabilities_package(self.root, alpha_source=broken)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings),
+            findings,
+        )
 
     def test_invalid_context_selection_is_reported(self) -> None:
-        broken = VALID_ALPHA.replace('CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "bogus"')
+        broken = VALID_ALPHA.replace(
+            'CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "bogus"'
+        )
         _capabilities_package(self.root, alpha_source=broken)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONTEXT-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-CONTEXT-001" for f in findings),
+            findings,
+        )
 
     def test_public_requires_an_explicit_boolean(self) -> None:
-        for declaration in ('', 'PUBLIC = "false"\n', 'PUBLIC = 0\n', 'PUBLIC = None\n'):
+        for declaration in (
+            "",
+            'PUBLIC = "false"\n',
+            "PUBLIC = 0\n",
+            "PUBLIC = None\n",
+        ):
             with self.subTest(declaration=declaration):
-                _capabilities_package(self.root, alpha_source=VALID_ALPHA.replace('PUBLIC = False\n', declaration))
+                _capabilities_package(
+                    self.root,
+                    alpha_source=VALID_ALPHA.replace("PUBLIC = False\n", declaration),
+                )
                 findings = package_validation._validate_capability_modules(self.root)
-                self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings), findings)
+                self.assertTrue(
+                    any(
+                        f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001"
+                        for f in findings
+                    ),
+                    findings,
+                )
 
     def test_removed_class_declaration_is_rejected(self) -> None:
-        _capabilities_package(self.root, alpha_source=VALID_ALPHA + '\nCLASS = "stage"\n')
+        _capabilities_package(
+            self.root, alpha_source=VALID_ALPHA + '\nCLASS = "stage"\n'
+        )
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings),
+            findings,
+        )
 
     def test_unknown_uses_name_is_reported(self) -> None:
         broken = VALID_ALPHA.replace("USES = ()", 'USES = ("unknown",)')
         _capabilities_package(self.root, alpha_source=broken)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-USES-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-USES-001" for f in findings), findings
+        )
 
     def test_uses_cycle_is_reported(self) -> None:
-        init = VALID_CAPABILITY_INIT.replace('CAPABILITIES = ("alpha",)', 'CAPABILITIES = ("alpha", "beta")')
+        init = VALID_CAPABILITY_INIT.replace(
+            'CAPABILITIES = ("alpha",)', 'CAPABILITIES = ("alpha", "beta")'
+        )
         alpha = VALID_ALPHA.replace("USES = ()", 'USES = ("beta",)')
         beta = VALID_ALPHA.replace("USES = ()", 'USES = ("alpha",)')
         _capabilities_package(self.root, alpha_source=alpha, init_source=init)
@@ -270,53 +344,86 @@ class CapabilityModuleRuleTests(unittest.TestCase):
     def test_private_deterministic_state_node_needs_no_wire_wrapper(self) -> None:
         source = VALID_ALPHA.replace("PROFILE = planner.PROFILE", "PROFILE = None")
         source = source.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
-        source = source.replace("REQUEST = shapes.obj({})\n", "").replace("RESPONSE = shapes.obj({})\n", "")
+        source = source.replace("REQUEST = shapes.obj({})\n", "").replace(
+            "RESPONSE = shapes.obj({})\n", ""
+        )
         _capabilities_package(self.root, alpha_source=source)
         self.assertEqual([], package_validation._validate_capability_modules(self.root))
 
     def test_state_types_and_profile_must_agree(self) -> None:
-        for replacement in ('StateContract("not-registered", None)',
-                            'StateContract("concorde-main-stage-context", "concorde-main-stage-result")'):
+        for replacement in (
+            'StateContract("not-registered", None)',
+            'StateContract("concorde-main-stage-context", "concorde-main-stage-result")',
+        ):
             source = VALID_ALPHA.replace(
-                'StateContract("concorde-agent-stage-context", "concorde-agent-stage-result")', replacement)
+                'StateContract("concorde-agent-stage-context", "concorde-agent-stage-result")',
+                replacement,
+            )
             _capabilities_package(self.root, alpha_source=source)
             findings = package_validation._validate_capability_modules(self.root)
-            self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-STATE-001" for f in findings), findings)
+            self.assertTrue(
+                any(f.rule_id == "CONCORDE-CAPABILITY-STATE-001" for f in findings),
+                findings,
+            )
 
     def test_duplicate_uses_is_rejected(self) -> None:
-        _capabilities_package(self.root, alpha_source=VALID_ALPHA.replace('USES = ()', 'USES = ("alpha", "alpha")'))
+        _capabilities_package(
+            self.root,
+            alpha_source=VALID_ALPHA.replace("USES = ()", 'USES = ("alpha", "alpha")'),
+        )
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any("duplicate Capability" in f.message for f in findings), findings)
+        self.assertTrue(
+            any("duplicate Capability" in f.message for f in findings), findings
+        )
 
     def test_removed_agents_relation_is_rejected(self) -> None:
-        _capabilities_package(self.root, alpha_source=VALID_ALPHA + '\nAGENTS = ()\n')
+        _capabilities_package(self.root, alpha_source=VALID_ALPHA + "\nAGENTS = ()\n")
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings),
+            findings,
+        )
 
     def test_profiles_must_be_worker_profile_objects(self) -> None:
-        broken = VALID_ALPHA.replace("PROFILE = planner.PROFILE", 'PROFILE = "not-a-profile"')
+        broken = VALID_ALPHA.replace(
+            "PROFILE = planner.PROFILE", 'PROFILE = "not-a-profile"'
+        )
         _capabilities_package(self.root, alpha_source=broken)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings),
+            findings,
+        )
 
     def test_public_capability_without_a_skill_is_reported(self) -> None:
-        broken = VALID_ALPHA.replace('PUBLIC = False', 'PUBLIC = True')
+        broken = VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True")
         _capabilities_package(self.root, alpha_source=broken)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-SKILL-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-SKILL-001" for f in findings),
+            findings,
+        )
 
     def test_nonpublic_capability_with_a_skill_is_reported(self) -> None:
         _capabilities_package(self.root)
         _skill(self.root)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-SKILL-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-SKILL-001" for f in findings),
+            findings,
+        )
 
-    def test_public_capability_with_exactly_one_skill_has_no_skill_finding(self) -> None:
-        broken = VALID_ALPHA.replace('PUBLIC = False', 'PUBLIC = True')
+    def test_public_capability_with_exactly_one_skill_has_no_skill_finding(
+        self,
+    ) -> None:
+        broken = VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True")
         _capabilities_package(self.root, alpha_source=broken)
         _skill(self.root)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertFalse(any(f.rule_id == "CONCORDE-CAPABILITY-SKILL-001" for f in findings), findings)
+        self.assertFalse(
+            any(f.rule_id == "CONCORDE-CAPABILITY-SKILL-001" for f in findings),
+            findings,
+        )
 
     def test_external_name_mismatch_is_reported(self) -> None:
         broken = VALID_ALPHA.replace(
@@ -325,55 +432,105 @@ class CapabilityModuleRuleTests(unittest.TestCase):
         )
         _capabilities_package(self.root, alpha_source=broken)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-EXTERNALNAME-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-EXTERNALNAME-001" for f in findings),
+            findings,
+        )
 
     def test_missing_capabilities_package_is_reported(self) -> None:
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-INVENTORY-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-INVENTORY-001" for f in findings),
+            findings,
+        )
 
     @verifies("scenario.distribution.capability-determinism")
     def test_deterministic_requires_an_explicit_boolean(self) -> None:
-        for declaration in ("", 'DETERMINISTIC = "false"\n', "DETERMINISTIC = 0\n",
-                            "DETERMINISTIC = 1\n", "DETERMINISTIC = None\n"):
+        for declaration in (
+            "",
+            'DETERMINISTIC = "false"\n',
+            "DETERMINISTIC = 0\n",
+            "DETERMINISTIC = 1\n",
+            "DETERMINISTIC = None\n",
+        ):
             with self.subTest(declaration=declaration):
                 source = VALID_ALPHA.replace("DETERMINISTIC = False\n", declaration)
                 _capabilities_package(self.root, alpha_source=source)
                 findings = package_validation._validate_capability_modules(self.root)
-                self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001" for f in findings), findings)
+                self.assertTrue(
+                    any(
+                        f.rule_id == "CONCORDE-CAPABILITY-CONSTANTS-001"
+                        for f in findings
+                    ),
+                    findings,
+                )
 
     @verifies("scenario.distribution.capability-determinism")
-    def test_deterministic_matches_direct_model_calls_from_direct_model_calls(self) -> None:
+    def test_deterministic_matches_direct_model_calls_from_direct_model_calls(
+        self,
+    ) -> None:
         for profile in ("None", "planner.PROFILE"):
             for deterministic in (True, False):
                 with self.subTest(profile=profile, deterministic=deterministic):
-                    source = VALID_ALPHA.replace("PROFILE = planner.PROFILE", f"PROFILE = {profile}")
-                    source = source.replace("DETERMINISTIC = False", f"DETERMINISTIC = {deterministic}")
+                    source = VALID_ALPHA.replace(
+                        "PROFILE = planner.PROFILE", f"PROFILE = {profile}"
+                    )
+                    source = source.replace(
+                        "DETERMINISTIC = False", f"DETERMINISTIC = {deterministic}"
+                    )
                     _capabilities_package(self.root, alpha_source=source)
-                    findings = package_validation._validate_capability_modules(self.root)
-                    invalid = any(f.rule_id == "CONCORDE-CAPABILITY-DETERMINISTIC-001" for f in findings)
-                    self.assertEqual(invalid, deterministic != (profile == "None"), findings)
+                    findings = package_validation._validate_capability_modules(
+                        self.root
+                    )
+                    invalid = any(
+                        f.rule_id == "CONCORDE-CAPABILITY-DETERMINISTIC-001"
+                        for f in findings
+                    )
+                    self.assertEqual(
+                        invalid, deterministic != (profile == "None"), findings
+                    )
 
     @verifies("scenario.distribution.capability-determinism")
-    def test_transitive_model_calls_do_not_trust_a_childs_false_deterministic_claim(self) -> None:
+    def test_transitive_model_calls_do_not_trust_a_childs_false_deterministic_claim(
+        self,
+    ) -> None:
         init = VALID_CAPABILITY_INIT.replace('("alpha",)', '("alpha", "beta", "gamma")')
         pure = VALID_ALPHA.replace("PROFILE = planner.PROFILE", "PROFILE = None")
         pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
-        _capabilities_package(self.root, alpha_source=pure.replace("USES = ()", 'USES = ("beta",)'), init_source=init)
-        (self.root / "capabilities/beta.py").write_text(pure.replace("USES = ()", 'USES = ("gamma",)'), encoding="utf-8")
+        _capabilities_package(
+            self.root,
+            alpha_source=pure.replace("USES = ()", 'USES = ("beta",)'),
+            init_source=init,
+        )
+        (self.root / "capabilities/beta.py").write_text(
+            pure.replace("USES = ()", 'USES = ("gamma",)'), encoding="utf-8"
+        )
         # All three incorrectly claim determinism; gamma launches an WorkerProfile.
         (self.root / "capabilities/gamma.py").write_text(
-            VALID_ALPHA.replace("DETERMINISTIC = False", "DETERMINISTIC = True"), encoding="utf-8")
+            VALID_ALPHA.replace("DETERMINISTIC = False", "DETERMINISTIC = True"),
+            encoding="utf-8",
+        )
         findings = package_validation._validate_capability_modules(self.root)
         self.assertEqual(
-            {f.source for f in findings if f.rule_id == "CONCORDE-CAPABILITY-DETERMINISTIC-001"},
-            {f"capabilities/{name}.py" for name in ("alpha", "beta", "gamma")}, findings)
+            {
+                f.source
+                for f in findings
+                if f.rule_id == "CONCORDE-CAPABILITY-DETERMINISTIC-001"
+            },
+            {f"capabilities/{name}.py" for name in ("alpha", "beta", "gamma")},
+            findings,
+        )
 
     @verifies("scenario.distribution.capability-determinism")
     def test_deterministic_composition_without_agents_is_valid(self) -> None:
         init = VALID_CAPABILITY_INIT.replace('("alpha",)', '("alpha", "beta")')
         pure = VALID_ALPHA.replace("PROFILE = planner.PROFILE", "PROFILE = None")
         pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
-        _capabilities_package(self.root, alpha_source=pure.replace("USES = ()", 'USES = ("beta",)'), init_source=init)
+        _capabilities_package(
+            self.root,
+            alpha_source=pure.replace("USES = ()", 'USES = ("beta",)'),
+            init_source=init,
+        )
         (self.root / "capabilities/beta.py").write_text(pure, encoding="utf-8")
         self.assertEqual([], package_validation._validate_capability_modules(self.root))
 
@@ -382,18 +539,28 @@ class CapabilityModuleRuleTests(unittest.TestCase):
         pure = VALID_ALPHA.replace("PROFILE = planner.PROFILE", "PROFILE = None")
         pure = pure.replace("DETERMINISTIC = False", "DETERMINISTIC = True")
         _capabilities_package(self.root, alpha_source=pure)
-        pure = pure.replace('CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "discover"')
+        pure = pure.replace(
+            'CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "discover"'
+        )
         _capabilities_package(self.root, alpha_source=pure)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-DETERMINISTIC-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-DETERMINISTIC-001" for f in findings),
+            findings,
+        )
 
     @verifies("scenario.distribution.capability-determinism")
     def test_no_context_selection_cannot_admit_model_calls(self) -> None:
-        source = VALID_ALPHA.replace('CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "none"').replace('PUBLIC = False', 'PUBLIC = True')
+        source = VALID_ALPHA.replace(
+            'CONTEXT_SELECTION = "bound"', 'CONTEXT_SELECTION = "none"'
+        ).replace("PUBLIC = False", "PUBLIC = True")
         _capabilities_package(self.root, alpha_source=source)
         _skill(self.root)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-CONTEXT-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-CONTEXT-001" for f in findings),
+            findings,
+        )
 
 
 class AgentRuleTests(unittest.TestCase):
@@ -411,25 +578,40 @@ class AgentRuleTests(unittest.TestCase):
 
     def test_missing_agents_package_is_reported(self) -> None:
         findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-INVENTORY-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-INVENTORY-001" for f in findings),
+            findings,
+        )
 
     def test_inventory_mismatch_is_reported(self) -> None:
-        init = VALID_AGENT_INIT.replace('CAPABILITIES = ("alpha",)', 'CAPABILITIES = ("alpha", "missing")')
+        init = VALID_AGENT_INIT.replace(
+            'CAPABILITIES = ("alpha",)', 'CAPABILITIES = ("alpha", "missing")'
+        )
         _agents_package(self.root, init_source=init)
         findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-INVENTORY-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-INVENTORY-001" for f in findings),
+            findings,
+        )
 
     def test_duplicate_agent_name_is_reported(self) -> None:
-        init = VALID_AGENT_INIT.replace('CAPABILITIES = ("alpha",)', 'CAPABILITIES = ("alpha", "alpha")')
+        init = VALID_AGENT_INIT.replace(
+            'CAPABILITIES = ("alpha",)', 'CAPABILITIES = ("alpha", "alpha")'
+        )
         _agents_package(self.root, init_source=init)
         findings = package_validation._validate_capability_modules(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CAPABILITY-INVENTORY-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CAPABILITY-INVENTORY-001" for f in findings),
+            findings,
+        )
 
     def test_missing_spec_is_reported(self) -> None:
         _agents_package(self.root)
         (self.root / "capabilities/alpha/spec.md").unlink()
         findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-SPEC-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-AGENT-SPEC-001" for f in findings), findings
+        )
 
     def test_wrong_spec_path_is_reported(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
@@ -437,19 +619,29 @@ class AgentRuleTests(unittest.TestCase):
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-SPEC-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-AGENT-SPEC-001" for f in findings), findings
+        )
 
     def test_missing_heading_is_reported(self) -> None:
-        broken_spec = VALID_AGENT_ALPHA_SPEC.replace("## Goals\n\nFixture goals.\n\n", "")
+        broken_spec = VALID_AGENT_ALPHA_SPEC.replace(
+            "## Goals\n\nFixture goals.\n\n", ""
+        )
         _agents_package(self.root, spec_source=broken_spec)
         findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-SPEC-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-AGENT-SPEC-001" for f in findings), findings
+        )
 
     def test_wrong_h1_is_reported(self) -> None:
-        broken_spec = VALID_AGENT_ALPHA_SPEC.replace("# concorde-alpha", "# concorde-wrong-name")
+        broken_spec = VALID_AGENT_ALPHA_SPEC.replace(
+            "# concorde-alpha", "# concorde-wrong-name"
+        )
         _agents_package(self.root, spec_source=broken_spec)
         findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-SPEC-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-AGENT-SPEC-001" for f in findings), findings
+        )
 
     def test_network_effect_is_an_invalid_profile(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
@@ -458,7 +650,9 @@ class AgentRuleTests(unittest.TestCase):
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings
+        )
 
     def test_write_effect_outside_read_effect_is_an_invalid_profile(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
@@ -467,42 +661,58 @@ class AgentRuleTests(unittest.TestCase):
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings
+        )
 
     def test_non_positive_timeout_is_an_invalid_profile(self) -> None:
         broken_module = VALID_AGENT_ALPHA_MODULE.replace(
-            "children=(),", "children=(),\n    timeout_seconds=0,",
+            "children=(),",
+            "children=(),\n    timeout_seconds=0,",
         )
         _agents_package(self.root, module_source=broken_module)
         findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-AGENT-PROFILE-001" for f in findings), findings
+        )
 
     def test_declared_child_without_a_file_is_reported(self) -> None:
         _agents_package(self.root, module_source=VALID_AGENT_ALPHA_MODULE_WITH_CHILD)
         findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-CHILD-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-AGENT-CHILD-001" for f in findings), findings
+        )
 
     def test_undeclared_child_file_is_reported(self) -> None:
         _agents_package(self.root, children={"scout": VALID_CHILD_SCOUT})
         findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-CHILD-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-AGENT-CHILD-001" for f in findings), findings
+        )
 
     def test_matching_child_has_no_findings(self) -> None:
         _agents_package(
-            self.root, module_source=VALID_AGENT_ALPHA_MODULE_WITH_CHILD, children={"scout": VALID_CHILD_SCOUT}
+            self.root,
+            module_source=VALID_AGENT_ALPHA_MODULE_WITH_CHILD,
+            children={"scout": VALID_CHILD_SCOUT},
         )
         findings = package_validation._validate_worker_profiles(self.root)
         self.assertEqual([], findings)
 
     def test_invalid_child_definition_is_reported(self) -> None:
         broken_child = VALID_CHILD_SCOUT.replace(
-            "description: Searches the granted read-only files for one focused question.\n", ""
+            "description: Searches the granted read-only files for one focused question.\n",
+            "",
         )
         _agents_package(
-            self.root, module_source=VALID_AGENT_ALPHA_MODULE_WITH_CHILD, children={"scout": broken_child}
+            self.root,
+            module_source=VALID_AGENT_ALPHA_MODULE_WITH_CHILD,
+            children={"scout": broken_child},
         )
         findings = package_validation._validate_worker_profiles(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-AGENT-CHILD-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-AGENT-CHILD-001" for f in findings), findings
+        )
 
 
 class ContractRuleTests(unittest.TestCase):
@@ -515,44 +725,76 @@ class ContractRuleTests(unittest.TestCase):
 
     def test_missing_schemas_file_is_reported(self) -> None:
         findings = package_validation._validate_contracts(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CONTRACT-SCHEMA-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CONTRACT-SCHEMA-001" for f in findings), findings
+        )
 
     def test_stale_schemas_file_is_reported(self) -> None:
         (self.root / "generated/protocol").mkdir(parents=True)
-        (self.root / "generated/protocol/schemas.json").write_text("{}", encoding="utf-8")
+        (self.root / "generated/protocol/schemas.json").write_text(
+            "{}", encoding="utf-8"
+        )
         findings = package_validation._validate_contracts(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CONTRACT-SCHEMA-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CONTRACT-SCHEMA-001" for f in findings), findings
+        )
 
     def test_current_schemas_file_has_no_findings(self) -> None:
         (self.root / "generated/protocol").mkdir(parents=True)
-        shutil.copy2(REPOSITORY_ROOT / "generated/protocol/schemas.json", self.root / "generated/protocol/schemas.json")
+        shutil.copy2(
+            REPOSITORY_ROOT / "generated/protocol/schemas.json",
+            self.root / "generated/protocol/schemas.json",
+        )
         self.assertEqual([], package_validation._validate_contracts(self.root))
 
     def test_broken_schema_source_is_reported_without_raising(self) -> None:
         (self.root / "generated/protocol").mkdir(parents=True)
-        shutil.copy2(REPOSITORY_ROOT / "generated/protocol/schemas.json", self.root / "generated/protocol/schemas.json")
-        shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", self.root / "src/concorde/spec",
-                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        shutil.copy2(
+            REPOSITORY_ROOT / "generated/protocol/schemas.json",
+            self.root / "generated/protocol/schemas.json",
+        )
+        shutil.copytree(
+            REPOSITORY_ROOT / "src/concorde/spec",
+            self.root / "src/concorde/spec",
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+        )
         helper = self.root / "src/concorde/spec/wire_shapes.py"
-        helper.write_text(helper.read_text(encoding="utf-8") + "\nSTRING = {\n", encoding="utf-8")
+        helper.write_text(
+            helper.read_text(encoding="utf-8") + "\nSTRING = {\n", encoding="utf-8"
+        )
         findings = package_validation._validate_contracts(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CONTRACT-SCHEMA-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CONTRACT-SCHEMA-001" for f in findings), findings
+        )
         self.assertIn("wire_shapes.py", str(findings))
 
     def test_duplicate_exported_type_identity_is_reported(self) -> None:
         # The duplicate lives in the named root's own contracts, which the rendered schema
         # dictionary would otherwise collapse silently.
         (self.root / "generated/protocol").mkdir(parents=True)
-        shutil.copy2(REPOSITORY_ROOT / "generated/protocol/schemas.json", self.root / "generated/protocol/schemas.json")
-        shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", self.root / "src/concorde/spec",
-                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        shutil.copy2(
+            REPOSITORY_ROOT / "generated/protocol/schemas.json",
+            self.root / "generated/protocol/schemas.json",
+        )
+        shutil.copytree(
+            REPOSITORY_ROOT / "src/concorde/spec",
+            self.root / "src/concorde/spec",
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+        )
         contracts = self.root / "src/concorde/spec/contracts.py"
-        contracts.write_text(contracts.read_text(encoding="utf-8") + (
-            "\n_ORIGINAL_EXPORTED_TYPES = exported_types\n"
-            "def exported_types():\n"
-            "    return (*_ORIGINAL_EXPORTED_TYPES(), 'concorde-main-request')\n"), encoding="utf-8")
+        contracts.write_text(
+            contracts.read_text(encoding="utf-8")
+            + (
+                "\n_ORIGINAL_EXPORTED_TYPES = exported_types\n"
+                "def exported_types():\n"
+                "    return (*_ORIGINAL_EXPORTED_TYPES(), 'concorde-main-request')\n"
+            ),
+            encoding="utf-8",
+        )
         findings = package_validation._validate_contracts(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-CONTRACT-UNIQUE-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-CONTRACT-UNIQUE-001" for f in findings), findings
+        )
         self.assertIn("concorde-main-request", str(findings))
 
 
@@ -571,23 +813,33 @@ class BuildOutputRuleTests(unittest.TestCase):
     @verifies("scenario.distribution.build-check")
     def test_missing_manifest_is_reported(self) -> None:
         findings = package_validation._validate_build_outputs(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-BUILD-FRESH-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-BUILD-FRESH-001" for f in findings), findings
+        )
 
     @verifies("scenario.distribution.build-check")
     def test_stale_source_is_reported(self) -> None:
         write_build(self.root, "all")
         edited = self.root / "prompts/workflow-host/gap-reporting.md"
-        edited.write_text(edited.read_text(encoding="utf-8") + "\nChanged.\n", encoding="utf-8")
+        edited.write_text(
+            edited.read_text(encoding="utf-8") + "\nChanged.\n", encoding="utf-8"
+        )
         findings = package_validation._validate_build_outputs(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-BUILD-FRESH-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-BUILD-FRESH-001" for f in findings), findings
+        )
 
     @verifies("scenario.distribution.build-check")
     def test_drifted_output_is_reported(self) -> None:
         write_build(self.root, "all")
         target = self.root / "generated/agents/planner.md"
-        target.write_text(target.read_text(encoding="utf-8") + "\ntampered\n", encoding="utf-8")
+        target.write_text(
+            target.read_text(encoding="utf-8") + "\ntampered\n", encoding="utf-8"
+        )
         findings = package_validation._validate_build_outputs(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-BUILD-DRIFT-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-BUILD-DRIFT-001" for f in findings), findings
+        )
 
     @verifies("scenario.distribution.build-check")
     def test_fresh_build_has_no_findings(self) -> None:
@@ -602,15 +854,21 @@ class BuildOutputRuleTests(unittest.TestCase):
         write_build(self.root, "all")
         other = self.root / "generated/architecture"
         other.mkdir(parents=True)
-        (other / "example.html").write_text("unrelated diagram render\n", encoding="utf-8")
+        (other / "example.html").write_text(
+            "unrelated diagram render\n", encoding="utf-8"
+        )
         self.assertEqual([], package_validation._validate_build_outputs(self.root))
 
     @verifies("scenario.distribution.build-check")
     def test_unexpected_file_in_an_owned_directory_is_reported(self) -> None:
         write_build(self.root, "all")
-        (self.root / "generated/agents/extra.md").write_text("not a build output\n", encoding="utf-8")
+        (self.root / "generated/agents/extra.md").write_text(
+            "not a build output\n", encoding="utf-8"
+        )
         findings = package_validation._validate_build_outputs(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-BUILD-DRIFT-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-BUILD-DRIFT-001" for f in findings), findings
+        )
 
 
 def _required_documents(root: Path) -> dict[str, str]:
@@ -620,23 +878,48 @@ def _required_documents(root: Path) -> dict[str, str]:
 
 
 def _registry(root: Path, *, documents: list[str]) -> None:
-    registry = {'schema_version':5,'project_id':'project.fixture','entry_target':'service.alpha',
-        'targets':[{'id':'service.alpha','kind':'module','title':'Alpha','documents':documents,
-                    'parent':None,'uses':[],'references':[],'files':[],'checks':[]}], 'checks':[]}
-    path = root / '.concorde/specs.json'
-    path.parent.mkdir(parents=True,exist_ok=True)
+    registry = {
+        "schema_version": 5,
+        "project_id": "project.fixture",
+        "entry_target": "service.alpha",
+        "targets": [
+            {
+                "id": "service.alpha",
+                "kind": "module",
+                "title": "Alpha",
+                "documents": documents,
+                "parent": None,
+                "uses": [],
+                "references": [],
+                "files": [],
+                "checks": [],
+            }
+        ],
+        "checks": [],
+    }
+    path = root / ".concorde/specs.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(registry))
 
 
 def _document(root: Path, relative: str, document_id: str, body: str) -> None:
     """Create a native paired unit for isolated package-inventory tests."""
     import re
+
     path = root / relative
     path.parent.mkdir(parents=True, exist_ok=True)
-    metadata = {'schema_version':1,'document':{'id':document_id,'owner':'service.alpha'},
-                'entities':[],'dependencies':[],'bindings':[]}
-    for language, key in [('concorde-capabilities','concorde.capabilities'),('concorde-agents','concorde.agents')]:
-        pattern = re.compile(r'```'+language+r'\n(.*?)\n```',re.S)
+    metadata = {
+        "schema_version": 2,
+        "document": {"id": document_id, "owner": "service.alpha", "role": "module"},
+        "entities": [],
+        "dependencies": [],
+        "bindings": [],
+    }
+    for language, key in [
+        ("concorde-capabilities", "concorde.capabilities"),
+        ("concorde-agents", "concorde.agents"),
+    ]:
+        pattern = re.compile(r"```" + language + r"\n(.*?)\n```", re.S)
         for match in pattern.finditer(body):
             try:
                 value = json.loads(match.group(1))
@@ -644,15 +927,19 @@ def _document(root: Path, relative: str, document_id: str, body: str) -> None:
                     expected = package_validation._capability_code_inventory(root) or {}
                     for entry in value:
                         if isinstance(entry, dict):
-                            base = expected.get(entry.get("id"), next(iter(expected.values()), {}))
+                            base = expected.get(
+                                entry.get("id"), next(iter(expected.values()), {})
+                            )
                             for field in ("uses", "state", "profile"):
                                 entry.setdefault(field, base.get(field))
             except ValueError:
-                value = match.group(1)  # Invalid inventory shape must still reach the rule under test.
-            metadata.setdefault('extensions',{})[key] = value
-        body = pattern.sub('Machine inventory is in the associated metadata.',body)
-    path.write_text('# Fixture\n\n'+body+'\n')
-    (root / (relative+'.json')).write_text(json.dumps(metadata))
+                value = match.group(
+                    1
+                )  # Invalid inventory shape must still reach the rule under test.
+            metadata.setdefault("extensions", {})[key] = value
+        body = pattern.sub("Machine inventory is in the associated metadata.", body)
+    path.write_text("# Fixture\n\n" + body + "\n")
+    (root / (relative + ".json")).write_text(json.dumps(metadata))
 
 
 class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
@@ -665,31 +952,51 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
 
     def test_missing_registry_is_reported(self) -> None:
         findings = package_validation._validate_spec_alignment(self.root)
-        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings),
+            findings,
+        )
 
     @verifies("scenario.distribution.capability-determinism")
     def test_spec_deterministic_must_be_a_matching_boolean(self) -> None:
         _capabilities_package(self.root)
         for value in (False, True, "false", 0, 1, None, "missing"):
             with self.subTest(value=value):
-                entry = {"id": "alpha", "public": False, "context_selection": "bound", "skill": None}
+                entry = {
+                    "id": "alpha",
+                    "public": False,
+                    "context_selection": "bound",
+                    "skill": None,
+                }
                 if value != "missing":
                     entry["deterministic"] = value
                 body = "```concorde-capabilities\n" + json.dumps([entry]) + "\n```"
                 _document(self.root, "specs/one.md", "document.one", body)
-                findings = package_validation._validate_spec_capabilities_block(self.root, {"specs/one.md": body})
+                findings = package_validation._validate_spec_capabilities_block(
+                    self.root, {"specs/one.md": body}
+                )
                 if value is False:
                     self.assertEqual([], findings)
                 else:
-                    self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
+                    self.assertTrue(
+                        any(
+                            f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001"
+                            for f in findings
+                        ),
+                        findings,
+                    )
 
     def test_no_capabilities_block_is_reported(self) -> None:
         _capabilities_package(self.root)
         _document(self.root, "specs/doc.md", "document.doc", "No block here.")
         _registry(self.root, documents=["specs/doc.md"])
         findings = package_validation._validate_spec_capabilities_block(
-            self.root, _required_documents(self.root))
-        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
+            self.root, _required_documents(self.root)
+        )
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings),
+            findings,
+        )
 
     def test_two_capabilities_blocks_is_reported(self) -> None:
         _capabilities_package(self.root)
@@ -698,60 +1005,133 @@ class SpecAlignmentCapabilitiesRuleTests(unittest.TestCase):
         _document(self.root, "specs/two.md", "document.two", block)
         _registry(self.root, documents=["specs/one.md", "specs/two.md"])
         findings = package_validation._validate_spec_capabilities_block(
-            self.root, _required_documents(self.root))
-        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
+            self.root, _required_documents(self.root)
+        )
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings),
+            findings,
+        )
 
     def test_malformed_json_is_reported(self) -> None:
         _capabilities_package(self.root)
-        _document(self.root, "specs/one.md", "document.one", "```concorde-capabilities\nnot json\n```")
+        _document(
+            self.root,
+            "specs/one.md",
+            "document.one",
+            "```concorde-capabilities\nnot json\n```",
+        )
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_capabilities_block(
-            self.root, _required_documents(self.root))
-        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
+            self.root, _required_documents(self.root)
+        )
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings),
+            findings,
+        )
 
     def test_matching_capabilities_block_has_no_findings(self) -> None:
-        public_alpha = VALID_ALPHA.replace('PUBLIC = False', 'PUBLIC = True')
+        public_alpha = VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True")
         _capabilities_package(self.root, alpha_source=public_alpha)
         _skill(self.root)
-        block = "```concorde-capabilities\n" + json.dumps(
-            [{"id": "alpha", "public": True, "context_selection": "bound", "deterministic": False, "skill": "concorde-alpha"}]) + "\n```"
+        block = (
+            "```concorde-capabilities\n"
+            + json.dumps(
+                [
+                    {
+                        "id": "alpha",
+                        "public": True,
+                        "context_selection": "bound",
+                        "deterministic": False,
+                        "skill": "concorde-alpha",
+                    }
+                ]
+            )
+            + "\n```"
+        )
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_capabilities_block(
-            self.root, _required_documents(self.root))
+            self.root, _required_documents(self.root)
+        )
         self.assertEqual([], findings)
 
     def test_mismatched_context_selection_is_reported(self) -> None:
-        public_alpha = VALID_ALPHA.replace('PUBLIC = False', 'PUBLIC = True')
+        public_alpha = VALID_ALPHA.replace("PUBLIC = False", "PUBLIC = True")
         _capabilities_package(self.root, alpha_source=public_alpha)
         _skill(self.root)
-        block = "```concorde-capabilities\n" + json.dumps(
-            [{"id": "alpha", "public": True, "context_selection": "none", "deterministic": False, "skill": "concorde-alpha"}]) + "\n```"
+        block = (
+            "```concorde-capabilities\n"
+            + json.dumps(
+                [
+                    {
+                        "id": "alpha",
+                        "public": True,
+                        "context_selection": "none",
+                        "deterministic": False,
+                        "skill": "concorde-alpha",
+                    }
+                ]
+            )
+            + "\n```"
+        )
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_capabilities_block(
-            self.root, _required_documents(self.root))
-        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
+            self.root, _required_documents(self.root)
+        )
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings),
+            findings,
+        )
 
     def test_missing_capability_entry_is_reported(self) -> None:
         _capabilities_package(self.root)
-        _document(self.root, "specs/one.md", "document.one", "```concorde-capabilities\n[]\n```")
+        _document(
+            self.root,
+            "specs/one.md",
+            "document.one",
+            "```concorde-capabilities\n[]\n```",
+        )
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_capabilities_block(
-            self.root, _required_documents(self.root))
-        self.assertTrue(any("missing capability" in f.message for f in findings), findings)
+            self.root, _required_documents(self.root)
+        )
+        self.assertTrue(
+            any("missing capability" in f.message for f in findings), findings
+        )
 
     def test_extra_capability_entry_is_reported(self) -> None:
         _capabilities_package(self.root)
-        block = "```concorde-capabilities\n" + json.dumps([
-            {"id": "alpha", "public": False, "context_selection": "bound", "deterministic": False, "skill": None},
-            {"id": "ghost", "public": False, "context_selection": "bound", "deterministic": False, "skill": None},
-        ]) + "\n```"
+        block = (
+            "```concorde-capabilities\n"
+            + json.dumps(
+                [
+                    {
+                        "id": "alpha",
+                        "public": False,
+                        "context_selection": "bound",
+                        "deterministic": False,
+                        "skill": None,
+                    },
+                    {
+                        "id": "ghost",
+                        "public": False,
+                        "context_selection": "bound",
+                        "deterministic": False,
+                        "skill": None,
+                    },
+                ]
+            )
+            + "\n```"
+        )
         _document(self.root, "specs/one.md", "document.one", block)
         _registry(self.root, documents=["specs/one.md"])
         findings = package_validation._validate_spec_capabilities_block(
-            self.root, _required_documents(self.root))
-        self.assertTrue(any("unknown capability" in f.message for f in findings), findings)
+            self.root, _required_documents(self.root)
+        )
+        self.assertTrue(
+            any("unknown capability" in f.message for f in findings), findings
+        )
 
 
 class UnifiedProfileMetadataTests(unittest.TestCase):
@@ -765,17 +1145,27 @@ class UnifiedProfileMetadataTests(unittest.TestCase):
             inventory = package_validation._capability_code_inventory(root)
             assert inventory is not None
             expected = inventory["alpha"]
-            for key, value in (("profile", {**expected["profile"], "tools": ["invented"]}),
-                               ("profile", {**expected["profile"], "workspace": "project"}),
-                               ("state", {"input": "unknown", "output": None}),
-                               ("uses", ["ghost"])):
+            for key, value in (
+                ("profile", {**expected["profile"], "tools": ["invented"]}),
+                ("profile", {**expected["profile"], "workspace": "project"}),
+                ("state", {"input": "unknown", "output": None}),
+                ("uses", ["ghost"]),
+            ):
                 with self.subTest(key=key, value=value):
                     entry = {"id": "alpha", **expected, key: value}
                     block = "```concorde-capabilities\n" + json.dumps([entry]) + "\n```"
                     _document(root, "specs/one.md", "document.one", block)
                     _registry(root, documents=["specs/one.md"])
-                    findings = package_validation._validate_spec_capabilities_block(root, _required_documents(root))
-                    self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001" for f in findings), findings)
+                    findings = package_validation._validate_spec_capabilities_block(
+                        root, _required_documents(root)
+                    )
+                    self.assertTrue(
+                        any(
+                            f.rule_id == "CONCORDE-SPEC-CAPABILITIES-001"
+                            for f in findings
+                        ),
+                        findings,
+                    )
 
     def test_single_inventory_matches_without_an_agent_metadata_block(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -784,10 +1174,19 @@ class UnifiedProfileMetadataTests(unittest.TestCase):
             inventory = package_validation._capability_code_inventory(root)
             assert inventory is not None
             entry = {"id": "alpha", **inventory["alpha"]}
-            _document(root, "specs/one.md", "document.one",
-                      "```concorde-capabilities\n" + json.dumps([entry]) + "\n```")
+            _document(
+                root,
+                "specs/one.md",
+                "document.one",
+                "```concorde-capabilities\n" + json.dumps([entry]) + "\n```",
+            )
             _registry(root, documents=["specs/one.md"])
-            self.assertEqual([], package_validation._validate_spec_capabilities_block(root, _required_documents(root)))
+            self.assertEqual(
+                [],
+                package_validation._validate_spec_capabilities_block(
+                    root, _required_documents(root)
+                ),
+            )
 
 
 class SpecAlignmentTypesRuleTests(unittest.TestCase):
@@ -803,35 +1202,63 @@ class SpecAlignmentTypesRuleTests(unittest.TestCase):
         _document(self.root, "specs/other.md", "document.other", "Nothing relevant.")
         _registry(self.root, documents=["specs/other.md"])
         findings = package_validation._validate_spec_types(
-            self.root, _required_documents(self.root))
-        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-TYPES-001" for f in findings), findings)
+            self.root, _required_documents(self.root)
+        )
+        self.assertTrue(
+            any(f.rule_id == "CONCORDE-SPEC-TYPES-001" for f in findings), findings
+        )
 
     def test_unknown_type_token_is_reported(self) -> None:
-        _document(self.root, "specs/boundary.md", "document.development.interfaces",
-            "Mentions `concorde-not-a-real-type@1` here.")
+        _document(
+            self.root,
+            "specs/boundary.md",
+            "document.development.interfaces",
+            "Mentions `concorde-not-a-real-type@1` here.",
+        )
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_types(
-            self.root, _required_documents(self.root))
-        self.assertTrue(any("names no exported identity" in f.message for f in findings), findings)
+            self.root, _required_documents(self.root)
+        )
+        self.assertTrue(
+            any("names no exported identity" in f.message for f in findings), findings
+        )
 
     def test_wrong_version_is_reported(self) -> None:
-        _document(self.root, "specs/boundary.md", "document.development.interfaces",
-            "Mentions `concorde-capability-invocation@2` here.")
+        _document(
+            self.root,
+            "specs/boundary.md",
+            "document.development.interfaces",
+            "Mentions `concorde-capability-invocation@2` here.",
+        )
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_types(
-            self.root, _required_documents(self.root))
-        self.assertTrue(any("does not match its exported version" in f.message for f in findings), findings)
+            self.root, _required_documents(self.root)
+        )
+        self.assertTrue(
+            any("does not match its exported version" in f.message for f in findings),
+            findings,
+        )
 
     def test_missing_exported_identity_is_reported(self) -> None:
-        _document(self.root, "specs/boundary.md", "document.development.interfaces", "Nothing about types here.")
+        _document(
+            self.root,
+            "specs/boundary.md",
+            "document.development.interfaces",
+            "Nothing about types here.",
+        )
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_types(
-            self.root, _required_documents(self.root))
-        self.assertTrue(any("does not appear in this document" in f.message for f in findings), findings)
+            self.root, _required_documents(self.root)
+        )
+        self.assertTrue(
+            any("does not appear in this document" in f.message for f in findings),
+            findings,
+        )
 
     def test_the_real_boundary_document_has_no_findings(self) -> None:
         findings = package_validation._validate_spec_types(
-            REPOSITORY_ROOT, _required_documents(REPOSITORY_ROOT))
+            REPOSITORY_ROOT, _required_documents(REPOSITORY_ROOT)
+        )
         self.assertEqual([], findings)
 
 
@@ -850,42 +1277,73 @@ class SpecAlignmentErrorsRuleTests(unittest.TestCase):
         path.write_text(source, encoding="utf-8")
 
     def test_missing_error_code_is_reported_as_advisory(self) -> None:
-        self._package_module("fixture.py",
-            'class FixtureError(ValueError):\n    pass\n\n\n'
-            'def raise_it():\n    raise FixtureError("something went wrong", "fixture_missing_code")\n')
-        _document(self.root, "specs/boundary.md", "document.development.interfaces", "No error table here.")
+        self._package_module(
+            "fixture.py",
+            "class FixtureError(ValueError):\n    pass\n\n\n"
+            'def raise_it():\n    raise FixtureError("something went wrong", "fixture_missing_code")\n',
+        )
+        _document(
+            self.root,
+            "specs/boundary.md",
+            "document.development.interfaces",
+            "No error table here.",
+        )
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_errors(
-            self.root, _required_documents(self.root))
-        self.assertTrue(any(f.rule_id == "CONCORDE-SPEC-ERRORS-001" and "fixture_missing_code" in f.message
-                            and f.severity == "advisory" for f in findings), findings)
+            self.root, _required_documents(self.root)
+        )
+        self.assertTrue(
+            any(
+                f.rule_id == "CONCORDE-SPEC-ERRORS-001"
+                and "fixture_missing_code" in f.message
+                and f.severity == "advisory"
+                for f in findings
+            ),
+            findings,
+        )
 
     def test_message_text_is_never_mistaken_for_a_code(self) -> None:
-        self._package_module("fixture.py",
-            'class FixtureError(ValueError):\n    pass\n\n\n'
-            'def raise_it():\n    raise FixtureError("a plain message with spaces")\n')
-        _document(self.root, "specs/boundary.md", "document.development.interfaces", "No error table here.")
+        self._package_module(
+            "fixture.py",
+            "class FixtureError(ValueError):\n    pass\n\n\n"
+            'def raise_it():\n    raise FixtureError("a plain message with spaces")\n',
+        )
+        _document(
+            self.root,
+            "specs/boundary.md",
+            "document.development.interfaces",
+            "No error table here.",
+        )
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_errors(
-            self.root, _required_documents(self.root))
+            self.root, _required_documents(self.root)
+        )
         self.assertEqual([], findings)
 
     def test_documented_error_code_has_no_findings(self) -> None:
-        self._package_module("fixture.py",
-            'class FixtureError(ValueError):\n    pass\n\n\n'
-            'def raise_it():\n    raise FixtureError("something went wrong", "fixture_code")\n')
-        _document(self.root, "specs/boundary.md", "document.development.interfaces",
-            "| Error code | Meaning |\n| --- | --- |\n| `fixture_code` | Something. |")
+        self._package_module(
+            "fixture.py",
+            "class FixtureError(ValueError):\n    pass\n\n\n"
+            'def raise_it():\n    raise FixtureError("something went wrong", "fixture_code")\n',
+        )
+        _document(
+            self.root,
+            "specs/boundary.md",
+            "document.development.interfaces",
+            "| Error code | Meaning |\n| --- | --- |\n| `fixture_code` | Something. |",
+        )
         _registry(self.root, documents=["specs/boundary.md"])
         findings = package_validation._validate_spec_errors(
-            self.root, _required_documents(self.root))
+            self.root, _required_documents(self.root)
+        )
         self.assertEqual([], findings)
 
     def test_missing_boundary_document_has_no_findings(self) -> None:
         _document(self.root, "specs/other.md", "document.other", "Nothing relevant.")
         _registry(self.root, documents=["specs/other.md"])
         findings = package_validation._validate_spec_errors(
-            self.root, _required_documents(self.root))
+            self.root, _required_documents(self.root)
+        )
         self.assertEqual([], findings)
 
 

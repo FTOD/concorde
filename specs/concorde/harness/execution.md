@@ -42,42 +42,6 @@ successful sandbox exit establishes execution under this boundary, not test adeq
 completeness. The calling host remains responsible for digest and candidate freshness checks;
 `CHECK_POLICY="project-read-only-v1"` identifies this execution guarantee for evidence invalidation.
 
-#### scenario.harness.check-read-only — Project mutation is denied during execution
-
-- GIVEN a configured command with project read access
-- WHEN it or a descendant attempts creation, modification, deletion, rename or modification followed by restoration
-- THEN the operating system rejects the operation before project bytes or directory entries change
-- AND alternative pathnames, inherited descriptors and nested namespace remounts cannot grant project writes
-
-#### scenario.harness.check-scratch — Each check can read inputs and write disposable output
-
-- GIVEN an admitted command and an available external temporary directory
-- WHEN the host executes the check
-- THEN project reads and writes to the issued temporary and cache/report directories succeed
-- AND repeated calls receive separate scratch directories that are removed after execution
-- AND an ambient project-local temporary path cannot become a writable project mount
-
-#### scenario.harness.check-result — Output and exit status are returned only to the host
-
-- GIVEN a check that writes standard output and standard error and exits with a specified code
-- WHEN its isolated execution finishes
-- THEN the executor returns both byte streams and that exit code without exposing a project log descriptor
-- AND large output on both pipes is drained without blocking command completion
-
-#### scenario.harness.check-unavailable — Unsupported enforcement prevents execution
-
-- GIVEN an unsupported OS, missing sandbox backend or a real sandbox setup failure
-- WHEN the host requests a configured check
-- THEN execution fails closed with CheckSandboxError and host-only diagnostics
-- AND no ordinary subprocess fallback runs the configured command
-
-#### scenario.harness.check-lifetime — Descendants cannot outlive their check
-
-- GIVEN a check that spawns detached descendants
-- WHEN the initial command completes or its deadline expires
-- THEN the host terminates every descendant before returning and removes scratch afterward
-- AND a timeout preserves partial output with timeout status instead of successful evidence
-
 ### Required Agent and Harness boundary
 
 The local companion contract **Agents and Harnesses** defines A1–A5 for this Module. Execution MUST
@@ -207,7 +171,7 @@ one Flow run keeps one file. The same record reaches the host observer as an `ag
 `read_usage` and `summarize_usage` aggregate the lines per step (capability, stage and target),
 stage, target, worker and run; the `concorde usage` Tool and the executable boundary's stderr summary
 use them. Usage is diagnostic evidence about cost: it gates nothing, and a failure to persist it
-never fails the launch. See [usage accounting](module.md#scenario.harness.usage-accounting).
+never fails the launch. See [usage accounting](scenarios.md#scenario.harness.usage-accounting).
 
 ### Outcomes
 
@@ -269,8 +233,6 @@ namespace PID 1 with a pidfd. On timeout, cancellation, failure and normal compl
 terminates the namespace and waits for cleanup before removing scratch. This includes descendants
 that double-fork, create sessions or reset parent-death signals. Both output pipes drain while the
 initial command runs, and a background process holding them open cannot prevent cleanup.
-
-### Worker launch and enforcement
 
 #### What the host itself enforces
 
@@ -353,36 +315,7 @@ For a worker granted `run_checks`, the host serves one Unix socket in the run di
 sends `{"tool": "run_checks"}` and returns the host's JSON reply, or an `error` field when the host
 callback fails; the host runs the configured checks under its own read-only executor.
 
-#### scenario.harness.pi-rpc-client — Read one Pi RPC run to settlement
+## Precise specifications
 
-- GIVEN a process speaking Pi's RPC protocol
-- WHEN the host runs one prompt through run_prompt
-- THEN records are split on line feed only, so U+2028 and U+2029 inside a JSON string stay inside it, and a trailing carriage return is dropped
-- AND every extension dialog is answered as cancelled, every tool result is collected, and the session statistics are read after agent_settled
-- BUT a process that closes its output before settling raises PiRpcError, and a run past its deadline is killed and raises PiRpcTimeout
-
-#### scenario.harness.pi-worker-launch — Launch a Pi worker and admit its single result
-
-- GIVEN a consistent worker launch with a workspace, grants, tools, a system prompt, a message, a result schema and a Pi model
-- WHEN PiWorkerRuntime runs it
-- THEN Pi starts in RPC mode with ambient discovery disabled, the host-rendered system prompt as the complete system prompt and submit_result advertised with exactly the launch's result schema
-- AND the returned value is the details of the single successful submit_result call, with usage from Pi's session statistics
-- AND a run_checks call is answered by the host's check callback
-- BUT a run without a submission fails with invalid_completion, a run past its deadline fails with limit_exhausted, and an inconsistent launch is refused before any process starts
-
-#### scenario.harness.pi-worker-gate — Refuse tool calls outside the worker's grant
-
-- GIVEN a running Pi worker with read and write grants and a tool list
-- WHEN its model reads, searches or writes a path outside the grants, or calls a tool it was not granted
-- THEN the Concorde worker extension refuses the call with an error result naming the policy and the file is neither read nor changed
-- AND calls inside the grants execute normally
-- AND a bash command runs with the provider credential variables unset
-
-#### scenario.harness.pi-worker-delegation — Delegate one level to declared children under the same gate
-
-- GIVEN a Pi worker that declares a child agent and child tools
-- WHEN its model delegates a task to that child
-- THEN pi-subagents runs the child as a foreground session that loads the Concorde worker extension and has exactly the child tools
-- AND the gate refuses the child's calls outside the worker's grants, and the child cannot delegate or submit a result
-- AND delegation to an agent the worker did not declare is refused
-- BUT only the worker's own submitted result leaves the process
+The Harness Module owns the exact obligations and interface details in [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

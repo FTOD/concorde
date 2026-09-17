@@ -25,30 +25,7 @@ Reassessment after an explicit contract repair uses fresh inputs; an unchanged b
 blocked. Successful assessment resolves historical phase gaps only after any associated authored
 output has passed host acceptance. It proves no universal completeness.
 
-### Requirements
+## Precise specifications
 
-#### req.planning.assessment-context — Assess only the selected contract
-
-Planning SHALL assess task sufficiency only from the selected Module's complete admitted Spec context.
-
-#### req.planning.assessment-gap — Attribute necessary contract gaps
-
-Planning SHALL report a necessary missing contract with its question, blocked step, needed contract and host-bound target/context provenance.
-
-### Scenarios
-
-#### scenario.planning.assessment-sufficient — The admitted contract supports the task
-
-- GIVEN a selected Module whose dependency declarations agree with its registered relationships
-- AND its complete admitted Spec supplies the contracts necessary for the task
-- WHEN the fresh context assessor evaluates that task
-- THEN it returns sufficient without authored documents, a plan or tasks
-- AND the assessment concerns that task and does not prove universal semantic completeness
-
-#### scenario.planning.assessment-gap — A necessary promise is missing
-
-- GIVEN the selected Module's complete admitted Spec lacks a contract needed for the task
-- WHEN context assessment reaches the dependent judgment
-- THEN it reports spec_incomplete with question, blocked_step and needed_contract and host-bound target/context provenance
-- AND the dependent step pauses while independent reasoning may continue
-- AND the assessor neither reads implementation contents nor expands the selected context to supply the missing promise
+The Planning Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
+These companions are part of the same complete Module specification, not separate topic owners.

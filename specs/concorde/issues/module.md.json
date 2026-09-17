@@ -1,24 +1,99 @@
 {
-  "schema_version": 1,
-  "document": {"id": "document.issues.module", "owner": "module.issues"},
+  "schema_version": 2,
+  "document": {
+    "id": "document.issues.module",
+    "owner": "module.issues",
+    "role": "module"
+  },
   "entities": [
-    {"id": "entity.issues.runtime", "title": "Issue runtime", "kind": "program", "meaning": "#entity.issues.runtime", "files": ["capabilities/issues.py", "scripts/issues.py"]},
-    {"id": "entity.issues.solver", "title": "Issue solver", "kind": "agent", "meaning": "#entity.issues.solver", "files": ["capabilities/issue_solver/"]},
-    {"id": "entity.issues.langgraph", "title": "LangGraph", "kind": "external library", "meaning": "#entity.issues.langgraph"},
-    {"id": "entity.issues.development", "title": "Development", "kind": "used module", "meaning": "#entity.issues.development", "target_id": "module.development"},
-    {"id": "entity.issues.spec", "title": "Spec", "kind": "used module", "meaning": "#entity.issues.spec", "target_id": "module.spec"},
-    {"id": "entity.issues.dev-loop", "title": "Development Flow", "kind": "used module", "meaning": "#entity.issues.dev-loop", "target_id": "module.dev-loop"},
-    {"id": "entity.issues.spec-authoring", "title": "Spec Authoring", "kind": "used module", "meaning": "#entity.issues.spec-authoring", "target_id": "module.spec-authoring"},
-    {"id": "entity.issues.review", "title": "Review", "kind": "used module", "meaning": "#entity.issues.review", "target_id": "module.review"},
-    {"id": "entity.issues.validation", "title": "Validation", "kind": "used module", "meaning": "#entity.issues.validation", "target_id": "module.validation"}
+    {
+      "id": "entity.issues.runtime",
+      "title": "Issue runtime",
+      "kind": "program",
+      "meaning": "#entity.issues.runtime",
+      "files": ["capabilities/issues.py", "scripts/issues.py"]
+    },
+    {
+      "id": "entity.issues.solver",
+      "title": "Issue solver",
+      "kind": "agent",
+      "meaning": "#entity.issues.solver",
+      "files": ["capabilities/issue_solver/"]
+    },
+    {
+      "id": "entity.issues.langgraph",
+      "title": "LangGraph",
+      "kind": "external library",
+      "meaning": "#entity.issues.langgraph"
+    },
+    {
+      "id": "entity.issues.development",
+      "title": "Development",
+      "kind": "used module",
+      "meaning": "#entity.issues.development",
+      "target_id": "module.development"
+    },
+    {
+      "id": "entity.issues.spec",
+      "title": "Spec",
+      "kind": "used module",
+      "meaning": "#entity.issues.spec",
+      "target_id": "module.spec"
+    },
+    {
+      "id": "entity.issues.dev-loop",
+      "title": "Development Flow",
+      "kind": "used module",
+      "meaning": "#entity.issues.dev-loop",
+      "target_id": "module.dev-loop"
+    },
+    {
+      "id": "entity.issues.spec-authoring",
+      "title": "Spec Authoring",
+      "kind": "used module",
+      "meaning": "#entity.issues.spec-authoring",
+      "target_id": "module.spec-authoring"
+    },
+    {
+      "id": "entity.issues.review",
+      "title": "Review",
+      "kind": "used module",
+      "meaning": "#entity.issues.review",
+      "target_id": "module.review"
+    },
+    {
+      "id": "entity.issues.validation",
+      "title": "Validation",
+      "kind": "used module",
+      "meaning": "#entity.issues.validation",
+      "target_id": "module.validation"
+    }
   ],
   "dependencies": [
-    {"target_id": "module.development", "meaning": "#entity.issues.development"},
-    {"target_id": "module.spec", "meaning": "#entity.issues.spec"},
-    {"target_id": "module.dev-loop", "meaning": "#entity.issues.dev-loop"},
-    {"target_id": "module.spec-authoring", "meaning": "#entity.issues.spec-authoring"},
-    {"target_id": "module.review", "meaning": "#entity.issues.review"},
-    {"target_id": "module.validation", "meaning": "#entity.issues.validation"}
+    {
+      "target_id": "module.development",
+      "meaning": "#entity.issues.development"
+    },
+    {
+      "target_id": "module.spec",
+      "meaning": "#entity.issues.spec"
+    },
+    {
+      "target_id": "module.dev-loop",
+      "meaning": "#entity.issues.dev-loop"
+    },
+    {
+      "target_id": "module.spec-authoring",
+      "meaning": "#entity.issues.spec-authoring"
+    },
+    {
+      "target_id": "module.review",
+      "meaning": "#entity.issues.review"
+    },
+    {
+      "target_id": "module.validation",
+      "meaning": "#entity.issues.validation"
+    }
   ],
   "bindings": []
 }
