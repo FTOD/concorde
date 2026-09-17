@@ -42,6 +42,9 @@ def native_settings(root: Path, plugin: Path, run_dir: Path, ua_dir: str) -> dic
                 "Bash(git rev-parse *)",
                 f"Bash(git -C {root} rev-parse *)",
                 f"Bash(git -C {shlex.quote(str(root))} rev-parse *)",
+                "Bash(git status *)",
+                f"Bash(git -C {root} status *)",
+                f"Bash(git -C {shlex.quote(str(root))} status *)",
             ],
             "deny": [
                 f"Edit(/{plugin}/**)",
@@ -133,6 +136,7 @@ def probe_prompt(
         ]
     )
     git_command = shlex.join(["git", "-C", str(root), "rev-parse", "HEAD"])
+    status_command = shlex.join(["git", "-C", str(root), "status", "--porcelain"])
     report = json.dumps({"nonce": nonce, "status": "complete"})
     return f"""CONCORDE_UA_PERMISSION_PROBE
 Probe run directory: {json.dumps(str(run_dir))}
@@ -143,6 +147,7 @@ Do not write a graph, fingerprints, metadata, settings or hooks. No installation
 
 1. Use Read to read {plugin / ".claude-plugin/plugin.json"}.
 2. Run exactly this single Bash command: {git_command}
+   Then in a separate Bash call run: {status_command}
 3. Run exactly this native scanner command: {scan_command}
    This is a deterministic scan for the permission probe only, not a new graph.
 4. Dispatch ONE native general-purpose child (not an isolated worktree). Pass the

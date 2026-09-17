@@ -223,6 +223,10 @@ class UaAnalysisTests(unittest.TestCase):
         self.assertNotIn("Bash", settings["permissions"]["allow"])
         self.assertNotIn("hooks", settings)
         self.assertIn("Bash(git commit *)", settings["permissions"]["deny"])
+        self.assertIn(
+            f"Bash(git -C {self.root} status *)", settings["permissions"]["allow"]
+        )
+        self.assertIn("status --porcelain", probe["prompt"])
         self.assertNotIn("--dangerously-skip-permissions", observed["argv"])
         self.assertNotIn("--setting-sources", observed["argv"])
         self.assertIn("--full", observed["prompt"])

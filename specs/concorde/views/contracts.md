@@ -663,7 +663,8 @@ Launch uses an argv array, not a shell, with `--print --output-format json --no-
 `--append-system-prompt` supplying the analysis-only profile, and optional `--model`. The task
 travels over stdin. The overlay allows plugin reads, file-tool writes to the UA artifact tree and
 this run's completion/probe reports, Node/Python execution for installed scripts and generated
-analysis glue, and read-only Git identity inspection. It denies plugin edits and git add/commit/push.
+analysis glue, and read-only Git identity and working-tree status inspection (including the
+`git -C <project-root>` forms). It denies plugin edits and git add/commit/push.
 It contains no all-Bash grant, hook override, setting-source exclusion or permission-mode bypass.
 Permission paths with glob/rule metacharacters are rejected. File-tool scopes do not constrain
 interpreter filesystem access: this is explicit trusted-tool admission, not a sandbox. Existing
@@ -679,7 +680,7 @@ any denial. All native analysis phases, including fingerprints and metadata save
 
 Before whole-project model analysis, the native host runs a probe with the selected probe model,
 a `--max-budget-usd 0.50` cap and at most `min(timeout, 180)` seconds. It reads plugin metadata,
-executes read-only Git identity inspection and the native scanner, launches one native child to
+executes read-only Git identity and working-tree status inspection and the native scanner, launches one native child to
 exercise inherited plugin-read/Node/report-write permissions, and writes parent/child reports.
 Success requires no host error/denial, both reports matching the generated nonce and complete
 status, native host statistics showing a spawned child, and a nonempty scanner inventory under
