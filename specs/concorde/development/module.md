@@ -37,10 +37,10 @@ explains the host's part in the workflow. The exact invocation envelope belongs 
 <a id="entity.development.development-host"></a><a id="entity.development.development-capabilities"></a><a id="entity.development.worktree-lifecycle"></a><a id="entity.development.file-transactions"></a><a id="entity.development.installed-skills"></a><a id="entity.development.developer-runtime"></a><a id="entity.development.langgraph"></a>
 
 Installed Skills explain how the Developer runtime requests an operation. Development capabilities
-names the executable operations and allowed composition; the Development host checks and dispatches
-those requests. Worktree lifecycle keeps a candidate's identity and progress, and File transactions
-applies accepted edits with checks against the original state. LangGraph makes the host's ordering
-and branching inspectable.
+are the executable operations to which the Development host dispatches admitted requests. A Capability
+may run ordinary code, use a model, or compose other Capabilities through a Flow. Worktree lifecycle
+keeps a candidate's identity and progress, and File transactions applies accepted edits with checks
+against the original state. LangGraph makes the host's ordering and branching inspectable.
 
 Separating admission from domain work prevents a model's proposed result from choosing its own
 permissions. Harness prepares worker execution, Spec supplies current contracts, and Issues keeps
@@ -55,9 +55,16 @@ first discover the relevant Module; others receive an already selected owner; de
 operations may need no worker at all. The host checks that choice instead of allowing a request to
 select arbitrary context or authority.
 
-Distribution supplies the Skill instructions used by the developer's client. Development receives
-the resulting request, selects current specifications through Spec, and asks Harness to execute
-admitted worker jobs. It keeps candidate progress available when an operation cannot finish.
+Distribution supplies the Skill instructions used by the developer's client. The Development host
+checks and dispatches the resulting request to the selected Capability, obtaining current contracts
+through Spec where needed. When that Capability or one of its composed steps requires model execution,
+the host prepares and runs the worker invocation through Harness. It keeps candidate progress
+available when an operation cannot finish.
+
+The solid dispatch edge applies to admitted Capability requests; the dotted worker-execution edge
+applies only when model execution is needed. A deterministic operation need not start a worker.
+Harness also provides other services, such as isolated checks, which this worker-execution edge
+does not represent.
 
 Candidate sequencing, repairs and ready/stop policy belong to
 [Development Flow](../dev-loop/development.md); independent Spec preparation belongs to
@@ -67,14 +74,16 @@ Candidate sequencing, repairs and ready/stop policy belong to
 ```mermaid
 flowchart LR
     accTitle: From a developer request to bounded work
-    accDescr: The developer runtime submits a request to the host, which selects specifications and asks Harness to execute the admitted worker operation.
+    accDescr: The developer runtime submits a request to the host, which dispatches it to a Capability and obtains current contracts as needed. Only when model execution is needed does the host prepare and run a worker invocation through Harness; other Harness services are outside this view.
     developer["Developer runtime"]
     host["Development host"]
+    capabilities["Development capabilities"]
     spec["Spec"]
     harness["Harness"]
     developer -->|requests an operation from| host
+    host -->|dispatches admitted requests to| capabilities
     host -->|obtains current contracts from| spec
-    host -->|runs admitted work through| harness
+    host -.->|prepares and runs worker invocations through<br/>when model execution is needed| harness
 ```
 
 ## Provider collaboration

@@ -23,6 +23,27 @@ describe("Explicit Concorde self specification", () => {
    ),
   ).toBe(false);
  });
+ it("distinguishes Capability dispatch from conditional worker execution", () => {
+  const registry = loadScopedRegistry(root);
+  const entry = registry.pages.find(
+   (page) => page.primaryOf === "module.development",
+  )!;
+  const relationships = entry.content
+   .split("## Relationships\n")[1]
+   .split("\n## Provider collaboration")[0];
+  expect(relationships).toContain('capabilities["Development capabilities"]');
+  expect(relationships).toContain(
+   "host -->|dispatches admitted requests to| capabilities",
+  );
+  expect(relationships).toContain(
+   "host -.->|prepares and runs worker invocations through<br/>when model execution is needed| harness",
+  );
+  expect(relationships).toContain(
+   "A deterministic operation need not start a worker.",
+  );
+  expect(relationships).toContain("such as isolated checks");
+  expect(relationships).not.toContain("runs admitted work through");
+ });
  it("contains independently complete public Skill and business scope descriptions", () => {
   const r = loadScopedRegistry(root);
   const host = r.pages
