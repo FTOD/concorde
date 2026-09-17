@@ -1,6 +1,6 @@
 # Delivery execution and record contracts
 
-These are the precise implementation agreements and executable Flow specifications owned by the
+These are the precise implementation agreements and executable Graph specifications owned by the
 [Delivery Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
 and transitions are retained here as the single detailed contract.
 
@@ -18,14 +18,14 @@ and transitions are retained here as the single detailed contract.
 | [Delivered branch](module.md#terminology) | Defined in Delivery. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-## Delivery capability {#delivery-delivery-capability}
+## Delivery operation {#delivery-delivery-operation}
 
 Delivery consumes host-recorded candidate identity, progress and current validation/review evidence.
 The [common worktree metadata](../development/interfaces.md#worktree-awareness) supplies those
-records; the producer flow owns its ordering and progress policy. A candidate's draft Spec bytes
+records; the producer graph owns its ordering and progress policy. A candidate's draft Spec bytes
 are not visible in the primary worktree before delivery.
 
 Standard and fast loops end at ready. Request concorde-deliver with the selected change_id from
@@ -83,13 +83,13 @@ checkout's own merged sources before Spec/package validation and configured chec
 build outputs do not alter the deliverable tree. Build or validation failure preserves both
 participants and prevents the primary update; no stale-output gate is disabled or bypassed.
 
-The producer flow need not be dev-loop. A directly authored verified candidate is admitted under the same completion, current review, pending-entry confirmation and integration gates. Missing, stale or incomplete evidence rejects delivery; no plan is invented to make evidence appear valid.
+The producer graph need not be dev-loop. A directly authored verified candidate is admitted under the same completion, current review, pending-entry confirmation and integration gates. Missing, stale or incomplete evidence rejects delivery; no plan is invented to make evidence appear valid.
 
 ## Realization and reuse limits
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
+Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
+phase artifacts and permissions remain mandatory. A new graph requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.

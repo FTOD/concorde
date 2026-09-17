@@ -1,26 +1,26 @@
-"""Consumer fixture and explicit Pi worker double for the Profile 14 boundary."""
+"""Consumer fixture and explicit Pi worker double for the Profile 15 boundary."""
 
+import hashlib
 import json
 import re
-import tempfile
-import hashlib
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
-from concorde.spec.typed_data import typed
-from concorde.harness.worker_profile import worker_profile, external_worker_name
+
+from concorde.distribution.project_defaults import install_project_defaults
 from concorde.harness.pi_rpc import PiRun
 from concorde.harness.pi_worker import WorkerResult
 from concorde.harness.worker_executor import WorkerExecutor, WorkerOutcome
+from concorde.harness.worker_profile import external_worker_name, worker_profile
 from concorde.spec.initialize import (
-    project_proposal,
     apply_project_proposal,
     empty_target,
+    project_proposal,
 )
-from concorde.distribution.project_defaults import install_project_defaults
+from concorde.spec.typed_data import typed
 
 PACKAGE = Path(__file__).resolve().parents[3]
 CONFIGURATION = typed(
-    "concorde-capability-configuration",
+    "concorde-operation-configuration",
     {"model": "openai-codex/gpt-6-astra", "thinking": "medium"},
 )
 USAGE = {
@@ -645,7 +645,7 @@ class ModelProcessDouble:
         self.reporter = report_issue
         agent = worker_profile(launch.worker)
         stage = agent.contract.phase
-        capability = external_worker_name(agent.name)
+        operation = external_worker_name(agent.name)
         cwd = launch.workspace
         value = json.loads(launch.message)
         snapshot = (
@@ -685,7 +685,7 @@ class ModelProcessDouble:
         self.calls.append(
             {
                 "stage": stage,
-                "capability": capability,
+                "operation": operation,
                 "agent": agent.name,
                 "snapshot": snapshot,
                 "cwd": Path(cwd),
@@ -719,7 +719,6 @@ class ModelProcessDouble:
                 for item in snapshot["spec_resolution"]["sources"]
             }
             target = snapshot["target"]
-            candidate = {path: target["id"] for path in target["documents"]}
 
             def initial(path):
                 document_id = "document." + re.sub(
@@ -753,7 +752,7 @@ class ModelProcessDouble:
                         "id": f"entity.{local}.uses-" + peer.split(".")[-1],
                         "title": peer,
                         "kind": "module",
-                        "responsibility": "Supplies the capability "
+                        "responsibility": "Supplies the operation "
                         + target["id"]
                         + " relies on.",
                         "target_id": peer,
@@ -777,7 +776,7 @@ class ModelProcessDouble:
                 dependencies = [
                     {
                         "target_id": peer,
-                        "responsibility": "Supplies the capability "
+                        "responsibility": "Supplies the operation "
                         + target["id"]
                         + " relies on.",
                         "selection_condition": "Select for work about " + peer + ".",
@@ -879,7 +878,7 @@ class ModelProcessDouble:
                             }
                         ],
                     )
-            if snapshot["capability"] != "concorde-main":
+            if snapshot["operation"] != "concorde-main":
                 data["routes"] = [
                     {k: v for k, v in route.items() if k in ("target_id", "focus_id")}
                     for route in data["routes"]

@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
-  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-9.0.0-6264e8" alt="Spec Protocol 9.0.0" /></a>
+  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-10.0.0-6264e8" alt="Spec Protocol 10.0.0" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/agents-Codex_%C2%B7_Claude-273449" alt="Integrations: Codex and Claude" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
 </p>
@@ -67,16 +67,20 @@ hidden implementation knowledge or changes outside its responsibility. That is u
 that the Spec is sufficient and the Modules are well decoupled. It is not a proof of correctness;
 tests and review still matter. Missing promises are reported as Spec gaps.
 
-### 4. Compose State-based Capabilities for everyday development
+### 4. Compose State-based Operations for everyday development
 
-Concorde uses one executable concept: **Capability**, a LangGraph node with declared input State
-and output updates. A Capability can run deterministic code, invoke a model or compose a subgraph.
-All definitions live in `capabilities/`; `USES` is the single composition relation. Model-backed
-Capabilities keep instructions, tools, permissions and timeout in an optional execution profile,
+Concorde uses one executable concept: **Operation**, a LangGraph node with declared input State,
+output updates, effects, use conditions and execution policy. An Operation can run deterministic
+code, invoke a model or compose a graph; dev-loop and specify-loop are composed Operations.
+Completeness means callers do not reconstruct context policy, permission boundaries, model execution
+or result checks. Trusted Host/Harness services still narrow and enforce its permission ceiling;
+State cannot carry or expand authority. Public/internal only controls entry exposure.
+All definitions live in `operations/`; `USES` is the single composition relation. Model-backed
+Operations keep instructions, tools, permissions and timeout in an optional execution profile,
 not a separate Agent registry. Hosts and launchers stay in trusted LangGraph runtime context rather
 than writable State. Public Skills and existing wire envelopes remain the external entry points.
 
-Twelve model-backed Capabilities execute through Pi workers: **answerer**, **router** and
+Twelve model-backed Operations execute through Pi workers: **answerer**, **router** and
 **topology-designer** for questions, routing and topology design; **spec-author**,
 **topology-author**, **spec-reviewer**, **context-assessor**, **planner** and **task-author** for
 authoring, reviewing, planning and task definition; and **programmer**, **code-reviewer** and
@@ -87,7 +91,7 @@ workflows with explicit context and permissions for each invocation.
 ### 5. Turn feedback into tracked improvements
 
 The **[Issue system](specs/concorde/issues/module.md)** keeps classified problems in Git-versioned
-`.concorde/issues/` records. Workers use `report_issue` during their own flows; a successful report
+`.concorde/issues/` records. Workers use `report_issue` during their own graphs; a successful report
 is saved immediately and does not stop the worker or authorize a repair. Review judgments and
 stage blockers reference the original observations instead of copying their prose.
 
@@ -263,9 +267,9 @@ submit this policy preview:
 ```json
 {
   "invocation": {
-    "type_id": "concorde-capability-invocation",
+    "type_id": "concorde-operation-invocation",
     "schema_version": 3,
-    "capability_id": "concorde-main",
+    "operation_id": "concorde-main",
     "mode": "describe-policy",
     "configuration": null,
     "input": {
@@ -283,7 +287,7 @@ submit this policy preview:
 This inspects admitted permissions without starting a worker. Change `mode` to `execute` to run
 the question through a Pi worker, using the project's configured model and thinking level and the
 developer's own Pi login. Inspect **result**,
-**policies** and **events** in the state; execution emits capability, stage and agent-process
+**policies** and **events** in the state; execution emits operation, stage and agent-process
 events, including starts, completions and failures. These are process events, not token-level
 traces of the agent's internal reasoning or tool calls.
 
@@ -307,20 +311,20 @@ See the [Studio guide](scripts/development/STUDIO.md) for debugging, results and
 
 ## The contract at the center
 
-Concorde's independent **Spec Protocol 9.0.0** defines one specification category: a **Module Spec**.
+Concorde's independent **Spec Protocol 10.0.0** defines one specification category: a **Module Spec**.
 A Module describes a cohesive software responsibility; its implementation may span packages,
 services or shared files. Each Spec document has one owning Module. A Module's explicit
 `references` includes other Module-owned documents or one registered document, expanded once;
 Markdown links remain navigation. Shared interfaces have one definition and local participant bindings.
 
 The repository's Specs, runtime admission, context serialization and publication support
-Protocol 9/Profile 14/registry schema 5, with document metadata schema 2. Resolved contexts retain unique owners, one-level reference
+Protocol 10/Profile 15/registry schema 5, with document metadata schema 2. Resolved contexts retain unique owners, one-level reference
 provenance and exact byte digests without granting provider implementation access; see
 [Spec context queries](specs/concorde/spec/contracts.md#registry-stable-id-spec-context-queries).
 Runtime and publication tests verify these boundaries separately from the rule build.
 
-Concorde's own docsite includes an **Agent Flows** tab at `/concorde/agent-flows`, showing the actual
-executable LangGraph Flows, expanded Studio entries and routing handoffs with links to the Specs. This page
+Concorde's own docsite includes an **Agent Graphs** tab at `/concorde/agent-graphs`, showing the actual
+executable LangGraph Graphs, expanded Studio entries and routing handoffs with links to the Specs. This page
 is excluded from consumer site templates. Build the checkout with the development Python
 environment (`.venv`, or `CONCORDE_PYTHON` for a source copy) and `npm --prefix docsite run build`.
 
@@ -334,7 +338,7 @@ and a metadata-only edit invalidates affected context/review identities.
 | :--- | :--- |
 | **Purpose** | What responsibility does this Module own, for whom and within which scope? |
 | **Usage** | When and how should a consumer use it, with which inputs, outcomes and limits? |
-| **Design** | How do responsibilities, state, flow and constraints fulfill its guarantees? |
+| **Design** | How do responsibilities, state, graph and constraints fulfill its guarantees? |
 | **Relationships** | Which entities collaborate, under which conditions, and how does dependency differ from composition? |
 
 **Module Specs** contain explanatory entries and topics with `document.role: module`.
@@ -367,19 +371,19 @@ Read the [Protocol](protocol/README.md), start from the
 | Initialize or configure a project | `concorde-init` · `concorde-configure` |
 | Validate a candidate or deliver a verified change | `concorde-validate` · `concorde-deliver` |
 
-These nine public Skills expose selected Capabilities. Other Capabilities are composed by the host. See the [capability registry](specs/concorde/development/capabilities.md)
+These nine public Skills expose selected Operations. Other Operations are composed by the host. See the [operation registry](specs/concorde/development/operations.md)
 for the full interface.
 
-## Agents, capabilities and executable entry points
+## Agents, operations and executable entry points
 
-Concorde currently defines **12 Pi workers, 14 capabilities and 9 public Skills**. Capabilities
-orchestrate execution; workers perform the steps that need model judgment, each running as one Pi
-coding agent process for exactly one invocation. Public Skills provide instructions for invoking
-those capabilities from the developer's agent client.
+Concorde currently defines **26 Operations and 9 public Skills**. Fourteen Operations use host
+adapters and twelve have model execution profiles. A model-backed Operation runs a fresh Pi worker
+for its bounded invocation; workers are executions, not a second executable entity inventory. Public Skills provide instructions for invoking
+those operations from the developer's agent client.
 
-### Workers
+### Model-backed Operations and workers
 
-| Worker | Phase / action | Responsibility and authority |
+| Operation / worker profile | Phase / action | Responsibility and authority |
 | :--- | :--- | :--- |
 | `answerer` | route / ask | Answer questions from selected complete Module Specs; read-only, no routes or writes. |
 | `router` | route / route | Select the one owning Module route; no implementation contents or writes. |
@@ -394,15 +398,15 @@ those capabilities from the developer's agent client.
 | `code-reviewer` | code-review | Independent code review findings; authorized code read-only. |
 | `issue-solver` | issue-solve | Select bounded work or an evidence-grounded disposition from a selected Issue and its Module Spec. |
 
-Each worker is `capabilities/<name>/spec.md` (its role Spec) plus `capabilities/<name>/__init__.py` (its
-profile: task contract, workspace, Pi tools, children, timeout). Definitions live in
-[capabilities/](capabilities/__init__.py); the [Agents and Harnesses](specs/concorde/harness/agents-and-harnesses.md)
-Spec is the authoritative catalog. Each worker fulfils exactly one task contract, and each
+Each model-backed Operation keeps its instructions in `operations/<name>/spec.md` and its
+execution profile in `operations/<name>/__init__.py`: task contract, workspace, Pi tools, children
+and timeout. Definitions live in [operations/](operations/__init__.py); the
+[Operations and workers guide](specs/concorde/harness/agents-and-harnesses.md) explains the execution contract. Each worker fulfils exactly one task contract, and each
 invocation receives fresh, explicitly bounded context and permissions.
 
-### Capability inventory
+### Host-adapted Operations
 
-| Capability | Behavior | Public Skill |
+| Operation | Behavior | Public Skill |
 | :--- | :--- | :--- |
 | `main` | Answer questions, route requests, and design and apply accepted topology changes. | `concorde-main` |
 | `specify-loop` | Route a change, author or revise its Spec, and independently review it before implementation. | `concorde-specify-loop` |
@@ -419,22 +423,23 @@ invocation receives fresh, explicitly bounded context and permissions.
 | `tasks` | Derive acceptance tasks from the accepted plan. | — |
 | `implement` | Implement component tasks or coordinate participating components. | — |
 
-Four Capabilities make no model calls; the other ten may call a model. The nine public Skills
-each expose one Capability. The five non-public Capabilities have no standalone
-launcher and are reachable only through declared host composition. Current workers have no admitted
-Capability references of their own; the host composes the workflows.
+Of these fourteen host-adapted Operations, four make no model calls and ten may call a model.
+Nine have public Skills; five are internal host adapters. Together with the twelve model-backed
+Operations above, there are seventeen internal Operations, all complete building blocks without
+a standalone public launcher and reachable only through admitted composition. Current workers have no admitted
+Operation references of their own; the host composes the workflows.
 
-Each Capability declares public exposure, context selection (`discover`, `bound` or `none`),
-determinism, launched Agents and composed capabilities independently. A Flow organizes calls,
-branches and loops; “stage” describes a position in execution, not a type of Capability.
+Each Operation declares public exposure, context selection (`discover`, `bound` or `none`),
+determinism, optional model execution configuration and composed Operations independently. A Graph organizes calls,
+branches and loops; “stage” describes a position in execution, not a type of Operation.
 
-The source inventory is [capabilities/](capabilities/__init__.py); the
-[capability registry](specs/concorde/development/capabilities.md) describes the contracts.
+The source inventory is [operations/](operations/__init__.py); the
+[operation registry](specs/concorde/development/operations.md) describes the contracts.
 
 ### Harness
 
 A Harness is context, control flow, models and per-worker permissions and environment: the shared
-part is the host environment allowlist, the Pi worker runtime and the LangGraph Flows that
+part is the host environment allowlist, the Pi worker runtime and the LangGraph Graphs that
 orchestrate workers; the per-worker part is each worker's profile — its workspace kind (`capsule`
 for Spec-only work, `project` for work that reads or writes implementation files), Pi tools,
 children and timeout. The host compiles effective permissions from the worker's contract and its
@@ -450,9 +455,9 @@ scripts under `.concorde/framework/`; Studio and development setup are documente
 
 | Entry point | Available operations |
 | :--- | :--- |
-| `python3 scripts/run-capability.py <skill> < invocation.json` | Invoke one of the nine public capabilities using a typed JSON request, in `execute` or `describe-policy` mode. |
+| `python3 scripts/run-operation.py <skill> < invocation.json` | Invoke one of the nine public operations using a typed JSON request, in `execute` or `describe-policy` mode. |
 | `python3 scripts/concorde.py <command>` | `validate`, `build`, `docsite`, `ua-graph`, `protocol-manifest`. |
-| [LangGraph Studio](scripts/development/STUDIO.md) | Start, observe and debug the same nine public workflows through the shared CapabilityHost. |
+| [LangGraph Studio](scripts/development/STUDIO.md) | Start, observe and debug the same nine public workflows through the shared OperationHost. |
 | `python3 scripts/install-concorde.py` | Preview or apply installation into a project. |
 | `python3 scripts/issues.py` | Inspect branch-local Issues or explicitly archive legacy Reflection data. |
 | `python3 scripts/run-ua-graph-viewer.py` | Launch the code graph viewer. |
@@ -460,9 +465,9 @@ scripts under `.concorde/framework/`; Studio and development setup are documente
 | `python3 scripts/development/run-tests.py` | Run the project's test suite. |
 | `python3 scripts/worktree-guard.py` | Explain or check the source-checkout worktree policy. |
 
-The CLI `validate` command performs direct validation. The `concorde-validate` capability also
+The CLI `validate` command performs direct validation. The `concorde-validate` operation also
 manages candidate readiness evidence as part of the lifecycle. Studio uses the same host and
-capabilities as the CLI and Skills.
+operations as the CLI and Skills.
 
 ## Explore and contribute
 
@@ -483,7 +488,7 @@ python3 scripts/development/run-tests.py
 ```
 
 See [development details](docs/workflow-guide.md#development) for targeted tests and docsite checks.
-Concorde itself is developed by direct maintenance in this checkout; its own flows run on this
+Concorde itself is developed by direct maintenance in this checkout; its own graphs run on this
 repository only when you explicitly ask for one, so the `concorde-*` Skills built here are
 user-invoked only. See the [source-checkout policy](AGENTS.md).
 

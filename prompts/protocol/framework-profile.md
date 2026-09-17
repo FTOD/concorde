@@ -5,9 +5,9 @@ audience: shared
 ## Concorde Framework execution profile
 
 This profile applies the independent Spec Protocol to Concorde's runtime. Framework configuration
-uses `profile_version: 14` for the content/reading document-unit model and registry schema 5 for its JSON
+uses `profile_version: 15` for the content/reading document-unit model and registry schema 5 for its JSON
 storage. `.concorde/config.json` declares `profile_version`, `registry`, `protocol` and
-`capability_configuration`. Its `protocol` binding identifies the accepted version and exact
+`operation_configuration`. Its `protocol` binding identifies the accepted version and exact
 manifest digest. These configuration and storage versions are Framework compatibility identifiers,
 not additional versions of the specification language. Older configurations require explicit
 migration; the runtime must not infer their meaning from paths or names.
@@ -31,7 +31,7 @@ named `node_modules`, `__pycache__`, `.venv`, `build` or `dist`, directories and
 start with a dot, and `.pyc` and `.log` files. Every phase may see the declared entries and the
 resulting file names, because the entity declarations are part of the Spec context; only
 code-writing and code-review phases receive file contents, in their declared subsets. Its
-**capability context** is the set of admitted Capability and Tool contracts the invocation may use
+**resource context** is the set of admitted Operation and Tool contracts the invocation may use
 together with the Module's Protocol-defined external references: the vendored documentation and
 source of the libraries, services and tools it declares with `references` of kind `external`,
 each identified by one tree digest. Every phase sees those entries; planning, task authoring,
@@ -57,8 +57,8 @@ project-Spec collection and, for planners and task authors, its declared externa
 They MUST NOT read source code to supply missing Module meaning. Only the
 code-writing phase receives the complete implementation context; code review receives its separately
 declared read-only subset. Agent instructions, the Protocol rule bundle and Skills are not context:
-instructions belong to a model-backed Capability's execution profile, and a Skill is the installed projection of a public
-Capability for the developer's own agent runtime. Every worker's system prompt is its common worker
+instructions belong to a model-backed Operation's execution profile, and a Skill is the installed projection of a public
+Operation for the developer's own agent runtime. Every worker's system prompt is its common worker
 rules, then its own role instructions, then the Protocol rule bundle; the bundle's files are also
 listed in the index with their digests and readable at their paths.
 
@@ -99,15 +99,25 @@ outer developer-authorized maintenance session may read and modify the project d
 its explicit authorization does not silently widen normal worker permissions or become a project
 business contract.
 
-Every Framework capability's control flow is a LangGraph graph built with the Graph API: a
+Operation is the Framework's only executable entity. Each Operation declares input State, output
+State updates, effects, use conditions, execution policy and a permission ceiling. A caller can use
+it as a LangGraph node without reconstructing its context policy, permission boundaries, model
+execution or result checks. Completeness still relies on trusted Runtime, Host and Harness services;
+the common Host/Harness narrow the declared ceiling to the actual task and enforce the grant.
+State cannot carry or expand execution authority. Public/internal exposure changes entry availability,
+not completeness. Modules own responsibilities and Specs, not necessarily one Operation each.
+
+Every composed Operation's control flow is a LangGraph graph built with the Graph API: a
 `StateGraph` whose nodes and edges are declared before it is compiled. The Functional API,
 `entrypoint` and `task` from `langgraph.func`, MUST NOT be used, because it keeps control flow
-inside ordinary Python where neither a Flow Spec nor Studio can inspect it; a deterministic check
-refuses it. Every executable node is a Capability with declared input State and output State
+inside ordinary Python where neither a Graph Spec nor Studio can inspect it; a deterministic check
+refuses it. Every executable node is an Operation with declared input State and output State
 updates. Its implementation may be deterministic code, a model invocation or a compiled subgraph;
-these are not separate entity kinds. Capability composition uses one explicit USES relation.
+these are not separate entity kinds. Composition produces another Operation, including dev-loop
+and specify-loop. Operation composition uses one explicit USES relation, distinct from Module
+ownership and the explicit references selecting context.
 Model instructions, tools and limits are execution configuration, not a parallel Agent identity.
-The same graphs are the inspectable Studio surface, and no capability runs control flow outside
+The same graphs are the inspectable Studio surface, and no operation runs control flow outside
 them. State channels carry data, not execution authority; runtime context and permission checks
 remain separate. Parent graphs define reducers for shared channels explicitly.
 
@@ -186,19 +196,19 @@ English labels, accTitle and accDescr, a nonempty subset of local entity titles 
 Explain its scope; inventory coverage is not a readability requirement or proof of completeness.
 Files are bound in entity metadata, using owned package directory prefixes and exact shared files;
 the registry listing remains their exact union. Project-owned metadata extensions
-`concorde.capabilities` records the single checked inventory, including State contracts, USES and
+`concorde.operations` records the single checked inventory, including State contracts, USES and
 optional model execution profiles; its
 behavioral explanations remain reading content and unknown extensions cannot override the Protocol.
 
-Every executable Flow has one Flow Spec in its owning Module's implementation-role documents,
+Every executable Graph has one Graph Spec in its owning Module's implementation-role documents,
 not its explanation-first topics. Module-role reading explains the conceptual sequence and its
-reasons, with clearly labeled conceptual diagrams when useful, and links to this exact Flow Spec.
-The Flow Spec is written with LangGraph's
+reasons, with clearly labeled conceptual diagrams when useful, and links to this exact Graph Spec.
+The Graph Spec is written with LangGraph's
 concepts: a State part, a Nodes table (node name, what executes, `in` and `out` state) and a
-Mermaid flowchart bound to the compiled Flow by `%% flow: <name>` whose node identifiers are the
+Mermaid flowchart bound to the compiled Graph by `%% graph: <name>` whose node identifiers are the
 compiled node names including `__start__` and `__end__`, whose node labels state `in:` and
 `out:`, and whose edges carry their routing condition as a label exactly when the source node has
-several successors. The configured Flow Spec check keeps every diagram equal to its compiled Flow.
+several successors. The configured Graph Spec check keeps every diagram equal to its compiled Graph.
 
 A Python test declares the scenarios it verifies with the `verifies` decorator from
 `concorde.spec.verification`, for example `@verifies("scenario.harness.context-freeze")` on the test

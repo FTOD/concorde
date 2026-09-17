@@ -1,6 +1,6 @@
 # Views execution and record contracts
 
-These are the precise implementation agreements and executable Flow specifications owned by the
+These are the precise implementation agreements and executable Graph specifications owned by the
 [Views Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
 and transitions are retained here as the single detailed contract.
 
@@ -20,14 +20,14 @@ and transitions are retained here as the single detailed contract.
 | [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Requirement](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 
 ## Publication pipeline {#pipeline-publication-pipeline}
 
-The public API is TypeScript and Docusaurus plugin hooks. Profile 14 publication reads an explicit
+The public API is TypeScript and Docusaurus plugin hooks. Profile 15 publication reads an explicit
 project registry, creates derived documentation, validates a built publication candidate, and promotes only a
 successfully checked candidate. It exposes no agent tool or read proxy. Consumers do not need a
 Python API or a provider Spec to invoke the functions and interpret the values defined here.
@@ -53,7 +53,7 @@ registered Spec reading, not custom docs. Optional
 and executable pages under the [custom docs agreement](scenarios.md#scenario.views.custom-docs).
 They remain outside registered-page identity, ownership and agent context. Collection paths cannot
 include registered Specs; duplicate published routes fail the build. Concorde configures its
-Protocol collection and Agent Flows extension through these same entry points. The removed
+Protocol collection and Agent Graphs extension through these same entry points. The removed
 `protocolDocs` option fails with migration guidance; unregistered instruction/wire projections
 are no longer read or published. Inline Mermaid remains supported in registered and custom docs.
 
@@ -72,17 +72,17 @@ Markdown document still publishes once and retains its sole owner and all explic
 diagram nodes do not add target contexts or undeclared registry relationships. Rendering support
 still requires ordinary site dependencies to be installed; initialization does not fetch them.
 
-#### Capability contract navigation {#pipeline-capability-contract-navigation}
+#### Operation contract navigation {#pipeline-operation-contract-navigation}
 
 Execution explanations link to [Planning](../planning/execution-reference.md), [Tasks](../planning/execution-reference.md),
 [Implementation](../implementation/execution-reference.md), [Spec Authoring](../spec-authoring/execution-reference.md),
 [Review](../review/execution-reference.md), [Validation](../validation/execution-reference.md),
 [Delivery](../delivery/execution-reference.md), [Query and Routing](../query-routing/execution-reference.md),
-[Topology](../topology/execution-reference.md), [Development Flow](../dev-loop/execution-reference.md) and
-[Specification Flow](../specify-loop/execution-reference.md). These are Spec ownership boundaries;
+[Topology](../topology/execution-reference.md), [Development Graph](../dev-loop/execution-reference.md) and
+[Specification Graph](../specify-loop/execution-reference.md). These are Spec ownership boundaries;
 executable graphs still come only from the current factories under the
-[Harness inspection contract](../harness/scenarios.md#scenario.harness.flow-inspection).
-Moving a definition requires updating retained source links; it creates no invented executable flow.
+[Harness inspection contract](../harness/scenarios.md#scenario.harness.graph-inspection).
+Moving a definition requires updating retained source links; it creates no invented executable graph.
 
 ### Design {#pipeline-design}
 
@@ -168,11 +168,11 @@ verification artifacts. After the build manifest, it writes one legacy redirect 
 base-URL-prefixed `<meta http-equiv="refresh">` and `<link rel="canonical">` to the document's
 canonical page, plus a visible link, mirroring the default root redirect. Following an alias with
 a fragment preserves that fragment at the canonical destination. These are the complete
-collaborator promises this Profile 14 path relies on.
+collaborator promises this Profile 15 path relies on.
 
 #### Module main-document validation {#pipeline-module-main-document-validation}
 
-Profile 14 publication requires one local `module.md` per Module starting with the unique level-2
+Profile 15 publication requires one local `module.md` per Module starting with the unique level-2
 Purpose, Terminology, Usage, Design and Relationships sections, each with explanatory prose. The entry and
 explanatory topics have role module; formal requirements, scenarios and canonical contracts are
 permitted only in directly Module-owned implementation-role companions. Every unit has schema-2
@@ -199,7 +199,7 @@ module graph refers to its internal build machinery, not a published graph view.
 
 #### Publication compatibility status {#pipeline-publication-compatibility-status}
 
-The TypeScript loader admits Profile 14/schema 5 and publishes schema 21 with unique owner and
+The TypeScript loader admits Profile 15/schema 5 and publishes schema 21 with unique owner and
 includedBy provenance. It validates one-level references and canonical definition/binding agreement,
 exposes canonical definition anchors and renders links without transclusion. Manifest identity and
 watched registry/source inputs invalidate publication when ownership or references change.

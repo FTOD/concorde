@@ -92,14 +92,14 @@
     },
     {
       "id": "entity.development.dev-loop",
-      "title": "Development Flow",
+      "title": "Development Graph",
       "kind": "used module",
       "target_id": "module.dev-loop",
       "meaning": "#entity.development.dev-loop"
     },
     {
       "id": "entity.development.specify-loop",
-      "title": "Specification Flow",
+      "title": "Specification Graph",
       "kind": "used module",
       "target_id": "module.specify-loop",
       "meaning": "#entity.development.specify-loop"

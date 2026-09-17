@@ -18,7 +18,9 @@ studio = [
 package = false
 
 [tool.pyright]
-extraPaths = ["src"]
+extraPaths = ["src", "."]
+venvPath = "."
+venv = ".venv"
 
 [tool.concorde]
 python = "3.11"

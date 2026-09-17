@@ -26,6 +26,10 @@ it("publishes consolidated explanations as Module entries while retaining precis
   const registry = loadScopedRegistry(root);
   const reading = scopedSidebar(registry)[0].items!;
   const implementation = scopedSidebar(registry, "implementation")[0].items!;
+  const providers = reading.find((item) => item.label === "Operations")!.items!;
+  const providerDetails = implementation.find(
+    (item) => item.label === "Operations",
+  )!.items!;
   for (const [directory, retiredTopic] of consolidated) {
     const target = registry.targets.find(
       (t) => t.id === `module.${directory}`,
@@ -40,12 +44,14 @@ it("publishes consolidated explanations as Module entries while retaining precis
             ?.readingCollection === "module",
       ),
     ).toEqual([source]);
-    expect(reading.find((item) => item.label === target.title)).toEqual({
+    expect(providers.find((item) => item.label === target.title)).toEqual({
       type: "doc",
       id: `concorde/${directory}/module`,
       label: target.title,
     });
-    const details = implementation.find((item) => item.label === target.title)!;
+    const details = providerDetails.find(
+      (item) => item.label === target.title,
+    )!;
     expect(details.type).toBe("category");
     expect(details.items!.map((item) => item.id)).toEqual(
       expect.arrayContaining([
@@ -60,7 +66,7 @@ it("publishes consolidated explanations as Module entries while retaining precis
       expect(existsSync(resolve(root, retired + suffix))).toBe(false);
     }
   }
-  // Include same-directory links from precise specs, not only sidebar and flow links.
+  // Include same-directory links from precise specs, not only sidebar and graph links.
   for (const page of registry.pages) {
     expect(() => rewriteLinks(registry, page), page.sourcePath).not.toThrow();
   }

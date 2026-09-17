@@ -18,13 +18,13 @@ Spec Authoring proposes changes to a Module’s intended behavior and design. It
 | [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 | [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Internal capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
-Use `specify` from a declared composing capability to author or revise the selected Module's owned
+Use `specify` from a declared composing operation to author or revise the selected Module's owned
 Spec documents. Supply the task, constraints and current complete owned/direct-reference context;
 this private bound provider has no direct Skill/CLI entry and does not select a different owner.
 Its author returns full Markdown replacements for host acceptance, never direct project writes.
@@ -37,7 +37,7 @@ is rejected with prior document bytes and blockers preserved. Referencing a prov
 reading, not replacing its Spec. Ordinary authoring retains metadata and membership; ownership or
 reference changes require topology reconciliation. Shared changes require separate affected-consumer
 compatibility checks. Independent review, accepted-authoring reuse and completion belong to the
-calling Flow, not to this author.
+calling Graph, not to this author.
 
 For example, a consumer can rely on a provider's documented reservation result, but cannot replace
 the provider's contract while editing its own Spec. A shared contract change is authored by its owner
@@ -56,7 +56,7 @@ shared definitions from becoming competing authorities.
 This proposal/acceptance split protects ownership without trusting model-authored paths as
 permission. Ordinary authoring preserves registered metadata; [Topology](../topology/module.md)
 reconciles structural changes so registrations and references change together. Accepted-output reuse and
-independent review ordering belong to the consuming Flow.
+independent review ordering belong to the consuming Graph.
 
 ## Relationships
 
@@ -89,7 +89,7 @@ Admit the bound authoring request, check returned replacement identity and apply
 
 This collaboration applies when ordinary specify enters, accepts replacement output or preserves blockers after rejection.
 
-- [Host admission](../development/interfaces.md#capability-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
+- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -97,7 +97,7 @@ This collaboration applies when ordinary specify enters, accepts replacement out
 
 The Harness Module runs a fresh isolated Spec author with complete Spec inputs, no inherited artifacts, no implementation contents and no project write grant.
 
-This collaboration applies before launching spec-engineer specify mode and when validating its completion.
+This collaboration applies before invoking the spec-author Operation for the specify phase and when validating its completion.
 
 - [Complete context selection](../harness/contracts.md#contract.context.selection); Supply only mode-admitted inputs and require a matching completion; unavailable enforcement stops execution without a wider grant.
 
@@ -114,5 +114,5 @@ This collaboration applies when determining allowed replacement documents and ch
 ## Precise specifications
 
 The Spec Authoring Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
-[execution and record contracts](execution-reference.md#authoring-spec-authoring-capability).
+[execution and record contracts](execution-reference.md#authoring-spec-authoring-operation).
 These companions are part of the same complete Module specification, not separate topic owners.

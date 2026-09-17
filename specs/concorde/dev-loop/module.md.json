@@ -8,10 +8,10 @@
   "entities": [
     {
       "id": "entity.dev-loop.adapter",
-      "title": "Development Flow adapter",
+      "title": "Development Graph adapter",
       "kind": "shared program",
       "files": [
-        "capabilities/dev_loop.py",
+        "operations/dev_loop.py",
         "tests/concorde/development/test_review.py",
         "tests/concorde/development/test_specify_loop.py",
         "tests/concorde/development/test_target_discovery.py",
@@ -50,7 +50,7 @@
     },
     {
       "id": "entity.dev-loop.specify-loop",
-      "title": "Specification Flow",
+      "title": "Specification Graph",
       "kind": "used module",
       "target_id": "module.specify-loop",
       "meaning": "#entity.dev-loop.specify-loop"

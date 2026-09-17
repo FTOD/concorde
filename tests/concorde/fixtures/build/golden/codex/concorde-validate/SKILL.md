@@ -1,24 +1,24 @@
 ---
 name: concorde-validate
-description: "Capability: run deterministic Spec and configured code checks and record readiness for the current candidate."
+description: "Operation: run deterministic Spec and configured code checks and record readiness for the current candidate."
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
   source: "skills/concorde-validate/SKILL.md"
   kind: "skill"
-  capability: "validate"
-  entrypoint: "scripts/run-capability.py concorde-validate"
+  operation: "validate"
+  entrypoint: "scripts/run-operation.py concorde-validate"
 ---
 # concorde-validate
 
-Invoke this capability to validate. The host owns context
+Invoke this operation to validate. The host owns context
 resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
 input; do not perform it directly in this ambient conversation or inspect additional project files.
-This is a deterministic lifecycle capability: it runs no agent cognition and selects no context.
+This is a deterministic lifecycle operation: it runs no agent cognition and selects no context.
 
-Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-validate`. Its exact fields
-are type_id, schema_version:3, capability_id:"concorde-validate", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1), and input (concorde-validate-request@1).
+Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-validate`. Its exact fields
+are type_id, schema_version:3, operation_id:"concorde-validate", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-validate-request@1).
 Task requests select target_id and task, with optional focus_id (a scenario ID), constraints, and
 change_id.
 Initialization uses its typed propose/apply request; use the published request schema.

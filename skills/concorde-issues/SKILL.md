@@ -1,12 +1,12 @@
 ---
 name: concorde-issues
 description: "Inspect, report, reopen or solve branch-local Issues; solving stops at a verified candidate without automatic delivery."
-capability: issues
+operation: issues
 ---
 
 # concorde-issues
 
-@include prompts/workflow-host/invoke-capability-opener.md ACTION="manage or solve explicitly selected Issues"
+@include prompts/workflow-host/invoke-operation-opener.md ACTION="manage or solve explicitly selected Issues"
 
 @include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-issues
 @include prompts/workflow-host/stdin-invocation-config-input.md NAME=concorde-issues

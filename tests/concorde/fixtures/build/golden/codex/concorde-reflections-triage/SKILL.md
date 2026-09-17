@@ -6,18 +6,18 @@ metadata:
   author: "concorde"
   source: "skills/concorde-reflections-triage/SKILL.md"
   kind: "skill"
-  capability: "reflections_triage"
-  entrypoint: "scripts/run-capability.py concorde-reflections-triage"
+  operation: "reflections_triage"
+  entrypoint: "scripts/run-operation.py concorde-reflections-triage"
 ---
 # concorde-reflections-triage
 
-Invoke this capability to reflections triage. The host owns context
+Invoke this operation to reflections triage. The host owns context
 resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
 input; do not perform it directly in this ambient conversation or inspect additional project files.
 
-Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-reflections-triage`. Its exact fields
-are type_id, schema_version:3, capability_id:"concorde-reflections-triage", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1), and input (concorde-reflections-triage-request@1).
+Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-reflections-triage`. Its exact fields
+are type_id, schema_version:3, operation_id:"concorde-reflections-triage", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-reflections-triage-request@1).
 Task requests select target_id and task, with optional focus_id (a scenario ID), constraints, and
 change_id.
 Initialization uses its typed propose/apply request; use the published request schema.

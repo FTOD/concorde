@@ -1,0 +1,36 @@
+"""Review one Module's complete Spec collection against representative tasks."""
+
+from concorde.harness.effects import EffectDeclaration
+from concorde.harness.operation_state import StateContract, run_model
+from concorde.harness.worker_profile import Child, Contract, WorkerProfile
+
+from .. import external_name
+
+PROFILE = WorkerProfile(
+    name="spec_reviewer",
+    spec="operations/spec_reviewer/spec.md",
+    workspace="capsule",
+    contract=Contract(
+        phase="spec-review",
+        context="concorde-review-stage-context",
+        result="concorde-review-stage-result",
+        effects=EffectDeclaration(("spec-context",), (), False, "none"),
+    ),
+    tools=("read", "grep", "find", "ls"),
+    children=(
+        Child("fact-check", "operations/spec_reviewer/children/fact-check.md"),
+        Child("consistency", "operations/spec_reviewer/children/consistency.md"),
+    ),
+    timeout_seconds=1800,
+)
+
+PUBLIC = False
+CONTEXT_SELECTION = "bound"
+DETERMINISTIC = False
+USES = ()
+EXTERNAL_NAME = external_name(__name__.rsplit(".", 1)[-1])
+STATE = StateContract(PROFILE.contract.context, PROFILE.contract.result)
+
+
+def run(state, runtime):
+    return run_model(PROFILE, state, runtime)

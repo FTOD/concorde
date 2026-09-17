@@ -1,6 +1,6 @@
 # Validation execution and record contracts
 
-These are the precise implementation agreements and executable Flow specifications owned by the
+These are the precise implementation agreements and executable Graph specifications owned by the
 [Validation Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
 and transitions are retained here as the single detailed contract.
 
@@ -18,12 +18,12 @@ and transitions are retained here as the single detailed contract.
 | [Structural validation](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 | [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 | [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-## Validation capability {#validation-validation-capability}
+## Validation operation {#validation-validation-operation}
 
-The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
+The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#operation-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
@@ -87,7 +87,7 @@ external changes; they do not supply the write boundary or claim semantic comple
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
+Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
+phase artifacts and permissions remain mandatory. A new graph requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.

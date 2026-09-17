@@ -1,6 +1,6 @@
 # Implementation execution and record contracts
 
-These are the precise implementation agreements and executable Flow specifications owned by the
+These are the precise implementation agreements and executable Graph specifications owned by the
 [Implementation Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
 and transitions are retained here as the single detailed contract.
 
@@ -17,19 +17,19 @@ and transitions are retained here as the single detailed contract.
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Acceptance task](../planning/tasks.md#terminology) | Defined in Making work verifiable. |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Internal capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-## Implementation capability {#implementation-implementation-capability}
+## Implementation operation {#implementation-implementation-operation}
 
-The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
+The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#operation-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-This is a private, bound capability in the [current adapter inventory](../development/execution-reference.md).
+This is a private, bound operation in the [current adapter inventory](../development/execution-reference.md).
 Only a declared in-process composition can call it; direct Skill/CLI invocation is rejected.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
@@ -45,7 +45,7 @@ current dev-loop repair round; structural validity does not authorize repair.
 
 The worker returns every exact admitted task with unchanged identity and acceptance, marked complete
 only when fulfilled. Missing or incomplete tasks produce incomplete_tasks, never ready. The host
-persists accepted progress and returns artifact references in concorde-implement-response@2.
+persists accepted progress and returns artifact references in concorde-implement-response@3.
 Authorized code edits can remain after failed execution; recovery inspects preserved progress and
 re-admits current context rather than claiming rollback or rerunning with wider grants.
 
@@ -68,9 +68,9 @@ provider/consumer Spec views must agree before component code changes; incomplet
 remains inspectable. Component ancestry supplies no extra file access.
 
 The current adapter delegates component lifecycle scheduling and final shared-consumer checks to
-its existing enclosing development Flow. That flow's ready, defer_component_checks and bounded
+its existing enclosing development Graph. That graph's ready, defer_component_checks and bounded
 repair policies are not implementation completion conditions. Reusing this provider for a different
-coordinated flow requires a declared implementation adapter for its component scheduling and evidence
+coordinated graph requires a declared implementation adapter for its component scheduling and evidence
 handoffs; no arbitrary scheduler input or additional callable entry is introduced here. The local
 task contract is independently reusable under current host admission. Missing contracts stop the
 dependent task; an actual implementation defect remains incomplete; cancellation and limits retain
@@ -85,7 +85,7 @@ These companions are part of the same complete Module specification, not separat
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
+Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
+phase artifacts and permissions remain mandatory. A new graph requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.

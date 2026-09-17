@@ -232,12 +232,12 @@ promoteCandidate(candidate: string, destination: string, backup: string): Promis
 `root` is a project-root filesystem path. `safeRead` requires a regular file and returns UTF-8
 text; invalid paths throw `Error`, and OS read errors retain their Node error code. `hash` returns
 `sha256:` followed by 64 lowercase hexadecimal digits. `requireScoped` returns normally only for
-`profile_version === 14`; a missing configuration, a different profile, and a malformed JSON,
+`profile_version === 15`; a missing configuration, a different profile, and a malformed JSON,
 unsafe path or read error each throw an `Error` naming the reason. Every entry point of this public
-build contract calls it first: publication accepts Profile 14 projects only, and no other profile
+build contract calls it first: publication accepts Profile 15 projects only, and no other profile
 has a compatibility rendering path.
 
-`loadScopedRegistry` reads `.concorde/config.json`, which must contain `profile_version: 14` and a
+`loadScopedRegistry` reads `.concorde/config.json`, which must contain `profile_version: 15` and a
 safe relative `registry` path. The registry is
 `{schema_version: 5, project_id: string, entry_target: string, targets: Module[], checks: unknown[]}`
 with project metadata retained in its source bytes. Each Target has all the fields below. Its IDs
@@ -280,7 +280,7 @@ ownership/inclusion provenance. The Protocol's explicit document role selects th
 never complete Spec context membership or execution authority. The former graph `edges` projection and `Edge` type
 remain absent.
 `Target.parent` and `Target.uses` remain registry metadata for navigation, provenance and validation.
-This change does not change registry schema 5, Profile 14 or any UA graph format.
+This change does not change registry schema 5, Profile 15 or any UA graph format.
 
 A file may be listed by several Modules, unlike a document: schema 5 has no single implementation
 owner, so a shared file's reverse lookup is a plain list of listing Modules rather than one
@@ -375,7 +375,7 @@ rollback can still require operator recovery. The helper itself does not validat
 must not be called on unchecked or stale output.
 
 ```typescript
-requireScoped(projectRoot);       // throws unless the project declares profile_version 14
+requireScoped(projectRoot);       // throws unless the project declares profile_version 15
 const registry = loadScopedRegistry(projectRoot);
 await materializeScoped(registry); // stage derived assets; not yet a published build
 await buildSite();                // integrated prepare/build/validate/promotion path

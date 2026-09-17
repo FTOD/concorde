@@ -6,26 +6,25 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.development.capability_host import CapabilityHost, run_capability
-from concorde.spec.typed_data import typed
-from concorde.harness.context import resolve_context, recheck_context
+from concorde.development.operation_host import OperationHost, run_operation
+from concorde.harness.context import recheck_context, resolve_context
 from concorde.spec.initialize import (
-    project_proposal,
     apply_project_proposal,
     empty_target,
+    project_proposal,
 )
 from concorde.spec.repository import SpecError, SpecRepository, digest
+from concorde.spec.typed_data import typed
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 from tests.concorde.spec.support import (
     CONFIGURATION,
     PACKAGE,
+    DocumentSource,
     ModelProcessDouble,
     project,
-    update_document_declaration,
-    DocumentSource,
-    write_document,
     source_pairs,
+    write_document,
 )
 
 
@@ -46,13 +45,13 @@ class ModuleArchitectureTests(unittest.TestCase):
     def save(self):
         (self.root / ".concorde/specs.json").write_text(json.dumps(self.registry))
 
-    def call(self, capability, data, callback=None):
+    def call(self, operation, data, callback=None):
         double = ModelProcessDouble(callback)
-        return run_capability(
-            capability,
+        return run_operation(
+            operation,
             CONFIGURATION,
-            typed(capability + "-request", data),
-            host_context=CapabilityHost(
+            typed(operation + "-request", data),
+            host_context=OperationHost(
                 self.root,
                 PACKAGE,
                 executor=double.executor,
@@ -345,8 +344,6 @@ class ModuleArchitectureTests(unittest.TestCase):
                 )
 
             if stage == "topology-author" and snapshot["target"]["id"] == "scope.bank":
-                import re
-
                 item = next(
                     item for item in result["documents"] if item["path"] == self.main
                 )
@@ -521,7 +518,7 @@ class InitialModuleTests(unittest.TestCase):
                 (
                     "issuance token",
                     "invalid_proposal",
-                    mutated(lambda p: p.update(issuance_token="accepted")),
+                    mutated(lambda p: p.update(issuance_token="accepted")),  # noqa: S106 - deliberately forged proposal field
                 ),
                 (
                     "registry omitted",

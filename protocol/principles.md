@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 9.0.0 defines Module specifications, their complete content and the subset
+Concorde Spec Protocol 10.0.0 defines Module specifications, their complete content and the subset
 intended for human reading. It applies to project Specs, including those of software implementing
 this Protocol. The standard's own chapters need not describe themselves as software Modules.
 
@@ -36,7 +36,7 @@ Reading content MUST explain:
   internal invariants, constraints, choices and how they support the guarantees. Intended design
   is not proof that existing code conforms. A diagram or inventory is not a design explanation.
 - **Relationships:** what the participating entities mean, how they collaborate, and the distinction
-  between structural composition and capability use. Explain conditions and reactions that arrows
+  between structural composition and operation use. Explain conditions and reactions that arrows
   cannot express. A scoped diagram is not required to reproduce the entire entity inventory.
 - **Precise obligations:** Module requirements, concrete scenarios, interface definitions and the
   local duties and relied-upon guarantees of collaborators. Infrequent failures, concurrency,
@@ -116,8 +116,9 @@ are directed edges with meaningful free-text labels, preferably verbs. An interf
 whose behavior is specified by readable definitions and scenarios, not another Spec kind.
 
 The Module model is recursive. A Module has at most one structural parent; composition is acyclic.
-Using a provider does not acquire it as a child. A capability shared by consumers has one identity
-and is a sibling of those consumers. Missing or inapplicable facts MUST be stated honestly, not
+Using a provider does not acquire it as a child. A shared provider has one identity and MUST NOT
+be owned by one of its consumers; dependencies may cross hierarchy levels. Module ownership,
+execution composition and context references are independent relations. Missing or inapplicable facts MUST be stated honestly, not
 invented from code, examples or template placeholders.
 
 ### P2. Implementation bindings are metadata, not reading or implicit code access

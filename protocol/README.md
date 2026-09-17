@@ -1,6 +1,6 @@
 # Spec Protocol
 
-Concorde Spec Protocol **9.0.0** describes software responsibilities through one Module Spec model.
+Concorde Spec Protocol **10.0.0** describes software responsibilities through one Module Spec model.
 It defines the complete specification content and **the subset intended for human reading**. It
 does not prescribe a docsite's page, navigation or interaction design.
 
@@ -31,12 +31,24 @@ Concorde Framework, a particular publisher or a particular agent runtime to unde
 Configuration, registry serialization, worker wire versions and execution permissions are separate
 implementation agreements, not additional Protocol versions.
 
-## Upgrade from Protocol 8
+## Upgrade from Protocol 9
+
+Version 10 separates shared provider ownership from execution composition: a shared provider
+cannot be owned by one of its consumers, but dependencies may cross hierarchy levels. References
+still select context independently of either relationship. The Protocol does not require every
+executable entity to be a Module, or every Module to provide one executable entity.
+
+Concorde's Framework profile uses Operation as its only executable entity and LangGraph's graph/node
+vocabulary. The Framework migration guide (`docs/changes/operations-graphs.md` in the source
+checkout) records renamed interfaces, incompatible records and explicit acceptance. These execution rules belong to the
+Framework, not to consumer projects implementing only the independent Spec Protocol.
+
+## Earlier upgrade from Protocol 8
 
 Version 9 makes the intended reader explicit: general software knowledge, no project implementation
 knowledge. Add early Terminology tables with one canonical definition per concept and direct links
 to those tables elsewhere. Retain a normal path, concrete illustrations, causal design and visible
-safety limits in explanatory reading. Move remaining technical contracts and exact executable Flow
+safety limits in explanatory reading. Move remaining technical contracts and exact executable Graph
 catalogs out of topics regardless of heading syntax. Reconcile anchors, references and bound evidence.
 Metadata schema 2, ownership, complete context and implementation authority remain unchanged.
 

@@ -3,7 +3,7 @@
 `docsite/` is the packaged, project-neutral publishing template. Project-owned `site.json`,
 `custom-docs/`, Concorde's `concorde-only/` extension assets and `tests/repository/` are excluded
 from its packaged inventory. A scaffold copies the common adapter and creates a neutral identity;
-it does not copy Concorde's homepage, Protocol chapters, Agent Flows or their resources.
+it does not copy Concorde's homepage, Protocol chapters, Agent Graphs or their resources.
 
 The adapter publishes the host project's explicitly registered Module Specs. Canonical content
 stays outside `docsite/`; `.concorde/specs.json` names the documents, Module relationships and each
@@ -12,7 +12,7 @@ under `.concorde/` is excluded from published prose.
 
 ## Navigation
 
-The adapter publishes Profile 14 projects only: it reads `plugins/scoped-content` and registry
+The adapter publishes Profile 15 projects only: it reads `plugins/scoped-content` and registry
 schema 5, and refuses any other `profile_version` with an explicit error. Every registered document
 publishes once at a readable source-derived route: `specs/project/module.md` becomes
 `/specs/project/module`. The navbar always exposes `Module Specs`; explicitly classified companions
@@ -61,7 +61,7 @@ details in registered owned companions, linking to their canonical definitions i
 them. Implementation Specs means specifications implementations must satisfy, including external
 behavior, not a record of current code or a temporary implementation plan.
 
-Protocol 9 retains the requirement for every `.md.json` to use schema 2 and declare `document.role` explicitly:
+Protocol 10 retains the requirement for every `.md.json` to use schema 2 and declare `document.role` explicitly:
 
 ```json
 {
@@ -76,7 +76,7 @@ Missing or invalid roles, schema-1 metadata, an implementation-role `module.md`,
 requirement/scenario/structured-contract definitions in module-role reading reject publication.
 The pilot's `concorde.publication` extension is retired and rejected even when it agrees with the
 role. Classification is never inferred from paths or headings. Both Python admission and the
-publisher enforce this Protocol rule; registry schema 5 and Framework Profile 14 remain unchanged.
+publisher enforce this Protocol rule; registry schema 5 and Framework Profile 15 remain unchanged.
 
 The second sidebar follows the same registry parentage but contains only classified companions and
 omits empty branches. Each registered document appears in exactly one sidebar at its unchanged
@@ -107,7 +107,7 @@ entity duties remain in Design/Relationships; the term table is not another inve
 
 Explain a normal interaction before advanced recovery, use concrete illustrations, and connect design
 choices to the problems they prevent. Private API catalogs, serialization algorithms and exact
-executable Flows belong in Implementation Specs even without req/scenario headings. Module Specs may
+executable Graphs belong in Implementation Specs even without req/scenario headings. Module Specs may
 show clearly labeled conceptual diagrams and simple public usage examples. Keep destructive defaults,
 security limits and known unfulfilled guarantees visible. These semantic requirements need reader-
 oriented review; a correct table shape is not proof that prose is understandable.
@@ -144,7 +144,7 @@ array. Every row contains one nonempty string per column. All copy renders as pl
 The section includes table navigation, column headers and keyboard-accessible horizontal scrolling
 for narrow screens. Omitting it preserves the existing homepage layout.
 
-Concorde enables this introduction to present its core capabilities and installation steps. The
+Concorde enables this introduction to present its core operations and installation steps. The
 renderer is the same packaged template every project receives; consumer scaffolding does not copy
 Concorde's homepage content. The main Spec link resolves from the registered entry Module, and
 project-owned `homepage.links` and repository links appear only when configured.
@@ -212,8 +212,8 @@ render as text; destinations are local `/routes` or HTTP(S) URLs. Local links re
 This configures homepage links without adding project-specific logic to the shared renderer.
 
 Concorde's own `site.json` selects `../protocol` with a sidebar in `custom-docs/sidebars.protocol.ts`.
-Its `custom-docs/index.ts` enables the existing Agent Flows plugin. These retain `/protocol` and
-`/agent-flows` and are examples of project-owned extensions, not consumer defaults.
+Its `custom-docs/index.ts` enables the existing Agent Graphs plugin. These retain `/protocol` and
+`/agent-graphs` and are examples of project-owned extensions, not consumer defaults.
 
 ### Migration
 
@@ -288,7 +288,7 @@ tests are not part of the template: every other project that scaffolds the adapt
 ## Concorde repository deployment
 
 For this repository, `.github/workflows/deploy-docsite.yml` shares the scaffold workflow
-with additional dependency preparation for its own executable Flow documentation. It runs the
+with additional dependency preparation for its own executable Graph documentation. It runs the
 verified build on `main` and deploys `build/` to
 `https://ftod.github.io/concorde/`. This package does not prescribe deployment for other Concorde
 projects; `--github-pages` at scaffold time is how another project opts in.

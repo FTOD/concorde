@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline Protocol-9 source audit; historical command path retained for configured checks.
+"""Offline Protocol-10 source audit; historical command path retained for configured checks.
 
 Checks complete document units without launching a worker. --base additionally checks stable
 requirement/scenario/entity identities against a committed baseline, including Protocol-6 sources.
@@ -17,10 +17,10 @@ from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
-from concorde.spec.content_repository import DocumentUnitRepository
-from concorde.spec.content_model import reading_meanings
-from concorde.spec.repository_base import digest, read_file, walk_lines
-from concorde.spec.typed_data import decode
+from concorde.spec.content_model import reading_meanings  # noqa: E402
+from concorde.spec.content_repository import DocumentUnitRepository  # noqa: E402
+from concorde.spec.repository_base import digest, read_file, walk_lines  # noqa: E402
+from concorde.spec.typed_data import decode  # noqa: E402
 
 
 def json_value(raw: str | bytes):
@@ -164,14 +164,14 @@ def audit(base=None):
     manifest = json_value(read_file(ROOT, "protocol/manifest.json"))
     config = json_value(read_file(ROOT, ".concorde/config.json"))
     require(
-        manifest["version"] == "9.0.0" and manifest["source_profile"] == 14,
+        manifest["version"] == "10.0.0" and manifest["source_profile"] == 15,
         "manifest version",
     )
     require(
-        config["profile_version"] == 14
+        config["profile_version"] == 15
         and config["protocol"]
         == {
-            "version": "9.0.0",
+            "version": "10.0.0",
             "digest": digest(read_file(ROOT, "protocol/manifest.json")),
         },
         "Protocol binding",
@@ -209,5 +209,5 @@ if __name__ == "__main__":
     try:
         print(json.dumps(audit(args.base), indent=2))
     except (ValueError, KeyError, OSError, subprocess.CalledProcessError) as error:
-        print(f"Spec v9 audit failed: {error}", file=sys.stderr)
-        raise SystemExit(1)
+        print(f"Spec v10 audit failed: {error}", file=sys.stderr)
+        raise SystemExit(1) from error

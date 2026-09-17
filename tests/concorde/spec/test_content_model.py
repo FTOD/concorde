@@ -8,7 +8,6 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from concorde.spec.verification import verifies
 
 from concorde.spec.content_model import (
     ContentModelError,
@@ -18,7 +17,7 @@ from concorde.spec.content_model import (
     reading_meanings,
     reading_problems,
 )
-
+from concorde.spec.verification import verifies
 
 READING = """# Checkout
 
@@ -501,8 +500,8 @@ class ReadingStructureTests(unittest.TestCase):
                 admit(text)
         example = "\n````markdown\n## Terminology\n| Term | Meaning / definition |\n| --- | --- |\n| Fake | Example only. |\n````\n"
         admit(READING + example)
-        exact = "\n```mermaid\nflowchart LR\n    %% flow: example\n    a --> b\n```\n"
-        with self.assertRaisesRegex(ContentModelError, "executable Flow"):
+        exact = "\n```mermaid\nflowchart LR\n    %% graph: example\n    a --> b\n```\n"
+        with self.assertRaisesRegex(ContentModelError, "executable Graph"):
             admit(READING + exact)
         admit(READING + "\n````markdown\n" + exact + "\n````\n")
 

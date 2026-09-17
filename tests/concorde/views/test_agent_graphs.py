@@ -1,0 +1,162 @@
+"""Concorde-only graph publication follows executable factories without running Agents."""
+
+import ast
+import importlib.util
+import re
+import unittest
+
+from concorde.spec.contracts import MODEL_OPERATIONS, OPERATION_NAMES, SKILL_NAMES
+from concorde.spec.verification import verifies
+from concorde.views.docsite_template import template_files
+from tests.concorde.support.paths import REPOSITORY_ROOT
+
+
+def step_ids(page: str) -> set[str]:
+    """Step keys and their first title property survive compact or formatter-expanded layout."""
+    return set(re.findall(r"^\s*(\w+)\s*:\s*\{\s*title\s*:", page, re.MULTILINE))
+
+
+class AgentGraphTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        spec = importlib.util.spec_from_file_location(
+            "concorde_site_graphs", REPOSITORY_ROOT / "docsite/concorde-only/graphs.py"
+        )
+        if spec is None or spec.loader is None:
+            raise RuntimeError(
+                "the Concorde graph publication module could not be loaded"
+            )
+        cls.module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.module)
+        cls.data = cls.module.export()
+
+    @verifies("scenario.views.agent-graphs")
+    def test_all_public_entries_and_executable_graph_factories_are_accounted_for(self):
+        self.assertEqual(set(OPERATION_NAMES), set(self.data["operations"]))
+        self.assertEqual(set(OPERATION_NAMES), set(self.data["operation_info"]))
+        public = {
+            name for name, info in self.data["operation_info"].items() if info["public"]
+        }
+        self.assertEqual(set(SKILL_NAMES), public)
+        for operation, graph in self.data["operations"].items():
+            if operation in MODEL_OPERATIONS:
+                name = operation.removeprefix("concorde-").replace("-", "_")
+                self.assertEqual({"__start__", name, "__end__"}, set(graph["nodes"]))
+                self.assertTrue(
+                    self.data["operation_info"][operation]["state"]["input"]
+                )
+                self.assertTrue(
+                    self.data["operation_info"][operation]["state"]["output"]
+                )
+                continue
+            if operation not in public:
+                self.assertIn(
+                    "execute:prepare_target:initialize_target", graph["nodes"]
+                )
+                self.assertFalse(
+                    any(node.endswith(":discover:decide") for node in graph["nodes"])
+                )
+                self.assertTrue(
+                    all(
+                        edge["source"] in graph["nodes"]
+                        and edge["target"] in graph["nodes"]
+                        for edge in graph["edges"]
+                    )
+                )
+                continue
+            nodes = set(graph["nodes"])
+            self.assertTrue(
+                {
+                    "__start__",
+                    "__end__",
+                    "validate_invocation",
+                    operation + ":admit_request",
+                    operation + ":bind_workspace",
+                    operation + ":execute:select_operation",
+                    operation + ":finalize",
+                }
+                <= nodes
+            )
+            self.assertTrue(
+                all(
+                    edge["source"] in nodes and edge["target"] in nodes
+                    for edge in graph["edges"]
+                )
+            )
+        main = self.data["operations"]["concorde-main"]["nodes"]
+        self.assertTrue(any(node.endswith(":discover:expand_context") for node in main))
+        self.assertTrue(any(node.endswith(":author_module") for node in main))
+        self.assertFalse(any(node.endswith(":deliver") for node in main))
+        for operation in (
+            "concorde-review",
+            "concorde-dev-loop",
+            "concorde-specify-loop",
+        ):
+            self.assertIn(
+                operation + ":execute:prepare_target:discover:expand_context",
+                self.data["operations"][operation]["nodes"],
+            )
+        self.assertIn("Target admission and discovery", self.data["graphs"])
+        self.assertNotIn(
+            "discover", self.data["graphs"]["Bound target admission"]["nodes"]
+        )
+        # A newly introduced actual graph factory must be explicitly covered by the page.
+        factories = []
+        for path in (REPOSITORY_ROOT / "src/concorde").rglob("*.py"):
+            tree = ast.parse(path.read_text())
+            if any(
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "StateGraph"
+                for node in ast.walk(tree)
+            ):
+                factories.append(path.relative_to(REPOSITORY_ROOT).as_posix())
+        self.assertEqual(sorted(factories), self.data["factory_sources"])
+        self.assertIn("Operation node", self.data["graphs"])
+        self.assertIn("Component coordination", self.data["graphs"])
+
+    @verifies("scenario.views.agent-graphs")
+    def test_variants_expose_repair_stops_resume_and_missing_code_review(self):
+        page = (REPOSITORY_ROOT / "docsite/concorde-only/page.tsx").read_text()
+        explained = step_ids(page)
+        self.assertEqual(
+            (
+                set(self.data["loops"][0]["nodes"])
+                | set(self.data["graphs"]["Spec authoring and review"]["nodes"])
+            )
+            - {"__start__", "__end__"},
+            explained,
+        )
+        for graph in self.data["loops"]:
+            edges = {(e["source"], e["target"]) for e in graph["edges"]}
+            self.assertIn(("ready", "__end__"), edges)
+            self.assertIn(("validate", "__end__"), edges)
+            if graph["label"] == "No local code bindings":
+                self.assertNotIn("review_code", graph["nodes"])
+                self.assertIn(("validate", "ready"), edges)
+            else:
+                self.assertIn(("review_code", "tasks"), edges)
+            if graph["label"] == "Resume validation":
+                self.assertIn(("specify_loop", "validate"), edges)
+                self.assertIn("tasks", graph["nodes"])  # retained for repair
+            if graph["label"] == "Skip authoring":
+                self.assertNotIn("specify", graph["nodes"])
+        self.assertEqual(self.data, self.module.export())
+
+    def test_step_explanations_are_independent_of_formatter_layout(self):
+        compact = '  plan: {title: "Plan", kind: "WorkerProfile"},\n  ready: {title: "Ready"},\n'
+        formatted = '\tplan: {\n\t\ttitle: "Plan",\n\t\tkind: "WorkerProfile",\n\t},\n  ready: {\n    title: "Ready",\n  },\n'
+        self.assertEqual({"plan", "ready"}, step_ids(compact))
+        self.assertEqual(step_ids(compact), step_ids(formatted))
+        self.assertEqual(set(), step_ids('  unrelated: {kind: "Not a step"},\n'))
+
+    @verifies("scenario.views.agent-graphs")
+    def test_consumer_inventory_has_no_graph_assets_or_python_dependency(self):
+        files = template_files(REPOSITORY_ROOT)
+        self.assertFalse(any("/concorde-only/" in path for path in files))
+        self.assertFalse(any(path.endswith("graphs.py") for path in files))
+        self.assertFalse(any(path.endswith("graphs.py") for path in files))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,18 +1,18 @@
 {
   "schema_version": 3,
   "name": "concorde",
-  "version": "7.0.0",
+  "version": "8.0.0",
   "description": "Concorde Framework: architecture-aware Specs, project understanding, agent observability with LangGraph Studio, explicit context and permissions, built-in agents, and branch-local Issues with bounded autonomous resolution",
   "license": "MIT",
   "license_file": "LICENSE",
   "repository": "https://github.com/FTOD/concorde",
-  "architecture_profile": 14,
-  "workspace_protocol": 15,
+  "architecture_profile": 15,
+  "workspace_protocol": 16,
   "delivery_proposal": 10,
   "skill_namespace": "concorde",
   "format_lineage": "Skill and Markdown template formatting was informed by GitHub Spec Kit; Concorde owns and executes every distributed asset.",
   "runtime": {
-    "launcher": "scripts/run-capability.py",
+    "launcher": "scripts/run-operation.py",
     "python": ">=3.11",
     "requirements": "scripts/requirements.lock",
     "venv": ".concorde/.venv"
@@ -42,7 +42,7 @@
     "tasks-template.md"
   ],
   "package_roots": [
-    "capabilities",
+    "operations",
     "docsite",
     "pi",
     "prompts",

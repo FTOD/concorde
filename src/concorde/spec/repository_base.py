@@ -15,13 +15,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .typed_data import canonical, decode, checked_path, safe_path
-from .frontmatter import parse_document
-from .schema import ContractError, admit, validate
+# These helpers also remain available through the established repository facade.
+from .frontmatter import parse_document as parse_document
+from .schema import ContractError as ContractError
+from .schema import admit as admit
+from .schema import validate as validate
+from .typed_data import canonical, checked_path, decode, safe_path
 
-
-PROFILE_VERSION = 14
-PROTOCOL_VERSION = "9.0.0"
+PROFILE_VERSION = 15
+PROTOCOL_VERSION = "10.0.0"
 REGISTRY_SCHEMA = 5
 KINDS = frozenset({"module"})
 SPEC_KINDS = frozenset({"module"})
@@ -569,14 +571,13 @@ class RepositoryCore:
                     raise SpecError(
                         f"unknown or self dependency for {target.id}: {peer}"
                     )
-        # A shared capability is a sibling, never a child owned by one of its consumers.
+        # Shared providers retain independent ownership. Dependencies may cross
+        # hierarchy levels; using a foundation does not flatten its consumers.
         for provider in self.targets.values():
-            consumers = [t for t in self.targets.values() if provider.id in t.uses]
-            if len(consumers) > 1 and any(
-                t.parent != provider.parent for t in consumers
-            ):
+            consumers = {t.id for t in self.targets.values() if provider.id in t.uses}
+            if len(consumers) > 1 and provider.parent in consumers:
                 raise SpecError(
-                    f"shared Module {provider.id} and its consumers must be siblings"
+                    f"shared Module {provider.id} cannot be owned by one of its consumers"
                 )
         users: dict[str, list[str]] = {}
         for target in self.targets.values():
@@ -1090,11 +1091,10 @@ def _parse_definitions(
             text = heading.group(2)
             scenario = SCENARIO_HEADING.match(text)
             requirement = REQUIREMENT_HEADING.match(text)
-            if scenario or requirement:
-                if not 2 <= len(heading.group(1)) <= 5:
-                    raise SpecError(
-                        f"scenario and requirement headings use levels 2 to 5: {document.path}:{number}"
-                    )
+            if (scenario or requirement) and not 2 <= len(heading.group(1)) <= 5:
+                raise SpecError(
+                    f"scenario and requirement headings use levels 2 to 5: {document.path}:{number}"
+                )
             if scenario:
                 current = {
                     "kind": "scenario",

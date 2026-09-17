@@ -1,24 +1,24 @@
 ---
 name: concorde-init
-description: "Capability: propose and apply explicit project initialization with a pinned Protocol and an honest registry stub."
+description: "Operation: propose and apply explicit project initialization with a pinned Protocol and an honest registry stub."
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
   source: "skills/concorde-init/SKILL.md"
   kind: "skill"
-  capability: "init"
-  entrypoint: "scripts/run-capability.py concorde-init"
+  operation: "init"
+  entrypoint: "scripts/run-operation.py concorde-init"
 ---
 # concorde-init
 
-Invoke this capability to init. The host owns context
+Invoke this operation to init. The host owns context
 resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
 input; do not perform it directly in this ambient conversation or inspect additional project files.
-This is a deterministic lifecycle capability: it runs no agent cognition and selects no context.
+This is a deterministic lifecycle operation: it runs no agent cognition and selects no context.
 
-Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-init`. Its exact fields
-are type_id, schema_version:3, capability_id:"concorde-init", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1), and input (concorde-init-request@1).
+Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-init`. Its exact fields
+are type_id, schema_version:3, operation_id:"concorde-init", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-init-request@1).
 Task requests select target_id and task, with optional focus_id (a scenario ID), constraints, and
 change_id.
 Initialization uses its typed propose/apply request; use the published request schema.
@@ -49,7 +49,7 @@ This complete schema is the invocation's input field. It does not grant project 
     },
     "schema_version": {
       "type": "integer",
-      "const": 1
+      "const": 2
     },
     "data": {
       "$ref": "#/$defs/concorde-init-request"
@@ -83,14 +83,14 @@ This complete schema is the invocation's input field. It does not grant project 
           "type": "object",
           "properties": {
             "type_id": {
-              "const": "concorde-capability-configuration"
+              "const": "concorde-operation-configuration"
             },
             "schema_version": {
               "type": "integer",
               "const": 1
             },
             "data": {
-              "$ref": "#/$defs/concorde-capability-configuration"
+              "$ref": "#/$defs/concorde-operation-configuration"
             }
           },
           "required": [
@@ -188,7 +188,7 @@ This complete schema is the invocation's input field. It does not grant project 
       ],
       "additionalProperties": false
     },
-    "concorde-capability-configuration": {
+    "concorde-operation-configuration": {
       "type": "object",
       "properties": {
         "model": {

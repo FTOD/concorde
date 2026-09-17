@@ -11,8 +11,8 @@
       "title": "Query and Routing adapter",
       "kind": "shared program",
       "files": [
-        "capabilities/main.py",
-        "tests/concorde/development/test_flow_surfaces.py",
+        "operations/main.py",
+        "tests/concorde/development/test_graph_surfaces.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
       ],

@@ -31,8 +31,8 @@ need not invent an API. Link to precise definitions rather than duplicating them
 
 <a id="entity.example.coordinator"></a>
 
-[Explain why the coordinator's responsibility, state and control/data flow fulfill the guarantees.
-Connect choices to the problems they prevent. Link to exact APIs, byte rules and executable Flow
+[Explain why the coordinator's responsibility, state and control/data graph fulfill the guarantees.
+Connect choices to the problems they prevent. Link to exact APIs, byte rules and executable Graph
 catalogs in implementation-role companions rather than reproduce them here. Do not substitute a file inventory.]
 
 ## Relationships

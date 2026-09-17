@@ -10,7 +10,7 @@ Distribution prepares the Framework assets that developers install and run: inst
 | --- | --- |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Installation](installation.md#terminology) | Defined in Installing and updating Concorde. |
 | [Update](installation.md#terminology) | Defined in Installing and updating Concorde. |
@@ -44,7 +44,7 @@ means a failed rebuild must not be assumed to have recovered the prior environme
 The Build command resolves Authored sources, including Skill sources, into deterministic worker
 instructions, Installed Skills and runtime schemas. Build manifest binds their exact inputs and
 outputs, while Package inventory determines which assets can be distributed. The external Developer
-runtime reads an installed Skill to submit a typed capability request; Skills are not injected as
+runtime reads an installed Skill to submit a typed operation request; Skills are not injected as
 worker context or an independent execution grant. [Build realization](build.md#design) explains
 source accounting and freshness checks.
 
@@ -85,8 +85,8 @@ project, because the guard is checkout policy and ships to no one else.
 
 Skill sources are authored and owned here, Build renders them, and Installation places the rendered
 Skills in the target integration. The external Developer runtime consumes those instructions and
-calls the declared capability boundary. This distribution path creates no worker Harness input and
-does not transfer ownership of executable capability behavior to Distribution.
+calls the declared operation boundary. This distribution path creates no worker Harness input and
+does not transfer ownership of executable operation behavior to Distribution.
 
 ```mermaid
 flowchart TB
@@ -161,11 +161,11 @@ still removes an owned environment before rebuilding; this preservation promise 
 by code, and callers must not infer recovery from the absence of success metadata.
 
 Project initialization and Protocol-binding decisions belong to `module.spec`'s `concorde-init`
-capability, not to this Module; installation never creates the registry or a Module stub itself.
+operation, not to this Module; installation never creates the registry or a Module stub itself.
 
 ## Ownership, context and implementation status
 
-Runtime admission, initialization, installation inventory and package Spec/wire alignment support Protocol 9/Profile 14. Build success proves output freshness only. Project updates must preserve explicit owner/reference choices and never silently migrate consumers.
+Runtime admission, initialization, installation inventory and package Spec/wire alignment support Protocol 10/Profile 15. Build success proves output freshness only. Project updates must preserve explicit owner/reference choices and never silently migrate consumers.
 
 ## Precise specifications
 

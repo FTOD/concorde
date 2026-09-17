@@ -1,4 +1,4 @@
-"""Protocol 9 document-unit primitives shared by runtime admission and publishing checks.
+"""Protocol 10 document-unit primitives shared by runtime admission and publishing checks.
 
 A registered reading document and its deterministic metadata companion are one owned unit.
 Reading is a subset of content, not a summary generated from an inventory. Machine records point
@@ -32,7 +32,8 @@ RETIRED_FENCES = frozenset(
         "concorde-entities",
         "concorde-dependencies",
         "concorde-contract-binding",
-        "concorde-capabilities",
+        "concorde-operations",
+        "concorde-capabilities",  # historical syntax is refused, never aliased
         "concorde-agents",
     }
 )
@@ -326,14 +327,18 @@ def reading_problems(
                 problems.append(
                     "canonical contracts belong in an implementation-role document"
                 )
+        elif kind == "fenced" and mermaid and re.match(r"\s*%%\s*flow:", line):
+            problems.append(
+                "retired executable flow binding; migrate explicitly to %% graph:"
+            )
         elif (
             kind == "fenced"
             and mermaid
             and role != "implementation"
-            and re.match(r"\s*%%\s*flow:", line)
+            and re.match(r"\s*%%\s*graph:", line)
         ):
             problems.append(
-                "exact executable Flow catalogs belong in implementation-role documents"
+                "exact executable Graph catalogs belong in implementation-role documents"
             )
         elif kind == "fence-close":
             mermaid = False
@@ -467,7 +472,7 @@ def metadata_identity(path: str, raw: bytes, *, expected_owner: str) -> tuple[st
     ):
         raise ContentModelError(
             path,
-            "unsupported document metadata version; migrate explicitly to Protocol 9 schema 2",
+            "unsupported document metadata version; migrate explicitly to Protocol 10 schema 2",
         )
     document = _object(value["document"], {"id", "owner", "role"}, set(), path)
     if not isinstance(document["role"], str) or document["role"] not in {

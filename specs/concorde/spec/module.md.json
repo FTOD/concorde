@@ -31,17 +31,17 @@
       "meaning": "#entity.spec.validator"
     },
     {
-      "id": "entity.spec.init-capability",
-      "title": "Initialization capability",
+      "id": "entity.spec.init-operation",
+      "title": "Initialization operation",
       "kind": "interface",
-      "meaning": "#entity.spec.init-capability"
+      "meaning": "#entity.spec.init-operation"
     },
     {
       "id": "entity.spec.spec-model",
       "title": "Spec model",
       "kind": "program",
       "files": [
-        "capabilities/init.py",
+        "operations/init.py",
         "scripts/development/check-spec-v5.py",
         "src/concorde/__init__.py",
         "src/concorde/__main__.py",

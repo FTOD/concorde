@@ -15,7 +15,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Capsule](module.md#terminology) | Defined in Harness. |
 | [Spec context](context.md#terminology) | Defined in What information a worker receives. |
 | [Implementation context](context.md#terminology) | Defined in What information a worker receives. |
-| [Capability context](context.md#terminology) | Defined in What information a worker receives. |
+| [Resource context](context.md#terminology) | Defined in What information a worker receives. |
 | [Task context](context.md#terminology) | Defined in What information a worker receives. |
 | [Document unit](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Source-member role](../spec/values.md#terminology) | Defined in Identities and versions. |
@@ -26,7 +26,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Context resolution
@@ -40,7 +40,7 @@ freezes several explicitly selected complete Spec contexts for the global coordi
 `recheck_context` and `recheck_discovery_context` reject reuse after any admitted input changed.
 The sections below define the exact inputs, records, phases and errors.
 
-The required Profile 14 boundary below is Module-oriented: it accepts a Module `target_id` and an
+The required Profile 15 boundary below is Module-oriented: it accepts a Module `target_id` and an
 optional local scenario `focus_id`. Its project contract files implement the Protocol's Spec and
 Context mapping: the one-level union of owned and explicitly referenced documents, including readable design/relationship explanations and associated metadata declarations. The independent Protocol supports only Module and scenario
 queries; a scenario query resolves to its providing Module's same complete context, so this API
@@ -51,7 +51,7 @@ the executable boundary, and no Skill returns it or a redacted projection of it.
 inputs are target_id, task, optional focus_id/constraints/phase (default ask). Other phases are
 specify, plan, tasks, implementation, spec-review, code-review, validate, deliver and context-solve.
 Unknown fields/versions/IDs are rejected by the host's own admission, never by an agent-facing
-schema. `describe-policy` mode on any capability previews the exact grant an execution would receive —
+schema. `describe-policy` mode on any operation previews the exact grant an execution would receive —
 context_id, read/write paths and a policy digest, printed to stderr — without launching an agent,
 mutating project state, or exposing document content, instructions, stage inputs, implementation
 locators or the reusable cognitive snapshot itself.
@@ -170,7 +170,7 @@ review's target/focus, context/input identities, spec/code mode, status, represe
 Issue judgments, answer, revision and `semantic_completeness: "not_proven"`. A judgment carries
 immutable receipt fields, blocking/advisory severity and affected_task. The host admits only the
 selected observation descriptions through concorde-issue-context, not the whole Issue history. Revisions bind Spec/implementation digests and nullable base/head commits.
-This service enforces the declared type and phase; the common host enforces [Development Flow](../dev-loop/module.md) policy and independently verifies
+This service enforces the declared type and phase; the common host enforces [Development Graph](../dev-loop/module.md) policy and independently verifies
 current, target-bound code-review repair evidence and the bounded repair policy before supplying
 it. This addition preserves the existing review-driven repair edge without granting raw code reads.
 
@@ -205,7 +205,7 @@ The context identity covers all inputs apart from its own identity field. The wi
 contains the distributed principles bundle and Module kind definition. This bundle includes
 both Concorde Spec Protocol requirements and the Framework execution profile; the field name does
 not classify all runtime rules as Spec organization rules.
-Concorde Spec Protocol 9.0.0 defines the Spec context, implementation context and external
+Concorde Spec Protocol 10.0.0 defines the Spec context, implementation context and external
 references this service resolves. The distributed rule bundle also includes the separately authored Framework execution
 profile, including P10 handoffs. The resolver verifies the build is
 fresh, then admits the Protocol copy the installer placed under `.concorde/protocol/`, the manifest
@@ -217,7 +217,7 @@ installed version through `concorde-configure` with `accept_protocol`. Changed b
 Stage inputs must be versioned plan, implementation-task, task-identity-constraints,
 task-scope-feedback, issue-selection, issue-intent, issue-context or review-result
 values (the last only accompanies a bounded dev-loop code-review repair round: see
-`concorde-dev-loop` in the Development Flow contract). Code bytes
+`concorde-dev-loop` in the Development Graph contract). Code bytes
 are not embedded in a snapshot; implementation and the dedicated read-only code-review phase have
 code references and separate host-issued implementation grants. Spec review has no code references.
 The review host adds a separately typed, target-scoped changes/revision input; ordinary stage_inputs
@@ -243,8 +243,8 @@ Ownership/reference changes invalidate affected snapshots even when source paths
 Ordinary owner authoring can update content and diagram fences while preserving metadata;
 document ID, owner or registered references change through topology reconciliation.
 
-Context solving is a separate fresh spec-engineer context-solve mode, run directly by the
-`concorde-context-solve` capability or as `concorde-plan`'s preliminary sufficiency check. It returns
+Context solving invokes the context-assessor Operation in a separate fresh worker, selected by the
+`concorde-context-solve` operation or as `concorde-plan`'s preliminary sufficiency check. It returns
 sufficient, spec_incomplete, unsupported, conflicting or failed. A gap
 is reported once as an Issue; a dependent step references its receipt and names blocked_step. It cannot fetch missing context. Known missing
 runtime fields fail admission; semantic incompleteness is task-specific, never universally proven.
@@ -309,7 +309,7 @@ coordinator with a global view:
 
 ```python
 resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str, ...], *,
-    capability: str, phase: str, task: str, action: str = "route",
+    operation: str, phase: str, task: str, action: str = "route",
     target_hint: str | None = None, focus_hint: str | None = None,
     constraints: tuple[str, ...] = (), instructions: str = "",
     workspace: dict | None = None, agent: Agent | None = None) -> DiscoveryContext
@@ -321,13 +321,13 @@ includes non-main documents in full, never follows dependencies or hyperlinks im
 substitutes an answer or summary for an original source.
 
 Inputs require a nonempty, duplicate-free ordered tuple of Module IDs, a nonblank task,
-capability concorde-main, concorde-dev-loop, concorde-specify-loop or concorde-review, phase route, and action route, ask or
+operation concorde-main, concorde-dev-loop, concorde-specify-loop or concorde-review, phase route, and action route, ask or
 design-topology. A focus hint requires a target hint and must belong to that Module. Unsupported
 phases/actions, invalid selections, unavailable required files and inconsistent membership reject
 resolution; no partial context is returned. Hints do not themselves add a Module's documents.
 
 DiscoveryContext has serialized, value and id accessors like ContextSnapshot. Its canonical
-concorde-discovery-context@5 payload contains context_id, schema_version, capability, phase,
+concorde-discovery-context@6 payload contains context_id, schema_version, operation, phase,
 action, task, constraints, target_hint, focus_hint, protocol_binding, protocol, topology,
 targets, documents, instructions and workspace. Topology is the exact registry
 only for design-topology; otherwise it is null.
@@ -443,7 +443,7 @@ json_schema(type_id: str) -> dict
 Public functions of contracts:
 
 ```text
-dependencies(capability: str) -> tuple[str, ...]
+dependencies(operation: str) -> tuple[str, ...]
 contracts() -> dict[str, tuple[str, str]]
 schemas() -> dict
 exported_types() -> tuple[str, ...]
@@ -473,10 +473,10 @@ Failures return structured findings or the declared exception; callers must stop
 | --- | --- | --- |
 | Spec context | The selected Module's complete resolved document-unit context (reading plus metadata), exactly the Protocol's `Context(M)`; a scenario focus changes the question, not the membership. The Protocol fixes only this visible set; the Framework delivers it as a context index and grant: the snapshot lists every document with identity, owner, digest, inclusion reasons and the reading entry, and the documents are granted read-only at their project-relative paths, byte-identical copies in a capsule. No document body is embedded. | Every Module-bound invocation. |
 | Implementation context | The Protocol's `ImplementationContext(M)`: the listing entries the selected Module's own entities declare, exact files and directory prefixes alike, and the files those entries currently bind. Every phase can see the declared entries and bound file names with their owning entity and pending status; only code-writing and code-review phases receive file contents, in their declared subsets. | Entries and file names: every phase. File contents: code-writing and code-review phases only. |
-| Capability context | The contracts of the Capabilities and Tools the invocation may use, as admitted by its Harness and constraints, together with the Module's Protocol-defined external references: the vendored documentation and source it declares with `references` of kind `external`, one tree digest per entry. Descriptions given to the model and bindings accepted by the executor resolve to the same contracts. | Reference entries and digests: every phase. Reference contents, read-only: the modes that declare the `references` effect (plan, tasks, implementation, code-review). Capability and Tool contracts: none admitted by any current Agent. |
+| Resource context | The contracts of the Operations and Tools the invocation may use, as admitted by its Harness and constraints, together with the Module's Protocol-defined external references: the vendored documentation and source it declares with `references` of kind `external`, one tree digest per entry. Descriptions given to the model and bindings accepted by the executor resolve to the same contracts. | Reference entries and digests: every phase. Reference contents, read-only: the modes that declare the `references` effect (plan, tasks, implementation, code-review). Operation and Tool contracts: none admitted by any current Agent. |
 | Task context | The task and constraints, the stage artifacts admitted for this phase, such as a plan, implementation tasks, a review result or an Issue selection, and the frozen workspace lifecycle metadata. Task context travels inline in the invocation input, including the review host's typed changes. | Every invocation; stage artifacts are optional. |
 
 A kind may be empty for a phase, but the frozen closure is never empty. Agent instructions, the
 Protocol rule bundle and installed Skills are not context: instructions belong to the Agent
 definition and are injected beside the context, and a Skill is the developer-facing projection of
-a public Capability. The snapshot identity covers every admitted byte of every kind.
+a public Operation. The snapshot identity covers every admitted byte of every kind.

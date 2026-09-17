@@ -16,7 +16,7 @@ from .paths import REPOSITORY_ROOT
 
 
 def build_package_copy(root: Path, integration: str = "all"):
-    """Copy ``prompts/``, ``skills/`` and ``capabilities/`` into ``root`` and build them there.
+    """Copy ``prompts/``, ``skills/`` and ``operations/`` into ``root`` and build them there.
 
     Requires ``concorde.distribution.build`` to already be importable (callers insert
     ``RUNTIME_ROOT`` onto ``sys.path`` before importing this helper, as usual). Returns the
@@ -28,7 +28,13 @@ def build_package_copy(root: Path, integration: str = "all"):
     shutil.copytree(REPOSITORY_ROOT / "prompts", root / "prompts", dirs_exist_ok=True)
     shutil.copytree(REPOSITORY_ROOT / "protocol", root / "protocol", dirs_exist_ok=True)
     shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills", dirs_exist_ok=True)
-    shutil.copytree(REPOSITORY_ROOT / "capabilities", root / "capabilities", dirs_exist_ok=True)
-    shutil.copytree(REPOSITORY_ROOT / "src/concorde/spec", root / "src/concorde/spec",
-                    dirs_exist_ok=True, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    shutil.copytree(
+        REPOSITORY_ROOT / "operations", root / "operations", dirs_exist_ok=True
+    )
+    shutil.copytree(
+        REPOSITORY_ROOT / "src/concorde/spec",
+        root / "src/concorde/spec",
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+    )
     return write_build(root, integration)

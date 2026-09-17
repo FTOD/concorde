@@ -1,14 +1,14 @@
-# Specification Flow execution and record contracts
+# Specification Graph execution and record contracts
 
-These are the precise implementation agreements and executable Flow specifications owned by the
-[Specification Flow Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
+These are the precise implementation agreements and executable Graph specifications owned by the
+[Specification Graph Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
 and transitions are retained here as the single detailed contract.
 
 ## Terminology
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -21,9 +21,9 @@ and transitions are retained here as the single detailed contract.
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-## Specification Flow {#specify-loop-specification-flow}
+## Specification Graph {#specify-loop-specification-graph}
 
-The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
+The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#operation-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
@@ -53,13 +53,13 @@ twice, and reviews only the owner and any consumer whose evidence is missing or 
 An already accepted authoring result is reused only for the same intent; unrelated standalone
 review never stands for authoring. Changed relevant inputs invalidate review. Spec review requirements
 are sticky: run_reviews=false records skipped only when no requirement already exists. Skipped,
-failed, incomplete and successful evidence remain distinct. The flow returns completed with the
+failed, incomplete and successful evidence remain distinct. The graph returns completed with the
 common response and ArtifactRefs; it never requires code review, runs implementation checks or marks
-ready. [Development Flow](../dev-loop/module.md) may consume that completed result without repeating accepted current Spec work.
+ready. [Development Graph](../dev-loop/module.md) may consume that completed result without repeating accepted current Spec work.
 
 ### Design {#specify-loop-design}
 
-#### Specification Flow (`specify_flow`) {#specify-loop-specification-flow-specify-flow}
+#### Specification Graph (`specify_graph`) {#specify-loop-specification-graph-specify-graph}
 
 State: `output` (the last stage's typed response data), `artifacts` (every stage's artifact
 references under a merge reducer), `result`. The candidate record carries the accepted authoring
@@ -71,13 +71,13 @@ each consumer's review evidence and the gap history.
 | `initialize` | Deterministic: authoring is needed unless `specify=false` or the same intent was already accepted without an open gap. | task, candidate | route |
 | `specify` | Spec Authoring: one spec-author invocation; the owner's and every affected consumer's candidate reviews admit the replacements before they are applied and are recorded for reuse. | task, Spec context | replaced Spec documents, candidate review evidence |
 | `review_spec` | Independent Spec review of the owner and every consumer whose evidence is missing or stale; an explicit skip or fully current evidence is recorded instead. | task, Spec, review evidence | Spec review results |
-| `summarize` | Deterministic: the capability response with every artifact reference. | output, artifacts | response |
+| `summarize` | Deterministic: the operation response with every artifact reference. | output, artifacts | response |
 
 ```mermaid
 flowchart TB
-    %% flow: specify_flow
-    accTitle: Specification Flow
-    accDescr: Initialization selects authoring or goes straight to review; accepted authoring is followed by independent review; every stop routes to summarize and a guard-caught error ends the Flow.
+    %% graph: specify_graph
+    accTitle: Specification Graph
+    accDescr: Initialization selects authoring or goes straight to review; accepted authoring is followed by independent review; every stop routes to summarize and a guard-caught error ends the Graph.
     __start__["start"]
     initialize["initialize<br/>in: task, candidate<br/>out: route"]
     specify["specify<br/>in: task, Spec context<br/>out: replaced Spec documents, candidate review evidence"]
@@ -99,14 +99,14 @@ flowchart TB
 There is no automatic Spec-repair edge. A necessary gap waits for explicit repair and fresh inputs;
 blocking reviews, invalid output, failed execution, cancellation and limits preserve inspectable
 progress with their distinct outcomes. Repeated unchanged blockers cannot imply completion.
-The flow composes only the declared specify and review adapters. Its routing is the common
-router service, not an additional callable query capability.
+The graph composes only the declared specify and review adapters. Its routing is the common
+router service, not an additional callable query operation.
 
 ## Realization and reuse limits
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
+Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
+phase artifacts and permissions remain mandatory. A new graph requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.

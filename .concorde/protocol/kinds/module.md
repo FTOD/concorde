@@ -46,7 +46,7 @@ implementation details to learn that concurrent publication is serialized or rej
 
 ### Design
 
-Explain why responsibility decomposition, state, control/data flow, collaboration and failure
+Explain why responsibility decomposition, state, control/data graph, collaboration and failure
 containment fulfill the guarantees. Connect each significant choice to a problem it prevents;
 a sequence of class or function names is not an explanation. Record significant choices and required internal constraints,
 distinguishing them from incidental current code and unresolved implementation. Links to guarantees
@@ -156,8 +156,9 @@ flowchart TB
 Every direct child and used Module has one local entity with its provider identity. The local
 reading states that provider's responsibility, selection/use conditions and canonical promises
 relied upon, plus local duties and failure reactions. Metadata links the declared provider to that
-explanation. A uses arrow or a link to the provider alone is insufficient. A shared provider and
-its consumers remain siblings, each with one identity and parent.
+explanation. A uses arrow or a link to the provider alone is insufficient. A shared provider keeps
+one identity and is not owned by any of its consumers. Dependencies may cross hierarchy levels;
+the sibling arrangement shown above is an example, not a universal hierarchy constraint.
 
 ## Realization and external knowledge
 
@@ -218,8 +219,8 @@ need not invent an API. Link to precise definitions rather than duplicating them
 
 <a id="entity.example.coordinator"></a>
 
-[Explain why the coordinator's responsibility, state and control/data flow fulfill the guarantees.
-Connect choices to the problems they prevent. Link to exact APIs, byte rules and executable Flow
+[Explain why the coordinator's responsibility, state and control/data graph fulfill the guarantees.
+Connect choices to the problems they prevent. Link to exact APIs, byte rules and executable Graph
 catalogs in implementation-role companions rather than reproduce them here. Do not substitute a file inventory.]
 
 ## Relationships

@@ -1,12 +1,12 @@
 ---
 name: concorde-specify-loop
 description: "Spec loop: route one change, author or revise its Spec, then independently review it; stop before planning and implementation."
-capability: specify_loop
+operation: specify_loop
 ---
 
 # concorde-specify-loop
 
-@include prompts/workflow-host/invoke-capability-opener.md ACTION="run the Spec loop"
+@include prompts/workflow-host/invoke-operation-opener.md ACTION="run the Spec loop"
 
 @include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-specify-loop
 @include prompts/workflow-host/stdin-invocation-config-input.md NAME=concorde-specify-loop

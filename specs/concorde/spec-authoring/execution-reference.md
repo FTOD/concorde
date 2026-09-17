@@ -1,6 +1,6 @@
 # Spec Authoring execution and record contracts
 
-These are the precise implementation agreements and executable Flow specifications owned by the
+These are the precise implementation agreements and executable Graph specifications owned by the
 [Spec Authoring Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
 and transitions are retained here as the single detailed contract.
 
@@ -19,28 +19,28 @@ and transitions are retained here as the single detailed contract.
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 | [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Internal capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-## Spec authoring capability {#authoring-spec-authoring-capability}
+## Spec authoring operation {#authoring-spec-authoring-operation}
 
-The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
+The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#operation-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-This is a private, bound capability in the [current adapter inventory](../development/execution-reference.md).
+This is a private, bound operation in the [current adapter inventory](../development/execution-reference.md).
 Only a declared in-process composition can call it; direct Skill/CLI invocation is rejected.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
 file names are visible and implementation contents remain excluded from non-code phases.
 
-`specify` uses a fresh spec-engineer specify invocation with no inherited stage artifacts or
+`specify` invokes the spec-author Operation in a fresh worker with no inherited stage artifacts or
 implementation contents. Inputs are the complete owned/direct-reference contract, task and
 constraints under the pinned Protocol. It returns full owned document replacements in
 concorde-agent-stage-result@2, or attributed gaps with no replacements. The host validates identity,
 metadata, allowed paths, context and configuration before applying accepted replacements; the author
-never writes project files. The capability response retains references to accepted output.
+never writes project files. The operation response retains references to accepted output.
 
 A referencing author cannot replace a provider document. An owner may revise its own shared
 document, but application requires affected-consumer compatibility checks in their separate
@@ -50,7 +50,7 @@ replacement is rejected with existing bytes and blockers preserved. Successful a
 old authoring gaps only after the host accepts the output, not merely after a model says sufficient.
 
 Repeated calls re-admit current inputs; accepted-authoring reuse and independent review selection
-are the composing flow's decisions. This capability alone neither reviews its own output nor plans,
+are the composing graph's decisions. This operation alone neither reviews its own output nor plans,
 implements or marks a candidate ready. The [Topology Module](../topology/module.md)'s special candidate-author context is a distinct
 existing mode, not an undeclared call to this ordinary specify adapter.
 
@@ -63,7 +63,7 @@ These companions are part of the same complete Module specification, not separat
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
+Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
+phase artifacts and permissions remain mandatory. A new graph requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.

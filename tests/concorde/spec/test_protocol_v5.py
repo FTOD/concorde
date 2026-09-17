@@ -1,31 +1,30 @@
 """Protocol 5 context, ownership, byte identity and authority regressions."""
 
-import copy
 import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.development.capability_host import CapabilityHost, _target_revision
-from concorde.development.capability_service import run_capability
+from concorde.development.operation_host import OperationHost, _target_revision
+from concorde.development.operation_service import run_operation
 from concorde.harness.context import (
-    resolve_context,
     recheck_context,
-    resolve_discovery_context,
     recheck_discovery_context,
+    resolve_context,
+    resolve_discovery_context,
 )
-from concorde.spec.repository import SpecRepository, SpecError, digest
-from concorde.spec.typed_data import typed, validate_typed, TypedDataError
+from concorde.spec.repository import SpecError, SpecRepository, digest
+from concorde.spec.typed_data import TypedDataError, typed, validate_typed
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 from tests.concorde.spec.support import (
-    project,
-    PACKAGE,
     CONFIGURATION,
+    PACKAGE,
     ModelProcessDouble,
-    block,
     add_binding,
+    block,
+    project,
     source_pairs,
 )
 
@@ -128,7 +127,7 @@ class ProtocolFiveTests(unittest.TestCase):
         old = self.repository()
         snap = resolve_context(old, "scope.bank")
         discovery = resolve_discovery_context(
-            old, ("scope.bank",), capability="concorde-main", phase="route", task="Read"
+            old, ("scope.bank",), operation="concorde-main", phase="route", task="Read"
         )
         revision = _target_revision(old, old.select("scope.bank"))
         self.reference("scope.bank", "document", "document.transfer.promises")
@@ -169,7 +168,7 @@ class ProtocolFiveTests(unittest.TestCase):
         snap = resolve_discovery_context(
             r,
             ("service.transfer", "module.ledger"),
-            capability="concorde-main",
+            operation="concorde-main",
             phase="route",
             task="Read",
         ).value
@@ -246,10 +245,10 @@ class ProtocolFiveTests(unittest.TestCase):
                 ]
 
         double = ModelProcessDouble(callback)
-        host = CapabilityHost(
+        host = OperationHost(
             self.root, PACKAGE, executor=double.executor, allow_primary_worktree=True
         )
-        result = run_capability(
+        result = run_operation(
             "concorde-specify",
             CONFIGURATION,
             typed(
@@ -264,11 +263,11 @@ class ProtocolFiveTests(unittest.TestCase):
     def test_referenced_bytes_invalidate_code_review_identity_without_expanding_code(
         self,
     ):
-        from concorde.development.capability_host import Invocation
+        from concorde.development.operation_host import Invocation
         from concorde.development.review import inputs
 
         self.reference("service.transfer", "module", "module.ledger")
-        host = CapabilityHost(self.root, PACKAGE, allow_primary_worktree=True)
+        host = OperationHost(self.root, PACKAGE, allow_primary_worktree=True)
         run = Invocation(
             "concorde-review",
             CONFIGURATION,
@@ -328,10 +327,10 @@ class ProtocolFiveTests(unittest.TestCase):
                     )
 
         double = ModelProcessDouble(callback)
-        host = CapabilityHost(
+        host = OperationHost(
             self.root, PACKAGE, executor=double.executor, allow_primary_worktree=True
         )
-        result = run_capability(
+        result = run_operation(
             "concorde-specify",
             CONFIGURATION,
             typed(
@@ -383,7 +382,7 @@ class ProtocolFiveTests(unittest.TestCase):
             "semantics": "Return the stored balance.",
             "example": 42,
         }
-        for owner, peer, role, path in [
+        for _owner, peer, role, path in [
             (
                 "module.ledger",
                 "service.transfer",
@@ -463,10 +462,10 @@ class ProtocolFiveTests(unittest.TestCase):
                 )
 
         double = ModelProcessDouble(callback)
-        host = CapabilityHost(
+        host = OperationHost(
             self.root, PACKAGE, executor=double.executor, allow_primary_worktree=True
         )
-        result = run_capability(
+        result = run_operation(
             "concorde-review",
             CONFIGURATION,
             typed(
@@ -495,7 +494,6 @@ class ProtocolFiveTests(unittest.TestCase):
     def test_required_binding_links_report_excluded_definition_without_adding_context(
         self,
     ):
-        path = self.root / "specs/transfer/module.md"
         add_binding(
             self.root,
             "specs/transfer/module.md",

@@ -1,49 +1,115 @@
-"""Profile 14 capability registry and versioned JSON contracts.
+"""Profile 15 operation registry and versioned JSON contracts.
 
-Public capabilities are each paired with exactly one Skill; non-public capabilities require
+Public operations are each paired with exactly one Skill; non-public operations require
 declared composition. Model nodes use their State contract directly; only existing host adapters
-own request/response wire envelopes. All executable identities belong to ``capabilities/``. Exposure, context selection, determinism and composition are derived from their
-declarations; there is no capability class taxonomy. The internal data types below — topology
+own request/response wire envelopes. All executable identities belong to ``operations/``. Exposure, context selection, determinism and composition are derived from their
+declarations; there is no operation class taxonomy. The internal data types below — topology
 design/proposal/application, discovery context, context snapshots, review internals — are not
-owned by any one capability and stay defined directly here.
+owned by any one operation and stay defined directly here.
 """
+
 from __future__ import annotations
 
-from .issue_shapes import RECEIPT as ISSUE_RECEIPT, REPORT as ISSUE_REPORT, REVIEW_ISSUE
-from .contract_shapes import ARTIFACT, DIGEST, BLOCKER, MAIN_OUTCOMES, NULLABLE_ID, PATH, ROUTE, STRING, WORKSPACE_CONTEXT, array, obj, typed_schema
+from .contract_shapes import (
+    ARTIFACT,
+    BLOCKER,
+    DIGEST,
+    MAIN_OUTCOMES,
+    NULLABLE_ID,
+    PATH,
+    ROUTE,
+    STRING,
+    WORKSPACE_CONTEXT,
+    array,
+    obj,
+    typed_schema,
+)
+from .issue_shapes import RECEIPT as ISSUE_RECEIPT
+from .issue_shapes import REPORT as ISSUE_REPORT
+from .issue_shapes import REVIEW_ISSUE
 
 DOCUMENT_CHANGE = obj({"path": PATH, "content": {"type": "string"}})
-TASK_ITEM = obj({"id": STRING, "target_id": STRING, "description": STRING,
-                 "acceptance": STRING, "complete": {"type": "boolean"}})
-WORKER_OUTCOMES = {"enum": ["completed", "spec_incomplete", "unsupported", "conflicting", "failed"]}
-CHECK = obj({"id": STRING, "target_id": STRING, "argv": {**array(STRING), "minItems": 1},
-             "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600},
-             "inputs": array(PATH, unique=True)}, ("inputs",))
+TASK_ITEM = obj(
+    {
+        "id": STRING,
+        "target_id": STRING,
+        "description": STRING,
+        "acceptance": STRING,
+        "complete": {"type": "boolean"},
+    }
+)
+WORKER_OUTCOMES = {
+    "enum": ["completed", "spec_incomplete", "unsupported", "conflicting", "failed"]
+}
+CHECK = obj(
+    {
+        "id": STRING,
+        "target_id": STRING,
+        "argv": {**array(STRING), "minItems": 1},
+        "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 3600},
+        "inputs": array(PATH, unique=True),
+    },
+    ("inputs",),
+)
 LISTING_ENTRY = {**STRING, "pattern": r"^[^/](?:[^/]*/)*[^/]*$"}
-REFERENCE = {"anyOf": [obj({"kind": {"enum": ["module", "document"]}, "id": STRING}),
-                       obj({"kind": {"const": "external"}, "path": LISTING_ENTRY})]}
-EXTERNAL_REFERENCE = obj({"path": LISTING_ENTRY, "directory": {"type": "boolean"}, "digest": DIGEST})
-TARGET_DESCRIPTOR = obj({"id": STRING, "kind": {"const": "module"},
-    "title": STRING, "documents": {**array(PATH, unique=True), "minItems": 1},
-    "references": array(REFERENCE, unique=True), "parent": NULLABLE_ID, "uses": array(STRING, unique=True),
-    "files": array(LISTING_ENTRY, unique=True), "checks": array(STRING, unique=True)})
-IMPLEMENTATION_FILE = obj({"path": PATH, "entity_id": NULLABLE_ID, "pending": {"type": "boolean"}})
-IMPLEMENTATION_ENTRY = obj({"path": LISTING_ENTRY, "entity_id": NULLABLE_ID, "pending": {"type": "boolean"},
-                            "directory": {"type": "boolean"}})
-REGISTRY = obj({"schema_version": {"const": 5}, "project_id": STRING,
-    "entry_target": STRING, "targets": {**array(TARGET_DESCRIPTOR), "minItems": 1},
-    "checks": array(CHECK)})
+REFERENCE = {
+    "anyOf": [
+        obj({"kind": {"enum": ["module", "document"]}, "id": STRING}),
+        obj({"kind": {"const": "external"}, "path": LISTING_ENTRY}),
+    ]
+}
+EXTERNAL_REFERENCE = obj(
+    {"path": LISTING_ENTRY, "directory": {"type": "boolean"}, "digest": DIGEST}
+)
+TARGET_DESCRIPTOR = obj(
+    {
+        "id": STRING,
+        "kind": {"const": "module"},
+        "title": STRING,
+        "documents": {**array(PATH, unique=True), "minItems": 1},
+        "references": array(REFERENCE, unique=True),
+        "parent": NULLABLE_ID,
+        "uses": array(STRING, unique=True),
+        "files": array(LISTING_ENTRY, unique=True),
+        "checks": array(STRING, unique=True),
+    }
+)
+IMPLEMENTATION_FILE = obj(
+    {"path": PATH, "entity_id": NULLABLE_ID, "pending": {"type": "boolean"}}
+)
+IMPLEMENTATION_ENTRY = obj(
+    {
+        "path": LISTING_ENTRY,
+        "entity_id": NULLABLE_ID,
+        "pending": {"type": "boolean"},
+        "directory": {"type": "boolean"},
+    }
+)
+REGISTRY = obj(
+    {
+        "schema_version": {"const": 5},
+        "project_id": STRING,
+        "entry_target": STRING,
+        "targets": {**array(TARGET_DESCRIPTOR), "minItems": 1},
+        "checks": array(CHECK),
+    }
+)
 SPEC_TASK = obj({"target_id": STRING, "task": STRING})
-PROPOSAL_FILE = obj({"path": PATH, "before_digest": {"anyOf": [DIGEST, {"type": "null"}]},
-                     "content": {"type": "string"}})
+PROPOSAL_FILE = obj(
+    {
+        "path": PATH,
+        "before_digest": {"anyOf": [DIGEST, {"type": "null"}]},
+        "content": {"type": "string"},
+    }
+)
 
 
-def load_capability_inventory():
-    """Import the repository-root ``capabilities`` package normally.
+def load_operation_inventory():
+    """Import the repository-root ``operations`` package normally.
 
     ``tests/concorde`` holds one flat package per Module and none of them is named
-    ``capabilities``, so test discovery (``unittest discover -s tests/concorde``) no longer risks
-    registering an unrelated test package under the plain ``capabilities`` name. A plain import
+    ``operations``, so test discovery (``unittest discover -s tests/concorde``) no longer risks
+    registering an unrelated test package under the plain ``operations`` name. A plain import
     is therefore safe here.
     """
 
@@ -53,12 +119,12 @@ def load_capability_inventory():
     package_root = Path(__file__).resolve().parents[3]
     if str(package_root) not in sys.path:
         sys.path.insert(0, str(package_root))
-    import capabilities
+    import operations
 
-    return capabilities
+    return operations
 
 
-# Each bound capability stage runs the one worker whose contract names that phase.
+# Each bound operation stage runs the one worker whose contract names that phase.
 MODEL_STAGES = {
     "concorde-specify": ("specify", "concorde-spec-author"),
     "concorde-plan": ("plan", "concorde-planner"),
@@ -67,34 +133,53 @@ MODEL_STAGES = {
     "concorde-context-solve": ("context-solve", "concorde-context-assessor"),
     "concorde-issues": ("issue-solve", "concorde-issue-solver"),
 }
-REVIEW_STAGES = {"spec": ("spec-review", "concorde-spec-reviewer"),
-                 "code": ("code-review", "concorde-code-reviewer")}
+REVIEW_STAGES = {
+    "spec": ("spec-review", "concorde-spec-reviewer"),
+    "code": ("code-review", "concorde-code-reviewer"),
+}
 # Main discovery runs one worker per action; accepted topologies are authored by fresh authors.
-DISCOVERY_NODES = {"ask": "concorde-answerer", "route": "concorde-router",
-               "design-topology": "concorde-topology-designer"}
+DISCOVERY_NODES = {
+    "ask": "concorde-answerer",
+    "route": "concorde-router",
+    "design-topology": "concorde-topology-designer",
+}
 TOPOLOGY_AUTHOR_NODE = "concorde-topology-author"
-MAIN_CAPABILITY = "concorde-main"
+MAIN_OPERATION = "concorde-main"
 
 
-def capability_modules() -> dict:
-    """Load the capability declarations; schemas and WorkerProfile definitions have no registry dependency."""
+def operation_modules() -> dict:
+    """Load the operation declarations; schemas and WorkerProfile definitions have no registry dependency."""
     import importlib
-    inventory = load_capability_inventory()
-    return {inventory.external_name(name): importlib.import_module(f"{inventory.__name__}.{name}")
-            for name in inventory.CAPABILITIES}
+
+    inventory = load_operation_inventory()
+    return {
+        inventory.external_name(name): importlib.import_module(
+            f"{inventory.__name__}.{name}"
+        )
+        for name in inventory.OPERATIONS
+    }
 
 
-_MODULES = capability_modules()
-CAPABILITY_NAMES = tuple(sorted(_MODULES))
-PUBLIC_CAPABILITIES = tuple(name for name in CAPABILITY_NAMES if _MODULES[name].PUBLIC)
-INTERNAL_CAPABILITIES = tuple(name for name in CAPABILITY_NAMES if not _MODULES[name].PUBLIC)
-SKILL_NAMES = PUBLIC_CAPABILITIES
-DISCOVERY_CAPABILITIES = frozenset(name for name in CAPABILITY_NAMES
-                                   if _MODULES[name].CONTEXT_SELECTION == "discover")
-DETERMINISTIC_CAPABILITIES = frozenset(name for name in CAPABILITY_NAMES if _MODULES[name].DETERMINISTIC)
-COMPOSITE_CAPABILITIES = tuple(name for name in CAPABILITY_NAMES if _MODULES[name].USES)
-assert len(CAPABILITY_NAMES) == len(load_capability_inventory().CAPABILITIES), "capability identities must be unique"
-MODEL_CAPABILITIES = tuple(name for name in CAPABILITY_NAMES if _MODULES[name].PROFILE is not None)
+_MODULES = operation_modules()
+OPERATION_NAMES = tuple(sorted(_MODULES))
+PUBLIC_OPERATIONS = tuple(name for name in OPERATION_NAMES if _MODULES[name].PUBLIC)
+INTERNAL_OPERATIONS = tuple(
+    name for name in OPERATION_NAMES if not _MODULES[name].PUBLIC
+)
+SKILL_NAMES = PUBLIC_OPERATIONS
+DISCOVERY_OPERATIONS = frozenset(
+    name for name in OPERATION_NAMES if _MODULES[name].CONTEXT_SELECTION == "discover"
+)
+DETERMINISTIC_OPERATIONS = frozenset(
+    name for name in OPERATION_NAMES if _MODULES[name].DETERMINISTIC
+)
+COMPOSITE_OPERATIONS = tuple(name for name in OPERATION_NAMES if _MODULES[name].USES)
+assert len(OPERATION_NAMES) == len(load_operation_inventory().OPERATIONS), (
+    "operation identities must be unique"
+)
+MODEL_OPERATIONS = tuple(
+    name for name in OPERATION_NAMES if _MODULES[name].PROFILE is not None
+)
 INTERNAL_DATA_TYPES = (
     "concorde-issue-report",
     "concorde-issue-receipt",
@@ -116,35 +201,44 @@ INTERNAL_DATA_TYPES = (
 )
 
 
-def dependencies(capability: str) -> tuple[str, ...]:
-    module = _MODULES[capability]
+def dependencies(operation: str) -> tuple[str, ...]:
+    module = _MODULES[operation]
     return tuple("concorde-" + name.replace("_", "-") for name in module.USES)
 
 
 def contracts() -> dict[str, tuple[str, str]]:
     # Only existing host adapters own request/response envelopes. Model nodes consume their
     # State contract directly; being private does not invent a new external wire interface.
-    return {name: (f"{name}-request", f"{name}-response") for name in CAPABILITY_NAMES
-            if hasattr(_MODULES[name], "REQUEST")}
+    return {
+        name: (f"{name}-request", f"{name}-response")
+        for name in OPERATION_NAMES
+        if hasattr(_MODULES[name], "REQUEST")
+    }
 
 
 def exported_types() -> tuple[str, ...]:
-    return tuple(f"{capability}-{suffix}" for capability in contracts()
-                 for suffix in ("request", "response")) + INTERNAL_DATA_TYPES
+    return (
+        tuple(
+            f"{operation}-{suffix}"
+            for operation in contracts()
+            for suffix in ("request", "response")
+        )
+        + INTERNAL_DATA_TYPES
+    )
 
 
-def _capability_schemas() -> dict:
-    """Collect every capability module's own REQUEST/RESPONSE (proposal section 6.2).
+def _operation_schemas() -> dict:
+    """Collect every operation module's own REQUEST/RESPONSE (proposal section 6.2).
 
-    Capability schema declarations use dependency-free contract shapes.
+    Operation schema declarations use dependency-free contract shapes.
     """
 
     import importlib
 
-    capability_inventory = load_capability_inventory()
+    operation_inventory = load_operation_inventory()
     result = {}
-    for name in capability_inventory.CAPABILITIES:
-        module = importlib.import_module(f"{capability_inventory.__name__}.{name}")
+    for name in operation_inventory.OPERATIONS:
+        module = importlib.import_module(f"{operation_inventory.__name__}.{name}")
         if hasattr(module, "REQUEST"):
             result[f"{module.EXTERNAL_NAME}-request"] = module.REQUEST
             result[f"{module.EXTERNAL_NAME}-response"] = module.RESPONSE
@@ -152,120 +246,318 @@ def _capability_schemas() -> dict:
 
 
 def schemas() -> dict:
-    result = {"concorde-issue-report": ISSUE_REPORT, "concorde-issue-receipt": ISSUE_RECEIPT}
-    document_ref = obj({"document_id": STRING, "path": PATH, "digest": DIGEST,
-        "owner": STRING,
-        "role": {"enum": ["reading", "metadata"]}})
+    result = {
+        "concorde-issue-report": ISSUE_REPORT,
+        "concorde-issue-receipt": ISSUE_RECEIPT,
+    }
+    document_ref = obj(
+        {
+            "document_id": STRING,
+            "path": PATH,
+            "digest": DIGEST,
+            "owner": STRING,
+            "role": {"enum": ["reading", "metadata"]},
+        }
+    )
     # Context index records (Framework profile P5, Spec context grant): a document is identified, owned
     # and digested, never embedded. Its bytes reach an WorkerProfile through the read-only grant of the path.
     reason = obj({"kind": {"enum": ["owned", "module", "document"]}, "id": STRING})
     source = obj({**document_ref["properties"], "reasons": array(reason, unique=True)})
+
     def resolution(source_shape):
-        return obj({"schema_version": {"const": 1}, "registration": TARGET_DESCRIPTOR,
-            "query_id": STRING, "query_kind": {"enum": ["module", "scenario"]},
-            "module_id": STRING, "reading_entry": PATH, "documents": array(PATH, unique=True),
-            "references": array(REFERENCE, unique=True), "sources": array(source_shape)})
+        return obj(
+            {
+                "schema_version": {"const": 1},
+                "registration": TARGET_DESCRIPTOR,
+                "query_id": STRING,
+                "query_kind": {"enum": ["module", "scenario"]},
+                "module_id": STRING,
+                "reading_entry": PATH,
+                "documents": array(PATH, unique=True),
+                "references": array(REFERENCE, unique=True),
+                "sources": array(source_shape),
+            }
+        )
+
     protocol_document = obj({"path": PATH, "digest": DIGEST})
-    result["concorde-project-proposal"] = obj({"action": {"enum": ["initialize"]},
-        "base_digest": {"anyOf": [DIGEST, {"type": "null"}]}, "files": array(PROPOSAL_FILE)})
+    result["concorde-project-proposal"] = obj(
+        {
+            "action": {"enum": ["initialize"]},
+            "base_digest": {"anyOf": [DIGEST, {"type": "null"}]},
+            "files": array(PROPOSAL_FILE),
+        }
+    )
     result["concorde-plan-artifact"] = obj({"plan": STRING})
-    result["concorde-task-identity-constraints"] = obj({"reserved_task_ids": array(STRING, unique=True)})
-    result["concorde-implementation-task"] = obj({"plan": STRING, "tasks": array(TASK_ITEM)})
-    result["concorde-task-scope-feedback"] = obj({"tasks_digest": DIGEST,
-        "reason": {"const": "implementation_boundary"}})
+    result["concorde-task-identity-constraints"] = obj(
+        {"reserved_task_ids": array(STRING, unique=True)}
+    )
+    result["concorde-implementation-task"] = obj(
+        {"plan": STRING, "tasks": array(TASK_ITEM)}
+    )
+    result["concorde-task-scope-feedback"] = obj(
+        {"tasks_digest": DIGEST, "reason": {"const": "implementation_boundary"}}
+    )
     result["concorde-issue-intent"] = obj({"intent": STRING})
-    result["concorde-issue-selection"] = obj({"issue_id": STRING, "revision": DIGEST,
-        "problem": STRING, "type": {"enum": ["bug", "gap", "limitation"]},
-        "feedback": {"type": "string"}, "verification": {"type": "string"},
-        "duplicates": array(obj({"issue_id": STRING, "revision": DIGEST, "problem": STRING}))})
-    result["concorde-issue-context"] = obj({"observations": array(obj({
-        "receipt": ISSUE_RECEIPT, "description": STRING, "impact": STRING, "basis": STRING}))})
-    stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-task-identity-constraints","concorde-implementation-task","concorde-task-scope-feedback","concorde-issue-selection","concorde-issue-context","concorde-issue-intent","concorde-review-result")]}
-    result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 6},
-        "target_id": STRING, "kind": {"const": "module"}, "focus_id": NULLABLE_ID,
-        "phase": STRING, "task": STRING, "constraints": array(STRING),
-        "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
-        "protocol": array(protocol_document),
-        "spec_resolution": resolution(source), "instructions": {"type": "string"},
-        "stage_inputs": array(stage_input),
-        "implementation_entries": array(IMPLEMENTATION_ENTRY),
-        "implementation_files": array(IMPLEMENTATION_FILE),
-        "implementation_artifacts": array(ARTIFACT),
-        # Capability context (Protocol 5.1): the Module's external references, vendored material it
-        # reads but does not own, one tree digest per entry. Every phase sees the entries; modes
-        # that declare the ``references`` effect are granted the directories read-only.
-        "external_references": array(EXTERNAL_REFERENCE),
-        "workspace": WORKSPACE_CONTEXT})
-    result["concorde-agent-stage-context"] = obj({"snapshot": typed_schema("concorde-context-snapshot"),
-        "change_id": NULLABLE_ID, "expected_artifacts": array(PATH)})
-    revision = obj({"spec_digest": DIGEST,
-        "implementation_digest": {"anyOf": [DIGEST, {"type": "null"}]},
-        "baseline": NULLABLE_ID, "head": NULLABLE_ID})
-    result["concorde-review-input"] = obj({"review_mode": {"enum": ["spec", "code"]},
-        "input_digest": DIGEST, "revision": revision,
-        "changes": array(obj({"path": PATH, "patch": {"type": "string"}}))})
-    result["concorde-review-stage-context"] = obj({"snapshot": typed_schema("concorde-context-snapshot"),
-        "review": typed_schema("concorde-review-input")})
-    review_fields = {"context_id": DIGEST, "input_digest": DIGEST,
+    result["concorde-issue-selection"] = obj(
+        {
+            "issue_id": STRING,
+            "revision": DIGEST,
+            "problem": STRING,
+            "type": {"enum": ["bug", "gap", "limitation"]},
+            "feedback": {"type": "string"},
+            "verification": {"type": "string"},
+            "duplicates": array(
+                obj({"issue_id": STRING, "revision": DIGEST, "problem": STRING})
+            ),
+        }
+    )
+    result["concorde-issue-context"] = obj(
+        {
+            "observations": array(
+                obj(
+                    {
+                        "receipt": ISSUE_RECEIPT,
+                        "description": STRING,
+                        "impact": STRING,
+                        "basis": STRING,
+                    }
+                )
+            )
+        }
+    )
+    stage_input = {
+        "anyOf": [
+            typed_schema(name)
+            for name in (
+                "concorde-plan-artifact",
+                "concorde-task-identity-constraints",
+                "concorde-implementation-task",
+                "concorde-task-scope-feedback",
+                "concorde-issue-selection",
+                "concorde-issue-context",
+                "concorde-issue-intent",
+                "concorde-review-result",
+            )
+        ]
+    }
+    result["concorde-context-snapshot"] = obj(
+        {
+            "context_id": DIGEST,
+            "schema_version": {"const": 6},
+            "target_id": STRING,
+            "kind": {"const": "module"},
+            "focus_id": NULLABLE_ID,
+            "phase": STRING,
+            "task": STRING,
+            "constraints": array(STRING),
+            "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
+            "protocol": array(protocol_document),
+            "spec_resolution": resolution(source),
+            "instructions": {"type": "string"},
+            "stage_inputs": array(stage_input),
+            "implementation_entries": array(IMPLEMENTATION_ENTRY),
+            "implementation_files": array(IMPLEMENTATION_FILE),
+            "implementation_artifacts": array(ARTIFACT),
+            # Resource context (Protocol 5.1): the Module's external references, vendored material it
+            # reads but does not own, one tree digest per entry. Every phase sees the entries; modes
+            # that declare the ``references`` effect are granted the directories read-only.
+            "external_references": array(EXTERNAL_REFERENCE),
+            "workspace": WORKSPACE_CONTEXT,
+        }
+    )
+    result["concorde-agent-stage-context"] = obj(
+        {
+            "snapshot": typed_schema("concorde-context-snapshot"),
+            "change_id": NULLABLE_ID,
+            "expected_artifacts": array(PATH),
+        }
+    )
+    revision = obj(
+        {
+            "spec_digest": DIGEST,
+            "implementation_digest": {"anyOf": [DIGEST, {"type": "null"}]},
+            "baseline": NULLABLE_ID,
+            "head": NULLABLE_ID,
+        }
+    )
+    result["concorde-review-input"] = obj(
+        {
+            "review_mode": {"enum": ["spec", "code"]},
+            "input_digest": DIGEST,
+            "revision": revision,
+            "changes": array(obj({"path": PATH, "patch": {"type": "string"}})),
+        }
+    )
+    result["concorde-review-stage-context"] = obj(
+        {
+            "snapshot": typed_schema("concorde-context-snapshot"),
+            "review": typed_schema("concorde-review-input"),
+        }
+    )
+    review_fields = {
+        "context_id": DIGEST,
+        "input_digest": DIGEST,
         "review_mode": {"enum": ["spec", "code"]},
         "status": {"enum": ["no_findings", "findings", "incomplete"]},
         "representative_tasks": array(STRING, unique=True),
-        "issues": array(REVIEW_ISSUE), "answer": STRING}
+        "issues": array(REVIEW_ISSUE),
+        "answer": STRING,
+    }
     result["concorde-review-stage-result"] = obj(review_fields)
-    result["concorde-review-result"] = obj({**review_fields,
-        "context_id": {"anyOf": [DIGEST, {"type": "null"}]},
-        "status": {"enum": ["no_findings", "findings", "incomplete", "skipped", "not_run"]},
-        "target_id": STRING, "focus_id": NULLABLE_ID, "revision": revision,
-        "semantic_completeness": {"const": "not_proven"}})
-    result["concorde-agent-stage-result"] = obj({"context_id": DIGEST,
-        "outcome": {"enum": ["completed", "sufficient", "spec_incomplete", "unsupported", "conflicting", "failed"]},
-        "answer": {"type": "string"}, "blockers": array(BLOCKER), "documents": array(DOCUMENT_CHANGE),
-        "plan": {"type": "string"}, "tasks": array(TASK_ITEM),
-        "issue_decision": obj({"action": {"enum": ["develop", "spec-repair", "verify", "resolved", "duplicate", "not-actionable", "needs-decision"]},
-            "intent": STRING, "rationale": STRING, "specify": {"type": "boolean"},
-            "duplicate_of": NULLABLE_ID})}, ("issue_decision",))
-    result["concorde-topology-design"] = obj({"summary": STRING, "registry": REGISTRY,
-        "spec_tasks": {**array(SPEC_TASK), "minItems": 1},
-        "migration_constraints": array(STRING), "acceptance": {**array(STRING), "minItems": 1}})
-    result["concorde-topology-proposal"] = obj({"proposal_id": DIGEST,
-        "base_registry_digest": DIGEST, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
-        "context_id": DIGEST, "discovered_targets": {**array(STRING, unique=True), "minItems": 1},
-        "task": STRING, "constraints": array(STRING), "target_hint": NULLABLE_ID,
-        "focus_hint": NULLABLE_ID, "design": typed_schema("concorde-topology-design"),
-        "workspace": WORKSPACE_CONTEXT})
-    result["concorde-topology-application"] = obj({"application_id": DIGEST,
-        "topology_proposal": typed_schema("concorde-topology-proposal"),
-        "base_registry_digest": DIGEST, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
-        "files": {**array(PROPOSAL_FILE), "minItems": 1}})
-    discovery_target = obj({"target_id": STRING, "kind": {"const": "module"},
-                            "spec_resolution": resolution(source)})
-    result["concorde-discovery-context"] = obj({"context_id": DIGEST, "schema_version": {"const": 5},
-        "capability": {"enum": sorted(DISCOVERY_CAPABILITIES)}, "phase": {"const": "route"},
-        "action": {"enum": ["route", "ask", "design-topology"]},
-        "task": STRING, "constraints": array(STRING), "target_hint": NULLABLE_ID,
-        "focus_hint": NULLABLE_ID, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
-        "protocol": array(protocol_document), "topology": {"anyOf": [REGISTRY, {"type": "null"}]},
-        "targets": array(discovery_target),
-        "documents": array(document_ref),
-        "instructions": {"type": "string"},
-        "workspace": WORKSPACE_CONTEXT})
-    result["concorde-main-stage-context"] = obj({
-        "snapshot": typed_schema("concorde-discovery-context")})
-    result["concorde-main-stage-result"] = obj({"context_id": DIGEST, "outcome": MAIN_OUTCOMES,
-        "answer": {"type": "string"}, "expand_targets": array(STRING, unique=True),
-        # Selection-only routes keep single-target intent in host-owned input. Full routes
-        # remain readable for existing routers, but explicit echoes are checked exactly.
-        "routes": array(obj(ROUTE["properties"], ("task", "constraints"))), "blockers": array(BLOCKER),
-        "topology_design": {"anyOf": [typed_schema("concorde-topology-design"), {"type": "null"}]}})
-    result["concorde-topology-author-context"] = obj({"context_id": DIGEST,
-        "base_registry_digest": DIGEST, "target": TARGET_DESCRIPTOR, "task": STRING,
-        "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
-        "protocol": array(protocol_document),
-        "candidate_references": array(REFERENCE, unique=True),
-        "spec_resolution": resolution(source),
-        "instructions": {"type": "string"}, "workspace": WORKSPACE_CONTEXT})
-    result["concorde-topology-author-result"] = obj({"context_id": DIGEST, "target_id": STRING,
-        "outcome": WORKER_OUTCOMES, "answer": {"type": "string"}, "blockers": array(BLOCKER),
-        "documents": array(DOCUMENT_CHANGE)})
-    result.update(_capability_schemas())
+    result["concorde-review-result"] = obj(
+        {
+            **review_fields,
+            "context_id": {"anyOf": [DIGEST, {"type": "null"}]},
+            "status": {
+                "enum": ["no_findings", "findings", "incomplete", "skipped", "not_run"]
+            },
+            "target_id": STRING,
+            "focus_id": NULLABLE_ID,
+            "revision": revision,
+            "semantic_completeness": {"const": "not_proven"},
+        }
+    )
+    result["concorde-agent-stage-result"] = obj(
+        {
+            "context_id": DIGEST,
+            "outcome": {
+                "enum": [
+                    "completed",
+                    "sufficient",
+                    "spec_incomplete",
+                    "unsupported",
+                    "conflicting",
+                    "failed",
+                ]
+            },
+            "answer": {"type": "string"},
+            "blockers": array(BLOCKER),
+            "documents": array(DOCUMENT_CHANGE),
+            "plan": {"type": "string"},
+            "tasks": array(TASK_ITEM),
+            "issue_decision": obj(
+                {
+                    "action": {
+                        "enum": [
+                            "develop",
+                            "spec-repair",
+                            "verify",
+                            "resolved",
+                            "duplicate",
+                            "not-actionable",
+                            "needs-decision",
+                        ]
+                    },
+                    "intent": STRING,
+                    "rationale": STRING,
+                    "specify": {"type": "boolean"},
+                    "duplicate_of": NULLABLE_ID,
+                }
+            ),
+        },
+        ("issue_decision",),
+    )
+    result["concorde-topology-design"] = obj(
+        {
+            "summary": STRING,
+            "registry": REGISTRY,
+            "spec_tasks": {**array(SPEC_TASK), "minItems": 1},
+            "migration_constraints": array(STRING),
+            "acceptance": {**array(STRING), "minItems": 1},
+        }
+    )
+    result["concorde-topology-proposal"] = obj(
+        {
+            "proposal_id": DIGEST,
+            "base_registry_digest": DIGEST,
+            "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
+            "context_id": DIGEST,
+            "discovered_targets": {**array(STRING, unique=True), "minItems": 1},
+            "task": STRING,
+            "constraints": array(STRING),
+            "target_hint": NULLABLE_ID,
+            "focus_hint": NULLABLE_ID,
+            "design": typed_schema("concorde-topology-design"),
+            "workspace": WORKSPACE_CONTEXT,
+        }
+    )
+    result["concorde-topology-application"] = obj(
+        {
+            "application_id": DIGEST,
+            "topology_proposal": typed_schema("concorde-topology-proposal"),
+            "base_registry_digest": DIGEST,
+            "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
+            "files": {**array(PROPOSAL_FILE), "minItems": 1},
+        }
+    )
+    discovery_target = obj(
+        {
+            "target_id": STRING,
+            "kind": {"const": "module"},
+            "spec_resolution": resolution(source),
+        }
+    )
+    result["concorde-discovery-context"] = obj(
+        {
+            "context_id": DIGEST,
+            "schema_version": {"const": 6},
+            "operation": {"enum": sorted(DISCOVERY_OPERATIONS)},
+            "phase": {"const": "route"},
+            "action": {"enum": ["route", "ask", "design-topology"]},
+            "task": STRING,
+            "constraints": array(STRING),
+            "target_hint": NULLABLE_ID,
+            "focus_hint": NULLABLE_ID,
+            "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
+            "protocol": array(protocol_document),
+            "topology": {"anyOf": [REGISTRY, {"type": "null"}]},
+            "targets": array(discovery_target),
+            "documents": array(document_ref),
+            "instructions": {"type": "string"},
+            "workspace": WORKSPACE_CONTEXT,
+        }
+    )
+    result["concorde-main-stage-context"] = obj(
+        {"snapshot": typed_schema("concorde-discovery-context")}
+    )
+    result["concorde-main-stage-result"] = obj(
+        {
+            "context_id": DIGEST,
+            "outcome": MAIN_OUTCOMES,
+            "answer": {"type": "string"},
+            "expand_targets": array(STRING, unique=True),
+            # Selection-only routes keep single-target intent in host-owned input. Full routes
+            # remain readable for existing routers, but explicit echoes are checked exactly.
+            "routes": array(obj(ROUTE["properties"], ("task", "constraints"))),
+            "blockers": array(BLOCKER),
+            "topology_design": {
+                "anyOf": [typed_schema("concorde-topology-design"), {"type": "null"}]
+            },
+        }
+    )
+    result["concorde-topology-author-context"] = obj(
+        {
+            "context_id": DIGEST,
+            "base_registry_digest": DIGEST,
+            "target": TARGET_DESCRIPTOR,
+            "task": STRING,
+            "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
+            "protocol": array(protocol_document),
+            "candidate_references": array(REFERENCE, unique=True),
+            "spec_resolution": resolution(source),
+            "instructions": {"type": "string"},
+            "workspace": WORKSPACE_CONTEXT,
+        }
+    )
+    result["concorde-topology-author-result"] = obj(
+        {
+            "context_id": DIGEST,
+            "target_id": STRING,
+            "outcome": WORKER_OUTCOMES,
+            "answer": {"type": "string"},
+            "blockers": array(BLOCKER),
+            "documents": array(DOCUMENT_CHANGE),
+        }
+    )
+    result.update(_operation_schemas())
     return result

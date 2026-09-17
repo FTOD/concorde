@@ -8,10 +8,10 @@
   "entities": [
     {
       "id": "entity.specify-loop.adapter",
-      "title": "Specification Flow adapter",
+      "title": "Specification Graph adapter",
       "kind": "shared program",
       "files": [
-        "capabilities/specify_loop.py",
+        "operations/specify_loop.py",
         "tests/concorde/development/test_specify_loop.py",
         "tests/concorde/harness/test_studio_server.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"

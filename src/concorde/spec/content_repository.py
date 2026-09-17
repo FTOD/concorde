@@ -1,6 +1,6 @@
-"""Protocol-9 document-unit source backend.
+"""Protocol-10 document-unit source backend.
 
-This backend is not an alternate capability entry or a profile auto-detector. The bound SpecRepository adds installed Protocol admission to these shared source operations. Protocol binding,
+This backend is not an alternate operation entry or a profile auto-detector. The bound SpecRepository adds installed Protocol admission to these shared source operations. Protocol binding,
 worker wire envelopes and lifecycle activation remain the host's separate admission boundary.
 """
 
@@ -18,10 +18,10 @@ from .content_model import (
 )
 from .repository_base import (
     ModuleDefinitions,
+    RepositoryCore,
     SpecDocument,
     SpecEntity,
     SpecError,
-    RepositoryCore,
     SpecResolution,
     SpecTarget,
     _parse_definitions,
@@ -523,6 +523,9 @@ class DocumentUnitRepository(RepositoryCore):
 
     def validate(self) -> None:
         """Cross-unit invariants. Raises on errors; does not establish semantic completeness."""
+        import posixpath
+        from urllib.parse import unquote, urlsplit
+
         from .validation import (
             LINK,
             _fences_in_range,
@@ -532,8 +535,6 @@ class DocumentUnitRepository(RepositoryCore):
             link_findings,
             terminology_findings,
         )
-        from urllib.parse import unquote, urlsplit
-        import posixpath
 
         term_errors = terminology_findings(self)
         if term_errors:

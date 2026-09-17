@@ -1,7 +1,7 @@
 # Solving a recorded problem
 
 An explicit solve request selects one Issue and its current evidence. The solver uses the ordinary
-specification, development and review capabilities rather than a separate repair system with wider
+specification, development and review operations rather than a separate repair system with wider
 permissions.
 
 ## Terminology
@@ -15,12 +15,12 @@ permissions.
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Normal progress
 
 The solver first determines what the problem needs. Clear implementation intent can go to
-[Development Flow](../dev-loop/module.md); a missing promise goes to
+[Development Graph](../dev-loop/module.md); a missing promise goes to
 [Spec Authoring](../spec-authoring/module.md); a claim that already has a potential resolution goes to
 Issue-specific verification through the [Review Module](../review/module.md). If an actual product or design choice is unsettled, it asks the developer
 instead of inventing that choice. There is no mandatory triage ritual before every repair.
@@ -41,7 +41,7 @@ A process can fail between recording closure and saving final completion. The ho
 information to recognize its own pending write, invalidate old readiness and safely reassess on retry.
 It does not overwrite a concurrent developer edit or guess that an already-closed record completed
 this attempt. Failed work remains inspectable, and retries are bounded rather than endless.
-Exact recovery records, limits and executable Flows are in the Module's execution reference.
+Exact recovery records, limits and executable Graphs are in the Module's execution reference.
 
 ## Precise specifications
 

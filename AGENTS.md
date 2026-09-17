@@ -16,17 +16,17 @@ all session handoffs below. This file adds only source-checkout worktree and mai
 
 Developing this checkout is direct developer-authorized maintenance in the current worktree: read
 the Specs and the code, make the change, run the build and the deterministic checks below, and land
-each verified step as its own commit. Concorde's own flows run on this checkout only when the user
-explicitly asks for one, by invoking its slash command or by naming the flow in the request; that
+each verified step as its own commit. Concorde's own graphs run on this checkout only when the user
+explicitly asks for one, by invoking its slash command or by naming the graph in the request; that
 covers the global Skills (`concorde-main`, `concorde-dev-loop`, `concorde-specify-loop`,
 `concorde-review`, `concorde-issues`) and the lifecycle Skills (`concorde-init`,
 `concorde-configure`, `concorde-validate`, `concorde-deliver`) alike. Never select one because a
 task looks like a development change, and verify direct maintenance with
 `python3 scripts/concorde.py validate` and the test commands rather than with `concorde-validate`.
 The build renders this checkout's Claude Skills with `disable-model-invocation: true`, so they stay
-hidden from the model until the user types `/concorde-<name>`; when the user names a flow in prose
+hidden from the model until the user types `/concorde-<name>`; when the user names a graph in prose
 instead, read its rendered file under `.claude/skills/<name>/SKILL.md` and submit the typed request
-it describes through `scripts/run-capability.py`. An explicitly requested flow keeps every rule of
+it describes through `scripts/run-operation.py`. An explicitly requested graph keeps every rule of
 this policy, including the worktree ownership and handoff rules below.
 
 ## Format before committing
@@ -60,7 +60,7 @@ the Concorde Spec Protocol; it does not prescribe the language of consumer proje
 A session works in the worktree that supplied its Skills and never creates, moves or enters
 another worktree itself. Direct maintenance needs no other worktree: the change is made, verified
 and committed here. Worktrees for changes are created only by the Concorde host, and only for a
-Concorde flow the user explicitly asked for (for example `concorde-dev-loop`): the host prepares
+Concorde graph the user explicitly asked for (for example `concorde-dev-loop`): the host prepares
 the candidate worktree from the committed base, and the work continues there in a fresh session
 under P10. That successor session
 starts with the target worktree as its initial working directory, fresh context and that worktree's
@@ -112,25 +112,25 @@ preserves local edits. A generic request to deliver does not authorize the final
 
 ## Building this worktree
 
-Run `python3 scripts/concorde.py build` after changing `prompts/`, `skills/`, `capabilities/` or
+Run `python3 scripts/concorde.py build` after changing `prompts/`, `skills/`, `operations/` or
 wire contracts (`src/concorde/spec/contracts.py`, `contract_shapes.py`, or a
-module under the top-level `capabilities/` package). This always operates on the worktree
+module under the top-level `operations/` package). This always operates on the worktree
 containing the sources; never point one worktree's build at another worktree's outputs. Run
 `python3 scripts/concorde.py build --check` to verify the outputs are current without writing.
 
 Outputs under `generated/`, `.claude/skills/concorde-*` and `.agents/skills/concorde-*` are
 untracked build output, not authoring sources: never directly create, edit, delete, or rename
-them. Make the change in `prompts/`, `skills/` or `capabilities/` and rebuild. The host refuses to
-execute or describe a top-level non-lifecycle capability on a stale build (error code
+them. Make the change in `prompts/`, `skills/` or `operations/` and rebuild. The host refuses to
+execute or describe a top-level non-lifecycle operation on a stale build (error code
 `stale_build`), verified against `generated/build-manifest.json`. Deterministic lifecycle
-capabilities (`concorde-init`, `concorde-configure`, `concorde-validate`, `concorde-deliver`) are
+operations (`concorde-init`, `concorde-configure`, `concorde-validate`, `concorde-deliver`) are
 exempt from that entry check; loading an Agent independently verifies freshness. This exception
 does not waive Protocol, input, permission or evidence checks. A freshly created worktree must be
 built once before an agent can load Concorde Skills; the host builds the worktrees it creates for
 candidate changes, and any other fresh worktree has no Concorde Skills until it is built.
 
 A project-local `concorde-*` Skill never governs a task that changes its own `prompts/`,
-`skills/`, `capabilities/`, or generated Skill surface, even when the user asked for a flow: such a
+`skills/`, `operations/`, or generated Skill surface, even when the user asked for a graph: such a
 change is direct maintenance. If such a Skill body is already loaded as instructions, stop before
 the first edit and initiate a fresh maintenance session in this same worktree under P10,
 automatically by default, without loading the affected Skill bodies. Use the manual fallback above

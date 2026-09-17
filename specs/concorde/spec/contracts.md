@@ -166,7 +166,7 @@ reverse index. Ownership or reference edits compare both old and candidate users
 resulting file set is unchanged. A Module reference tracks additions/removals to the provider's
 owned documents; changes only to the provider's references do not expand the consumer.
 
-The runtime implements these resolution and binding interfaces under Protocol 9.0.0/Profile 14/
+The runtime implements these resolution and binding interfaces under Protocol 10.0.0/Profile 15/
 schema 5. Older profiles and membership-based declarations fail admission. Owned-definition and
 implementation queries remain separate from the explicit context resolver.
 
@@ -175,7 +175,7 @@ implementation queries remain separate from the explicit context resolver.
 ### Selection and returned values {#values-selection-and-returned-values}
 
 SpecRepository(project_root, package_root=None, *, registry_bytes=None, document_overrides=None)
-admits Profile 14 and registry schema 5. The optional bytes and document overrides form an in-memory
+admits Profile 15 and registry schema 5. The optional bytes and document overrides form an in-memory
 candidate; they never authorize ambient agent reads. Construction rejects malformed identities,
 unknown parents/uses/references, composition cycles, duplicate file owners within one Module and non-sibling shared
 providers.
@@ -255,11 +255,11 @@ writes nothing.
 
 ### Request and proposal shapes {#initialize-request-and-proposal-shapes}
 
-The public input is `concorde-init-request@1`, an ordinary
+The public input is `concorde-init-request@2`, an ordinary
 `{type_id, schema_version: 1, data}` envelope. `data` is a closed object with required
 `action: "propose"|"apply"` and optional `name`, `target_id`, `configuration` and `proposal`.
 `name` and `target_id`, when supplied, are nonblank strings. `configuration` is
-`concorde-capability-configuration@1`, whose data is the Pi worker model selection: an optional
+`concorde-operation-configuration@1`, whose data is the Pi worker model selection: an optional
 default `model` (Pi's `provider/id`), `thinking` level and `timeout_seconds`, and optional `workers`
 overrides keyed by a worker or a worker child. A key naming no worker or child, a child timeout, a
 nonpositive timeout or a model that is not a Pi `provider/id` is rejected here instead of failing at
@@ -293,18 +293,18 @@ changing project files; apply returns `status: "applied"`, `proposal: null` and 
 ### Executable boundary {#initialize-executable-boundary}
 
 At the executable boundary these typed values travel inside a
-`concorde-capability-invocation@3` with `capability_id: "concorde-init"`, `mode: "execute"`,
+`concorde-operation-invocation@3` with `operation_id: "concorde-init"`, `mode: "execute"`,
 nullable typed outer `configuration`, and `input` containing the request. The returned
-`concorde-capability-result@3` has the same capability ID, fresh `invocation_id`, mode, nullable
+`concorde-operation-result@3` has the same operation ID, fresh `invocation_id`, mode, nullable
 workspace/output, status and `errors: list[{code, field, message}]`. Successful initialization has
 `status: "succeeded"` and the typed output above; admission failures are blocked and execution
 failures are failed, with no successful output.
 
 ## Framework configuration and storage versions {#values-framework-configuration-and-storage-versions}
 
-`Profile 14` is the Framework's project-configuration compatibility version for the complete content model and its human-readable subset. It is distinct from Spec Protocol 9.0.0 and from registry schema 5, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
+`Profile 15` is the Framework's project-configuration compatibility version for the complete content model and its human-readable subset. It is distinct from Spec Protocol 10.0.0 and from registry schema 5, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
 
-The Framework reads `.concorde/config.json` with exactly `profile_version: 14`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest, whose bundle the project carries under `.concorde/protocol/`) and `capability_configuration` (the typed Pi worker model selection: an optional default `model`, `thinking` level and `timeout_seconds`, and optional `workers` overrides per worker or per worker child). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
+The Framework reads `.concorde/config.json` with exactly `profile_version: 15`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest, whose bundle the project carries under `.concorde/protocol/`) and `operation_configuration` (the typed Pi worker model selection: an optional default `model`, `thinking` level and `timeout_seconds`, and optional `workers` overrides per worker or per worker child). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
 
 Registry schema 5 stores exactly `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. `targets` holds Module descriptors; both Module Specs and Implementation Specs are owned units in the same documents collection, distinguished by the explicit schema-2 document.role. Implementation Specs are normative documents, not entity file bindings or implementation source. The separate check records configure executable verification; they are Framework execution metadata. Their serialized shape does not replace the Protocol's meaning of identity, membership, composition, dependency, entity or file binding.
 

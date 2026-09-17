@@ -268,7 +268,7 @@ export function requireReading(
         "concorde-entities",
         "concorde-dependencies",
         "concorde-contract-binding",
-        "concorde-capabilities",
+        "concorde-operations",
         "concorde-agents",
       ].includes(f.language),
     ),
@@ -336,9 +336,9 @@ export function requireReading(
   requireThat(
     role === "implementation" ||
       !fences.some(
-        (f) => f.language === "mermaid" && /^\s*%%\s*flow:/m.test(f.body),
+        (f) => f.language === "mermaid" && /^\s*%%\s*graph:/m.test(f.body),
       ),
-    `Exact executable Flow catalogs belong in implementation-role documents: ${path}`,
+    `Exact executable Graph catalogs belong in implementation-role documents: ${path}`,
   );
   requireDefinitions(content, path);
   return readingMeanings(content, path);
@@ -557,7 +557,7 @@ export function metadata(
   }
   return value;
 }
-/** The same bounded flowchart forms as the Protocol validator; behavioral Flow fences are separate. */
+/** The same bounded flowchart forms as the Protocol validator; behavioral Graph fences are separate. */
 export function relationshipLabels(content: string, path: string): Set<string> {
   const headings = headingList(content),
     section = headings.find(

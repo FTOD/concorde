@@ -7,18 +7,17 @@ import re
 import tempfile
 import unittest
 from pathlib import Path
+
+from concorde.distribution.project_defaults import write_protocol_copy
+from concorde.spec.initialize import protocol_binding
+from concorde.spec.repository import SpecError, SpecRepository
+from concorde.spec.validation import validate_repository
+from concorde.spec.verification import scan_declarations, verifies
 from tests.concorde.spec.support import (
     DocumentSource,
     module_document,
     write_document,
-    source_pairs,
 )
-
-from concorde.spec.initialize import protocol_binding
-from concorde.distribution.project_defaults import write_protocol_copy
-from concorde.spec.repository import SpecError, SpecRepository
-from concorde.spec.validation import validate_repository
-from concorde.spec.verification import scan_declarations, verifies
 
 PACKAGE = Path(__file__).resolve().parents[3]
 
@@ -76,7 +75,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
         configuration = {
-            "type_id": "concorde-capability-configuration",
+            "type_id": "concorde-operation-configuration",
             "schema_version": 1,
             "data": {"model": "openai-codex/gpt-6-astra", "thinking": "medium"},
         }
@@ -84,10 +83,10 @@ class RequirementsAndVerificationTests(unittest.TestCase):
             ".concorde/config.json",
             json.dumps(
                 {
-                    "profile_version": 14,
+                    "profile_version": 15,
                     "registry": ".concorde/specs.json",
                     "protocol": protocol_binding(PACKAGE),
-                    "capability_configuration": configuration,
+                    "operation_configuration": configuration,
                 }
             ),
         )
@@ -421,7 +420,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
 
         self.assertEqual(
             ("scenario.shop.submit", "scenario.shop.other"),
-            getattr(probe, "concorde_scenarios"),
+            getattr(probe, "concorde_scenarios"),  # noqa: B009 - decorator-added metadata
         )
         self.assertEqual(1, probe())
         with self.assertRaises(ValueError):

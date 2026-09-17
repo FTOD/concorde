@@ -5,6 +5,7 @@ the same way this repository dogfoods itself, not the packaged-consumer install 
 ``test_consumer_install_end_to_end.py`` for that). No network access is used: the clone is a
 local, object-sharing clone of this worktree's own repository at its exact current ``HEAD``.
 """
+
 from __future__ import annotations
 
 import json
@@ -16,7 +17,6 @@ import unittest
 from pathlib import Path
 
 from concorde.spec.verification import verifies
-
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 # A target already registered in this project's own .concorde/specs.json (self-hosted registry),
@@ -36,8 +36,11 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         head = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=REPOSITORY_ROOT,
-            capture_output=True, text=True, check=True,
+            ["git", "rev-parse", "HEAD"],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
         )
         cls.head_sha = head.stdout.strip()
 
@@ -48,33 +51,64 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
         # --shared avoids copying the whole object store for a short-lived local, read-only
         # clone; --no-checkout + an explicit checkout of this worktree's exact HEAD avoids any
         # ambiguity about which branch a plain local clone would otherwise default to.
-        cloned = _run(["git", "clone", "--shared", "--no-checkout", "--quiet",
-                       str(REPOSITORY_ROOT), str(self.clone)], REPOSITORY_ROOT)
+        cloned = _run(
+            [
+                "git",
+                "clone",
+                "--shared",
+                "--no-checkout",
+                "--quiet",
+                str(REPOSITORY_ROOT),
+                str(self.clone),
+            ],
+            REPOSITORY_ROOT,
+        )
         self.assertEqual(0, cloned.returncode, cloned.stderr)
         checked_out = _run(["git", "checkout", "--quiet", self.head_sha], self.clone)
         self.assertEqual(0, checked_out.returncode, checked_out.stderr)
 
     def _validate_invocation(self) -> dict:
+        # This fixture tests committed HEAD, not uncommitted transport renames in the caller.
+        # Select the entry spelling from that exact revision's manifest, as for its Skill inventory.
+        manifest = json.loads((self.clone / "concorde.json").read_text())
+        launcher = manifest["runtime"]["launcher"]
+        entry_kind = Path(launcher).stem.removeprefix("run-")
         invocation = {
-            "type_id": "concorde-capability-invocation", "schema_version": 3,
-            "capability_id": "concorde-validate", "mode": "describe-policy", "configuration": None,
-            "input": {"type_id": "concorde-validate-request", "schema_version": 1,
-                      "data": {"target_id": SELF_HOSTED_TARGET,
-                               "task": "Describe validation readiness for the workflow host Service"}},
+            "type_id": f"concorde-{entry_kind}-invocation",
+            "schema_version": 3,
+            f"{entry_kind}_id": "concorde-validate",
+            "mode": "describe-policy",
+            "configuration": None,
+            "input": {
+                "type_id": "concorde-validate-request",
+                "schema_version": 1,
+                "data": {
+                    "target_id": SELF_HOSTED_TARGET,
+                    "task": "Describe validation readiness for the workflow host Service",
+                },
+            },
         }
         process = _run(
-            [sys.executable, "scripts/run-capability.py", "concorde-validate"], self.clone,
-            input=json.dumps(invocation), env={**os.environ, "CONCORDE_STUDIO_URL": ""},
+            [sys.executable, launcher, "concorde-validate"],
+            self.clone,
+            input=json.dumps(invocation),
+            env={**os.environ, "CONCORDE_STUDIO_URL": ""},
         )
+        self.assertTrue(process.stdout.strip(), process.stderr)
         return json.loads(process.stdout)
 
     def test_clone_carries_no_build_output_or_projected_skills(self):
         self.assertFalse((self.clone / "generated").exists())
         for integration_root in (".claude/skills", ".agents/skills"):
-            projected = sorted(p.name for p in (self.clone / integration_root).glob("concorde-*"))
+            projected = sorted(
+                p.name for p in (self.clone / integration_root).glob("concorde-*")
+            )
             self.assertEqual([], projected)
 
-    @verifies("scenario.distribution.build-write", "scenario.distribution.worktree-guard-refuses")
+    @verifies(
+        "scenario.distribution.build-write",
+        "scenario.distribution.worktree-guard-refuses",
+    )
     def test_one_build_command_bootstraps_a_fully_working_clone(self):
         build = _run([sys.executable, "scripts/concorde.py", "build"], self.clone)
         self.assertEqual(0, build.returncode, build.stderr)
@@ -85,27 +119,46 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
         self.assertTrue((self.clone / "generated/protocol/principles.md").is_file())
         # This clone tests committed HEAD; the invoking checkout may have a newer, uncommitted
         # public Skill inventory. Compare projections with the sources of the revision tested.
-        expected_skills = sorted(p.parent.name for p in (self.clone / "skills").glob("concorde-*/SKILL.md"))
+        expected_skills = sorted(
+            p.parent.name for p in (self.clone / "skills").glob("concorde-*/SKILL.md")
+        )
         self.assertTrue(expected_skills)
         for integration_root in (".claude/skills", ".agents/skills"):
             skills = sorted(
-                p.parent.name for p in (self.clone / integration_root).glob("concorde-*/SKILL.md")
+                p.parent.name
+                for p in (self.clone / integration_root).glob("concorde-*/SKILL.md")
             )
             self.assertEqual(expected_skills, skills)
 
         # The clone carries the worktree guard and the Claude/Codex files that register it, so a
         # session opened here refuses native worktree creation from its first tool call.
-        refused = _run([sys.executable, "scripts/worktree-guard.py", "--check",
-                        "git worktree add ../elsewhere"], self.clone)
+        refused = _run(
+            [
+                sys.executable,
+                "scripts/worktree-guard.py",
+                "--check",
+                "git worktree add ../elsewhere",
+            ],
+            self.clone,
+        )
         self.assertEqual(2, refused.returncode, refused.stderr)
-        self.assertTrue(refused.stdout.startswith("deny (git-worktree)"), refused.stdout)
-        for integration_file in (".claude/settings.json", ".codex/hooks.json", ".codex/rules/worktree.rules"):
+        self.assertTrue(
+            refused.stdout.startswith("deny (git-worktree)"), refused.stdout
+        )
+        for integration_file in (
+            ".claude/settings.json",
+            ".codex/hooks.json",
+            ".codex/rules/worktree.rules",
+        ):
             self.assertTrue((self.clone / integration_file).is_file(), integration_file)
 
         described = self._validate_invocation()
         self.assertEqual("described", described["status"], described)
 
-    @verifies("scenario.distribution.build-stale-blocks-execution", "scenario.distribution.build-check")
+    @verifies(
+        "scenario.distribution.build-stale-blocks-execution",
+        "scenario.distribution.build-check",
+    )
     def test_editing_a_prompt_without_rebuilding_fails_every_invocation_closed(self):
         build = _run([sys.executable, "scripts/concorde.py", "build"], self.clone)
         self.assertEqual(0, build.returncode, build.stderr)
@@ -114,14 +167,18 @@ class FreshCloneBootstrapAcceptance(unittest.TestCase):
 
         prompt = self.clone / "prompts/workflow-host/worktree-handoff.md"
         original = prompt.read_text(encoding="utf-8")
-        prompt.write_text(original + "\n<!-- drifted after the build: source digest changes -->\n",
-                          encoding="utf-8")
+        prompt.write_text(
+            original + "\n<!-- drifted after the build: source digest changes -->\n",
+            encoding="utf-8",
+        )
 
         blocked = self._validate_invocation()
         self.assertEqual("blocked", blocked["status"], blocked)
         self.assertEqual("stale_build", blocked["errors"][0]["code"], blocked)
 
-        checked = _run([sys.executable, "scripts/concorde.py", "build", "--check"], self.clone)
+        checked = _run(
+            [sys.executable, "scripts/concorde.py", "build", "--check"], self.clone
+        )
         self.assertNotEqual(0, checked.returncode, checked.stdout)
         payload = json.loads(checked.stdout)
         self.assertEqual("invalid", payload["status"], payload)

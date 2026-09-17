@@ -1,13 +1,13 @@
-# Development Flow scenarios
+# Development Graph scenarios
 
-These precise specifications belong directly to the [Development Flow Module](module.md).
+These precise specifications belong directly to the [Development Graph Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
 ## Terminology
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -17,7 +17,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Acceptance task](../planning/tasks.md#terminology) | Defined in Making work verifiable. |
 
-## Development Flow
+## Development Graph
 
 ### scenario.development.resume-unbound — Resume a handoff before target selection
 
@@ -86,4 +86,4 @@ See [code-review repair is the only automatic edge](requirements.md#req.developm
 - THEN each component is specified, planned and implemented from its own complete Module contract and the files its own entries bind, and the coordinator waits for every writer, including its own coordination code, before checking the final candidate
 - AND a repair that changes a file listed by several Modules invalidates the already-recorded evidence of every listing Module, and finalization repeats until every participant is stable
 
-The detailed contract is [Ready-only bounded development](execution-reference.md#development-development-agent-flow-and-revision-loops).
+The detailed contract is [Ready-only bounded development](execution-reference.md#development-development-agent-graph-and-revision-loops).

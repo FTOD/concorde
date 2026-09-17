@@ -1,9 +1,9 @@
-"""Deterministic rendering of model Capability instructions and public Skills.
+"""Deterministic rendering of model Operation instructions and public Skills.
 
-The build renders the WorkerProfile and skill projections from ``capabilities/``/``prompts/``/``skills/``
+The build renders the WorkerProfile and skill projections from ``operations/``/``prompts/``/``skills/``
 sources into ``generated/`` and, for skills, directly into ``.claude/skills/<name>/SKILL.md`` and
 ``.agents/skills/<name>/SKILL.md``. After Stage B1 these rendered files are the only instruction
-source the host and the agent runtimes consume: ``run_capability`` and ``load_model_instructions`` verify
+source the host and the agent runtimes consume: ``run_operation`` and ``load_model_instructions`` verify
 build freshness before using them and fail closed with ``BuildError(code="stale_build")`` when the
 recorded sources have drifted. The build must be byte-identical across repeated runs and must not
 perform any network or process I/O.
@@ -15,19 +15,24 @@ import copy
 import hashlib
 import importlib
 import importlib.abc
-from importlib.machinery import SourceFileLoader
 import importlib.util
-import sys
-import uuid
 import json
+import sys
 import tempfile
+import uuid
 from dataclasses import dataclass, field
+from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-from ..spec.frontmatter import FrontMatterError, parse_document
-from ..spec.contracts import SKILL_NAMES
 from ..harness.effects import EffectDeclaration
+from ..harness.worker_profile import (
+    load_worker_profiles,
+    resolve_worker,
+    worker_profile,
+)
+from ..spec.contracts import SKILL_NAMES
+from ..spec.frontmatter import FrontMatterError, parse_document
 from .prompt_resolver import (
     PromptResolverError,
     find_unreachable_prompts,
@@ -35,7 +40,6 @@ from .prompt_resolver import (
     resolve_role_prompt,
     resolve_skill_source,
 )
-from ..harness.worker_profile import worker_profile, load_worker_profiles, resolve_worker
 
 if TYPE_CHECKING:
     from ..harness.worker_profile import WorkerBinding
@@ -61,6 +65,7 @@ class SkillPrompt:
 @dataclass(frozen=True)
 class ModelInstructions(SkillPrompt):
     """An admitted worker projection always has explicit effects and a complete WorkerProfile binding."""
+
     effects: EffectDeclaration = field()
     binding: "WorkerBinding" = field()
 
@@ -77,12 +82,15 @@ INTEGRATIONS = ("claude", "codex")
 INTEGRATION_ROOTS = {"claude": ".claude/skills", "codex": ".agents/skills"}
 
 MODEL_ROOTS: dict[str, str] = {
-    agent.name.replace("_", "-"): agent.spec for agent in load_worker_profiles().values()
+    agent.name.replace("_", "-"): agent.spec
+    for agent in load_worker_profiles().values()
 }
 # The tier-one rules every worker follows, rendered before each worker's own role Spec.
 WORKER_RULES = "prompts/workers/common.md"
 
-SKILL_SOURCES: dict[str, str] = {name: f"skills/{name}/SKILL.md" for name in SKILL_NAMES}
+SKILL_SOURCES: dict[str, str] = {
+    name: f"skills/{name}/SKILL.md" for name in SKILL_NAMES
+}
 
 SCHEMA_INTRO = "This complete schema is the invocation's input field. It does not grant project reads.\n"
 
@@ -94,8 +102,15 @@ PROTOCOL_MANIFEST_PATH = "protocol/manifest.json"
 # though it is not itself a BuildOutput. `generated/` is a shared, ignored root -- another tool
 # may write its own files there (for example diagram renders under `generated/architecture/`),
 # and check_build must never judge locations it does not own.
-GENERATED_OWNED_DIRS: tuple[str, ...] = ("generated/agents", "generated/protocol", "generated/docs")
-GENERATED_OWNED_FILES: tuple[str, ...] = ("generated/build-manifest.json", "generated/langgraph.json")
+GENERATED_OWNED_DIRS: tuple[str, ...] = (
+    "generated/agents",
+    "generated/protocol",
+    "generated/docs",
+)
+GENERATED_OWNED_FILES: tuple[str, ...] = (
+    "generated/build-manifest.json",
+    "generated/langgraph.json",
+)
 
 
 @dataclass(frozen=True)
@@ -129,16 +144,25 @@ def _skill_metadata(project_root: Path, name: str) -> dict[str, object]:
     try:
         metadata, _ = parse_document(text, relative)
     except FrontMatterError as error:
-        raise BuildError(f"invalid skill source front matter in {relative}: {error}") from error
-    required = {"name", "description", "capability"}
+        raise BuildError(
+            f"invalid skill source front matter in {relative}: {error}"
+        ) from error
+    required = {"name", "description", "operation"}
     if set(metadata) != required:
-        raise BuildError(f"skill source {relative} must declare exactly {sorted(required)}, found {sorted(metadata)}")
+        raise BuildError(
+            f"skill source {relative} must declare exactly {sorted(required)}, found {sorted(metadata)}"
+        )
     if metadata["name"] != name:
-        raise BuildError(f"skill source {relative} must declare name: {name}, found {metadata['name']!r}")
-    if not isinstance(metadata["description"], str) or not metadata["description"].strip():
+        raise BuildError(
+            f"skill source {relative} must declare name: {name}, found {metadata['name']!r}"
+        )
+    if (
+        not isinstance(metadata["description"], str)
+        or not metadata["description"].strip()
+    ):
         raise BuildError(f"skill source {relative} requires a non-empty description")
-    if not isinstance(metadata["capability"], str) or not metadata["capability"].strip():
-        raise BuildError(f"skill source {relative} requires a non-empty capability")
+    if not isinstance(metadata["operation"], str) or not metadata["operation"].strip():
+        raise BuildError(f"skill source {relative} requires a non-empty operation")
     return metadata
 
 
@@ -153,16 +177,25 @@ def render_model_instructions(project_root: Path, agent: str) -> BuildOutput:
         raise BuildError(f"agent {agent}: {error.rule_id}: {error}") from error
     children = tuple(child.definition for child in worker_profile(agent).children)
     content = (rules.body.rstrip("\n") + "\n\n" + role.body).encode("utf-8")
-    return BuildOutput(path=f"generated/agents/{agent}.md", content=content,
-                       sources=tuple(sorted({*rules.sources, *role.sources, *children})))
+    return BuildOutput(
+        path=f"generated/agents/{agent}.md",
+        content=content,
+        sources=tuple(sorted({*rules.sources, *role.sources, *children})),
+    )
 
 
 def _skill_frontmatter(
-    name: str, description: str, integration: str, capability: str, entrypoint: str, *, model_invocable: bool
+    name: str,
+    description: str,
+    integration: str,
+    operation: str,
+    entrypoint: str,
+    *,
+    model_invocable: bool,
 ) -> str:
     values = ["---", f"name: {name}", f"description: {json.dumps(description)}"]
     if integration == "claude":
-        values.append('argument-hint: "Optional capability guidance"')
+        values.append('argument-hint: "Optional operation guidance"')
     values.extend(
         [
             'compatibility: "Requires a Concorde project"',
@@ -170,24 +203,31 @@ def _skill_frontmatter(
             '  author: "concorde"',
             f"  source: {json.dumps(SKILL_SOURCES[name])}",
             '  kind: "skill"',
-            f"  capability: {json.dumps(capability)}",
+            f"  operation: {json.dumps(operation)}",
             f"  entrypoint: {json.dumps(entrypoint)}",
         ]
     )
     if integration == "claude":
         # `disable-model-invocation: true` hides the Skill from the model entirely; only the user's
         # own `/name` invocation reaches it. `false` lets Claude Code select it by description.
-        values.extend(["user-invocable: true", f"disable-model-invocation: {'false' if model_invocable else 'true'}"])
+        values.extend(
+            [
+                "user-invocable: true",
+                f"disable-model-invocation: {'false' if model_invocable else 'true'}",
+            ]
+        )
     values.extend(["---", ""])
     return "\n".join(values)
 
 
-def render_skill(project_root: Path, name: str, integration: str, *, framework_prefix: str = "") -> BuildOutput:
+def render_skill(
+    project_root: Path, name: str, integration: str, *, framework_prefix: str = ""
+) -> BuildOutput:
     """Render one public Skill for one integration.
 
     Without a ``framework_prefix`` the Skill is projected into the Concorde source checkout
-    itself, whose launcher is the checkout's own ``scripts/run-capability.py``. Developing that
-    checkout is direct maintenance by default and a Concorde flow runs there only on the
+    itself, whose launcher is the checkout's own ``scripts/run-operation.py``. Developing that
+    checkout is direct maintenance by default and a Concorde graph runs there only on the
     developer's explicit request, so the Claude projection is rendered user-invocable only:
     hidden from the model, reachable through the developer's own ``/name`` invocation. With a
     framework prefix the Skill is the installed consumer projection and stays model-invocable.
@@ -200,16 +240,24 @@ def render_skill(project_root: Path, name: str, integration: str, *, framework_p
     except PromptResolverError as error:
         raise BuildError(f"skill {name}: {error.rule_id}: {error}") from error
     prefix = framework_prefix.strip("/")
-    launcher = f"{prefix}/scripts/run-capability.py" if prefix else "scripts/run-capability.py"
+    launcher = (
+        f"{prefix}/scripts/run-operation.py" if prefix else "scripts/run-operation.py"
+    )
     entrypoint = f"{launcher} {name}"
-    body = resolved.body.replace("{CAPABILITY}", f"python3 {launcher} {name}")
-    unresolved = [token for token in ("{SCRIPT}", "{FRAMEWORK}", "{CAPABILITY}") if token in body]
+    body = resolved.body.replace("{OPERATION}", f"python3 {launcher} {name}")
+    unresolved = [
+        token for token in ("{SCRIPT}", "{FRAMEWORK}", "{OPERATION}") if token in body
+    ]
     if unresolved:
-        raise BuildError(f"skill {name} contains unresolved package tokens: {unresolved}")
+        raise BuildError(
+            f"skill {name} contains unresolved package tokens: {unresolved}"
+        )
     schemas, schema_sources, _ = _root_schemas(project_root)
     request_type = f"{name}-request"
     if request_type not in schemas:
-        raise BuildError(f"skill {name} has no exported request schema {request_type!r} in the named root's contracts")
+        raise BuildError(
+            f"skill {name} has no exported request schema {request_type!r} in the named root's contracts"
+        )
     body = (
         body.rstrip("\n")
         + "\n\n## Input TypedValue schema\n\n"
@@ -219,18 +267,31 @@ def render_skill(project_root: Path, name: str, integration: str, *, framework_p
         + "\n```\n"
     )
     frontmatter = _skill_frontmatter(
-        name, str(metadata["description"]), integration, str(metadata["capability"]), entrypoint,
+        name,
+        str(metadata["description"]),
+        integration,
+        str(metadata["operation"]),
+        entrypoint,
         model_invocable=bool(prefix),
     )
     content = (frontmatter + body.lstrip()).encode("utf-8")
     target = f"{INTEGRATION_ROOTS[integration]}/{name}/SKILL.md"
-    return BuildOutput(path=target, content=content, sources=tuple(sorted(set((*resolved.sources, SKILL_SOURCES[name], *schema_sources)))))
+    return BuildOutput(
+        path=target,
+        content=content,
+        sources=tuple(
+            sorted(set((*resolved.sources, SKILL_SOURCES[name], *schema_sources)))
+        ),
+    )
 
 
 def render_langgraph(project_root: Path) -> BuildOutput:
     """Studio graph list derived from ``skills/`` (proposal section 8, item 6)."""
 
-    graphs = {name: f"./scripts/development/studio.py:{name.replace('-', '_')}" for name in SKILL_NAMES}
+    graphs = {
+        name: f"./scripts/development/studio.py:{name.replace('-', '_')}"
+        for name in SKILL_NAMES
+    }
     payload = {
         "$schema": "https://langgra.ph/schema.json",
         "dependencies": ["."],
@@ -238,7 +299,11 @@ def render_langgraph(project_root: Path) -> BuildOutput:
         "env": {"LANGSMITH_TRACING": "false"},
     }
     content = (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
-    return BuildOutput(path="generated/langgraph.json", content=content, sources=tuple(sorted(SKILL_SOURCES.values())))
+    return BuildOutput(
+        path="generated/langgraph.json",
+        content=content,
+        sources=tuple(sorted(SKILL_SOURCES.values())),
+    )
 
 
 def render_protocol_principles(project_root: Path) -> BuildOutput:
@@ -247,16 +312,26 @@ def render_protocol_principles(project_root: Path) -> BuildOutput:
     except PromptResolverError as error:
         raise BuildError(f"protocol principles: {error.rule_id}: {error}") from error
     content = resolved.body.encode("utf-8")
-    return BuildOutput(path="generated/protocol/principles.md", content=content, sources=resolved.sources)
+    return BuildOutput(
+        path="generated/protocol/principles.md",
+        content=content,
+        sources=resolved.sources,
+    )
 
 
 def render_protocol_kind(project_root: Path, kind: str) -> BuildOutput:
     try:
-        resolved = resolve_role_prompt(project_root, f"prompts/protocol/kinds/{kind}.md")
+        resolved = resolve_role_prompt(
+            project_root, f"prompts/protocol/kinds/{kind}.md"
+        )
     except PromptResolverError as error:
         raise BuildError(f"protocol kind {kind}: {error.rule_id}: {error}") from error
     content = resolved.body.encode("utf-8")
-    return BuildOutput(path=f"generated/protocol/kinds/{kind}.md", content=content, sources=resolved.sources)
+    return BuildOutput(
+        path=f"generated/protocol/kinds/{kind}.md",
+        content=content,
+        sources=resolved.sources,
+    )
 
 
 def _root_schemas(project_root: Path) -> tuple[dict, tuple[str, ...], tuple[str, ...]]:
@@ -272,13 +347,16 @@ def _root_schemas(project_root: Path) -> tuple[dict, tuple[str, ...], tuple[str,
         # running package's schemas and binds no root-local schema source.
         from ..spec.contracts import exported_types
         from ..spec.typed_data import json_schema
+
         identities = tuple(exported_types())
         return {name: json_schema(name) for name in identities}, (), identities
     for required in ("contracts.py", "typed_data.py"):
         if not (source_root / "spec" / required).is_file():
             # A populated schema tree missing its entry modules is a broken root, never a
             # reason to fall back to another package's schemas.
-            raise BuildError(f"incomplete schema source tree: src/concorde/spec/{required} is missing")
+            raise BuildError(
+                f"incomplete schema source tree: src/concorde/spec/{required} is missing"
+            )
     namespace = "_concorde_build_" + uuid.uuid4().hex
     sources: set[str] = set()
 
@@ -306,6 +384,7 @@ def _root_schemas(project_root: Path) -> tuple[dict, tuple[str, ...], tuple[str,
             location = location.with_suffix(".py")
             relative = location.relative_to(project_root).as_posix()
             from ..spec.typed_data import checked_path
+
             location = checked_path(project_root, relative)
             sources.add(relative)
             module.__file__ = str(location)
@@ -318,7 +397,9 @@ def _root_schemas(project_root: Path) -> tuple[dict, tuple[str, ...], tuple[str,
             except BuildError:
                 raise
             except Exception as error:
-                raise BuildError(f"cannot evaluate schema source {relative}: {error}") from error
+                raise BuildError(
+                    f"cannot evaluate schema source {relative}: {error}"
+                ) from error
 
     finder = Sources()
     sys.meta_path.insert(0, finder)
@@ -333,7 +414,9 @@ def _root_schemas(project_root: Path) -> tuple[dict, tuple[str, ...], tuple[str,
         except Exception as error:
             # Every failure of the root's own schema sources stays inside the declared
             # BuildError boundary instead of escaping as an undeclared exception.
-            raise BuildError(f"cannot evaluate schema sources under {source_root}: {error}") from error
+            raise BuildError(
+                f"cannot evaluate schema sources under {source_root}: {error}"
+            ) from error
         return payload, tuple(sorted(sources)), identities
     finally:
         sys.meta_path.remove(finder)
@@ -346,34 +429,50 @@ def render_protocol_schemas(project_root: Path) -> BuildOutput:
     """Export schemas from the named root and bind every loaded source to the output."""
     payload, sources, _ = _root_schemas(project_root)
     content = (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
-    return BuildOutput(path="generated/protocol/schemas.json", content=content, sources=sources)
+    return BuildOutput(
+        path="generated/protocol/schemas.json", content=content, sources=sources
+    )
 
 
 def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
     all_sources: set[str] = set()
     for output in outputs:
         all_sources.update(output.sources)
-    # WorkerProfile declarations and capability wire metadata are authored build inputs too.
-    for directory in ("capabilities",):
-        all_sources.update(path.relative_to(project_root).as_posix()
-            for path in (project_root / directory).rglob("*.py") if path.is_file())
-    for relative in ("src/concorde/spec/contracts.py", "src/concorde/spec/contract_shapes.py",
-                     "src/concorde/spec/wire_shapes.py",
-                     "src/concorde/harness/worker_profile.py",
-                     "src/concorde/harness/capability_state.py",
-                     "src/concorde/harness/capability_node.py"):
+    # WorkerProfile declarations and operation wire metadata are authored build inputs too.
+    for directory in ("operations",):
+        all_sources.update(
+            path.relative_to(project_root).as_posix()
+            for path in (project_root / directory).rglob("*.py")
+            if path.is_file()
+        )
+    for relative in (
+        "src/concorde/spec/contracts.py",
+        "src/concorde/spec/contract_shapes.py",
+        "src/concorde/spec/wire_shapes.py",
+        "src/concorde/harness/worker_profile.py",
+        "src/concorde/harness/operation_state.py",
+        "src/concorde/harness/operation_node.py",
+    ):
         if (project_root / relative).is_file():
             all_sources.add(relative)
-    sources = {relative: _sha256_file(project_root, relative) for relative in sorted(all_sources)}
+    sources = {
+        relative: _sha256_file(project_root, relative)
+        for relative in sorted(all_sources)
+    }
     output_entries = {
-        output.path: {"sha256": _sha256_bytes(output.content), "sources": sorted(output.sources)}
+        output.path: {
+            "sha256": _sha256_bytes(output.content),
+            "sources": sorted(output.sources),
+        }
         for output in outputs
     }
     payload = {"schema_version": 1, "sources": sources, "outputs": output_entries}
     return (json.dumps(payload, sort_keys=True, indent=2) + "\n").encode("utf-8")
 
 
-def build(project_root: str | Path, integration: str = "all", *, framework_prefix: str = "") -> BuildResult:
+def build(
+    project_root: str | Path, integration: str = "all", *, framework_prefix: str = ""
+) -> BuildResult:
     """Render every WorkerProfile, skill and Studio-graph projection; raise BuildError on any failure."""
 
     root = Path(project_root)
@@ -389,25 +488,36 @@ def build(project_root: str | Path, integration: str = "all", *, framework_prefi
         outputs.append(render_model_instructions(root, agent))
     for name in SKILL_NAMES:
         for one_integration in integrations:
-            outputs.append(render_skill(root, name, one_integration, framework_prefix=framework_prefix))
+            outputs.append(
+                render_skill(
+                    root, name, one_integration, framework_prefix=framework_prefix
+                )
+            )
     outputs.append(render_langgraph(root))
     outputs.append(render_protocol_principles(root))
     for kind in PROTOCOL_KINDS:
         outputs.append(render_protocol_kind(root, kind))
     outputs.append(render_protocol_schemas(root))
 
-    roots = (list(MODEL_ROOTS.values()) + [WORKER_RULES]
-             + list(SKILL_SOURCES.values()) + ["prompts/protocol/principles.md"]
-             + [f"prompts/protocol/kinds/{kind}.md" for kind in PROTOCOL_KINDS])
+    roots = (
+        list(MODEL_ROOTS.values())
+        + [WORKER_RULES]
+        + list(SKILL_SOURCES.values())
+        + ["prompts/protocol/principles.md"]
+        + [f"prompts/protocol/kinds/{kind}.md" for kind in PROTOCOL_KINDS]
+    )
     unreachable = find_unreachable_prompts(root, roots)
     if unreachable:
-        raise BuildError(f"unreachable prompt files (no root includes them): {list(unreachable)}")
+        raise BuildError(
+            f"unreachable prompt files (no root includes them): {list(unreachable)}"
+        )
 
     ordered = tuple(sorted(outputs, key=lambda item: item.path))
     for output in ordered:
         if output.path.startswith("generated/"):
             assert output.path in GENERATED_OWNED_FILES or any(
-                output.path.startswith(f"{owned_dir}/") for owned_dir in GENERATED_OWNED_DIRS
+                output.path.startswith(f"{owned_dir}/")
+                for owned_dir in GENERATED_OWNED_DIRS
             ), (
                 f"build output {output.path!r} is outside GENERATED_OWNED_DIRS/GENERATED_OWNED_FILES; "
                 "update those declarations so check_build keeps judging every real output"
@@ -444,10 +554,18 @@ def write_build(
             raise BuildError(f"build-owned output directory is a symlink: {directory}")
         if owned.is_dir():
             for path in owned.rglob("*"):
-                if path.is_file() and not path.is_symlink() and path.relative_to(root).as_posix() not in expected:
+                if (
+                    path.is_file()
+                    and not path.is_symlink()
+                    and path.relative_to(root).as_posix() not in expected
+                ):
                     path.unlink()
     for output in result.outputs:
-        base = destination if output.path.startswith((".claude/skills/", ".agents/skills/")) else root
+        base = (
+            destination
+            if output.path.startswith((".claude/skills/", ".agents/skills/"))
+            else root
+        )
         target = base / output.path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(output.content)
@@ -480,7 +598,9 @@ def _owned_generated_tree(root: Path) -> dict[str, bytes]:
     return contents
 
 
-def check_build(project_root: str | Path, integration: str = "all") -> tuple[bool, tuple[str, ...]]:
+def check_build(
+    project_root: str | Path, integration: str = "all"
+) -> tuple[bool, tuple[str, ...]]:
     """Render into a temporary directory and diff against every project_root output location.
 
     Returns (is_current, differences) where differences names every relative path (under the
@@ -561,7 +681,9 @@ def recompute_protocol_manifest(project_root: str | Path) -> dict:
     for item in updated.get("assets", []):
         path = root / item["path"]
         if path.is_symlink() or not path.is_file():
-            raise BuildError(f"Protocol asset is missing from the current build: {item['path']}")
+            raise BuildError(
+                f"Protocol asset is missing from the current build: {item['path']}"
+            )
         item["digest"] = _sha256_bytes(path.read_bytes())
     return updated
 
@@ -577,20 +699,32 @@ def verify_fresh(project_root: str | Path) -> None:
     root = Path(project_root)
     manifest_path = root / "generated/build-manifest.json"
     if manifest_path.is_symlink() or not manifest_path.is_file():
-        raise BuildError(f"no build found at {root}; run the build before using this package", "stale_build")
+        raise BuildError(
+            f"no build found at {root}; run the build before using this package",
+            "stale_build",
+        )
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
-        raise BuildError(f"cannot read build manifest at {manifest_path}: {error}", "stale_build") from error
+        raise BuildError(
+            f"cannot read build manifest at {manifest_path}: {error}", "stale_build"
+        ) from error
     sources = manifest.get("sources") if isinstance(manifest, dict) else None
     if not isinstance(sources, dict):
-        raise BuildError(f"build manifest has no recorded sources: {manifest_path}", "stale_build")
+        raise BuildError(
+            f"build manifest has no recorded sources: {manifest_path}", "stale_build"
+        )
     for relative, expected in sources.items():
         path = root / relative
         if path.is_symlink() or not path.is_file():
-            raise BuildError(f"build source is missing since the last build: {relative}", "stale_build")
+            raise BuildError(
+                f"build source is missing since the last build: {relative}",
+                "stale_build",
+            )
         if _sha256_file(root, relative) != expected:
-            raise BuildError(f"build source changed since the last build: {relative}", "stale_build")
+            raise BuildError(
+                f"build source changed since the last build: {relative}", "stale_build"
+            )
 
 
 def load_model_instructions(package_root: str | Path, name: str) -> ModelInstructions:
@@ -606,7 +740,10 @@ def load_model_instructions(package_root: str | Path, name: str) -> ModelInstruc
     try:
         body = (root / binding.instructions_path).read_text(encoding="utf-8")
     except (OSError, UnicodeError) as error:
-        raise BuildError(f"cannot read rendered agent {binding.instructions_path}: {error}", "stale_build") from error
+        raise BuildError(
+            f"cannot read rendered agent {binding.instructions_path}: {error}",
+            "stale_build",
+        ) from error
     hyphenated = binding.agent.replace("_", "-")
     return ModelInstructions(
         name=f"concorde-{hyphenated}",

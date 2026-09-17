@@ -1,6 +1,6 @@
 # Harness execution and record contracts
 
-These are the precise implementation agreements and executable Flow specifications owned by the
+These are the precise implementation agreements and executable Graph specifications owned by the
 [Harness Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
 and transitions are retained here as the single detailed contract.
 
@@ -8,12 +8,12 @@ and transitions are retained here as the single detailed contract.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker profile](module.md#terminology) | Defined in Harness. |
 | [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -30,49 +30,49 @@ and transitions are retained here as the single detailed contract.
 | [Structural validation](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 | [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 
-## Capabilities and Harnesses {#agents-and-harnesses-capabilities-and-harnesses}
+## Operations and Harnesses {#agents-and-harnesses-operations-and-harnesses}
 
-This document defines model execution configuration for the single Capability model. Capability
+This document defines model execution configuration for the single Operation model. Operation
 is the executable entity: deterministic code, a model invocation and a compiled LangGraph subgraph
 all expose State-based node contracts. A worker profile is optional execution configuration on a
-Capability, not a separately registered Agent or an additional composition relation. The historical
+Operation, not a separately registered Agent or an additional composition relation. The historical
 document identity and requirement/scenario anchors remain stable for existing links.
 
 #### The execution model {#agents-and-harnesses-the-execution-model}
 
 **Harness = context + control flow + models + permissions and environment.**
-**Capability = input State + output State updates + execution implementation and constraints.**
-**Invocation = Capability + Module/version + admitted artifacts + actual grant + runtime settings.**
+**Operation = input State + output State updates + execution implementation and constraints.**
+**Invocation = Operation + Module/version + admitted artifacts + actual grant + runtime settings.**
 
 | Term | Meaning |
 | --- | --- |
-| Capability | The one executable identity, usable as a LangGraph node or composed subgraph |
+| Operation | The one executable identity, usable as a LangGraph node or composed subgraph |
 | State contract | Declared input channels and output updates; wire shapes are checked at runtime |
-| Model execution profile | Instructions, task/effect contract, workspace, tools, children and timeout on a Capability |
-| Worker | One fresh Pi RPC process executing a model-backed Capability invocation |
+| Model execution profile | Instructions, task/effect contract, workspace, tools, children and timeout on an Operation |
+| Worker | One fresh Pi RPC process executing a model-backed Operation invocation |
 | Child helper | A bounded pi-subagents session internal to a worker; not an independently callable Framework node |
 | Harness | Context resolution, worker runtime, model selection, permissions and environment |
-| Skill | Instructions for an external developer runtime to invoke one public Capability |
+| Skill | Instructions for an external developer runtime to invoke one public Operation |
 | Tool | An interface admitted by the worker's actual tool grant, not by graph composition alone |
 
-A deterministic Capability makes no model call on any supported path, including its transitive
+A deterministic Operation makes no model call on any supported path, including its transitive
 composition. It may still read Git, files or subprocess results; determinism here does not mean
-purity. Model-backed nodes use the same Capability inventory and USES relation as other nodes.
-Sharing a graph State or knowing a Capability name grants neither context nor execution authority.
+purity. Model-backed nodes use the same Operation inventory and USES relation as other nodes.
+Sharing a graph State or knowing an Operation name grants neither context nor execution authority.
 
-#### A1. Capability instructions and execution profile {#agents-and-harnesses-a1-capability-instructions-and-execution-profile}
+#### A1. Operation instructions and execution profile {#agents-and-harnesses-a1-operation-instructions-and-execution-profile}
 
-Each model-backed Capability MUST own instructions in `capabilities/<name>/spec.md` and a Python
+Each model-backed Operation MUST own instructions in `operations/<name>/spec.md` and a Python
 `PROFILE` declaration in that same package. Its instructions define responsibilities, goals,
 accepted input and feedback, expected results, completion conditions, and behavior on missing
 information, failure or required human decisions. These remain six sections after its
 `# concorde-<name>` title. Common worker rules precede them in the build; Protocol rules follow
 in the actual system prompt. Instructions are not project Spec context or permission grants.
 
-`PROFILE` MUST have the same identity as its Capability and bind its task contract, workspace,
+`PROFILE` MUST have the same identity as its Operation and bind its task contract, workspace,
 tools, children and timeout. There is no independent Agent inventory or `AGENTS` call relation.
 A `WorkerBinding` records exact instruction, profile, child-definition and build digests for one
-model Capability. Stale or inconsistent bindings MUST prevent execution. The serialized `agent`
+model Operation. Stale or inconsistent bindings MUST prevent execution. The serialized `agent`
 field, `concorde-agent-stage-*` types and `generated/agents/` paths are retained compatibility
 spellings, not a second executable model.
 
@@ -92,8 +92,8 @@ validates the model profile, input, instruction bytes and permissions before lau
 
 #### A3. State and composition {#agents-and-harnesses-a3-state-and-composition}
 
-Every Capability MUST expose a State contract and `run(state, runtime)`. LangGraph nodes read
-only their admitted channels and return State updates. `CapabilityNode` supplies the common
+Every Operation MUST expose a State contract and `run(state, runtime)`. LangGraph nodes read
+only their admitted channels and return State updates. `OperationNode` supplies the common
 compiled-node adapter; a compiled graph may be embedded as another node. Different parent/child
 schemas require explicit channel mapping. Concurrent writers require explicit reducers on the
 owning graph; no automatic merge or broad parent-State grant is inferred.
@@ -103,16 +103,16 @@ through caller-writable State. Model nodes validate their context and output aga
 contract as well as its wire schema. Existing public host adapters preserve the complete versioned
 result envelope in a `result` output channel, including errors and blocked outcomes.
 
-Capabilities MUST declare direct composition through `USES`, including model nodes. The host
+Operations MUST declare direct composition through `USES`, including model nodes. The host
 rejects undeclared calls. A worker's granted tools are separate from the host's composition graph:
-being present in `USES` does not install a Capability as a Pi tool. Dependencies must not widen
+being present in `USES` does not install an Operation as a Pi tool. Dependencies must not widen
 context, effects or write authority. Graph nodes, edges and stopping rules are the executable
-control-flow definition; metadata does not repeat their order or branching.
+control-graph definition; metadata does not repeat their order or branching.
 
 #### A4. Invocation constraints and evidence {#agents-and-harnesses-a4-invocation-constraints-and-evidence}
 
-Each invocation MUST bind its task, frozen context, Capability profile and instruction digests,
-effective permissions, model settings and fresh identity. Reuse of a Capability never implies
+Each invocation MUST bind its task, frozen context, Operation profile and instruction digests,
+effective permissions, model settings and fresh identity. Reuse of an Operation never implies
 reuse of its predecessor's conversation. Only explicitly admitted artifacts cross stages.
 
 Completion MUST distinguish successful output, missing information, required human decisions,
@@ -122,21 +122,21 @@ schemas do not replace any of these checks.
 
 #### A5. One-level helper delegation {#agents-and-harnesses-a5-one-level-helper-delegation}
 
-A model Capability MAY delegate inside its worker only to the helpers its profile declares under
-`capabilities/<name>/children/`. They use replaced, context-free prompts and read/check tools,
+A model Operation MAY delegate inside its worker only to the helpers its profile declares under
+`operations/<name>/children/`. They use replaced, context-free prompts and read/check tools,
 with no model selection embedded in their definitions. They execute in foreground fresh sessions
 under the same grant and tool gate, cannot delegate again and cannot submit the worker's final
 result. Only the verified worker result leaves the process. Helper answers are evidence, not a
-second Framework node result. [Execution](execution-reference.md) defines the capability ceiling and gate.
+second Framework node result. [Execution](execution-reference.md) defines the operation ceiling and gate.
 
 #### Common worker rules and inventory {#agents-and-harnesses-common-worker-rules-and-inventory}
 
-The build combines `prompts/workers/common.md` with the Capability's own instructions and binds
+The build combines `prompts/workers/common.md` with the Operation's own instructions and binds
 its child definitions as sources. [Distribution Module](../distribution/module.md) still publishes `generated/agents/<name>.md` to
 preserve the installed instruction layout. The host appends the granted Protocol rule bundle.
 
-The single inventory is defined by [Capability registry](../development/execution-reference.md).
-Its metadata includes each model Capability's optional workspace, tools and children alongside
+The single inventory is defined by [Operation registry](../development/execution-reference.md).
+Its metadata includes each model Operation's optional workspace, tools and children alongside
 its State and USES declarations. There is no separate `concorde.agents` metadata collection.
 
 #### Task contracts {#agents-and-harnesses-task-contracts}
@@ -188,50 +188,50 @@ Only explicitly admitted structured artifacts cross stages.
 
 #### Responsibilities and implementation boundaries {#agents-and-harnesses-responsibilities-and-implementation-boundaries}
 
-The common [Development Module](../development/module.md) host dispatches the declared provider and Flow contracts and schedules
+The common [Development Module](../development/module.md) host dispatches the declared provider and Graph contracts and schedules
 invocations. [Planning Module](../planning/module.md) owns plan/task semantics, [Implementation Module](../implementation/module.md) owns task fulfillment, and each
-composing Flow owns its ordering and stopping policy. This Module's worker executor verifies and
+composing Graph owns its ordering and stopping policy. This Module's worker executor verifies and
 launches workers through the Pi worker runtime and admits their results; its permissions service
 compiles effective boundaries; its context service supplies the admitted context kinds; its model-profile
 service resolves definitions and bindings. The Distribution build renders and distributes instruction
 views with source identity.
 
-## Capability Flows, loops and feedback {#graphs-and-loops-capability-flows-loops-and-feedback}
+## Operation Graphs, loops and feedback {#graphs-and-loops-operation-graphs-loops-and-feedback}
 
-Orchestration coordinates Capability invocations and control decisions toward a declared goal. A Flow describes the structure of that coordination; a Loop describes feedback
+Orchestration coordinates Operation invocations and control decisions toward a declared goal. A Graph describes the structure of that coordination; a Loop describes feedback
 driven execution. They are related concepts, not interchangeable names.
 
-**Flow** is Concorde's name for an executable LangGraph `StateGraph`. Every Flow is built with
+**Graph** is Concorde's name for an executable LangGraph `StateGraph`. Every Graph is built with
 LangGraph's Graph API, which declares nodes and edges before compilation; the Functional API
 (`entrypoint` and `task` from `langgraph.func`) is not used anywhere in Concorde's source or
-scripts, because a Flow whose control flow lives inside ordinary Python compiles to a single
-opaque node with nothing for a Flow Spec, the Flow Spec check or Studio to inspect. Authored
-descriptions and new Python factories use Flow and `build_*_flow`; LangGraph API names such as
+scripts, because a Graph whose control flow lives inside ordinary Python compiles to a single
+opaque node with nothing for a Graph Spec, the Graph Spec check or Studio to inspect. Authored
+descriptions and new Python factories use Graph and `build_*_graph`; LangGraph API names such as
 `StateGraph`, `get_graph()` and the `graphs` configuration key keep their library spelling.
 Existing stable Spec identities, import aliases and persisted `graph` records remain compatible.
 
-A Flow's state is a typed LangGraph state schema: the development and specification Flows carry
+A Graph's state is a typed LangGraph state schema: the development and specification Graphs carry
 the last stage's typed response in `output`, a terminal failure envelope in `result` and the
 accumulated artifact references in `artifacts` under a reducer, and each stage node selects its own
 transition by returning a `Command` whose `goto` names a declared destination. No node smuggles
 routing or evidence through untyped fields. Every model-backed node executes its worker through an
-`CapabilityNode`: a State-based node/subgraph adapter whose input schema is generated from the worker contract's
+`OperationNode`: a State-based node/subgraph adapter whose input schema is generated from the worker contract's
 admitted context type and whose output schema is generated from its result type, so the contract is
 the graph state, and the Pi worker launch with its admission checks stays a host-private launcher
-outside that state. The same `CapabilityNode` factory is exposed for inspection
-inside the Flows that run it.
+outside that state. The same `OperationNode` factory is exposed for inspection
+inside the Graphs that run it.
 
-A Flow's compiled nodes and edges are the authority for execution views. Inspection compiles the
+A Graph's compiled nodes and edges are the authority for execution views. Inspection compiles the
 same factories used by execution without invoking nodes, reading project contexts or launching
-Agents. Branches, repeated Agent decisions, delegation, feedback and stage handoffs belong in Flow
+Agents. Branches, repeated Agent decisions, delegation, feedback and stage handoffs belong in Graph
 transitions. Ordinary Python inside a node may validate data, prepare a context, perform one Agent
 invocation or carry out a deterministic operation. An atomic delivery transaction may remain one
 deterministic node so its repository lock and rollback boundary stay intact.
 
 Runtime-dependent Module selection, resume entries and scope produce explicit conditional edges
-or bounded Flow variants. A viewer must identify the variant or expose the possible branches; it
+or bounded Graph variants. A viewer must identify the variant or expose the possible branches; it
 must not present hand-authored topology as executed code. Runtime-only host objects and callbacks
-are not public inputs or durable checkpoint values. Stateless internal Flows are inspectable but
+are not public inputs or durable checkpoint values. Stateless internal Graphs are inspectable but
 do not promise internal checkpoint resume; replay re-enters admission through the public boundary.
 
 #### Dispatch terminology {#graphs-and-loops-dispatch-terminology}
@@ -244,19 +244,19 @@ separate, explicit inputs. Code-driven control does not guarantee reproducible o
 models, tools and external state may still vary. Determinism is a property to document where it
 applies, not the primary classification of Agents or dispatch.
 
-#### G1. Capability Flow {#graphs-and-loops-g1-capability-flow}
+#### G1. Operation Graph {#graphs-and-loops-g1-operation-graph}
 
-A Flow MUST declare its participating Capabilities, State contracts and directed transitions. Transitions MUST identify their trigger and
+A Graph MUST declare its participating Operations, State contracts and directed transitions. Transitions MUST identify their trigger and
 the information they transfer. Conditional branches, parallel execution or joins, when used, MUST
 define selection, completion and failure behavior. A sequence of deterministic installation steps
 does not become model-backed merely because it has several steps.
 
-The Flow MUST identify which model Capability makes each model-assisted decision, which transitions are
+The Graph MUST identify which model Operation makes each model-assisted decision, which transitions are
 code-driven, and which require a human decision. It MUST preserve invocation-local context and
 permissions across every handoff. A coordinator receives only admitted results; dispatching an
-model Capability does not grant access to its complete private context.
+model Operation does not grant access to its complete private context.
 
-A Flow MAY be exposed as a Capability with a complete external contract. Invoking that Capability
+A Graph MAY be exposed as an Operation with a complete external contract. Invoking that Operation
 does not expose its internal model workers or grant authority to call arbitrary internal nodes.
 
 #### G2. Feedback loop {#graphs-and-loops-g2-feedback-loop}
@@ -266,16 +266,16 @@ and how those observations affect the next action. It MUST define completion, re
 cancellation, failure and execution-limit conditions. Limits may be time, iterations, resource
 budgets or an explicit bounded host policy; an unbounded retry is not an implicit default.
 
-A model Capability's Harness supplies its local tool loop. A composed Flow may additionally
-coordinate loops across several Capabilities, such as author → reviewer → author. Each invocation's local loop and its enclosing loop MUST have distinguishable state and completion
-conditions. Orchestration between workers is always a Flow transition: one worker never starts
+A model Operation's Harness supplies its local tool loop. A composed Graph may additionally
+coordinate loops across several Operations, such as author → reviewer → author. Each invocation's local loop and its enclosing loop MUST have distinguishable state and completion
+conditions. Orchestration between workers is always a Graph transition: one worker never starts
 another. Inside one worker, delegation is limited to one level of its own declared children, as
-defined in A5; a child's work is evidence for its worker, not a Flow step.
+defined in A5; a child's work is evidence for its worker, not a Graph step.
 
 A retry or revision MUST identify what changed or what recovery condition permits another attempt.
 Unchanged blocking feedback MUST not cause endless retries. Stale task, context, policy or result
 identity requires re-admission before execution continues. Completion of an inner loop does not
-automatically complete the enclosing Flow or authorize delivery.
+automatically complete the enclosing Graph or authorize delivery.
 
 #### G3. AI and human feedback {#graphs-and-loops-g3-ai-and-human-feedback}
 
@@ -290,7 +290,7 @@ does not introduce a separate comment store or mandatory feedback report.
 | AI review | A reviewer identifies a defect against the bound Spec | Select an admitted repair path and recheck the revised result |
 | Human clarification | A developer supplies missing intent or corrects a goal | Produce an explicit task or context revision for fresh admission |
 | Human acceptance | A developer accepts a specific topology or delivery proposal | Enable only the transition and effects covered by that acceptance |
-| Human rejection or cancellation | A developer rejects a proposal or ends the task | Revise, wait or terminate according to the Flow contract |
+| Human rejection or cancellation | A developer rejects a proposal or ends the task | Revise, wait or terminate according to the Graph contract |
 
 AI feedback cannot substitute for a required human acceptance. Human text that merely mentions a
 Tool or broader context is not an automatic permission grant. Every transition MUST preserve the
@@ -299,7 +299,7 @@ remains waiting; elapsed time is not acceptance.
 
 #### G4. State, recovery and evidence {#graphs-and-loops-g4-state-recovery-and-evidence}
 
-Execution evidence MUST identify the Flow and loop policy, participating Agent invocations,
+Execution evidence MUST identify the Graph and loop policy, participating Agent invocations,
 admitted feedback and selected transitions. It MUST distinguish completed, waiting, blocked,
 cancelled, failed and limit-exhausted outcomes. A supported resume operation MUST revalidate the
 saved state and feedback against the current task and authority before choosing the next transition.
@@ -310,50 +310,50 @@ exhausted repair limits or failed checks/execution are code-driven. Existing `tr
 remain descriptive compatibility labels for historical records, not a second dispatch taxonomy.
 
 Review and check results are evidence about the bound revision. They do not remain valid after
-relevant Agent Specs, Harness configurations, capability contracts, project inputs or policies
+relevant Agent Specs, Harness configurations, operation contracts, project inputs or policies
 change. Raw logs and native transcripts remain diagnostics unless explicitly admitted as typed
 downstream inputs.
 
-#### Flow Specs {#graphs-and-loops-flow-specs}
+#### Graph Specs {#graphs-and-loops-graph-specs}
 
-Every executable Flow is specified with LangGraph's own three concepts, and nothing else stands
+Every executable Graph is specified with LangGraph's own three concepts, and nothing else stands
 in for them: a **node** is one executing step, an **edge** is one routing decision, and **state**
-is what a node reads and writes. A Flow Spec is one section of the owning Module's documents and
+is what a node reads and writes. A Graph Spec is one section of the owning Module's documents and
 has three parts:
 
-1. **State**: the typed channels the Flow carries between nodes and the candidate or lifecycle
+1. **State**: the typed channels the Graph carries between nodes and the candidate or lifecycle
    records its nodes read and write.
-2. **Nodes**: a table naming each node exactly as the compiled Flow names it, what it executes
-   (a deterministic, model-backed or composed Capability with its execution mode), and the state
+2. **Nodes**: a table naming each node exactly as the compiled Graph names it, what it executes
+   (a deterministic, model-backed or composed Operation with its execution mode), and the state
    it reads (`in`) and writes (`out`).
-3. **Edges**: a Mermaid flowchart bound to the compiled Flow by the comment `%% flow: <name>`,
-   where `<name>` is the Flow's compiled graph name in the Flow catalog. Its node identifiers are
+3. **Edges**: a Mermaid flowchart bound to the compiled Graph by the comment `%% graph: <name>`,
+   where `<name>` is the Graph's compiled graph name in the Graph catalog. Its node identifiers are
    the compiled node names, `__start__` and `__end__` included; every node label states the node
    name, then `in:` and `out:`; every edge leaving a node with several successors is labeled with
    the condition that selects it, and an edge leaving a node with one successor carries no label.
 
-The Flow Spec check (`scripts/development/check-flow-specs.py`, the configured
-`check.development.flow-specs`) compiles every catalog Flow with inert nodes and reports each
+The Graph Spec check (`scripts/development/check-graph-specs.py`, the configured
+`check.development.graph-specs`) compiles every catalog Graph with inert nodes and reports each
 diagram whose nodes, edges, routing labels or state labels disagree with the compiled topology,
-and every compiled Flow without a diagram. It also enforces the Graph API rule: a catalog Flow
-that is not a compiled `StateGraph`, and any Python file under `src/`, `scripts/` or `capabilities/` that imports
+and every compiled Graph without a diagram. It also enforces the Graph API rule: a catalog Graph
+that is not a compiled `StateGraph`, and any Python file under `src/`, `scripts/` or `operations/` that imports
 `langgraph.func`, found by parsing the file rather than running it, are errors. A diagram that
 passes proves the Spec and the executed topology agree; it proves nothing about whether the
 routing conditions are right, which the scenarios and tests of the owning Module cover. The Relationships diagram of a Module's
-reading entry remains the entity diagram the Protocol defines; Flow Specs live in other sections
+reading entry remains the entity diagram the Protocol defines; Graph Specs live in other sections
 or documents.
 
 ### Design {#graphs-and-loops-design}
 
-#### Concorde Flow responsibilities {#graphs-and-loops-concorde-flow-responsibilities}
+#### Concorde Graph responsibilities {#graphs-and-loops-concorde-graph-responsibilities}
 
-The query Flow coordinates explicit context selection, deterministic source indexing and grant, and direct answers. The topology Flow
-coordinates design, human acceptance and separately bound Spec authors. [Specification Flow](../specify-loop/module.md) independently coordinates authoring and Spec review. [Development Flow](../dev-loop/module.md)
+The query Graph coordinates explicit context selection, deterministic source indexing and grant, and direct answers. The topology Graph
+coordinates design, human acceptance and separately bound Spec authors. [Specification Graph](../specify-loop/module.md) independently coordinates authoring and Spec review. [Development Graph](../dev-loop/module.md)
 consumes it and the sibling Planning, Implementation, [Validation Module](../validation/module.md) and Review providers, with explicit
 repair or human-clarification loops. Issue solving may select verification, Spec repair or development
-Flow after a human disposition. Delivery remains a separately authorized deterministic capability of the [Delivery Module](../delivery/module.md).
+Graph after a human disposition. Delivery remains a separately authorized deterministic operation of the [Delivery Module](../delivery/module.md).
 
-Existing topic Specs retain their task and authority contracts. The capability adapter
+Existing topic Specs retain their task and authority contracts. The operation adapter
 and existing Skill names remain compatible identifiers. A stage sequence satisfies only the
 transitions it implements and records; a graph library or a function name proves nothing by itself.
 
@@ -413,7 +413,7 @@ profile.
 #### Worker execution {#execution-worker-execution}
 
 `WorkerExecutor` runs one host-built `WorkerInvocation` as one Pi worker and returns a
-`WorkerOutcome`, or raises `CapabilityExecutionError`. The local companion contract **Agent runtime
+`WorkerOutcome`, or raises `OperationExecutionError`. The local companion contract **Agent runtime
 value and collaborator contracts** defines these records, the invocation builder and the preflight;
 the [Pi worker runtime](#execution-pi-worker-runtime) below defines the process.
 
@@ -522,20 +522,26 @@ records them as an `ExecutionUsage` record on the `WorkerOutcome`: the configure
 handed the process. A figure Pi did not report is `None`, never zero.
 
 The host records one line per launch through `record_usage` in `.concorde/runs/<root invocation
-id>/usage.jsonl`, labelled with `capability`, `stage`, `target_id`, `agent`, `change_id`, the
+id>/usage.jsonl`, with `schema_version: 2` and labelled with `operation`, `stage`, `target_id`, `agent`, `change_id`, the
 launching host's `invocation_id` and `depth`, the launch's own `launch_invocation_id`, `context_id`
-and `model`, and the usage record. The root invocation id is the top-level capability invocation's
-identity, inherited by every nested capability invocation (`CapabilityHost.root_invocation_id`), so
-one Flow run keeps one file. The same record reaches the host observer as an `agent_usage` event.
-`read_usage` and `summarize_usage` aggregate the lines per step (capability, stage and target),
+and `model`, and the usage record. The root invocation id is the top-level operation invocation's
+identity, inherited by every nested operation invocation (`OperationHost.root_invocation_id`), so
+one Graph run keeps one file. The same record reaches the host observer as an `agent_usage` event.
+`read_usage` and `summarize_usage` aggregate the lines per step (operation, stage and target),
 stage, target, worker and run; the `concorde usage` Tool and the executable boundary's stderr summary
 use them. Usage is diagnostic evidence about cost: it gates nothing, and a failure to persist it
-never fails the launch. See [usage accounting](scenarios.md#scenario.harness.usage-accounting).
+never fails the launch. Summaries use schema 2 and report `complete`, `historical_records` and
+`unsupported_records`, including in the executable boundary's stderr summary. Unversioned historical
+lines with the old `capability` label are read-only diagnostics: aggregate their original step labels
+and count them explicitly as historical, without rewriting files or treating them as current
+execution evidence. Unknown formats, including unversioned lines claiming the new `operation` field,
+are excluded from totals and make the summary explicitly incomplete; they are not grouped under a
+silently invented null Operation. See [usage accounting](scenarios.md#scenario.harness.usage-accounting).
 
 #### Outcomes {#execution-outcomes}
 
 A worker's deadline is its selected `timeout_seconds`, else its profile's timeout as bound in its
-`WorkerBinding`. `CapabilityExecutionError.outcome` distinguishes four cases so a caller need not
+`WorkerBinding`. `OperationExecutionError.outcome` distinguishes four cases so a caller need not
 parse message text: `failed` for a refused preflight, a process that exits or breaks the RPC
 protocol before settling, or any other launch failure; `cancelled` for a host interrupt, with the
 process already killed; `limit_exhausted` for a run past its deadline, likewise killed; and
@@ -559,7 +565,7 @@ executor = WorkerExecutor()
 # invocation is already built by the trusted host with build_worker_invocation.
 try:
     outcome = executor(invocation, checks=checks)
-except CapabilityExecutionError as failure:
+except OperationExecutionError as failure:
     reason = failure.outcome          # stop the transition; failure.usage may carry what was spent
 else:
     assert outcome.invocation_digest == invocation.digest
@@ -576,7 +582,7 @@ establish that a model detected a semantic gap or behavior defect.
 
 Linux recursively maps the host filesystem read-only so another pathname, hard link or external
 dependency directory cannot supply a writable alias. It replaces `/proc` with the sandbox's PID
-view and `/dev` with minimal private devices, drops capabilities, disconnects the terminal and
+view and `/dev` with minimal private devices, drops operations, disconnects the terminal and
 gives only the new scratch directory a writable host mount. Shared memory uses scratch as well.
 Project roots at `/` or below `/proc`, `/dev` or `/sys` are unsupported. Additional user namespaces
 remain available for nested checks; inherited read-only mounts cannot be remounted writable there.
@@ -615,7 +621,7 @@ Each launch gets a private run directory that is removed afterwards. Its `agent/
 Pi's configuration directory for the process (`PI_CODING_AGENT_DIR`): Concorde's own settings
 (project trust never, install telemetry off, pi-subagents builtin agents disabled), the developer's
 Pi credentials (`auth.json` and custom-provider `models.json`, copied from the developer's Pi
-directory), the declared child definitions under `capabilities/` and the pi-subagents configuration
+directory), the declared child definitions under `operations/` and the pi-subagents configuration
 under `extensions/subagent/config.json`. Beside it lie `policy.json`, which the Concorde worker
 extension enforces, `system-prompt.md`, which it installs as the worker's complete system prompt,
 `tmp/`, the process's temporary directory, and, for a worker with `run_checks` or `report_issue`,
@@ -661,7 +667,7 @@ managed runtime under `.concorde/.venv/share/concorde/pi`, where the runtime fin
 installed framework. Its configuration allows one level of delegation, runs children in the foreground in
 fresh contexts, and disables pi-subagents' background runs, missions, schedules and inter-session
 channels. On session start the Concorde extension registers two things with pi-subagents for the
-worker's session: a capability ceiling naming exactly the declared children and the child tools,
+worker's session: a delegation ceiling naming exactly the declared children and the child tools,
 and itself as a required child extension, so every child session loads the same gate. In a child
 session the gate uses the child tool list, refuses `subagent` and `submit_result`, and does not
 replace the child's system prompt. A child is a lightweight pi-subagents Markdown definition: what
@@ -687,18 +693,18 @@ every control flow uses, and the optional Studio view. Value records are defined
 
 #### Studio execution view {#host-studio-execution-view}
 
-The Studio adapter starts or observes the same CapabilityHost used by CLI and Skill invocations, with
-the same worker executor. Its generated LangGraph configuration exposes one Flow per Skill. Studio
-expands the same admission, dispatch and composed Flow instances used by local calls, including
-query/discovery, topology, planning, development and Issue-solving branches. Non-public Capabilities
-remain callable through declared composition. Batch and coordination Flows are also inspectable from
+The Studio adapter starts or observes the same OperationHost used by CLI and Skill invocations, with
+the same worker executor. Its generated LangGraph configuration exposes one Graph per Skill. Studio
+expands the same admission, dispatch and composed Graph instances used by local calls, including
+query/discovery, topology, planning, development and Issue-solving branches. Non-public Operations
+remain callable through declared composition. Batch and coordination Graphs are also inspectable from
 their executable factories; their runtime instances depend on host admission. Studio receives an
 invocation wrapper containing the existing schema-3 invocation and an optional expected_workspace
 assertion. Project and package roots remain host-bound; the assertion does not select another
 workspace.
 
-The final state exposes the unchanged capability result envelope, admitted policy descriptions and
-stage and worker events (`agent_started`, `agent_finished`, `agent_failed` naming the capability,
+The final state exposes the unchanged operation result envelope, admitted policy descriptions and
+stage and worker events (`agent_started`, `agent_finished`, `agent_failed` naming the operation,
 stage, worker and invocation). Pausing or replaying a run does not waive permissions, checks or the
 worktree lifecycle, and replay may execute effects again. Ordinary local CLI and Skill calls do not
 require a Studio server. The source-checkout setup and debugging guide is scripts/development/STUDIO.md.
@@ -724,24 +730,24 @@ exposing context bodies: the worker, its binding, profile and instructions diges
 kind, tools and children, the read and write paths and policy digest, and the resolved model,
 thinking level and timeout.
 
-#### Control-flow substrate {#host-control-flow-substrate}
+#### Control-graph substrate {#host-control-graph-substrate}
 
-Every capability Flow, including the global discovery loop, the development loop, topology
-evolution, Issue solving and the deterministic capabilities, is a LangGraph `StateGraph` built
+Every operation Graph, including the global discovery loop, the development loop, topology
+evolution, Issue solving and the deterministic operations, is a LangGraph `StateGraph` built
 with the Graph API, never with the Functional API. Its nodes are deterministic steps, which make no
-model call, or worker invocations, which do. These Flows are the Studio surface; no capability runs
-its control flow outside them. Flow structure alone proves nothing about semantics: transitions,
+model call, or worker invocations, which do. These Graphs are the Studio surface; no operation runs
+its control flow outside them. Graph structure alone proves nothing about semantics: transitions,
 limits and evidence still follow G1–G4.
 
-#### Capability node (`capability_node`) {#host-capability-node-capability-node}
+#### Operation node (`operation_node`) {#host-operation-node-operation-node}
 
-Every registered Capability exposes `run(state, runtime)` and a State contract. `CapabilityNode`
+Every registered Operation exposes `run(state, runtime)` and a State contract. `OperationNode`
 compiles that same implementation for embedding as a LangGraph subgraph, whether its implementation
-uses a model or the host's deterministic/composed Flow. Input schemas admit only the Capability's
+uses a model or the host's deterministic/composed Graph. Input schemas admit only the Operation's
 channels; output schemas expose only its declared update. Hosts, launchers and configuration live
 in trusted `Runtime.context`, not State. Host-backed adapters preserve their full success or failure
 envelope in the `result` output channel. Model nodes return their task-result fields. The catalog
-compiles the planner as its representative; the node name is the Capability's identity.
+compiles the planner as its representative; the node name is the Operation's identity.
 
 State: the contract's context fields in (for a stage context: `snapshot`, `change_id`,
 `expected_artifacts`) and the contract's result fields out (`context_id`, `outcome`, `answer`,
@@ -753,8 +759,8 @@ State: the contract's context fields in (for a stage context: `snapshot`, `chang
 
 ```mermaid
 flowchart TB
-    %% flow: capability_node
-    accTitle: Capability node
+    %% graph: operation_node
+    accTitle: Operation node
     accDescr: One worker invocation: the admitted typed context enters, the launcher runs the Pi worker, and the validated typed result leaves.
     __start__["start"]
     planner["planner<br/>in: admitted context<br/>out: validated result data"]
@@ -763,25 +769,25 @@ flowchart TB
     planner --> __end__
 ```
 
-#### Sequential work items Flow (`batch_flow`) {#host-sequential-work-items-flow-batch-flow}
+#### Sequential work items Graph (`batch_graph`) {#host-sequential-work-items-graph-batch-graph}
 
 Independently admitted work items (consumer reviews, component Specs, component implementations,
-participant finalization) run one at a time through this Flow; the item node is named per use
+participant finalization) run one at a time through this Graph; the item node is named per use
 (`review_module`, `author_module`, `develop_module`, `finalize_module`; the catalog compiles it as
 `execute_item`).
 
-State: `index` (the next item), `output` (the first non-None item result, which stops the Flow),
+State: `index` (the next item), `output` (the first non-None item result, which stops the Graph),
 `stop`.
 
 | Node | Executes | in | out |
 | --- | --- | --- | --- |
 | `select_item` | Deterministic: stops when no item remains. | index, items | stop |
-| `execute_item` | The item operation; a non-None result stops the Flow. | item | output, index, stop |
+| `execute_item` | The item operation; a non-None result stops the Graph. | item | output, index, stop |
 
 ```mermaid
 flowchart TB
-    %% flow: batch_flow
-    accTitle: Sequential work items Flow
+    %% graph: batch_graph
+    accTitle: Sequential work items Graph
     accDescr: Items are selected and executed one at a time until none remain or an item returns a stopping result.
     __start__["start"]
     select_item["select_item<br/>in: index, items<br/>out: stop"]
@@ -879,7 +885,7 @@ normalizes only the encoding choices stated above.
 
 A TypedValue is exactly `{type_id: str, schema_version: int, data: object}`. This API constructs
 and accepts each registered type's exact declared version (an integer, never a boolean); context
-payloads/wrappers use version 2 and unchanged stage values retain version 1. The separate outer native/capability
+payloads/wrappers use version 2 and unchanged stage values retain version 1. The separate outer native/operation
 completion envelopes may have other versions; they are not constructed by this helper.
 `validate_typed` returns a deep copy after validating the registered payload schema and applicable
 type-specific rules. `expected` requires an exact type ID match. Errors are
@@ -887,14 +893,14 @@ type-specific rules. `expected` requires an exact type ID match. Errors are
 those three fields. Codes include `unknown_type`, `unsupported_version`, `incompatible_handoff`,
 `invalid_field`, `invalid_json`, `stale_reference` and `workspace_mismatch`.
 
-`contracts()` returns the installed capability-name mapping to `(request_type_id, response_type_id)`;
+`contracts()` returns the installed operation-name mapping to `(request_type_id, response_type_id)`;
 names use `concorde-` and their types use `-request` and `-response`. `schemas()` returns the installed
-Profile 14 type-ID-to-payload-schema mapping. `exported_types()` enumerates its public capability
+Profile 15 type-ID-to-payload-schema mapping. `exported_types()` enumerates its public operation
 request/response types followed by internal stage types; callers can use each ID with `json_schema`
 to obtain its exact envelope and recursively referenced payload schemas. These returned schemas
 are the supported machine-readable discovery interface, not a grant to inspect implementation.
-`dependencies(capability)` returns its declared host role/capability dependencies, including a main
-coordinator for main-routed capabilities, or an empty tuple when none are declared. It does not
+`dependencies(operation)` returns its declared host role/operation dependencies, including a main
+coordinator for main-routed operations, or an empty tuple when none are declared. It does not
 return Agent delegation edges, select context or grant invocation authority. Retained legacy
 low-level data types cannot reactivate retired public workflows.
 

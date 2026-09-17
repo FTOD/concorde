@@ -1,6 +1,6 @@
 # Required format
 
-Protocol 9 separates complete content from its human-readable subset and assigns each document
+Protocol 10 separates complete content from its human-readable subset and assigns each document
 unit an explicit explanatory or precise-specification role. This chapter defines the
 representation of both. It does not define a documentation site's navigation or layout. Templates
 are starters; satisfying syntax does not establish semantic completeness.
@@ -57,7 +57,7 @@ Role `implementation` contains the Module's formal requirements, scenarios and c
 contracts. Units may group definitions by subject without creating a second ownership hierarchy.
 Both roles are registered, paired human-readable Spec content. Topics need no full entry template
 beyond early Terminology. Required exact private APIs, serialization rules, implementation algorithms
-and executable Flow catalogs belong in implementation-role reading regardless of their syntax.
+and executable Graph catalogs belong in implementation-role reading regardless of their syntax.
 Conceptual design and safe-use explanations stay in module-role reading. Implementation details that do not constrain behavior or significant
 design do not become obligations merely by appearing in code. The former `Usage & Contract`,
 `Architecture & Realization` and standalone `Entities` entry structure is not admitted.

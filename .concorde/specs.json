@@ -1,11 +1,19 @@
 {
   "checks": [
     {
-      "id": "check.development.flow-specs",
+      "id": "check.development.graph-specs",
       "target_id": "module.development",
-      "argv": ["{python}", "scripts/development/check-flow-specs.py"],
+      "argv": [
+        "{python}",
+        "scripts/development/check-graph-specs.py"
+      ],
       "timeout_seconds": 120,
-      "inputs": ["scripts", "src/concorde", "capabilities", "specs/concorde"]
+      "inputs": [
+        "scripts",
+        "src/concorde",
+        "operations",
+        "specs/concorde"
+      ]
     },
     {
       "argv": [
@@ -36,9 +44,15 @@
     {
       "id": "check.harness.reference-versions",
       "target_id": "module.harness",
-      "argv": ["{python}", "scripts/development/check-reference-versions.py"],
+      "argv": [
+        "{python}",
+        "scripts/development/check-reference-versions.py"
+      ],
       "timeout_seconds": 60,
-      "inputs": ["reference/langgraph/libs/langgraph/pyproject.toml", "uv.lock"]
+      "inputs": [
+        "reference/langgraph/libs/langgraph/pyproject.toml",
+        "uv.lock"
+      ]
     },
     {
       "argv": [
@@ -51,7 +65,11 @@
         "tests.concorde.harness.test_check_executor"
       ],
       "id": "check.harness.runtime",
-      "inputs": ["src", "protocol", "tests/concorde/harness"],
+      "inputs": [
+        "src",
+        "protocol",
+        "tests/concorde/harness"
+      ],
       "target_id": "module.harness",
       "timeout_seconds": 180
     },
@@ -64,12 +82,19 @@
         "tests.concorde.spec.test_module_architecture"
       ],
       "id": "check.spec.model",
-      "inputs": ["src", "protocol", "tests/concorde/spec"],
+      "inputs": [
+        "src",
+        "protocol",
+        "tests/concorde/spec"
+      ],
       "target_id": "module.spec",
       "timeout_seconds": 120
     },
     {
-      "argv": ["{python}", "scripts/development/check-docsite-types.py"],
+      "argv": [
+        "{python}",
+        "scripts/development/check-docsite-types.py"
+      ],
       "id": "check.views.publication-types",
       "inputs": [
         "docsite/tsconfig.json",
@@ -83,10 +108,13 @@
       "timeout_seconds": 120
     },
     {
-      "argv": ["{python}", "docsite/tests/repository/run-checks.py"],
+      "argv": [
+        "{python}",
+        "docsite/tests/repository/run-checks.py"
+      ],
       "id": "check.views.repository-regressions",
       "inputs": [
-        "capabilities",
+        "operations",
         "prompts",
         "skills",
         "src",
@@ -176,7 +204,7 @@
         "tests/concorde/distribution/test_protocol_guidance.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
-        "tests/concorde/issues/test_flow.py",
+        "tests/concorde/issues/test_graph.py",
         "tests/concorde/spec/test_module_architecture.py"
       ],
       "id": "module.concorde",
@@ -246,13 +274,19 @@
         {
           "id": "module.specify-loop",
           "kind": "module"
+        },
+        {
+          "kind": "module",
+          "id": "module.operations"
         }
       ],
       "title": "Concorde Framework",
       "uses": []
     },
     {
-      "checks": ["check.spec.model"],
+      "checks": [
+        "check.spec.model"
+      ],
       "documents": [
         "specs/concorde/spec/module.md",
         "specs/concorde/spec/registry.md",
@@ -264,7 +298,7 @@
         "specs/concorde/spec/contracts.md"
       ],
       "files": [
-        "capabilities/init.py",
+        "operations/init.py",
         "prompts/protocol/",
         "protocol/",
         "protocol/manifest.json",
@@ -319,7 +353,10 @@
       "uses": []
     },
     {
-      "checks": ["check.harness.reference-versions", "check.harness.runtime"],
+      "checks": [
+        "check.harness.reference-versions",
+        "check.harness.runtime"
+      ],
       "documents": [
         "specs/concorde/harness/module.md",
         "specs/concorde/harness/agents-and-harnesses.md",
@@ -336,7 +373,7 @@
         "specs/concorde/harness/execution-reference.md"
       ],
       "files": [
-        "capabilities/",
+        "operations/",
         "pi/",
         "prompts/workers/common.md",
         "scripts/development/STUDIO.md",
@@ -360,7 +397,7 @@
         "src/concorde/spec/schema.py",
         "src/concorde/spec/typed_data.py",
         "src/concorde/spec/wire_shapes.py",
-        "tests/concorde/development/test_flow_surfaces.py",
+        "tests/concorde/development/test_graph_surfaces.py",
         "tests/concorde/development/test_review.py",
         "tests/concorde/development/test_target_discovery.py",
         "tests/concorde/fixtures/build/golden/agents/",
@@ -377,6 +414,7 @@
         "tests/concorde/harness/test_worker_executor.py",
         "tests/concorde/harness/test_worktree_boundary.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
+        "tests/concorde/spec/test_operations_migration.py",
         "tests/concorde/spec/test_typed_data.py",
         "tests/concorde/support/fake_openai_provider.py",
         "tests/concorde/support/fake_pi_rpc.py"
@@ -483,34 +521,40 @@
         }
       ],
       "title": "Harness",
-      "uses": ["module.spec", "module.distribution"]
+      "uses": [
+        "module.spec",
+        "module.distribution"
+      ]
     },
     {
-      "checks": ["check.development.flow-specs", "check.development.runtime"],
+      "checks": [
+        "check.development.graph-specs",
+        "check.development.runtime"
+      ],
       "documents": [
         "specs/concorde/development/module.md",
         "specs/concorde/development/interfaces.md",
-        "specs/concorde/development/capabilities.md",
+        "specs/concorde/development/operations.md",
         "specs/concorde/development/review-and-gaps.md",
-        "specs/concorde/development/flows.md",
+        "specs/concorde/development/graphs.md",
         "specs/concorde/development/requirements.md",
         "specs/concorde/development/scenarios.md",
         "specs/concorde/development/execution-reference.md",
         "specs/concorde/development/collaborations.md"
       ],
       "files": [
-        "capabilities/context_solve.py",
-        "capabilities/deliver.py",
-        "capabilities/dev_loop.py",
-        "capabilities/implement.py",
-        "capabilities/main.py",
-        "capabilities/plan.py",
-        "capabilities/review.py",
-        "capabilities/specify.py",
-        "capabilities/specify_loop.py",
-        "capabilities/tasks.py",
-        "capabilities/validate.py",
-        "scripts/development/check-flow-specs.py",
+        "operations/context_solve.py",
+        "operations/deliver.py",
+        "operations/dev_loop.py",
+        "operations/implement.py",
+        "operations/main.py",
+        "operations/plan.py",
+        "operations/review.py",
+        "operations/specify.py",
+        "operations/specify_loop.py",
+        "operations/tasks.py",
+        "operations/validate.py",
+        "scripts/development/check-graph-specs.py",
         "src/concorde/development/",
         "src/concorde/harness/change_worktree.py",
         "src/concorde/harness/session_handoff.py",
@@ -519,14 +563,15 @@
         "src/concorde/spec/changes.py",
         "tests/concorde/development/",
         "tests/concorde/harness/test_change_worktree.py",
-        "tests/concorde/harness/test_flows.py",
+        "tests/concorde/harness/test_graphs.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_session_handoff.py",
         "tests/concorde/harness/test_studio.py",
         "tests/concorde/harness/test_studio_server.py",
         "tests/concorde/harness/test_worktree_boundary.py",
         "tests/concorde/harness/test_worktree_lifecycle.py",
-        "tests/concorde/support/capability_json.py"
+        "tests/concorde/spec/test_operations_migration.py",
+        "tests/concorde/support/operation_json.py"
       ],
       "id": "module.development",
       "kind": "module",
@@ -631,8 +676,8 @@
         "specs/concorde/issues/execution-reference.md"
       ],
       "files": [
-        "capabilities/issue_solver/",
-        "capabilities/issues.py",
+        "operations/issue_solver/",
+        "operations/issues.py",
         "scripts/issues.py",
         "src/concorde/issues/",
         "src/concorde/spec/issue_shapes.py",
@@ -714,9 +759,9 @@
         "specs/concorde/distribution/contracts.md"
       ],
       "files": [
-        "capabilities/__init__.py",
-        "capabilities/configure.py",
         "concorde.json",
+        "operations/__init__.py",
+        "operations/configure.py",
         "prompts/workflow-host/",
         "pyproject.toml",
         "scripts/concorde.ps1",
@@ -727,7 +772,7 @@
         "scripts/development/run-tests.py",
         "scripts/install-concorde.py",
         "scripts/requirements.lock",
-        "scripts/run-capability.py",
+        "scripts/run-operation.py",
         "scripts/worktree-guard.py",
         "skills/",
         "src/concorde/distribution/",
@@ -785,7 +830,9 @@
         }
       ],
       "title": "Distribution",
-      "uses": ["module.spec"]
+      "uses": [
+        "module.spec"
+      ]
     },
     {
       "checks": [
@@ -885,7 +932,11 @@
         }
       ],
       "title": "Views",
-      "uses": ["module.spec", "module.distribution", "module.harness"]
+      "uses": [
+        "module.spec",
+        "module.distribution",
+        "module.harness"
+      ]
     },
     {
       "checks": [],
@@ -899,14 +950,14 @@
         "specs/concorde/planning/execution-reference.md"
       ],
       "files": [
-        "capabilities/context_solve.py",
-        "capabilities/plan.py",
-        "capabilities/tasks.py",
+        "operations/context_solve.py",
+        "operations/plan.py",
+        "operations/tasks.py",
         "tests/concorde/development/test_review.py"
       ],
       "id": "module.planning",
       "kind": "module",
-      "parent": "module.concorde",
+      "parent": "module.operations",
       "references": [
         {
           "kind": "module",
@@ -922,7 +973,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.capabilities"
+          "id": "document.development.operations"
         },
         {
           "kind": "document",
@@ -982,7 +1033,11 @@
         }
       ],
       "title": "Planning",
-      "uses": ["module.development", "module.harness", "module.spec"]
+      "uses": [
+        "module.development",
+        "module.harness",
+        "module.spec"
+      ]
     },
     {
       "checks": [],
@@ -993,13 +1048,13 @@
         "specs/concorde/implementation/execution-reference.md"
       ],
       "files": [
-        "capabilities/implement.py",
+        "operations/implement.py",
         "tests/concorde/development/test_review.py",
         "tests/concorde/harness/test_worker_binding.py"
       ],
       "id": "module.implementation",
       "kind": "module",
-      "parent": "module.concorde",
+      "parent": "module.operations",
       "references": [
         {
           "kind": "module",
@@ -1015,7 +1070,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.capabilities"
+          "id": "document.development.operations"
         },
         {
           "kind": "document",
@@ -1083,7 +1138,11 @@
         }
       ],
       "title": "Implementation",
-      "uses": ["module.development", "module.harness", "module.spec"]
+      "uses": [
+        "module.development",
+        "module.harness",
+        "module.spec"
+      ]
     },
     {
       "checks": [],
@@ -1094,7 +1153,7 @@
         "specs/concorde/spec-authoring/execution-reference.md"
       ],
       "files": [
-        "capabilities/specify.py",
+        "operations/specify.py",
         "tests/concorde/development/test_review.py",
         "tests/concorde/development/test_specify_loop.py",
         "tests/concorde/harness/test_boundaries.py",
@@ -1103,7 +1162,7 @@
       ],
       "id": "module.spec-authoring",
       "kind": "module",
-      "parent": "module.concorde",
+      "parent": "module.operations",
       "references": [
         {
           "kind": "module",
@@ -1119,7 +1178,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.capabilities"
+          "id": "document.development.operations"
         },
         {
           "kind": "document",
@@ -1183,7 +1242,11 @@
         }
       ],
       "title": "Spec Authoring",
-      "uses": ["module.development", "module.harness", "module.spec"]
+      "uses": [
+        "module.development",
+        "module.harness",
+        "module.spec"
+      ]
     },
     {
       "checks": [],
@@ -1195,15 +1258,15 @@
         "specs/concorde/review/execution-reference.md"
       ],
       "files": [
-        "capabilities/review.py",
+        "operations/review.py",
         "tests/concorde/development/test_review.py",
-        "tests/concorde/development/test_run_capability.py",
+        "tests/concorde/development/test_run_operation.py",
         "tests/concorde/development/test_standalone_review.py",
         "tests/concorde/development/test_target_discovery.py"
       ],
       "id": "module.review",
       "kind": "module",
-      "parent": "module.concorde",
+      "parent": "module.operations",
       "references": [
         {
           "kind": "module",
@@ -1223,7 +1286,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.capabilities"
+          "id": "document.development.operations"
         },
         {
           "kind": "document",
@@ -1295,7 +1358,7 @@
         "specs/concorde/validation/execution-reference.md"
       ],
       "files": [
-        "capabilities/validate.py",
+        "operations/validate.py",
         "tests/concorde/development/test_check_execution.py",
         "tests/concorde/development/test_review.py",
         "tests/concorde/harness/test_scoped_protocol.py",
@@ -1303,7 +1366,7 @@
       ],
       "id": "module.validation",
       "kind": "module",
-      "parent": "module.concorde",
+      "parent": "module.operations",
       "references": [
         {
           "kind": "module",
@@ -1319,7 +1382,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.capabilities"
+          "id": "document.development.operations"
         },
         {
           "kind": "document",
@@ -1379,7 +1442,11 @@
         }
       ],
       "title": "Validation",
-      "uses": ["module.development", "module.harness", "module.spec"]
+      "uses": [
+        "module.development",
+        "module.harness",
+        "module.spec"
+      ]
     },
     {
       "checks": [],
@@ -1390,12 +1457,12 @@
         "specs/concorde/delivery/execution-reference.md"
       ],
       "files": [
-        "capabilities/deliver.py",
+        "operations/deliver.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
       "id": "module.delivery",
       "kind": "module",
-      "parent": "module.concorde",
+      "parent": "module.operations",
       "references": [
         {
           "kind": "module",
@@ -1415,7 +1482,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.capabilities"
+          "id": "document.development.operations"
         },
         {
           "kind": "document",
@@ -1487,14 +1554,14 @@
         "specs/concorde/query-routing/execution-reference.md"
       ],
       "files": [
-        "capabilities/main.py",
-        "tests/concorde/development/test_flow_surfaces.py",
+        "operations/main.py",
+        "tests/concorde/development/test_graph_surfaces.py",
         "tests/concorde/harness/test_scoped_protocol.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
       "id": "module.query-routing",
       "kind": "module",
-      "parent": "module.concorde",
+      "parent": "module.operations",
       "references": [
         {
           "kind": "module",
@@ -1510,7 +1577,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.capabilities"
+          "id": "document.development.operations"
         },
         {
           "kind": "document",
@@ -1574,7 +1641,11 @@
         }
       ],
       "title": "Query and Routing",
-      "uses": ["module.development", "module.harness", "module.spec"]
+      "uses": [
+        "module.development",
+        "module.harness",
+        "module.spec"
+      ]
     },
     {
       "checks": [],
@@ -1585,12 +1656,12 @@
         "specs/concorde/topology/execution-reference.md"
       ],
       "files": [
-        "capabilities/main.py",
+        "operations/main.py",
         "tests/concorde/harness/test_scoped_protocol.py"
       ],
       "id": "module.topology",
       "kind": "module",
-      "parent": "module.concorde",
+      "parent": "module.operations",
       "references": [
         {
           "kind": "module",
@@ -1610,7 +1681,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.capabilities"
+          "id": "document.development.operations"
         },
         {
           "kind": "document",
@@ -1690,7 +1761,7 @@
         "specs/concorde/dev-loop/execution-reference.md"
       ],
       "files": [
-        "capabilities/dev_loop.py",
+        "operations/dev_loop.py",
         "tests/concorde/development/test_review.py",
         "tests/concorde/development/test_specify_loop.py",
         "tests/concorde/development/test_target_discovery.py",
@@ -1699,7 +1770,7 @@
       ],
       "id": "module.dev-loop",
       "kind": "module",
-      "parent": "module.concorde",
+      "parent": "module.operations",
       "references": [
         {
           "kind": "module",
@@ -1739,7 +1810,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.capabilities"
+          "id": "document.development.operations"
         },
         {
           "kind": "document",
@@ -1794,7 +1865,7 @@
           "id": "document.issues.lifecycle"
         }
       ],
-      "title": "Development Flow",
+      "title": "Development Graph",
       "uses": [
         "module.development",
         "module.harness",
@@ -1816,14 +1887,14 @@
         "specs/concorde/specify-loop/execution-reference.md"
       ],
       "files": [
-        "capabilities/specify_loop.py",
+        "operations/specify_loop.py",
         "tests/concorde/development/test_specify_loop.py",
         "tests/concorde/harness/test_studio_server.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
       "id": "module.specify-loop",
       "kind": "module",
-      "parent": "module.concorde",
+      "parent": "module.operations",
       "references": [
         {
           "kind": "module",
@@ -1851,7 +1922,7 @@
         },
         {
           "kind": "document",
-          "id": "document.development.capabilities"
+          "id": "document.development.operations"
         },
         {
           "kind": "document",
@@ -1910,7 +1981,7 @@
           "id": "document.issues.lifecycle"
         }
       ],
-      "title": "Specification Flow",
+      "title": "Specification Graph",
       "uses": [
         "module.development",
         "module.harness",
@@ -1918,6 +1989,101 @@
         "module.query-routing",
         "module.spec-authoring",
         "module.review"
+      ]
+    },
+    {
+      "id": "module.operations",
+      "kind": "module",
+      "title": "Operations",
+      "parent": "module.concorde",
+      "uses": [],
+      "documents": [
+        "specs/concorde/operations/module.md",
+        "specs/concorde/operations/providers.md"
+      ],
+      "files": [],
+      "checks": [],
+      "references": [
+        {
+          "kind": "module",
+          "id": "module.delivery"
+        },
+        {
+          "kind": "module",
+          "id": "module.dev-loop"
+        },
+        {
+          "kind": "module",
+          "id": "module.implementation"
+        },
+        {
+          "kind": "module",
+          "id": "module.planning"
+        },
+        {
+          "kind": "module",
+          "id": "module.query-routing"
+        },
+        {
+          "kind": "module",
+          "id": "module.review"
+        },
+        {
+          "kind": "module",
+          "id": "module.spec-authoring"
+        },
+        {
+          "kind": "module",
+          "id": "module.specify-loop"
+        },
+        {
+          "kind": "module",
+          "id": "module.topology"
+        },
+        {
+          "kind": "module",
+          "id": "module.validation"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.operations"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.harness.context"
+        },
+        {
+          "kind": "document",
+          "id": "document.harness.module"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.lifecycle"
+        },
+        {
+          "kind": "document",
+          "id": "document.spec.registry"
+        },
+        {
+          "kind": "document",
+          "id": "document.spec.structure"
+        },
+        {
+          "kind": "document",
+          "id": "document.spec.values"
+        }
       ]
     }
   ]

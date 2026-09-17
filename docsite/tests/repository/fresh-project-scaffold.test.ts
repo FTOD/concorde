@@ -16,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 /**
  * Concorde-repository evidence for scenario.views.scaffold-propose: a project holding
- * only Profile 14 initialization outputs receives the packaged docsite through the native `docsite`
+ * only Profile 15 initialization outputs receives the packaged docsite through the native `docsite`
  * Tool and passes the adapter's validate and build steps. It reuses this checkout's installed
  * dependencies without a separate diagram renderer, so it stays outside the packaged template.
  */
@@ -72,7 +72,7 @@ from concorde.spec.initialize import project_proposal,apply_project_proposal
 from concorde.distribution.project_defaults import install_project_defaults
 from concorde.spec.typed_data import typed
 root=Path(sys.argv[2]);package=Path(sys.argv[1])
-config=typed('concorde-capability-configuration',{'model':'openai-codex/gpt-6-astra','thinking':'medium'})
+config=typed('concorde-operation-configuration',{'model':'openai-codex/gpt-6-astra','thinking':'medium'})
 install_project_defaults(root,package)  # what the installer places before initialization
 apply_project_proposal(root,package,project_proposal(root,package,'Atlas',config,'module.atlas'))`,
       repositoryRoot,
@@ -119,7 +119,7 @@ afterAll(async () => {
   if (root) await rm(root, { recursive: true, force: true });
 });
 
-describe("a project holding only Profile 14 initialization outputs", () => {
+describe("a project holding only Profile 15 initialization outputs", () => {
   // verifies: scenario.views.scaffold-propose
   it("receives the graph-free adapter and identity", async () => {
     const files = (
@@ -253,7 +253,7 @@ describe("a project holding only Profile 14 initialization outputs", () => {
     expect(homepage).toMatch(/http-equiv="refresh"/i);
     expect(homepage).not.toContain("Specify the architecture.");
     expect(existsSync(resolve(root, "docsite/build/graph.html"))).toBe(false);
-    expect(existsSync(resolve(root, "docsite/build/agent-flows.html"))).toBe(
+    expect(existsSync(resolve(root, "docsite/build/agent-graphs.html"))).toBe(
       false,
     );
     expect(
@@ -291,7 +291,7 @@ describe("a project holding only Profile 14 initialization outputs", () => {
     expect(mainPage.match(/<nav\b[\s\S]*?<\/nav>/)![0]).not.toContain(
       "Spec Protocol",
     );
-    expect(mainPage).not.toContain("Agent Flows");
+    expect(mainPage).not.toContain("Agent Graphs");
     expect(mainPage).toContain("Implementation Specs");
     expect(mainPage).not.toContain("<iframe");
     expect(mainPage).toContain('id="purpose"');

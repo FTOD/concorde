@@ -165,7 +165,7 @@ export function safeRead(root: string, path: string): string {
     readFileSync(current),
   );
 }
-/** The adapter publishes Profile 14 projects only; anything else is an explicit error. */
+/** The adapter publishes Profile 15 projects only; anything else is an explicit error. */
 export function requireScoped(root: string): void {
   let profile: unknown;
   try {
@@ -181,9 +181,9 @@ export function requireScoped(root: string): void {
     }
     throw error;
   }
-  if (profile !== 14)
+  if (profile !== 15)
     throw new Error(
-      `Profile 14 is required to publish this project; .concorde/config.json declares profile_version ${String(profile)}.`,
+      `Profile 15 is required to publish this project; .concorde/config.json declares profile_version ${String(profile)}.`,
     );
 }
 type DocumentContext = UnitMetadata["document"];
@@ -191,8 +191,8 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
   const configText = safeRead(root, ".concorde/config.json");
   const config = parseJson(configText, ".concorde/config.json");
   requireThat(
-    config.profile_version === 14,
-    "Profile 14 configuration required",
+    config.profile_version === 15,
+    "Profile 15 configuration required",
   );
   const registryText = safeRead(root, config.registry);
   const registry = parseJson(registryText, config.registry);
@@ -483,8 +483,8 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     const consumers = targets.filter((m) => m.uses.includes(t.id));
     if (consumers.length > 1)
       requireThat(
-        consumers.every((m) => m.parent === t.parent),
-        `Shared Module and consumers must be siblings: ${t.id}`,
+        consumers.every((m) => m.id !== t.parent),
+        `Shared Module cannot be owned by a consumer: ${t.id}`,
       );
   }
   const byDocumentId = new Map(

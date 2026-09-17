@@ -16,7 +16,7 @@ Review independently examines whether current specifications or code support the
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -30,7 +30,7 @@ Read the typed [review result](review-result.md), including representative cover
 gaps and exact revision. No findings is a bounded conclusion, not universal proof; skipped,
 not-run and incomplete are distinct from success. Missing necessary contracts pause dependent work,
 while independent defects can remain advisory. Explicit standalone review is fresh; a composing
-Flow can reuse only current evidence for the same intent. Failure, cancellation and invalid output
+Graph can reuse only current evidence for the same intent. Failure, cancellation and invalid output
 cannot masquerade as clean review. The caller decides whether an admitted repair is appropriate;
 the reviewer itself does not execute it.
 
@@ -48,7 +48,7 @@ identity, coverage, locations and gap/finding consistency before retaining a typ
 reviews run separately and aggregate only results, not provider code or private conversation.
 
 A review of yesterday's code cannot establish today's changed revision. Binding results to current
-inputs supports exact-intent reuse by composing flows and fresh standalone review. Each reviewer
+inputs supports exact-intent reuse by composing graphs and fresh standalone review. Each reviewer
 gets a fresh conversation so an author's assumptions cannot silently become review evidence. When a
 changed file serves several Modules, each affected owner is reviewed against its own contract;
 one reviewer does not acquire another Module's code. A report remains evidence about one task and revision;
@@ -89,7 +89,7 @@ Admit review intent and current revision, validate returned review identities an
 
 This collaboration applies when standalone or composed review enters and when its report is accepted or refused.
 
-- [Host admission](../development/interfaces.md#capability-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
+- [Host admission](../development/interfaces.md#operation-execution-boundary); Recheck admitted intent and returned identities before accepting host state; a rejected result cannot advance the dependent step.
 
 ### Harness
 
@@ -124,5 +124,5 @@ This collaboration applies when a new standalone review has neither a trusted bo
 ## Precise specifications
 
 The Review Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md) and the
-[execution and record contracts](execution-reference.md#review-independent-review-capability).
+[execution and record contracts](execution-reference.md#review-independent-review-operation).
 These companions are part of the same complete Module specification, not separate topic owners.

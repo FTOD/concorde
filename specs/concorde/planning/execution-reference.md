@@ -1,6 +1,6 @@
 # Planning execution and record contracts
 
-These are the precise implementation agreements and executable Flow specifications owned by the
+These are the precise implementation agreements and executable Graph specifications owned by the
 [Planning Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
 and transitions are retained here as the single detailed contract.
 
@@ -16,9 +16,9 @@ and transitions are retained here as the single detailed contract.
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Internal capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Task sufficiency](assessment.md#terminology) | Defined in Is the specification sufficient for this task? |
 | [Acceptance task](tasks.md#terminology) | Defined in Making work verifiable. |
 | [Reserved task ID](tasks.md#terminology) | Defined in Making work verifiable. |
@@ -27,11 +27,11 @@ and transitions are retained here as the single detailed contract.
 
 ## Context assessment {#assessment-context-assessment}
 
-The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
+The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#operation-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-This is a private, bound capability in the [current adapter inventory](../development/execution-reference.md).
+This is a private, bound operation in the [current adapter inventory](../development/execution-reference.md).
 Only a declared in-process composition can call it; direct Skill/CLI invocation is rejected.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
@@ -57,13 +57,13 @@ output has passed host acceptance. It proves no universal completeness.
 The Planning Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
 These companions are part of the same complete Module specification, not separate topic owners.
 
-## Planning capability {#plan-planning-capability}
+## Planning operation {#plan-planning-operation}
 
-The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
+The [common invocation envelope](../development/interfaces.md#operation-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-This is a private, bound capability in the [current adapter inventory](../development/execution-reference.md).
+This is a private, bound operation in the [current adapter inventory](../development/execution-reference.md).
 Only a declared in-process composition can call it; direct Skill/CLI invocation is rejected.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
@@ -73,7 +73,7 @@ file names are visible and implementation contents remain excluded from non-code
 fresh planner invocation. Its optional concorde-plan-artifact is an explicitly admitted
 prior plan, not a predecessor conversation. The accepted output is a nonempty plan bound to the
 selected contract revision and intent. The host stores the target plan and returns artifact references
-in concorde-plan-response@2; the worker has no direct project writes. No task list, implementation,
+in concorde-plan-response@3; the worker has no direct project writes. No task list, implementation,
 review or readiness is produced by planning.
 
 A coordinating plan identifies local work and exact direct child/used-Module IDs from its local
@@ -87,7 +87,7 @@ having to explain its purpose by reference to dev-loop.
 
 ### Design {#plan-design}
 
-#### Planning Flow (`plan_flow`) {#plan-planning-flow-plan-flow}
+#### Planning Graph (`plan_graph`) {#plan-planning-graph-plan-graph}
 
 State: `route`, `output` (the planning response), `result`; the candidate record receives the
 accepted plan, its Spec digest and intent.
@@ -100,9 +100,9 @@ accepted plan, its Spec digest and intent.
 
 ```mermaid
 flowchart TB
-    %% flow: plan_flow
-    accTitle: Planning Flow
-    accDescr: Context assessment admits planning only when the contract is sufficient; a returned plan is persisted; a gap, conflict, failure or policy preview ends the Flow.
+    %% graph: plan_graph
+    accTitle: Planning Graph
+    accDescr: Context assessment admits planning only when the contract is sufficient; a returned plan is persisted; a gap, conflict, failure or policy preview ends the Graph.
     __start__["start"]
     assess_context["assess_context<br/>in: Spec context, task<br/>out: sufficiency or gaps"]
     author_plan["author_plan<br/>in: Spec context, task, prior plan<br/>out: plan"]
@@ -121,13 +121,13 @@ flowchart TB
 The Planning Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
 These companions are part of the same complete Module specification, not separate topic owners.
 
-## Task authoring capability {#tasks-task-authoring-capability}
+## Task authoring operation {#tasks-task-authoring-operation}
 
-The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
+The [common invocation envelope](../development/interfaces.md#operation-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-This is a private, bound capability in the [current adapter inventory](../development/execution-reference.md).
+This is a private, bound operation in the [current adapter inventory](../development/execution-reference.md).
 Only a declared in-process composition can call it; direct Skill/CLI invocation is rejected.
 A caller supplies the selected Module, task, constraints, focus and current candidate identity
 where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
@@ -155,7 +155,7 @@ it never rewrites author output or clears history to admit it.
 The result is a nonempty list of internally unique, initially incomplete tasks, disjoint from
 reserved IDs, each carrying id, target_id, description, acceptance and complete. The host accepts
 and persists the list as a concorde-implementation-task@1 with its plan; it returns artifact
-references through concorde-tasks-response@2. The author cannot complete tasks or mutate project files.
+references through concorde-tasks-response@3. The author cannot complete tasks or mutate project files.
 
 For scope recovery it receives the plan, prior list, reserved IDs and the fixed
 implementation_boundary feedback, preserving software acceptance. A semantic change requiring a
@@ -174,7 +174,7 @@ These companions are part of the same complete Module specification, not separat
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
+Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
+phase artifacts and permissions remain mandatory. A new graph requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.

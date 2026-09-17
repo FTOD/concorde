@@ -20,9 +20,13 @@
     },
     {
       "id": "entity.harness.agent-model",
-      "title": "Capability and Harness model",
+      "title": "Operation and Harness model",
       "kind": "program",
-      "files": ["src/concorde/harness/", "tests/concorde/harness/"],
+      "files": [
+        "src/concorde/harness/",
+        "tests/concorde/harness/",
+        "tests/concorde/spec/test_operations_migration.py"
+      ],
       "meaning": "#entity.harness.agent-model"
     },
     {
@@ -30,7 +34,7 @@
       "title": "Model execution profiles",
       "kind": "program",
       "files": [
-        "capabilities/",
+        "operations/",
         "prompts/workers/common.md",
         "tests/concorde/fixtures/build/golden/agents/"
       ],
@@ -81,7 +85,7 @@
         "scripts/development/studio.py",
         "src/concorde/harness/studio.py",
         "src/concorde/harness/studio_client.py",
-        "tests/concorde/development/test_flow_surfaces.py",
+        "tests/concorde/development/test_graph_surfaces.py",
         "tests/concorde/development/test_target_discovery.py",
         "tests/concorde/harness/test_studio.py",
         "tests/concorde/harness/test_studio_client.py",

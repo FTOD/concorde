@@ -1,6 +1,6 @@
 # Review execution and record contracts
 
-These are the precise implementation agreements and executable Flow specifications owned by the
+These are the precise implementation agreements and executable Graph specifications owned by the
 [Review Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
 and transitions are retained here as the single detailed contract.
 
@@ -22,23 +22,23 @@ and transitions are retained here as the single detailed contract.
 | [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Capsule](../harness/module.md#terminology) | Defined in Harness. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Public capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Public operation](../development/module.md#terminology) | Defined in Development operation host. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-## Independent review capability {#review-independent-review-capability}
+## Independent review operation {#review-independent-review-operation}
 
-The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
+The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#operation-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
-`concorde-review` is a public Capability with discover context selection requiring task and review_mode=spec|code, with
+`concorde-review` is a public Operation with discover context selection requiring task and review_mode=spec|code, with
 optional target/focus routing hints, constraints and current-worktree change_id. A new standalone
 request uses Spec-only router discovery to select one owning Module, then starts a fresh
-read-only reviewer. A composing capability may supply its trusted bound target without repeating
+read-only reviewer. A composing operation may supply its trusted bound target without repeating
 discovery; a current-change resumption supplies both target_id and change_id. The public launcher
-and Studio admit this capability directly. Review runs in the current worktree without creating
+and Studio admit this operation directly. Review runs in the current worktree without creating
 a development change or requiring a preexisting Issue record. The host may persist reports and existing
 change evidence, but reviewers receive no project write authority.
 Spec mode uses the complete admitted owned and directly referenced Specs, Protocol/kind rules, task and scoped changes to any document included in that context. Code mode uses those
@@ -97,12 +97,12 @@ The table maps review reports to the Review response's domain `outcome`. An inte
 reviewer still produces an `incomplete` review report and a `failed` Review domain outcome.
 The trusted host separately preserves the `cancelled` or `limit_exhausted` execution
 classification supplied by the [Harness Module](../harness/module.md), as defined in its
-[execution outcomes](../harness/execution-reference.md#execution-outcomes), for the enclosing Flow, persisted candidate lifecycle and final events, following the
-[Development boundary](../development/interfaces.md#capability-execution-boundary).
+[execution outcomes](../harness/execution-reference.md#execution-outcomes), for the enclosing Graph, persisted candidate lifecycle and final events, following the
+[Development boundary](../development/interfaces.md#operation-execution-boundary).
 Ordinary reviewer failures remain `failed`.
 
 These execution/lifecycle classifications are not additional values of the published
-review-status or common capability-envelope status fields; their existing layouts and values
+review-status or common operation-envelope status fields; their existing layouts and values
 remain unchanged. An interrupted review never satisfies completion, permits dependent work
 to advance or selects an automatic retry.
 
@@ -123,7 +123,7 @@ code patches. Neither has project write authority.
 A changed file listed by several Modules is reviewed once per listing Module, each from that
 Module's own contract: the host selects the peers of a code review from the files of the reviewed
 Module that differ from the candidate base, so a shared file the candidate did not touch adds no
-peer review, and without a known base revision every covering Module is a peer. A flow-composed
+peer review, and without a known base revision every covering Module is a peer. A graph-composed
 continuation reuses a consumer's revision-bound review when its intent, constraints and admitted
 input are unchanged, including the consumer reviews that admitted a Spec candidate before its bytes
 were applied; an explicit standalone review is always fresh for the owner and every consumer. Verification declarations in the reviewed files are judged only for scenarios present
@@ -131,12 +131,12 @@ in the reviewing Module's admitted context: a test that declares such a scenario
 exercising its steps is a defect, while a declaration naming a scenario outside that context is
 assessed by the owning Module's review and is neither a defect nor a gap for the reviewing Module.
 A Module never gains a reference to a consumer's documents merely so its reviewer can read them.
-Each reviewer resolves its model Capability's execution profile and Harness under read-only permissions.
+Each reviewer resolves its model Operation's execution profile and Harness under read-only permissions.
 The host records input versions, coverage, immutable Issue judgments and completion. No-findings,
 findings, incomplete, not-run and skipped are distinct, and all conclusions remain task-specific.
 
 The complete collection is the review's information boundary, not an instruction to repair every
-independent capability it describes. Representative tasks derive from the admitted request and its
+independent operation it describes. Representative tasks derive from the admitted request and its
 constraints, including necessary dependencies, compatibility and affected consumers. A blocking
 finding explains how its contract or behavior defect prevents that task or violates an obligation
 the change must preserve. Unchanged contracts can block dependent work, and changed contracts can
@@ -151,7 +151,7 @@ by changed paths nor rewrites their severity. Required coverage, gap and freshne
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
+Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
+phase artifacts and permissions remain mandatory. A new graph requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.

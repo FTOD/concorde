@@ -1,6 +1,6 @@
 # Topology execution and record contracts
 
-These are the precise implementation agreements and executable Flow specifications owned by the
+These are the precise implementation agreements and executable Graph specifications owned by the
 [Topology Module](module.md). Explanatory topics introduce their purposes; exact identities, limits
 and transitions are retained here as the single detailed contract.
 
@@ -13,8 +13,8 @@ and transitions are retained here as the single detailed contract.
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -22,21 +22,21 @@ and transitions are retained here as the single detailed contract.
 | [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-## Topology evolution Agent Flow {#topology-topology-evolution-agent-flow}
+## Topology evolution Agent Graph {#topology-topology-evolution-agent-graph}
 
-Use this Flow when registered targets, document ownership and references, shared truth or routing structure
+Use this Graph when registered targets, document ownership and references, shared truth or routing structure
 must change together. The developer supplies intended behavior and constraints. Main designs a
 candidate registry; fresh target-local authors supply the affected Specs after design acceptance.
 A second acceptance binds the exact prepared transaction before application.
 
-Human acceptance is a Flow control input tied to the exact design or prepared application. A
+Human acceptance is a Graph control input tied to the exact design or prepared application. A
 rejection may select another design or authoring loop, but cannot authorize the rejected effects.
 The loop waits for a required decision and re-admits revised intent and current source identity.
-Topology-designer and target-author are separate model Capabilities with independent State contracts and Harness bindings.
+Topology-designer and target-author are separate model Operations with independent State contracts and Harness bindings.
 
 ### Design {#topology-design}
 
-#### Topology preparation Flow (`topology_flow`) {#topology-topology-preparation-flow-topology-flow}
+#### Topology preparation Graph (`topology_graph`) {#topology-topology-preparation-graph-topology-graph}
 
 State: `occurrence` (the author being run), `route`, `output` (the main response), `result`.
 The accepted design supplies the candidate registry and one Spec task per new or changed Module.
@@ -51,9 +51,9 @@ The accepted design supplies the candidate registry and one Spec task per new or
 
 ```mermaid
 flowchart TB
-    %% flow: topology_flow
-    accTitle: Topology preparation Flow
-    accDescr: Authors are ordered and run one at a time; the complete candidate is validated and every affected context reviewed before the application is persisted; a gap, invalid candidate or review blocker ends the Flow.
+    %% graph: topology_graph
+    accTitle: Topology preparation Graph
+    accDescr: Authors are ordered and run one at a time; the complete candidate is validated and every affected context reviewed before the application is persisted; a gap, invalid candidate or review blocker ends the Graph.
     __start__["start"]
     prepare_authors["prepare_authors<br/>in: accepted design, registry<br/>out: ordered authors"]
     author_module["author_module<br/>in: Module descriptor, candidate context<br/>out: candidate documents"]
@@ -75,7 +75,7 @@ flowchart TB
     persist_application --> __end__
 ```
 
-#### Topology application Flow (`topology_apply_flow`) {#topology-topology-application-flow-topology-apply-flow}
+#### Topology application Graph (`topology_apply_graph`) {#topology-topology-application-graph-topology-apply-graph}
 
 State: `route`, `output`, `result`.
 
@@ -88,9 +88,9 @@ State: `route`, `output`, `result`.
 
 ```mermaid
 flowchart TB
-    %% flow: topology_apply_flow
-    accTitle: Topology application Flow
-    accDescr: An admitted, validated application is applied as one transaction and cleaned up; a rejected or stale application, a validation failure or a transaction error ends the Flow.
+    %% graph: topology_apply_graph
+    accTitle: Topology application Graph
+    accDescr: An admitted, validated application is applied as one transaction and cleaned up; a rejected or stale application, a validation failure or a transaction error ends the Graph.
     __start__["start"]
     admit_application["admit_application<br/>in: application reference, registry<br/>out: admitted application"]
     validate_application["validate_application<br/>in: admitted application<br/>out: validated application"]
@@ -122,7 +122,7 @@ membership or agent permissions. Only the sole owner proposes shared source byte
 
 This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
 share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
+Agent grant or configurable arbitrary graph is created by this Spec boundary. Host admission,
+phase artifacts and permissions remain mandatory. A new graph requires declared composition and
 an implementation of its sequencing, artifact admission, recovery and completion policies before
 it can execute. The existing host package still realizes common dispatch and provider internals.

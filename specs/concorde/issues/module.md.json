@@ -11,14 +11,14 @@
       "title": "Issue runtime",
       "kind": "program",
       "meaning": "#entity.issues.runtime",
-      "files": ["capabilities/issues.py", "scripts/issues.py"]
+      "files": ["operations/issues.py", "scripts/issues.py"]
     },
     {
       "id": "entity.issues.solver",
       "title": "Issue solver",
       "kind": "agent",
       "meaning": "#entity.issues.solver",
-      "files": ["capabilities/issue_solver/"]
+      "files": ["operations/issue_solver/"]
     },
     {
       "id": "entity.issues.langgraph",
@@ -42,7 +42,7 @@
     },
     {
       "id": "entity.issues.dev-loop",
-      "title": "Development Flow",
+      "title": "Development Graph",
       "kind": "used module",
       "meaning": "#entity.issues.dev-loop",
       "target_id": "module.dev-loop"

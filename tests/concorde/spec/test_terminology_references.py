@@ -159,19 +159,19 @@ class TerminologyReferenceTests(unittest.TestCase):
         # These are editorial cases, not a rule that every matching word needs a link.
         required = {
             "development/review-and-gaps.md": {"Issue", "Blocker", "Evidence"},
-            "harness/graphs-and-loops.md": {"Flow"},
-            "harness/host.md": {"Host", "Flow", "Skill"},
+            "harness/graphs-and-loops.md": {"Graph"},
+            "harness/host.md": {"Host", "Graph", "Skill"},
             "harness/module.md": {
                 "Spec context",
                 "Implementation context",
-                "Capability context",
+                "Resource context",
                 "Task context",
             },
             "harness/execution.md": {"Issue", "Tool gate"},
             "harness/contracts.md": {
                 "Spec context",
                 "Implementation context",
-                "Capability context",
+                "Resource context",
                 "Task context",
                 "Capsule",
                 "Issue",
@@ -203,7 +203,7 @@ class TerminologyReferenceTests(unittest.TestCase):
             "issues/module.md": {"Disposition"},
             "issues/requirements.md": {"Disposition", "Ready"},
             "distribution/module.md": {"Protocol binding"},
-            "distribution/build.md": {"Public capability", "Skill"},
+            "distribution/build.md": {"Public operation", "Skill"},
             "spec-authoring/module.md": {
                 "Module Specs",
                 "Implementation Specs",
@@ -242,9 +242,9 @@ class TerminologyReferenceTests(unittest.TestCase):
     def test_unrelated_template_rows_do_not_return(self):
         forbidden = {
             "development/review-and-gaps.md": {
-                "Capability",
+                "Operation",
                 "Host",
-                "Flow",
+                "Graph",
                 "Candidate",
             },
             "harness/graphs-and-loops.md": {"Harness", "Context", "Grant", "Snapshot"},

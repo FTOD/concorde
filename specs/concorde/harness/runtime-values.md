@@ -1,7 +1,7 @@
-# Capability runtime value and collaborator contracts
+# Operation runtime value and collaborator contracts
 
 This registered local companion document defines the exact public value records used by the
-capability host, permission compiler and worker executor. These are Python in-process contracts;
+operation host, permission compiler and worker executor. These are Python in-process contracts;
 they do not give a worker permission to construct its own grant. Strings called digests are
 canonical `sha256:` plus 64 lower-case hex digits. Paths in policies are project-relative POSIX
 paths without aliases or symlinks.
@@ -10,7 +10,7 @@ paths without aliases or symlinks.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker profile](module.md#terminology) | Defined in Harness. |
@@ -29,7 +29,7 @@ paths without aliases or symlinks.
 ```python
 EffectDeclaration(reads: tuple[str, ...] = (), writes: tuple[str, ...] = (),
                   network: bool = False, credentials: Literal["none", "declared"] = "none")
-PolicyBinding(capability: str, stage: str, occurrence: int, role: str, agent: str,
+PolicyBinding(operation: str, stage: str, occurrence: int, role: str, agent: str,
               read_roles: tuple[str, ...] | None = None,
               write_roles: tuple[str, ...] | None = None,
               network: bool | None = None,
@@ -51,7 +51,7 @@ ArtifactRef into authority.
 
 | Attribute | Type and meaning |
 | --- | --- |
-| capability, stage, role, agent | str; the exact bound capability and worker identities |
+| operation, stage, role, agent | str; the exact bound operation and worker identities |
 | occurrence | int; this stage occurrence |
 | read_paths, write_paths, deny_paths | tuple[str, ...]; sorted, deduplicated concrete grants/denies |
 | default_deny | bool; compiler results are true |
@@ -79,12 +79,12 @@ WorkerBinding(agent: str, spec_path: str, spec_digest: str, instructions_path: s
 ```
 
 All are frozen records. `name` is the catalog key (for example `code_reviewer`); its external name is
-`concorde-code-reviewer`. `validate_worker_profile(agent)` requires `capabilities/<name>/spec.md`, a known workspace,
+`concorde-code-reviewer`. `validate_worker_profile(agent)` requires `operations/<name>/spec.md`, a known workspace,
 a context type paired with its result type, required inputs among admitted inputs, known result
 fields, writes that are also reads, no network or credential effects, implementation reads only in a
 project workspace, discovery-context reads exactly for discovery contexts, distinct known tools
 including `read`, `edit` or `write` only with a write effect, uniquely named children at
-`capabilities/<name>/children/<child>.md` and a positive integer timeout; it raises
+`operations/<name>/children/<child>.md` and a positive integer timeout; it raises
 `BuildError/invalid_agent_binding`. `child_definitions(package_root, agent)` parses each child's
 frontmatter and returns `ChildDefinition(name, description, tools, text)` records, rejecting a
 missing file, a wrong name, missing description or prompt, tools outside `read`, `grep`, `find`,
@@ -123,7 +123,7 @@ other violations `invalid_completion`.
 ```python
 WorkerSelection(model: str | None = None, thinking: str | None = None, timeout_seconds: int | None = None)
 worker_selection(configuration: dict, agent: str, child: str | None = None) -> WorkerSelection
-build_worker_invocation(*, capability: str, stage: str, agent: str, invocation_id: str, workspace: str,
+build_worker_invocation(*, operation: str, stage: str, agent: str, invocation_id: str, workspace: str,
     context_json: str, receipt_json: str, policy: NormalizedPolicy, binding_json: str,
     instructions: str, selection: WorkerSelection,
     child_selections: tuple[tuple[str, WorkerSelection], ...] = ()) -> WorkerInvocation
@@ -133,16 +133,16 @@ WorkerExecutor.__call__(invocation: WorkerInvocation, *, checks=None, report_iss
 WorkerOutcome(value: dict, usage: ExecutionUsage, invocation_digest: str, binding_digest: str)
 ExecutionUsage(model, thinking, input_tokens, cached_input_tokens, output_tokens, total_tokens,
                cost_usd, turns, wall_seconds, prompt_bytes, context_bytes)
-CapabilityExecutionError(message: str, outcome: Literal["failed", "cancelled", "limit_exhausted",
+OperationExecutionError(message: str, outcome: Literal["failed", "cancelled", "limit_exhausted",
                          "invalid_completion"] = "failed", code: str | None = None,
                          usage: ExecutionUsage | None = None)
 ```
 
 `WorkerInvocation` is a frozen record with exactly the builder's fields plus `digest` and a
-`context_id` accessor. The builder requires the policy's capability, stage, role and agent to equal
+`context_id` accessor. The builder requires the policy's operation, stage, role and agent to equal
 the invocation's and the worker's external name, canonical context and receipt JSON, a receipt naming
 its `source_digest` and `role_paths`, a host-issued identity and an absolute workspace, and raises
-`CapabilityExecutionError` otherwise. Its digest covers every identity, the typed context and
+`OperationExecutionError` otherwise. Its digest covers every identity, the typed context and
 receipt, the policy digest, the binding, the instructions digest and every selection.
 
 `worker_instructions` joins the rendered worker instructions with each Protocol file the context
@@ -161,7 +161,7 @@ is a host-bound callable with a `schema` property; it grants no file writes and 
 are independent of accepting the final result. Its protocol is defined in
 [worker execution](execution-reference.md#execution-pi-worker-runtime).
 
-`CapabilityExecutionError.outcome` distinguishes `failed` (a refused launch, a process failure or a
+`OperationExecutionError.outcome` distinguishes `failed` (a refused launch, a process failure or a
 protocol break), `cancelled`, `limit_exhausted` (the timeout) and `invalid_completion` (no, several or
 an invalid submitted result); `code` preserves a contract rejection class. None of them retries.
 `ExecutionUsage` is diagnostic evidence about cost: a figure Pi did not report is `None`, and usage

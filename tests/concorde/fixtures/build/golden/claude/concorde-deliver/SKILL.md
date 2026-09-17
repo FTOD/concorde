@@ -1,14 +1,14 @@
 ---
 name: concorde-deliver
-description: "Capability: stage a verified change, remove its worktree, and explicitly merge from the primary session."
-argument-hint: "Optional capability guidance"
+description: "Operation: stage a verified change, remove its worktree, and explicitly merge from the primary session."
+argument-hint: "Optional operation guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
   source: "skills/concorde-deliver/SKILL.md"
   kind: "skill"
-  capability: "deliver"
-  entrypoint: "scripts/run-capability.py concorde-deliver"
+  operation: "deliver"
+  entrypoint: "scripts/run-operation.py concorde-deliver"
 user-invocable: true
 disable-model-invocation: true
 ---
@@ -18,9 +18,9 @@ Invoke delivery from an agent whose initial working directory is either the sele
 worktree or the primary Git worktree. A third-worktree or nested invocation cannot deliver this
 change. Keep the session and its loaded Skills bound to their original participant.
 
-Send one concorde-capability-invocation@3 JSON object on stdin to `python3 scripts/run-capability.py concorde-deliver`. Its exact fields
-are type_id, schema_version:3, capability_id:"concorde-deliver", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-capability-configuration@1),
+Send one concorde-operation-invocation@3 JSON object on stdin to `python3 scripts/run-operation.py concorde-deliver`. Its exact fields
+are type_id, schema_version:3, operation_id:"concorde-deliver", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1),
 and input (concorde-deliver-request@1). Supply the selected change_id from the primary worktree's
 `.concorde/worktrees.json` inventory or its saved delivery receipt. Optional target/task metadata
 cannot replace change ownership. No domain flags or positional arguments are accepted.

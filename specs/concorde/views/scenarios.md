@@ -23,8 +23,8 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Requirement](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Publication service
@@ -227,14 +227,14 @@ docs rather than adding them to Module Specs. The scaffold excludes `custom-docs
 checkout-only `concorde-only/` assets, and project-owned site identity bytes.
 
 `homepage.links` optionally supplies an array of `{label, to}` values: nonempty labels and either
-local absolute routes or HTTP(S) URLs. Local links honor the site's base URL. No Protocol or Flow
+local absolute routes or HTTP(S) URLs. Local links honor the site's base URL. No Protocol or Graph
 link is built into the homepage renderer.
 
 ### scenario.views.protocol-docs-tab — Concorde publishes its standard through custom docs
 
-- GIVEN Concorde's project-owned configuration selects `protocol/` as a custom docs collection and registers the Agent Flows extension
+- GIVEN Concorde's project-owned configuration selects `protocol/` as a custom docs collection and registers the Agent Graphs extension
 - WHEN the site builds
-- THEN Spec Protocol remains at `/protocol` with its chapter sidebar and search index and Agent Flows remains at `/agent-flows`
+- THEN Spec Protocol remains at `/protocol` with its chapter sidebar and search index and Agent Graphs remains at `/agent-graphs`
 - AND both retain independent tabs without Spec provenance wrappers or registry membership
 - BUT ordinary consumer scaffolds copy neither this configuration nor the site's custom documentation and assets
 
@@ -257,31 +257,31 @@ snapshot.
 
 ## Publication pipeline
 
-### scenario.views.agent-flows — Inspect actual Agent and LangGraph execution
+### scenario.views.agent-graphs — Inspect actual Agent and LangGraph execution
 
 - GIVEN Concorde's source checkout with the development Python environment and its own docsite extension
-- WHEN the site is built and the reader opens the top-level Agent Flows tab at `/agent-flows`
-- THEN the page shows compiled Spec preparation, development, discovery/query, topology, planning, coordination, Issue solving and Agent invocation node Flows plus expanded public Studio entries without executing Agents
+- WHEN the site is built and the reader opens the top-level Agent Graphs tab at `/agent-graphs`
+- THEN the page shows compiled Spec preparation, development, discovery/query, topology, planning, coordination, Issue solving and Agent invocation node Graphs plus expanded public Studio entries without executing Agents
 - AND specify-loop has a directly navigable section showing its actual authoring, review, resume and result transitions, linked from its dev-loop node
-- AND a searchable sidebar lists every Capability and shared Flow family, with a selected detail view and stable fragment links supporting direct access and browser navigation
-- AND the sidebar includes both dev-loop and the specify Capability, keeps the current selection visible, and can be opened or closed on small screens
+- AND a searchable sidebar lists every Operation and shared Graph family, with a selected detail view and stable fragment links supporting direct access and browser navigation
+- AND the sidebar includes both dev-loop and the specify Operation, keeps the current selection visible, and can be opened or closed on small screens
 - AND the build invokes the same development topology factory as runtime, with new-change, skipped-authoring, resume and no-code variants
 - AND step responsibilities, Agent calls, key inputs and outputs, stop conditions and bounded code-review repair are explained with valid links to their Spec sections
-- AND execution diagrams come from the same LangGraph factories as runtime, with runtime-bound Flow instances distinguished from public entries
+- AND execution diagrams come from the same LangGraph factories as runtime, with runtime-bound Graph instances distinguished from public entries
 - AND source byte digests identify the inspected implementation inputs
 - AND light/dark themes, keyboard-focusable scroll regions, node-detail links, width controls and a textual transition list support long graphs and small screens
 - AND graph export or broken internal links fail the production build before promotion
-- AND the packaged consumer template excludes `docsite/concorde-only/`, exposes no Agent Flows tab or route, and requires no Python graph data
+- AND the packaged consumer template excludes `docsite/concorde-only/`, exposes no Agent Graphs tab or route, and requires no Python graph data
 
-This extension is private to the Concorde source checkout, not a Flow catalog protocol or a new
-Spec context input. `docsite/concorde-only/flows.py` inspects compiled factories; the plugin stages
+This extension is private to the Concorde source checkout, not a Graph catalog protocol or a new
+Spec context input. `docsite/concorde-only/graphs.py` inspects compiled factories; the plugin stages
 the result through Docusaurus `createData` and registers its own route. Use the checkout's `.venv`
 or set `CONCORDE_PYTHON` to the development interpreter when building a source copy. The ordinary
 publication registry and consumer build contract remain independent of this extension.
 
 ### scenario.views.load-registry — Loading the registry validates identities and memberships
 
-- GIVEN `.concorde/config.json` with `profile_version: 14` and a safe relative registry path
+- GIVEN `.concorde/config.json` with `profile_version: 15` and a safe relative registry path
 - WHEN `loadScopedRegistry` runs
 - THEN it returns a model whose Module IDs are unique, whose Module parents are acyclic and whose entry target exists and is a Module
 - AND malformed identities, ownership, references or contract bindings throw before any file is written

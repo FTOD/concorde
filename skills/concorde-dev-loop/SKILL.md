@@ -1,12 +1,12 @@
 ---
 name: concorde-dev-loop
 description: "Development loop: route one change, call specify-loop, then plan, task, implement, validate and review code to a ready candidate; specify=false skips authoring and run_reviews=false records explicit review skips."
-capability: dev_loop
+operation: dev_loop
 ---
 
 # concorde-dev-loop
 
-@include prompts/workflow-host/invoke-capability-opener.md ACTION="run the development loop"
+@include prompts/workflow-host/invoke-operation-opener.md ACTION="run the development loop"
 
 @include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-dev-loop
 @include prompts/workflow-host/stdin-invocation-config-input.md NAME=concorde-dev-loop

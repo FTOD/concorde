@@ -16,7 +16,7 @@ implementation, code review and investigation — support this work through inst
 Issue system retains classified problems and persistent
 Spec gaps, coordinates investigation and routes approved resolutions into new development tasks.
 
-The development and delivery workflows below use **Spec Protocol 9.0.0**. It defines one Module
+The development and delivery workflows below use **Spec Protocol 10.0.0**. It defines one Module
 Spec content model and the human-readable subset of that content. Reading begins with Purpose,
 Usage, Design and Relationships in module-role entries and explanatory topics. Formal requirements,
 scenarios and canonical interfaces belong only in implementation-role companions owned directly by
@@ -25,7 +25,7 @@ own a separate set of obligations. Identity, explicit roles, mappings and file b
 paired schema-2 `.md.json` metadata,
 which points to canonical readable meaning. Neither an inventory nor a summary replaces design.
 
-Each Module has one structural parent at most. Shared capabilities are independent siblings;
+Each Module has one structural parent at most. Shared operations are independent siblings;
 `uses` does not create another parent. Module composition and file reuse are separate
 relationships: several Modules may bind the same implementation file. Within one Module the most
 specific entry owns a file, an exact path before a directory prefix, so a directory prefix can list a
@@ -59,8 +59,8 @@ The docsite publishes them in a dedicated **Spec Protocol** tab.
 ## Install and initialize
 
 The installer distributes a deterministic build's output — nine Skills exposing selected entries
-from one inventory of twenty-six Capabilities, including twelve model-backed nodes. Their common
-worker rules (`prompts/workers/common.md`) and local instructions (`capabilities/<name>/spec.md`)
+from one inventory of twenty-six Operations, including twelve model-backed nodes. Their common
+worker rules (`prompts/workers/common.md`) and local instructions (`operations/<name>/spec.md`)
 render to the compatible `generated/agents/<hyphenated>.md` paths. Four Markdown templates and
 the selected Codex or Claude Skill projections accompany them.
 Check `python3 scripts/install-concorde.py --help` for installation
@@ -74,16 +74,16 @@ The originating session does not follow the task into a different checkout.
 
 ```json
 {
-  "type_id": "concorde-capability-invocation",
+  "type_id": "concorde-operation-invocation",
   "schema_version": 3,
-  "capability_id": "concorde-init",
+  "operation_id": "concorde-init",
   "mode": "execute",
-  "configuration": {"type_id":"concorde-capability-configuration","schema_version":1,"data":{"model":"openai-codex/gpt-6-astra","thinking":"medium"}},
-  "input": {"type_id":"concorde-init-request","schema_version":1,"data":{"action":"propose","name":"My project","configuration":{"type_id":"concorde-capability-configuration","schema_version":1,"data":{"model":"openai-codex/gpt-6-astra","thinking":"medium"}}}}
+  "configuration": {"type_id":"concorde-operation-configuration","schema_version":1,"data":{"model":"openai-codex/gpt-6-astra","thinking":"medium"}},
+  "input": {"type_id":"concorde-init-request","schema_version":1,"data":{"action":"propose","name":"My project","configuration":{"type_id":"concorde-operation-configuration","schema_version":1,"data":{"model":"openai-codex/gpt-6-astra","thinking":"medium"}}}}
 }
 ```
 
-Send the JSON on stdin to `python .concorde/framework/scripts/run-capability.py concorde-init`.
+Send the JSON on stdin to `python .concorde/framework/scripts/run-operation.py concorde-init`.
 Review the returned proposal, then send action apply and that complete proposal. Initialization creates
 an honest reading/metadata pair. Supply Purpose, Terminology, Usage, Design and Relationships before precise
 requirements/scenarios and implementation. Topic documents have their own metadata companions and
@@ -96,13 +96,13 @@ Document declarations are likewise checked against reverse registry membership.
 
 ## Run a change
 
-Send this invocation on stdin to `scripts/run-capability.py concorde-dev-loop` (or
-`.concorde/framework/scripts/run-capability.py` in an installed consumer project):
+Send this invocation on stdin to `scripts/run-operation.py concorde-dev-loop` (or
+`.concorde/framework/scripts/run-operation.py` in an installed consumer project):
 
 ```json
 {
-  "type_id":"concorde-capability-invocation","schema_version":3,
-  "capability_id":"concorde-dev-loop","mode":"execute","configuration":null,
+  "type_id":"concorde-operation-invocation","schema_version":3,
+  "operation_id":"concorde-dev-loop","mode":"execute","configuration":null,
   "input":{"type_id":"concorde-dev-loop-request","schema_version":1,
     "data":{"target_id":"module.transfer","task":"Implement the specified transfer contract"}}
 }
@@ -116,19 +116,19 @@ while preserving each Module's membership. A supplied target_id is a routing hin
 not a context grant. The loop executes specification,
 context assessment, plan, tasks, implementation and checks, ending at a ready candidate.
 
-Every callable entry is a Capability. Each independently declares public exposure, context
-selection, determinism, launched Agents and composed capabilities; its size or position in a Flow
-does not create a separate type. A Flow organizes calls, branches and loops. A Skill exposes a
-public Capability to the developer's external agent runtime.
+Every callable entry is a Operation. Each independently declares public exposure, context
+selection, determinism, launched Agents and composed operations; its size or position in a Graph
+does not create a separate type. A Graph organizes calls, branches and loops. A Skill exposes a
+public Operation to the developer's external agent runtime.
 
-Capabilities with `CONTEXT_SELECTION="discover"` use the router to discover complete Module
+Operations with `CONTEXT_SELECTION="discover"` use the router to discover complete Module
 contracts; `bound` consumes the selected Module without expanding its context; `none` performs
 deterministic host work without Agent context selection. `PUBLIC` independently decides whether a
-Capability has a Skill. For example, issues is public and uses a bound Module, while
+Operation has a Skill. For example, issues is public and uses a bound Module, while
 specify is non-public and runs only through declared composition.
 
 `concorde-specify-loop` routes a task, authors or revises its Spec and independently reviews it,
-then returns completed. `concorde-dev-loop` calls that Capability before planning, tasks,
+then returns completed. `concorde-dev-loop` calls that Operation before planning, tasks,
 implementation, checks and code review. Both accept `specify` and `run_reviews` flags: the former
 can skip authoring; the latter records explicit review skips without cancelling a review already
 required for the change. The Spec loop affects only Spec review, while development also requires
@@ -141,7 +141,7 @@ worktree, without requiring a development change or preexisting Issue. The host 
 findings and coverage; unmanaged Git checkouts use HEAD as the diff baseline.
 
 No Skill returns a context manifest; `describe-policy` mode previews the exact stage
-grants any capability would receive without launching an agent or mutating project state. One change
+grants any operation would receive without launching an agent or mutating project state. One change
 belongs to one linked worktree. `.concorde/worktree.json` records
 its task, phase/status, per-target plans and progress, gaps and verified revision. Auxiliary artifacts
 live under `.concorde/work/`; there is no separate attempt lifecycle.
@@ -185,7 +185,7 @@ Configured checks run with OS-enforced read-only project access, including ignor
 `.concorde/runs`. Linux currently requires a system-installed
 [bubblewrap](https://github.com/containers/bubblewrap) with working user, mount and PID namespaces
 and libc/kernel pidfd support. Unsupported platforms or denied sandbox setup block checks with
-`check_sandbox_unavailable`; there is no unrestricted fallback. Project capability configuration
+`check_sandbox_unavailable`; there is no unrestricted fallback. Project operation configuration
 (the selected Pi worker model and thinking level) does not disable this check boundary.
 
 Checks can read inputs and write temporary output under the supplied `TMPDIR`, `XDG_CACHE_HOME`
@@ -202,13 +202,13 @@ candidate registry and target-local Spec tasks without writing. Send the exact r
 stores exact registry/document bytes in an ignored application artifact, returning only its path and
 digest. Review that artifact outside agent cognition, then send its ArtifactRef with
 `action:apply-topology`. Stale inputs or invalid target state prevent writes; successful application
-updates the registry and documents atomically. The former standalone ask capability does not exist.
+updates the registry and documents atomically. The former standalone ask operation does not exist.
 A shared document unit has one owner. Only that owner proposes its source replacements; each
 consumer contributes separate compatibility evidence from its own complete context, never duplicate
 replacement bytes. An implementation file may be listed by several Modules; a topology change to
 its bindings reconciles every listing Module without transferring ownership or widening grants.
 
-[Capability registry](../specs/concorde/development/capabilities.md) ·
+[Operation registry](../specs/concorde/development/operations.md) ·
 [Development host boundary](../specs/concorde/development/interfaces.md)
 
 ## Developer view and feedback
@@ -234,22 +234,22 @@ clarification. A successful candidate-local close is not a claim about primary. 
 [Issue lifecycle](../specs/concorde/issues/lifecycle.md). Legacy data can be preserved explicitly with
 `scripts/issues.py archive-reflections`; it is never automatically classified or approved.
 
-Concorde 7 uses Package Manifest 3, Architecture Profile 14, registry schema 5, Workspace Protocol
+Concorde 7 uses Package Manifest 3, Architecture Profile 15, registry schema 5, Workspace Protocol
 15 and Delivery Proposal 10. Older profiles require an explicit migration; normal execution never
 reinterprets old formats. The offline migration planner is not a second supported runtime.
 
 The docsite publishes one canonical reading page per document unit, with parallel Module Specs and
 Implementation Specs tabs sharing the same Module-parent hierarchy,
 inline scoped diagrams and optional source-provenance disclosure. Reading and metadata both bind
-build identity, but machine inventories do not appear in the main reading flow. Spec Protocol and
-Concorde-only Agent Flows use independent custom-document tabs. There is no docsite Graph page or
+build identity, but machine inventories do not appear in the main reading graph. Spec Protocol and
+Concorde-only Agent Graphs use independent custom-document tabs. There is no docsite Graph page or
 unregistered Projections group. The separate UA exporter/viewer is unchanged. Source and link
 validation precede candidate promotion; human navigation grants no extra agent context.
 
 ## Concorde Spec Protocol entry and upgrades
 
 The Framework execution profile defines session handoffs in [P10](../prompts/protocol/framework-profile.md#p10-explicit-session-handoffs).
-Concorde Spec Protocol 9.0.0 defines readable Module specifications with paired metadata whose entities bind the
+Concorde Spec Protocol 10.0.0 defines readable Module specifications with paired metadata whose entities bind the
 files that realize them, as exact paths or directory prefixes, and whose scenarios are declared by
 the tests that verify them. Root instructions and runtime drafts refer to that rule; public Skills do
 not carry another copy.
@@ -287,7 +287,7 @@ Remove the entry before separately removing the framework; do not delete whole u
 Installing an updated package never rewrites `.concorde/config.json`. Existing projects remain bound
 to their accepted version/digest; execution rejects a mismatch with `protocol_mismatch`. The outer
 entry points at the installed rules, but does not accept them for project execution. After reviewing and explicitly accepting new Protocol assets for the same profile, a consumer
-developer can update that binding from the project root. A project older than Profile 14 must first migrate its complete registered collection to
+developer can update that binding from the project root. A project older than Profile 15 must first migrate its complete registered collection to
 reading/metadata document units and registry schema 5; changing a version or digest alone is not
 migration. The explicit offline conversion planner reports preserved definitions and remaining
 editorial work and does not enable an old-format runtime. For a structurally compatible project:
@@ -327,7 +327,7 @@ writes a summary). The plain serial command
 `python -m unittest discover -s tests/concorde -t . -p 'test_*.py'` remains valid. Run docsite
 checks with `npm run typecheck`, `npm test`, `npm run validate`, `npm run build`.
 
-`prompts/`, `skills/`, and the top-level `capabilities/` package produce this checkout's agent
+`prompts/`, `skills/`, and the top-level `operations/` package produce this checkout's agent
 surfaces. Never edit `generated/`, `.agents/skills/concorde-*`, `.claude/skills/concorde-*`, or
 generated Issue-solving agents directly; they are untracked build output. After changing their
 sources, run the build and the deterministic checks in the same primary or linked worktree:
@@ -339,16 +339,16 @@ python3 scripts/concorde.py validate
 ```
 
 `build` renders every worker, Skill, Protocol asset and runtime schema deterministically from
-`protocol/`, `prompts/`, `skills/` and `capabilities/`; `build --check` verifies those outputs and
+`protocol/`, `prompts/`, `skills/` and `operations/`; `build --check` verifies those outputs and
 `protocol/manifest.json` are current without writing anything; `validate` runs the complete Spec,
-capability-module, contract, Spec-alignment and build-output checks. Top-level model-backed capabilities and every Agent launch require a fresh build; deterministic
+operation-module, contract, Spec-alignment and build-output checks. Top-level model-backed operations and every Agent launch require a fresh build; deterministic
 lifecycle entry points retain their separate admission/evidence checks. A freshly created worktree
 must be built once before an agent can load Concorde Skills. After changing the standard chapters under `protocol/` or their runtime adapters, accept the
 new digest with `python3 scripts/concorde.py protocol-manifest --write --bind-project` (see above).
 
-Each of the twelve workers is defined under `capabilities/<name>/`: an authored role `spec.md` plus a
+Each of the twelve workers is defined under `operations/<name>/`: an authored role `spec.md` plus a
 Python `__init__.py` binding its task contract, workspace kind (`capsule` or `project`), Pi tools,
-children and timeout as optional execution configuration on that Capability. Each worker launches one Pi coding agent
+children and timeout as optional execution configuration on that Operation. Each worker launches one Pi coding agent
 process (`pi --mode rpc`) for exactly one invocation. The build renders each worker's instructions
 to `generated/agents/<hyphenated>.md`, combining the common worker rules
 (`prompts/workers/common.md`) with only that worker's role Spec, traceable through the build
@@ -369,32 +369,32 @@ fact-check, consistency; planner: scout; programmer: scout, planner, verifier; c
 verifier) may delegate one level deep through its `subagent` tool; a child runs
 inside the worker's own process, under the same gate, and cannot submit the worker's result.
 
-One registry contains twenty-six Capabilities, nine exposed through public Skills. All use State
+One registry contains twenty-six Operations, nine exposed through public Skills. All use State
 contracts and `run(state, runtime)`. DETERMINISTIC means no supported model-call path when true,
 including transitive USES. Only init, configure, validate and deliver are true in the current
 inventory. USES is the sole composition relation, including model nodes; it does not install
-arbitrary Capability calls as worker tools.
+arbitrary Operation calls as worker tools.
 
-**Capability** is the canonical name for a callable or composed Framework function; the former
-Operation name is retired. Development owns the capability invocation boundary and workflow
+**Operation** is the canonical name for a callable or composed Framework function; the former
+Operation name is retired. Development owns the operation invocation boundary and workflow
 composition. Distribution owns `skills/` and `prompts/workflow-host/`, renders and installs the
 public Skill instructions, and keeps their projections current. The developer's external agent
-runtime reads those Skills and submits typed capability requests to Development. Skills are not
-part of a worker's Harness. See [Capabilities and Harnesses](../specs/concorde/harness/agents-and-harnesses.md)
-and the [Capability registry](../specs/concorde/development/capabilities.md) for definitions and mappings.
+runtime reads those Skills and submits typed operation requests to Development. Skills are not
+part of a worker's Harness. See [Operations and Harnesses](../specs/concorde/harness/agents-and-harnesses.md)
+and the [Operation registry](../specs/concorde/development/operations.md) for definitions and mappings.
 
 Developing this checkout is direct developer-authorized maintenance in the current worktree,
-verified with the commands above and landed as one commit per verified step. Concorde's own flows
+verified with the commands above and landed as one commit per verified step. Concorde's own graphs
 run on this checkout only when the developer explicitly asks for one. The build therefore renders
 the checkout's Claude Skills with `disable-model-invocation: true`, so the model never selects
-`concorde-dev-loop` on its own and the developer invokes a flow with its slash command or by naming
+`concorde-dev-loop` on its own and the developer invokes a graph with its slash command or by naming
 it; installed consumer projections keep model-initiated invocation.
 
 Root `AGENTS.md`/`CLAUDE.md` bind an agent to the worktree that supplied its project Skills. Agent
 sessions never create or enter worktrees themselves: the checkout's `.claude/settings.json`,
 `.codex/hooks.json` and `.codex/rules/worktree.rules` refuse `EnterWorktree`, worktree-isolated
 subagents, `git worktree add` and `claude --worktree`, with `scripts/worktree-guard.py` as the hook
-behind them. A further worktree exists only when the developer explicitly asks for a Concorde flow,
+behind them. A further worktree exists only when the developer explicitly asks for a Concorde graph,
 whose host creates the candidate worktree and hands off a fresh session there under P10. The policy
 and a one-command check:
 

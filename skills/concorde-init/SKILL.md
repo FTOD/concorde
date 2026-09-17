@@ -1,12 +1,12 @@
 ---
 name: concorde-init
-description: "Capability: propose and apply explicit project initialization with a pinned Protocol and an honest registry stub."
-capability: init
+description: "Operation: propose and apply explicit project initialization with a pinned Protocol and an honest registry stub."
+operation: init
 ---
 
 # concorde-init
 
-@include prompts/workflow-host/invoke-capability-opener.md ACTION=init
+@include prompts/workflow-host/invoke-operation-opener.md ACTION=init
 @include prompts/workflow-host/lifecycle-no-cognition.md
 
 @include prompts/workflow-host/stdin-invocation-open.md NAME=concorde-init

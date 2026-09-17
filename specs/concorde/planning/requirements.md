@@ -31,13 +31,13 @@ Planning SHALL assess task sufficiency only from the selected Module's complete 
 
 Planning SHALL report a necessary missing contract with its question, blocked step, needed contract and host-bound target/context provenance.
 
-## Planning capability
+## Planning operation
 
 ### req.planning.plan-rejection-preserves — Rejected plans preserve accepted state
 
 Planning SHALL leave the previously accepted plan unchanged when a returned plan is empty, invalid or bound to stale inputs.
 
-## Task authoring capability
+## Task authoring operation
 
 ### req.planning.tasks-require-plan — Tasks require an accepted current plan
 

@@ -2,13 +2,13 @@
 
 This deterministic service opens an existing raw Understand Anything knowledge graph with the
 installer-owned official viewer. Its entry is `scripts/run-ua-graph-viewer.py` in the Framework package. It
-is a developer tool, not an agent Capability or a new Skill, and it launches no model cognition.
+is a developer tool, not an agent Operation or a new Skill, and it launches no model cognition.
 
 ## Terminology
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Installation](../distribution/installation.md#terminology) | Defined in Installing and updating Concorde. |

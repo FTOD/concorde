@@ -1,4 +1,4 @@
-# Development capability host
+# Development operation host
 
 ## Purpose
 
@@ -8,11 +8,11 @@ Development is the common host through which Concorde operations are requested a
 
 | Term | Meaning / definition |
 | --- | --- |
-| Public capability | An operation developers may invoke directly through a Skill or the public launcher. |
-| Internal capability | An operation available only to declared composing operations, rather than a direct developer entry. |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| Public operation | An operation developers may invoke directly through a Skill or the public launcher. |
+| Internal operation | An operation available only to declared composing operations, rather than a direct developer entry. |
+| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
@@ -34,16 +34,16 @@ still be read for the operation's result: answered, ready, blocked or another de
 Mutating work on primary normally prepares an isolated candidate and a fresh-session handoff from
 the committed base. Uncommitted primary edits are not silently carried into it. Resuming preserves
 the saved task and workspace identity; incompatible input is rejected rather than applied to another
-change. [Operations](capabilities.md) explains the public/internal distinction and [coordination](flows.md)
+change. [Operations](operations.md) explains the public/internal distinction and [coordination](graphs.md)
 explains the host's part in the workflow. The exact invocation envelope belongs in Implementation Specs.
 
 ## Design
 
-<a id="entity.development.development-host"></a><a id="entity.development.development-capabilities"></a><a id="entity.development.worktree-lifecycle"></a><a id="entity.development.file-transactions"></a><a id="entity.development.installed-skills"></a><a id="entity.development.developer-runtime"></a><a id="entity.development.langgraph"></a>
+<a id="entity.development.development-host"></a><a id="entity.development.development-operations"></a><a id="entity.development.worktree-lifecycle"></a><a id="entity.development.file-transactions"></a><a id="entity.development.installed-skills"></a><a id="entity.development.developer-runtime"></a><a id="entity.development.langgraph"></a>
 
-Installed Skills explain how the Developer runtime requests an operation. Development capabilities
-are the executable operations to which the Development host dispatches admitted requests. A Capability
-may run ordinary code, use a model, or compose other Capabilities through a Flow. Worktree lifecycle
+Installed Skills explain how the Developer runtime requests an operation. Development operations
+are the executable operations to which the Development host dispatches admitted requests. An Operation
+may run ordinary code, use a model, or compose other Operations through a Graph. Worktree lifecycle
 keeps a candidate's identity and progress, and File transactions applies accepted edits with checks
 against the original state. LangGraph makes the host's ordering and branching inspectable.
 
@@ -61,32 +61,32 @@ operations may need no worker at all. The host checks that choice instead of all
 select arbitrary context or authority.
 
 [Distribution Module](../distribution/module.md) supplies the Skill instructions used by the developer's client. The Development host
-checks and dispatches the resulting request to the selected Capability, obtaining current contracts
-through Spec where needed. When that Capability or one of its composed steps requires model execution,
+checks and dispatches the resulting request to the selected Operation, obtaining current contracts
+through Spec where needed. When that Operation or one of its composed steps requires model execution,
 the host prepares and runs the worker invocation through Harness. It keeps candidate progress
 available when an operation cannot finish.
 
-The solid dispatch edge applies to admitted Capability requests; the dotted worker-execution edge
+The solid dispatch edge applies to admitted Operation requests; the dotted worker-execution edge
 applies only when model execution is needed. A deterministic operation need not start a worker.
 Harness also provides other services, such as isolated checks, which this worker-execution edge
 does not represent.
 
 Candidate sequencing, repairs and ready/stop policy belong to
-[Development Flow](../dev-loop/module.md#usage); independent Spec preparation belongs to
-[Specification Flow](../specify-loop/module.md#usage). Providers are linked in the
-[capability inventory](capabilities.md) and can serve other declared callers under their contracts.
+[Development Graph](../dev-loop/module.md#usage); independent Spec preparation belongs to
+[Specification Graph](../specify-loop/module.md#usage). Providers are linked in the
+[operation inventory](operations.md) and can serve other declared callers under their contracts.
 
 ```mermaid
 flowchart LR
     accTitle: From a developer request to bounded work
-    accDescr: The developer runtime submits a request to the host, which dispatches it to a Capability and obtains current contracts as needed. Only when model execution is needed does the host prepare and run a worker invocation through Harness; other Harness services are outside this view.
+    accDescr: The developer runtime submits a request to the host, which dispatches it to an Operation and obtains current contracts as needed. Only when model execution is needed does the host prepare and run a worker invocation through Harness; other Harness services are outside this view.
     developer["Developer runtime"]
     host["Development host"]
-    capabilities["Development capabilities"]
+    operations["Development operations"]
     spec["Spec"]
     harness["Harness"]
     developer -->|requests an operation from| host
-    host -->|dispatches admitted requests to| capabilities
+    host -->|dispatches admitted requests to| operations
     host -->|obtains current contracts from| spec
     host -.->|prepares and runs worker invocations through<br/>when model execution is needed| harness
 ```
@@ -103,14 +103,14 @@ guarantees and local duties once. A dependency is not another structural parent 
 
 ## Unresolved information
 
-`capability_host.py` still contains invocation-binding mechanics (the freeze, compile, render,
+`operation_host.py` still contains invocation-binding mechanics (the freeze, compile, render,
 launch, execute and validate sequence of `Invocation.stage` and `MainInvocation.stage`) that belong
 to the Harness Module's own host contract; extracting them into a Harness-owned realization is pending.
 
-Capability admission and dispatch, query/discovery, topology authoring and application,
+Operation admission and dispatch, query/discovery, topology authoring and application,
 planning, development and component coordination, and Issue solving execute through compiled
-Flow factories. Deterministic lifecycle operations are nodes in the same public capability Flow.
-Batch authoring, review and finalization use bounded Flow composition. The remaining invocation-binding
+Graph factories. Deterministic lifecycle operations are nodes in the same public operation Graph.
+Batch authoring, review and finalization use bounded Graph composition. The remaining invocation-binding
 ownership gap does not change this Module's promises.
 
 ## Precise specifications

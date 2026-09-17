@@ -17,7 +17,7 @@ Issues keeps a durable record of observed problems and supports their explicit i
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -59,7 +59,7 @@ from Spec authoring. Decisions bind the selected record revision and current inp
 
 <a id="entity.issues.langgraph"></a>
 
-LangGraph compiles the declared `issue_flow` nodes and routes before execution. The host retains
+LangGraph compiles the declared `issue_graph` nodes and routes before execution. The host retains
 attempt counts before model calls, current intended behavior and evidence in candidate bookkeeping.
 No autonomous nested repair escapes the selected goal or the declared iteration limit.
 
@@ -78,7 +78,7 @@ flowchart TB
     solver["Issue solver"]
     development["Development"]
     spec["Spec"]
-    loop["Development Flow"]
+    loop["Development Graph"]
     author["Spec Authoring"]
     review["Review"]
     validation["Validation"]
@@ -99,7 +99,7 @@ flowchart TB
 <a id="entity.issues.development"></a>
 
 [Development Module](../development/module.md) owns typed admission, phase results and candidate progress. Issue operations use its
-[execution boundary](../development/interfaces.md#capability-execution-boundary), preserving its
+[execution boundary](../development/interfaces.md#operation-execution-boundary), preserving its
 configuration, context, permission and failure distinctions. Reporting is a separate limited host
 effect, never worker filesystem write authority or permission to advance a failed stage.
 
@@ -112,7 +112,7 @@ need not remain in a later registry. Invalid current target selections stop solv
 
 <a id="entity.issues.dev-loop"></a>
 
-[Development Flow](../dev-loop/module.md) supplies [ordinary development](../dev-loop/module.md#usage) for the selected goal.
+[Development Graph](../dev-loop/module.md) supplies [ordinary development](../dev-loop/module.md#usage) for the selected goal.
 The Issue runtime preserves the goal, constraints, file boundaries, required checks and independent
 reviews. A blocked child yields a new bounded decision rather than automatic delivery or wider access.
 

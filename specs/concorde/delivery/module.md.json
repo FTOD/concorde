@@ -11,7 +11,7 @@
       "title": "Delivery adapter",
       "kind": "shared program",
       "files": [
-        "capabilities/deliver.py",
+        "operations/deliver.py",
         "tests/concorde/harness/test_worktree_lifecycle.py"
       ],
       "meaning": "#entity.delivery.adapter"
