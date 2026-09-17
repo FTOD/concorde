@@ -41,6 +41,16 @@
       "meaning": "#entity.views.ua-graph-exporter"
     },
     {
+      "id": "entity.views.ua-analysis",
+      "title": "UA analysis bridge",
+      "kind": "program",
+      "files": [
+        "src/concorde/views/ua_analysis.py",
+        "tests/concorde/views/test_ua_analysis.py"
+      ],
+      "meaning": "#entity.views.ua-analysis"
+    },
+    {
       "id": "entity.views.file-transactions",
       "title": "File transactions",
       "kind": "shared program",

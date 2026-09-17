@@ -592,3 +592,85 @@ indentation, literal Unicode and a final newline. Existing object-field order an
 are retained; normalization of absent layers/tour occurs once. Check compares these serialized
 UTF-8 bytes, including formatting, against the existing file; a missing file is drift and is not
 created by `--check`.
+
+## Native UA analysis bridge {#ua-native-analysis-contract}
+
+`ua-analyze --ua-plugin-root PATH` is a developer tool that launches one native Claude process,
+not a Framework Capability invocation. It does not acquire a Framework worker's context or
+permissions. The project must admit its registry and accepted Protocol copy, have a Git HEAD,
+and run on POSIX with Node.js >=22 and an installed Claude executable. The plugin manifest must
+identify `understand-anything` version `2.9.6`, with `skills/understand/SKILL.md` and the built
+`packages/core/dist/index.js` present. Admission does not establish authentication or permission
+readiness; native execution reports those failures. Installation and permission escalation are
+not fallback paths. Other native hosts and plugin versions need explicit adapters.
+
+CLI options are `--claude` (default `claude`), `--model` (native default when absent), `--timeout`
+(positive seconds, default 1800), `--language` (alphanumeric/hyphen code, default `en`), and
+`--prepare-only`. Every invocation writes a run package, so the normal CLI worktree admission
+applies, including explicit `--allow-primary-worktree` for a primary checkout. The native data
+directory is `.understand-anything` when that directory exists, otherwise `.ua`. A graph in the
+other directory makes selection ambiguous and is rejected. Relevant project paths cannot use
+symlink aliases. One atomic `.concorde/runs/ua-analysis.lock` directory serializes bridge runs;
+this does not lock independently invoked UA sessions. Only its acquiring invocation releases it.
+
+Each run uses `.concorde/runs/ua-<random-id>/` and retains:
+
+- `input.json`: schema version 1, root, start time, selected UA directory, plugin identity and
+  Skill digest, accepted Protocol source paths/digests, registry identity, complete per-Module
+  context resolutions and implementation file names, source snapshot, seed digest and input digest.
+- `seed.json`: fresh exporter-derived structure, never an overlay of an existing graph. To use
+  native UA edge vocabulary, context `references` become `related` with a description explicitly
+  distinguishing Spec inclusion from an implementation dependency. Document nodes outside
+  implementation-bearing layers receive `layer:concorde-specs`. Every node has native-required
+  `complexity`, defaulting to provisional `moderate` when the exporter omitted it; this is not
+  an implementation finding. Workers may revise it from code. Other seed identities and declared
+  relations follow the exporter derivation. The installed native schema checks the seed.
+- `prompt.md`: instructions to run full native UA analysis with all three inputs, forward complete
+  relevant Spec context to native workers, carry seed identities/bindings/edges through assembly
+  before architecture and tour, enrich explanations and preserve code discrepancies. It requests
+  native scan exclusions for both UA output directories and `.concorde/runs/` and does not equate
+  registered bindings with the code scan scope. It prohibits source/Spec/registry/git edits,
+  worktree redirects, dependency installation, auto-update setup and automatic Viewer launch.
+- `host.json` and `host.stderr`: native stdout and stderr for a launched run; the former uses
+  Claude's JSON result format. `previous-graph.json` preserves the previous saved graph when present,
+  but is not an all-artifact rollback transaction.
+- `completion.json`: native attestation with matching `input_digest`, `status`, `skipped_phases`
+  and `issues`. Complete requires `status: complete` and both arrays empty. This is an attestation,
+  not independent evidence that every worker read its context or inferred true facts.
+- `receipt.json`: `prepared`, `running`, `complete` or `failed`; failure retains an error rather
+  than classifying partial native artifacts as successful output.
+
+The source snapshot records Git HEAD and exact digests of tracked and nonignored untracked
+regular files, excluding both UA output directories and `.concorde/runs/`. Submodule directories
+are not recursively expanded. This inventory detects workspace changes independently of registered
+implementation bindings; it is not UA's scanner inventory or a promise to analyze every file.
+The separately resolved Protocol and complete Spec contexts remain byte-bound even when ignored
+by Git. UA's own scan/fingerprint checks cover its actual analyzed file inventory.
+
+Launch uses an argv array, not a shell, with `--print --output-format json --no-session-persistence
+--plugin-dir PATH` and optional `--model`. The prompt travels over stdin. Host settings and normal
+permission checks remain active; no bypass-permissions flag is supplied. The process starts in
+the selected root with `UNDERSTAND_NO_WORKTREE_REDIRECT=1`. Timeout/interruption kills its POSIX
+process group and waits for the main process before releasing the lock. There is no automatic
+host retry or fallback. Prepare-only performs no model invocation and returns
+`analysis_status: prepared`, not completion. Logs and native artifacts may contain source-derived
+information and require the same access care as the project.
+
+Successful execution requires a zero host exit, explicit `is_error: false`, no permission denials,
+and a matching complete attestation. The graph must differ from the previously saved graph, pass
+the installed UA `KnowledgeGraphSchema` without normalization, have unique node/layer identities
+and no dangling edges, preserve each seed node ID/type/filePath and each seed edge triple, have
+valid unique layer assignments for file-level nodes, and have no dangling tour references.
+Native metadata, fingerprints and retained `intermediate/scan-result.json` must be present. The
+nonempty scanned file inventory must be covered by graph file paths and fingerprint entries;
+each scanned content hash must match current source. Metadata's analyzed-file count and the
+metadata/fingerprint/project Git revisions must match the scan and input HEAD, and metadata's
+analysis timestamp cannot predate the run. Source snapshots and resolved Protocol/Spec contexts
+must still match preparation. The adapter checks but never reapplies the exporter after analysis.
+
+Failure may leave partial native UA files. It does not automatically restore a saved graph over
+possible concurrent edits or claim that old fingerprints and new graph data are mutually current.
+Receipts and logs support diagnosis and deliberate recovery. An abrupt adapter crash can leave
+its lock; an operator first verifies no native analysis remains active, then removes the stale
+lock. These checks establish structural compatibility and bounded freshness evidence, not Spec
+conformance, semantic accuracy or a filesystem sandbox.

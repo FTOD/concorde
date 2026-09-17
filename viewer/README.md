@@ -10,7 +10,55 @@ the graph is up to date with source.
 The [docsite](../docsite/README.md) provides the complementary view of authored Module Specs,
 composition, dependencies and architecture diagrams.
 
-## Do I need both commands every time?
+## Generate a combined Spec and code graph
+
+The `ua-analyze` bridge prepares a Spec-derived seed and Protocol/Spec context, then starts
+Understand Anything's **entire native analysis flow** against project code. UA owns scanning,
+workers, architecture analysis, tour generation and saving; Concorde checks the result without
+applying another overlay. You do not need to run `ua-graph` before or after it.
+
+First install and build the **Understand Anything 2.9.6 Claude plugin** separately, and authenticate
+Claude Code with permissions appropriate for native UA analysis. This is not the Viewer package
+installed by `npm --prefix viewer ci`. The initial bridge requires POSIX, Git with a committed HEAD,
+Node.js 22+, and the Claude CLI. It does not install dependencies or bypass permission checks.
+
+From this source checkout:
+
+```bash
+python3 scripts/concorde.py ua-analyze \
+  --ua-plugin-root /absolute/path/to/understand-anything-plugin \
+  --allow-primary-worktree
+```
+
+For a project with Concorde installed, replace `scripts/concorde.py` with
+`.concorde/framework/scripts/concorde.py`. Point `--ua-plugin-root` at the directory containing
+`.claude-plugin/plugin.json`, `skills/understand/SKILL.md` and `packages/core/dist/index.js`.
+
+Useful options:
+
+- `--prepare-only`: inspect the seed, context indexes and prompt without invoking a model or
+  replacing the saved graph. The result is preparation, not completed analysis.
+- `--claude /path/to/claude`, `--model MODEL`: select the native executable/model; omitted model
+  uses the host default, not Concorde's Pi worker configuration.
+- `--timeout 1800`, `--language en`: native-host time limit and graph language.
+
+This first version always runs full analysis, including dirty code and Spec-only changes. It
+accepts UA's scan-size/ignore-rule confirmation prompts on your behalf; review your ignore rules
+first. Project source/Specs are read-only task inputs, but the native host's permissions—not the
+prompt—are the enforcement boundary. Keep project hooks enabled and do not run another analysis
+or source editor concurrently. Normal permission denials stop the run rather than trigger a bypass.
+
+A result with `analysis_status: complete` identifies the graph and its run directory under
+`.concorde/runs/`. The run stores the prompt, input digests, host logs and receipt. Completion
+checks native schema, preserved seed relationships, scan/fingerprint coverage and input freshness;
+it is not proof of AI accuracy. Failure may leave partial UA artifacts. Inspect logs and the saved
+previous graph before deliberately recovering; the bridge does not silently roll back user files.
+The native process stays in the selected worktree, and no Viewer is automatically launched.
+
+After successful analysis, use the Viewer startup command below. For exact details, see
+[UA graph generation](../specs/concorde/views/ua-graph.md#native-analysis).
+
+## Do I need both export and Viewer commands every time?
 
 **No. If a graph already exists, starting the Viewer is the only command you need.** The two
 commands perform separate jobs:

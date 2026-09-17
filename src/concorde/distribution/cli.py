@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from ..spec.diagnostics import canonical_json, envelope, exit_code, tool_envelope
 from ..spec.model import Finding, ToolResult
@@ -38,8 +38,20 @@ def create_parser() -> argparse.ArgumentParser:
     ua_graph.add_argument("--allow-primary-worktree", action="store_true")
     ua_graph.add_argument("--format", choices=["json"], default="json")
 
+    ua_analyze = subparsers.add_parser("ua-analyze")
+    ua_analyze.add_argument("--ua-plugin-root", required=True)
+    ua_analyze.add_argument("--claude", default="claude")
+    ua_analyze.add_argument("--timeout", type=int, default=1800)
+    ua_analyze.add_argument("--model")
+    ua_analyze.add_argument("--language", default="en")
+    ua_analyze.add_argument("--prepare-only", action="store_true")
+    ua_analyze.add_argument("--allow-primary-worktree", action="store_true")
+    ua_analyze.add_argument("--format", choices=["json"], default="json")
+
     build = subparsers.add_parser("build")
-    build.add_argument("--integration", choices=["claude", "codex", "all"], default="all")
+    build.add_argument(
+        "--integration", choices=["claude", "codex", "all"], default="all"
+    )
     build.add_argument("--check", action="store_true")
     build.add_argument("--format", choices=["json"], default="json")
 
@@ -49,7 +61,10 @@ def create_parser() -> argparse.ArgumentParser:
     protocol_manifest.add_argument("--format", choices=["json"], default="json")
 
     usage = subparsers.add_parser("usage")
-    usage.add_argument("--run", help="root invocation id of one capability run; default: every recorded run")
+    usage.add_argument(
+        "--run",
+        help="root invocation id of one capability run; default: every recorded run",
+    )
     usage.add_argument("--format", choices=["json"], default="json")
     return parser
 
@@ -61,13 +76,36 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
 
         records = read_usage(root, arguments.run)
         if arguments.run and not records:
-            return ToolResult("usage", ".", "invalid", findings=(Finding(
-                "CONCORDE-USAGE-001", "error", f".concorde/runs/{arguments.run}/usage.jsonl",
-                "no usage records exist for this run",
-                "Pass the root invocation id printed by the capability result, or omit --run."),))
-        return ToolResult("usage", ".", "success",
-                          result={"runs": sorted({r.get("root_invocation_id") for r in records if r.get("root_invocation_id")}),
-                                  "records": len(records), **summarize_usage(records)})
+            return ToolResult(
+                "usage",
+                ".",
+                "invalid",
+                findings=(
+                    Finding(
+                        "CONCORDE-USAGE-001",
+                        "error",
+                        f".concorde/runs/{arguments.run}/usage.jsonl",
+                        "no usage records exist for this run",
+                        "Pass the root invocation id printed by the capability result, or omit --run.",
+                    ),
+                ),
+            )
+        return ToolResult(
+            "usage",
+            ".",
+            "success",
+            result={
+                "runs": sorted(
+                    {
+                        r["root_invocation_id"]
+                        for r in records
+                        if r.get("root_invocation_id")
+                    }
+                ),
+                "records": len(records),
+                **summarize_usage(records),
+            },
+        )
     if arguments.tool == "docsite":
         from ..views.docsite_scaffold import apply_docsite, propose_docsite
 
@@ -77,7 +115,15 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                     "docsite",
                     ".",
                     "invalid",
-                    findings=(Finding("CONCORDE-DOCSITE-008", "error", "docsite/site.json", "--apply requires --proposal.", "Pass a project-relative accepted proposal JSON file."),),
+                    findings=(
+                        Finding(
+                            "CONCORDE-DOCSITE-008",
+                            "error",
+                            "docsite/site.json",
+                            "--apply requires --proposal.",
+                            "Pass a project-relative accepted proposal JSON file.",
+                        ),
+                    ),
                 )
             return apply_docsite(root, arguments.proposal)
         return propose_docsite(
@@ -92,6 +138,18 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
         from ..views.ua_graph import export_ua_graph
 
         return export_ua_graph(root, check=arguments.check)
+    if arguments.tool == "ua-analyze":
+        from ..views.ua_analysis import analyze_ua
+
+        return analyze_ua(
+            root,
+            plugin_root=arguments.ua_plugin_root,
+            claude=arguments.claude,
+            timeout=arguments.timeout,
+            model=arguments.model,
+            language=arguments.language,
+            prepare_only=arguments.prepare_only,
+        )
     if arguments.tool == "build":
         from .build import BuildError, check_build, write_build
 
@@ -99,7 +157,9 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
             if arguments.check:
                 current, differences = check_build(root, arguments.integration)
                 if current:
-                    return ToolResult("build", ".", "success", result={"differences": []})
+                    return ToolResult(
+                        "build", ".", "success", result={"differences": []}
+                    )
                 return ToolResult(
                     "build",
                     ".",
@@ -116,8 +176,16 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                     result={"differences": list(differences)},
                 )
             result = write_build(root, arguments.integration)
-            artifacts = tuple(output.path for output in result.outputs) + ("generated/build-manifest.json",)
-            return ToolResult("build", ".", "success", artifacts=artifacts, result={"outputs": len(result.outputs)})
+            artifacts = tuple(output.path for output in result.outputs) + (
+                "generated/build-manifest.json",
+            )
+            return ToolResult(
+                "build",
+                ".",
+                "success",
+                artifacts=artifacts,
+                result={"outputs": len(result.outputs)},
+            )
         except BuildError as error:
             return ToolResult(
                 "build",
@@ -150,22 +218,40 @@ def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
 
     import json as json_module
 
-    from .build import BuildError, PROTOCOL_MANIFEST_PATH, recompute_protocol_manifest, verify_fresh
     from ..spec.repository import digest as digest_bytes
+    from .build import (
+        PROTOCOL_MANIFEST_PATH,
+        BuildError,
+        recompute_protocol_manifest,
+        verify_fresh,
+    )
 
     root = Path(arguments.project_root)
     try:
         verify_fresh(root)
         updated = recompute_protocol_manifest(root)
     except BuildError as error:
-        return ToolResult("protocol-manifest", ".", "invalid", findings=(
-            Finding("CONCORDE-PROTOCOL-MANIFEST-001", "error", PROTOCOL_MANIFEST_PATH, str(error),
-                    "Run `python -m concorde build` to refresh generated/protocol/ outputs."),
-        ))
+        return ToolResult(
+            "protocol-manifest",
+            ".",
+            "invalid",
+            findings=(
+                Finding(
+                    "CONCORDE-PROTOCOL-MANIFEST-001",
+                    "error",
+                    PROTOCOL_MANIFEST_PATH,
+                    str(error),
+                    "Run `python -m concorde build` to refresh generated/protocol/ outputs.",
+                ),
+            ),
+        )
     manifest_path = root / PROTOCOL_MANIFEST_PATH
     current = json_module.loads(manifest_path.read_text(encoding="utf-8"))
-    differences = [item["path"] for item, fresh in zip(current["assets"], updated["assets"])
-                   if item["digest"] != fresh["digest"]]
+    differences = [
+        item["path"]
+        for item, fresh in zip(current["assets"], updated["assets"], strict=False)
+        if item["digest"] != fresh["digest"]
+    ]
     artifacts: tuple[str, ...] = ()
     if arguments.write and differences:
         manifest_path.write_text(json_module.dumps(updated, indent=2) + "\n")
@@ -174,19 +260,40 @@ def _protocol_manifest(arguments: argparse.Namespace) -> ToolResult:
         # The source checkout has no installer run: bind the configuration to the current manifest
         # and refresh its Protocol copy under .concorde/protocol/ from the current build.
         from .project_defaults import PROTOCOL_DIR, write_protocol_copy
+
         config_path = root / ".concorde/config.json"
         config = json_module.loads(config_path.read_text(encoding="utf-8"))
-        config["protocol"] = {"version": updated["version"], "digest": digest_bytes(manifest_path.read_bytes())}
+        config["protocol"] = {
+            "version": updated["version"],
+            "digest": digest_bytes(manifest_path.read_bytes()),
+        }
         config_path.write_text(json_module.dumps(config, indent=2) + "\n")
         write_protocol_copy(root, root)
         artifacts += (".concorde/config.json", PROTOCOL_DIR + "/")
     if differences and not arguments.write:
-        return ToolResult("protocol-manifest", ".", "invalid", artifacts=artifacts, findings=(
-            Finding("CONCORDE-PROTOCOL-MANIFEST-001", "error", PROTOCOL_MANIFEST_PATH,
+        return ToolResult(
+            "protocol-manifest",
+            ".",
+            "invalid",
+            artifacts=artifacts,
+            findings=(
+                Finding(
+                    "CONCORDE-PROTOCOL-MANIFEST-001",
+                    "error",
+                    PROTOCOL_MANIFEST_PATH,
                     f"tracked Protocol manifest digests differ from the current build: {differences}",
-                    "Run `python -m concorde protocol-manifest --write` to accept the current build's digests."),
-        ), result={"differences": differences})
-    return ToolResult("protocol-manifest", ".", "success", artifacts=artifacts, result={"differences": differences})
+                    "Run `python -m concorde protocol-manifest --write` to accept the current build's digests.",
+                ),
+            ),
+            result={"differences": differences},
+        )
+    return ToolResult(
+        "protocol-manifest",
+        ".",
+        "success",
+        artifacts=artifacts,
+        result={"differences": differences},
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -198,7 +305,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             payload = tool_envelope(_protocol_manifest(arguments))
             sys.stdout.write(canonical_json(payload))
             return exit_code(payload["status"])
-        mutation = arguments.tool == "docsite" or (
+        mutation = arguments.tool in {"docsite", "ua-analyze"} or (
             arguments.tool == "ua-graph" and not arguments.check
         )
         if mutation:
@@ -212,16 +319,37 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         result = dispatch(arguments)
         payload = tool_envelope(result)
-    except Exception as error:  # command boundary: always return the normative envelope
-        tool = arguments.tool if arguments is not None else (argv[0] if argv else "validate")
+    except Exception as error:  # noqa: BLE001 -- command boundary always returns the normative envelope
+        tool = (
+            arguments.tool
+            if arguments is not None
+            else (argv[0] if argv else "validate")
+        )
         payload = envelope(
             tool
-            if tool in {"validate", "docsite", "build", "protocol-manifest", "ua-graph", "usage"}
+            if tool
+            in {
+                "validate",
+                "docsite",
+                "build",
+                "protocol-manifest",
+                "ua-graph",
+                "ua-analyze",
+                "usage",
+            }
             else "validate",
             ".",
             "failed",
             [],
-            [Finding("CONCORDE-RUN-001", "error", ".concorde/config.json", str(error), "Correct the project configuration or runtime environment and retry.")],
+            [
+                Finding(
+                    "CONCORDE-RUN-001",
+                    "error",
+                    ".concorde/config.json",
+                    str(error),
+                    "Correct the project configuration or runtime environment and retry.",
+                )
+            ],
             {},
         )
     sys.stdout.write(canonical_json(payload))

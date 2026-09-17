@@ -455,3 +455,47 @@ Context references are distinct graph edges and never acquire contains/depends_o
 referenced document stays in its owner's layer; neither its implementation files nor its owner's
 references are imported. The exporter uses the schema-5 registry and keeps ownership, references and implementation listings separate. Existing external overlay
 admission remains contract version 1: the new edge type fits its open string type vocabulary.
+
+## Native UA analysis
+
+### scenario.views.ua-analysis-input — Prepare all three inputs without replacing a saved graph
+
+- GIVEN an admitted project with Protocol, paired Specs, bound code and unbound project code
+- WHEN the native analysis bridge prepares a run with `--prepare-only`
+- THEN it saves a separate UA-native seed, complete per-Module context indexes, Protocol source identities and a source snapshot that is not limited to registered bindings
+- AND both reading and metadata sources retain ownership, provenance and digests
+- AND it leaves an existing graph unchanged and starts no model analysis
+- AND the result identifies preparation rather than completed analysis
+
+### scenario.views.ua-analysis-native-host — One native invocation owns UA's entire flow
+
+- GIVEN a prepared run and an admitted installed UA plugin and Claude host
+- WHEN the bridge runs native analysis
+- THEN it invokes the host once in the selected project root with the input prompt and plugin, without bypassing permissions
+- AND it disables worktree redirection and requests full analysis using Protocol, Specs and project code
+- AND the prompt carries seed structure through native assembly before architecture and tour, admits unbound code through native scanning, and distinguishes declarations from observations
+- AND the bridge checks the native result without a second exporter overlay or automatic Viewer launch
+- AND an existing legacy UA directory is used consistently by native analysis and output checking
+
+### scenario.views.ua-analysis-admission — Reject unavailable, ambiguous or competing execution
+
+- GIVEN a missing or unsupported plugin/runtime, unsafe output path, ambiguous UA directories, an existing bridge lock, or a primary checkout without explicit write permission
+- WHEN native analysis is requested
+- THEN it fails before launching model analysis
+- AND it does not install dependencies, follow output symlinks, redirect to another checkout or remove another invocation's lock
+
+### scenario.views.ua-analysis-output-gate — Do not mistake saved or partial data for completion
+
+- GIVEN native host output that is partial, unchanged from the previous graph, missing declared seed structure, structurally invalid, missing scan coverage, denied permission, stale against source or paired Spec inputs, or missing valid native metadata and fingerprints
+- WHEN the bridge checks the result
+- THEN it reports failure rather than successful analysis
+- AND it retains the run receipt and available diagnostic artifacts
+- AND only a complete current result satisfying the native analysis contract returns `analysis_status: complete`
+
+### scenario.views.ua-analysis-failure — Native failure and cancellation remain inspectable
+
+- GIVEN a native analysis that exits unsuccessfully, times out or is interrupted
+- WHEN the bridge handles that failure
+- THEN it records failure with available host logs and preserves partial native files for diagnosis
+- AND on timeout or interruption it terminates the native process group before releasing its own lock
+- AND it neither retries through a different host nor automatically restores over possible user changes

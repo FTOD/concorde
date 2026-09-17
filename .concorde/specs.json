@@ -126,12 +126,15 @@
         "{python}",
         "-m",
         "unittest",
-        "tests.concorde.views.test_ua_graph"
+        "tests.concorde.views.test_ua_graph",
+        "tests.concorde.views.test_ua_analysis"
       ],
       "id": "check.views.ua-graph",
       "inputs": [
         "src/concorde/views/ua_graph.py",
+        "src/concorde/views/ua_analysis.py",
         "tests/concorde/views/test_ua_graph.py",
+        "tests/concorde/views/test_ua_analysis.py",
         ".concorde/specs.json"
       ],
       "target_id": "module.views",
@@ -810,8 +813,10 @@
         "scripts/run-ua-graph-viewer.py",
         "src/concorde/spec/changes.py",
         "src/concorde/views/",
+        "src/concorde/views/ua_analysis.py",
         "src/concorde/views/ua_graph.py",
         "tests/concorde/views/",
+        "tests/concorde/views/test_ua_analysis.py",
         "tests/concorde/views/test_ua_graph.py",
         "tests/concorde/views/test_viewer_launcher.py"
       ],
