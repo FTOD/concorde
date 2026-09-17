@@ -46,6 +46,7 @@
       "kind": "program",
       "files": [
         "src/concorde/views/ua_analysis.py",
+        "src/concorde/views/ua_native_host.py",
         "tests/concorde/views/test_ua_analysis.py"
       ],
       "meaning": "#entity.views.ua-analysis"

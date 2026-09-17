@@ -45,6 +45,9 @@ def create_parser() -> argparse.ArgumentParser:
     ua_analyze.add_argument("--model")
     ua_analyze.add_argument("--language", default="en")
     ua_analyze.add_argument("--prepare-only", action="store_true")
+    ua_analyze.add_argument("--approve-native-tools", action="store_true")
+    ua_analyze.add_argument("--probe-only", action="store_true")
+    ua_analyze.add_argument("--probe-model", default="haiku")
     ua_analyze.add_argument("--allow-primary-worktree", action="store_true")
     ua_analyze.add_argument("--format", choices=["json"], default="json")
 
@@ -149,6 +152,9 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
             model=arguments.model,
             language=arguments.language,
             prepare_only=arguments.prepare_only,
+            approve_native_tools=arguments.approve_native_tools,
+            probe_only=arguments.probe_only,
+            probe_model=arguments.probe_model,
         )
     if arguments.tool == "build":
         from .build import BuildError, check_build, write_build

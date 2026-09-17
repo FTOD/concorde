@@ -58,15 +58,18 @@ For a graph that explains actual implementation alongside declared structure, ru
 ```bash
 python3 scripts/concorde.py ua-analyze \
   --ua-plugin-root /absolute/path/to/understand-anything-plugin \
-  --allow-primary-worktree
+  --approve-native-tools --allow-primary-worktree
 ```
 
 In an installed project, use `python3 .concorde/framework/scripts/concorde.py` instead.
 The analysis plugin is separate from the Viewer package. The first adapter supports the installed,
 already-built Understand Anything 2.9.6 Claude plugin, a POSIX host, Node.js 22 or newer, and a
-working authenticated Claude CLI. It neither installs these dependencies nor bypasses host
-permissions. Configure required native permissions beforehand; a denial in a noninteractive run
-is a failure, not permission to switch hosts or escalate privileges. Use `--claude` for a different
+working authenticated Claude Code 2.1.273 or newer. It neither installs these dependencies nor
+bypasses host permissions. `--approve-native-tools` explicitly admits a run-local permission
+overlay for plugin reads, artifact/report writes and Node/Python execution for native analysis.
+It does not edit project/user settings or disable their hooks and denials. Interpreter execution
+is not a filesystem sandbox: approve it only for a trusted plugin and project. A denial remains
+a failure, not permission to switch hosts or escalate privileges. Use `--claude` for a different
 Claude executable path and `--model` to select its model; otherwise the native host chooses its
 configured default. `--timeout` bounds the host run in seconds; `--language` selects output
 language, defaulting to English. No Viewer is started automatically.
@@ -74,6 +77,13 @@ language, defaulting to English. No Viewer is started automatically.
 Add `--prepare-only` to inspect the input package without invoking a model. Preparation still
 checks the local runtime and plugin and writes its own run artifacts; it neither creates nor
 overwrites the project's saved graph. Its result says **prepared**, not **analysis complete**.
+
+Every execution first runs a bounded live permission probe using a small model. It exercises
+plugin reads, the native scanner, a real child invocation and scoped report writes before the
+full analysis can spend tokens. Add `--probe-only --approve-native-tools` to run just this probe;
+its result says **probe passed**, not **analysis complete**. `--probe-model` can select another
+native model if the default is unavailable. Successful probing tests representative operations,
+not every future generated command, and never replaces the full analysis.
 
 The bridge first derives a separate UA-native seed and complete per-Module Spec context indexes.
 The indexes retain reading/metadata pairs, ownership, inclusion provenance and exact-byte digests;
@@ -91,7 +101,11 @@ accepts native scan-size and ignore-file confirmations, including generation of 
 file when absent; review existing ignore rules before launching. This does not authorize dependency
 installation, source edits or permission bypasses. The bridge directs writes to UA artifacts and
 its completion report, but these instructions are not a sandbox: the native host still has its
-normal developer-session permissions and project hooks. Do not run it concurrently with another
+normal developer-session permissions and project hooks. The host prepares directories and Git
+identity before the model starts, preserves previous scratch by moving it into a run-specific
+archive, and disables optional native trash purging and scratch cleanup. This preserves evidence
+and avoids unrelated destructive shell operations; all native analysis phases remain required.
+Do not run it concurrently with another
 UA process or source editing session. It never redirects a linked worktree to the primary checkout.
 
 Each run retains its input package, prompt, host logs and receipt under `.concorde/runs/`. Success

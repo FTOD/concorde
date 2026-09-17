@@ -469,9 +469,9 @@ admission remains contract version 1: the new edge type fits its open string typ
 
 ### scenario.views.ua-analysis-native-host — One native invocation owns UA's entire flow
 
-- GIVEN a prepared run and an admitted installed UA plugin and Claude host
+- GIVEN a prepared run, an admitted installed UA plugin and Claude host, and a successful bounded permission probe
 - WHEN the bridge runs native analysis
-- THEN it invokes the host once in the selected project root with the input prompt and plugin, without bypassing permissions
+- THEN it invokes the full-analysis host once in the selected project root with the input prompt and plugin, without bypassing permissions
 - AND it disables worktree redirection and requests full analysis using Protocol, Specs and project code
 - AND the prompt carries seed structure through native assembly before architecture and tour, admits unbound code through native scanning, and distinguishes declarations from observations
 - AND the bridge checks the native result without a second exporter overlay or automatic Viewer launch
@@ -499,3 +499,15 @@ admission remains contract version 1: the new edge type fits its open string typ
 - THEN it records failure with available host logs and preserves partial native files for diagnosis
 - AND on timeout or interruption it terminates the native process group before releasing its own lock
 - AND it neither retries through a different host nor automatically restores over possible user changes
+
+### scenario.views.ua-analysis-permission-probe — Test the real permission boundary before full analysis
+
+- GIVEN a developer requesting native UA execution
+- WHEN the bridge admits the request
+- THEN execution requires explicit temporary native-tool consent and authenticated host status before model work
+- AND prepare-only remains model-free and does not activate its generated permission overlay
+- AND the overlay preserves project/managed denials and hooks without editing persistent settings or bypassing permissions
+- AND a bounded live probe exercises the actual plugin, native scanner, child invocation and report writes
+- AND a denied, incomplete or failed probe prevents full analysis
+- AND probe-only reports probe completion rather than graph completion
+- AND old native scratch remains in a run-specific archive rather than being purged or reused as fresh batches

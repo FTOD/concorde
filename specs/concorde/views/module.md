@@ -93,7 +93,11 @@ independent of reading publication and grant no additional agent context.
 UA analysis bridge treats the native Understand Anything flow as one external operation. It
 prepares declared structure and byte-bound Protocol/Spec context indexes before launching the
 native host, while project code remains an independent input to UA's scanner and analyzers.
-This avoids duplicating UA's worker scheduling in Concorde. Afterwards it checks the native
+This avoids duplicating UA's worker scheduling in Concorde. Execution requires explicit temporary
+native-tool consent and first exercises a real bounded permission probe, including an inherited
+child invocation, so missing native permissions block before whole-project model analysis. The
+host prepares directories and Git identity and retains scratch rather than asking the model to
+purge it; managed/project denials and hooks remain active. Afterwards it checks the native
 schema, declared identities and relationships, scan coverage and input freshness without
 reapplying an overlay that would discard AI enrichment. This is a developer-authorized native
 host tool, not a bounded Framework worker or a new Framework Capability. Its prompt is guidance,

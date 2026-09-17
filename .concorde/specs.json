@@ -133,6 +133,7 @@
       "inputs": [
         "src/concorde/views/ua_graph.py",
         "src/concorde/views/ua_analysis.py",
+        "src/concorde/views/ua_native_host.py",
         "tests/concorde/views/test_ua_graph.py",
         "tests/concorde/views/test_ua_analysis.py",
         ".concorde/specs.json"
@@ -815,6 +816,7 @@
         "src/concorde/views/",
         "src/concorde/views/ua_analysis.py",
         "src/concorde/views/ua_graph.py",
+        "src/concorde/views/ua_native_host.py",
         "tests/concorde/views/",
         "tests/concorde/views/test_ua_analysis.py",
         "tests/concorde/views/test_ua_graph.py",

@@ -20,14 +20,14 @@ applying another overlay. You do not need to run `ua-graph` before or after it.
 First install and build the **Understand Anything 2.9.6 Claude plugin** separately, and authenticate
 Claude Code with permissions appropriate for native UA analysis. This is not the Viewer package
 installed by `npm --prefix viewer ci`. The initial bridge requires POSIX, Git with a committed HEAD,
-Node.js 22+, and the Claude CLI. It does not install dependencies or bypass permission checks.
+Node.js 22+, and Claude Code >=2.1.273. It does not install dependencies or bypass permission checks.
 
 From this source checkout:
 
 ```bash
 python3 scripts/concorde.py ua-analyze \
   --ua-plugin-root /absolute/path/to/understand-anything-plugin \
-  --allow-primary-worktree
+  --approve-native-tools --allow-primary-worktree
 ```
 
 For a project with Concorde installed, replace `scripts/concorde.py` with
@@ -38,6 +38,14 @@ Useful options:
 
 - `--prepare-only`: inspect the seed, context indexes and prompt without invoking a model or
   replacing the saved graph. The result is preparation, not completed analysis.
+- `--approve-native-tools`: explicitly activate a run-local permission overlay for plugin reads,
+  artifact/report writes and Node/Python execution for native UA analysis. Persistent settings,
+  project hooks and managed/project denials remain in effect. Interpreter execution is not a
+  filesystem sandbox; approve only trusted plugin code and analysis glue.
+- `--probe-only --approve-native-tools`: run only the bounded real permission probe, without
+  replacing the saved graph. Every full run first performs this probe automatically. It uses
+  `--probe-model haiku` by default, a $0.50 cost cap and a maximum 180-second timeout, checking
+  representative native script and child permissions before whole-project model work.
 - `--claude /path/to/claude`, `--model MODEL`: select the native executable/model; omitted model
   uses the host default, not Concorde's Pi worker configuration.
 - `--timeout 1800`, `--language en`: native-host time limit and graph language.
@@ -47,6 +55,10 @@ accepts UA's scan-size/ignore-rule confirmation prompts on your behalf; review y
 first. Project source/Specs are read-only task inputs, but the native host's permissions—not the
 prompt—are the enforcement boundary. Keep project hooks enabled and do not run another analysis
 or source editor concurrently. Normal permission denials stop the run rather than trigger a bypass.
+The bridge prepares directories/Git identity and archives previous scratch without deleting it.
+The native profile disables trash purging, scratch cleanup, auto-update setup and Viewer launch;
+these maintenance/UI side effects are not needed for analysis. All native analysis phases remain
+required, and scan/batch/review evidence stays available after completion.
 
 A result with `analysis_status: complete` identifies the graph and its run directory under
 `.concorde/runs/`. The run stores the prompt, input digests, host logs and receipt. Completion

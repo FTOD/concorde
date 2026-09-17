@@ -26,9 +26,29 @@ from tests.concorde.views.test_ua_graph import build_project
 FAKE_HOST = r"""#!/usr/bin/env python3
 import datetime, hashlib, json, os, pathlib, re, subprocess, sys, time
 if '--version' in sys.argv:
-    print('Fake Claude test host')
+    print('2.1.273 (Fake Claude test host)')
+    sys.exit(0)
+if '--help' in sys.argv:
+    print('--settings --add-dir --append-system-prompt --max-budget-usd')
+    sys.exit(0)
+mode = os.environ.get('UA_FAKE_MODE', 'success')
+if sys.argv[1:3] == ['auth', 'status']:
+    print(json.dumps({'loggedIn': mode != 'unauthenticated'}))
     sys.exit(0)
 prompt = sys.stdin.read()
+if prompt.startswith('CONCORDE_UA_PERMISSION_PROBE'):
+    run = pathlib.Path(json.loads(re.search(r'^Probe run directory: (.+)$', prompt, re.M).group(1)))
+    nonce = re.search(r'^Probe nonce: (.+)$', prompt, re.M).group(1)
+    (run / 'observed-probe.json').write_text(json.dumps({'argv': sys.argv[1:], 'prompt': prompt}))
+    inputs = json.loads((run / 'input.json').read_text())
+    scan = pathlib.Path(inputs['ua_directory']) / 'tmp/concorde-permission-scan.json'
+    scan.write_text(json.dumps({'files': [{'path': 'src/alpha/core.py'}]}))
+    report = json.dumps({'nonce': nonce, 'status': 'complete'})
+    (run / 'probe-parent.json').write_text(report)
+    if mode != 'probe-missing-child':
+        (run / 'probe-child.json').write_text(report)
+    print(json.dumps({'is_error': False, 'permission_denials': ['Bash'] if mode == 'probe-permission' else [], 'subagent_stats': {'spawned': 1}}))
+    sys.exit(0)
 run_input = pathlib.Path(json.loads(re.search(r'^Input manifest: (.+)$', prompt, re.M).group(1)))
 run = run_input.parent
 inputs = json.loads(run_input.read_text())
@@ -154,7 +174,11 @@ class UaAnalysisTests(unittest.TestCase):
     def run_analysis(self, mode="success", **kwargs):
         with patch.dict(os.environ, {"UA_FAKE_MODE": mode}):
             return analyze_ua(
-                self.root, plugin_root=str(self.plugin), claude=str(self.host), **kwargs
+                self.root,
+                plugin_root=str(self.plugin),
+                claude=str(self.host),
+                approve_native_tools=True,
+                **kwargs,
             )
 
     def read_run(self, result, name):
@@ -182,7 +206,7 @@ class UaAnalysisTests(unittest.TestCase):
         self.assertFalse((self.root / result.result["run"] / "observed.json").exists())
 
     @verifies("scenario.views.ua-analysis-native-host")
-    def test_native_host_is_one_process_with_seed_specs_and_code(self):
+    def test_native_analysis_follows_a_bounded_probe_with_seed_specs_and_code(self):
         result = self.run_analysis(model="test-model")
         self.assertEqual("success", result.status, result.findings)
         observed = self.read_run(result, "observed.json")
@@ -190,6 +214,15 @@ class UaAnalysisTests(unittest.TestCase):
         self.assertEqual(str(self.root), observed["cwd"])
         self.assertIn("--plugin-dir", observed["argv"])
         self.assertIn("test-model", observed["argv"])
+        self.assertIn("--settings", observed["argv"])
+        self.assertIn("--add-dir", observed["argv"])
+        probe = self.read_run(result, "observed-probe.json")
+        self.assertIn("--max-budget-usd", probe["argv"])
+        self.assertIn("0.50", probe["argv"])
+        settings = self.read_run(result, "native-settings.json")
+        self.assertNotIn("Bash", settings["permissions"]["allow"])
+        self.assertNotIn("hooks", settings)
+        self.assertIn("Bash(git commit *)", settings["permissions"]["deny"])
         self.assertNotIn("--dangerously-skip-permissions", observed["argv"])
         self.assertNotIn("--setting-sources", observed["argv"])
         self.assertIn("--full", observed["prompt"])
@@ -201,6 +234,46 @@ class UaAnalysisTests(unittest.TestCase):
         self.assertTrue(
             any(n["summary"] == "Enriched by native host" for n in graph["nodes"])
         )
+
+    @verifies("scenario.views.ua-analysis-permission-probe")
+    def test_explicit_consent_and_authentication_are_required(self):
+        result = analyze_ua(
+            self.root, plugin_root=str(self.plugin), claude=str(self.host)
+        )
+        self.assertEqual("failed", result.status)
+        self.assertIn("--approve-native-tools", result.findings[0].message)
+        self.assertFalse((self.root / ".concorde/runs").exists())
+        result = self.run_analysis("unauthenticated")
+        self.assertEqual("failed", result.status)
+        run = self.root / result.artifacts[0]
+        self.assertFalse((run / "observed-probe.json").exists())
+        self.assertFalse((run / "observed.json").exists())
+
+    @verifies("scenario.views.ua-analysis-permission-probe")
+    def test_probe_failure_never_launches_full_analysis(self):
+        for mode in ("probe-permission", "probe-missing-child"):
+            with self.subTest(mode=mode):
+                result = self.run_analysis(mode)
+                self.assertEqual("failed", result.status)
+                run = self.root / result.artifacts[0]
+                self.assertTrue((run / "probe-host.json").exists())
+                self.assertFalse((run / "observed.json").exists())
+
+    @verifies("scenario.views.ua-analysis-permission-probe")
+    def test_probe_only_retains_prior_scratch_without_advancing_graph(self):
+        tmp = self.root / ".ua/tmp"
+        tmp.mkdir(parents=True)
+        (tmp / "old.json").write_text("old evidence")
+        graph = self.root / ".ua/knowledge-graph.json"
+        graph.write_text('{"old":true}')
+        result = self.run_analysis(probe_only=True)
+        self.assertEqual("success", result.status, result.findings)
+        self.assertEqual("probe_passed", result.result["analysis_status"])
+        run = self.root / result.result["run"]
+        archive = run / "previous-scratch/tmp/old.json"
+        self.assertEqual("old evidence", archive.read_text())
+        self.assertEqual('{"old":true}', graph.read_text())
+        self.assertFalse((run / "observed.json").exists())
 
     @verifies("scenario.views.ua-analysis-output-gate")
     def test_partial_invalid_and_changed_inputs_never_succeed(self):

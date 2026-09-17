@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -21,6 +22,12 @@ from ..spec.model import Finding, ToolResult
 from ..spec.repository import SpecRepository, digest, read_file
 from ..spec.typed_data import checked_path
 from .ua_graph import _atomic_write, _derive_graph, _load_graph
+from .ua_native_host import (
+    native_settings,
+    prepare_native_workspace,
+    probe_prompt,
+    profile_prompt,
+)
 
 SUPPORTED_UA_VERSION = "2.9.6"
 RUNS = ".concorde/runs"
@@ -146,14 +153,22 @@ UA data directory: {json.dumps(ua_dir)}
 Input manifest: {json.dumps(run + "/input.json")}
 UA-native seed graph: {json.dumps(run + "/seed.json")}
 
-Read the manifest and seed before analysis. Read the installed skill at
+Read {json.dumps(run + "/overview.json")} first for a small index. Do not dump the
+megabyte-sized input manifest or seed into the parent context. Use deterministic
+summaries and the per-Module context files under {json.dumps(run + "/modules/")};
+the full input manifest and seed remain available to scripts and native workers.
+Read the installed skill at
 {json.dumps(str(plugin / "skills/understand/SKILL.md"))} and execute its full flow,
 by invoking the native understand-anything:understand Skill with arguments
 --full --language {language} --exclude ".ua/**,.understand-anything/**,.concorde/runs/**".
 Use its agents and scripts, not a replacement implementation of its flow.
 The developer authorizes this full scan, including the >100-file confirmation and
 use of the current ignore rules (or the native generated starter if none exists).
-Do not wait for those confirmations in this noninteractive invocation. Missing
+Do not wait for those confirmations in this noninteractive invocation. The supplied
+analysis-only host profile overrides optional housekeeping: retain scratch and
+trash evidence, do not purge or clean it, and use the already-prepared directories
+and Git identity from native-preflight.json. These disabled housekeeping/UI actions
+are not missing analysis phases. All native analysis phases still run. Missing
 runtime permissions, authentication or dependencies are failures, not consent to
 bypass permissions, install dependencies or select another host.
 
@@ -188,7 +203,8 @@ and Specs only; write native analysis artifacts only under the UA data directory
 and the completion report below. Do not change source, Specs, registry, project
 instructions, git index/commits, auto-update hooks or plugin files. Do not launch a
 Viewer/server/browser. Preserve this run's inputs and logs. Normal host permission
-checks remain active; stop and report a denial instead of bypassing it.
+checks remain active; stop and report a denial instead of bypassing it. Forward
+the full host profile to every child; a child must not reimplement any denied step.
 
 Finish the entire native flow, including fingerprints and meta.json. Retain native
 scan inventory at {json.dumps(ua_dir + "/intermediate/scan-result.json")}.
@@ -223,17 +239,37 @@ def _preflight(plugin_root: str, claude: str, root: Path) -> tuple[Path, str, st
     version = _capture([node, "--version"], root).strip()
     if int(version.lstrip("v").split(".")[0]) < 22:
         raise UaAnalysisError("Native UA requires Node.js >=22")
-    _capture([executable, "--version"], root)
+    host_version = _capture([executable, "--version"], root)
+    match = re.match(r"(\d+)\.(\d+)\.(\d+)", host_version)
+    if match is None or tuple(map(int, match.groups())) < (2, 1, 273):
+        raise UaAnalysisError(
+            "Native permission probing requires Claude Code >=2.1.273"
+        )
+    help_text = _capture([executable, "--help"], root)
+    for flag in (
+        "--settings",
+        "--add-dir",
+        "--append-system-prompt",
+        "--max-budget-usd",
+    ):
+        if flag not in help_text:
+            raise UaAnalysisError(f"Native host does not support required flag {flag}")
     return plugin, executable, node
 
 
 def _run_host(
-    command: list[str], root: Path, prompt: str, run_dir: Path, timeout: int
-) -> None:
+    command: list[str],
+    root: Path,
+    prompt: str,
+    run_dir: Path,
+    timeout: int,
+    *,
+    log_prefix: str = "host",
+) -> dict:
     env = {**os.environ, "UNDERSTAND_NO_WORKTREE_REDIRECT": "1"}
     with (
-        (run_dir / "host.json").open("w") as out,
-        (run_dir / "host.stderr").open("w") as err,
+        (run_dir / f"{log_prefix}.json").open("w") as out,
+        (run_dir / f"{log_prefix}.stderr").open("w") as err,
     ):
         process = subprocess.Popen(
             command,
@@ -255,13 +291,14 @@ def _run_host(
             raise
     if process.returncode:
         raise UaAnalysisError(
-            f"UA host exited {process.returncode}; inspect host.stderr and host.json"
+            f"UA host exited {process.returncode}; inspect {log_prefix}.stderr and {log_prefix}.json"
         )
-    result = _json(run_dir / "host.json")
+    result = _json(run_dir / f"{log_prefix}.json")
     if result.get("is_error") is not False or result.get("permission_denials"):
         raise UaAnalysisError(
-            "UA host reported an error or permission denial; inspect host.json"
+            f"UA host reported an error or permission denial; inspect {log_prefix}.json"
         )
+    return result
 
 
 _SCHEMA_CHECK = """import fs from 'node:fs';
@@ -437,12 +474,23 @@ def analyze_ua(
     model: str | None = None,
     language: str = "en",
     prepare_only: bool = False,
+    approve_native_tools: bool = False,
+    probe_only: bool = False,
+    probe_model: str = "haiku",
 ) -> ToolResult:
     root = Path(project_root).resolve()
     run_dir: Path | None = None
     lock: Path | None = None
     acquired = False
     try:
+        if prepare_only and probe_only:
+            raise UaAnalysisError(
+                "--prepare-only and --probe-only are mutually exclusive"
+            )
+        if not prepare_only and not approve_native_tools:
+            raise UaAnalysisError(
+                "Native execution requires explicit --approve-native-tools; inspect --prepare-only first"
+            )
         if (
             timeout <= 0
             or not language
@@ -505,6 +553,29 @@ def analyze_ua(
         _save(run_dir / "input.json", inputs)
         _save(run_dir / "seed.json", seed)
         _check_native_schema(root, plugin, node, run_dir / "seed.json")
+        settings = native_settings(root, plugin, run_dir, ua_dir)
+        _save(run_dir / "native-settings.json", settings)
+        overview = []
+        for module in inputs["spec_context"]["modules"]:
+            context = module["spec_context"]
+            relative = f"modules/{context['module_id']}.json"
+            _save(run_dir / relative, module)
+            overview.append(
+                {
+                    "module_id": context["module_id"],
+                    "reading_entry": context["reading_entry"],
+                    "context_index": f"{run}/{relative}",
+                }
+            )
+        _save(
+            run_dir / "overview.json",
+            {
+                "modules": overview,
+                "input_digest": inputs["input_digest"],
+                "seed": f"{run}/seed.json",
+                "source_files": len(inputs["source_snapshot"]["files"]),
+            },
+        )
         prompt = _prompt(root, plugin, run, ua_dir, language)
         (run_dir / "prompt.md").write_text(prompt, encoding="utf-8")
         command = [
@@ -515,9 +586,13 @@ def analyze_ua(
             "--no-session-persistence",
             "--plugin-dir",
             str(plugin),
+            "--settings",
+            str(run_dir / "native-settings.json"),
+            "--add-dir",
+            str(plugin),
+            "--append-system-prompt",
+            profile_prompt(root, plugin, run_dir, ua_dir),
         ]
-        if model:
-            command.extend(["--model", model])
         _save(
             run_dir / "receipt.json",
             {"status": "prepared", "input_digest": inputs["input_digest"]},
@@ -530,8 +605,77 @@ def analyze_ua(
                 (run,),
                 result={"analysis_status": "prepared", "run": run},
             )
+        auth = json.loads(_capture([executable, "auth", "status", "--json"], root))
+        if not isinstance(auth, dict) or not auth.get("loggedIn"):
+            raise UaAnalysisError(
+                "Claude is not authenticated; sign in before native analysis"
+            )
         if graph_path.exists():
             (run_dir / "previous-graph.json").write_bytes(graph_path.read_bytes())
+        _save(
+            run_dir / "native-preflight.json",
+            prepare_native_workspace(
+                root,
+                run_dir,
+                ua_dir,
+                inputs["source_snapshot"]["head"],
+            ),
+        )
+        _save(
+            run_dir / "receipt.json",
+            {"status": "probing", "input_digest": inputs["input_digest"]},
+        )
+        nonce = uuid.uuid4().hex
+        probe = probe_prompt(root, plugin, run_dir, ua_dir, nonce)
+        (run_dir / "probe-prompt.md").write_text(probe, encoding="utf-8")
+        probe_result = _run_host(
+            [*command, "--model", probe_model, "--max-budget-usd", "0.50"],
+            root,
+            probe,
+            run_dir,
+            min(timeout, 180),
+            log_prefix="probe-host",
+        )
+        expected = {"nonce": nonce, "status": "complete"}
+        if any(
+            _json(run_dir / name) != expected
+            for name in ("probe-parent.json", "probe-child.json")
+        ):
+            raise UaAnalysisError(
+                "Native permission probe reports are incomplete or mismatched"
+            )
+        stats = probe_result.get("subagent_stats", {})
+        if (
+            not isinstance(stats, dict)
+            or not isinstance(stats.get("spawned"), int)
+            or stats["spawned"] < 1
+        ):
+            raise UaAnalysisError(
+                "Native permission probe did not launch its required child"
+            )
+        scan = _json(
+            checked_path(
+                root, str(Path(ua_dir) / "tmp" / "concorde-permission-scan.json")
+            )
+        )
+        if not isinstance(scan.get("files"), list) or not scan["files"]:
+            raise UaAnalysisError(
+                "Native permission probe did not produce a scan inventory"
+            )
+        _save(
+            run_dir / "receipt.json",
+            {"status": "probe_passed", "input_digest": inputs["input_digest"]},
+        )
+        if probe_only:
+            return ToolResult(
+                "ua-analyze",
+                ".",
+                "success",
+                (run,),
+                result={"analysis_status": "probe_passed", "run": run},
+            )
+        if model:
+            command.extend(["--model", model])
         _save(
             run_dir / "receipt.json",
             {"status": "running", "input_digest": inputs["input_digest"]},

@@ -595,18 +595,22 @@ created by `--check`.
 
 ## Native UA analysis bridge {#ua-native-analysis-contract}
 
-`ua-analyze --ua-plugin-root PATH` is a developer tool that launches one native Claude process,
-not a Framework Capability invocation. It does not acquire a Framework worker's context or
+`ua-analyze --ua-plugin-root PATH` is a developer tool that launches a bounded live permission
+probe followed by one native Claude analysis process, not a Framework Capability invocation. It does not acquire a Framework worker's context or
 permissions. The project must admit its registry and accepted Protocol copy, have a Git HEAD,
-and run on POSIX with Node.js >=22 and an installed Claude executable. The plugin manifest must
+and run on POSIX with Node.js >=22 and an installed Claude Code >=2.1.273 executable. The plugin manifest must
 identify `understand-anything` version `2.9.6`, with `skills/understand/SKILL.md` and the built
-`packages/core/dist/index.js` present. Admission does not establish authentication or permission
-readiness; native execution reports those failures. Installation and permission escalation are
+`packages/core/dist/index.js` present. Deterministic admission checks the required CLI flags and,
+for execution, `claude auth status --json` reporting `loggedIn`. That record does not guarantee a
+subsequent OAuth refresh; the live probe tests representative permissions and reports failures. Installation and permission escalation are
 not fallback paths. Other native hosts and plugin versions need explicit adapters.
 
 CLI options are `--claude` (default `claude`), `--model` (native default when absent), `--timeout`
 (positive seconds, default 1800), `--language` (alphanumeric/hyphen code, default `en`), and
-`--prepare-only`. Every invocation writes a run package, so the normal CLI worktree admission
+`--prepare-only`, `--approve-native-tools`, `--probe-only` and `--probe-model` (default `haiku`).
+Prepare-only and probe-only are mutually exclusive. Execution without prepare-only requires
+explicit `--approve-native-tools` before any model invocation. Every invocation writes a run
+package, so the normal CLI worktree admission
 applies, including explicit `--allow-primary-worktree` for a primary checkout. The native data
 directory is `.understand-anything` when that directory exists, otherwise `.ua`. A graph in the
 other directory makes selection ambiguous and is rejected. Relevant project paths cannot use
@@ -637,7 +641,14 @@ Each run uses `.concorde/runs/ua-<random-id>/` and retains:
 - `completion.json`: native attestation with matching `input_digest`, `status`, `skipped_phases`
   and `issues`. Complete requires `status: complete` and both arrays empty. This is an attestation,
   not independent evidence that every worker read its context or inferred true facts.
-- `receipt.json`: `prepared`, `running`, `complete` or `failed`; failure retains an error rather
+- `overview.json` and `modules/<module-id>.json`: a small parent index and complete per-Module
+  contexts, avoiding an unnecessary full-manifest dump into the orchestrator's model context.
+- `native-settings.json`: an inert run-local permission overlay, activated only by explicit
+  execution consent through `--settings`; it never replaces user/project settings or hooks.
+- `native-preflight.json`: admitted root/HEAD, prepared directories and archive location.
+- `probe-prompt.md`, `probe-host.json`, `probe-host.stderr`, `probe-parent.json` and `probe-child.json`:
+  the bounded probe request, native logs and nonce-bound completion reports.
+- `receipt.json`: `prepared`, `probing`, `probe_passed`, `running`, `complete` or `failed`; failure retains an error rather
   than classifying partial native artifacts as successful output.
 
 The source snapshot records Git HEAD and exact digests of tracked and nonignored untracked
@@ -648,8 +659,33 @@ The separately resolved Protocol and complete Spec contexts remain byte-bound ev
 by Git. UA's own scan/fingerprint checks cover its actual analyzed file inventory.
 
 Launch uses an argv array, not a shell, with `--print --output-format json --no-session-persistence
---plugin-dir PATH` and optional `--model`. The prompt travels over stdin. Host settings and normal
-permission checks remain active; no bypass-permissions flag is supplied. The process starts in
+--plugin-dir PATH`, `--settings` naming the run-local overlay, `--add-dir` naming the plugin,
+`--append-system-prompt` supplying the analysis-only profile, and optional `--model`. The task
+travels over stdin. The overlay allows plugin reads, file-tool writes to the UA artifact tree and
+this run's completion/probe reports, Node/Python execution for installed scripts and generated
+analysis glue, and read-only Git identity inspection. It denies plugin edits and git add/commit/push.
+It contains no all-Bash grant, hook override, setting-source exclusion or permission-mode bypass.
+Permission paths with glob/rule metacharacters are rejected. File-tool scopes do not constrain
+interpreter filesystem access: this is explicit trusted-tool admission, not a sandbox. Existing
+managed/project/user denials, ask rules and hooks remain active.
+
+After authentication admission, the host creates fresh native `intermediate` and `tmp` directories,
+renaming any existing ones into the run's `previous-scratch/` without deleting them.
+The analysis-only profile forbids native trash purging, scratch cleanup, auto-update setup and
+Viewer launch. These deliberately disabled maintenance/UI effects are not missing analysis phases.
+The profile supplies admitted preflight facts instead of asking a model to rebuild them with shell
+loops, and requires concrete script commands, no shell-variable diagnostics and no fallback after
+any denial. All native analysis phases, including fingerprints and metadata save, remain mandatory.
+
+Before whole-project model analysis, the native host runs a probe with the selected probe model,
+a `--max-budget-usd 0.50` cap and at most `min(timeout, 180)` seconds. It reads plugin metadata,
+executes read-only Git identity inspection and the native scanner, launches one native child to
+exercise inherited plugin-read/Node/report-write permissions, and writes parent/child reports.
+Success requires no host error/denial, both reports matching the generated nonce and complete
+status, native host statistics showing a spawned child, and a nonempty scanner inventory under
+UA tmp. Probe failure prevents the full analysis invocation. Probe-only returns
+`analysis_status: probe_passed` without advancing graph, fingerprints or metadata. A passing
+probe is representative runtime evidence, not proof that arbitrary future commands are permitted. The process starts in
 the selected root with `UNDERSTAND_NO_WORKTREE_REDIRECT=1`. Timeout/interruption kills its POSIX
 process group and waits for the main process before releasing the lock. There is no automatic
 host retry or fallback. Prepare-only performs no model invocation and returns
