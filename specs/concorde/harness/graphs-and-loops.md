@@ -8,15 +8,14 @@ normal sequence and why repetition eventually stops.
 
 | Term | Meaning / definition |
 | --- | --- |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Follow the normal path first
 
-For a development change, the broad sequence is specification, planning, tasks, implementation,
+For a change handled by [Development Flow](../dev-loop/module.md), the broad sequence is specification, planning, tasks, implementation,
 checks and review. Each operation receives only its own admitted inputs. A review finding may
 select an allowed repair path; it does not let the reviewer edit code itself.
 

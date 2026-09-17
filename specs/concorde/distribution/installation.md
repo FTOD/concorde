@@ -1,7 +1,7 @@
 # Installing and updating Concorde
 
 Installation puts the Framework tools and instructions into a project so its developer can use
-Concorde. It does not write the project's intended business behavior. Initialization is a separate
+Concorde. It does not write the project's intended business behavior. The [Spec Module](../spec/module.md) owns initialization as a separate
 step after installation.
 
 ## Terminology
@@ -13,6 +13,9 @@ step after installation.
 | Installation receipt | A record of exactly which outputs the installer owns and which bytes it last installed. |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Initialization](../spec/initialize.md#terminology) | Defined in Project initialization. |
+| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## A normal installation
 
@@ -42,5 +45,5 @@ to a specification-language change. [Build](build.md) explains instruction fresh
 
 The Module-owned [installation scenarios](scenarios.md#installation-service) and
 [requirements](requirements.md) define ownership conflicts, configuration, retries and failure behavior.
-The [Spec Module](../spec/module.md) owns initialization and Protocol acceptance; the
-[viewer topic](../views/viewer.md) explains launching the separately provisioned viewer.
+The Spec Module owns initialization and Protocol acceptance. The [Views Module](../views/module.md)
+explains how to launch the separately provisioned viewer in its [viewer topic](../views/viewer.md).

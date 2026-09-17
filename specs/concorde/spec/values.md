@@ -1,6 +1,6 @@
 # Identities and versions
 
-Spec uses different identities for responsibilities, documents and the inputs a task examined.
+The [Spec Module](module.md) uses different identities for responsibilities, documents and the inputs a task examined.
 Understanding those differences prevents a familiar filename or successful old check from being
 mistaken for the current contract.
 
@@ -13,8 +13,13 @@ mistaken for the current contract.
 | Source-member role | Whether one file contains the reading or the metadata of a document unit. |
 | Protocol binding | The project's explicit acceptance of a particular specification-language version and exact distributed rules. |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Requirement](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## What stays the same and what changes
 

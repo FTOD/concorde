@@ -11,13 +11,22 @@ Views publishes registered specifications as a readable website and provides sep
 | [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Publication candidate](pipeline.md#terminology) | Defined in From source documents to a published site. |
+| [Promotion](pipeline.md#terminology) | Defined in From source documents to a published site. |
+| [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Document unit](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 
 ## Usage
 
 Choose among three independent uses: publish registered Specs as a docsite, export or overlay a
 registry-derived UA graph, or open an existing graph in the installed viewer. For a new site, propose
 a scaffold, inspect it and apply the exact proposal; existing site files are not overwritten.
-With site dependencies prepared, build and validate the candidate before publication. A broken
+With site dependencies prepared, build and validate the publication candidate before publication. A broken
 link, invalid document or stale input prevents promotion and preserves the previous published site.
 [Publication](publication.md) explains scaffolding, custom documentation and reading behavior;
 [pipeline](pipeline.md) defines the build API and records.
@@ -68,7 +77,7 @@ second copy of a shared contract.
 UA graph export command uses UA graph exporter to derive or overlay declared structure without
 judging implementation conformance. A Raw code graph can also be an observation produced elsewhere.
 Viewer launch command passes a Viewer launch request to Viewer launcher, which admits the existing
-graph and the Verified installed viewer supplied by Distribution before starting the Viewer process.
+graph and the Verified installed viewer supplied by [Distribution Module](../distribution/module.md) before starting the Viewer process.
 Launch neither regenerates the graph nor checks its freshness against source. Export and launch are
 independent of reading publication and grant no additional agent context.
 
@@ -76,7 +85,7 @@ independent of reading publication and grant no additional agent context.
 
 Publication scaffold and Publication docsite touch disjoint files and never edit each other's
 output: the scaffold's own exact-file transaction creates or updates project structure, and
-rendering project Specs never authorizes editing them. A candidate is promoted only when complete
+rendering project Specs never authorizes editing them. A publication candidate is promoted only when complete
 and current; any invalid link, diagram or stale source during generation leaves the published site
 exactly as it was. Registry composition still supplies navigation, and dependency and interface
 agreements still undergo validation; none creates a standalone docsite graph projection.
@@ -88,7 +97,7 @@ launches a process; it neither generates nor verifies the freshness of that grap
 ### Publication and scaffolding
 
 This view covers reading publication and its creation-only scaffold, not graph generation or viewer
-processes. Concorde-only Flow inspection additionally uses Harness under the local agreement below.
+processes. Concorde-only Flow inspection additionally uses [Harness Module](../harness/module.md) under the local agreement below.
 
 ```mermaid
 flowchart TB
@@ -167,7 +176,7 @@ They remain normative parts of this same Module, not code documentation or a sep
 
 <a id="entity.views.spec"></a><a id="agreement.document.views.module.1"></a>
 
-Supplies the explicit registry, document ownership and references, relationships and file bindings used by publication and UA export, without recursive filename discovery.
+The [Spec Module](../spec/module.md) supplies the explicit registry, document ownership and references, relationships and file bindings used by publication and UA export, without recursive filename discovery.
 
 Supply the explicit registry, document ownership and references, relationships and entity file bindings consumed by publication and UA export.
 

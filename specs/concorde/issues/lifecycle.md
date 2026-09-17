@@ -10,15 +10,19 @@ permissions.
 | --- | --- |
 | Disposition | An evidence-grounded recorded decision to resolve, mark duplicate, close as not actionable or reopen an Issue. |
 | [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Normal progress
 
-The solver first determines what the problem needs. Clear implementation intent can go to development;
-a missing promise goes to Spec repair; a claim that already has a potential resolution goes to
-Issue-specific verification. If an actual product or design choice is unsettled, it asks the developer
+The solver first determines what the problem needs. Clear implementation intent can go to
+[Development Flow](../dev-loop/module.md); a missing promise goes to
+[Spec Authoring](../spec-authoring/module.md); a claim that already has a potential resolution goes to
+Issue-specific verification through the [Review Module](../review/module.md). If an actual product or design choice is unsettled, it asks the developer
 instead of inventing that choice. There is no mandatory triage ritual before every repair.
 
 For example, a clearly specified incorrect result can be fixed and checked directly. If the expected

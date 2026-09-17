@@ -8,17 +8,20 @@ behavior and constraints; the workflow stops at a verified candidate rather than
 | Term | Meaning / definition |
 | --- | --- |
 | [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Follow the normal path
 
 The workflow selects an owner, prepares and reviews its specification, checks whether planning has
 enough information, produces a plan and tasks, implements them, runs checks and obtains independent
 code review. It reports ready only when the relevant completion evidence is current.
-Specification Flow can run first on its own; the same task can then continue into development without
+[Specification Flow](../specify-loop/module.md) can run first on its own; the same task can then continue into development without
 repeating accepted work whose inputs remain unchanged.
 
 For example, adding retries first needs a clear rule for retryable failures. A missing rule pauses

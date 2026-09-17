@@ -10,8 +10,28 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ownership](registry.md#terminology) | Defined in Registry. |
+| [Composition](registry.md#terminology) | Defined in Registry. |
+| [Use](registry.md#terminology) | Defined in Registry. |
+| [Reference](registry.md#terminology) | Defined in Registry. |
+| [Implementation binding](registry.md#terminology) | Defined in Registry. |
+| [Document unit](values.md#terminology) | Defined in Identities and versions. |
+| [Document role](values.md#terminology) | Defined in Identities and versions. |
+| [Source-member role](values.md#terminology) | Defined in Identities and versions. |
+| [Protocol binding](values.md#terminology) | Defined in Identities and versions. |
+| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Requirement](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Structural validation](structure.md#terminology) | Defined in What structural validation tells you. |
+| [Semantic completeness](structure.md#terminology) | Defined in What structural validation tells you. |
+| [Initialization](initialize.md#terminology) | Defined in Project initialization. |
+| [Initial proposal](initialize.md#terminology) | Defined in Project initialization. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Registry
 
@@ -133,7 +153,7 @@ index records). Each source has `document_id`, `path`, `owner`, `digest`, `role`
 names the selected Module, kind `module` names a direct referenced Module, and kind `document`
 names a direct referenced document unit. Both members have identical ownership and provenance. Reasons are unique and sorted by kind then ID. Digests hash
 exact bytes before UTF-8 decoding; invalid UTF-8 rejects resolution. The record is bound into
-the Harness snapshot, not independently authored as another context inventory.
+the [Harness Module](../harness/module.md) snapshot, not independently authored as another context inventory.
 
 `context_contracts(target)` returns canonical contracts in this resolution with owner/document
 provenance; `contract_bindings(target)` returns only owned bindings. `definitions`, `entities`,
@@ -306,7 +326,7 @@ edge. Scoped omission of an inventory node is permitted; inventing a node is not
 retain id/target_id/argv/timeout_seconds and optional inputs. Shared implementation changes concern
 every listing Module, whose contract is evaluated separately.
 
-Topology preparation stores the exact validated registry/document replacements below the ignored `.concorde/topology-proposals/` host area. Its public ArtifactRef binds path and digest. Applying the artifact rechecks its embedded design identity, discovery context, Protocol, registry base and every file before-digest before one atomic transaction.
+The [Topology Module](../topology/module.md) preparation step stores the exact validated registry/document replacements below the ignored `.concorde/topology-proposals/` host area. Its public ArtifactRef binds path and digest. Applying the artifact rechecks its embedded design identity, discovery context, Protocol, registry base and every file before-digest before one atomic transaction.
 
 ### Reference and interface validation
 

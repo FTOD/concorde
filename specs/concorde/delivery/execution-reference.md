@@ -12,6 +12,14 @@ and transitions are retained here as the single detailed contract.
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery receipt](module.md#terminology) | Defined in Delivery. |
+| [Delivered branch](module.md#terminology) | Defined in Delivery. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Delivery capability {#delivery-delivery-capability}
 

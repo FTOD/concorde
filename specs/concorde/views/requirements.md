@@ -13,6 +13,13 @@ with explanatory topics linked from the Module entry.
 | [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Publication candidate](pipeline.md#terminology) | Defined in From source documents to a published site. |
+| [Promotion](pipeline.md#terminology) | Defined in From source documents to a published site. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ### req.views.registry-derived-pages — Pages and navigation derive from the registry
 

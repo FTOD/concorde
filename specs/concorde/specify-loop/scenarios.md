@@ -7,10 +7,11 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Review coverage](../review/module.md#terminology) | Defined in Review. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Specification Flow
 

@@ -11,7 +11,15 @@ Planning checks whether a task is sufficiently specified, produces a plan and tu
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Task sufficiency](assessment.md#terminology) | Defined in Is the specification sufficient for this task? |
+| [Acceptance task](tasks.md#terminology) | Defined in Making work verifiable. |
+| [Reserved task ID](tasks.md#terminology) | Defined in Making work verifiable. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -46,8 +54,8 @@ grant, supplies their implementations. Existing host repair admission remains an
 ## Relationships
 
 The diagram separates Planning's reusable outputs from the providers that admit and produce them.
-Spec resolves the contract and declared participants; Harness isolates each non-code worker;
-Development accepts and persists the returned state. Context assessment, Accepted plan and
+[Spec Module](../spec/module.md) resolves the contract and declared participants; [Harness Module](../harness/module.md) isolates each non-code worker;
+[Development Module](../development/module.md) accepts and persists the returned state. Context assessment, Accepted plan and
 Acceptance tasks are successive, distinct records, not three names for completed implementation.
 A provider dependency does not make that provider a child of Planning or grant its code to a planner.
 

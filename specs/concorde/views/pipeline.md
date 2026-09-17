@@ -13,6 +13,10 @@ cannot be mistaken for a successful publication.
 | [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Document unit](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 
 ## Follow one build
 

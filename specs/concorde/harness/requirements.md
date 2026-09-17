@@ -8,10 +8,20 @@ Subject headings organize the Module's obligations; they do not create separate 
 | Term | Meaning / definition |
 | --- | --- |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker profile](module.md#terminology) | Defined in Harness. |
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec context](context.md#terminology) | Defined in What information a worker receives. |
+| [Task context](context.md#terminology) | Defined in What information a worker receives. |
+| [Capsule](module.md#terminology) | Defined in Harness. |
+| [Tool gate](module.md#terminology) | Defined in Harness. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Harness
 

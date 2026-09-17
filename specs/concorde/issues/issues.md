@@ -12,6 +12,9 @@ does not itself stop a task, change code or authorize a repair.
 | [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Disposition](lifecycle.md#terminology) | Defined in Solving a recorded problem. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Reporting and reading
 

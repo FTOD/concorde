@@ -11,9 +11,11 @@ that later independent checks or delivery have already happened.
 | Acceptance task | One item of implementation work with a stated condition for judging whether it has been fulfilled. |
 | Reserved task ID | An identity retained by task history that a new task must not reuse. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## From plan to tasks
 

@@ -11,7 +11,16 @@ Concorde helps developers agree on what software should do, carry out changes wi
 | [Module](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Capability](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -32,7 +41,7 @@ completion boundaries from development. Choose an entry below, then read that Mo
 | Intent | Entry and completion |
 | --- | --- |
 | Ask about a Spec or route a task | `concorde-main` takes intent and optional target/focus hints; an answer or attributed limitation completes a query without editing Specs or code; an explicit worker Issue report is host bookkeeping. |
-| Prepare or review a Spec | `concorde-specify-loop` completes independent Spec preparation; Planning and Implementation are separate downstream choices. |
+| Prepare or review a Spec | `concorde-specify-loop` completes independent Spec preparation; [Planning Module](planning/module.md) and [Implementation Module](implementation/module.md) are separate downstream choices. |
 | Review a task | `concorde-review` returns independent Spec/code coverage and findings without creating a development change. |
 | Develop a change | `concorde-dev-loop` takes task/constraints and optional authoring/review flags; completion is a ready candidate, with explicit skips where authorized. |
 | Initialize a project | `concorde-init` proposes then applies initial configuration and an honest Module stub; an existing project cannot be overwritten. |
@@ -41,18 +50,18 @@ completion boundaries from development. Choose an entry below, then read that Mo
 | Deliver a candidate | `concorde-deliver` stages the selected change on an independent branch and removes its worktree by default; only a separate explicitly authorized request by the sole primary writer merges it into the primary branch. |
 | Work with Issues | `concorde-issues` lists, shows, reports, reopens or solves an explicit Issue; solving ends at a verified candidate, not delivery. |
 
-Human views are complementary entries: Views presents registered contracts and declared relationships and opens a preexisting raw code graph. A view or feedback comment does not itself authorize code changes, claim Spec/code agreement or create an Issue. The developer's explicit intent and constraints determine a subsequent task.
+Human views are complementary entries: [Views Module](views/module.md) presents registered contracts and declared relationships and opens a preexisting raw code graph. A view or feedback comment does not itself authorize code changes, claim Spec/code agreement or create an Issue. The developer's explicit intent and constraints determine a subsequent task.
 
 ## Design
 
 <a id="entity.concorde.developer"></a><a id="entity.concorde.protocol"></a>
 
 The Framework realizes its entry contract almost entirely through sixteen child responsibilities
-and owns no product code of its own. The common Development host admits typed requests;
-providers own reusable behavior and sibling Flows own sequencing. Spec supplies identities and
-complete contexts, Harness bounds worker execution, and Distribution supplies fresh runtime assets.
-This separates permission and admission from model decisions. Validation and Review produce
-revision-bound evidence; Delivery consumes it only at a separately authorized boundary.
+and owns no product code of its own. The common [Development Module](development/module.md) host admits typed requests;
+providers own reusable behavior and sibling Flows own sequencing. [Spec Module](spec/module.md) supplies identities and
+complete contexts, [Harness Module](harness/module.md) bounds worker execution, and [Distribution Module](distribution/module.md) supplies fresh runtime assets.
+This separates permission and admission from model decisions. [Validation Module](validation/module.md) and [Review Module](review/module.md) produce
+revision-bound evidence; [Delivery Module](delivery/module.md) consumes it only at a separately authorized boundary.
 
 <a id="entity.concorde.acceptance-tests"></a>
 
@@ -73,13 +82,13 @@ The Framework contains sixteen Module responsibilities. The diagrams below answe
 which providers contribute to a change, and which services make that work possible? They show scoped
 collaborations, not every field, file or executable node.
 
-Specification Flow settles intended behavior through authoring and review. Development Flow adds
+[Specification Flow](specify-loop/module.md) settles intended behavior through authoring and review. [Development Flow](dev-loop/module.md) adds
 planning, implementation and verification. These providers are reusable siblings: using Planning
 does not make Planning a child owned by the workflow.
 
 The foundations serve a different purpose. Spec supplies the agreed contracts, Harness bounds worker
 execution, and Development checks and dispatches requests. Distribution prepares runnable assets,
-Views makes the contracts readable, and Issues retains problems. Delivery remains a separate decision
+Views makes the contracts readable, and [Issues Module](issues/module.md) retains problems. Delivery remains a separate decision
 after the development result has been checked.
 
 A developer request carries intent and constraints. Project Specs supply promised behavior; a candidate worktree holds proposed changes and revision-bound evidence. A ready candidate ends development; only a separately authorized delivery updates the destination.
@@ -115,8 +124,7 @@ flowchart TB
 ### Runtime foundations
 
 This view separates contract meaning, execution and distribution. Delivery remains a separately
-selected transition. Issues hands selected intended behavior to Development Flow; Topology uses Query and
-Routing for design context. Their complete local obligations remain in the collaboration agreements
+selected transition. Issues hands selected intended behavior to Development Flow; [Topology Module](topology/module.md) uses [Query and Routing](query-routing/module.md) for design context. Their complete local obligations remain in the collaboration agreements
 below rather than being compressed into every overview edge.
 
 ```mermaid

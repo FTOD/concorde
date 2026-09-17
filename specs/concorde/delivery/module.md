@@ -14,6 +14,8 @@ Delivery publishes a verified candidate as an independent branch and normally re
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -49,9 +51,9 @@ and pending-entry confirmation remain currentness gates, not inferred success fr
 ## Relationships
 
 This view shows the providers needed to verify and record delivery, not an automatic merge into
-primary. Development admits the participating session and requested transition; Harness supplies
-worktree mechanics and isolated checks; Spec validates integrated contracts and affected users.
-Distribution is involved when the integration is a Concorde package checkout that needs its own
+primary. [Development Module](../development/module.md) admits the participating session and requested transition; [Harness Module](../harness/module.md) supplies
+worktree mechanics and isolated checks; [Spec Module](../spec/module.md) validates integrated contracts and affected users.
+[Distribution Module](../distribution/module.md) is involved when the integration is a Concorde package checkout that needs its own
 build. The Delivery receipt keeps publication, cleanup and explicitly authorized primary merging
 distinct, so a successful earlier transition cannot stand in for a later one.
 

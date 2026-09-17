@@ -10,6 +10,10 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 
 ## Validation
 
@@ -30,7 +34,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 - GIVEN a configured implementation check and the current candidate
 - WHEN validation runs the check
-- THEN project writes, including writes to lifecycle records and logs, are denied by Harness
+- THEN project writes, including writes to lifecycle records and logs, are denied by [Harness Module](../harness/module.md)
 - AND the outside host saves private stdout/stderr and records passed, failed or timeout evidence with exit and digest identities
 - AND unavailable enforcement blocks readiness with check_sandbox_unavailable while raw diagnostics stay in the host log
 - AND check input, candidate tree and affected Module freshness checks still reject external changes

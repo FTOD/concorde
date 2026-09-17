@@ -10,8 +10,12 @@ host checks before writing project files.
 | --- | --- |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 
 ## A normal revision
 
@@ -30,7 +34,7 @@ and checked against affected consumers in their separate contexts.
 The model can propose meaning without receiving a general filesystem write grant. The host checks
 ownership, source freshness and the complete replacement set before applying it. Invalid or stale
 output preserves prior bytes. Ordinary revisions keep document identity and ownership; structural
-changes use Topology so registrations and references change together.
+changes use [Topology Module](../topology/module.md) so registrations and references change together.
 
 The author does not independently approve its own work. The calling flow chooses review and any
 later planning. Exact proposal and acceptance rules are in the execution reference.

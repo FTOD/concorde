@@ -9,8 +9,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 | --- | --- |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
 
 ## Spec Authoring
 

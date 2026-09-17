@@ -12,6 +12,10 @@ Specification Flow prepares or revises a Module’s specification and obtains in
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -26,7 +30,7 @@ where no requirement already exists. Accepted authoring for the same intent and 
 evidence can be reused; an unrelated review cannot stand in for authoring. Missing meaning or a
 blocking review stops for an explicit decision, without an automatic Spec-repair loop. Completion
 returns Spec-stage artifacts and blockers, not tasks, code-check evidence, readiness or delivery.
-Dev-loop can continue the same task/change afterward. See [specification flow](specify-loop.md)
+[Development Flow](../dev-loop/module.md) can continue the same task/change afterward. See [specification flow](specify-loop.md)
 for request fields, reuse and failure behavior.
 
 ## Design
@@ -34,7 +38,7 @@ for request fields, reuse and failure behavior.
 <a id="entity.specify-loop.adapter"></a><a id="entity.specify-loop.completion"></a>
 
 The [specification Flow](execution-reference.md#specify-loop-specification-flow-specify-flow) decides whether accepted
-authoring can be reused, invokes Spec Authoring when needed, independently reviews missing/stale
+authoring can be reused, invokes [Spec Authoring](../spec-authoring/module.md) when needed, independently reviews missing/stale
 owner or consumer evidence, and summarizes typed artifacts. Accepted candidate compatibility
 reviews are rechecked against applied bytes rather than repeated blindly.
 
@@ -45,10 +49,10 @@ whether to continue into development.
 
 ## Relationships
 
-The diagram shows the sibling capabilities that contribute to Spec completion. Query and Routing
-selects an unbound owner, Spec resolves its contract and affected consumers, and Harness keeps
+The diagram shows the sibling capabilities that contribute to Spec completion. [Query and Routing](../query-routing/module.md)
+selects an unbound owner, [Spec Module](../spec/module.md) resolves its contract and affected consumers, and the [Harness Module](../harness/module.md) keeps
 routing, authoring and review invocations separate. Spec Authoring supplies owned replacements;
-Review independently assesses current contracts; Development retains accepted progress and review
+[Review Module](../review/module.md) independently assesses current contracts; [Development Module](../development/module.md) retains accepted progress and review
 requirements. The adapter owns their sequencing and reuse decisions, not their contracts, and
 Spec completion does not imply planning, implementation or readiness.
 
@@ -87,7 +91,7 @@ This collaboration applies at Spec-flow entry, accepted authoring or review comp
 
 <a id="entity.specify-loop.harness"></a><a id="agreement.document.specify-loop.module.2"></a>
 
-Bind the router, author and each independent Spec reviewer to separate fresh Spec-only invocations.
+The Harness Module binds the router, author and each independent Spec reviewer to separate fresh Spec-only invocations.
 
 This collaboration applies when routing or a composed authoring/review stage requires an Agent; reviewers inherit no author artifacts.
 

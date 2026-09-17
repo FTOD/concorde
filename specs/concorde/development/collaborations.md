@@ -4,6 +4,26 @@ These are the exact local duties and relied-upon provider guarantees of this Mod
 explains the collaboration at a conceptual level; these agreements retain the canonical local
 meaning and links to the included providers.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Implementation binding](../spec/registry.md#terminology) | Defined in Registry. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Dependencies and composition
 
 Development's sole structural parent is `module.concorde`; it has no submodules of its own. Its direct uses distinguish shared services, providers and composing flows.
@@ -12,7 +32,7 @@ Development's sole structural parent is `module.concorde`; it has no submodules 
 
 <a id="entity.development.harness"></a><a id="agreement.document.development.module.1"></a>
 
-Prepare each worker with its allowed inputs and tools, and run configured checks through their separate read-only boundary.
+The [Harness Module](../harness/module.md) prepares each worker with its allowed inputs and tools, and runs configured checks through their separate read-only boundary.
 
 This collaboration applies when a capability Flow reaches an Agent invocation, policy preview or configured deterministic check.
 
@@ -26,7 +46,7 @@ This collaboration applies when a capability Flow reaches an Agent invocation, p
 
 <a id="entity.development.spec"></a><a id="agreement.document.development.module.2"></a>
 
-Own the project Spec model: the pinned Protocol binding, the explicit registry, structural validation, stable-ID file-set queries and honest initialization.
+The [Spec Module](../spec/module.md) owns the project Spec model: the pinned Protocol binding, the explicit registry, structural validation, stable-ID file-set queries and honest initialization.
 
 Select Module descriptors, documents and implementation bindings, and validate Spec structure.
 
@@ -39,7 +59,7 @@ This collaboration applies when routing, binding a target, deriving affected imp
 
 <a id="entity.development.issues"></a><a id="agreement.document.development.module.3"></a>
 
-Retain observed problems and their evidence while Development tracks which work depends on them.
+The [Issues Module](../issues/module.md) retains observed problems and their evidence while Development tracks which work depends on them.
 
 This collaboration applies when a developer explicitly records gaps from a change's history.
 
@@ -49,7 +69,7 @@ This collaboration applies when a developer explicitly records gaps from a chang
 
 <a id="entity.development.distribution"></a><a id="agreement.document.development.module.4"></a>
 
-Supply the current instructions and runtime assets used when Development starts an operation.
+The [Distribution Module](../distribution/module.md) supplies the current instructions and runtime assets used when Development starts an operation.
 
 This collaboration applies when a developer runtime uses an installed Skill, an invocation requires fresh projections, or delivery verifies an integrated checkout.
 
@@ -60,7 +80,7 @@ This collaboration applies when a developer runtime uses an installed Skill, an 
 
 <a id="entity.development.planning"></a><a id="agreement.document.development.module.5"></a>
 
-Planning assesses whether a selected Module contract supports a task, creates a revision-bound plan and derives implementation acceptance tasks. It serves admitted composing capabilities with separate assessment, plan and task contracts; no development-loop history is an implicit source of software meaning.
+[Planning Module](../planning/module.md) assesses whether a selected Module contract supports a task, creates a revision-bound plan and derives implementation acceptance tasks. It serves admitted composing capabilities with separate assessment, plan and task contracts; no development-loop history is an implicit source of software meaning.
 
 This collaboration applies when the request concerns Planning.
 
@@ -70,7 +90,7 @@ This collaboration applies when the request concerns Planning.
 
 <a id="entity.development.implementation"></a><a id="agreement.document.development.module.6"></a>
 
-Implementation fulfills an admitted task list within the selected Module implementation grant and reports exact task completion. It serves composing capabilities that supply current plans and tasks, and distinguishes local code writing from separately admitted component coordination.
+[Implementation Module](../implementation/module.md) fulfills an admitted task list within the selected Module implementation grant and reports exact task completion. It serves composing capabilities that supply current plans and tasks, and distinguishes local code writing from separately admitted component coordination.
 
 This collaboration applies when the request concerns Implementation.
 
@@ -80,7 +100,7 @@ This collaboration applies when the request concerns Implementation.
 
 <a id="entity.development.spec-authoring"></a><a id="agreement.document.development.module.7"></a>
 
-Spec Authoring proposes complete replacements for the selected Module's owned Spec documents from its complete contract and an explicit task. It serves specification flows and other declared callers; independent review and flow completion belong to their consumers.
+[Spec Authoring](../spec-authoring/module.md) proposes complete replacements for the selected Module's owned Spec documents from its complete contract and an explicit task. It serves specification flows and other declared callers; independent review and flow completion belong to their consumers.
 
 This collaboration applies when the request concerns Spec Authoring.
 
@@ -90,7 +110,7 @@ This collaboration applies when the request concerns Spec Authoring.
 
 <a id="entity.development.review"></a><a id="agreement.document.development.module.8"></a>
 
-Review independently evaluates an admitted task against current Module contracts and, in code mode, its separately granted implementation. It serves standalone callers and composing flows with revision-bound coverage, findings and gaps, without repairing or delivering the reviewed work.
+[Review Module](../review/module.md) independently evaluates an admitted task against current Module contracts and, in code mode, its separately granted implementation. It serves standalone callers and composing flows with revision-bound coverage, findings and gaps, without repairing or delivering the reviewed work.
 
 This collaboration applies when the request concerns Review.
 
@@ -100,7 +120,7 @@ This collaboration applies when the request concerns Review.
 
 <a id="entity.development.validation"></a><a id="agreement.document.development.module.9"></a>
 
-Validation collects deterministic structural and configured implementation-check evidence for the current candidate and evaluates the applicable readiness gates. It serves explicit validation requests and composing flows; neither a development plan nor dev-loop invocation is universally required.
+[Validation Module](../validation/module.md) collects deterministic structural and configured implementation-check evidence for the current candidate and evaluates the applicable readiness gates. It serves explicit validation requests and composing flows; neither a development plan nor dev-loop invocation is universally required.
 
 This collaboration applies when the request concerns Validation.
 
@@ -110,7 +130,7 @@ This collaboration applies when the request concerns Validation.
 
 <a id="entity.development.delivery"></a><a id="agreement.document.development.module.10"></a>
 
-Delivery stages a verified candidate on an independent branch, cleans up its source worktree and separately merges into the primary branch when explicitly authorized. It serves participating outer sessions and consumes current evidence without owning the flow that produced the candidate.
+[Delivery Module](../delivery/module.md) stages a verified candidate on an independent branch, cleans up its source worktree and separately merges into the primary branch when explicitly authorized. It serves participating outer sessions and consumes current evidence without owning the flow that produced the candidate.
 
 This collaboration applies when the request concerns Delivery.
 
@@ -120,7 +140,7 @@ This collaboration applies when the request concerns Delivery.
 
 <a id="entity.development.query-routing"></a><a id="agreement.document.development.module.11"></a>
 
-Query and Routing answers questions from explicitly selected complete Module contexts and selects one owning Module for a routed task. It serves the main entry and discovery consumers, preserving caller intent without reading implementation to infer behavior.
+[Query and Routing](../query-routing/module.md) answers questions from explicitly selected complete Module contexts and selects one owning Module for a routed task. It serves the main entry and discovery consumers, preserving caller intent without reading implementation to infer behavior.
 
 This collaboration applies when the request concerns Query and Routing.
 
@@ -130,7 +150,7 @@ This collaboration applies when the request concerns Query and Routing.
 
 <a id="entity.development.topology"></a><a id="agreement.document.development.module.12"></a>
 
-Topology designs, prepares and atomically applies changes to registered Module structure and owned definitions. It serves developers evolving ownership, references, dependencies and file bindings through the existing accepted design and application boundaries.
+[Topology Module](../topology/module.md) designs, prepares and atomically applies changes to registered Module structure and owned definitions. It serves developers evolving ownership, references, dependencies and file bindings through the existing accepted design and application boundaries.
 
 This collaboration applies when the request concerns Topology.
 
@@ -140,7 +160,7 @@ This collaboration applies when the request concerns Topology.
 
 <a id="entity.development.dev-loop"></a><a id="agreement.document.development.module.13"></a>
 
-Development Flow composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract.
+[Development Flow](../dev-loop/module.md) composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract.
 
 This collaboration applies when the request concerns Development Flow.
 
@@ -150,7 +170,7 @@ This collaboration applies when the request concerns Development Flow.
 
 <a id="entity.development.specify-loop"></a><a id="agreement.document.development.module.14"></a>
 
-Specification Flow composes routing, Spec Authoring and Review to prepare or review one Module contract independently of implementation. It owns Spec-stage ordering, accepted-authoring reuse and Spec-review completion, and returns before planning or readiness.
+[Specification Flow](../specify-loop/module.md) composes routing, Spec Authoring and Review to prepare or review one Module contract independently of implementation. It owns Spec-stage ordering, accepted-authoring reuse and Spec-review completion, and returns before planning or readiness.
 
 This collaboration applies when the request concerns Specification Flow.
 

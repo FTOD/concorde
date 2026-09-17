@@ -10,11 +10,19 @@ paths without aliases or symlinks.
 
 | Term | Meaning / definition |
 | --- | --- |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker profile](module.md#terminology) | Defined in Harness. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capsule](module.md#terminology) | Defined in Harness. |
+| [Spec context](context.md#terminology) | Defined in What information a worker receives. |
+| [Implementation context](context.md#terminology) | Defined in What information a worker receives. |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 
 ### Policy construction
 

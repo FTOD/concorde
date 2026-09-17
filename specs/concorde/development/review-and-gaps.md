@@ -1,18 +1,18 @@
 # Problems that block a task
 
-An Issue records a problem. A blocker records that a particular task cannot continue because of
-that problem. Keeping those concepts separate lets work continue where it is safe without pretending
-that every recorded problem has been solved.
+A recorded Issue and a task's Blocker have different lifecycles. Keeping them separate lets work
+continue where it is safe without pretending that every recorded problem has been solved.
 
 ## Terminology
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Disposition](../issues/lifecycle.md#terminology) | Defined in Solving a recorded problem. |
 
 ## A concrete example
 
@@ -22,6 +22,9 @@ task can still proceed. Finding a harmless documentation typo during the same ru
 advisory Issue without blocking either task.
 
 ## Repair and reassessment
+
+The [Issues Module](../issues/module.md) manages problem reports and their dispositions;
+Development retains the task's dependency and decides when reassessment releases it.
 
 After a necessary promise is supplied, the dependent phase reassesses its task against the current
 Spec. Its old blocker is released only when the new accepted result supports proceeding. A failed
@@ -35,7 +38,7 @@ otherwise a renamed task could silently lose its unresolved dependency. Reports 
 worker run also survive a later cancellation or invalid result. That persistence records an
 observation, not successful completion of the worker's job.
 
-Review results apply to the inputs they examined. Changed code or relevant Spec invalidates that
+Results from the [Review Module](../review/module.md) apply to the inputs they examined. Changed code or relevant Spec invalidates that
 evidence; closing an Issue does not rewrite a review as passed. Exact blocker records and release
 rules are defined in the execution reference.
 

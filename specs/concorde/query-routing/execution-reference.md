@@ -10,7 +10,15 @@ and transitions are retained here as the single detailed contract.
 | --- | --- |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Query and routing Agent Flow {#query-and-routing-query-and-routing-agent-flow}
 

@@ -11,11 +11,21 @@ and transitions are retained here as the single detailed contract.
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Internal capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Spec authoring capability {#authoring-spec-authoring-capability}
 
-The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
+The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
@@ -41,7 +51,7 @@ old authoring gaps only after the host accepts the output, not merely after a mo
 
 Repeated calls re-admit current inputs; accepted-authoring reuse and independent review selection
 are the composing flow's decisions. This capability alone neither reviews its own output nor plans,
-implements or marks a candidate ready. Topology's special candidate-author context is a distinct
+implements or marks a candidate ready. The [Topology Module](../topology/module.md)'s special candidate-author context is a distinct
 existing mode, not an undeclared call to this ordinary specify adapter.
 
 ### Precise specifications {#authoring-precise-specifications}

@@ -11,6 +11,9 @@ stops before planning or implementation. Use it when the contract needs discussi
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Normal progress
 
@@ -19,7 +22,7 @@ a fresh author proposes its owned changes; the host checks them and obtains requ
 reviews. The result contains accepted Spec-stage artifacts or an explicit reason it could not finish.
 
 For example, clarifying which failures allow a retry can be completed here without also writing the
-retry mechanism. Development Flow may later continue the same task and change using current accepted
+retry mechanism. [Development Flow](../dev-loop/module.md) may later continue the same task and change using current accepted
 Spec work, rather than starting a second unrelated authoring attempt.
 
 ## Limits and reuse

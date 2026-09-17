@@ -12,8 +12,17 @@ worker, provider or developer session knew.
 | Implementation context | The Module's bound implementation files; names are visible generally, but contents require a code-phase grant. |
 | Capability context | The admitted operation/tool agreements and declared external reference material available to the phase. |
 | Task context | The explicit task, constraints, admitted stage results and relevant lifecycle state for this invocation. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Context kinds
 

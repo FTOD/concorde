@@ -7,12 +7,14 @@ branch; merging that result into primary is a second, explicitly authorized oper
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Delivery receipt](module.md#terminology) | Defined in this Module’s entry Terminology. |
-| [Delivered branch](module.md#terminology) | Defined in this Module’s entry Terminology. |
+| [Delivery receipt](module.md#terminology) | Defined in Delivery. |
+| [Delivered branch](module.md#terminology) | Defined in Delivery. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Normal delivery
 

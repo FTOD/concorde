@@ -9,7 +9,10 @@ Subject headings organize the Module's obligations; they do not create separate 
 | --- | --- |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Query and Routing
 

@@ -7,12 +7,13 @@ reviewer examines the allowed evidence and reports findings; it cannot repair fi
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Review coverage](module.md#terminology) | Defined in this Module’s entry Terminology. |
-| [Advisory finding](module.md#terminology) | Defined in this Module’s entry Terminology. |
+| [Review coverage](module.md#terminology) | Defined in Review. |
+| [Advisory finding](module.md#terminology) | Defined in Review. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Choose the question and mode
 

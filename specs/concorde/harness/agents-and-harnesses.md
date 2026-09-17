@@ -1,19 +1,20 @@
 # Capabilities, workers and their environment
 
 A capability describes an operation; a worker is one agent execution that performs a model-backed
-operation. Harness prepares that execution and checks its result. This distinction lets a workflow
+operation. The [Harness Module](module.md) prepares that execution and checks its result. This distinction lets a workflow
 combine ordinary code and model work without treating a model's answer as permission to act.
 
 ## Terminology
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Worker profile](module.md#terminology) | Defined in this Module’s entry Terminology. |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker profile](module.md#terminology) | Defined in Harness. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## One bounded job
 

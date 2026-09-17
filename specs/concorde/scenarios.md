@@ -9,8 +9,17 @@ Subject headings organize the Module's obligations; they do not create separate 
 | --- | --- |
 | [Module](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Capability](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Disposition](issues/lifecycle.md#terminology) | Defined in Solving a recorded problem. |
+| [Protocol binding](spec/values.md#terminology) | Defined in Identities and versions. |
+| [Spec context](harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Initialization](spec/initialize.md#terminology) | Defined in Project initialization. |
 
 ## Concorde Framework
 
@@ -39,7 +48,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 ### scenario.concorde.inspect-answer — Answering a Spec-grounded question
 
 - GIVEN a developer asks a Spec-grounded question or requests a Spec or existing code-graph view
-- WHEN the request is routed to Query and Routing or Views
+- WHEN the request is routed to [Query and Routing](query-routing/module.md) or [Views Module](views/module.md)
 - THEN the response is grounded in registered Spec documents and declared relationships, or in an existing raw code graph
 - AND answering the question does not mutate any project contract
 

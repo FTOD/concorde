@@ -10,7 +10,17 @@ and transitions are retained here as the single detailed contract.
 | --- | --- |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Topology evolution Agent Flow {#topology-topology-evolution-agent-flow}
 

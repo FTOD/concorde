@@ -11,6 +11,12 @@ Query and Routing answers questions from selected specifications and identifies 
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 
 ## Usage
 
@@ -18,7 +24,7 @@ Use `concorde-main` to ask a Spec-grounded question; composing discovery callers
 owning Module route for an unchanged task and constraints. Target/focus hints guide selection but
 supply no additional reading authority. Discovery begins with the entry Module's complete context
 and explicitly selects additional complete contexts only when needed. It does not inspect code to
-invent missing behavior. Topology actions sharing the main entry have their own provider contract.
+invent missing behavior. [Topology Module](../topology/module.md) actions sharing the main entry have their own provider contract.
 
 An answer includes limitations; a route retains the caller's task rather than rewriting it.
 Missing necessary promises produce attributed gaps, contradictions and prohibitions remain
@@ -42,9 +48,9 @@ links and implementation files never become implicit discovery routes.
 
 ## Relationships
 
-The diagram shows how an Admitted selection reaches a discovery worker. Spec resolves complete
-Module contexts and their provenance, Harness binds the fresh worker to that selection, and
-Development admits expansion and returns its typed outcome. Dependency arrows describe provider
+The diagram shows how an Admitted selection reaches a discovery worker. [Spec Module](../spec/module.md) resolves complete
+Module contexts and their provenance, [Harness Module](../harness/module.md) binds the fresh worker to that selection, and
+[Development Module](../development/module.md) admits expansion and returns its typed outcome. Dependency arrows describe provider
 use, not extra context: links, hints and provider implementation files are not implicit expansion
 routes. The selected originals remain the source of the answer rather than generated summaries.
 

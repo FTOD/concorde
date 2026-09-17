@@ -12,10 +12,18 @@ and transitions are retained here as the single detailed contract.
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Specification Flow {#specify-loop-specification-flow}
 
-The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
+The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
@@ -31,12 +39,12 @@ existing Spec, and `run_reviews=false` records only a Spec review skip where no 
 #### Composition, state and recovery {#specify-loop-composition-state-and-recovery}
 
 The public request requires task and admits optional target/focus hints, constraints, change_id,
-specify and run_reviews. Both booleans default true. New tasks use Query and Routing to select one
+specify and run_reviews. Both booleans default true. New tasks use [Query and Routing](../query-routing/module.md) to select one
 owner; a trusted bound caller preserves that owner. Mutating primary requests first use the common
 host's isolated committed-base handoff. The recorded task, owner, focus and constraints bind resume;
 incompatible intent or worktree identity is rejected before a worker starts.
 
-Spec Authoring produces owned replacements; Review produces independent current coverage for the
+[Spec Authoring](../spec-authoring/module.md) produces owned replacements; [Review Module](../review/module.md) produces independent current coverage for the
 complete contract and affected consumers. No author transcript or artifacts become reviewer input.
 The affected-consumer compatibility reviews that admit a candidate before it is applied are
 recorded under the consumer's review intent; because the applied bytes equal the reviewed bytes,
@@ -47,7 +55,7 @@ review never stands for authoring. Changed relevant inputs invalidate review. Sp
 are sticky: run_reviews=false records skipped only when no requirement already exists. Skipped,
 failed, incomplete and successful evidence remain distinct. The flow returns completed with the
 common response and ArtifactRefs; it never requires code review, runs implementation checks or marks
-ready. Dev-loop may consume that completed result without repeating accepted current Spec work.
+ready. [Development Flow](../dev-loop/module.md) may consume that completed result without repeating accepted current Spec work.
 
 ### Design {#specify-loop-design}
 

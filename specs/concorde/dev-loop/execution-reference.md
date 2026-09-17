@@ -9,10 +9,27 @@ and transitions are retained here as the single detailed contract.
 | Term | Meaning / definition |
 | --- | --- |
 | [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Task context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Acceptance task](../planning/tasks.md#terminology) | Defined in Making work verifiable. |
+| [Reserved task ID](../planning/tasks.md#terminology) | Defined in Making work verifiable. |
+| [Review coverage](../review/module.md#terminology) | Defined in Review. |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Development Agent Flow and revision loops {#development-development-agent-flow-and-revision-loops}
 
@@ -83,9 +100,9 @@ consumer/provider contract views must agree before any component implementation 
 ancestry and scope membership never grant extra reads. Successful component revisions are checked
 again before Module delivery.
 
-Checks use deterministic argv declared by project configuration. Harness enforces read-only project
+Checks use deterministic argv declared by project configuration. [Harness Module](../harness/module.md) enforces read-only project
 access for the entire check process tree and gives each check external temporary/cache/report space;
-unsupported enforcement blocks execution. Development persists output outside that sandbox, and
+unsupported enforcement blocks execution. [Development Module](../development/module.md) persists output outside that sandbox, and
 raw logs stay out of later Spec-only sessions. A stale Spec, changed task intent, modified
 code, failed check or missing completion blocks delivery and preserves the candidate worktree. Resuming a
 change reuses its target records and typed artifacts but starts a fresh agent session. The host does not copy unrelated

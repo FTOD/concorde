@@ -1,6 +1,6 @@
 # Running a worker safely
 
-Harness turns a checked task into one fresh worker execution and accepts only a result for that
+The [Harness Module](module.md) turns a checked task into one fresh worker execution and accepts only a result for that
 same task. It also runs configured deterministic checks through a separate, stronger filesystem
 boundary. These are related services, but their security guarantees are not interchangeable.
 
@@ -8,13 +8,15 @@ boundary. These are related services, but their security guarantees are not inte
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Tool gate](module.md#terminology) | Defined in this Module’s entry Terminology. |
-| [Capsule](module.md#terminology) | Defined in this Module’s entry Terminology. |
+| [Tool gate](module.md#terminology) | Defined in Harness. |
+| [Capsule](module.md#terminology) | Defined in Harness. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## A normal worker execution
 
@@ -48,7 +50,7 @@ Preparing a job and starting it are different moments. Rechecking prevents inter
 configuration changes from turning an earlier approval into permission for different work. Fresh
 workers avoid hidden conversational assumptions; explicit results make the handoff inspectable.
 
-Workers can report Issues while continuing useful work. Accepted observations survive a later
+Workers can report Issues through the [Issues Module](../issues/module.md) while continuing useful work. Accepted observations survive a later
 failure, but neither an Issue receipt nor usage statistics means the task succeeded. The Module's
 execution reference defines process, transport, environment, accounting and cleanup details.
 

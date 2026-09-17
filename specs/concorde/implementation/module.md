@@ -9,9 +9,18 @@ Implementation fulfills accepted tasks by changing the code that its worker is a
 | Term | Meaning / definition |
 | --- | --- |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Acceptance task](../planning/tasks.md#terminology) | Defined in Making work verifiable. |
+| [Internal capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -46,8 +55,8 @@ conditions to the reusable local task contract.
 
 ## Relationships
 
-This view follows an admitted Implementation task to Task completion. Spec determines the selected
-Module's implementation boundary, Harness enforces the programmer's grant, and Development admits
+This view follows an admitted Implementation task to Task completion. [Spec Module](../spec/module.md) determines the selected
+Module's implementation boundary, [Harness Module](../harness/module.md) enforces the programmer's grant, and [Development Module](../development/module.md) admits
 the exact task list and retains its progress. The adapter's use of these sibling providers does not
 merge their ownership or permissions. Task completion reports fulfilled acceptance only; validation,
 review and delivery remain separate decisions of the composing Flow.

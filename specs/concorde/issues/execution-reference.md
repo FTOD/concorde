@@ -12,6 +12,16 @@ and transitions are retained here as the single detailed contract.
 | [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Disposition](lifecycle.md#terminology) | Defined in Solving a recorded problem. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Issue records and reporting {#issues-issue-records-and-reporting}
 
@@ -218,8 +228,8 @@ verification are bound by the host; durable attempt history belongs to the candi
 | `reopen` | Deterministic explicit reopening. | revision, note | output |
 | `prepare` | Deterministic selection, pending-disposition recovery and attempt binding. | selected issue | route |
 | `decide` | One fresh Issue solver invocation. | problem, Spec, evidence | route |
-| `develop` | Ordinary Development Flow. | intended behavior | route |
-| `repair_spec` | Ordinary owner-only Spec Authoring. | intended contract | route |
+| `develop` | Ordinary [Development Flow](../dev-loop/module.md). | intended behavior | route |
+| `repair_spec` | Ordinary owner-only [Spec Authoring](../spec-authoring/module.md). | intended contract | route |
 | `verify` | Fresh Issue-specific reviews. | problem, current inputs | route |
 | `close` | Deterministic write-ahead journaling and disposition with stale checks. | decision, evidence | disposition |
 | `ready` | Final validation including disposition bytes. | candidate | output |
@@ -283,7 +293,7 @@ Verification uses a bounded review list: Issue-specific Spec/code questions firs
 candidate review intents required for final readiness. Code-free Modules need only Spec review.
 The distinction preserves both targeted verification and the ordinary source/consumer freshness
 gates; a private targeted review cannot replace another task's required review. Each item is a
-separate Review capability invocation, and a blocked or failed item prevents dependent items.
+separate [Review Module](../review/module.md) capability invocation, and a blocked or failed item prevents dependent items.
 
 State: `index`, `stop` and `output`. The host owns the finite list and its review input bindings.
 

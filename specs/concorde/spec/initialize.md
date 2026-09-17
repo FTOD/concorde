@@ -11,8 +11,10 @@ This document defines `concorde-init`'s propose/apply behavior. [module](module.
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Protocol binding](values.md#terminology) | Defined in Identities and versions. |
+| [Document role](values.md#terminology) | Defined in Identities and versions. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Installation](../distribution/installation.md#terminology) | Defined in Installing and updating Concorde. |
 
 ## Propose, inspect and apply
 
@@ -32,7 +34,7 @@ maintenance or topology changes, not reinitialization, to migrate their document
 
 New registries use schema 5 with explicit empty `references` on the initial Module; the stub's
 schema-2 document metadata names its single `owner` and explicit `role: module`. Initialization pins Protocol 9.0.0/Profile 14 and
-the exact manifest digest of the Protocol copy the installer placed under `.concorde/protocol/`;
+the exact manifest digest of the Protocol copy the [Distribution Module](../distribution/module.md) installer placed under `.concorde/protocol/`;
 it creates no Protocol file itself and fails with `not_installed` when that copy is absent. Later
 installations update the copy but never the binding, which the developer moves explicitly with
 `concorde-configure` and `accept_protocol`. A draft identifies missing behavior without inventing external

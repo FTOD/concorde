@@ -7,7 +7,14 @@
 | [Module](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Capability](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Contract](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Requirement](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Scenario](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Entity](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ownership](spec/registry.md#terminology) | Defined in Registry. |
+| [Reference](spec/registry.md#terminology) | Defined in Registry. |
+| [Implementation binding](spec/registry.md#terminology) | Defined in Registry. |
+| [Evidence](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Historical scope
 
@@ -81,8 +88,8 @@ this editorial migration. Revisions, contexts, plans and reviews affected by own
 source bytes need fresh evidence under the normal runtime gates.
 
 Common host transport, invocation permissions, gap history and compatibility stay in Development.
-Planning owns sufficiency, plan and tasks; Implementation owns bounded task fulfillment. Spec
-Authoring, Review, Validation, Delivery, Query and Routing, and Topology own their cohesive effects.
-Specification Flow and Development Flow own their sequencing and completion policy. Current repair
+[Planning Module](planning/module.md) owns sufficiency, plan and tasks; [Implementation Module](implementation/module.md) owns bounded task fulfillment. Spec
+Authoring, Review, Validation, Delivery, [Query and Routing](query-routing/module.md), and Topology own their cohesive effects.
+[Specification Flow](specify-loop/module.md) and [Development Flow](dev-loop/module.md) own their sequencing and completion policy. Current repair
 and component adapters still constrain reuse; broader flow adapters require separately implemented,
 reviewed and verified support.

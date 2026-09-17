@@ -8,10 +8,14 @@ Subject headings organize the Module's obligations; they do not create separate 
 | Term | Meaning / definition |
 | --- | --- |
 | [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Internal capability](module.md#terminology) | Defined in Development capability host. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Development capability host
 
@@ -54,7 +58,7 @@ composition.
 Every capability's orchestration SHALL execute as a LangGraph Flow of deterministic operations,
 Agent invocations and explicitly represented transitions.
 
-Flow is the terminology defined by Harness in [Agent Flows and Loops](../harness/graphs-and-loops.md).
+The [Harness Module](../harness/module.md) explains Flow execution in [Flows and feedback](../harness/graphs-and-loops.md); the term's canonical definition is linked above.
 
 ### req.development.single-boundary — Every invocation passes through the host adapter
 

@@ -4,6 +4,23 @@
 `schema_version: 2` and `data`. The closed payload contains the fields below. `S` is a nonblank
 string, `N` is `S|null`, and `D` is `sha256:` followed by 64 lowercase hexadecimal digits.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Disposition](../issues/lifecycle.md#terminology) | Defined in Solving a recorded problem. |
+| [Review coverage](module.md#terminology) | Defined in Review. |
+| [Advisory finding](module.md#terminology) | Defined in Review. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+
+## Result fields and judgments
+
 | Field | Type or allowed values |
 | --- | --- |
 | `context_id` | `D` or null |
@@ -22,7 +39,7 @@ Each closed `IssueJudgment` has `issue_id`, `report_id`, `path`, `severity: bloc
 worker must have reported or explicitly received that observation; guessed identities, foreign
 observations and duplicate Issue judgments are invalid. There is no parallel `gaps` array, no
 copied question/contract tuple and no free-text equality join. The canonical problem, evidence and
-ownership live in the Issue observation; severity is this review's judgment about its admitted task.
+ownership live in the Issue observation retained by the [Issues Module](../issues/module.md); severity is this review's judgment about its admitted task.
 
 The result's target_id identifies the reviewed Module. An Issue can identify a different known
 contract owner from that Module's admitted references. Reporting scope and definition ownership do
@@ -36,18 +53,9 @@ or conflicting necessary contracts can stop for Spec repair; implementation defe
 existing bounded code-repair edge. Reporting an advisory Issue does not stop the review or its
 caller. An interrupted review remains incomplete even when its already acknowledged reports survive.
 
-For admitted tasks/implementation repair, Harness freezes the exact review result together with a
+For admitted tasks/implementation repair, [Harness Module](../harness/module.md) freezes the exact review result together with a
 `concorde-issue-context` containing only the selected observations' contract-level description,
 impact and basis. It does not expose the rest of the Issue store or a prior conversation. Disposition
 changes cannot rewrite the observation a review judged, and closing an Issue does not make a stale
 review current. Required review gates still bind the reviewed Spec/code inputs and independent
 completion evidence, not a problem's open/closed flag.
-
-## Terminology
-
-| Term | Meaning / definition |
-| --- | --- |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Spec records which documents belong to each Module, determines which specifications a task may read, and checks that their structure and references agree. It also creates an initial project specification without inventing business behavior. Developers and the Framework use it to establish the intended contract before work begins.
+The Spec Module records which documents belong to each Module, determines which specifications a task may read, and checks that their structure and references agree. It also creates an initial project specification without inventing business behavior. Developers and the Framework use it to establish the intended contract before work begins.
 
 ## Terminology
 
@@ -13,10 +13,17 @@ Spec records which documents belong to each Module, determines which specificati
 | [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Protocol binding](values.md#terminology) | Defined in Identities and versions. |
+| [Document unit](values.md#terminology) | Defined in Identities and versions. |
+| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Reference](registry.md#terminology) | Defined in Registry. |
+| [Implementation binding](registry.md#terminology) | Defined in Registry. |
+| [Structural validation](structure.md#terminology) | Defined in What structural validation tells you. |
+| [Semantic completeness](structure.md#terminology) | Defined in What structural validation tells you. |
 
 ## Usage
 
-Use Spec when a task needs to find its owning Module, obtain the specifications it may rely on,
+Use the Spec Module when a task needs to find its owning Module, obtain the specifications it may rely on,
 check document consistency or initialize a project. A Module selection includes its owned reading
 and metadata plus explicitly referenced units. A scenario selects the same owner's complete context.
 

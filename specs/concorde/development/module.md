@@ -13,8 +13,13 @@ Development is the common host through which Concorde operations are requested a
 | [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -43,7 +48,7 @@ keeps a candidate's identity and progress, and File transactions applies accepte
 against the original state. LangGraph makes the host's ordering and branching inspectable.
 
 Separating admission from domain work prevents a model's proposed result from choosing its own
-permissions. Harness prepares worker execution, Spec supplies current contracts, and Issues keeps
+permissions. [Harness Module](../harness/module.md) prepares worker execution, [Spec Module](../spec/module.md) supplies current contracts, and [Issues Module](../issues/module.md) keeps
 observations. The chosen provider owns its behavior; a composing workflow owns when that behavior
 runs and when the larger task is complete. Shared runtime code does not merge those responsibilities.
 
@@ -55,7 +60,7 @@ first discover the relevant Module; others receive an already selected owner; de
 operations may need no worker at all. The host checks that choice instead of allowing a request to
 select arbitrary context or authority.
 
-Distribution supplies the Skill instructions used by the developer's client. The Development host
+[Distribution Module](../distribution/module.md) supplies the Skill instructions used by the developer's client. The Development host
 checks and dispatches the resulting request to the selected Capability, obtaining current contracts
 through Spec where needed. When that Capability or one of its composed steps requires model execution,
 the host prepares and runs the worker invocation through Harness. It keeps candidate progress

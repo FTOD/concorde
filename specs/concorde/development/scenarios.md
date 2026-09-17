@@ -8,10 +8,19 @@ Subject headings organize the Module's obligations; they do not create separate 
 | Term | Meaning / definition |
 | --- | --- |
 | [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Public capability](module.md#terminology) | Defined in Development capability host. |
+| [Internal capability](module.md#terminology) | Defined in Development capability host. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Development capability host
 

@@ -10,9 +10,11 @@ question.
 | --- | --- |
 | Task sufficiency | Whether the admitted Spec provides the meaning necessary to plan this particular task, not every possible task. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Internal capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Before planning
 

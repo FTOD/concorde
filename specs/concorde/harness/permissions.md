@@ -1,6 +1,6 @@
 # Information and permission
 
-Having a document available is different from being allowed to change it. Harness derives a concrete
+Having a document available is different from being allowed to change it. The [Harness Module](module.md) derives a concrete
 permission grant for each job, so a Module relationship or a model's request cannot silently widen
 access.
 
@@ -8,13 +8,14 @@ access.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Tool gate](module.md#terminology) | Defined in this Module’s entry Terminology. |
-| [Worker profile](module.md#terminology) | Defined in this Module’s entry Terminology. |
+| [Tool gate](module.md#terminology) | Defined in Harness. |
+| [Worker profile](module.md#terminology) | Defined in Harness. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## How access is selected
 

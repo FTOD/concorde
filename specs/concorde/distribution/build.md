@@ -10,25 +10,31 @@ chapters with the separate Framework execution profile. The kind asset contains 
 and its canonical templates. Framework configuration, phase authority and Mermaid authoring
 conventions belong to the execution profile, not the independent standard.
 
-The build no longer emits the docsite-only `generated/docs/instructions.json` or
-`generated/docs/wire.json`; normal owned-output cleanup retires old copies. This does not remove
-runtime Agent instructions, exported schema APIs or `generated/protocol/schemas.json`.
-
 ## Terminology
 
 | Term | Meaning / definition |
 | --- | --- |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Public capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Internal capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Worker profile](../harness/module.md#terminology) | Defined in Harness. |
+
+The build no longer emits the docsite-only `generated/docs/instructions.json` or
+`generated/docs/wire.json`; normal owned-output cleanup retires old copies. This does not remove
+runtime Agent instructions, exported schema APIs or `generated/protocol/schemas.json`.
 
 ## Rendering and freshness
 
-A **Skill** is an instruction artifact for the developer's external agent runtime. Distribution
-owns its authored source under `skills/`, shared invocation instructions under
+Distribution owns a Skill's authored source under `skills/`, shared invocation instructions under
 `prompts/workflow-host/`, and rendered integration-specific installation. Each public Skill maps to
 one public Capability; non-public capabilities have no Skill. The external runtime reads
-the Skill and submits the declared typed request through `scripts/run-capability.py`; Development
+the Skill and submits the declared typed request through `scripts/run-capability.py`; the [Development Module](../development/module.md)
 admits and executes that request. That entry path is project-relative, so a rendered Skill
 carries no worktree identity: it binds to the worktree in which the developer's runtime executes
 it, and Development derives the project root from that working directory. Building or installing

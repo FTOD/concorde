@@ -10,10 +10,17 @@ can answer it. Hints help selection; they are not permission to read arbitrary d
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 
 ## Asking a question
 
-Discovery starts from explicitly selected complete Module Specs. It can request another Module when
+Discovery starts from explicitly selected complete Module Spec contexts, including both document roles and metadata. It can request another Module when
 needed, and the host checks that selection before making its documents available. The answerer uses
 the admitted originals rather than summaries made by earlier readers. Missing meaning is reported
 with its owner when known; discovery does not inspect implementation to invent a promise.

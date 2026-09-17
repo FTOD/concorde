@@ -11,6 +11,14 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Spec](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Capability](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Initialization](spec/initialize.md#terminology) | Defined in Project initialization. |
+| [Delivery](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Concorde Framework
 

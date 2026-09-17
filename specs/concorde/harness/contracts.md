@@ -8,10 +8,26 @@ Subject headings organize the Module's obligations; they do not create separate 
 | Term | Meaning / definition |
 | --- | --- |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capsule](module.md#terminology) | Defined in Harness. |
+| [Spec context](context.md#terminology) | Defined in What information a worker receives. |
+| [Implementation context](context.md#terminology) | Defined in What information a worker receives. |
+| [Capability context](context.md#terminology) | Defined in What information a worker receives. |
+| [Task context](context.md#terminology) | Defined in What information a worker receives. |
+| [Document unit](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Source-member role](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Context resolution
 
@@ -154,7 +170,7 @@ review's target/focus, context/input identities, spec/code mode, status, represe
 Issue judgments, answer, revision and `semantic_completeness: "not_proven"`. A judgment carries
 immutable receipt fields, blocking/advisory severity and affected_task. The host admits only the
 selected observation descriptions through concorde-issue-context, not the whole Issue history. Revisions bind Spec/implementation digests and nullable base/head commits.
-This service enforces the declared type and phase; the common host enforces Development Flow policy and independently verifies
+This service enforces the declared type and phase; the common host enforces [Development Flow](../dev-loop/module.md) policy and independently verifies
 current, target-bound code-review repair evidence and the bounded repair policy before supplying
 it. This addition preserves the existing review-driven repair edge without granting raw code reads.
 
@@ -283,7 +299,7 @@ in characters. The example’s target ID illustrates a separately registered con
 
 The canonical [review-result record](../review/review-result.md)
 is owned by Review and included by Harness's explicit document reference. Harness validates
-and freezes it only in admitted tasks/implementation repair contexts; Development checks current
+and freezes it only in admitted tasks/implementation repair contexts; [Development Module](../development/module.md) checks current
 review intent and evidence before providing it. Neither party copies or widens its definition.
 
 ### Global Spec context assembly {#context-global-spec-context-assembly}
@@ -343,7 +359,7 @@ export. Missing assets prevent construction; digest mismatches report protocol_m
 Mode admission precedes launch: the instruction digest identifies common responsibilities plus one
 selected task mode. Stage artifact types are restricted by that mode; Spec and code reviews admit
 no author stage_inputs. The Issue solver receives a selected problem and bounded host feedback with Spec-only authority.
-Implementation receives its tasks and optional admitted review/Issue context. No phase inherits
+[Implementation Module](../implementation/module.md) receives its tasks and optional admitted review/Issue context. No phase inherits
 conversation, private reasoning or another Module's implementation.
 
 The optional host-only Mode argument to resolve_context rejects incompatible phases and artifact

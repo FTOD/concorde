@@ -8,8 +8,11 @@ Subject headings organize the Module's obligations; they do not create separate 
 | Term | Meaning / definition |
 | --- | --- |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Installation](installation.md#terminology) | Defined in Installing and updating Concorde. |
+| [Update](installation.md#terminology) | Defined in Installing and updating Concorde. |
+| [Installation receipt](installation.md#terminology) | Defined in Installing and updating Concorde. |
+| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Distribution
 

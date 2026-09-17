@@ -9,7 +9,11 @@ together. It separates agreeing on the design from approving the exact project e
 | --- | --- |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Implementation binding](../spec/registry.md#terminology) | Defined in Registry. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Two decisions
 

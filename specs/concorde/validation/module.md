@@ -11,6 +11,12 @@ Validation checks specification structure and runs configured verification comma
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Structural validation](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
+| [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
+| [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -33,7 +39,7 @@ not prove semantics. See [validation](validation.md) for results and operational
 <a id="entity.validation.adapter"></a><a id="entity.validation.evidence"></a><a id="entity.validation.readiness"></a>
 
 Validation resolves affected Spec consumers and changed-file users before collecting evidence.
-The host admits configured commands and delegates execution to Harness's OS-enforced read-only
+The host admits configured commands and delegates execution to [Harness Module](../harness/module.md)'s OS-enforced read-only
 executor; only the outside host persists logs and digest-bound results. [Check execution](execution-reference.md#validation-configured-check-execution)
 describes scratch, private diagnostics and concurrent-change rechecks.
 
@@ -44,9 +50,9 @@ previously required review.
 
 ## Relationships
 
-The diagram separates Validation evidence from the Readiness decision that consumes it. Spec
+The diagram separates Validation evidence from the Readiness decision that consumes it. The [Spec Module](../spec/module.md)
 identifies affected consumers and checks structure, Harness executes admitted commands without
-project writes, and Development records results and evaluates existing gates. A passing command
+project writes, and [Development Module](../development/module.md) records results and evaluates existing gates. A passing command
 is evidence for its checked inputs, not permission to skip required reviews or a proof of semantic
 completeness. These collaborations are capability dependencies; Validation does not own its providers.
 
@@ -95,7 +101,7 @@ This collaboration applies when run_checks admits a configured command whose res
 
 <a id="entity.validation.spec"></a><a id="agreement.document.validation.module.3"></a>
 
-Validate Spec structure and resolve every affected contract consumer and implementation-file user for candidate checks.
+The Spec Module validates Spec structure and resolves every affected contract consumer and implementation-file user for candidate checks.
 
 This collaboration applies when computing structural evidence and the affected Module set for current validation.
 

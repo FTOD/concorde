@@ -1,17 +1,19 @@
 # Preparing and coordinating work
 
-The invocation host assembles a worker's task, information and permissions before execution.
+The [Development Module](../development/module.md) dispatches capability requests; when an operation
+needs a worker, this Module's invocation host assembles that worker's task, information and permissions before execution.
 Its job is to make the boundary explicit, not to decide the software's intended behavior.
 
 ## Terminology
 
 | Term | Meaning / definition |
 | --- | --- |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## From request to result
 

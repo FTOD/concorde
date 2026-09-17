@@ -10,7 +10,15 @@ Distribution prepares the Framework assets that developers install and run: inst
 | --- | --- |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Installation](installation.md#terminology) | Defined in Installing and updating Concorde. |
+| [Update](installation.md#terminology) | Defined in Installing and updating Concorde. |
+| [Installation receipt](installation.md#terminology) | Defined in Installing and updating Concorde. |
+| [Initialization](../spec/initialize.md#terminology) | Defined in Project initialization. |
+| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -137,7 +145,7 @@ three workflows; their exact acceptance cases are owned together in [Distributio
 
 <a id="entity.distribution.spec"></a><a id="agreement.document.distribution.module.1"></a>
 
-Defines the project configuration and registry that installation, configuration and initialization read or write, with exactly one pinned Protocol binding.
+The [Spec Module](../spec/module.md) defines the project configuration and registry that installation, configuration and initialization read or write, with exactly one pinned Protocol binding.
 
 Define the project configuration and registry that installation, configuration and initialization read or write.
 

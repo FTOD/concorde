@@ -9,7 +9,19 @@ Subject headings organize the Module's obligations; they do not create separate 
 | --- | --- |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker profile](../harness/module.md#terminology) | Defined in Harness. |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Public capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Internal capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Installation](installation.md#terminology) | Defined in Installing and updating Concorde. |
+| [Update](installation.md#terminology) | Defined in Installing and updating Concorde. |
+| [Installation receipt](installation.md#terminology) | Defined in Installing and updating Concorde. |
+| [Initialization](../spec/initialize.md#terminology) | Defined in Project initialization. |
+| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Installation service
 
@@ -111,7 +123,7 @@ no separate `agents` authoring root, and 4 templates. Codex `.agents/skills` and
 `scripts/run-capability.py` and does not inspect project context.
 
 Project initialization and Protocol-binding decisions are a distinct typed `concorde-init`
-capability owned by `module.spec`, not by this Module.
+capability owned by the [Spec Module](../spec/module.md), not by this Module.
 
 ### scenario.distribution.worktree-guard-refuses — The guard refuses native worktree creation in a developer session
 

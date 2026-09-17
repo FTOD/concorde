@@ -18,6 +18,12 @@ This is a topic of the [Spec Module](module.md), not another Module or a separat
 | [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Document unit](values.md#terminology) | Defined in Identities and versions. |
+| [Document role](values.md#terminology) | Defined in Identities and versions. |
+| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Independent relationships
 

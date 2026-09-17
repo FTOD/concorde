@@ -10,8 +10,15 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Implementation binding](registry.md#terminology) | Defined in Registry. |
+| [Structural validation](structure.md#terminology) | Defined in What structural validation tells you. |
+| [Semantic completeness](structure.md#terminology) | Defined in What structural validation tells you. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Initialization](initialize.md#terminology) | Defined in Project initialization. |
+| [Initial proposal](initialize.md#terminology) | Defined in Project initialization. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Spec
 

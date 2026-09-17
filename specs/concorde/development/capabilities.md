@@ -8,13 +8,15 @@ for every worker or library function.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Public capability](module.md#terminology) | Defined in this Module’s entry Terminology. |
-| [Internal capability](module.md#terminology) | Defined in this Module’s entry Terminology. |
+| [Public capability](module.md#terminology) | Defined in Development capability host. |
+| [Internal capability](module.md#terminology) | Defined in Development capability host. |
 | [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Public entry or internal operation
 
@@ -22,8 +24,8 @@ Developers invoke public capabilities through Skills or the common launcher. Som
 as planning one already selected Module, are internal building blocks used by declared workflows.
 Knowing an internal operation's name is not permission to invoke it directly.
 
-For example, Development Flow uses planning and implementation as separate steps. Planning returns
-a plan; implementation fulfills accepted tasks. The Flow chooses their order, while each provider
+For example, [Development Flow](../dev-loop/module.md) uses planning and implementation as separate steps. [Planning Module](../planning/module.md) returns
+a plan; the [Implementation Module](../implementation/module.md) fulfills accepted tasks. The Flow chooses their order, while each provider
 owns what its result means. A caller does not acquire the provider's responsibilities by composing it.
 
 ## Why data and authority are separate

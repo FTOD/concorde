@@ -11,7 +11,13 @@ Issues keeps a durable record of observed problems and supports their explicit i
 | [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Disposition](lifecycle.md#terminology) | Defined in Solving a recorded problem. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -92,39 +98,39 @@ flowchart TB
 
 <a id="entity.issues.development"></a>
 
-Development owns typed admission, phase results and candidate progress. Issue operations use its
+[Development Module](../development/module.md) owns typed admission, phase results and candidate progress. Issue operations use its
 [execution boundary](../development/interfaces.md#capability-execution-boundary), preserving its
 configuration, context, permission and failure distinctions. Reporting is a separate limited host
 effect, never worker filesystem write authority or permission to advance a failed stage.
 
 <a id="entity.issues.spec"></a>
 
-Spec resolves Module/scenario ownership and validates paired contracts. Issue attribution uses the
+[Spec Module](../spec/module.md) resolves Module/scenario ownership and validates paired contracts. Issue attribution uses the
 [current registered context](../spec/contracts.md#registry-stable-id-spec-context-queries), not a path guess.
 Included definitions retain their owner; unknown ownership remains null. Historical report owners
 need not remain in a later registry. Invalid current target selections stop solving.
 
 <a id="entity.issues.dev-loop"></a>
 
-Development Flow supplies [ordinary development](../dev-loop/development.md) for the selected goal.
+[Development Flow](../dev-loop/module.md) supplies [ordinary development](../dev-loop/development.md) for the selected goal.
 The Issue runtime preserves the goal, constraints, file boundaries, required checks and independent
 reviews. A blocked child yields a new bounded decision rather than automatic delivery or wider access.
 
 <a id="entity.issues.spec-authoring"></a>
 
-Spec Authoring supplies [owner-only contract changes](../spec-authoring/authoring.md) when an
+[Spec Authoring](../spec-authoring/module.md) supplies [owner-only contract changes](../spec-authoring/authoring.md) when an
 admitted decision can settle a required contract. The author receives intended behavior, not code
 investigation. Missing product choices remain explicit; shared changes retain consumer checks.
 
 <a id="entity.issues.review"></a>
 
-Review supplies [fresh read-only assessments](../review/review.md). Issue-specific verification
+[Review Module](../review/module.md) supplies [fresh read-only assessments](../review/review.md). Issue-specific verification
 checks the selected problem, not just unrelated passing tests. Failed, incomplete or stale reviews
 cannot justify resolved disposition. Canonical report references retain their exact observations.
 
 <a id="entity.issues.validation"></a>
 
-Validation supplies [candidate checks](../validation/validation.md). The disposition is written
+[Validation Module](../validation/module.md) supplies [candidate checks](../validation/validation.md). The disposition is written
 before final validation so ready evidence includes those bytes. A failed final validation restores
 only the runtime's own unchanged disposition write, preserves other work and leaves the Issue open.
 If concurrent edits prevent restoration, the host reports the conflict rather than overwriting them.

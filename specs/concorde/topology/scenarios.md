@@ -9,7 +9,13 @@ Subject headings organize the Module's obligations; they do not create separate 
 | --- | --- |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
+| [Composition](../spec/registry.md#terminology) | Defined in Registry. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Implementation binding](../spec/registry.md#terminology) | Defined in Registry. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Topology
 

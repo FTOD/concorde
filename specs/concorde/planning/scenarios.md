@@ -8,9 +8,13 @@ Subject headings organize the Module's obligations; they do not create separate 
 | Term | Meaning / definition |
 | --- | --- |
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Task sufficiency](assessment.md#terminology) | Defined in Is the specification sufficient for this task? |
+| [Acceptance task](tasks.md#terminology) | Defined in Making work verifiable. |
+| [Reserved task ID](tasks.md#terminology) | Defined in Making work verifiable. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 
 ## Planning
 

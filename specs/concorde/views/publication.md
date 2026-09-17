@@ -12,6 +12,12 @@ satisfies the specification.
 | [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Document unit](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Publication candidate](pipeline.md#terminology) | Defined in From source documents to a published site. |
+| [Promotion](pipeline.md#terminology) | Defined in From source documents to a published site. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 
 ## Two reading paths, one Module
 
@@ -37,7 +43,7 @@ proposal is still current. Scaffolding is creation-only: it cannot overwrite an 
 change business Specs. Prepare the site's dependencies separately; a prerequisite report does not
 install them on the developer's behalf.
 
-Builds materialize registered Markdown and paired metadata into a disposable candidate, render
+Builds materialize registered Markdown and paired metadata into a disposable publication candidate, render
 inline Mermaid diagrams, validate source freshness and all internal links, then promote the whole
 checked directory. A failed or stale candidate leaves the last successfully published site intact.
 Rebuilding removes obsolete generated pages only as part of successful promotion. The

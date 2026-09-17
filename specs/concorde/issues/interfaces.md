@@ -1,11 +1,26 @@
 # Issue interface
 
-`concorde-issues-request@1` uses the common invocation envelope and accepts `action` plus optional
+`concorde-issues-request@1` uses the [Development Module](../development/module.md) common invocation envelope and accepts `action` plus optional
 `target_id`, `task`, `focus_id`, `constraints`, `change_id`, `issue_id`, `report`, `expected_revision`
 and `note`. Actions are `list`, `show`, `report`, `reopen` and `solve`. Unknown fields fail typed
 admission. A report field is accepted only by report. A supplied revision must match current bytes. A solve
 note supplies explicit developer clarification; a changed clarification restarts the bounded
 attempt without silently changing a previously bound development intent.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Disposition](lifecycle.md#terminology) | Defined in Solving a recorded problem. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
+## Operations and reporting
 
 | Action | Required input | Effect |
 | --- | --- | --- |
@@ -38,15 +53,6 @@ Issue solving. `scripts/issues.py archive-reflections` explicitly moves an old q
 symlink or unsafe source is refused without deleting either copy. Installation preserves legacy
 user data but does not install an active Reflection queue. The archive is outside active validation
 and normal worker grants; continued work requires an explicit new Issue citing the old evidence.
-
-## Terminology
-
-| Term | Meaning / definition |
-| --- | --- |
-| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Precise specifications
 

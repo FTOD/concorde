@@ -11,10 +11,19 @@ and transitions are retained here as the single detailed contract.
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Structural validation](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
+| [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
+| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Validation capability {#validation-validation-capability}
 
-The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
+The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
@@ -45,14 +54,14 @@ scenario coverage do not establish semantic completeness.
 
 Only the host admits configured argv, expands an initial `{python}` to its interpreter, and calls
 Harness's `execute_check(project_root, argv, timeout=..., environment=...)`. The supplied environment
-retains the host environment and sets `PYTHONPATH` to the package's `src`; Harness installs it only
+retains the host environment and sets `PYTHONPATH` to the package's `src`; [Harness Module](../harness/module.md) installs it only
 inside the sandbox and directs temporary/cache/report paths to independent external scratch.
 Checks may read project files. The operating system denies creation, modification, movement and
 deletion by the check and its descendants, including transient writes that are later restored.
 The rule covers listed and unlisted files, ignored caches, `.concorde/runs` and lifecycle records.
 
 Harness returns byte `stdout`, byte `stderr`, integer `returncode` and boolean `timed_out` after
-terminating the check's descendants. Development alone writes `stdout + b"\n" + stderr` to
+terminating the check's descendants. [Development Module](../development/module.md) alone writes `stdout + b"\n" + stderr` to
 `.concorde/runs/<invocation_id>/<check_id>.log`. No project log handle or lifecycle write grant enters
 the sandbox. Public evidence contains exactly `check_id`, `target_id`, `status` (`passed`, `failed`
 or `timeout`), `exit_code`, `source_digest` and `log_digest`; raw output remains private. Timeout

@@ -5,14 +5,32 @@
 | Term | Meaning / definition |
 | --- | --- |
 | [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Public capability](module.md#terminology) | Defined in Development capability host. |
+| [Internal capability](module.md#terminology) | Defined in Development capability host. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker profile](../harness/module.md#terminology) | Defined in Harness. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capsule](../harness/module.md#terminology) | Defined in Harness. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Disposition](../issues/lifecycle.md#terminology) | Defined in Solving a recorded problem. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Implementation context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
 
 ### Capability execution boundary
 
-A Capability is a State-based LangGraph node under the Capability and Harness contract. Each
+A Capability is a State-based LangGraph node under the Capability and Harness contract supplied by
+the [Harness Module](../harness/module.md). Each
 registered entry declares its State, USES and optional model execution profile. Existing host
 adapters additionally retain versioned request/response transport contracts; model-only nodes do
 not acquire new wire envelopes. Rendered public Skills expose exactly one public Capability.
@@ -82,8 +100,8 @@ worker is a fresh Pi process whose tool calls are gated to its grant; no worker 
 credential effects, and writes are restricted by phase. Executor outcomes must match invocation,
 binding and context identities. No ambient conversation or predecessor transcript is admitted.
 
-Query and route semantics belong to [Query and Routing](../query-routing/query-and-routing.md).
-Topology actions of the same public main entry belong to [Topology](../topology/topology.md).
+Query and route semantics belong to [Query and Routing](../query-routing/module.md).
+Topology actions of the same public main entry belong to [Topology](../topology/module.md).
 These are semantic siblings using the existing shared main adapter; they add no launcher.
 
 No Skill returns context manifests; context resolution is host-internal and

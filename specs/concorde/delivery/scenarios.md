@@ -11,6 +11,10 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery receipt](module.md#terminology) | Defined in Delivery. |
+| [Delivered branch](module.md#terminology) | Defined in Delivery. |
 
 ## Delivery
 

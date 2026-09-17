@@ -11,7 +11,14 @@ Spec Authoring proposes changes to a Module’s intended behavior and design. It
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Internal capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -47,9 +54,9 @@ independent review ordering belong to the consuming Flow.
 
 ## Relationships
 
-The diagram distinguishes proposing Owned replacements from applying them. Spec supplies document
-ownership and affected-consumer scope; Harness gives the fresh author read-only contract access;
-Development checks and applies accepted proposals. The author itself never gains a project write
+The diagram distinguishes proposing Owned replacements from applying them. [Spec Module](../spec/module.md) supplies document
+ownership and affected-consumer scope; the [Harness Module](../harness/module.md) gives the fresh author read-only contract access;
+[Development Module](../development/module.md) checks and applies accepted proposals. The author itself never gains a project write
 grant. These are dependencies on sibling responsibilities, not structural ownership of providers,
 and a provider reference does not permit a replacement of that provider's documents.
 
@@ -82,7 +89,7 @@ This collaboration applies when ordinary specify enters, accepts replacement out
 
 <a id="entity.spec-authoring.harness"></a><a id="agreement.document.spec-authoring.module.2"></a>
 
-Run a fresh isolated Spec author with complete Spec inputs, no inherited artifacts, no implementation contents and no project write grant.
+The Harness Module runs a fresh isolated Spec author with complete Spec inputs, no inherited artifacts, no implementation contents and no project write grant.
 
 This collaboration applies before launching spec-engineer specify mode and when validating its completion.
 

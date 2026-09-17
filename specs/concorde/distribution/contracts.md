@@ -9,7 +9,12 @@ Subject headings organize the Module's obligations; they do not create separate 
 | --- | --- |
 | [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker profile](../harness/module.md#terminology) | Defined in Harness. |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Installation](installation.md#terminology) | Defined in Installing and updating Concorde. |
+| [Installation receipt](installation.md#terminology) | Defined in Installing and updating Concorde. |
 
 ## Build
 

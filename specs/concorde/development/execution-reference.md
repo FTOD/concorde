@@ -9,10 +9,26 @@ and transitions are retained here as the single detailed contract.
 | Term | Meaning / definition |
 | --- | --- |
 | [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Public capability](module.md#terminology) | Defined in Development capability host. |
+| [Internal capability](module.md#terminology) | Defined in Development capability host. |
 | [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker profile](../harness/module.md#terminology) | Defined in Harness. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Task context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Disposition](../issues/lifecycle.md#terminology) | Defined in Solving a recorded problem. |
+| [Review coverage](../review/module.md#terminology) | Defined in Review. |
 
 ## Capability registry {#capabilities-capability-registry}
 
@@ -57,7 +73,7 @@ spellings. They identify the executing model Capability and do not recreate an A
 #### Current host adapter {#capabilities-current-host-adapter}
 
 Each public Capability has exactly one Skill invoking `scripts/run-capability.py <skill>`.
-Non-public Capabilities have no Skill or direct launcher entry. Distribution owns the Skill
+Non-public Capabilities have no Skill or direct launcher entry. [Distribution Module](../distribution/module.md) owns the Skill
 sources and projection; Development owns shared admission and dispatch. A Skill is an instruction
 artifact for the developer's external runtime, not the worker's task context or a node kind.
 
@@ -424,7 +440,7 @@ flowchart TB
 
 ## Attributed Issue blockers and host history {#review-and-gaps-attributed-issue-blockers-and-host-history}
 
-A problem is recorded once as an Issue, through the host reporting service. Its reporter classifies
+A problem is recorded once as an Issue, through the [Issues Module](../issues/module.md) host reporting service. Its reporter classifies
 it as bug, gap or limitation and supplies evidence within its admitted context. A missing necessary
 contract is gap/missing-contract; conflicting contracts and implementation/Spec mismatches have
 their respective gap subtypes. Classification alone does not stop a worker or start a repair.
@@ -432,7 +448,7 @@ their respective gap subtypes. Classification alone does not stop a worker or st
 Stage results carry `blockers`: an immutable Issue receipt and a task-local blocked_step. A worker
 can report several nonblocking problems and still complete its work; completed/sufficient results
 cannot simultaneously claim blockers. Necessary missing contracts use spec_incomplete, other
-blocking contradictions can use conflicting, and execution failures remain failed. Review owns
+blocking contradictions can use conflicting, and execution failures remain failed. The [Review Module](../review/module.md) owns
 [its independent judgments](../review/execution-reference.md), which reference Issues with severity and
 affected_task rather than repeating problem text in findings and gaps.
 

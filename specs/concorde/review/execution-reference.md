@@ -11,11 +11,25 @@ and transitions are retained here as the single detailed contract.
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Review coverage](module.md#terminology) | Defined in Review. |
+| [Advisory finding](module.md#terminology) | Defined in Review. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capsule](../harness/module.md#terminology) | Defined in Harness. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Public capability](../development/module.md#terminology) | Defined in Development capability host. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Independent review capability {#review-independent-review-capability}
 
-The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
+The [Development Module](../development/module.md) owns admission. Its [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
 [typed handoffs](../development/interfaces.md#stage-handoffs) and
 [gap rules](../development/execution-reference.md) apply. Artifact references are host-issued paths
 and exact digests; a valid shape alone does not establish currentness or authority.
@@ -56,7 +70,7 @@ remain audit history and cannot pass a current gate.
 
 The reviewer returns `concorde-review-stage-result@2` bound to context_id, input_digest and mode, with
 representative_tasks, issues, answer and status=no_findings|findings|incomplete. Each Issue judgment
-carries its accepted immutable receipt, severity=blocking|advisory and affected_task. The report
+carries its accepted immutable receipt, severity=blocking|advisory and affected_task. The [Issues Module](../issues/module.md) reporting
 service checks the problem's evidence locations and known contract owner against the admitted
 context; final admission rejects unreported, ungranted or duplicate references. The host derives
 task blockers from blocking judgments instead of requiring a duplicated gap object. Reports and
@@ -82,8 +96,8 @@ reference saved review reports. Native receipts and failure diagnostics remain s
 The table maps review reports to the Review response's domain `outcome`. An interrupted
 reviewer still produces an `incomplete` review report and a `failed` Review domain outcome.
 The trusted host separately preserves the `cancelled` or `limit_exhausted` execution
-classification supplied by [Harness](../harness/execution-reference.md#execution-outcomes)
-for the enclosing Flow, persisted candidate lifecycle and final events, following the
+classification supplied by the [Harness Module](../harness/module.md), as defined in its
+[execution outcomes](../harness/execution-reference.md#execution-outcomes), for the enclosing Flow, persisted candidate lifecycle and final events, following the
 [Development boundary](../development/interfaces.md#capability-execution-boundary).
 Ordinary reviewer failures remain `failed`.
 

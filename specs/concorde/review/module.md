@@ -13,7 +13,10 @@ Review independently examines whether current specifications or code support the
 | [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -46,8 +49,8 @@ its wire representation does not authorize a repair or override lifecycle gates.
 ## Relationships
 
 This view covers selection, review admission and the resulting evidence, not a repair workflow.
-Query and Routing selects the owner of an unbound standalone request; Spec supplies current scope
-and finding ownership; Harness isolates the reviewer with read-only access. Development accepts
+[Query and Routing](../query-routing/module.md) selects the owner of an unbound standalone request; [Spec Module](../spec/module.md) supplies current scope
+and finding ownership; [Harness Module](../harness/module.md) isolates the reviewer with read-only access. [Development Module](../development/module.md) accepts
 and stores the Review result against the frozen Review input. None of these dependency edges gives
 the reviewer write authority, and the result does not itself advance delivery or repair files.
 

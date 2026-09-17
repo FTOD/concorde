@@ -4,6 +4,24 @@ This deterministic Tool exports or overlays a skeleton Understand Anything knowl
 project's explicit Spec registry. It is a developer tool, not an agent Capability or a new Skill,
 and it launches no model cognition.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Composition](../spec/registry.md#terminology) | Defined in Registry. |
+| [Use](../spec/registry.md#terminology) | Defined in Registry. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Implementation binding](../spec/registry.md#terminology) | Defined in Registry. |
+| [Implementation context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
+## Invocation
+
 ```bash
 python3 -m concorde --project-root . ua-graph [--check]
 ```
@@ -21,14 +39,6 @@ implementation context, never a broader directory walk). Overlay additionally ad
 graph for node reuse and the [unlisted-file layer contract](contracts.md#ua-graph-local-serialized-graph-contract). The target file is the first existing path
 in the installed manifest's ordered `graph_paths`, defaulting to `.ua/knowledge-graph.json` when
 neither exists yet.
-
-## Terminology
-
-| Term | Meaning / definition |
-| --- | --- |
-| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Overlaying an existing graph
 

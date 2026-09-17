@@ -9,10 +9,14 @@ Development Flow takes one intended change through specification, planning, impl
 | Term | Meaning / definition |
 | --- | --- |
 | [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -49,9 +53,9 @@ ready-only, bounded-repair and evidence-preservation promises without importing 
 
 This is a responsibility and collaboration view; the detailed development Flow defines execution
 order and routing. The adapter composes sibling providers rather than owning copies of their
-contracts: Query and Routing selects the owner, Specification Flow prepares its Spec, Planning
-produces tasks, Implementation fulfills them, and Validation and Review supply current evidence.
-Development retains the candidate and repair state, Harness isolates invocations, and Spec resolves
+contracts: [Query and Routing](../query-routing/module.md) selects the owner, [Specification Flow](../specify-loop/module.md) prepares its Spec, [Planning](../planning/module.md)
+produces tasks, [Implementation Module](../implementation/module.md) fulfills them, and [Validation Module](../validation/module.md) and [Review](../review/module.md) supply current evidence.
+[Development Module](../development/module.md) retains the candidate and repair state, [Harness Module](../harness/module.md) isolates invocations, and [Spec Module](../spec/module.md) resolves
 participants and affected users. The Repair policy constrains feedback-driven transitions; reaching
 a ready Development candidate does not invoke Delivery.
 
@@ -138,7 +142,7 @@ This collaboration applies at the Spec preparation entry with the admitted speci
 
 <a id="entity.dev-loop.planning"></a><a id="agreement.document.dev-loop.module.6"></a>
 
-Assess current sufficiency, produce the accepted plan and derive new implementation tasks or admitted repair tasks.
+Planning assesses current sufficiency, produces the accepted plan and derives new implementation tasks or admitted repair tasks.
 
 This collaboration applies after successful Spec preparation when a current plan or tasks are missing, or when a permitted repair returns to tasks.
 
@@ -169,7 +173,7 @@ This collaboration applies after the relevant writers finish and during finaliza
 
 <a id="entity.dev-loop.review"></a><a id="agreement.document.dev-loop.module.9"></a>
 
-Independently review current code and return coverage, findings and gaps for the flow's bounded repair or stop decision.
+Review independently reviews current code and returns coverage, findings and gaps for the flow's bounded repair or stop decision.
 
 This collaboration applies after implementation checks when code review is enabled or already required, including final component review.
 

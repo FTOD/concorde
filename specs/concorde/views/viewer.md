@@ -4,6 +4,17 @@ This deterministic service opens an existing raw Understand Anything knowledge g
 installer-owned official viewer. Its entry is `scripts/run-ua-graph-viewer.py` in the Framework package. It
 is a developer tool, not an agent Capability or a new Skill, and it launches no model cognition.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Installation](../distribution/installation.md#terminology) | Defined in Installing and updating Concorde. |
+
+## Invocation
+
 ```bash
 python3 .concorde/framework/scripts/run-ua-graph-viewer.py --project-root . --no-open
 ```
@@ -14,18 +25,10 @@ python3 .concorde/framework/scripts/run-ua-graph-viewer.py --project-root . --no
 | `--port N` | Optional integer from 0 through 65535, forwarded to the official viewer |
 | `--no-open` | Optional flag forwarded to the official viewer to suppress its browser opening |
 
-## Terminology
-
-| Term | Meaning / definition |
-| --- | --- |
-| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-
 ## Relationships and routing
 
 This service participates in Developer view and feedback. Its user-facing contract is owned here;
-`module.distribution` supplies viewer provisioning under the Installation entity's ownership.
+the [Distribution Module](../distribution/module.md) supplies viewer provisioning under the Installation entity's ownership.
 Changes to viewer launch or graph admission select this service. Changes to runtime acquisition,
 package verification or recovery select `module.distribution` through an admitted Module routing
 view. No graph or viewer action grants an agent access to another target's implementation. The

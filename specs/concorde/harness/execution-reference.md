@@ -8,11 +8,27 @@ and transitions are retained here as the single detailed contract.
 
 | Term | Meaning / definition |
 | --- | --- |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker profile](module.md#terminology) | Defined in Harness. |
 | [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capsule](module.md#terminology) | Defined in Harness. |
+| [Tool gate](module.md#terminology) | Defined in Harness. |
+| [Spec context](context.md#terminology) | Defined in What information a worker receives. |
+| [Implementation context](context.md#terminology) | Defined in What information a worker receives. |
+| [Task context](context.md#terminology) | Defined in What information a worker receives. |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Structural validation](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
+| [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 
 ## Capabilities and Harnesses {#agents-and-harnesses-capabilities-and-harnesses}
 
@@ -116,7 +132,7 @@ second Framework node result. [Execution](execution-reference.md) defines the ca
 #### Common worker rules and inventory {#agents-and-harnesses-common-worker-rules-and-inventory}
 
 The build combines `prompts/workers/common.md` with the Capability's own instructions and binds
-its child definitions as sources. Distribution still publishes `generated/agents/<name>.md` to
+its child definitions as sources. [Distribution Module](../distribution/module.md) still publishes `generated/agents/<name>.md` to
 preserve the installed instruction layout. The host appends the granted Protocol rule bundle.
 
 The single inventory is defined by [Capability registry](../development/execution-reference.md).
@@ -172,8 +188,8 @@ Only explicitly admitted structured artifacts cross stages.
 
 #### Responsibilities and implementation boundaries {#agents-and-harnesses-responsibilities-and-implementation-boundaries}
 
-The common Development host dispatches the declared provider and Flow contracts and schedules
-invocations. Planning owns plan/task semantics, Implementation owns task fulfillment, and each
+The common [Development Module](../development/module.md) host dispatches the declared provider and Flow contracts and schedules
+invocations. [Planning Module](../planning/module.md) owns plan/task semantics, [Implementation Module](../implementation/module.md) owns task fulfillment, and each
 composing Flow owns its ordering and stopping policy. This Module's worker executor verifies and
 launches workers through the Pi worker runtime and admits their results; its permissions service
 compiles effective boundaries; its context service supplies the admitted context kinds; its model-profile
@@ -332,10 +348,10 @@ or documents.
 #### Concorde Flow responsibilities {#graphs-and-loops-concorde-flow-responsibilities}
 
 The query Flow coordinates explicit context selection, deterministic source indexing and grant, and direct answers. The topology Flow
-coordinates design, human acceptance and separately bound Spec authors. Specification Flow independently coordinates authoring and Spec review. Development Flow
-consumes it and the sibling Planning, Implementation, Validation and Review providers, with explicit
+coordinates design, human acceptance and separately bound Spec authors. [Specification Flow](../specify-loop/module.md) independently coordinates authoring and Spec review. [Development Flow](../dev-loop/module.md)
+consumes it and the sibling Planning, Implementation, [Validation Module](../validation/module.md) and Review providers, with explicit
 repair or human-clarification loops. Issue solving may select verification, Spec repair or development
-Flow after a human disposition. Delivery remains a separately authorized deterministic capability.
+Flow after a human disposition. Delivery remains a separately authorized deterministic capability of the [Delivery Module](../delivery/module.md).
 
 Existing topic Specs retain their task and authority contracts. The capability adapter
 and existing Skill names remain compatible identifiers. A stage sequence satisfies only the

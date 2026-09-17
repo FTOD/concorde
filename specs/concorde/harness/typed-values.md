@@ -8,11 +8,12 @@ They do not prove that the underlying claim is true.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Review coverage](../review/module.md#terminology) | Defined in Review. |
+| [Structural validation](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
+| [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 
 ## A normal handoff
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Harness prepares and runs a worker with a defined task, information and permissions, then checks the result. It also runs configured checks in a separate read-only environment. Other Modules rely on it to execute work without treating an agent answer as permission for unrelated actions.
+The Harness Module prepares and runs a worker with a defined task, information and permissions, then checks the result. It also runs configured checks in a separate read-only environment. Other Modules rely on it to execute work without treating an agent answer as permission for unrelated actions.
 
 ## Terminology
 
@@ -16,10 +16,20 @@ Harness prepares and runs a worker with a defined task, information and permissi
 | [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec context](context.md#terminology) | Defined in What information a worker receives. |
+| [Implementation context](context.md#terminology) | Defined in What information a worker receives. |
+| [Capability context](context.md#terminology) | Defined in What information a worker receives. |
+| [Task context](context.md#terminology) | Defined in What information a worker receives. |
+| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
 
 ## Usage
 
-A calling workflow gives Harness one worker job or one configured check. Harness fixes the allowed
+A calling workflow gives the Harness Module one worker job or one configured check. Harness fixes the allowed
 inputs and permissions, starts the job, and validates its matching result before the caller proceeds.
 Spec-only workers receive specification information; code access is a separate phase-specific choice.
 
@@ -40,7 +50,7 @@ an agent.
 
 The Capability and Harness model defines a worker's task contract, effects, workspace, tools and
 children. The Model execution profiles service combines the authored role and Python profile into a reproducible
-WorkerBinding, using fresh instructions supplied by Distribution. The Typed values layer validates the
+WorkerBinding, using fresh instructions supplied by [Distribution Module](../distribution/module.md). The Typed values layer validates the
 contracts and handoffs; knowing a type or worker name does not itself grant access. This keeps
 instruction identity separate from the project knowledge a worker may read.
 
@@ -176,7 +186,7 @@ relied-upon behavior from this Module's perspective without importing another Mo
 
 <a id="entity.harness.spec"></a><a id="agreement.document.harness.module.1"></a>
 
-Own the project Spec model: the pinned Protocol binding, the explicit registry, structural validation, stable-ID file-set queries and honest initialization.
+The [Spec Module](../spec/module.md) owns the project Spec model: the pinned Protocol binding, the explicit registry, structural validation, stable-ID file-set queries and honest initialization.
 
 Admit the registry and resolve identities, document collections, entity file listings and file ownership.
 

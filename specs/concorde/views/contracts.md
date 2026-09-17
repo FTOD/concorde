@@ -10,6 +10,17 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Document unit](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Publication candidate](pipeline.md#terminology) | Defined in From source documents to a published site. |
+| [Promotion](pipeline.md#terminology) | Defined in From source documents to a published site. |
+| [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
+| [Composition](../spec/registry.md#terminology) | Defined in Registry. |
+| [Implementation binding](../spec/registry.md#terminology) | Defined in Registry. |
+| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Installation](../distribution/installation.md#terminology) | Defined in Installing and updating Concorde. |
 
 ## Publication service
 

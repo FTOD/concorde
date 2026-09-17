@@ -10,7 +10,15 @@ Topology changes the declared responsibility structure of a project: Module owne
 | --- | --- |
 | [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 | [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
+| [Composition](../spec/registry.md#terminology) | Defined in Registry. |
+| [Reference](../spec/registry.md#terminology) | Defined in Registry. |
+| [Implementation binding](../spec/registry.md#terminology) | Defined in Registry. |
+| [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -44,9 +52,8 @@ application promises; it does not add arbitrary flow configuration or provider w
 
 ## Relationships
 
-This diagram separates preparing a topology change from applying the Prepared application. Query
-and Routing supplies explicit discovery, Spec resolves old and candidate ownership and references,
-and Harness isolates designers, owner-local authors and independent reviewers. Development retains
+This diagram separates preparing a topology change from applying the Prepared application. [Query and Routing](../query-routing/module.md) supplies explicit discovery, [Spec Module](../spec/module.md) resolves old and candidate ownership and references,
+and [Harness Module](../harness/module.md) isolates designers, owner-local authors and independent reviewers. [Development Module](../development/module.md) retains
 the exact proposal and applies only the accepted transaction. These provider collaborations do not
 transfer document ownership to Topology or turn a designer's proposed paths into write authority.
 
