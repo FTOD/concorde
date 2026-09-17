@@ -3,6 +3,16 @@
 These precise specifications belong directly to the [Harness Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Harness
 
 ### scenario.harness.flow-inspection — Inspect execution without acquiring authority

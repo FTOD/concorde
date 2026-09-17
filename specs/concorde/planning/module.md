@@ -2,7 +2,16 @@
 
 ## Purpose
 
-Planning assesses whether a selected Module contract supports a task, creates a revision-bound plan and derives implementation acceptance tasks. It serves admitted composing capabilities with separate assessment, plan and task contracts; no development-loop history is an implicit source of software meaning.
+Planning checks whether a task is sufficiently specified, produces a plan and turns an accepted plan into implementation tasks. It helps a workflow decide what should be done before code work starts. It neither implements the plan nor declares the whole change ready.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -24,7 +33,7 @@ neither implements work nor marks a candidate ready.
 
 <a id="entity.planning.adapter"></a><a id="entity.planning.assessment"></a><a id="entity.planning.plan"></a><a id="entity.planning.tasks"></a>
 
-The [planning Flow](plan.md#design) checks local dependency declarations before
+The [planning Flow](execution-reference.md#plan-design) checks local dependency declarations before
 context assessment, admits a planner only after sufficiency, and persists a nonempty revision-bound
 plan before tasks can be authored. The host then supplies reserved historical IDs and validates new
 incomplete tasks before replacing accepted state. Separate artifacts prevent planning from being
@@ -90,15 +99,6 @@ Resolve the selected complete Module contract, declared participant relationship
 This collaboration applies when selecting planning inputs, checking local dependency declarations or rechecking the plan revision.
 
 - [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
-
-## Realization and reuse limits
-
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
 
 ## Precise specifications
 

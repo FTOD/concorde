@@ -3,6 +3,16 @@
 These precise specifications belong directly to the [Harness Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Context resolution
 
 ### Context snapshot resolution {#context-context-snapshot-resolution}
@@ -179,7 +189,7 @@ The context identity covers all inputs apart from its own identity field. The wi
 contains the distributed principles bundle and Module kind definition. This bundle includes
 both Concorde Spec Protocol requirements and the Framework execution profile; the field name does
 not classify all runtime rules as Spec organization rules.
-Concorde Spec Protocol 8.0.0 defines the Spec context, implementation context and external
+Concorde Spec Protocol 9.0.0 defines the Spec context, implementation context and external
 references this service resolves. The distributed rule bundle also includes the separately authored Framework execution
 profile, including P10 handoffs. The resolver verifies the build is
 fresh, then admits the Protocol copy the installer placed under `.concorde/protocol/`, the manifest
@@ -440,3 +450,17 @@ validate(value: Any, schema: Any, field: str='', *, root: dict | None=None, dept
 ```
 
 Failures return structured findings or the declared exception; callers must stop the affected transition. Repeating an unchanged read is side-effect free. Mutations require current preconditions and explicit caller-owned paths. Local contract facts above remain authoritative without reading the parent or collaborating Specs.
+
+## Context kinds
+
+| Kind | Content | Required for |
+| --- | --- | --- |
+| Spec context | The selected Module's complete resolved document-unit context (reading plus metadata), exactly the Protocol's `Context(M)`; a scenario focus changes the question, not the membership. The Protocol fixes only this visible set; the Framework delivers it as a context index and grant: the snapshot lists every document with identity, owner, digest, inclusion reasons and the reading entry, and the documents are granted read-only at their project-relative paths, byte-identical copies in a capsule. No document body is embedded. | Every Module-bound invocation. |
+| Implementation context | The Protocol's `ImplementationContext(M)`: the listing entries the selected Module's own entities declare, exact files and directory prefixes alike, and the files those entries currently bind. Every phase can see the declared entries and bound file names with their owning entity and pending status; only code-writing and code-review phases receive file contents, in their declared subsets. | Entries and file names: every phase. File contents: code-writing and code-review phases only. |
+| Capability context | The contracts of the Capabilities and Tools the invocation may use, as admitted by its Harness and constraints, together with the Module's Protocol-defined external references: the vendored documentation and source it declares with `references` of kind `external`, one tree digest per entry. Descriptions given to the model and bindings accepted by the executor resolve to the same contracts. | Reference entries and digests: every phase. Reference contents, read-only: the modes that declare the `references` effect (plan, tasks, implementation, code-review). Capability and Tool contracts: none admitted by any current Agent. |
+| Task context | The task and constraints, the stage artifacts admitted for this phase, such as a plan, implementation tasks, a review result or an Issue selection, and the frozen workspace lifecycle metadata. Task context travels inline in the invocation input, including the review host's typed changes. | Every invocation; stage artifacts are optional. |
+
+A kind may be empty for a phase, but the frozen closure is never empty. Agent instructions, the
+Protocol rule bundle and installed Skills are not context: instructions belong to the Agent
+definition and are injected beside the context, and a Skill is the developer-facing projection of
+a public Capability. The snapshot identity covers every admitted byte of every kind.

@@ -4,6 +4,21 @@ The registry makes a project's Module boundaries explicit. It lets developers an
 contract for a responsibility without inferring ownership from directories, packages or links.
 This is a topic of the [Spec Module](module.md), not another Module or a separate owner of rules.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| Ownership | Responsibility for authoring a document's canonical contract; each document has one Module owner. |
+| Composition | A parent-child relation between software responsibilities, not merely directories. |
+| Use | A declared reliance on another Module's capability, without acquiring that Module as a child. |
+| Reference | An explicit selection of another owned document or Module collection as knowledge for this Module. |
+| Implementation binding | A declaration of which files realize an entity; it does not itself grant file access. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Independent relationships
 
 Ownership answers which Module authors a document. Composition answers which responsibility
@@ -36,6 +51,16 @@ an explicit contract gap rather than an invitation to read more code or document
 The distinction matters after a document split: a consumer referencing only the old topic needs an
 explicit reference to any new unit containing a relied-upon definition. A consumer referencing the
 whole owner already includes its new owned units. A link is navigation, not that inclusion decision.
+
+## Example: using Inventory without owning it
+
+Checkout uses Inventory to reserve stock. Checkout can explicitly reference Inventory's reservation
+contract, allowing its workers to understand that agreement without reading Inventory's code.
+Inventory remains the contract owner. If Inventory also references a Tax document, Checkout does not
+automatically receive Tax: only Checkout's own declared references expand for its context.
+
+A link to the reservation definition helps a human navigate, but does not replace that explicit
+reference. This keeps a useful reading path from silently changing a worker's knowledge boundary.
 
 ## Changes and affected consumers
 

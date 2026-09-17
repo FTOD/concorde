@@ -2,7 +2,16 @@
 
 ## Purpose
 
-Implementation fulfills an admitted task list within the selected Module implementation grant and reports exact task completion. It serves composing capabilities that supply current plans and tasks, and distinguishes local code writing from separately admitted component coordination.
+Implementation fulfills accepted tasks by changing the code that its worker is allowed to access. It reports which tasks are complete without weakening their acceptance conditions. Independent checks, review, readiness and delivery remain separate decisions.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -30,7 +39,7 @@ before storing completion. Code edits are made inside the candidate, so executio
 leave authorized partial edits; progress and currentness checks support recovery rather than a
 fictional rollback guarantee.
 
-[Component coordination](implementation.md#component-coordination-and-current-adapter-limit)
+[Component coordination](execution-reference.md#implementation-component-coordination-and-current-adapter-limit)
 separates local tasks from participant work and delegates scheduling/final shared-consumer checks
 to the existing enclosing Flow. This shared realization does not transfer those Flow completion
 conditions to the reusable local task contract.
@@ -89,15 +98,6 @@ Resolve the selected Module's implementation entries, current files, contract an
 This collaboration applies when deriving a local code grant or admitting separately bound component work and rechecking revisions.
 
 - [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
-
-## Realization and reuse limits
-
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
 
 ## Precise specifications
 

@@ -1,31 +1,46 @@
-# Installation service
+# Installing and updating Concorde
 
-### Configuration compatibility
+Installation puts the Framework tools and instructions into a project so its developer can use
+Concorde. It does not write the project's intended business behavior. Initialization is a separate
+step after installation.
 
-The canonical Module template and Scenario fragment and the mandatory Spec document format are
-authored under `protocol/` and distributed with the independent standard. The `templates/` entry
-links to those sources. Plan and task starters remain Framework workflow assets; they
-are not additional Protocol Spec kinds.
+## Terminology
 
-The Framework identifies its supported project configuration as Profile 14. Initialization writes
-`.concorde/config.json` with `profile_version: 14`, the `registry` path, an accepted Protocol
-`version` and manifest `digest` under `protocol`, and the typed `capability_configuration` for the
-project's Pi worker model, thinking level, timeout and per-worker overrides; the `protocol` binding names the Protocol copy the installer placed
-under `.concorde/protocol/`, which initialization never creates. Its registry uses JSON schema version 5. Profile 14 and registry
-schema 5 are Framework compatibility and storage versions; Spec Protocol 8.0.0 identifies the
-independent specification standard. Installation and initialization preserve these separate roles.
+| Term | Meaning / definition |
+| --- | --- |
+| Installation | Placing and verifying the Framework-owned tools, instructions and runtime assets in a target project. |
+| Update | Refreshing the outputs recorded as owned by the installer, while preserving project-owned content. |
+| Installation receipt | A record of exactly which outputs the installer owns and which bytes it last installed. |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Initialization](../spec/initialize.md#terminology) | Defined in Project initialization. |
 
-### Main routing view
+## A normal installation
 
-Select `module.distribution` for manifest inventory, canonical Skill/role rendering, the build's
-agent surface ownership, and managed Python or viewer provisioning. Select `module.spec` when the
-requested behavior is project initialization or Protocol binding rather than installation
-ownership. Installation distributes `scripts/run-ua-graph-viewer.py` and provisions its pinned official
-viewer runtime; the launch interface and graph admission behavior are owned by `module.views` and
-documented in [Understand Anything viewer](../views/viewer.md). Native package acquisition and
-recovery remain on `module.distribution`; starting the viewer is a separate developer action.
+Start by previewing the proposed installation into the intended project. Inspect the target and
+owned changes before applying. The installer deploys Framework tools, the chosen client's Skill
+instructions and the Protocol copy, and prepares the required runtime. It preserves project Specs,
+configuration and unrelated files. Then initialize the project's own registry and first Spec, and
+supply the business intent that the initial draft deliberately leaves unknown.
+
+For example, installing Concorde into a service does not mean Concorde knows that service's retry or
+payment policy. Installation supplies the tools; initialization creates an honest starting point;
+Spec authoring establishes the actual promises.
+
+## Updating without overwriting local work
+
+An update compares the receipt with current bytes. A local change to an installer-owned output is a
+conflict, not permission to discard it. Project-owned content remains outside that replacement scope.
+A failed installation transaction attempts to recover its owned changes rather than present partial
+state as a completed installation.
+
+An installed Protocol update does not silently accept new rules for the project. Review any required
+Spec migration, then explicitly accept the new binding. This separates receiving software from agreeing
+to a specification-language change. [Build](build.md) explains instruction freshness, and
+[runtime](runtime.md) states the current runtime-replacement limitation.
 
 ## Precise specifications
 
-The Distribution Module owns the exact obligations and interface details in [scenarios](scenarios.md).
-These companions are part of the same complete Module specification, not separate topic owners.
+The Module-owned [installation scenarios](scenarios.md#installation-service) and
+[requirements](requirements.md) define ownership conflicts, configuration, retries and failure behavior.
+The [Spec Module](../spec/module.md) owns initialization and Protocol acceptance; the
+[viewer topic](../views/viewer.md) explains launching the separately provisioned viewer.

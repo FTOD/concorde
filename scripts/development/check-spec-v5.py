@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline Protocol-8 source audit; historical command path retained for configured checks.
+"""Offline Protocol-9 source audit; historical command path retained for configured checks.
 
 Checks complete document units without launching a worker. --base additionally checks stable
 requirement/scenario/entity identities against a committed baseline, including Protocol-6 sources.
@@ -164,14 +164,14 @@ def audit(base=None):
     manifest = json_value(read_file(ROOT, "protocol/manifest.json"))
     config = json_value(read_file(ROOT, ".concorde/config.json"))
     require(
-        manifest["version"] == "8.0.0" and manifest["source_profile"] == 14,
+        manifest["version"] == "9.0.0" and manifest["source_profile"] == 14,
         "manifest version",
     )
     require(
         config["profile_version"] == 14
         and config["protocol"]
         == {
-            "version": "8.0.0",
+            "version": "9.0.0",
             "digest": digest(read_file(ROOT, "protocol/manifest.json")),
         },
         "Protocol binding",
@@ -209,5 +209,5 @@ if __name__ == "__main__":
     try:
         print(json.dumps(audit(args.base), indent=2))
     except (ValueError, KeyError, OSError, subprocess.CalledProcessError) as error:
-        print(f"Spec v8 audit failed: {error}", file=sys.stderr)
+        print(f"Spec v9 audit failed: {error}", file=sys.stderr)
         raise SystemExit(1)

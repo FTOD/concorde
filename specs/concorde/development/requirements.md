@@ -3,6 +3,16 @@
 These precise specifications belong directly to the [Development Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Development capability host
 
 ### req.development.stage-no-reselect — Bound capabilities preserve their context

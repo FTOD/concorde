@@ -291,7 +291,7 @@ def module_findings(
                         "error",
                         owned_path,
                         problem,
-                        "Start the reading entry with Purpose, Usage, Design and Relationships; keep machine declarations in its metadata companion.",
+                        "Start the reading entry with Purpose, Terminology, Usage, Design and Relationships; keep machine declarations in its metadata companion.",
                         subject_id=target.id,
                     )
                 )
@@ -628,6 +628,71 @@ def module_dependency_findings(
     return tuple(findings)
 
 
+def terminology_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
+    """Check direct canonical table links and explicit context, not prose quality."""
+    from .content_model import terminology_body
+    from urllib.parse import urlsplit, unquote
+    import posixpath
+
+    findings = []
+    for path in repository.document_targets:
+        try:
+            document = repository.document(path)
+            body = terminology_body(document.body)
+            included = set(repository.spec_files(document.owner))
+            for row in body.splitlines():
+                if not row.strip().startswith("|"):
+                    continue
+                cell = row.strip().strip("|").split("|")[0].strip()
+                match = re.fullmatch(r"\[([^\]]+)\]\(([^\s)]+)\)", cell)
+                if not match:
+                    continue
+                term, href = match.groups()
+                url = urlsplit(href)
+                target = (
+                    posixpath.normpath(
+                        posixpath.join(posixpath.dirname(path), unquote(url.path))
+                    )
+                    if url.path
+                    else path
+                )
+                if (
+                    url.scheme
+                    or url.netloc
+                    or url.fragment != "terminology"
+                    or target not in included
+                ):
+                    raise ValueError(
+                        f"terminology definition outside admitted context or not a table: {href}"
+                    )
+                target_body = terminology_body(repository.document(target).body)
+                names = [
+                    line.strip()
+                    .strip("|")
+                    .split("|")[0]
+                    .strip()
+                    .strip("*` ")
+                    .casefold()
+                    for line in target_body.splitlines()
+                    if line.strip().startswith("|")
+                ]
+                if term.casefold() not in names:
+                    raise ValueError(
+                        f"terminology link has no local canonical definition of {term}: {href}"
+                    )
+        except (ValueError, OSError, KeyError, TypeError) as error:
+            findings.append(
+                Finding(
+                    "CONCORDE-TERMINOLOGY-001",
+                    "error",
+                    path,
+                    str(error),
+                    "Define the term once and reference its defining Terminology table explicitly in context.",
+                )
+            )
+    return tuple(findings)
+
+
 def link_findings(repository: RepositoryCore) -> tuple[Finding, ...]:
     """A local link whose fragment is a scenario, requirement or entity ID must reach its definition."""
     findings = []
@@ -897,6 +962,7 @@ def validate_repository(
         findings.extend(definition_findings(repository))
         findings.extend(module_dependency_findings(repository))
         findings.extend(link_findings(repository))
+        findings.extend(terminology_findings(repository))
         findings.extend(unlisted_file_findings(repository))
         findings.extend(verification_findings(repository))
         from ..issues.store import list_issues, issue_path

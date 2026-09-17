@@ -2,46 +2,50 @@
 
 ## Purpose
 
-Spec supplies explicit project identities, complete contract-context queries, structural
-validation and honest initialization to developers and Framework tools. It admits and pins the
-independent Spec Protocol rather than deciding the project's intended software behavior.
+Spec records which documents belong to each Module, determines which specifications a task may read, and checks that their structure and references agree. It also creates an initial project specification without inventing business behavior. Developers and the Framework use it to establish the intended contract before work begins.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
-Use this Module when a tool needs to identify a Module, resolve its complete Spec context,
-validate authored documents or initialize a project. Construct a `SpecRepository` from an explicitly
-configured project whose installed Protocol matches its accepted binding. Select a Module ID, or
-query a scenario to select its sole owner's context. Use `spec_context` for sources and provenance;
-implementation listing queries are separate and do not implicitly read source contents.
+Use Spec when a task needs to find its owning Module, obtain the specifications it may rely on,
+check document consistency or initialize a project. A Module selection includes its owned reading
+and metadata plus explicitly referenced units. A scenario selects the same owner's complete context.
 
-A registry records ownership, composition, dependencies and reading references as distinct facts.
-A document has one owner; a file may realize several Modules. Usage explains correct
-use, and Design explains design; both remain in every selected full document.
-Reconstruct the repository after changes. Invalid identities, paths, references or bindings reject
-admission rather than returning a partial result. `validate_repository` is read-only; its success
-establishes structural checks only. For a new project, propose then apply `concorde-init`; existing
-configuration is not overwritten. Read [queries](registry.md), [values](values.md),
-[validation](structure.md) and [initialization](initialize.md) for exact inputs and outcomes.
+For example, Checkout may reference Inventory's reservation contract without owning Inventory or
+receiving its implementation. Inventory's own references do not automatically join Checkout's context.
+The [registry topic](registry.md) explains this one-level selection with a concrete example.
+
+After relevant documents or declarations change, resolve a fresh context. Invalid identities,
+missing sources or inconsistent references stop admission instead of returning a partial contract.
+A successful structural check does not prove the software behaves correctly. Use
+[initialization](initialize.md) for an honest starting draft and [validation](structure.md) to
+understand what deterministic checks establish. Exact query interfaces are in Implementation Specs.
 
 ## Design
 
 <a id="entity.spec.registry"></a><a id="entity.spec.protocol-binding"></a><a id="entity.spec.repository-api"></a><a id="entity.spec.validator"></a><a id="entity.spec.init-capability"></a><a id="entity.spec.spec-model"></a><a id="entity.spec.typed-values"></a><a id="entity.spec.file-transactions"></a><a id="entity.spec.protocol-text"></a><a id="entity.spec.protocol-assets"></a>
 
-Registry admission first establishes explicit identities and relationship indexes. Document
-parsing then resolves owned definitions, while a separate one-level union resolves context with
-source digests and inclusion reasons. Keeping those operations distinct realizes the external
-promise that reading a provider definition neither acquires ownership nor adds its implementation.
-Entity bindings and the reverse file index independently identify affected implementation users.
+The Registry records ownership and relationships before document content is selected. The Protocol
+binding identifies the rules the project has explicitly accepted. The SpecRepository API and Validator
+use the same Spec model, so a query and a check do not invent different meanings of ownership.
 
-The reading content and associated metadata are validated as document structure, not used as context filters. Definitions
-are still parsed across the owner's whole collection, including internal constraints and scenarios.
-Initialization uses a before-digest file transaction and validates its complete proposed overlay;
-structural validation and test-declared coverage remain evidence rather than semantic proof.
-Shared typed-value and transaction realizations have their own exact entity entries below.
+The Initialization capability creates an honest starting draft. Typed values checks record shapes;
+File transactions applies accepted changes together rather than leaving half an update visible.
+Protocol text is the authored standard and Protocol assets are its distributed copy. Keeping these
+roles separate prevents installation from silently deciding the project's business behavior.
 
-Registry metadata and the Protocol binding are admitted before source bodies. The SpecRepository API resolves complete document units: reading Markdown plus associated metadata, each with its own byte digest and source role. The Validator checks their structure and consistency without proving semantic completeness. The Spec model keeps ownership and reference selection distinct from implementation access.
-
-Initialization capability creates an honest paired draft through File transactions, which preserves original bytes if applying a proposal fails. Typed values centralize canonical encoding, safe paths and offline schema evaluation. Protocol text is the independently authored standard; Protocol assets packages it with the Framework profile for exact, verified installation.
+Selection and implementation lookup are separate because permission to understand a provider is not
+permission to modify its code. Exact source identities make changed inputs invalidate dependent
+results, while explicit one-level references keep the boundary understandable and reproducible.
 
 ## Relationships
 

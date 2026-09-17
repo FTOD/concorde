@@ -2,7 +2,15 @@
 
 ## Purpose
 
-Query and Routing answers questions from explicitly selected complete Module contexts and selects one owning Module for a routed task. It serves the main entry and discovery consumers, preserving caller intent without reading implementation to infer behavior.
+Query and Routing answers questions from selected specifications and identifies the Module responsible for an intended task. It preserves the developer’s request rather than rewriting the goal to fit available code. Missing knowledge leads to explicit selection or a reported gap, not unrestricted searching.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -22,13 +30,13 @@ See [query and routing](query-and-routing.md) for exact selection and outcome be
 
 <a id="entity.query-routing.adapter"></a><a id="entity.query-routing.selection"></a>
 
-The [discovery Flow](query-and-routing.md#discovery-flow-discovery_flow) alternates a fresh
+The [discovery Flow](execution-reference.md#query-and-routing-discovery-flow-discovery-flow) alternates a fresh
 discovery decision with deterministic admission of explicitly selected complete contexts. A router
 returns identities; the host binds the original task and constraints rather than trusting rewritten
 intent. An answerer can complete directly from the indexed/granted originals without reader-worker
 summaries or a synthesis stage.
 
-The [query Flow](query-and-routing.md#query-flow-query_flow) returns the last admitted decision.
+The [query Flow](execution-reference.md#query-and-routing-query-flow-query-flow) returns the last admitted decision.
 Expansion limits and stop edges bound missing-context reasoning. Provider references expand once;
 links and implementation files never become implicit discovery routes.
 
@@ -84,15 +92,6 @@ Resolve entry and explicitly selected Module contexts with unique document owner
 This collaboration applies when selecting discovery inputs, validating target/focus hints or resolving an additional admitted context.
 
 - [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
-
-## Realization and reuse limits
-
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
 
 ## Precise specifications
 

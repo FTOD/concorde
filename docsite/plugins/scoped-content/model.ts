@@ -12,6 +12,7 @@ import {
   headingList,
   declarations,
   requireReading,
+  terminologyBody,
   readingMeanings,
   metadata,
   relationshipLabels,
@@ -705,6 +706,45 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
   for (const t of targets)
     for (const path of t.documents) {
       const source = cache.get(path)!;
+      for (const row of terminologyBody(source.content).split("\n")) {
+        if (!row.trim().startsWith("|")) continue;
+        const cell = row
+          .trim()
+          .replace(/^\||\|$/g, "")
+          .split("|")[0]
+          .trim();
+        const termLink = /^\[([^\]]+)\]\(([^\s)]+)\)$/.exec(cell);
+        if (!termLink) continue;
+        const [_, term, href] = termLink;
+        const location = href.split("#")[0];
+        const linked = location
+          ? posix.normalize(
+              posix.join(posix.dirname(path), decodeURIComponent(location)),
+            )
+          : path;
+        requireThat(
+          !/^(?:[a-z]+:|\/)/i.test(href) &&
+            href.endsWith("#terminology") &&
+            contexts.get(t.id)!.has(linked),
+          `Terminology definition outside admitted context or not a table: ${path} -> ${href}`,
+        );
+        const names = terminologyBody(cache.get(linked)!.content)
+          .split("\n")
+          .filter((line) => line.trim().startsWith("|"))
+          .map((line) =>
+            line
+              .trim()
+              .replace(/^\||\|$/g, "")
+              .split("|")[0]
+              .trim()
+              .replace(/^[*` ]+|[*` ]+$/g, "")
+              .toLowerCase(),
+          );
+        requireThat(
+          names.includes(term.toLowerCase()),
+          `Terminology link has no canonical definition of ${term}: ${href}`,
+        );
+      }
       for (const agreement of [
         ...source.unit.dependencies,
         ...source.unit.bindings,

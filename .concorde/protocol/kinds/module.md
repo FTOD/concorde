@@ -8,8 +8,8 @@ without becoming another authority over the specification.
 ## Reading content
 
 A developer must be able to understand the responsibility, use it correctly and maintain its
-realization without assembling meaning from an inventory. Reading begins with Purpose, Usage,
-Design and Relationships. The entry and its explanatory topic companions have role `module`.
+realization without assembling meaning from an inventory or knowing project internals. Reading
+begins with Purpose, Terminology, Usage, Design and Relationships. The entry and its explanatory topic companions have role `module`.
 Precise requirements, scenarios and canonical interface agreements belong in owned role
 `implementation` companions, never in the entry or topic pages. Both roles remain reading content
 and together form one complete Module specification; neither role is a separate owner or context.
@@ -21,10 +21,21 @@ State what the Module is for, who relies on it and where its promises stop. Use 
 not an inventory, table or code block. A directory or package name does not establish responsibility.
 A composite Module may delegate all realization and bind no implementation files of its own.
 
+### Terminology
+
+Introduce the concepts a reader needs before use and design. Use a `Term` / `Meaning / definition`
+table, not an entity inventory. Define a concept only in its canonical table; a later page links to
+that table without copying the definition. For example, a Checkout topic can link Inventory's
+Terminology table for Reservation while explaining Checkout's own duty to handle a rejected request
+in Usage. The table defines the word; the collaboration prose explains what this Module does with it.
+Required definitions must be explicitly included in context. Avoid circular or forwarding-only
+chains, and do not require a reader to know a private class to understand its domain concept.
+
 ### Usage
 
 Explain audience, use conditions, prerequisites, relevant concepts and actual entry points. Follow
-representative input through results and effects, then explain errors, repeated invocation,
+representative input through results and effects before advanced recovery. Include a concrete
+illustration where abstraction would otherwise obscure the user's decision. Then explain errors, repeated invocation,
 cancellation and compatibility where applicable. An unsupported behavior must be identified rather
 than invented. A logical responsibility can participate in a workflow or conceptual agreement
 without having a callable public API.
@@ -35,8 +46,9 @@ implementation details to learn that concurrent publication is serialized or rej
 
 ### Design
 
-Explain how responsibility decomposition, state, control/data flow, collaboration and failure
-containment fulfill the guarantees. Record significant choices and required internal constraints,
+Explain why responsibility decomposition, state, control/data flow, collaboration and failure
+containment fulfill the guarantees. Connect each significant choice to a problem it prevents;
+a sequence of class or function names is not an explanation. Record significant choices and required internal constraints,
 distinguishing them from incidental current code and unresolved implementation. Links to guarantees
 are preferable to restating them as new obligations.
 
@@ -57,7 +69,9 @@ included provider. An omitted inventory node is not by itself a missing contract
 The diagrams are authored Mermaid flowcharts in registered reading documents. A reading entry's
 Relationships section contains the principal relationship view; prose explains conditions,
 invariants and reactions that the edges cannot convey. Further behavioral diagrams can illustrate
-state and execution without becoming another relationship inventory. A rendering, export or
+state and execution without becoming another relationship inventory. Explain a conceptual view in
+ordinary terms and identify it as conceptual. Exact executable nodes, state channels, reducers and
+machine-checked topology belong in implementation-role units, linked from this explanation. A rendering, export or
 navigation tree is derived, not an independent authority.
 
 ## Precise obligations
@@ -186,9 +200,17 @@ not business facts, semantic completeness or a required website layout.
 
 [State the responsibility, consumers and scope in short plain prose.]
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| Coordinator | [Define this page's new concept in familiar language.] |
+| [Provider term](provider.md#terminology) | Defined in the provider's Terminology table; include that document explicitly. |
+
 ## Usage
 
-[Explain when and how to use it, prerequisites and actual entry points, representative inputs and
+[Start with one normal interaction and its outcome, then important failures and what to do next.
+Use a concrete illustration when it helps. Explain when and how to use it, prerequisites and actual entry points, representative inputs and
 results, effects and relevant errors, repetition, cancellation and compatibility. A logical Module
 need not invent an API. Link to precise definitions rather than duplicating them.]
 
@@ -196,8 +218,9 @@ need not invent an API. Link to precise definitions rather than duplicating them
 
 <a id="entity.example.coordinator"></a>
 
-[Explain how the coordinator's responsibility, state and control/data flow fulfill the guarantees.
-Record required internal constraints and significant choices. Do not substitute a file inventory.]
+[Explain why the coordinator's responsibility, state and control/data flow fulfill the guarantees.
+Connect choices to the problems they prevent. Link to exact APIs, byte rules and executable Flow
+catalogs in implementation-role companions rather than reproduce them here. Do not substitute a file inventory.]
 
 ## Relationships
 
@@ -261,7 +284,8 @@ of inventing a provider, file or interface merely to fill this starter.
 
 ## Companion documents and interfaces
 
-A companion has its own metadata pair and sole Module owner but no mandatory entry sections.
+A companion has its own metadata pair and sole Module owner. Explanatory topics start with a brief
+orientation followed by a Terminology table, but do not repeat the whole entry template.
 Use role `module` for explanatory topics such as Registry or Publication. Use role `implementation`
 for the Module's requirements, scenarios and precise interfaces. Never place formal definitions in
 explanatory topics. Register every reading path in the same owner's collection; consumers reference

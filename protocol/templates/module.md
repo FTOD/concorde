@@ -13,9 +13,17 @@ not business facts, semantic completeness or a required website layout.
 
 [State the responsibility, consumers and scope in short plain prose.]
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| Coordinator | [Define this page's new concept in familiar language.] |
+| [Provider term](provider.md#terminology) | Defined in the provider's Terminology table; include that document explicitly. |
+
 ## Usage
 
-[Explain when and how to use it, prerequisites and actual entry points, representative inputs and
+[Start with one normal interaction and its outcome, then important failures and what to do next.
+Use a concrete illustration when it helps. Explain when and how to use it, prerequisites and actual entry points, representative inputs and
 results, effects and relevant errors, repetition, cancellation and compatibility. A logical Module
 need not invent an API. Link to precise definitions rather than duplicating them.]
 
@@ -23,8 +31,9 @@ need not invent an API. Link to precise definitions rather than duplicating them
 
 <a id="entity.example.coordinator"></a>
 
-[Explain how the coordinator's responsibility, state and control/data flow fulfill the guarantees.
-Record required internal constraints and significant choices. Do not substitute a file inventory.]
+[Explain why the coordinator's responsibility, state and control/data flow fulfill the guarantees.
+Connect choices to the problems they prevent. Link to exact APIs, byte rules and executable Flow
+catalogs in implementation-role companions rather than reproduce them here. Do not substitute a file inventory.]
 
 ## Relationships
 
@@ -88,7 +97,8 @@ of inventing a provider, file or interface merely to fill this starter.
 
 ## Companion documents and interfaces
 
-A companion has its own metadata pair and sole Module owner but no mandatory entry sections.
+A companion has its own metadata pair and sole Module owner. Explanatory topics start with a brief
+orientation followed by a Terminology table, but do not repeat the whole entry template.
 Use role `module` for explanatory topics such as Registry or Publication. Use role `implementation`
 for the Module's requirements, scenarios and precise interfaces. Never place formal definitions in
 explanatory topics. Register every reading path in the same owner's collection; consumers reference

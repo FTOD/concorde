@@ -65,7 +65,13 @@ it("publishes the current exact registry and verifies the promoted manifest", as
    resolve(output, page.route.slice(1) + ".html"),
    "utf8",
   );
-  const sections = ["purpose", "usage", "design", "relationships"];
+  const sections = [
+   "purpose",
+   "terminology",
+   "usage",
+   "design",
+   "relationships",
+  ];
   for (const name of sections) expect(source).toContain(`id="${name}"`);
   for (let i = 1; i < sections.length; i++)
    expect(source.indexOf(`id="${sections[i - 1]}"`)).toBeLessThan(
@@ -100,7 +106,7 @@ it("publishes every Module as two reading paths and retains Views topics", async
  ]);
  expect(
   owned.filter((page) => page.readingCollection === "implementation"),
- ).toHaveLength(3);
+ ).toHaveLength(4);
  for (const target of registry.targets) {
   const documents = registry.pages.filter((page) => page.owner === target.id);
   expect(

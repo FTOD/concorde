@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 8.0.0 defines Module specifications, their complete content and the subset
+Concorde Spec Protocol 9.0.0 defines Module specifications, their complete content and the subset
 intended for human reading. It applies to project Specs, including those of software implementing
 this Protocol. The standard's own chapters need not describe themselves as software Modules.
 
@@ -25,6 +25,9 @@ summary, a weaker contract or whatever a renderer chooses to retain.
 Reading content MUST explain:
 
 - **Purpose:** responsibility, intended consumers, scope and relevant non-goals.
+- **Terminology:** the concepts needed to understand this document, introduced before detailed use.
+  Define a term once in its canonical Terminology table; elsewhere link to that table instead of
+  repeating a definition. This is a reader aid, not an entity inventory or file-binding declaration.
 - **Usage:** when and how to use the Module, concepts and prerequisites, actual entry points,
   inputs, results, effects, errors and applicable repeat, cancellation and compatibility behavior.
   Start with a coherent explanation rather than asking readers to assemble instructions from formal
@@ -49,7 +52,7 @@ is still implementation metadata. A publisher MAY expose metadata as an auxiliar
 The complete Module specification has two explicit document roles, both within Reading(M):
 
 - **Module Specs** (`module`): the reading entry and explanatory topic documents. The entry follows
-  **Purpose, Usage, Design, Relationships**. Topics explain concepts, correct use, collaborations,
+  **Purpose, Terminology, Usage, Design, Relationships**. Topics explain concepts, correct use, collaborations,
   significant design and important guarantees. Together these explanations MUST establish a usable
   mental model without requiring readers to reconstruct it from formal definitions. They MUST NOT
   become empty link indexes or independently maintained summaries.
@@ -62,6 +65,37 @@ The entry and module-role topics MUST NOT define them. Canonical structured inte
 MUST also be defined in implementation-role units; explanation, usage examples and links to those
 contracts belong in Module Specs. Define each precise obligation once. Explanations retain important
 meaning and link to its exact definition rather than duplicating a second formal contract.
+
+The intended reader understands general software concepts but does not know the project's
+implementation, internal type names, execution library or migration history. Explanatory reading
+MUST let that reader explain the problem, when to use the Module, a normal interaction, its result,
+important stopping conditions and why the design works. Purpose uses ordinary verbs before internal
+names. Usage presents a representative normal path before exceptional recovery. Illustrative examples
+SHOULD make abstract distinctions concrete; they explain existing promises, not invent new ones.
+
+Role separation is about meaning, not just heading syntax. Exact private APIs, wire fields, byte
+algorithms, persistence layouts, internal limits and executable-node/state catalogs belong in
+Implementation Specs even when written as ordinary prose without SHALL or scenario headings.
+Module Specs retain architecture, design reasons, actual public entry points, and any limits or
+hazards a consumer needs for correct use. They MUST NOT hide destructive defaults, security limits
+or known unfulfilled guarantees behind detail links. A simple usage example is not an API inventory.
+
+Design MUST connect a decision to the problem it solves and the guarantee it supports, not merely
+list implementation calls in order. Conceptual diagrams SHOULD answer one reader question with
+recognizable labels. They MUST be distinguished from exact executable diagrams; the latter belong
+in implementation-role units and remain the single authority for execution topology. A concept view
+must not become a competing executable model. Explain relevant collaborations locally, but do not
+repeat generic permission, compatibility or completeness disclaimers on every path. Historical
+migration records MUST be labeled with their baseline and kept apart from the default explanation
+of current behavior; preserve any still-applicable obligations in the current specification.
+
+Terminology tables MUST contain only concepts relevant to the page. A local definition uses familiar
+language rather than another chain of unexplained terms. An imported term links directly to its
+canonical document's Terminology table; an intermediate glossary that only forwards the reader is
+not its definition. Table links grant no context: required defining units must be explicitly included.
+Entity identities and realization bindings stay in metadata; Design and Relationships explain how
+particular entities participate. A glossary neither duplicates those declarations nor replaces that
+contextual explanation. Identical words with distinct meanings must be qualified explicitly.
 
 Both roles belong directly to the same owning Module. A topic such as Registry is an explanation,
 not a new owner, sub-Module or requirements container. Implementation Specs MAY be split into several
@@ -146,7 +180,10 @@ A conformance claim identifies its Protocol version. Stable identities, unique u
 complete paired source inclusion, explicit document roles and definition placement, explicit
 one-level references, consistent declarations, required reading structure, one statement per requirement and consistent file listings are structural
 requirements. Complete and mutually consistent readable obligations, design and relationships,
-including decidable requirements, are semantic requirements.
+including decidable requirements and an explanation usable without implementation knowledge, are
+semantic requirements. Readability review checks the stated reader's questions, terminology,
+normal-path order, concrete examples, causal design and visible safety limits. It is not a word-count
+gate or a preference for shorter prose. A correctly named section or table cannot prove understanding.
 
 Passing shape checks, headings, diagrams or coverage checks cannot establish semantic completeness
 or implementation conformance. Reading must not hide necessary guarantees in metadata, while
@@ -417,7 +454,7 @@ selection is a new bounded context, not a retrospective claim that the old one w
 
 # Required format
 
-Protocol 8 separates complete content from its human-readable subset and assigns each document
+Protocol 9 separates complete content from its human-readable subset and assigns each document
 unit an explicit explanatory or precise-specification role. This chapter defines the
 representation of both. It does not define a documentation site's navigation or layout. Templates
 are starters; satisfying syntax does not establish semantic completeness.
@@ -438,10 +475,11 @@ must be included together in context, source digests, proposals and ownership re
 
 ## Reading structure
 
-The first four level-2 ATX headings of `module.md`, outside fences, are exactly once and in order:
+The first five level-2 ATX headings of `module.md`, outside fences, are exactly once and in order:
 
 ```text
 Purpose
+Terminology
 Usage
 Design
 Relationships
@@ -453,6 +491,17 @@ Relationships each contain explanatory prose, not only links, headings or diagra
 contains at least one Mermaid flowchart for the principal collaboration. Honest unknowns are stated
 explicitly; the presence of prose is not proof that its explanation is sufficient.
 
+Every module-role topic starts with a short orienting introduction followed by `## Terminology` as
+its first level-2 section; the entry puts Terminology immediately after Purpose. There is exactly one
+Terminology section, with a nonempty two-column Markdown table headed `Term` and `Meaning / definition`.
+A term is either defined plainly in its row or linked to its canonical table by a relative Markdown
+link ending in `#terminology`. Imported rows say where the term is defined rather than copy its
+meaning. Qualify distinct meanings instead of merging them. Do not list files, implementation IDs or
+all declared entities to fill the table. If no specialized terms are needed, state that explicitly
+instead of inventing rows. Implementation-role units MAY use the same convention for orientation.
+The heading publishes the stable `terminology` anchor. Necessary linked tables must belong to the
+owner's complete selected context; they do not expand it implicitly.
+
 `module.md` has role `module`. Its additional sections and module-role companions explain topics,
 rationale, correct use and unresolved facts. They MUST NOT contain formal `req.*` or `scenario.*`
 definitions or canonical `concorde-contract` fences. Usage examples and links to precise definitions
@@ -460,8 +509,10 @@ are permitted. A topic remains an explanation owned by its Module, not a nested 
 
 Role `implementation` contains the Module's formal requirements, scenarios and canonical interface
 contracts. Units may group definitions by subject without creating a second ownership hierarchy.
-Both roles are registered, paired human-readable Spec content. Companions have no mandatory entry
-template or enclosing parts. Implementation details that do not constrain behavior or significant
+Both roles are registered, paired human-readable Spec content. Topics need no full entry template
+beyond early Terminology. Required exact private APIs, serialization rules, implementation algorithms
+and executable Flow catalogs belong in implementation-role reading regardless of their syntax.
+Conceptual design and safe-use explanations stay in module-role reading. Implementation details that do not constrain behavior or significant
 design do not become obligations merely by appearing in code. The former `Usage & Contract`,
 `Architecture & Realization` and standalone `Entities` entry structure is not admitted.
 
@@ -617,7 +668,11 @@ not another source of specification obligations.
 ## Drafts and migration
 
 Unresolved facts are explicit gaps. Templates do not invent behavior or establish completeness.
-Migrating Protocol 7 requires explicit schema-2 roles for every unit, moving all formal requirements,
+Migrating Protocol 8 requires adding early, canonical Terminology tables, editing explanation for
+readers without implementation knowledge, and separating remaining technical contracts from topics.
+Keep important operational risks visible; preserve exact obligations, IDs and executable diagrams
+while reconciling relocated anchors and explicit references. Metadata schema 2 is unchanged.
+For older projects, migrating Protocol 7 additionally requires explicit schema-2 roles for every unit, moving all formal requirements,
 scenarios and canonical structured contracts out of entries and explanatory topics into Module-owned
 implementation units, and removing publisher-specific classification extensions. Preserve definition
 IDs, Module ownership and valid obligations; retain coherent explanatory meaning in topic documents.
@@ -788,7 +843,7 @@ handoff solely because it updates the Framework's own instructions.
 
 ### Framework authoring and publication conventions
 
-Every Concorde Module's `module.md` starts with Purpose, Usage, Design and Relationships as
+Every Concorde Module's `module.md` starts with Purpose, Terminology, Usage, Design and Relationships as
 level-2 headings. The entry and explanatory topic companions have `document.role: module` and
 contain no formal requirement/scenario definitions or canonical structured contracts. Those belong
 in directly Module-owned implementation-role companions. Both roles remain complete Spec reading,
@@ -816,7 +871,10 @@ the registry listing remains their exact union. Project-owned metadata extension
 optional model execution profiles; its
 behavioral explanations remain reading content and unknown extensions cannot override the Protocol.
 
-Every executable Flow has a Flow Spec in its owning Module's documents written with LangGraph's
+Every executable Flow has one Flow Spec in its owning Module's implementation-role documents,
+not its explanation-first topics. Module-role reading explains the conceptual sequence and its
+reasons, with clearly labeled conceptual diagrams when useful, and links to this exact Flow Spec.
+The Flow Spec is written with LangGraph's
 concepts: a State part, a Nodes table (node name, what executes, `in` and `out` state) and a
 Mermaid flowchart bound to the compiled Flow by `%% flow: <name>` whose node identifiers are the
 compiled node names including `__start__` and `__end__`, whose node labels state `in:` and

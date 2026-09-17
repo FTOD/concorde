@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
-  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-8.0.0-6264e8" alt="Spec Protocol 8.0.0" /></a>
+  <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-9.0.0-6264e8" alt="Spec Protocol 9.0.0" /></a>
   <a href="#get-started"><img src="https://img.shields.io/badge/agents-Codex_%C2%B7_Claude-273449" alt="Integrations: Codex and Claude" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
 </p>
@@ -159,7 +159,7 @@ to the selected root instruction file. It preserves user content outside its own
 Use concorde-init to initialize this project. Propose the setup for my review.
 ```
 
-Apply the reviewed proposal, then write the root Module's Purpose, Usage, Design and Relationships,
+Apply the reviewed proposal, then write the root Module's Purpose, Terminology, Usage, Design and Relationships,
 with precise requirements/scenarios and the paired metadata declarations. Initialization creates an honest stub; unresolved behavior still needs to be specified.
 Commit the installed framework and root guidance so candidate worktrees inherit them.
 
@@ -307,14 +307,14 @@ See the [Studio guide](scripts/development/STUDIO.md) for debugging, results and
 
 ## The contract at the center
 
-Concorde's independent **Spec Protocol 8.0.0** defines one specification category: a **Module Spec**.
+Concorde's independent **Spec Protocol 9.0.0** defines one specification category: a **Module Spec**.
 A Module describes a cohesive software responsibility; its implementation may span packages,
 services or shared files. Each Spec document has one owning Module. A Module's explicit
 `references` includes other Module-owned documents or one registered document, expanded once;
 Markdown links remain navigation. Shared interfaces have one definition and local participant bindings.
 
 The repository's Specs, runtime admission, context serialization and publication support
-Protocol 8/Profile 14/registry schema 5, with document metadata schema 2. Resolved contexts retain unique owners, one-level reference
+Protocol 9/Profile 14/registry schema 5, with document metadata schema 2. Resolved contexts retain unique owners, one-level reference
 provenance and exact byte digests without granting provider implementation access; see
 [Spec context queries](specs/concorde/spec/contracts.md#registry-stable-id-spec-context-queries).
 Runtime and publication tests verify these boundaries separately from the rule build.

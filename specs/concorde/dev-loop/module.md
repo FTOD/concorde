@@ -2,7 +2,17 @@
 
 ## Purpose
 
-Development Flow composes sibling providers to carry one intended change through Spec preparation, planning, tasks, implementation, validation and independent code review to a ready candidate. It owns that sequence, candidate lifecycle, bounded repair and stop policy, while each provider owns its own reusable contract.
+Development Flow takes one intended change through specification, planning, implementation and verification. It coordinates the contributing Modules and preserves progress when work stops. Success is a ready candidate; delivery and primary merging are separate choices.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -24,7 +34,7 @@ and the completion policy, before resuming partial work.
 
 <a id="entity.dev-loop.adapter"></a><a id="entity.dev-loop.candidate"></a><a id="entity.dev-loop.repair"></a>
 
-The [development Flow](development.md#development-flow-development_flow) composes sibling providers
+The [development Flow](execution-reference.md#development-development-flow-development-flow) composes sibling providers
 through explicit state and routing edges. Specification preparation owns its author/reviewer work;
 plan and task artifacts feed implementation, checks precede code review, and current evidence gates
 the single ready transition. Durable candidate state records intent, progress, repair policy and
@@ -164,15 +174,6 @@ Independently review current code and return coverage, findings and gaps for the
 This collaboration applies after implementation checks when code review is enabled or already required, including final component review.
 
 - [Independent review](../review/review.md); Supply the exact review intent and current scope; incomplete coverage, gaps or blocking findings cannot satisfy the required gate.
-
-## Realization and reuse limits
-
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
 
 ## Precise specifications
 

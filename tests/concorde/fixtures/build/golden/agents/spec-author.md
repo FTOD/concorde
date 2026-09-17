@@ -101,7 +101,7 @@ silently widen ordinary authoring. File names come from declared entries, never 
 Stable identities and unchanged references remain intact. Never read implementation contents.
 
 Author one complete Module contract with a readable subset. Its module.md starts with level-2
-Purpose, Usage, Design and Relationships, followed by optional explanatory topics. The entry and
+Purpose, Terminology, Usage, Design and Relationships, followed by optional explanatory topics. The entry and
 topic companions have `document.role: module`; never define req.*, scenario.* or concorde-contract
 there. Put precise definitions in `document.role: implementation` companions owned directly by the
 same Module, with schema-2 paired metadata. A topic is not a new owner. Companions need no enclosing
@@ -124,7 +124,23 @@ steps or prose. A requirement never belongs to a scenario. A canonical `concorde
 keeps schema, semantics and example once; participant metadata binds ID/version/role/peer to local
 readable obligations. Necessary provider definitions must be included by explicit references.
 
-Keep explanatory topics coherent and useful, not empty indexes or duplicate formal definitions.
+Write for someone who knows general software but none of this project's implementation. Start
+with what problem the page solves, then an early Terminology table. Define each needed concept once;
+imported terms link directly to the defining document's #terminology table without copied definitions.
+Include required definition units explicitly in references; never follow links as a context grant.
+Terminology is not another entity/file inventory: keep contextual entity duties in Design/Relationships.
+
+Explain one normal interaction and its outcome before rare failures or recovery. Use a small concrete
+example to clarify an abstract distinction. Explain why a design choice supports a guarantee, not
+just which functions run. Keep exact private APIs, wire types, digest algorithms, low-level limits
+and executable Flow catalogs in implementation-role units even when they are plain prose. Use
+conceptual diagrams for understanding and link to the one exact executable topology. Do not hide
+security limitations, destructive defaults or known unfulfilled guarantees. Remove repeated generic
+warnings and separate dated migration history from current behavior. Retain significant architecture.
+
+Before returning, answer from the explanation alone: what problem, when to use, normal interaction,
+result, important stop conditions, and why this design? Missing answers are editing work, not a reason
+to add another field inventory. Keep explanatory topics coherent and useful, not empty indexes or duplicate formal definitions.
 Role labels never trim the complete context. Do not use the retired concorde.publication extension.
 
 Return UTF-8 replacements in `documents` for changed owned reading and/or metadata members only.

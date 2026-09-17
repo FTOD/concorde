@@ -2,7 +2,18 @@
 
 ## Purpose
 
-Review independently evaluates an admitted task against current Module contracts and, in code mode, its separately granted implementation. It serves standalone callers and composing flows with revision-bound coverage, findings and gaps, without repairing or delivering the reviewed work.
+Review independently examines whether current specifications or code support the requested task. It returns findings and the scope actually examined, without repairing files. A successful review is evidence about those inputs and that question, not proof that every possible problem is absent.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| Review coverage | The representative questions and cases actually examined by this review. |
+| Advisory finding | A concrete problem recorded for consideration that does not block the admitted task. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -98,15 +109,6 @@ Select one owning Module for a new standalone review while preserving its origin
 This collaboration applies when a new standalone review has neither a trusted bound target nor a bound current-change resumption.
 
 - [Explicit discovery and routing](../query-routing/query-and-routing.md); Preserve submitted task and constraints; accept only admitted selections and stop on gaps, ambiguity or discovery limits.
-
-## Realization and reuse limits
-
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
 
 ## Precise specifications
 

@@ -2,6 +2,18 @@
 
 This document defines `concorde-init`'s propose/apply behavior. [module](module.md) introduces the Module; [registry](registry.md) and [values](values.md) define the general query and value records this capability builds on.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| Initialization | Creating the project's own configuration, registry and first honest specification after the Framework is installed. |
+| Initial proposal | The exact new files offered for inspection before initialization is applied. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Propose, inspect and apply
 
 Initialization separates describing a possible project from accepting filesystem changes. Start with
@@ -19,7 +31,7 @@ maintenance or topology changes, not reinitialization, to migrate their document
 ### Protocol compatibility and initialization
 
 New registries use schema 5 with explicit empty `references` on the initial Module; the stub's
-schema-2 document metadata names its single `owner` and explicit `role: module`. Initialization pins Protocol 8.0.0/Profile 14 and
+schema-2 document metadata names its single `owner` and explicit `role: module`. Initialization pins Protocol 9.0.0/Profile 14 and
 the exact manifest digest of the Protocol copy the installer placed under `.concorde/protocol/`;
 it creates no Protocol file itself and fails with `not_installed` when that copy is absent. Later
 installations update the copy but never the binding, which the developer moves explicitly with

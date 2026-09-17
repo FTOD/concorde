@@ -1,4 +1,4 @@
-"""Protocol 8 document-unit primitives shared by runtime admission and publishing checks.
+"""Protocol 9 document-unit primitives shared by runtime admission and publishing checks.
 
 A registered reading document and its deterministic metadata companion are one owned unit.
 Reading is a subset of content, not a summary generated from an inventory. Machine records point
@@ -25,7 +25,7 @@ from .repository_base import (
 from .typed_data import decode, safe_path
 
 METADATA_VERSION = 2
-READING_SECTIONS = ("Purpose", "Usage", "Design", "Relationships")
+READING_SECTIONS = ("Purpose", "Terminology", "Usage", "Design", "Relationships")
 RETIRED_FENCES = frozenset(
     {
         "concorde-document",
@@ -248,6 +248,62 @@ def reading_meanings(text: str, path: str) -> tuple[ReadingMeaning, ...]:
     return tuple(result)
 
 
+def terminology_body(text: str) -> str:
+    """Return only the real level-2 Terminology section, never a fenced example."""
+    result = []
+    active = False
+    for _, kind, line in walk_lines(text):
+        heading = HEADING.match(line) if kind == "prose" else None
+        if heading and len(heading.group(1)) <= 2:
+            if active:
+                break
+            active = len(heading.group(1)) == 2 and heading.group(2) == "Terminology"
+            continue
+        if active and kind == "prose":
+            result.append(line)
+    return "\n".join(result)
+
+
+def terminology_problems(text: str, *, primary: bool) -> tuple[str, ...]:
+    headings = [
+        (len(m.group(1)), m.group(2))
+        for _, kind, line in walk_lines(text)
+        if kind == "prose" and (m := HEADING.match(line))
+    ]
+    top = [title for level, title in headings if level == 2]
+    expected = 1 if primary else 0
+    if (
+        sum(title == "Terminology" for _, title in headings) != 1
+        or len(top) <= expected
+        or top[expected] != "Terminology"
+    ):
+        return (
+            "Terminology must be a unique early level-2 section (after Purpose in the entry, first in a topic)",
+        )
+    body = terminology_body(text)
+    if body.strip() == "No specialized terminology.":
+        return ()
+    rows = [line.strip() for line in body.splitlines() if line.strip().startswith("|")]
+    cells = [[cell.strip() for cell in row.strip("|").split("|")] for row in rows]
+    if (
+        len(cells) < 3
+        or cells[0] != ["Term", "Meaning / definition"]
+        or any(not re.fullmatch(r":?-{3,}:?", c) for c in cells[1])
+        or len(cells[1]) != 2
+        or any(len(row) != 2 or not all(row) for row in cells[2:])
+    ):
+        return ("Terminology requires a nonempty Term / Meaning / definition table",)
+    for row in cells[2:]:
+        for href in re.findall(r"\[[^\]]*\]\(([^\s)]+)\)", row[0]):
+            if not href.endswith("#terminology") or re.match(
+                r"(?:[a-z]+:|/)", href, re.I
+            ):
+                return (
+                    "Imported terms must link directly to a project document's #terminology table",
+                )
+    return ()
+
+
 def reading_problems(
     text: str, *, primary: bool, role: str = "module"
 ) -> tuple[str, ...]:
@@ -259,15 +315,28 @@ def reading_problems(
         if kind == "prose" and (m := HEADING.match(line))
     ]
     problems = []
+    mermaid = False
     for _, kind, line in lines:
         if kind == "fence-open":
             language = re.sub(r"^ {0,3}(?:`{3,}|~{3,})\s*", "", line).strip()
+            mermaid = language == "mermaid"
             if language in RETIRED_FENCES:
                 problems.append(f"{language} is metadata, not a reading block")
             if language == "concorde-contract" and role != "implementation":
                 problems.append(
                     "canonical contracts belong in an implementation-role document"
                 )
+        elif (
+            kind == "fenced"
+            and mermaid
+            and role != "implementation"
+            and re.match(r"\s*%%\s*flow:", line)
+        ):
+            problems.append(
+                "exact executable Flow catalogs belong in implementation-role documents"
+            )
+        elif kind == "fence-close":
+            mermaid = False
     if role != "implementation" and any(
         _DEFINITION.match(title) for _, _, title in headings
     ):
@@ -278,21 +347,23 @@ def reading_problems(
         problems.append("module.md must have document.role module")
     if any(title in _OLD_PARTS for _, _, title in headings):
         problems.append("retired two-part headings require explicit migration")
+    if role == "module":
+        problems.extend(terminology_problems(text, primary=primary))
     if primary:
         top = [(number, title) for number, level, title in headings if level == 2]
-        if [title for _, title in top[:4]] != list(READING_SECTIONS) or any(
+        if [title for _, title in top[:5]] != list(READING_SECTIONS) or any(
             sum(title == required for _, _, title in headings) != 1
             for required in READING_SECTIONS
         ):
             problems.append(
-                "reading entry must start with unique level-2 Purpose, Usage, Design, Relationships"
+                "reading entry must start with unique level-2 Purpose, Terminology, Usage, Design, Relationships"
             )
         if any(title == "Entities" for _, _, title in headings):
             problems.append(
                 "explain entity meaning in Design or Relationships, not an Entities inventory chapter"
             )
         for number, title in top:
-            if title not in READING_SECTIONS:
+            if title not in READING_SECTIONS or title == "Terminology":
                 continue
             end = next(
                 (n for n, level, _ in headings if n > number and level <= 2),
@@ -396,7 +467,7 @@ def metadata_identity(path: str, raw: bytes, *, expected_owner: str) -> tuple[st
     ):
         raise ContentModelError(
             path,
-            "unsupported document metadata version; migrate explicitly to Protocol 8 schema 2",
+            "unsupported document metadata version; migrate explicitly to Protocol 9 schema 2",
         )
     document = _object(value["document"], {"id", "owner", "role"}, set(), path)
     if not isinstance(document["role"], str) or document["role"] not in {

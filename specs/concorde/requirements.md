@@ -3,6 +3,15 @@
 These precise specifications belong directly to the [Concorde Framework Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capability](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Concorde Framework
 
 ### req.concorde.routing-no-access — No access beyond frozen context

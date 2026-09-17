@@ -26,7 +26,7 @@ carries `blockers`, references to immutable Issue reports with a task-local `blo
 The response is metadata/evidence, not an instruction to execute another operation.
 
 The worker `report_issue` tool admits `concorde-issue-report@1` and returns `{receipt, revision}`,
-where receipt follows `concorde-issue-receipt@1`. [Record semantics](issues.md#store-boundary) define
+where receipt follows `concorde-issue-receipt@1`. [Record semantics](execution-reference.md#issues-store-boundary) define
 these values once. Worker final results carry only references to reports accepted in that invocation
 or explicitly admitted as stage input. A forged, missing, foreign or repeated reference is rejected.
 Review findings are references with `severity` and `affected_task`; the host derives blocking
@@ -38,6 +38,15 @@ Issue solving. `scripts/issues.py archive-reflections` explicitly moves an old q
 symlink or unsafe source is refused without deleting either copy. Installation preserves legacy
 user data but does not install an active Reflection queue. The archive is outside active validation
 and normal worker grants; continued work requires an explicit new Issue citing the old evidence.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Precise specifications
 

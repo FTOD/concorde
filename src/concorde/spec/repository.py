@@ -1,4 +1,4 @@
-"""Protocol-8 / Profile-14 repository admission. No old-format runtime path."""
+"""Protocol-9 / Profile-14 repository admission. No old-format runtime path."""
 
 from __future__ import annotations
 from pathlib import Path

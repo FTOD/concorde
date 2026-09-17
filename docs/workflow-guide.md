@@ -16,7 +16,7 @@ implementation, code review and investigation — support this work through inst
 Issue system retains classified problems and persistent
 Spec gaps, coordinates investigation and routes approved resolutions into new development tasks.
 
-The development and delivery workflows below use **Spec Protocol 8.0.0**. It defines one Module
+The development and delivery workflows below use **Spec Protocol 9.0.0**. It defines one Module
 Spec content model and the human-readable subset of that content. Reading begins with Purpose,
 Usage, Design and Relationships in module-role entries and explanatory topics. Formal requirements,
 scenarios and canonical interfaces belong only in implementation-role companions owned directly by
@@ -85,7 +85,7 @@ The originating session does not follow the task into a different checkout.
 
 Send the JSON on stdin to `python .concorde/framework/scripts/run-capability.py concorde-init`.
 Review the returned proposal, then send action apply and that complete proposal. Initialization creates
-an honest reading/metadata pair. Supply Purpose, Usage, Design and Relationships before precise
+an honest reading/metadata pair. Supply Purpose, Terminology, Usage, Design and Relationships before precise
 requirements/scenarios and implementation. Topic documents have their own metadata companions and
 need not repeat the entry template. All selected pairs enter context whole.
 `.concorde/config.json` pins the Protocol and references `.concorde/specs.json`; that registry explicitly
@@ -249,7 +249,7 @@ validation precede candidate promotion; human navigation grants no extra agent c
 ## Concorde Spec Protocol entry and upgrades
 
 The Framework execution profile defines session handoffs in [P10](../prompts/protocol/framework-profile.md#p10-explicit-session-handoffs).
-Concorde Spec Protocol 8.0.0 defines readable Module specifications with paired metadata whose entities bind the
+Concorde Spec Protocol 9.0.0 defines readable Module specifications with paired metadata whose entities bind the
 files that realize them, as exact paths or directory prefixes, and whose scenarios are declared by
 the tests that verify them. Root instructions and runtime drafts refer to that rule; public Skills do
 not carry another copy.

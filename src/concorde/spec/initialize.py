@@ -103,6 +103,9 @@ def initial_module_text(target_id: str, name: str) -> str:
     return (
         f"# {name}\n\n## Purpose\n\n"
         "This Module identifies the initialized project. Its business purpose has not yet been supplied.\n\n"
+        "## Terminology\n\n| Term | Meaning / definition |\n| --- | --- |\n"
+        "| Project Spec | The documents describing the project's intended responsibilities and behavior. |\n"
+        "| Draft | An initial description with explicit unknowns, not an invented business contract. |\n\n"
         "## Usage\n\nUse this draft to supply intended responsibility before planning implementation.\n"
         "Business entry points, inputs, results, effects, errors, repeat, cancellation and compatibility\n"
         "behavior are unknown; do not infer them from existing code or this authoring example.\n\n"

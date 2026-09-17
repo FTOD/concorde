@@ -174,6 +174,11 @@ function putSpec(path: string, references: string[], body: string) {
     "\n";
   }
  }
+ const terms = "## Terminology\n\nNo specialized terminology.\n\n";
+ if (!body.includes("## Terminology")) {
+  if (owner) body = body.replace("## Usage", terms + "## Usage");
+  else body = body.replace(/^(# [^\n]+)\n?/, `$1\n\n${terms}## Details\n\n`);
+ }
  put(path, body);
  put(path + ".json", JSON.stringify(metadata, null, 2));
 }
@@ -247,6 +252,41 @@ function classify(path: string, value: unknown) {
  metadata.document.role = value;
  put(path + ".json", JSON.stringify(metadata));
 }
+
+// verifies: scenario.views.reject-reading-collection
+it("terminology links select an admitted canonical table, not an implicit or forwarding read", () => {
+ const source = "specs/bank/module.md",
+  provider = "specs/transfer/module.md";
+ put(
+  source,
+  readFileSync(resolve(root, source), "utf8").replace(
+   "No specialized terminology.",
+   "| Term | Meaning / definition |\n| --- | --- |\n| [Reservation](../transfer/module.md#terminology) | Defined by Transfer. |",
+  ),
+ );
+ const original = readFileSync(resolve(root, provider), "utf8");
+ put(
+  provider,
+  original.replace(
+   "No specialized terminology.",
+   "| Term | Meaning / definition |\n| --- | --- |\n| Reservation | Stock held before checkout. |",
+  ),
+ );
+ expect(() => loadScopedRegistry(root)).toThrow(
+  /Terminology definition outside/,
+ );
+ targets[0].references = [{ kind: "module", id: "service.transfer" }];
+ save();
+ expect(() => loadScopedRegistry(root)).not.toThrow();
+ put(
+  provider,
+  original.replace(
+   "No specialized terminology.",
+   "| Term | Meaning / definition |\n| --- | --- |\n| [Reservation](../ledger/module.md#terminology) | Defined elsewhere. |",
+  ),
+ );
+ expect(() => loadScopedRegistry(root)).toThrow(/no canonical definition/);
+});
 
 // verifies: scenario.views.reading-collections
 it("classifies explicit companions without changing routes, ownership or inclusion", async () => {
@@ -1076,7 +1116,10 @@ it("rejects retired containers, duplicate headings and unreadable entries", () =
  expect(() => loadScopedRegistry(root)).not.toThrow();
  put(main, original);
  const companion = "specs/transfer/promises.md";
- put(companion, "# Notes\n\nA topic needs no entry template.");
+ put(
+  companion,
+  "# Notes\n\nA topic needs only early terminology, not the whole entry template.\n\n## Terminology\n\nNo specialized terminology.",
+ );
  expect(() => loadScopedRegistry(root)).not.toThrow();
  put(companion, "# Notes\n\n## Usage & Contract\n\nRetired.");
  expect(() => loadScopedRegistry(root)).toThrow(/Retired/);

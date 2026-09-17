@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "document": {
+    "id": "document.planning.execution-reference",
+    "owner": "module.planning",
+    "role": "implementation"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": []
+}

@@ -162,7 +162,7 @@ handoff solely because it updates the Framework's own instructions.
 
 ### Framework authoring and publication conventions
 
-Every Concorde Module's `module.md` starts with Purpose, Usage, Design and Relationships as
+Every Concorde Module's `module.md` starts with Purpose, Terminology, Usage, Design and Relationships as
 level-2 headings. The entry and explanatory topic companions have `document.role: module` and
 contain no formal requirement/scenario definitions or canonical structured contracts. Those belong
 in directly Module-owned implementation-role companions. Both roles remain complete Spec reading,
@@ -190,7 +190,10 @@ the registry listing remains their exact union. Project-owned metadata extension
 optional model execution profiles; its
 behavioral explanations remain reading content and unknown extensions cannot override the Protocol.
 
-Every executable Flow has a Flow Spec in its owning Module's documents written with LangGraph's
+Every executable Flow has one Flow Spec in its owning Module's implementation-role documents,
+not its explanation-first topics. Module-role reading explains the conceptual sequence and its
+reasons, with clearly labeled conceptual diagrams when useful, and links to this exact Flow Spec.
+The Flow Spec is written with LangGraph's
 concepts: a State part, a Nodes table (node name, what executes, `in` and `out` state) and a
 Mermaid flowchart bound to the compiled Flow by `%% flow: <name>` whose node identifiers are the
 compiled node names including `__start__` and `__end__`, whose node labels state `in:` and

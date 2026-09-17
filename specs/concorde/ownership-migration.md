@@ -1,4 +1,19 @@
-# Capability ownership migration
+# Historical capability ownership migration
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Capability](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
+## Historical scope
+
+This is a record of the earlier capability-ownership split, preserved from the pre-Protocol-8
+source baseline. Version numbers and “current” entries below describe that migration, not the
+current runtime agreement. Read each owning Module for present behavior.
 
 ## Design
 

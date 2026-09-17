@@ -41,7 +41,7 @@ const specSteps: Record<string, Step> = {
     ),
     stops:
       "Incompatible change identity, invalid saved state or failed admission stops before authoring or review.",
-    spec: "/specs/concorde/specify-loop/specify-loop#composition-state-and-recovery",
+    spec: "/specs/concorde/specify-loop/execution-reference#specify-loop-composition-state-and-recovery",
   },
   specify: {
     title: "Write or revise Spec",
@@ -952,7 +952,7 @@ export default function CapabilityFlows({ data }: { data: FlowData }) {
                 </p>
                 <Link
                   to={
-                    "/specs/concorde/dev-loop/development#ai-and-human-feedback"
+                    "/specs/concorde/dev-loop/execution-reference#development-ai-and-human-feedback"
                   }
                 >
                   Read the feedback and recovery contract →

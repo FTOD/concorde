@@ -3,6 +3,16 @@
 These precise specifications belong directly to the [Development Flow Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Development Flow
 
 ### req.development.explicit-skip-sticky — Review skips cannot cancel required reviews

@@ -3,6 +3,15 @@
 These precise specifications belong directly to the [Planning Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Planning
 
 ### scenario.development.task-history-identities — Task authors receive reserved identities

@@ -3,6 +3,14 @@
 These precise specifications belong directly to the [Distribution Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Build
 
 ### Interface signatures {#build-interface-signatures}

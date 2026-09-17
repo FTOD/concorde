@@ -1,35 +1,41 @@
-# Spec authoring capability
+# Revising the intended contract
 
-The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
-[typed handoffs](../development/interfaces.md#stage-handoffs) and
-[gap rules](../development/review-and-gaps.md) apply. Artifact references are host-issued paths
-and exact digests; a valid shape alone does not establish currentness or authority.
-This is a private, bound capability in the [current adapter inventory](../development/capabilities.md).
-Only a declared in-process composition can call it; direct Skill/CLI invocation is rejected.
-A caller supplies the selected Module, task, constraints, focus and current candidate identity
-where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
-file names are visible and implementation contents remain excluded from non-code phases.
+Spec authoring changes the description of intended behavior and design, not the implementation.
+A composing workflow supplies one owning Module and a task; the author proposes changes that the
+host checks before writing project files.
 
-`specify` uses a fresh spec-engineer specify invocation with no inherited stage artifacts or
-implementation contents. Inputs are the complete owned/direct-reference contract, task and
-constraints under the pinned Protocol. It returns full owned document replacements in
-concorde-agent-stage-result@2, or attributed gaps with no replacements. The host validates identity,
-metadata, allowed paths, context and configuration before applying accepted replacements; the author
-never writes project files. The capability response retains references to accepted output.
+## Terminology
 
-A referencing author cannot replace a provider document. An owner may revise its own shared
-document, but application requires affected-consumer compatibility checks in their separate
-contexts. Ordinary authoring preserves document ID, owner, visibility and registered membership;
-changes to those definitions require explicit topology reconciliation. An invalid, foreign or stale
-replacement is rejected with existing bytes and blockers preserved. Successful assessment resolves
-old authoring gaps only after the host accepts the output, not merely after a model says sufficient.
+| Term | Meaning / definition |
+| --- | --- |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-Repeated calls re-admit current inputs; accepted-authoring reuse and independent review selection
-are the composing flow's decisions. This capability alone neither reviews its own output nor plans,
-implements or marks a candidate ready. Topology's special candidate-author context is a distinct
-existing mode, not an undeclared call to this ordinary specify adapter.
+## A normal revision
+
+The author reads the complete allowed specification, identifies what the requested change means,
+and returns complete replacements for the affected owned documents. It explains normal use and
+important guarantees in Module Specs, defines exact obligations in Implementation Specs, and keeps
+Terminology definitions canonical. Unknown intended behavior is reported as a gap rather than inferred
+from source code.
+
+For example, a consumer can rely on a provider's documented reservation result, but cannot replace
+the provider's contract while editing its own Spec. A shared contract change is authored by its owner
+and checked against affected consumers in their separate contexts.
+
+## Why proposal and application are separate
+
+The model can propose meaning without receiving a general filesystem write grant. The host checks
+ownership, source freshness and the complete replacement set before applying it. Invalid or stale
+output preserves prior bytes. Ordinary revisions keep document identity and ownership; structural
+changes use Topology so registrations and references change together.
+
+The author does not independently approve its own work. The calling flow chooses review and any
+later planning. Exact proposal and acceptance rules are in the execution reference.
 
 ## Precise specifications
 
-The Spec Authoring Module owns the exact obligations and interface details in [scenarios](scenarios.md).
-These companions are part of the same complete Module specification, not separate topic owners.
+See the Module-owned [execution and record contracts](execution-reference.md#authoring-spec-authoring-capability).
+The exact obligations remain in Implementation Specs; this topic explains their purpose and use.

@@ -1,10 +1,10 @@
 # Spec Protocol
 
-Concorde Spec Protocol **8.0.0** describes software responsibilities through one Module Spec model.
+Concorde Spec Protocol **9.0.0** describes software responsibilities through one Module Spec model.
 It defines the complete specification content and **the subset intended for human reading**. It
 does not prescribe a docsite's page, navigation or interaction design.
 
-Module Specs start with Purpose, Usage, Design and Relationships and continue in explanatory topic
+Module Specs start with Purpose, Terminology, Usage, Design and Relationships and continue in explanatory topic
 pages. Implementation Specs contain the same Module's precise requirements, scenarios and canonical
 interface contracts. Both are explicit document roles within one complete Module specification,
 not independent owners or context filters. Formal definitions are forbidden in entries and topic
@@ -31,7 +31,19 @@ Concorde Framework, a particular publisher or a particular agent runtime to unde
 Configuration, registry serialization, worker wire versions and execution permissions are separate
 implementation agreements, not additional Protocol versions.
 
-## Upgrade from Protocol 7
+## Upgrade from Protocol 8
+
+Version 9 makes the intended reader explicit: general software knowledge, no project implementation
+knowledge. Add early Terminology tables with one canonical definition per concept and direct links
+to those tables elsewhere. Retain a normal path, concrete illustrations, causal design and visible
+safety limits in explanatory reading. Move remaining technical contracts and exact executable Flow
+catalogs out of topics regardless of heading syntax. Reconcile anchors, references and bound evidence.
+Metadata schema 2, ownership, complete context and implementation authority remain unchanged.
+
+This is an editorial and structural migration, not a new context filter. Passing a table-shape
+check does not prove that an explanation is understandable.
+
+## Earlier upgrade from Protocol 7
 
 Version 8 makes document roles and formal-definition placement mandatory. Migration must:
 

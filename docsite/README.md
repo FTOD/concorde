@@ -30,7 +30,7 @@ Publication validates complete document units: each registered Markdown reading 
 local readable meaning anchors, scoped relationship diagrams and complementary interface bindings.
 The Markdown is the Protocol-defined reading subset, not an independently generated summary.
 
-The entry reads Purpose, Usage, Design and Relationships. Formal requirements/scenarios belong
+The entry reads Purpose, Terminology, Usage, Design and Relationships. Formal requirements/scenarios belong
 only in owned implementation-role companions; publication never automatically extracts them or
 writes a summary.
 The publisher creates one page per reading document and does not append a duplicate Files inventory
@@ -61,7 +61,7 @@ details in registered owned companions, linking to their canonical definitions i
 them. Implementation Specs means specifications implementations must satisfy, including external
 behavior, not a record of current code or a temporary implementation plan.
 
-Protocol 8 requires every `.md.json` to use schema 2 and declare `document.role` explicitly:
+Protocol 9 retains the requirement for every `.md.json` to use schema 2 and declare `document.role` explicitly:
 
 ```json
 {
@@ -91,6 +91,26 @@ initialized draft can have only its explanatory entry until actual obligations a
 All 17 Concorde Modules have migrated, with requirements and scenarios directly owned by each
 Module and explanatory topics retained in Module Specs. A source relocation still requires updating source links:
 stable definition IDs do not by themselves redirect old page/fragment URLs.
+
+## Explanation-first authoring and Terminology
+
+Write for a reader with general software knowledge but no knowledge of project internals. Entries
+start with Purpose, Terminology, Usage, Design and Relationships. Topics have a short introduction,
+then Terminology as their first level-2 section. Use a nonempty `Term` / `Meaning / definition` table;
+if genuinely unnecessary, state `No specialized terminology.` rather than invent terms.
+
+Define a concept once in its canonical table. Other pages link the term directly to that document's
+`#terminology` table and do not copy its definition. Include the defining unit explicitly in the
+Module's context; a link cannot silently grant it. Both validators reject missing/noncanonical table
+links or links to excluded definitions. Entity identity/file listings remain metadata, and contextual
+entity duties remain in Design/Relationships; the term table is not another inventory.
+
+Explain a normal interaction before advanced recovery, use concrete illustrations, and connect design
+choices to the problems they prevent. Private API catalogs, serialization algorithms and exact
+executable Flows belong in Implementation Specs even without req/scenario headings. Module Specs may
+show clearly labeled conceptual diagrams and simple public usage examples. Keep destructive defaults,
+security limits and known unfulfilled guarantees visible. These semantic requirements need reader-
+oriented review; a correct table shape is not proof that prose is understandable.
 
 ## Site identity
 

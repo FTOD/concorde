@@ -2,12 +2,16 @@
 
 ## Purpose
 
-Issues retains classified project problems independently of tasks, reviews and repair attempts.
-Workers report bugs, contract gaps and limitations while performing their own bounded work. The
-reporter decides how a problem affects that work; storing an observation does not stop a worker,
-authorize a repair or decide another Module's behavior. Developers can inspect or solve a selected
-Issue, and authorized solving decisions need human input only when the available contracts and
-evidence cannot settle a necessary choice.
+Issues keeps a durable record of observed problems and supports their explicit investigation, repair and verification. Recording a problem does not itself stop work or authorize code changes. Developers use it when a concern must remain visible beyond the current conversation.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 

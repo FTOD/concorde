@@ -70,7 +70,7 @@ def unit(name, *, peer=None):
         agreement = "\n### Provider agreement {#local-provider}\n\nUse the provider for admission; stop on rejection.\n"
     reading = (
         f"# {name.upper()}\n\n## Purpose\n\nPerform the admitted {name} responsibility.\n"
-        "\n## Usage\n\nSubmit one request; rejected input produces no result.\n"
+        "\n## Terminology\n\nNo specialized terminology.\n\n## Usage\n\nSubmit one request; rejected input produces no result.\n"
         "\n## Design\n\nAdmission precedes state changes.\n\n"
         + definitions
         + "\n## Relationships\n\nThis view shows the admission collaboration only.\n\n"
@@ -222,6 +222,52 @@ class DocumentUnitRepositoryTests(unittest.TestCase):
         )
         text = encoded(content).decode() if path.endswith(".json") else content
         return {"path": path, "before_digest": digest(raw), "content": text}
+
+    def test_terminology_links_require_admitted_canonical_definitions_not_forwarders(
+        self,
+    ):
+        topic = self.root / "specs/a/module.md"
+        definition = self.root / "specs/b/module.md"
+        original = definition.read_text()
+        definition.write_text(
+            original.replace(
+                "No specialized terminology.",
+                "| Term | Meaning / definition |\n| --- | --- |\n| Reservation | Stock held before checkout. |",
+            )
+        )
+        topic.write_text(
+            topic.read_text().replace(
+                "No specialized terminology.",
+                "| Term | Meaning / definition |\n| --- | --- |\n| [Reservation](../b/module.md#terminology) | Defined by B. |",
+            )
+        )
+        self.repository().validate()
+        before = self.repository().spec_context("module.a")
+        definition.write_text(
+            definition.read_text().replace(
+                "Stock held before checkout.", "Stock held until cancellation."
+            )
+        )
+        with self.assertRaisesRegex(SpecError, "stale"):
+            self.repository().recheck_resolution(before)
+        self.registry["targets"][0]["references"] = [
+            {"kind": "document", "id": "document.b.interface"}
+        ]
+        self.save()
+        with self.assertRaisesRegex(SpecError, "terminology definition outside"):
+            self.repository().validate()
+        self.registry["targets"][0]["references"].append(
+            {"kind": "module", "id": "module.b"}
+        )
+        self.save()
+        definition.write_text(
+            original.replace(
+                "No specialized terminology.",
+                "| Term | Meaning / definition |\n| --- | --- |\n| [Reservation](../c/module.md#terminology) | Defined by C. |",
+            )
+        )
+        with self.assertRaisesRegex(SpecError, "no local canonical definition"):
+            self.repository().validate()
 
     def test_one_level_reference_resolves_complete_pairs_once_with_provenance(self):
         repository = self.repository()
@@ -677,7 +723,7 @@ class DocumentUnitRepositoryTests(unittest.TestCase):
         repository = SpecRepository(root)
         repository.validate()
         self.assertEqual(14, repository.config["profile_version"])
-        self.assertEqual("8.0.0", repository.config["protocol"]["version"])
+        self.assertEqual("9.0.0", repository.config["protocol"]["version"])
         self.assertEqual(len(repository.targets), len(repository.context_identities()))
         self.assertEqual(
             2 * len(repository.document_targets), len(repository.source_documents)

@@ -1,4 +1,4 @@
-"""Protocol-8 document-unit source backend.
+"""Protocol-9 document-unit source backend.
 
 This backend is not an alternate capability entry or a profile auto-detector. The bound SpecRepository adds installed Protocol admission to these shared source operations. Protocol binding,
 worker wire envelopes and lifecycle activation remain the host's separate admission boundary.
@@ -530,10 +530,14 @@ class DocumentUnitRepository(RepositoryCore):
             _section_ranges,
             flowchart_model,
             link_findings,
+            terminology_findings,
         )
         from urllib.parse import unquote, urlsplit
         import posixpath
 
+        term_errors = terminology_findings(self)
+        if term_errors:
+            raise SpecError(term_errors[0].message)
         identities = set(self.targets) | set(self._document_index())
         contracts, bindings = {}, []
         for target in self.targets.values():

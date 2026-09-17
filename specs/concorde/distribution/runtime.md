@@ -3,6 +3,14 @@
 A caller supplies package/project roots and a reviewed runtime plan; this Module does not select
 business requirements or agent context.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Planning before provisioning
 
 Plan against the actual target and its current receipt before creating or replacing a managed

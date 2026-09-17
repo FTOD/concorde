@@ -196,6 +196,58 @@ export function readingMeanings(
   }
   return result;
 }
+export function terminologyBody(content: string): string {
+  const headings = headingList(content);
+  const section = headings.find(
+    (h) => h.level === 2 && h.text === "Terminology",
+  );
+  if (!section) return "";
+  const end =
+    headings.find((h) => h.start > section.start && h.level <= 2)?.start ??
+    content.length;
+  return prose(content).slice(section.body, end).trim();
+}
+
+function requireTerminology(
+  content: string,
+  path: string,
+  primary: boolean,
+): void {
+  const headings = headingList(content),
+    top = headings.filter((h) => h.level === 2);
+  requireThat(
+    headings.filter((h) => h.text === "Terminology").length === 1 &&
+      top[primary ? 1 : 0]?.text === "Terminology",
+    `Terminology must be a unique early level-2 section: ${path}`,
+  );
+  const body = terminologyBody(content);
+  if (body === "No specialized terminology.") return;
+  const rows = body
+    .split("\n")
+    .filter((line) => line.trim().startsWith("|"))
+    .map((line) =>
+      line
+        .trim()
+        .replace(/^\||\|$/g, "")
+        .split("|")
+        .map((cell) => cell.trim()),
+    );
+  requireThat(
+    rows.length >= 3 &&
+      rows[0].join("|") === "Term|Meaning / definition" &&
+      rows[1].length === 2 &&
+      rows[1].every((cell) => /^:?-{3,}:?$/.test(cell)) &&
+      rows.slice(2).every((row) => row.length === 2 && row.every(Boolean)),
+    `Terminology requires a nonempty Term / Meaning / definition table: ${path}`,
+  );
+  for (const row of rows.slice(2))
+    for (const match of row[0].matchAll(/\[[^\]]*\]\(([^\s)]+)\)/g))
+      requireThat(
+        match[1].endsWith("#terminology") && !/^(?:[a-z]+:|\/)/i.test(match[1]),
+        `Imported terms must link directly to a project document's #terminology table: ${path}`,
+      );
+}
+
 export function requireReading(
   content: string,
   path: string,
@@ -222,24 +274,32 @@ export function requireReading(
     ),
     `Machine declarations belong in document metadata: ${path}`,
   );
+  if (role === "module") requireTerminology(content, path, primary);
   if (primary) {
-    const names = ["Purpose", "Usage", "Design", "Relationships"];
+    const names = [
+      "Purpose",
+      "Terminology",
+      "Usage",
+      "Design",
+      "Relationships",
+    ];
     requireThat(
       headings
         .filter((h) => h.level === 2)
-        .slice(0, 4)
+        .slice(0, 5)
         .map((h) => h.text)
         .join(",") === names.join(",") &&
         names.every(
           (name) => headings.filter((h) => h.text === name).length === 1,
         ),
-      `Reading entry requires unique level-2 Purpose, Usage, Design, Relationships in order: ${path}`,
+      `Reading entry requires unique level-2 Purpose, Terminology, Usage, Design, Relationships in order: ${path}`,
     );
     requireThat(
       !headings.some((h) => h.text === "Entities"),
       `Entities is not a reading inventory chapter: ${path}`,
     );
     for (const name of names) {
+      if (name === "Terminology") continue;
       const section = headings.find((h) => h.text === name)!;
       const end =
         headings.find((h) => h.start > section.start && h.level <= 2)?.start ??
@@ -272,6 +332,13 @@ export function requireReading(
       (!headings.some((h) => /^(?:req|scenario)\./.test(h.text)) &&
         !fences.some((f) => f.language === "concorde-contract")),
     `Formal definitions belong in an implementation-role document, not a Module entry or topic: ${path}`,
+  );
+  requireThat(
+    role === "implementation" ||
+      !fences.some(
+        (f) => f.language === "mermaid" && /^\s*%%\s*flow:/m.test(f.body),
+      ),
+    `Exact executable Flow catalogs belong in implementation-role documents: ${path}`,
   );
   requireDefinitions(content, path);
   return readingMeanings(content, path);

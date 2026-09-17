@@ -2,33 +2,37 @@
 
 ## Purpose
 
-The Harness configures and runs every worker invocation in Concorde: it freezes the four context
-kinds an invocation may see, binds a worker's authored role Spec and Python profile into a
-reproducible definition, compiles the effective permissions its tool gate enforces, runs the worker
-as a fresh Pi coding agent process with its configured model, and coordinates every control flow as
-a LangGraph Flow. Every other Concorde capability that needs a Spec- or task-bound model invocation
-relies on it, as does every author who defines a new worker. Its boundary stops at the Spec Module it
-consults for project truth and the Distribution Module it consults for rendered instructions and
-Protocol assets. It also supplies the host's OS-enforced read-only executor for configured
-deterministic checks; it does not itself decide project topology, author Specs or implement business
-capabilities.
+Harness prepares and runs a worker with a defined task, information and permissions, then checks the result. It also runs configured checks in a separate read-only environment. Other Modules rely on it to execute work without treating an agent answer as permission for unrelated actions.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| Worker profile | The instructions and maximum tools, workspace and effects available to a kind of worker; a particular job can be narrower. |
+| Tool gate | The checks applied inside the agent process before a model-requested tool runs; it is not an OS sandbox. |
+| Capsule | A temporary workspace containing the documents admitted for one Spec-only worker invocation. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
-Use Harness from trusted host code when a capability needs one bounded worker invocation, an
-inspectable Flow or a deterministic read-only check. Select the worker and task, resolve current
-context and binding, compile a grant no wider than declared effects, and execute the host-built
-invocation. The result is a validated typed outcome with invocation identity and usage, not the
-worker's conversation. Worker authors use [Agents and Harnesses](agents-and-harnesses.md) and
-[runtime values](runtime-values.md) to define compatible profiles and task contracts.
+A calling workflow gives Harness one worker job or one configured check. Harness fixes the allowed
+inputs and permissions, starts the job, and validates its matching result before the caller proceeds.
+Spec-only workers receive specification information; code access is a separate phase-specific choice.
 
-A context snapshot identifies the files a worker may read; it grants complete owned and explicitly
-referenced Specs, not just the requested scenario or the human-readable subset. Code access is
-separately phase-bound. `describe-policy` previews grants without launching a worker. Treat stale
-context, invalid completion, cancellation and time limits as distinct stopping outcomes; no failure
-authorizes a wider retry. Checks have OS-enforced read-only project access. The worker tool gate is
-not an OS sandbox and does not confine granted shell commands, so callers must not assume that
-stronger protection. See [execution and its limits](execution.md) before admitting work.
+For example, a planner can describe a change without reading source. A programmer later receives
+accepted tasks and allowed code files; a reviewer receives read-only inputs in a fresh conversation.
+The workers share accepted artifacts, not all of each other's knowledge or authority.
+
+Failures, cancellation, time limits and changed inputs stop dependent execution. Authorized code edits
+may remain after failure and require inspection. **The worker tool gate is not an OS sandbox and does
+not confine an authorized shell command.** Configured checks use a separate OS-enforced read-only
+boundary, currently requiring Linux and appropriate system support. Read [execution](execution.md)
+for these deployment limits before relying on isolation. Policy preview shows access without running
+an agent.
 
 ## Design
 
@@ -55,7 +59,7 @@ to start a fresh Pi RPC process. Its extension gates worker and child tool calls
 allows only one level of declared child delegation under the same grant. One matching submitted
 result is required, not merely a successful exit. Cancellation, time limits and invalid completion
 remain distinct. Worker shells do not have the OS confinement supplied for deterministic checks;
-that explicit limitation is detailed in [execution](execution.md#design).
+that explicit limitation is detailed in [execution](execution-reference.md#execution-design).
 
 <a id="entity.harness.studio"></a><a id="entity.harness.worktree-lifecycle"></a><a id="entity.harness.langgraph"></a>
 

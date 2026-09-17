@@ -118,8 +118,8 @@ class ContentMigrationTests(unittest.TestCase):
         self.assertNotIn("Usage & Contract", reading)
         self.assertNotIn("Architecture & Realization", reading)
         self.assertEqual(
-            ["Purpose", "Usage", "Design", "Relationships"],
-            [line[3:] for line in reading.splitlines() if line.startswith("## ")][:4],
+            ["Purpose", "Terminology", "Usage", "Design", "Relationships"],
+            [line[3:] for line in reading.splitlines() if line.startswith("## ")][:5],
         )
         self.assertIn(
             "The coordinator stores orders",

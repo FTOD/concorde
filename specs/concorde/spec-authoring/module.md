@@ -2,7 +2,16 @@
 
 ## Purpose
 
-Spec Authoring proposes complete replacements for the selected Module's owned Spec documents from its complete contract and an explicit task. It serves specification flows and other declared callers; independent review and flow completion belong to their consumers.
+Spec Authoring proposes changes to a Module’s intended behavior and design. It works from the allowed specifications and explicit intent, not from source code used to guess missing requirements. The host checks and applies owned proposals; independent review belongs to the calling workflow.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -88,15 +97,6 @@ Resolve sole document ownership, complete references and affected consumers, and
 This collaboration applies when determining allowed replacement documents and checking their current contract and consumer set.
 
 - [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
-
-## Realization and reuse limits
-
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
 
 ## Precise specifications
 

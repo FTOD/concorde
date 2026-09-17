@@ -14,7 +14,15 @@ python3 .concorde/framework/scripts/run-ua-graph-viewer.py --project-root . --no
 | `--port N` | Optional integer from 0 through 65535, forwarded to the official viewer |
 | `--no-open` | Optional flag forwarded to the official viewer to suppress its browser opening |
 
-### Relationships and routing
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
+## Relationships and routing
 
 This service participates in Developer view and feedback. Its user-facing contract is owned here;
 `module.distribution` supplies viewer provisioning under the Installation entity's ownership.

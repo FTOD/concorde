@@ -1,63 +1,40 @@
-# Planning capability
+# Turning intended behavior into a plan
 
-The [common invocation envelope](../development/interfaces.md#capability-execution-boundary),
-[typed handoffs](../development/interfaces.md#stage-handoffs) and
-[gap rules](../development/review-and-gaps.md) apply. Artifact references are host-issued paths
-and exact digests; a valid shape alone does not establish currentness or authority.
-This is a private, bound capability in the [current adapter inventory](../development/capabilities.md).
-Only a declared in-process composition can call it; direct Skill/CLI invocation is rejected.
-A caller supplies the selected Module, task, constraints, focus and current candidate identity
-where required. It cannot reselect context or forge saved artifacts. Spec context is complete,
-file names are visible and implementation contents remain excluded from non-code phases.
+Planning explains how to achieve an admitted task from its current specification. It starts only
+after the task has enough specified meaning, and ends with a plan rather than tasks, code or a ready
+candidate.
 
-`plan` first obtains the separate [assessment](assessment.md). Only a sufficient result admits a
-fresh planner invocation. Its optional concorde-plan-artifact is an explicitly admitted
-prior plan, not a predecessor conversation. The accepted output is a nonempty plan bound to the
-selected contract revision and intent. The host stores the target plan and returns artifact references
-in concorde-plan-response@2; the worker has no direct project writes. No task list, implementation,
-review or readiness is produced by planning.
+## Terminology
 
-A coordinating plan identifies local work and exact direct child/used-Module IDs from its local
-dependency declarations. It states their required behavior without pretending to read their code;
-separately selected component work needs each component's complete contract and its own grant.
-Empty or invalid plans are rejected without replacing accepted state. Gaps, conflicting contracts,
-unsupported work, stale context and failed execution stop dependent planning. Relevant Spec or
-intent changes invalidate reuse; a repeated consumer invocation may reuse only current accepted
-artifacts. Planning can be consumed by any declared caller satisfying these preconditions, without
-having to explain its purpose by reference to dev-loop.
+| Term | Meaning / definition |
+| --- | --- |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-## Design
+## Normal planning
 
-### Planning Flow (`plan_flow`)
+The workflow selects a Module and asks [context assessment](assessment.md) whether its Spec supports
+the request. A fresh planner then describes the work needed, including separately owned participants
+when necessary. The host accepts a nonempty plan tied to that task and Spec revision. Task authoring
+uses that plan in the next step.
 
-State: `route`, `output` (the planning response), `result`; the candidate record receives the
-accepted plan, its Spec digest and intent.
+For example, a change to checkout that relies on inventory identifies Inventory's required behavior
+as separately owned work. It does not assume that a Checkout planner may inspect or modify Inventory's
+implementation. Each participant needs its own bounded invocation.
 
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
-| `assess_context` | The deterministic dependency-declaration check, then one context-assessor invocation. | Spec context, task | sufficiency or gaps |
-| `author_plan` | One planner invocation with an optional prior plan artifact. | Spec context, task, prior plan | plan |
-| `persist_plan` | Deterministic: a nonempty plan replaces the target's plan and clears dependent tasks and coordination. | plan, candidate | plan artifact, target record |
+## Why plans become stale
 
-```mermaid
-flowchart TB
-    %% flow: plan_flow
-    accTitle: Planning Flow
-    accDescr: Context assessment admits planning only when the contract is sufficient; a returned plan is persisted; a gap, conflict, failure or policy preview ends the Flow.
-    __start__["start"]
-    assess_context["assess_context<br/>in: Spec context, task<br/>out: sufficiency or gaps"]
-    author_plan["author_plan<br/>in: Spec context, task, prior plan<br/>out: plan"]
-    persist_plan["persist_plan<br/>in: plan, candidate<br/>out: plan artifact, target record"]
-    __end__["end"]
-    __start__ --> assess_context
-    assess_context -->|sufficient| author_plan
-    assess_context -->|gap, conflict, unsupported or failed| __end__
-    author_plan -->|plan returned| persist_plan
-    author_plan -->|gap or failure, or policy described| __end__
-    persist_plan --> __end__
-```
+A plan depends on intended behavior. If the Spec or task changes, the old plan might solve the wrong
+problem even if its text still looks plausible. The host rechecks its inputs before reuse. Empty,
+invalid or stale output leaves the previous accepted plan intact but does not make it current.
+The planner uses Spec information and admitted reference material, not implementation contents.
+
+The exact planning Flow and artifact contract are maintained in Implementation Specs; the explanation
+here is the normal reasoning path, not a second execution graph.
 
 ## Precise specifications
 
-The Planning Module owns the exact obligations and interface details in [requirements](requirements.md), [scenarios](scenarios.md).
-These companions are part of the same complete Module specification, not separate topic owners.
+See the Module-owned [execution and record contracts](execution-reference.md#plan-planning-capability).
+The exact obligations remain in Implementation Specs; this topic explains their purpose and use.

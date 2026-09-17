@@ -3,7 +3,7 @@
   "document": {
     "id": "document.concorde.ownership-migration",
     "owner": "module.concorde",
-    "role": "module"
+    "role": "implementation"
   },
   "entities": [],
   "dependencies": [],

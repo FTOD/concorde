@@ -22,7 +22,15 @@ graph for node reuse and the [unlisted-file layer contract](contracts.md#ua-grap
 in the installed manifest's ordered `graph_paths`, defaulting to `.ua/knowledge-graph.json` when
 neither exists yet.
 
-### Overlaying an existing graph
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
+## Overlaying an existing graph
 
 Exporter ownership is determined by the [overlay scenario](scenarios.md#scenario.views.ua-graph-overlay), not by a record of
 which tool originally created each element. The `concorde-ua-graph` tag, the named layer namespace,

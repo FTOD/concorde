@@ -1,6 +1,6 @@
 # Required format
 
-Protocol 8 separates complete content from its human-readable subset and assigns each document
+Protocol 9 separates complete content from its human-readable subset and assigns each document
 unit an explicit explanatory or precise-specification role. This chapter defines the
 representation of both. It does not define a documentation site's navigation or layout. Templates
 are starters; satisfying syntax does not establish semantic completeness.
@@ -21,10 +21,11 @@ must be included together in context, source digests, proposals and ownership re
 
 ## Reading structure
 
-The first four level-2 ATX headings of `module.md`, outside fences, are exactly once and in order:
+The first five level-2 ATX headings of `module.md`, outside fences, are exactly once and in order:
 
 ```text
 Purpose
+Terminology
 Usage
 Design
 Relationships
@@ -36,6 +37,17 @@ Relationships each contain explanatory prose, not only links, headings or diagra
 contains at least one Mermaid flowchart for the principal collaboration. Honest unknowns are stated
 explicitly; the presence of prose is not proof that its explanation is sufficient.
 
+Every module-role topic starts with a short orienting introduction followed by `## Terminology` as
+its first level-2 section; the entry puts Terminology immediately after Purpose. There is exactly one
+Terminology section, with a nonempty two-column Markdown table headed `Term` and `Meaning / definition`.
+A term is either defined plainly in its row or linked to its canonical table by a relative Markdown
+link ending in `#terminology`. Imported rows say where the term is defined rather than copy its
+meaning. Qualify distinct meanings instead of merging them. Do not list files, implementation IDs or
+all declared entities to fill the table. If no specialized terms are needed, state that explicitly
+instead of inventing rows. Implementation-role units MAY use the same convention for orientation.
+The heading publishes the stable `terminology` anchor. Necessary linked tables must belong to the
+owner's complete selected context; they do not expand it implicitly.
+
 `module.md` has role `module`. Its additional sections and module-role companions explain topics,
 rationale, correct use and unresolved facts. They MUST NOT contain formal `req.*` or `scenario.*`
 definitions or canonical `concorde-contract` fences. Usage examples and links to precise definitions
@@ -43,8 +55,10 @@ are permitted. A topic remains an explanation owned by its Module, not a nested 
 
 Role `implementation` contains the Module's formal requirements, scenarios and canonical interface
 contracts. Units may group definitions by subject without creating a second ownership hierarchy.
-Both roles are registered, paired human-readable Spec content. Companions have no mandatory entry
-template or enclosing parts. Implementation details that do not constrain behavior or significant
+Both roles are registered, paired human-readable Spec content. Topics need no full entry template
+beyond early Terminology. Required exact private APIs, serialization rules, implementation algorithms
+and executable Flow catalogs belong in implementation-role reading regardless of their syntax.
+Conceptual design and safe-use explanations stay in module-role reading. Implementation details that do not constrain behavior or significant
 design do not become obligations merely by appearing in code. The former `Usage & Contract`,
 `Architecture & Realization` and standalone `Entities` entry structure is not admitted.
 
@@ -200,7 +214,11 @@ not another source of specification obligations.
 ## Drafts and migration
 
 Unresolved facts are explicit gaps. Templates do not invent behavior or establish completeness.
-Migrating Protocol 7 requires explicit schema-2 roles for every unit, moving all formal requirements,
+Migrating Protocol 8 requires adding early, canonical Terminology tables, editing explanation for
+readers without implementation knowledge, and separating remaining technical contracts from topics.
+Keep important operational risks visible; preserve exact obligations, IDs and executable diagrams
+while reconciling relocated anchors and explicit references. Metadata schema 2 is unchanged.
+For older projects, migrating Protocol 7 additionally requires explicit schema-2 roles for every unit, moving all formal requirements,
 scenarios and canonical structured contracts out of entries and explanatory topics into Module-owned
 implementation units, and removing publisher-specific classification extensions. Preserve definition
 IDs, Module ownership and valid obligations; retain coherent explanatory meaning in topic documents.

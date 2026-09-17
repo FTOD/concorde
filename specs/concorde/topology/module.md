@@ -2,7 +2,15 @@
 
 ## Purpose
 
-Topology designs, prepares and atomically applies changes to registered Module structure and owned definitions. It serves developers evolving ownership, references, dependencies and file bindings through the existing accepted design and application boundaries.
+Topology changes the declared responsibility structure of a project: Module ownership, composition, references and file bindings. It prepares consistent changes for review before applying them together. Developers use it when boundaries must change, not just when editing the behavior of one existing Module.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -26,7 +34,7 @@ flow entry. See [topology](topology.md) for preparation, application and recover
 Preparation orders candidate authors so providers precede consumers, validates the complete
 overlay and obtains independent affected-context reviews before persisting an exact application.
 Application then rechecks the accepted artifact, registry/Protocol identity and every before-digest
-before one transaction. [Topology Flows](topology.md#design) expose those distinct
+before one transaction. [Topology Flows](execution-reference.md#topology-design) expose those distinct
 boundaries and stop conditions.
 
 Each candidate definition has one author/owner. Comparing old and candidate contexts captures
@@ -99,15 +107,6 @@ Supply explicit complete-context discovery for topology design without reading i
 This collaboration applies when design-topology selects or expands the complete Module contexts needed to propose a registry.
 
 - [Explicit discovery and routing](../query-routing/query-and-routing.md); Preserve submitted task and constraints; accept only admitted selections and stop on gaps, ambiguity or discovery limits.
-
-## Realization and reuse limits
-
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
 
 ## Precise specifications
 

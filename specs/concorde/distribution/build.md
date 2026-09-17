@@ -14,7 +14,15 @@ The build no longer emits the docsite-only `generated/docs/instructions.json` or
 `generated/docs/wire.json`; normal owned-output cleanup retires old copies. This does not remove
 runtime Agent instructions, exported schema APIs or `generated/protocol/schemas.json`.
 
-### Rendering and freshness
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
+## Rendering and freshness
 
 A **Skill** is an instruction artifact for the developer's external agent runtime. Distribution
 owns its authored source under `skills/`, shared invocation instructions under
@@ -28,7 +36,7 @@ a Skill does not execute its Capability or add it to a Concorde Agent's Harness.
 
 ### Protocol and runtime support are separate
 
-The package supports Protocol 8.0.0 with source_profile 14 and document metadata schema 2. Its tracked manifest binds the exact
+The package supports Protocol 9.0.0 with source_profile 14 and document metadata schema 2. Its tracked manifest binds the exact
 generated rule and versioned schema bytes; project configuration binds the exact manifest bytes.
 Context payloads and worker wrappers retain their independently versioned wire agreements; the
 Protocol document-role migration does not change those envelopes. Build freshness establishes projection integrity;

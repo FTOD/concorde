@@ -1,114 +1,44 @@
-# Invocation host
+# Preparing and coordinating work
 
-This document defines how the Harness binds and runs one worker invocation, the LangGraph substrate
-every control flow uses, and the optional Studio view. Value records are defined in
-[runtime values](runtime-values.md).
+The invocation host assembles a worker's task, information and permissions before execution.
+Its job is to make the boundary explicit, not to decide the software's intended behavior.
 
-### Studio execution view
+## Terminology
 
-The Studio adapter starts or observes the same CapabilityHost used by CLI and Skill invocations, with
-the same worker executor. Its generated LangGraph configuration exposes one Flow per Skill. Studio
-expands the same admission, dispatch and composed Flow instances used by local calls, including
-query/discovery, topology, planning, development and Issue-solving branches. Non-public Capabilities
-remain callable through declared composition. Batch and coordination Flows are also inspectable from
-their executable factories; their runtime instances depend on host admission. Studio receives an
-invocation wrapper containing the existing schema-3 invocation and an optional expected_workspace
-assertion. Project and package roots remain host-bound; the assertion does not select another
-workspace.
+| Term | Meaning / definition |
+| --- | --- |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-The final state exposes the unchanged capability result envelope, admitted policy descriptions and
-stage and worker events (`agent_started`, `agent_finished`, `agent_failed` naming the capability,
-stage, worker and invocation). Pausing or replaying a run does not waive permissions, checks or the
-worktree lifecycle, and replay may execute effects again. Ordinary local CLI and Skill calls do not
-require a Studio server. The source-checkout setup and debugging guide is scripts/development/STUDIO.md.
-This execution view participates in Developer view and feedback through the Development host.
+## From request to result
 
-## Design
+The host selects the worker for the requested stage, obtains current instructions, fixes the
+available Spec and task information, and narrows the allowed tools and files. It then selects runtime
+settings and starts the checked worker. The executor independently checks the preparation before
+launch and validates the returned result afterward.
 
-### Invocation binding
+For example, the same review operation can run for two Modules, but each reviewer receives its own
+contract and code scope. The coordinator collects their results rather than merging their private
+conversations or giving either reviewer the other's permissions.
 
-The host obtains an invocation's inputs in a fixed order: select the worker whose contract names the
-stage; load its rendered instructions and resolve its `WorkerBinding` against the build (see
-[Agents and Harnesses](agents-and-harnesses.md)); freeze its context (see [context](context.md)) with
-those instructions; compile the exact role and path policy with `compile_policy`; resolve the
-worker's and each child's model selection from project configuration; bind all of it with
-`build_worker_invocation`; then call the worker executor (see [execution](execution.md)). The
-executor independently reverifies the binding, instructions, context and policy before any process
-starts. A worker in a project workspace also receives the host's check service, which runs the
-selected Module's configured checks read-only and returns each check's status and the tail of its
-log.
+## Why orchestration is separate from workers
 
-`describe-policy` mode previews the exact grant a stage would receive without launching anything or
-exposing context bodies: the worker, its binding, profile and instructions digests, its workspace
-kind, tools and children, the read and write paths and policy digest, and the resolved model,
-thinking level and timeout.
+The host controls ordering and admission; a worker reasons within one job. This prevents a useful
+answer from becoming an unchecked command to run another stage. Sequential batches stop when an item
+cannot proceed, so a later operation does not accidentally consume incomplete earlier work.
+The exact batch and capability-node Flows are in the execution reference.
 
-### Control-flow substrate
+## Observing a run
 
-Every capability Flow, including the global discovery loop, the development loop, topology
-evolution, Issue solving and the deterministic capabilities, is a LangGraph `StateGraph` built
-with the Graph API, never with the Functional API. Its nodes are deterministic steps, which make no
-model call, or worker invocations, which do. These Flows are the Studio surface; no capability runs
-its control flow outside them. Flow structure alone proves nothing about semantics: transitions,
-limits and evidence still follow G1–G4.
+Studio shows the same executable Flows used by local invocations, along with stage and worker events.
+It is optional: normal CLI and Skill calls do not require the server. Policy preview shows the
+intended access without launching a worker. Replaying a run may execute effects again and does not
+waive current permission or lifecycle checks. Setup is described in the project Studio guide.
 
-### Capability node (`capability_node`)
+## Precise specifications
 
-Every registered Capability exposes `run(state, runtime)` and a State contract. `CapabilityNode`
-compiles that same implementation for embedding as a LangGraph subgraph, whether its implementation
-uses a model or the host's deterministic/composed Flow. Input schemas admit only the Capability's
-channels; output schemas expose only its declared update. Hosts, launchers and configuration live
-in trusted `Runtime.context`, not State. Host-backed adapters preserve their full success or failure
-envelope in the `result` output channel. Model nodes return their task-result fields. The catalog
-compiles the planner as its representative; the node name is the Capability's identity.
-
-State: the contract's context fields in (for a stage context: `snapshot`, `change_id`,
-`expected_artifacts`) and the contract's result fields out (`context_id`, `outcome`, `answer`,
-`blockers`, `documents`, `plan`, `tasks`, `issue_decision`).
-
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
-| `planner` | One Pi worker under the host launcher, which runs the worker executor and records usage outside the graph state. | admitted context | validated result data |
-
-```mermaid
-flowchart TB
-    %% flow: capability_node
-    accTitle: Capability node
-    accDescr: One worker invocation: the admitted typed context enters, the launcher runs the Pi worker, and the validated typed result leaves.
-    __start__["start"]
-    planner["planner<br/>in: admitted context<br/>out: validated result data"]
-    __end__["end"]
-    __start__ --> planner
-    planner --> __end__
-```
-
-### Sequential work items Flow (`batch_flow`)
-
-Independently admitted work items (consumer reviews, component Specs, component implementations,
-participant finalization) run one at a time through this Flow; the item node is named per use
-(`review_module`, `author_module`, `develop_module`, `finalize_module`; the catalog compiles it as
-`execute_item`).
-
-State: `index` (the next item), `output` (the first non-None item result, which stops the Flow),
-`stop`.
-
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
-| `select_item` | Deterministic: stops when no item remains. | index, items | stop |
-| `execute_item` | The item operation; a non-None result stops the Flow. | item | output, index, stop |
-
-```mermaid
-flowchart TB
-    %% flow: batch_flow
-    accTitle: Sequential work items Flow
-    accDescr: Items are selected and executed one at a time until none remain or an item returns a stopping result.
-    __start__["start"]
-    select_item["select_item<br/>in: index, items<br/>out: stop"]
-    execute_item["execute_item<br/>in: item<br/>out: output, index, stop"]
-    __end__["end"]
-    __start__ --> select_item
-    select_item -->|items remain| execute_item
-    select_item -->|no item left| __end__
-    execute_item -->|item returned None| select_item
-    execute_item -->|item returned a result| __end__
-```
+See the Module-owned [execution and record contracts](execution-reference.md#host-invocation-host).
+The exact obligations remain in Implementation Specs; this topic explains their purpose and use.

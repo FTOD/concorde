@@ -1,5 +1,15 @@
 # Development host boundary
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Capability](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ### Capability execution boundary
 
 A Capability is a State-based LangGraph node under the Capability and Harness contract. Each
@@ -207,7 +217,7 @@ updated; a mismatched package/context is rejected instead of reinterpreted.
 
 | Type | Carried by | Promise |
 | --- | --- | --- |
-| `concorde-issue-report@1` | Worker reporting tool to the host | [Classified observation](../issues/issues.md#store-boundary), without caller-supplied provenance or a flow-control effect. |
+| `concorde-issue-report@1` | Worker reporting tool to the host | [Classified observation](../issues/execution-reference.md#issues-store-boundary), without caller-supplied provenance or a flow-control effect. |
 | `concorde-issue-receipt@1` | Host to the reporting worker | Immutable `{issue_id, report_id, path}` identity for the exact accepted observation; the tool additionally returns the current record revision for a subsequent append. |
 
 #### Stage-input artifacts

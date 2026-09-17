@@ -26,6 +26,12 @@ READING = """# Checkout
 
 Checkout admits an order for a customer without overselling available inventory.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| Reservation | Stock held for a submitted cart before an order is created. |
+
 ## Usage
 
 Submit a cart once. A rejected reservation creates no order; retry with a new decision.
@@ -477,6 +483,29 @@ class DocumentUnitTests(unittest.TestCase):
 
 
 class ReadingStructureTests(unittest.TestCase):
+    @verifies("scenario.spec.reader-parts", "scenario.spec.reader-parts-invalid")
+    def test_terminology_is_early_nonempty_and_not_an_entity_inventory(self):
+        for text in (
+            READING.replace("## Terminology", "## Vocabulary"),
+            READING.replace(
+                "| Reservation | Stock held for a submitted cart before an order is created. |",
+                "",
+            ),
+            READING.replace("Meaning / definition", "Files"),
+            READING.replace("## Terminology", "### Terminology"),
+        ):
+            with (
+                self.subTest(text=text),
+                self.assertRaisesRegex(ContentModelError, "Terminology"),
+            ):
+                admit(text)
+        example = "\n````markdown\n## Terminology\n| Term | Meaning / definition |\n| --- | --- |\n| Fake | Example only. |\n````\n"
+        admit(READING + example)
+        exact = "\n```mermaid\nflowchart LR\n    %% flow: example\n    a --> b\n```\n"
+        with self.assertRaisesRegex(ContentModelError, "executable Flow"):
+            admit(READING + exact)
+        admit(READING + "\n````markdown\n" + exact + "\n````\n")
+
     def test_front_four_sections_are_the_reading_path_not_two_containers(self):
         self.assertEqual((), reading_problems(READING, primary=True))
         for before, after in (
@@ -504,7 +533,7 @@ class ReadingStructureTests(unittest.TestCase):
         }
         unit = admit_document_unit(
             "specs/checkout/errors.md",
-            b"# Rejection\n\nA rejected reservation creates no order.\n",
+            b"# Rejection\n\nA rejected reservation creates no order.\n\n## Terminology\n\nNo specialized terminology.\n",
             encode(value),
             expected_owner="module.checkout",
         )

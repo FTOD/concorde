@@ -5,6 +5,14 @@ purpose, correct use and design, then follow the links to its precise obligation
 testing or reviewing it. The site does not generate a replacement summary or decide whether code
 satisfies the specification.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Two reading paths, one Module
 
 **Module Specs** contains each Module entry and its explanatory topics, such as Registry or

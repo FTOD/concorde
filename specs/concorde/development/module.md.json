@@ -65,34 +65,6 @@
       "meaning": "#entity.development.file-transactions"
     },
     {
-      "id": "entity.development.harness",
-      "title": "Harness",
-      "kind": "used module",
-      "target_id": "module.harness",
-      "meaning": "#entity.development.harness"
-    },
-    {
-      "id": "entity.development.spec",
-      "title": "Spec",
-      "kind": "used module",
-      "target_id": "module.spec",
-      "meaning": "#entity.development.spec"
-    },
-    {
-      "id": "entity.development.issues",
-      "title": "Issues",
-      "kind": "used module",
-      "target_id": "module.issues",
-      "meaning": "#entity.development.issues"
-    },
-    {
-      "id": "entity.development.distribution",
-      "title": "Distribution",
-      "kind": "used module",
-      "target_id": "module.distribution",
-      "meaning": "#entity.development.distribution"
-    },
-    {
       "id": "entity.development.installed-skills",
       "title": "Installed Skills",
       "kind": "external artifact",
@@ -105,139 +77,12 @@
       "meaning": "#entity.development.developer-runtime"
     },
     {
-      "id": "entity.development.planning",
-      "title": "Planning",
-      "kind": "used module",
-      "target_id": "module.planning",
-      "meaning": "#entity.development.planning"
-    },
-    {
-      "id": "entity.development.implementation",
-      "title": "Implementation",
-      "kind": "used module",
-      "target_id": "module.implementation",
-      "meaning": "#entity.development.implementation"
-    },
-    {
-      "id": "entity.development.spec-authoring",
-      "title": "Spec Authoring",
-      "kind": "used module",
-      "target_id": "module.spec-authoring",
-      "meaning": "#entity.development.spec-authoring"
-    },
-    {
-      "id": "entity.development.review",
-      "title": "Review",
-      "kind": "used module",
-      "target_id": "module.review",
-      "meaning": "#entity.development.review"
-    },
-    {
-      "id": "entity.development.validation",
-      "title": "Validation",
-      "kind": "used module",
-      "target_id": "module.validation",
-      "meaning": "#entity.development.validation"
-    },
-    {
-      "id": "entity.development.delivery",
-      "title": "Delivery",
-      "kind": "used module",
-      "target_id": "module.delivery",
-      "meaning": "#entity.development.delivery"
-    },
-    {
-      "id": "entity.development.query-routing",
-      "title": "Query and Routing",
-      "kind": "used module",
-      "target_id": "module.query-routing",
-      "meaning": "#entity.development.query-routing"
-    },
-    {
-      "id": "entity.development.topology",
-      "title": "Topology",
-      "kind": "used module",
-      "target_id": "module.topology",
-      "meaning": "#entity.development.topology"
-    },
-    {
-      "id": "entity.development.dev-loop",
-      "title": "Development Flow",
-      "kind": "used module",
-      "target_id": "module.dev-loop",
-      "meaning": "#entity.development.dev-loop"
-    },
-    {
-      "id": "entity.development.specify-loop",
-      "title": "Specification Flow",
-      "kind": "used module",
-      "target_id": "module.specify-loop",
-      "meaning": "#entity.development.specify-loop"
-    },
-    {
       "id": "entity.development.langgraph",
       "title": "LangGraph",
       "kind": "external library",
       "meaning": "#entity.development.langgraph"
     }
   ],
-  "dependencies": [
-    {
-      "target_id": "module.harness",
-      "meaning": "#agreement.document.development.module.1"
-    },
-    {
-      "target_id": "module.spec",
-      "meaning": "#agreement.document.development.module.2"
-    },
-    {
-      "target_id": "module.issues",
-      "meaning": "#agreement.document.development.module.3"
-    },
-    {
-      "target_id": "module.distribution",
-      "meaning": "#agreement.document.development.module.4"
-    },
-    {
-      "target_id": "module.planning",
-      "meaning": "#agreement.document.development.module.5"
-    },
-    {
-      "target_id": "module.implementation",
-      "meaning": "#agreement.document.development.module.6"
-    },
-    {
-      "target_id": "module.spec-authoring",
-      "meaning": "#agreement.document.development.module.7"
-    },
-    {
-      "target_id": "module.review",
-      "meaning": "#agreement.document.development.module.8"
-    },
-    {
-      "target_id": "module.validation",
-      "meaning": "#agreement.document.development.module.9"
-    },
-    {
-      "target_id": "module.delivery",
-      "meaning": "#agreement.document.development.module.10"
-    },
-    {
-      "target_id": "module.query-routing",
-      "meaning": "#agreement.document.development.module.11"
-    },
-    {
-      "target_id": "module.topology",
-      "meaning": "#agreement.document.development.module.12"
-    },
-    {
-      "target_id": "module.dev-loop",
-      "meaning": "#agreement.document.development.module.13"
-    },
-    {
-      "target_id": "module.specify-loop",
-      "meaning": "#agreement.document.development.module.14"
-    }
-  ],
+  "dependencies": [],
   "bindings": []
 }

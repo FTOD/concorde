@@ -3,6 +3,16 @@
 These precise specifications belong directly to the [Spec Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Spec
 
 ### req.spec.no-body-read — Metadata resolution does not read collaborator bodies

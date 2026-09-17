@@ -1,4 +1,4 @@
-"""Explicit, read-only legacy Protocol 6 -> 8 conversion planning.
+"""Explicit, read-only legacy Protocol 6 -> 9 conversion planning.
 
 This is an offline migration primitive, not a fallback parser or runtime compatibility path.
 It preserves declarations and readable promises and reports editorial work still required. It
@@ -292,7 +292,10 @@ def _layout(text: str, primary: bool) -> str:
         if part(kind, line) is None
     ).strip()
     by_name["Design"] = by_name["Design"] + "\n\n" + by_name.pop("Entities")
-    order = ["Purpose", "Usage", "Design", "Relationships"]
+    by_name["Terminology"] = (
+        "| Term | Meaning / definition |\n| --- | --- |\n| Migration draft | A mechanically reorganized proposal whose domain terminology still requires author review. |"
+    )
+    order = ["Purpose", "Terminology", "Usage", "Design", "Relationships"]
     order.extend(name for name in original_order if name not in {*order, "Entities"})
     return (
         before
@@ -649,7 +652,7 @@ def plan_document_migration(
             "Preserve the former hidden-page preference in publisher configuration, never as Protocol reading membership."
         )
     notes.append(
-        "Register every planned unit and reconcile all consumer references before explicit Protocol 8 acceptance."
+        "Register every planned unit and reconcile all consumer references before explicit Protocol 9 acceptance."
     )
     return DocumentMigration(
         unit,
@@ -733,7 +736,7 @@ def preview_registered_migration(
             errors.append({"path": path, "owner": owner, "message": str(error)})
     return {
         "schema_version": 1,
-        "action": "preview-protocol-8-migration",
+        "action": "preview-protocol-9-migration",
         "registry_path": registry_path,
         "registry_digest": digest(registry_raw),
         "registered_documents": len(paths),
@@ -753,7 +756,7 @@ def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Preview legacy inline sources as Protocol 8 document roles without writes"
+        description="Preview legacy inline sources as Protocol 9 document roles without writes"
     )
     parser.parse_args()
     try:

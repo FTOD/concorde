@@ -2,7 +2,15 @@
 
 ## Purpose
 
-Validation collects deterministic structural and configured implementation-check evidence for the current candidate and evaluates the applicable readiness gates. It serves explicit validation requests and composing flows; neither a development plan nor dev-loop invocation is universally required.
+Validation checks specification structure and runs configured verification commands against the current candidate. It uses those results and existing completion requirements to assess readiness. It does not repair failures or deliver the change.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -26,7 +34,7 @@ not prove semantics. See [validation](validation.md) for results and operational
 
 Validation resolves affected Spec consumers and changed-file users before collecting evidence.
 The host admits configured commands and delegates execution to Harness's OS-enforced read-only
-executor; only the outside host persists logs and digest-bound results. [Check execution](validation.md#configured-check-execution)
+executor; only the outside host persists logs and digest-bound results. [Check execution](execution-reference.md#validation-configured-check-execution)
 describes scratch, private diagnostics and concurrent-change rechecks.
 
 Readiness combines current structural/check evidence with existing task completion and required
@@ -81,7 +89,7 @@ Execute configured checks with OS-enforced read-only project access, external sc
 
 This collaboration applies when run_checks admits a configured command whose result is needed for candidate evidence.
 
-- [Isolated configured-check execution](../harness/execution.md#configured-deterministic-checks); Supply the registered command and timeout; keep raw diagnostics in host records and refuse checks when isolation is unavailable.
+- [Isolated configured-check execution](../harness/execution-reference.md#execution-configured-deterministic-checks); Supply the registered command and timeout; keep raw diagnostics in host records and refuse checks when isolation is unavailable.
 
 ### Spec
 
@@ -93,15 +101,6 @@ This collaboration applies when computing structural evidence and the affected M
 
 - [Owner and context resolution](../spec/contracts.md#registry-stable-id-spec-context-queries); Reconstruct current resolutions after input changes; unresolved ownership, missing required definitions or stale revisions block dependent use.
 - [Structural validation](../spec/scenarios.md#scenario.spec.validate-success); require consistent registered state without claiming semantic completeness.
-
-## Realization and reuse limits
-
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
 
 ## Precise specifications
 

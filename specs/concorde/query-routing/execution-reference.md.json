@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "document": {
+    "id": "document.query-routing.execution-reference",
+    "owner": "module.query-routing",
+    "role": "implementation"
+  },
+  "entities": [],
+  "dependencies": [],
+  "bindings": []
+}

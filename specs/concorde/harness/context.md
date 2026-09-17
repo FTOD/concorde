@@ -1,43 +1,52 @@
-# Context resolution
+# What information a worker receives
 
-This document defines the four kinds of context a Harness freezes for one invocation and the
-host-internal interface that resolves them. The Spec Protocol defines Spec context and
-implementation context; this Module realizes those definitions and adds the two Framework kinds.
+Context resolution makes a task's information boundary explicit before a worker starts. It gives
+each phase enough admitted information for its job without silently inheriting everything a previous
+worker, provider or developer session knew.
 
-### Context kinds
+## Terminology
 
-| Kind | Content | Required for |
-| --- | --- | --- |
-| Spec context | The selected Module's complete resolved document-unit context (reading plus metadata), exactly the Protocol's `Context(M)`; a scenario focus changes the question, not the membership. The Protocol fixes only this visible set; the Framework delivers it as a context index and grant: the snapshot lists every document with identity, owner, digest, inclusion reasons and the reading entry, and the documents are granted read-only at their project-relative paths, byte-identical copies in a capsule. No document body is embedded. | Every Module-bound invocation. |
-| Implementation context | The Protocol's `ImplementationContext(M)`: the listing entries the selected Module's own entities declare, exact files and directory prefixes alike, and the files those entries currently bind. Every phase can see the declared entries and bound file names with their owning entity and pending status; only code-writing and code-review phases receive file contents, in their declared subsets. | Entries and file names: every phase. File contents: code-writing and code-review phases only. |
-| Capability context | The contracts of the Capabilities and Tools the invocation may use, as admitted by its Harness and constraints, together with the Module's Protocol-defined external references: the vendored documentation and source it declares with `references` of kind `external`, one tree digest per entry. Descriptions given to the model and bindings accepted by the executor resolve to the same contracts. | Reference entries and digests: every phase. Reference contents, read-only: the modes that declare the `references` effect (plan, tasks, implementation, code-review). Capability and Tool contracts: none admitted by any current Agent. |
-| Task context | The task and constraints, the stage artifacts admitted for this phase, such as a plan, implementation tasks, a review result or an Issue selection, and the frozen workspace lifecycle metadata. Task context travels inline in the invocation input, including the review host's typed changes. | Every invocation; stage artifacts are optional. |
+| Term | Meaning / definition |
+| --- | --- |
+| Spec context | The selected Module's complete owned and directly referenced specification units, including explanation, precise specifications and metadata. |
+| Implementation context | The Module's bound implementation files; names are visible generally, but contents require a code-phase grant. |
+| Capability context | The admitted operation/tool agreements and declared external reference material available to the phase. |
+| Task context | The explicit task, constraints, admitted stage results and relevant lifecycle state for this invocation. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-A kind may be empty for a phase, but the frozen closure is never empty. Agent instructions, the
-Protocol rule bundle and installed Skills are not context: instructions belong to the Agent
-definition and are injected beside the context, and a Skill is the developer-facing projection of
-a public Capability. The snapshot identity covers every admitted byte of every kind.
+## Context kinds
 
-### Gap rule for bounded tasks
+Each kind answers a different question: what the software promises, where it is realized, which
+outside agreements or tools may be used, and what this job is trying to accomplish. Some kinds may
+be empty for a phase. Instructions tell a worker how to behave; they are not another source of
+project business facts.
 
-All task roles use the same necessary-contract gap rule. Explanation, planning, tasks and
-implementation pause only dependent judgments when a required contract is missing or ambiguous;
-independent reasoning may continue. Development gaps retain target, task, phase and Spec revision
-until repair and a successful fresh assessment of that step. An explicit worker report may create an Issue without granting Spec/code write authority; context resolution itself remains read-only.
+For example, a planner sees the complete selected Spec and the names of implementation files, but
+not their contents. A programmer later receives accepted tasks and its separately allowed code.
+Selecting one scenario changes the question, not the rest of its owner's Spec context.
+
+## Gap rule for bounded tasks
+
+If the admitted context does not specify a necessary promise, report what is missing and which step
+needs it. Do not fill the gap by following an undeclared link or reading implementation. Independent
+work can continue, but the dependent judgment needs an explicit repair or selection decision.
 
 ## Design
 
+The host records current sources and makes them available whole. It rechecks those inputs before
+accepting a result, because a task planned against one revision may no longer be valid after an edit.
+A provider reference supplies knowledge, not ownership or permission to alter its code. One-level
+reference expansion keeps that boundary finite and understandable.
+
 ### Implementation status
 
-Snapshots and discovery retain their independently versioned wire agreements, described in the
-[context interfaces](contracts.md#context-context-snapshot-resolution). They freeze spec_resolution
-and original source pools, preserve owner and inclusion provenance, and reject old membership
-partitions. Both Protocol-8 document roles enter that same complete context; Implementation Specs
-never become implementation-file grants. Native capsules and grants keep
-referenced sources read-only; only owned entity listings grant implementation access. Rechecks
-compare declarations and exact bytes, including reference changes with unchanged path sets.
+Both document roles remain in complete Spec context; Implementation Specs never become code-file
+grants. The runtime delivers an index plus readable files rather than embedding every document in
+the request. Its exact snapshot fields, delivery rules and phase-specific subsets are specified in
+[context interfaces](contracts.md#context-context-snapshot-resolution).
 
 ## Precise specifications
 
-The Harness Module owns the exact obligations and interface details in [contracts](contracts.md).
-These companions are part of the same complete Module specification, not separate topic owners.
+See the Module-owned [context-kind contract](contracts.md#context-kinds),
+[requirements](requirements.md) and [scenarios](scenarios.md) for exact obligations and verification cases.

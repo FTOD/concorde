@@ -3,6 +3,16 @@
 These precise specifications belong directly to the [Harness Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Harness
 
 ### req.harness.context-closure-nonempty — Non-empty frozen context closure
@@ -92,7 +102,7 @@ Every tool call of a worker and of its children SHALL be checked against the inv
 grant before it executes.
 
 The gate is a policy boundary inside the Pi process, not an operating-system sandbox; see
-[execution](execution.md#tool-gate).
+[execution](execution-reference.md#execution-tool-gate).
 
 ### req.harness.worker-selection — Each worker runs on its own configured selection
 

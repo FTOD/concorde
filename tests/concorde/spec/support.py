@@ -41,6 +41,13 @@ class DocumentSource(str):
     implementation: "DocumentSource | None"
 
     def __new__(cls, reading, metadata, implementation=None):
+        if metadata["document"]["role"] == "module" and "## Terminology" not in reading:
+            terms = "## Terminology\n\nNo specialized terminology.\n\n"
+            if "## Usage" in reading:
+                reading = reading.replace("## Usage", terms + "## Usage", 1)
+            else:
+                title, _, rest = reading.partition("\n")
+                reading = title + "\n\n" + terms + "## Details\n\n" + rest
         value = super().__new__(cls, reading)
         value.metadata = metadata
         value.implementation = implementation

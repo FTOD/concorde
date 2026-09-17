@@ -1,95 +1,60 @@
-# Topology evolution Agent Flow
+# Changing responsibility boundaries
 
-Use this Flow when registered targets, document ownership and references, shared truth or routing structure
-must change together. The developer supplies intended behavior and constraints. Main designs a
-candidate registry; fresh target-local authors supply the affected Specs after design acceptance.
-A second acceptance binds the exact prepared transaction before application.
+Use Topology when Module ownership, references, dependencies or implementation bindings must change
+together. It separates agreeing on the design from approving the exact project edits.
 
-Human acceptance is a Flow control input tied to the exact design or prepared application. A
-rejection may select another design or authoring loop, but cannot authorize the rejected effects.
-The loop waits for a required decision and re-admits revised intent and current source identity.
-Topology-designer and target-author are separate model Capabilities with independent State contracts and Harness bindings.
+## Terminology
 
-## Design
+| Term | Meaning / definition |
+| --- | --- |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
-### Topology preparation Flow (`topology_flow`)
+## Two decisions
 
-State: `occurrence` (the author being run), `route`, `output` (the main response), `result`.
-The accepted design supplies the candidate registry and one Spec task per new or changed Module.
+First, the developer reviews a proposed arrangement of responsibilities. After that design is
+accepted, separate authors update their own Module Specs and the host checks the combined candidate.
+Affected consumers receive independent compatibility review. A second acceptance approves the exact
+prepared file changes, which the host then applies together.
 
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
-| `prepare_authors` | Deterministic: validates the accepted design against the current registry and orders the target-local authors so providers precede consumers. | accepted design, registry | ordered authors |
-| `author_module` | One topology-author invocation for the current author; its replacements join the candidate overlay. | Module descriptor, candidate context | candidate documents |
-| `validate_candidate` | Deterministic repository validation of the complete candidate overlay. | candidate registry, candidate documents | validated candidate |
-| `review_contexts` | Sequential work items: every affected old or candidate context receives an independent Spec compatibility review. | candidate, affected contexts | review evidence |
-| `persist_application` | Deterministic: the exact prepared application (registry and document bytes with before-digests) is written for the second acceptance. | validated candidate | prepared application |
+For example, moving a shared interface from one owner to another requires more than moving a file.
+Its stable identity must remain unique, its consumers must include the new canonical unit, and their
+local obligations must still make sense. One owner authors the shared definition; consumers do not
+each copy it into a competing contract.
 
-```mermaid
-flowchart TB
-    %% flow: topology_flow
-    accTitle: Topology preparation Flow
-    accDescr: Authors are ordered and run one at a time; the complete candidate is validated and every affected context reviewed before the application is persisted; a gap, invalid candidate or review blocker ends the Flow.
-    __start__["start"]
-    prepare_authors["prepare_authors<br/>in: accepted design, registry<br/>out: ordered authors"]
-    author_module["author_module<br/>in: Module descriptor, candidate context<br/>out: candidate documents"]
-    validate_candidate["validate_candidate<br/>in: candidate registry, candidate documents<br/>out: validated candidate"]
-    review_contexts["review_contexts<br/>in: candidate, affected contexts<br/>out: review evidence"]
-    persist_application["persist_application<br/>in: validated candidate<br/>out: prepared application"]
-    __end__["end"]
-    __start__ --> prepare_authors
-    prepare_authors -->|authors remain| author_module
-    prepare_authors -->|no author needed| validate_candidate
-    prepare_authors -->|error| __end__
-    author_module -->|more authors remain| author_module
-    author_module -->|every author completed| validate_candidate
-    author_module -->|author gap, failure or error| __end__
-    validate_candidate -->|candidate valid| review_contexts
-    validate_candidate -->|candidate invalid| __end__
-    review_contexts -->|every affected context reviewed| persist_application
-    review_contexts -->|review blocked| __end__
-    persist_application --> __end__
-```
+## Conceptual decision path
 
-### Topology application Flow (`topology_apply_flow`)
-
-State: `route`, `output`, `result`.
-
-| Node | Executes | in | out |
-| --- | --- | --- | --- |
-| `admit_application` | Deterministic: the referenced application is inside the proposal area, matches the accepted design, base registry and Protocol binding; describe-policy stops here. | application reference, registry | admitted application |
-| `validate_application` | Deterministic validation of the application's complete overlay. | admitted application | validated application |
-| `apply_atomically` | Deterministic: one file transaction with before-digests and final repository validation, bound to this worktree's owning task. | validated application | applied files |
-| `cleanup` | Deterministic: removes the consumed proposal artifacts and records the applied topology. | applied files | main response |
+This view explains the two human decisions, not the runtime's exact nodes or error edges. The
+[executable Flow](execution-reference.md#topology-topology-preparation-flow-topology-flow) is defined once in Implementation Specs.
 
 ```mermaid
-flowchart TB
-    %% flow: topology_apply_flow
-    accTitle: Topology application Flow
-    accDescr: An admitted, validated application is applied as one transaction and cleaned up; a rejected or stale application, a validation failure or a transaction error ends the Flow.
-    __start__["start"]
-    admit_application["admit_application<br/>in: application reference, registry<br/>out: admitted application"]
-    validate_application["validate_application<br/>in: admitted application<br/>out: validated application"]
-    apply_atomically["apply_atomically<br/>in: validated application<br/>out: applied files"]
-    cleanup["cleanup<br/>in: applied files<br/>out: main response"]
-    __end__["end"]
-    __start__ --> admit_application
-    admit_application -->|application admitted| validate_application
-    admit_application -->|policy described, rejected or stale| __end__
-    validate_application -->|overlay valid| apply_atomically
-    validate_application -->|validation failed| __end__
-    apply_atomically -->|applied| cleanup
-    apply_atomically -->|transaction failed| __end__
-    cleanup --> __end__
+flowchart LR
+    accTitle: Two acceptances for a topology change
+    accDescr: Agree on the responsibility design, prepare and review the affected specifications, then approve and apply the exact edits.
+    design["Propose responsibilities"]
+    agree["Accept the design"]
+    prepare["Prepare and review Specs"]
+    approve["Accept exact edits"]
+    apply["Apply together"]
+    design -->|developer decides| agree
+    agree -->|authors and reviewers work| prepare
+    prepare -->|developer inspects| approve
+    approve -->|host verifies and writes| apply
 ```
 
-No target author writes project files. A gap or unresolved consumer compatibility leaves the
-pre-design project unchanged. Prepared
-artifacts contain full proposed bytes, but only their path/digest enters the topology designer's cognition.
-Application is one host transaction with current before-digests and final repository validation.
+## Why preparation does not immediately apply
 
-Every new Concorde Module includes a local `module.md` with an inline Mermaid entity diagram
-whose `accTitle` and `accDescr` describe it for readers who cannot see it. Its author returns the
-complete registered Markdown replacements, including diagram fences. The host checks all proposed
-files as one overlay before exposing the prepared application. Diagram content cannot widen Spec
-membership or agent permissions. Only the sole owner proposes shared source bytes; all affected consumers receive separate compatibility checks.
+A valid-looking diagram does not prove that all documents agree. Preparing complete changes before
+application lets validation and review find conflicts without exposing a half-updated registry.
+Rechecking the accepted inputs before the atomic write prevents a later edit from being overwritten
+by an old proposal. A rejection preserves the pre-application project.
+
+Authors cannot write another owner's documents or read its implementation to fill missing meaning.
+The exact preparation/application Flows and before-state records are in Implementation Specs. The
+conceptual sequence here explains the two acceptances, not another executable topology.
+
+## Precise specifications
+
+See the Module-owned [execution and record contracts](execution-reference.md#topology-topology-evolution-agent-flow).
+The exact obligations remain in Implementation Specs; this topic explains their purpose and use.

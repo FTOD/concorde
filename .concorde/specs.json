@@ -162,9 +162,12 @@
       "checks": [],
       "documents": [
         "specs/concorde/module.md",
-        "specs/concorde/ownership-migration.md",
+        "specs/concorde/concepts.md",
         "specs/concorde/requirements.md",
-        "specs/concorde/scenarios.md"
+        "specs/concorde/scenarios.md",
+        "specs/concorde/contracts.md",
+        "specs/concorde/collaborations.md",
+        "specs/concorde/ownership-migration.md"
       ],
       "files": [
         "tests/concorde/development/test_review.py",
@@ -286,7 +289,12 @@
       "id": "module.spec",
       "kind": "module",
       "parent": "module.concorde",
-      "references": [],
+      "references": [
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
+        }
+      ],
       "title": "Spec",
       "uses": []
     },
@@ -304,7 +312,8 @@
         "specs/concorde/harness/typed-values.md",
         "specs/concorde/harness/requirements.md",
         "specs/concorde/harness/scenarios.md",
-        "specs/concorde/harness/contracts.md"
+        "specs/concorde/harness/contracts.md",
+        "specs/concorde/harness/execution-reference.md"
       ],
       "files": [
         "capabilities/",
@@ -403,6 +412,18 @@
         {
           "kind": "document",
           "id": "document.issues.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.issues.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.review.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Harness",
@@ -417,7 +438,9 @@
         "specs/concorde/development/review-and-gaps.md",
         "specs/concorde/development/flows.md",
         "specs/concorde/development/requirements.md",
-        "specs/concorde/development/scenarios.md"
+        "specs/concorde/development/scenarios.md",
+        "specs/concorde/development/execution-reference.md",
+        "specs/concorde/development/collaborations.md"
       ],
       "files": [
         "capabilities/context_solve.py",
@@ -516,6 +539,10 @@
         {
           "kind": "external",
           "path": "reference/langgraph/"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Development",
@@ -544,7 +571,8 @@
         "specs/concorde/issues/lifecycle.md",
         "specs/concorde/issues/issues.md",
         "specs/concorde/issues/requirements.md",
-        "specs/concorde/issues/scenarios.md"
+        "specs/concorde/issues/scenarios.md",
+        "specs/concorde/issues/execution-reference.md"
       ],
       "files": [
         "capabilities/issue_solver/",
@@ -586,6 +614,10 @@
         {
           "kind": "external",
           "path": "reference/langgraph/"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Issues",
@@ -650,6 +682,10 @@
         {
           "id": "module.spec",
           "kind": "module"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Distribution",
@@ -670,7 +706,8 @@
         "specs/concorde/views/viewer.md",
         "specs/concorde/views/ua-graph.md",
         "specs/concorde/views/scenarios.md",
-        "specs/concorde/views/contracts.md"
+        "specs/concorde/views/contracts.md",
+        "specs/concorde/views/execution-reference.md"
       ],
       "files": [
         "docsite/",
@@ -741,6 +778,10 @@
         {
           "id": "module.specify-loop",
           "kind": "module"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Views",
@@ -754,7 +795,8 @@
         "specs/concorde/planning/plan.md",
         "specs/concorde/planning/tasks.md",
         "specs/concorde/planning/requirements.md",
-        "specs/concorde/planning/scenarios.md"
+        "specs/concorde/planning/scenarios.md",
+        "specs/concorde/planning/execution-reference.md"
       ],
       "files": [
         "capabilities/context_solve.py",
@@ -813,6 +855,14 @@
         {
           "kind": "document",
           "id": "document.issues.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Planning",
@@ -824,7 +874,8 @@
         "specs/concorde/implementation/module.md",
         "specs/concorde/implementation/implementation.md",
         "specs/concorde/implementation/requirements.md",
-        "specs/concorde/implementation/scenarios.md"
+        "specs/concorde/implementation/scenarios.md",
+        "specs/concorde/implementation/execution-reference.md"
       ],
       "files": [
         "capabilities/implement.py",
@@ -890,6 +941,18 @@
         {
           "kind": "document",
           "id": "document.issues.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.review.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Implementation",
@@ -901,7 +964,8 @@
         "specs/concorde/spec-authoring/module.md",
         "specs/concorde/spec-authoring/authoring.md",
         "specs/concorde/spec-authoring/requirements.md",
-        "specs/concorde/spec-authoring/scenarios.md"
+        "specs/concorde/spec-authoring/scenarios.md",
+        "specs/concorde/spec-authoring/execution-reference.md"
       ],
       "files": [
         "capabilities/specify.py",
@@ -962,6 +1026,14 @@
         {
           "kind": "document",
           "id": "document.issues.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Spec Authoring",
@@ -974,7 +1046,8 @@
         "specs/concorde/review/review.md",
         "specs/concorde/review/review-result.md",
         "specs/concorde/review/requirements.md",
-        "specs/concorde/review/scenarios.md"
+        "specs/concorde/review/scenarios.md",
+        "specs/concorde/review/execution-reference.md"
       ],
       "files": [
         "capabilities/review.py",
@@ -1034,6 +1107,14 @@
         {
           "kind": "document",
           "id": "document.issues.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Review",
@@ -1050,7 +1131,8 @@
         "specs/concorde/validation/module.md",
         "specs/concorde/validation/validation.md",
         "specs/concorde/validation/requirements.md",
-        "specs/concorde/validation/scenarios.md"
+        "specs/concorde/validation/scenarios.md",
+        "specs/concorde/validation/execution-reference.md"
       ],
       "files": [
         "capabilities/validate.py",
@@ -1110,6 +1192,14 @@
         {
           "kind": "document",
           "id": "document.issues.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Validation",
@@ -1121,7 +1211,8 @@
         "specs/concorde/delivery/module.md",
         "specs/concorde/delivery/delivery.md",
         "specs/concorde/delivery/requirements.md",
-        "specs/concorde/delivery/scenarios.md"
+        "specs/concorde/delivery/scenarios.md",
+        "specs/concorde/delivery/execution-reference.md"
       ],
       "files": [
         "capabilities/deliver.py",
@@ -1182,6 +1273,14 @@
         {
           "kind": "document",
           "id": "document.issues.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Delivery",
@@ -1198,7 +1297,8 @@
         "specs/concorde/query-routing/module.md",
         "specs/concorde/query-routing/query-and-routing.md",
         "specs/concorde/query-routing/requirements.md",
-        "specs/concorde/query-routing/scenarios.md"
+        "specs/concorde/query-routing/scenarios.md",
+        "specs/concorde/query-routing/execution-reference.md"
       ],
       "files": [
         "capabilities/main.py",
@@ -1257,6 +1357,14 @@
         {
           "kind": "document",
           "id": "document.issues.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Query and Routing",
@@ -1268,7 +1376,8 @@
         "specs/concorde/topology/module.md",
         "specs/concorde/topology/topology.md",
         "specs/concorde/topology/requirements.md",
-        "specs/concorde/topology/scenarios.md"
+        "specs/concorde/topology/scenarios.md",
+        "specs/concorde/topology/execution-reference.md"
       ],
       "files": [
         "capabilities/main.py",
@@ -1333,6 +1442,18 @@
         {
           "kind": "document",
           "id": "document.issues.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.review.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Topology",
@@ -1349,7 +1470,8 @@
         "specs/concorde/dev-loop/module.md",
         "specs/concorde/dev-loop/development.md",
         "specs/concorde/dev-loop/requirements.md",
-        "specs/concorde/dev-loop/scenarios.md"
+        "specs/concorde/dev-loop/scenarios.md",
+        "specs/concorde/dev-loop/execution-reference.md"
       ],
       "files": [
         "capabilities/dev_loop.py",
@@ -1434,6 +1556,14 @@
         {
           "kind": "document",
           "id": "document.issues.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Development Flow",
@@ -1455,7 +1585,8 @@
         "specs/concorde/specify-loop/module.md",
         "specs/concorde/specify-loop/specify-loop.md",
         "specs/concorde/specify-loop/requirements.md",
-        "specs/concorde/specify-loop/scenarios.md"
+        "specs/concorde/specify-loop/scenarios.md",
+        "specs/concorde/specify-loop/execution-reference.md"
       ],
       "files": [
         "capabilities/specify_loop.py",
@@ -1526,6 +1657,14 @@
         {
           "kind": "document",
           "id": "document.issues.scenarios"
+        },
+        {
+          "kind": "document",
+          "id": "document.development.execution-reference"
+        },
+        {
+          "kind": "document",
+          "id": "document.concorde.concepts"
         }
       ],
       "title": "Specification Flow",

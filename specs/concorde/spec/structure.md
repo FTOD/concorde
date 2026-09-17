@@ -1,38 +1,50 @@
-# Spec structure and validation
+# What structural validation tells you
 
-This document defines the registry shape this Module admits and the deterministic validation it performs against that shape. Selection and returned value records are defined in [registry](registry.md) and [values](values.md); the admission scenarios for a consistent or inconsistent inventory are defined in [module](module.md).
+Structural validation checks that a project's declared specification can be interpreted consistently.
+It catches missing, ambiguous or contradictory records without deciding whether the intended software
+behavior is correct or fully implemented.
 
-### Registry shape
+## Terminology
 
-Registry schema 5 contains `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. A Module descriptor has `id`, `kind="module"`, `title`, `documents`, `references`, `parent`, `uses`, `files` and `checks`. Every array is explicit. `files` holds listing entries: an exact project file, or a directory prefix written with a trailing `/` that binds every regular file below it. It MUST equal the sorted union of the Module's own entity listing declarations, entry for entry, so a directory prefix appears as that prefix and never as its expanded file names; membership, composition and dependency are checked independently of that entry set. The entry names one Module, and its complete collection starts routing.
+| Term | Meaning / definition |
+| --- | --- |
+| Structural validation | Deterministic checks of document shape, identity, ownership, references and other declared consistency rules. |
+| Semantic completeness | Whether the specification supplies the meaning needed for a task; valid syntax alone cannot establish it. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Reference](registry.md#terminology) | Defined in Registry. |
+| [Document role](values.md#terminology) | Defined in Identities and versions. |
 
-Each registered reading document has a `.md.json` companion with `schema_version: 2`, `document`
-identity/owner/role and explicit `entities`, `dependencies` and `bindings` arrays. Entity records contain
-id/title/kind and a local readable meaning anchor, with optional files/pending/target_id. Dependency
-records contain target_id and a local meaning anchor. Participant bindings contain id/version/role/
-peer and a local meaning anchor. Responsibilities, conditions, guarantees and obligations remain
-readable prose, never copied semantic strings in metadata. File/directory binding specificity and
-pending rules still apply, and neither source member may be bound as implementation or external
-material. Every child and used Module has exactly one local entity and one dependency explanation.
+## Registry shape
 
-The principal Relationships diagram uses a nonempty subset of local entity titles and labels each
-edge. Scoped omission of an inventory node is permitted; inventing a node is not. Check records
-retain id/target_id/argv/timeout_seconds and optional inputs. Shared implementation changes concern
-every listing Module, whose contract is evaluated separately.
+Each Module names the documents it owns, the responsibilities it contains or uses, the knowledge it
+references and the files that realize it. These declarations are explicit so the validator can detect
+a missing document, duplicate identity or conflicting owner rather than guess from directory names.
+Both members of each document pair must be available and agree on identity and ownership.
 
-Topology preparation stores the exact validated registry/document replacements below the ignored `.concorde/topology-proposals/` host area. Its public ArtifactRef binds path and digest. Applying the artifact rechecks its embedded design identity, discovery context, Protocol, registry base and every file before-digest before one atomic transaction.
+For example, two Modules may rely on the same interface, but only one owns its canonical definition.
+Registering two copies as if they were one agreement is an error. Two Modules listing the same code
+file is different: both contracts can concern that realization and each needs affected-change checks.
 
-### Reference and interface validation
+## Reference and interface validation
 
-Schema 5 requires a references array on every Module. Each `{kind, id}` must resolve to the
-declared Module/document kind; duplicates, self references, document aliases and multiple owners
-are errors. Overlap is deduplicated with all provenance, and cycles do not recurse. Each binding's
-canonical definition/version must occur in its participant's resolved context; internal peers
-require complementary bindings. Definitions have one owner and cannot be duplicated in consumers.
-Required links to excluded definitions identify gaps rather than authorizing another read.
-Structural checks report missing references/definitions separately from semantic incompleteness.
+A necessary definition must actually be in the selected context. A Markdown link to an excluded
+provider does not satisfy that requirement. Complementary participants must select the same interface
+version, and a diagram cannot invent undeclared entities. Scoped diagrams can omit irrelevant entities;
+they need not become a second inventory.
+
+Terminology follows the same rule: an imported term links directly to its defining table, and that
+unit must be explicitly included. A table of unexplained names or forwarding links is not a substitute
+for readable meaning. Structural checks verify placement and links; review still asks whether the
+terms and explanations help the intended reader.
+
+## Interpreting the result
+
+Success means these mechanical checks passed for the assessed sources. It does not mean a retry rule
+is sufficient for every failure, an implementation is correct, or a review is unnecessary. A missing
+promise can remain a real gap even when every registered file exists. Code checks and independent
+review provide different evidence rather than another spelling of structural validation.
 
 ## Precise specifications
 
-The Spec Module owns the exact obligations and interface details in [contracts](contracts.md), [requirements](requirements.md), [scenarios](scenarios.md).
-These companions are part of the same complete Module specification, not separate topic owners.
+The Module-owned [admission details](contracts.md#structure-registry-admission-details),
+[requirements](requirements.md) and [scenarios](scenarios.md) define exact errors and checks.

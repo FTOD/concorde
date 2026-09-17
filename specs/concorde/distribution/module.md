@@ -2,16 +2,15 @@
 
 ## Purpose
 
-Distribution turns authored Framework sources into the deterministic outputs a project actually
-runs: rendered Agent instructions and Skills, an installed and configured integration, and a
-verified managed Python and viewer runtime. Its users are developers installing or updating
-Concorde into a consumer project, developers maintaining this source checkout, and every other
-Framework capability that depends on fresh generated projections before it executes. It owns Skill
-sources and shared invocation instructions; installed Skills are read by the developer's external
-runtime, which submits requests to the Development capability boundary. Capability behavior remains
-with its providing Module. Distribution's installation promises stop at owned, receipt-tracked
-output: it never edits project-owned Specs or configuration, and it
-never decides what those Specs should say.
+Distribution prepares the Framework assets that developers install and run: instructions, Skills and managed runtime dependencies. It builds from authored sources and installs only the outputs it owns. It does not decide or silently rewrite a consumer project’s business specification.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -144,7 +143,7 @@ Define the project configuration and registry that installation, configuration a
 
 This collaboration applies when installing into or configuring an initialized project, or when a Protocol binding must be checked.
 
-- [Preserve the accepted binding and reject incompatible configuration](../spec/values.md#framework-configuration-and-storage-versions)
+- [Preserve the accepted binding and reject incompatible configuration](../spec/contracts.md#values-framework-configuration-and-storage-versions)
 
 ## Unresolved information
 
@@ -158,7 +157,7 @@ capability, not to this Module; installation never creates the registry or a Mod
 
 ## Ownership, context and implementation status
 
-Runtime admission, initialization, installation inventory and package Spec/wire alignment support Protocol 8/Profile 14. Build success proves output freshness only. Project updates must preserve explicit owner/reference choices and never silently migrate consumers.
+Runtime admission, initialization, installation inventory and package Spec/wire alignment support Protocol 9/Profile 14. Build success proves output freshness only. Project updates must preserve explicit owner/reference choices and never silently migrate consumers.
 
 ## Precise specifications
 

@@ -296,7 +296,11 @@ class RequirementsAndVerificationTests(unittest.TestCase):
             "## Use\n\nConsumer notes.\n\n## Implementation\n\nInternal notes.",
         ):
             with self.subTest(body=body):
-                self.write("specs/shop/notes.md", "# Notes\n\n" + body)
+                self.write(
+                    "specs/shop/notes.md",
+                    "# Notes\n\n## Terminology\n\nNo specialized terminology.\n\n## Details\n\n"
+                    + body,
+                )
                 self.assertEqual("success", self.validate().status)
         for body in (
             "",
@@ -352,7 +356,7 @@ class RequirementsAndVerificationTests(unittest.TestCase):
     def test_links_with_id_fragments_must_reach_the_defining_document(self):
         self.write(
             "specs/shop/notes.md",
-            "# Notes\n\n[wrong document](#scenario.shop.submit) and "
+            "# Notes\n\n## Terminology\n\nNo specialized terminology.\n\n## Links\n\n[wrong document](#scenario.shop.submit) and "
             "[unknown](module.md#req.shop.missing) and [plain heading](module.md#purpose).\n",
         )
         report = self.validate()

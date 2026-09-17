@@ -6,6 +6,14 @@ Spec owner. Read the Module entry first for purpose, correct use and design. Con
 interface definitions live in the Module-owned [scenarios](scenarios.md) and [contracts](contracts.md),
 with explanatory topics linked from the Module entry.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ### req.views.registry-derived-pages — Pages and navigation derive from the registry
 
 Publication SHALL derive Module Spec pages and their navigation only from the explicit registry.

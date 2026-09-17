@@ -3,6 +3,14 @@
 These precise specifications belong directly to the [Query and Routing Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Query and Routing
 
 ### scenario.development.answer-question — Direct answer from selected Module contexts

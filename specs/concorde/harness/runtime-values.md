@@ -6,6 +6,16 @@ they do not give a worker permission to construct its own grant. Strings called 
 canonical `sha256:` plus 64 lower-case hex digits. Paths in policies are project-relative POSIX
 paths without aliases or symlinks.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ### Policy construction
 
 ```python
@@ -141,7 +151,7 @@ type as the result parameters. The submitted value is wrapped as that type and c
 contract. `runtime` is a trusted test seam, never task input. The optional `report_issue` service
 is a host-bound callable with a `schema` property; it grants no file writes and its durable reports
 are independent of accepting the final result. Its protocol is defined in
-[worker execution](execution.md#pi-worker-runtime).
+[worker execution](execution-reference.md#execution-pi-worker-runtime).
 
 `CapabilityExecutionError.outcome` distinguishes `failed` (a refused launch, a process failure or a
 protocol break), `cancelled`, `limit_exhausted` (the timeout) and `invalid_completion` (no, several or

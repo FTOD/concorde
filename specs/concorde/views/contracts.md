@@ -3,6 +3,14 @@
 These precise specifications belong directly to the [Views Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Publication service
 
 ### Scaffold proposal exchange and ownership {#publication-scaffold-proposal-exchange-and-ownership}

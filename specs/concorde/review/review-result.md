@@ -42,3 +42,12 @@ impact and basis. It does not expose the rest of the Issue store or a prior conv
 changes cannot rewrite the observation a review judged, and closing an Issue does not make a stale
 review current. Required review gates still bind the reviewed Spec/code inputs and independent
 completion evidence, not a problem's open/closed flag.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |

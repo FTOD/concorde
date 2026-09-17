@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 8.0.0 defines Module specifications, their complete content and the subset
+Concorde Spec Protocol 9.0.0 defines Module specifications, their complete content and the subset
 intended for human reading. It applies to project Specs, including those of software implementing
 this Protocol. The standard's own chapters need not describe themselves as software Modules.
 
@@ -25,6 +25,9 @@ summary, a weaker contract or whatever a renderer chooses to retain.
 Reading content MUST explain:
 
 - **Purpose:** responsibility, intended consumers, scope and relevant non-goals.
+- **Terminology:** the concepts needed to understand this document, introduced before detailed use.
+  Define a term once in its canonical Terminology table; elsewhere link to that table instead of
+  repeating a definition. This is a reader aid, not an entity inventory or file-binding declaration.
 - **Usage:** when and how to use the Module, concepts and prerequisites, actual entry points,
   inputs, results, effects, errors and applicable repeat, cancellation and compatibility behavior.
   Start with a coherent explanation rather than asking readers to assemble instructions from formal
@@ -49,7 +52,7 @@ is still implementation metadata. A publisher MAY expose metadata as an auxiliar
 The complete Module specification has two explicit document roles, both within Reading(M):
 
 - **Module Specs** (`module`): the reading entry and explanatory topic documents. The entry follows
-  **Purpose, Usage, Design, Relationships**. Topics explain concepts, correct use, collaborations,
+  **Purpose, Terminology, Usage, Design, Relationships**. Topics explain concepts, correct use, collaborations,
   significant design and important guarantees. Together these explanations MUST establish a usable
   mental model without requiring readers to reconstruct it from formal definitions. They MUST NOT
   become empty link indexes or independently maintained summaries.
@@ -62,6 +65,37 @@ The entry and module-role topics MUST NOT define them. Canonical structured inte
 MUST also be defined in implementation-role units; explanation, usage examples and links to those
 contracts belong in Module Specs. Define each precise obligation once. Explanations retain important
 meaning and link to its exact definition rather than duplicating a second formal contract.
+
+The intended reader understands general software concepts but does not know the project's
+implementation, internal type names, execution library or migration history. Explanatory reading
+MUST let that reader explain the problem, when to use the Module, a normal interaction, its result,
+important stopping conditions and why the design works. Purpose uses ordinary verbs before internal
+names. Usage presents a representative normal path before exceptional recovery. Illustrative examples
+SHOULD make abstract distinctions concrete; they explain existing promises, not invent new ones.
+
+Role separation is about meaning, not just heading syntax. Exact private APIs, wire fields, byte
+algorithms, persistence layouts, internal limits and executable-node/state catalogs belong in
+Implementation Specs even when written as ordinary prose without SHALL or scenario headings.
+Module Specs retain architecture, design reasons, actual public entry points, and any limits or
+hazards a consumer needs for correct use. They MUST NOT hide destructive defaults, security limits
+or known unfulfilled guarantees behind detail links. A simple usage example is not an API inventory.
+
+Design MUST connect a decision to the problem it solves and the guarantee it supports, not merely
+list implementation calls in order. Conceptual diagrams SHOULD answer one reader question with
+recognizable labels. They MUST be distinguished from exact executable diagrams; the latter belong
+in implementation-role units and remain the single authority for execution topology. A concept view
+must not become a competing executable model. Explain relevant collaborations locally, but do not
+repeat generic permission, compatibility or completeness disclaimers on every path. Historical
+migration records MUST be labeled with their baseline and kept apart from the default explanation
+of current behavior; preserve any still-applicable obligations in the current specification.
+
+Terminology tables MUST contain only concepts relevant to the page. A local definition uses familiar
+language rather than another chain of unexplained terms. An imported term links directly to its
+canonical document's Terminology table; an intermediate glossary that only forwards the reader is
+not its definition. Table links grant no context: required defining units must be explicitly included.
+Entity identities and realization bindings stay in metadata; Design and Relationships explain how
+particular entities participate. A glossary neither duplicates those declarations nor replaces that
+contextual explanation. Identical words with distinct meanings must be qualified explicitly.
 
 Both roles belong directly to the same owning Module. A topic such as Registry is an explanation,
 not a new owner, sub-Module or requirements container. Implementation Specs MAY be split into several
@@ -146,7 +180,10 @@ A conformance claim identifies its Protocol version. Stable identities, unique u
 complete paired source inclusion, explicit document roles and definition placement, explicit
 one-level references, consistent declarations, required reading structure, one statement per requirement and consistent file listings are structural
 requirements. Complete and mutually consistent readable obligations, design and relationships,
-including decidable requirements, are semantic requirements.
+including decidable requirements and an explanation usable without implementation knowledge, are
+semantic requirements. Readability review checks the stated reader's questions, terminology,
+normal-path order, concrete examples, causal design and visible safety limits. It is not a word-count
+gate or a preference for shorter prose. A correctly named section or table cannot prove understanding.
 
 Passing shape checks, headings, diagrams or coverage checks cannot establish semantic completeness
 or implementation conformance. Reading must not hide necessary guarantees in metadata, while

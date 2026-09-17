@@ -2,7 +2,18 @@
 
 ## Purpose
 
-Delivery stages a verified candidate on an independent branch, cleans up its source worktree and separately merges into the primary branch when explicitly authorized. It serves participating outer sessions and consumes current evidence without owning the flow that produced the candidate.
+Delivery publishes a verified candidate as an independent branch and normally removes its source worktree. Updating the primary branch is a separate, explicitly authorized step. Developers use this boundary to distinguish a checked proposal from an accepted primary-branch change.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| Delivered branch | The independent branch published by delivery without advancing the primary checked-out branch. |
+| Delivery receipt | The saved record distinguishing branch publication, source cleanup and any later primary merge. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -28,7 +39,7 @@ Delivery treats branch publication, cleanup and primary merging as distinct rece
 It verifies actual integration in a temporary detached worktree and uses create-only publication
 for the independent branch. The repository lock serializes shared lifecycle metadata and final
 primary transactions; it is a cooperative host constraint, not permission for competing direct
-writers. [Integration verification](delivery.md#integration-verification) explains package builds
+writers. [Integration verification](execution-reference.md#delivery-integration-verification) explains package builds
 and current-consumer checks.
 
 Recording retention and recovery state before destructive transitions permits cleanup retries
@@ -79,8 +90,8 @@ Inspect participating worktree identities and supply shared worktree mechanics a
 
 This collaboration applies when verifying the source and primary participants, integrating their candidate or running configured merge checks.
 
-- [Isolated configured-check execution](../harness/execution.md#configured-deterministic-checks); Supply the registered command and timeout; keep raw diagnostics in host records and refuse checks when isolation is unavailable.
-- [Worktree identity](../harness/permissions.md#policy-compilation); reject mismatched participants before integration or cleanup.
+- [Isolated configured-check execution](../harness/execution-reference.md#execution-configured-deterministic-checks); Supply the registered command and timeout; keep raw diagnostics in host records and refuse checks when isolation is unavailable.
+- [Worktree identity](../harness/execution-reference.md#permissions-policy-compilation); reject mismatched participants before integration or cleanup.
 
 ### Spec
 
@@ -102,15 +113,6 @@ Build merged Concorde sources in the integration checkout and validate their pac
 This collaboration applies when the actual integration tree contains concorde.json and therefore represents a Concorde package checkout.
 
 - [Integration build and package validation](../distribution/build.md); Require the integrated checkout's own fresh build and validation; a build failure prevents delivery.
-
-## Realization and reuse limits
-
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
 
 ## Precise specifications
 

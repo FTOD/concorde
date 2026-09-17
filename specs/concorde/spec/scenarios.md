@@ -3,6 +3,16 @@
 These precise specifications belong directly to the [Spec Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Spec
 
 ### scenario.spec.admit-inventory — Admitting a consistent Module inventory
@@ -144,7 +154,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ### scenario.spec.reader-parts — Read purpose, usage and design before detailed cases
 
-- GIVEN a module-role entry with Purpose, Usage, Design and Relationships and implementation-role companions for precise definitions
+- GIVEN a module-role entry with Purpose, Terminology, Usage, Design and Relationships and implementation-role companions for precise definitions
 - AND paired companion documents that cover their own topics without repeating the entry layout
 - WHEN structural validation runs
 - THEN it accepts the complete source pairs and nonempty required reading explanations

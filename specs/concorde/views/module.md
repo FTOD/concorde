@@ -2,17 +2,15 @@
 
 ## Purpose
 
-Views turns the project's explicit Spec registry into a documentation site that developers and
-reviewers read, deterministically projects that same registry into a skeleton Understand Anything
-knowledge graph, and separately lets a developer open an already-produced code-structure graph in
-the official Understand Anything viewer. Its publishing promises stop at rendering registered
-Markdown faithfully: it derives Module Spec pages and navigation only from the registry, and it never infers a
-Module's completeness or correctness from a diagram, a route or a rendered page. Its graph-export
-promises stop at deriving Module, document and bound-file structure from the registry; it never
-scans the filesystem for undeclared content, and repeated export replaces only elements in its
-declared ownership scope. Its viewer promises stop at admission and launch: the launcher does not generate
-the graph it opens, does not judge whether that graph still agrees with the code, and does not grant
-an agent any access beyond its own host-bound Spec context.
+Views publishes registered specifications as a readable website and provides separate tools to export or open code-structure graphs. Developers use it to understand a project and inspect its declared relationships. A published page or graph does not by itself prove that the code satisfies the specification.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -56,7 +54,7 @@ one complete Module specification: both sidebars derive from the same Module par
 shared provider definitions stay at their owner's canonical page. Main entries retain an explanatory
 reading path; exact requirements and scenarios can be authored once in owned companions rather
 than repeated or extracted into a second generated specification.
-The [pipeline design](pipeline.md#design) defines these identities and promotion mechanics.
+The [pipeline design](execution-reference.md#pipeline-design) defines these identities and promotion mechanics.
 
 <a id="entity.views.publication-scaffold"></a><a id="entity.views.docsite-scaffold-command"></a><a id="entity.views.file-transactions"></a>
 

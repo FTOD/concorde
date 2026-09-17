@@ -9,7 +9,7 @@ import {
 import { validateContractExample } from "../../plugins/scoped-content/contract-schema";
 
 const reading =
- "# Example\n\n## Purpose\n\nProvide one result.\n\n## Usage\n\nSubmit one request.\n\n## Design\n\n" +
+ "# Example\n\n## Purpose\n\nProvide one result.\n\n## Terminology\n\nNo specialized terminology.\n\n## Usage\n\nSubmit one request.\n\n## Design\n\n" +
  '<a id="entity.example.a"></a><a id="entity.example.b"></a>\n\nA produces the record B after admission.\n\n' +
  '## Relationships\n\nThis view shows result production.\n\n```mermaid\nflowchart LR\n    producer["A"]\n    b["B"]\n    producer -->|produces| b\n```\n';
 const declaration = {
@@ -34,6 +34,33 @@ const declaration = {
 };
 
 describe("Protocol-defined reading and document metadata", () => {
+ // verifies: scenario.views.reject-reading-collection
+ it("checks early terminology tables and keeps executable catalogs out of explanations", () => {
+  const terms =
+   "| Term | Meaning / definition |\n| --- | --- |\n| Result | The returned value. |";
+  const source = reading.replace("No specialized terminology.", terms);
+  expect(() => requireReading(source, "example/module.md", true)).not.toThrow();
+  for (const invalid of [
+   source.replace("## Terminology", "### Terminology"),
+   source.replace("| Result | The returned value. |", ""),
+   source.replace("Meaning / definition", "Files"),
+  ])
+   expect(() => requireReading(invalid, "example/module.md", true)).toThrow(
+    /Terminology/,
+   );
+  const flow =
+   "\n```mermaid\nflowchart LR\n    %% flow: example\n    a --> b\n```\n";
+  expect(() =>
+   requireReading(source + flow, "example/module.md", true),
+  ).toThrow(/executable Flow/);
+  expect(() =>
+   requireReading(
+    source + "\n````markdown\n" + flow + "\n````\n",
+    "example/module.md",
+    true,
+   ),
+  ).not.toThrow();
+ });
  // verifies: scenario.views.reject-reading-collection
  it("requires explicit schema-2 roles and rejects formal definitions in entries and topics", () => {
   const meanings = readingMeanings(reading, "example/module.md");
@@ -65,7 +92,15 @@ describe("Protocol-defined reading and document metadata", () => {
   for (const fragment of fragments) {
    for (const primary of [true, false])
     expect(() =>
-     requireReading(reading + fragment, "example/topic.md", primary, "module"),
+     requireReading(
+      (primary
+       ? reading
+       : "# Topic\n\n## Terminology\n\nNo specialized terminology.\n\n## Details\n") +
+       fragment,
+      "example/topic.md",
+      primary,
+      "module",
+     ),
     ).toThrow(/implementation-role/);
    expect(() =>
     requireReading(

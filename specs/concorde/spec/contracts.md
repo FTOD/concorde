@@ -3,6 +3,16 @@
 These precise specifications belong directly to the [Spec Module](module.md).
 Subject headings organize the Module's obligations; they do not create separate owners or contexts.
 
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+
 ## Registry
 
 ### Interface signatures {#registry-interface-signatures}
@@ -136,7 +146,7 @@ reverse index. Ownership or reference edits compare both old and candidate users
 resulting file set is unchanged. A Module reference tracks additions/removals to the provider's
 owned documents; changes only to the provider's references do not expand the consumer.
 
-The runtime implements these resolution and binding interfaces under Protocol 8.0.0/Profile 14/
+The runtime implements these resolution and binding interfaces under Protocol 9.0.0/Profile 14/
 schema 5. Older profiles and membership-based declarations fail admission. Owned-definition and
 implementation queries remain separate from the explicit context resolver.
 
@@ -247,7 +257,7 @@ topology-artifact ignore file, is the installer's output and is never created he
 `action: "propose"` additionally requires `name` and `configuration` and optionally a `target_id`
 (default `module.project`); `action: "apply"` requires the returned typed project proposal. A
 proposal records `action: "initialize"`, a nullable `base_digest` and `files: {path, before_digest,
-content}`. It creates `specs/project/module.md` with Purpose, Usage, Design and Relationships,
+content}`. It creates `specs/project/module.md` with Purpose, Terminology, Usage, Design and Relationships,
 paired schema-2 metadata with role module, and
 an inline Mermaid diagram in Relationships with accessible title and description text; no external
 diagram file is created. The stub models only known participants, the project Spec and the external
@@ -269,3 +279,41 @@ nullable typed outer `configuration`, and `input` containing the request. The re
 workspace/output, status and `errors: list[{code, field, message}]`. Successful initialization has
 `status: "succeeded"` and the typed output above; admission failures are blocked and execution
 failures are failed, with no successful output.
+
+## Framework configuration and storage versions {#values-framework-configuration-and-storage-versions}
+
+`Profile 14` is the Framework's project-configuration compatibility version for the complete content model and its human-readable subset. It is distinct from Spec Protocol 9.0.0 and from registry schema 5, which versions the Framework's JSON encoding. These numbers do not classify project Modules or add concepts to the specification language.
+
+The Framework reads `.concorde/config.json` with exactly `profile_version: 14`, `registry` (the registry's project-relative path), `protocol` (the accepted version and manifest digest, whose bundle the project carries under `.concorde/protocol/`) and `capability_configuration` (the typed Pi worker model selection: an optional default `model`, `thinking` level and `timeout_seconds`, and optional `workers` overrides per worker or per worker child). Other profile values fail with `unsupported_profile`; an incompatible Protocol binding fails with `protocol_mismatch`.
+
+Registry schema 5 stores exactly `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. `targets` holds Module descriptors; both Module Specs and Implementation Specs are owned units in the same documents collection, distinguished by the explicit schema-2 document.role. Implementation Specs are normative documents, not entity file bindings or implementation source. The separate check records configure executable verification; they are Framework execution metadata. Their serialized shape does not replace the Protocol's meaning of identity, membership, composition, dependency, entity or file binding.
+
+## Registry admission details {#structure-registry-admission-details}
+
+Registry schema 5 contains `schema_version`, `project_id`, `entry_target`, `targets` and `checks`. A Module descriptor has `id`, `kind="module"`, `title`, `documents`, `references`, `parent`, `uses`, `files` and `checks`. Every array is explicit. `files` holds listing entries: an exact project file, or a directory prefix written with a trailing `/` that binds every regular file below it. It MUST equal the sorted union of the Module's own entity listing declarations, entry for entry, so a directory prefix appears as that prefix and never as its expanded file names; membership, composition and dependency are checked independently of that entry set. The entry names one Module, and its complete collection starts routing.
+
+Each registered reading document has a `.md.json` companion with `schema_version: 2`, `document`
+identity/owner/role and explicit `entities`, `dependencies` and `bindings` arrays. Entity records contain
+id/title/kind and a local readable meaning anchor, with optional files/pending/target_id. Dependency
+records contain target_id and a local meaning anchor. Participant bindings contain id/version/role/
+peer and a local meaning anchor. Responsibilities, conditions, guarantees and obligations remain
+readable prose, never copied semantic strings in metadata. File/directory binding specificity and
+pending rules still apply, and neither source member may be bound as implementation or external
+material. Every child and used Module has exactly one local entity and one dependency explanation.
+
+The principal Relationships diagram uses a nonempty subset of local entity titles and labels each
+edge. Scoped omission of an inventory node is permitted; inventing a node is not. Check records
+retain id/target_id/argv/timeout_seconds and optional inputs. Shared implementation changes concern
+every listing Module, whose contract is evaluated separately.
+
+Topology preparation stores the exact validated registry/document replacements below the ignored `.concorde/topology-proposals/` host area. Its public ArtifactRef binds path and digest. Applying the artifact rechecks its embedded design identity, discovery context, Protocol, registry base and every file before-digest before one atomic transaction.
+
+### Reference and interface validation
+
+Schema 5 requires a references array on every Module. Each `{kind, id}` must resolve to the
+declared Module/document kind; duplicates, self references, document aliases and multiple owners
+are errors. Overlap is deduplicated with all provenance, and cycles do not recurse. Each binding's
+canonical definition/version must occur in its participant's resolved context; internal peers
+require complementary bindings. Definitions have one owner and cannot be duplicated in consumers.
+Required links to excluded definitions identify gaps rather than authorizing another read.
+Structural checks report missing references/definitions separately from semantic incompleteness.

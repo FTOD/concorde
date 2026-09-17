@@ -51,7 +51,13 @@ describe("Explicit Concorde self specification", () => {
     ),
    ).toBe(false);
    const entry = r.pages.find((p) => p.primaryOf === module.id)!.content;
-   const sections = ["Purpose", "Usage", "Design", "Relationships"];
+   const sections = [
+    "Purpose",
+    "Terminology",
+    "Usage",
+    "Design",
+    "Relationships",
+   ];
    for (const section of sections) expect(entry).toContain(`## ${section}`);
    for (let i = 1; i < sections.length; i++)
     expect(entry.indexOf(`## ${sections[i - 1]}`)).toBeLessThan(

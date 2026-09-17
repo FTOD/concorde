@@ -2,7 +2,16 @@
 
 ## Purpose
 
-Specification Flow composes routing, Spec Authoring and Review to prepare or review one Module contract independently of implementation. It owns Spec-stage ordering, accepted-authoring reuse and Spec-review completion, and returns before planning or readiness.
+Specification Flow prepares or revises a Module’s specification and obtains independent review before any coding is required. It lets developers settle intended behavior first. Successful completion produces accepted Spec-stage work, not an implementation or a ready development candidate.
+
+## Terminology
+
+| Term | Meaning / definition |
+| --- | --- |
+| [Flow](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
 
 ## Usage
 
@@ -24,7 +33,7 @@ for request fields, reuse and failure behavior.
 
 <a id="entity.specify-loop.adapter"></a><a id="entity.specify-loop.completion"></a>
 
-The [specification Flow](specify-loop.md#specification-flow-specify_flow) decides whether accepted
+The [specification Flow](execution-reference.md#specify-loop-specification-flow-specify-flow) decides whether accepted
 authoring can be reused, invokes Spec Authoring when needed, independently reviews missing/stale
 owner or consumer evidence, and summarizes typed artifacts. Accepted candidate compatibility
 reviews are rechecked against applied bytes rather than repeated blindly.
@@ -123,15 +132,6 @@ Independently review the complete current Spec and affected consumers with revis
 This collaboration applies after accepted or explicitly skipped authoring when Spec review is enabled or already required.
 
 - [Independent review](../review/review.md); Supply the exact review intent and current scope; incomplete coverage, gaps or blocking findings cannot satisfy the required gate.
-
-## Realization and reuse limits
-
-This Module and its consumers are siblings under Concorde Framework. Declared files explicitly
-share the existing adapter realization with Development; no new runtime package, public Skill,
-Agent grant or configurable arbitrary flow is created by this Spec boundary. Host admission,
-phase artifacts and permissions remain mandatory. A new flow requires declared composition and
-an implementation of its sequencing, artifact admission, recovery and completion policies before
-it can execute. The existing host package still realizes common dispatch and provider internals.
 
 ## Precise specifications
 
