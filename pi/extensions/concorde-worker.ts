@@ -42,6 +42,7 @@ interface WorkerPolicy {
 
 const READ_TOOLS = new Set(["read", "grep", "find", "ls"]);
 const WRITE_TOOLS = new Set(["edit", "write"]);
+const DELEGATION_FIELDS = new Set(["agent", "task", "async", "context"]);
 const PARENT_SESSION = Symbol.for("concorde.worker.parent-session");
 
 function loadPolicy(): WorkerPolicy {
@@ -180,8 +181,27 @@ export default function concordeWorker(pi: ExtensionAPI): void {
 			policy.scrub_environment.length > 0
 		) {
 			input.command = `unset ${policy.scrub_environment.join(" ")}\n${input.command}`;
-		} else if (name === "subagent" && child) {
-			return deny("a child session cannot delegate");
+		} else if (name === "subagent") {
+			if (child) return deny("a child session cannot delegate");
+			if (
+				Object.keys(input).some((key) => !DELEGATION_FIELDS.has(key)) ||
+				typeof input.agent !== "string" ||
+				!policy.children.includes(input.agent) ||
+				typeof input.task !== "string" ||
+				!input.task.trim() ||
+				(input.async !== undefined && input.async !== false) ||
+				(input.context !== undefined && input.context !== "fresh")
+			) {
+				return deny(
+					"only direct foreground delegation to a declared child is granted; " +
+						'use {agent, task, async: false, context: "fresh"}. ' +
+						"Workflows, management actions and runtime overrides are not granted.",
+				);
+			}
+			// Defaults are not a ceiling: workflows and explicit flags can otherwise
+			// start detached work that outlives this one-prompt RPC invocation.
+			input.async = false;
+			input.context = "fresh";
 		} else if (name === "submit_result" && child) {
 			return deny("only the worker itself submits its result");
 		}
