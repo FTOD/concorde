@@ -17,8 +17,8 @@ from concorde.harness.worker_executor import (
     WorkerExecutor,
     WorkerOutcome,
     build_worker_invocation,
-    result_parameters,
     worker_instructions,
+    worker_result_parameters,
 )
 from concorde.harness.worker_profile import (
     binding_from_json,
@@ -113,9 +113,7 @@ class WorkerExecutorTests(unittest.TestCase):
         # A capsule worker reads its policy grant and its own capsule, and writes nothing.
         self.assertEqual((*invocation.policy.read_paths, "."), launch.read_paths)
         self.assertEqual((), launch.write_paths)
-        self.assertEqual(
-            result_parameters("concorde-agent-stage-result"), launch.result_schema
-        )
+        self.assertEqual(worker_result_parameters(planner), launch.result_schema)
         self.assertEqual(invocation.context_json, launch.message)
         # The system prompt is the common rules and this worker's role, then the Protocol files only.
         rendered = (PACKAGE / "generated/agents/planner.md").read_text()
@@ -217,7 +215,13 @@ class WorkerExecutorTests(unittest.TestCase):
             for expected in expected_outcomes:
                 attempts = []
 
-                def runtime(launch, *, checks=None, expected: Outcome = expected):
+                def runtime(
+                    launch,
+                    *,
+                    checks=None,
+                    expected: Outcome = expected,
+                    attempts=attempts,
+                ):
                     attempts.append(launch)
                     raise WorkerExecutionError(
                         f"simulated {expected}", outcome=expected

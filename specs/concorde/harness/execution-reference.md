@@ -447,10 +447,19 @@ A worker's system prompt is the invocation's instructions: the common worker rul
 role Spec and the Protocol rule bundle, in that order. Its only message is the canonical typed
 context: task context inline, Spec context as the index of granted files. Its output contract is its
 `submit_result` tool, whose parameters are the self-contained JSON Schema of the contract's result
-type. The executor wraps the single submitted value as that type, checks it against the contract and
-returns it; the host then checks its context identity and gap provenance before accepting stage
-completion. Independently, each admitted worker may use `report_issue` to persist an observation
-through a host-issued, scope-bound callback before submitting its final result. Report admission
+type narrowed by the verified worker profile's permitted authored fields. Optional fields the
+profile cannot author are omitted from the closed tool schema; required compatibility fields keep
+their original schema and additionally admit only their empty value (an empty array or string, or
+null for the nullable topology payload). Fields the profile can author retain their wire schemas.
+For example, a Spec author can submit document replacements but cannot submit an Issue solver's
+`issue_decision`; the Issue solver retains that field. The shared wire type and graph State channels
+are unchanged. Tool validation rejects unauthorized populated fields before successful submission
+ends the run, allowing a corrected submission within the same invocation and original deadline;
+this is not a host retry or wider grant. The executor still wraps the single submitted value as its
+wire type and independently checks the profile contract, rather than trusting tool validation or
+silently stripping unauthorized output. The host then checks context identity and gap provenance
+before accepting stage completion. Independently, each admitted worker may use `report_issue` to
+persist an observation through a host-issued, scope-bound callback before submitting its final result. Report admission
 is separate from completion; accepted reports survive an invalid or interrupted final result.
 The [Issue reporting boundary](../issues/execution-reference.md#issues-worker-reporting-service) defines report
 shape and authority. A worker in a project workspace also receives the host check service behind

@@ -26,7 +26,8 @@ class StandaloneReviewTests(unittest.TestCase):
 
     @verifies("scenario.development.standalone-review")
     def test_pi_worker_route_result_schema_requests_only_routing_judgment(self):
-        from concorde.harness.worker_executor import result_parameters
+        from concorde.harness.worker_executor import worker_result_parameters
+        from concorde.harness.worker_profile import worker_profile
 
         request = invocation(
             "concorde-review",
@@ -43,7 +44,7 @@ class StandaloneReviewTests(unittest.TestCase):
         self.assertTrue(routers)
         for call in routers:
             schema = call["launch"].result_schema
-            self.assertEqual(result_parameters("concorde-main-stage-result"), schema)
+            self.assertEqual(worker_result_parameters(worker_profile("router")), schema)
             route = schema["properties"]["routes"]["items"]
             self.assertEqual(
                 {"target_id", "focus_id", "task", "constraints"},

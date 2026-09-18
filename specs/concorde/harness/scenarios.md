@@ -168,7 +168,7 @@ See [the no-wider-retry bound](requirements.md#req.harness.permission-no-retry).
 - GIVEN a host-built WorkerInvocation carrying a verified WorkerBinding, frozen context, compiled policy and model selection
 - WHEN WorkerExecutor is called with it
 - THEN its preflight reverifies the binding against the current build, the instructions against the rendered worker and its indexed Protocol files, and the context and policy against the worker contract before starting any process
-- AND it launches one Pi worker with the profile's tools, the policy's grants, the children with their selected models and the contract's result schema as submit_result's parameters
+- AND it launches one Pi worker with the profile's tools, the policy's grants, the children with their selected models and the contract's result schema narrowed to the profile's authored-field permissions as submit_result's parameters
 - AND it returns a WorkerOutcome bound to the invocation and binding digests only for a single submitted result that satisfies the result type and the contract
 
 See [the no-automatic-retry bound](requirements.md#req.harness.execute-no-retry) and [the
@@ -188,7 +188,9 @@ settling-is-not-completion bound](requirements.md#req.harness.execute-exit-insuf
 - WHEN the host binds a worker and the executor admits its launch and its result
 - THEN only the common worker rules, that worker's role Spec and the Protocol rule bundle form its system prompt
 - AND a mismatched phase or action, context or result type, unadmitted or missing required stage artifacts, implementation contents for a worker without implementation reads and a policy wider than the contract are rejected before a process starts
-- AND a result with an outcome or a populated field its contract does not permit is rejected, disallowed authored fields as permission_denied
+- AND the submission tool omits unauthorized optional authored fields and constrains required unauthorized compatibility fields to their empty values, without changing authorized fields or the shared wire type
+- AND an unauthorized tool submission is rejected without ending the run, so a corrected submission can succeed within the same invocation and unchanged deadline
+- AND a result with an outcome or a populated field its contract does not permit is independently rejected by the host, disallowed authored fields as permission_denied
 - AND an author and a reviewer of the same Module have different invocation and context identities with no shared conversation, stage artifacts or write grant
 
 ### scenario.harness.usage-accounting — Record what every worker launch consumed, per step

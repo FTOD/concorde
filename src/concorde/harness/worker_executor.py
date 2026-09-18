@@ -144,6 +144,35 @@ def result_parameters(type_id: str) -> dict[str, Any]:
     return result
 
 
+def worker_result_parameters(agent: worker_profile.WorkerProfile) -> dict[str, Any]:
+    """Narrow submission parameters to the profile without widening its wire contract.
+
+    Optional unauthorized fields are absent; required compatibility fields retain their
+    schema but admit only the empty value that final host admission already permits.
+    The exported wire schema and the executor's independent checks remain unchanged.
+    """
+    result = result_parameters(agent.contract.result)
+    properties = result["properties"]
+    required = result.get("required", [])
+    empty_values: dict[str, Any] = {
+        "documents": [],
+        "plan": "",
+        "tasks": [],
+        "routes": [],
+        "topology_design": None,
+    }
+    for field in worker_profile.RESULT_FIELDS:
+        if field not in properties or field in agent.contract.output_fields:
+            continue
+        if field not in required:
+            del properties[field]
+        else:
+            if field not in empty_values:
+                raise ValueError(f"no empty result value defined for {field}")
+            properties[field]["const"] = empty_values[field]
+    return result
+
+
 def build_worker_invocation(
     *,
     operation: str,
@@ -355,7 +384,7 @@ class WorkerExecutor:
             workspace=invocation.workspace,
             system_prompt=invocation.instructions,
             message=invocation.context_json,
-            result_schema=result_parameters(agent.contract.result),
+            result_schema=worker_result_parameters(agent),
             tools=tools,
             read_paths=read_paths,
             write_paths=invocation.policy.write_paths,
