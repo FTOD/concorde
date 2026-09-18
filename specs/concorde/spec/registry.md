@@ -62,8 +62,14 @@ whole owner already includes its new owned units. A link is navigation, not that
 
 Checkout uses Inventory to reserve stock. Checkout can explicitly reference Inventory's reservation
 contract, allowing its workers to understand that agreement without reading Inventory's code.
-Inventory remains the contract owner. If Inventory also references a Tax document, Checkout does not
-automatically receive Tax: only Checkout's own declared references expand for its context.
+Inventory remains the contract owner. For example, Checkout may sit inside a Storefront Module
+while a separate Warehouse Module also uses Inventory, which sits directly under the project root.
+These consumers need not be Inventory's siblings: shared use leaves Inventory's identity and
+structural parent unchanged rather than making it a child of either consumer. The
+[shared-provider rule](requirements.md#req.spec.sibling-sharing) preserves this distinction.
+
+If Inventory also references a Tax document, Checkout does not automatically receive Tax: only
+Checkout's own declared references expand for its context.
 
 A link to the reservation definition helps a human navigate, but does not replace that explicit
 reference. This keeps a useful reading path from silently changing a worker's knowledge boundary.

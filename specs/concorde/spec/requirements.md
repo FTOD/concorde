@@ -40,9 +40,14 @@ A listing entry that ends with `/` SHALL bind every regular file below that dire
 
 A listed directory SHALL NOT contain a registered Spec document.
 
-### req.spec.sibling-sharing — Shared providers stay siblings of their consumers
+### req.spec.sibling-sharing — Shared providers may cross hierarchy levels
 
-A Module used by more than one consumer SHALL share the same structural parent as its consumers.
+A shared provider SHALL be admissible independently of its consumers' hierarchy levels, provided
+it is not structurally owned by one of those consumers.
+
+Sharing preserves the provider's single identity and at most one structural parent. The ordinary
+identity, parentage and composition-cycle checks still apply; cross-level use neither reparents the
+provider nor grants its documents or implementation implicitly.
 
 ### req.spec.no-structural-proof — Structural checks are not semantic proof
 

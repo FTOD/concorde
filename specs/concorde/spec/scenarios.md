@@ -34,15 +34,17 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 ### scenario.spec.admit-inventory — Admitting a consistent Module inventory
 
-- GIVEN an explicit registry with Module identities, one structural parent per Module, directed uses, entity listing entries and document ownership and references
+- GIVEN an explicit registry with Module identities, at most one structural parent per Module, directed uses, entity listing entries and document ownership and references
+- AND a shared provider is outside its consumers' structural ownership, even when those consumers have different parents or occupy different hierarchy levels
 - AND a Protocol binding that matches the installed Protocol assets
 - WHEN the repository is constructed
-- THEN it admits immutable Module descriptors, file-ownership and reverse-user indexes
+- THEN it admits immutable Module descriptors, file-ownership and reverse-user indexes without requiring sibling placement
+- AND the provider retains its declared identity and parent, and uses alone add no documents or implementation permissions to a consumer
 - AND it never reads a listed file's contents or a collaborator's Spec body to do so
 
 ### scenario.spec.reject-inconsistent-inventory — Rejecting a structurally inconsistent inventory
 
-- GIVEN a registry with an unresolved parent or use, a composition cycle, a duplicate entry owner within one Module, a non-sibling shared provider, or a listing entry that is a control or generated path, an existing path of the wrong kind, a registered Spec document or a directory containing one
+- GIVEN a registry with an unresolved parent or use, a composition cycle, a duplicate entry owner within one Module, a shared provider structurally owned by one of its consumers, or a listing entry that is a control or generated path, an existing path of the wrong kind, a registered Spec document or a directory containing one
 - WHEN the repository is constructed
 - THEN admission fails before any Agent runs
 - AND no partial repository is returned

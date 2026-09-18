@@ -177,8 +177,11 @@ implementation queries remain separate from the explicit context resolver.
 SpecRepository(project_root, package_root=None, *, registry_bytes=None, document_overrides=None)
 admits Profile 15 and registry schema 5. The optional bytes and document overrides form an in-memory
 candidate; they never authorize ambient agent reads. Construction rejects malformed identities,
-unknown parents/uses/references, composition cycles, duplicate file owners within one Module and non-sibling shared
-providers.
+unknown parents/uses/references, composition cycles, duplicate file owners within one Module and
+shared providers structurally owned by one of their consumers. A provider and its consumers need
+not share a structural parent or hierarchy level; such cross-level uses are admitted under the
+[shared-provider rule](requirements.md#req.spec.sibling-sharing), without changing parentage,
+document ownership, explicit context references or implementation permissions.
 
 SpecTarget has id, kind="module", title, documents, references, parent, uses, files and checks. primary_document
 resolves exactly one local module.md, independently of document order. select(target_id,
