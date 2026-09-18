@@ -4,8 +4,7 @@
 描述编排，保留 LangGraph API 名称、稳定 Spec ID、旧 Python 导入别名和持久化的 `graph` 字段。
 
 复核涉及 Development、Harness、Views 的相关契约，以及引用这些文档的 Concorde 和 Reflections
-完整上下文。各上下文的文档归属、引用来源和字节摘要记录在
-[复核证据](2026-09-12-langgraph-flow-evidence.json)。复核方式是本维护会话的语义检查与自动结构、回归检查。
+完整上下文。各上下文的文档归属、引用来源和字节摘要曾记录在复核证据 JSON 中（该文件已于 2026-09-18 删除）。复核方式是本维护会话的语义检查与自动结构、回归检查。
 
 已落实的控制边界：
 

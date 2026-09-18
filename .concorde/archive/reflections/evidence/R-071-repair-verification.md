@@ -25,7 +25,7 @@ original task and constraints. Other cases cover restored focus, omitted constra
 target/task/focus/constraints, missing/foreign change, wrong path/branch/primary, malformed or
 missing owner/base fields and trusted child target mismatch.
 
-[Run evidence and exact commands](R-071-repair-runs.json) record:
+Run evidence and exact commands (`R-071-repair-runs.json`, removed on 2026-09-18) recorded:
 
 - Final complete Python suite: **659 tests, 0 failures, 0 errors, 8 skipped**, using the project's
   runner over 45 modules. The skipped cases require the opt-in Studio server.
