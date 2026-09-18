@@ -8,18 +8,18 @@ and transitions are retained here as the single detailed contract.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
+| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
+| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
+| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
 | [Delivery receipt](module.md#terminology) | Defined in Delivery. |
 | [Delivered branch](module.md#terminology) | Defined in Delivery. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
-| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Delivery operation {#delivery-delivery-operation}
 

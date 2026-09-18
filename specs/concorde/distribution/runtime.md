@@ -7,9 +7,9 @@ business requirements or agent context.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
 | [Installation](installation.md#terminology) | Defined in Installing and updating Concorde. |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Planning before provisioning
 

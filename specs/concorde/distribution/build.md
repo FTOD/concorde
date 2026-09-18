@@ -14,13 +14,13 @@ conventions belong to the execution profile, not the independent standard.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
 | [Public operation](../development/module.md#terminology) | Defined in Development operation host. |
 | [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
 | [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Worker profile](../harness/module.md#terminology) | Defined in Harness. |

@@ -7,13 +7,13 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
 | [Disposition](lifecycle.md#terminology) | Defined in Solving a recorded problem. |
-| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
+| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Issues
 

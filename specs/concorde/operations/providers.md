@@ -6,8 +6,8 @@ The Operations layer owns responsibility grouping, not its providers' execution 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Provider collaborations
 

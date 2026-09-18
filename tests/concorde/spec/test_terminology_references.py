@@ -261,7 +261,7 @@ class TerminologyReferenceTests(unittest.TestCase):
     def test_problem_definitions_and_module_navigation_are_distinct(self):
         path = PREFIX + "development/review-and-gaps.md"
         for term in ("Issue", "Blocker"):
-            self.assertEqual("../concepts.md#terminology", self.tables[path][term])
+            self.assertEqual("../module.md#terminology", self.tables[path][term])
         self.assertIn("[Issues Module](../issues/module.md)", self.pages[path])
         self.assertIn(
             "[Issues Module](../issues/module.md)",

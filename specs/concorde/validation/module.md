@@ -8,15 +8,15 @@ Validation checks specification structure and runs configured verification comma
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
+| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
+| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
 | [Structural validation](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 | [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
-| [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Scenario](../module.md#terminology) | Defined in Concorde Framework. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Usage
 

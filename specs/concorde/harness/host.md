@@ -8,12 +8,12 @@ Its job is to make the boundary explicit, not to decide the software's intended 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## From request to result
 

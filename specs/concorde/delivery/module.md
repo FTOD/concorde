@@ -10,12 +10,12 @@ Delivery publishes a verified candidate as an independent branch and normally re
 | --- | --- |
 | Delivered branch | The independent branch published by delivery without advancing the primary checked-out branch. |
 | Delivery receipt | The saved record distinguishing branch publication, source cleanup and any later primary merge. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
+| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
+| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
+| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Usage
 

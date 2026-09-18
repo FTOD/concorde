@@ -10,14 +10,14 @@ behavior is correct or fully implemented.
 | --- | --- |
 | Structural validation | Deterministic checks of document shape, identity, ownership, references and other declared consistency rules. |
 | Semantic completeness | Whether the specification supplies the meaning needed for a task; valid syntax alone cannot establish it. |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
+| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
 | [Reference](registry.md#terminology) | Defined in Registry. |
 | [Document role](values.md#terminology) | Defined in Identities and versions. |
 | [Document unit](values.md#terminology) | Defined in Identities and versions. |
-| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
+| [Context](../module.md#terminology) | Defined in Concorde Framework. |
+| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Registry shape
 

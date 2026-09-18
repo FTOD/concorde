@@ -4,24 +4,24 @@
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
 | [Public operation](module.md#terminology) | Defined in Development operation host. |
 | [Internal operation](module.md#terminology) | Defined in Development operation host. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
 | [Worker profile](../harness/module.md#terminology) | Defined in Harness. |
-| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
+| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
 | [Capsule](../harness/module.md#terminology) | Defined in Harness. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
+| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
+| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
+| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
+| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
+| [Blocker](../module.md#terminology) | Defined in Concorde Framework. |
 | [Disposition](../issues/lifecycle.md#terminology) | Defined in Solving a recorded problem. |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 | [Implementation context](../harness/context.md#terminology) | Defined in What information a worker receives. |

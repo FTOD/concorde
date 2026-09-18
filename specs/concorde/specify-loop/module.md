@@ -8,14 +8,14 @@ Specification Graph prepares or revises a Module’s specification and obtains i
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
+| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
+| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
+| [Blocker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
+| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Usage
 

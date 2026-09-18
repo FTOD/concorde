@@ -8,14 +8,14 @@ Query and Routing answers questions from selected specifications and identifies 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Context](../module.md#terminology) | Defined in Concorde Framework. |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 
 ## Usage

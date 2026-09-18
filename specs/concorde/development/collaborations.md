@@ -8,21 +8,21 @@ meaning and links to the included providers.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
 | [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
 | [Implementation binding](../spec/registry.md#terminology) | Defined in Registry. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Delivery](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
+| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
+| [Blocker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Delivery](../module.md#terminology) | Defined in Concorde Framework. |
+| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Dependencies and composition
 

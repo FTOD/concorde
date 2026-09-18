@@ -7,7 +7,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
 | [Review coverage](module.md#terminology) | Defined in Review. |
 
 ## Review

@@ -8,20 +8,20 @@ and transitions are retained here as the single detailed contract.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
+| [Blocker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
+| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 | [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
 | [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
-| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Spec authoring operation {#authoring-spec-authoring-operation}
 

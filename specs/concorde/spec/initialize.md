@@ -8,12 +8,12 @@ This document defines `concorde-init`'s propose/apply behavior. [module](module.
 | --- | --- |
 | Initialization | Creating the project's own configuration, registry and first honest specification after the Framework is installed. |
 | Initial proposal | The exact new files offered for inspection before initialization is applied. |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
 | [Protocol binding](values.md#terminology) | Defined in Identities and versions. |
 | [Document role](values.md#terminology) | Defined in Identities and versions. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
 | [Installation](../distribution/installation.md#terminology) | Defined in Installing and updating Concorde. |
 
 ## Propose, inspect and apply

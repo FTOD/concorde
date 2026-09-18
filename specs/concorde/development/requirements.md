@@ -7,15 +7,15 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
 | [Internal operation](module.md#terminology) | Defined in Development operation host. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
+| [Context](../module.md#terminology) | Defined in Concorde Framework. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Development operation host
 

@@ -7,9 +7,9 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module Specs](../module.md#terminology) | Defined in Concorde Framework. |
+| [Implementation Specs](../module.md#terminology) | Defined in Concorde Framework. |
+| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
 | [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Document unit](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Publication candidate](pipeline.md#terminology) | Defined in From source documents to a published site. |
@@ -19,7 +19,7 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
 | [Composition](../spec/registry.md#terminology) | Defined in Registry. |
 | [Implementation binding](../spec/registry.md#terminology) | Defined in Registry. |
-| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
 | [Installation](../distribution/installation.md#terminology) | Defined in Installing and updating Concorde. |
 
 ## Publication service

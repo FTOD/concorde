@@ -8,21 +8,21 @@ and transitions are retained here as the single detailed contract.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module Specs](../module.md#terminology) | Defined in Concorde Framework. |
+| [Implementation Specs](../module.md#terminology) | Defined in Concorde Framework. |
+| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
 | [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Document unit](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Publication candidate](pipeline.md#terminology) | Defined in From source documents to a published site. |
 | [Promotion](pipeline.md#terminology) | Defined in From source documents to a published site. |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
-| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Requirement](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
+| [Requirement](../module.md#terminology) | Defined in Concorde Framework. |
+| [Scenario](../module.md#terminology) | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
+| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 | [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 
 ## Publication pipeline {#pipeline-publication-pipeline}

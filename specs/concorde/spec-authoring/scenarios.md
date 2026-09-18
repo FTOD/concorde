@@ -7,11 +7,11 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Blocker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Blocker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Context](../module.md#terminology) | Defined in Concorde Framework. |
 | [Ownership](../spec/registry.md#terminology) | Defined in Registry. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 

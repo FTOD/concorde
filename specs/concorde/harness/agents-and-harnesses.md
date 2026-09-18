@@ -9,13 +9,13 @@ combine ordinary code and model work without treating a model's answer as permis
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Harness](../module.md#terminology) | Defined in Concorde Framework. |
 | [Worker profile](module.md#terminology) | Defined in Harness. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## One bounded job
 

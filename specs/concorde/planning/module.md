@@ -8,18 +8,18 @@ Planning checks whether a task is sufficiently specified, produces a plan and tu
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Ready](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
+| [Ready](../module.md#terminology) | Defined in Concorde Framework. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
 | [Task sufficiency](assessment.md#terminology) | Defined in Is the specification sufficient for this task? |
 | [Acceptance task](tasks.md#terminology) | Defined in Making work verifiable. |
 | [Reserved task ID](tasks.md#terminology) | Defined in Making work verifiable. |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Usage
 

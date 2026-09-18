@@ -194,7 +194,6 @@
       "checks": [],
       "documents": [
         "specs/concorde/module.md",
-        "specs/concorde/concepts.md",
         "specs/concorde/requirements.md",
         "specs/concorde/scenarios.md",
         "specs/concorde/contracts.md",
@@ -330,7 +329,7 @@
       "references": [
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -481,7 +480,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -647,7 +646,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         }
       ],
       "title": "Development",
@@ -722,7 +721,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -806,7 +805,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -931,7 +930,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -1020,7 +1019,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -1125,7 +1124,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -1225,7 +1224,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -1329,7 +1328,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -1429,7 +1428,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -1529,7 +1528,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -1624,7 +1623,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -1732,7 +1731,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -1857,7 +1856,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -1969,7 +1968,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",
@@ -2053,7 +2052,7 @@
         },
         {
           "kind": "document",
-          "id": "document.concorde.concepts"
+          "id": "document.concorde.module"
         },
         {
           "kind": "document",

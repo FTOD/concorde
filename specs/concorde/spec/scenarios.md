@@ -7,11 +7,11 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
+| [Context](../module.md#terminology) | Defined in Concorde Framework. |
+| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
 | [Protocol binding](values.md#terminology) | Defined in Identities and versions. |
 | [Ownership](registry.md#terminology) | Defined in Registry. |
 | [Composition](registry.md#terminology) | Defined in Registry. |
@@ -20,14 +20,14 @@ Subject headings organize the Module's obligations; they do not create separate 
 | [Implementation binding](registry.md#terminology) | Defined in Registry. |
 | [Document unit](values.md#terminology) | Defined in Identities and versions. |
 | [Document role](values.md#terminology) | Defined in Identities and versions. |
-| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Requirement](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
+| [Requirement](../module.md#terminology) | Defined in Concorde Framework. |
+| [Scenario](../module.md#terminology) | Defined in Concorde Framework. |
 | [Structural validation](structure.md#terminology) | Defined in What structural validation tells you. |
 | [Semantic completeness](structure.md#terminology) | Defined in What structural validation tells you. |
 | [Initialization](initialize.md#terminology) | Defined in Project initialization. |
 | [Initial proposal](initialize.md#terminology) | Defined in Project initialization. |
-| [Issue](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Issue](../module.md#terminology) | Defined in Concorde Framework. |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 
 ## Spec

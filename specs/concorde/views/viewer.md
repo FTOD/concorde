@@ -8,9 +8,9 @@ is a developer tool, not an agent Operation or a new Skill, and it launches no m
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
+| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
 | [Installation](../distribution/installation.md#terminology) | Defined in Installing and updating Concorde. |
 
 ## Invocation

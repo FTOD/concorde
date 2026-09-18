@@ -7,21 +7,21 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
 | [Worker profile](module.md#terminology) | Defined in Harness. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../module.md#terminology) | Defined in Concorde Framework. |
+| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
+| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
 | [Spec context](context.md#terminology) | Defined in What information a worker receives. |
 | [Task context](context.md#terminology) | Defined in What information a worker receives. |
 | [Capsule](module.md#terminology) | Defined in Harness. |
 | [Tool gate](module.md#terminology) | Defined in Harness. |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
+| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
+| [Scenario](../module.md#terminology) | Defined in Concorde Framework. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Harness
 

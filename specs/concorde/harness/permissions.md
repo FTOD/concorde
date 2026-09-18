@@ -10,12 +10,12 @@ access.
 | --- | --- |
 | [Tool gate](module.md#terminology) | Defined in Harness. |
 | [Worker profile](module.md#terminology) | Defined in Harness. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
-| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## How access is selected
 

@@ -8,17 +8,17 @@ Views publishes registered specifications as a readable website and provides too
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module Specs](../module.md#terminology) | Defined in Concorde Framework. |
+| [Implementation Specs](../module.md#terminology) | Defined in Concorde Framework. |
+| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
 | [Publication candidate](pipeline.md#terminology) | Defined in From source documents to a published site. |
 | [Promotion](pipeline.md#terminology) | Defined in From source documents to a published site. |
 | [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Document unit](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
-| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
 | [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 
 ## Usage

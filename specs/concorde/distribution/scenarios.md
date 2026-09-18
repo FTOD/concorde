@@ -7,21 +7,21 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
 | [Worker profile](../harness/module.md#terminology) | Defined in Harness. |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
 | [Public operation](../development/module.md#terminology) | Defined in Development operation host. |
 | [Internal operation](../development/module.md#terminology) | Defined in Development operation host. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
+| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
 | [Installation](installation.md#terminology) | Defined in Installing and updating Concorde. |
 | [Update](installation.md#terminology) | Defined in Installing and updating Concorde. |
 | [Installation receipt](installation.md#terminology) | Defined in Installing and updating Concorde. |
 | [Initialization](../spec/initialize.md#terminology) | Defined in Project initialization. |
 | [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Installation service
 

@@ -7,22 +7,22 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
 | [Worker profile](module.md#terminology) | Defined in Harness. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Context](../module.md#terminology) | Defined in Concorde Framework. |
+| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
+| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
 | [Spec context](context.md#terminology) | Defined in What information a worker receives. |
 | [Task context](context.md#terminology) | Defined in What information a worker receives. |
 | [Capsule](module.md#terminology) | Defined in Harness. |
 | [Tool gate](module.md#terminology) | Defined in Harness. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
 | [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 
 ## Harness

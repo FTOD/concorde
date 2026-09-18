@@ -13,17 +13,17 @@ This is a topic of the [Spec Module](module.md), not another Module or a separat
 | Use | A declared reliance on another Module's operation, without acquiring that Module as a child. |
 | Reference | An explicit selection of another owned document or Module collection as knowledge for this Module. |
 | Implementation binding | A declaration of which files realize an entity; it does not itself grant file access. |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
+| [Context](../module.md#terminology) | Defined in Concorde Framework. |
+| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
 | [Document unit](values.md#terminology) | Defined in Identities and versions. |
 | [Document role](values.md#terminology) | Defined in Identities and versions. |
-| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
+| [Scenario](../module.md#terminology) | Defined in Concorde Framework. |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Evidence](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Independent relationships
 

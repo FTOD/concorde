@@ -25,9 +25,9 @@ sources and projections; installation and ordinary execution never silently acce
 
 ## Project specification and execution
 
-`.concorde/specs.json` registers `module.concorde` as the entry Module. Its reading entry and
-`specs/concorde/concepts.md` introduce complete Operations and distinguish Module responsibility
-ownership, Operation composition and explicit context references. The Operations hierarchy includes
+`.concorde/specs.json` registers `module.concorde` as the entry Module. Its reading entry defines
+the shared Framework vocabulary, introduces complete Operations and distinguishes Module
+responsibility ownership, Operation composition and explicit context references. The Operations hierarchy includes
 composed development and specification providers without making called providers their children.
 
 Module Specs explain purpose, terminology, usage, design and relationships. Implementation Specs

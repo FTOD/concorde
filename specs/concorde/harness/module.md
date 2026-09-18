@@ -11,16 +11,16 @@ The Harness Module prepares and runs a worker with a defined task, information a
 | Worker profile | The instructions and maximum tools, workspace and effects available to a kind of worker; a particular job can be narrower. |
 | Tool gate | The checks applied inside the agent process before a model-requested tool runs; it is not an OS sandbox. |
 | Capsule | A temporary workspace containing the documents admitted for one Spec-only worker invocation. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Context](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Snapshot](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Harness](../module.md#terminology) | Defined in Concorde Framework. |
+| [Context](../module.md#terminology) | Defined in Concorde Framework. |
+| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
+| [Snapshot](../module.md#terminology) | Defined in Concorde Framework. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| [Candidate](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
 | [Spec context](context.md#terminology) | Defined in What information a worker receives. |
 | [Implementation context](context.md#terminology) | Defined in What information a worker receives. |
 | [Resource context](context.md#terminology) | Defined in What information a worker receives. |

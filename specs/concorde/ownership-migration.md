@@ -4,17 +4,17 @@
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Module](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Spec](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Operation](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Requirement](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Scenario](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Entity](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](module.md#terminology) | Defined in Concorde Framework. |
+| [Spec](module.md#terminology) | Defined in Concorde Framework. |
+| [Operation](module.md#terminology) | Defined in Concorde Framework. |
+| [Contract](module.md#terminology) | Defined in Concorde Framework. |
+| [Requirement](module.md#terminology) | Defined in Concorde Framework. |
+| [Scenario](module.md#terminology) | Defined in Concorde Framework. |
+| [Entity](module.md#terminology) | Defined in Concorde Framework. |
 | [Ownership](spec/registry.md#terminology) | Defined in Registry. |
 | [Reference](spec/registry.md#terminology) | Defined in Registry. |
 | [Implementation binding](spec/registry.md#terminology) | Defined in Registry. |
-| [Evidence](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Evidence](module.md#terminology) | Defined in Concorde Framework. |
 
 ## Historical scope
 

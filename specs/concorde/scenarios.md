@@ -7,15 +7,15 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Module](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Spec](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Candidate](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Ready](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Delivery](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Evidence](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worktree](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Issue](concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module](module.md#terminology) | Defined in Concorde Framework. |
+| [Spec](module.md#terminology) | Defined in Concorde Framework. |
+| [Candidate](module.md#terminology) | Defined in Concorde Framework. |
+| [Ready](module.md#terminology) | Defined in Concorde Framework. |
+| [Delivery](module.md#terminology) | Defined in Concorde Framework. |
+| [Evidence](module.md#terminology) | Defined in Concorde Framework. |
+| [Worker](module.md#terminology) | Defined in Concorde Framework. |
+| [Worktree](module.md#terminology) | Defined in Concorde Framework. |
+| [Issue](module.md#terminology) | Defined in Concorde Framework. |
 | [Disposition](issues/lifecycle.md#terminology) | Defined in Solving a recorded problem. |
 | [Protocol binding](spec/values.md#terminology) | Defined in Identities and versions. |
 | [Spec context](harness/context.md#terminology) | Defined in What information a worker receives. |

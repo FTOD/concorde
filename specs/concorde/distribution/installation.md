@@ -11,11 +11,11 @@ step after installation.
 | Installation | Placing and verifying the Framework-owned tools, instructions and runtime assets in a target project. |
 | Update | Refreshing the outputs recorded as owned by the installer, while preserving project-owned content. |
 | Installation receipt | A record of exactly which outputs the installer owns and which bytes it last installed. |
-| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
 | [Initialization](../spec/initialize.md#terminology) | Defined in Project initialization. |
 | [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## A normal installation
 

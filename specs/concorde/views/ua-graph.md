@@ -10,17 +10,17 @@ the native analysis bridge explicitly starts an external model-backed host.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Entity](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
+| [Entity](../module.md#terminology) | Defined in Concorde Framework. |
 | [Composition](../spec/registry.md#terminology) | Defined in Registry. |
 | [Use](../spec/registry.md#terminology) | Defined in Registry. |
 | [Reference](../spec/registry.md#terminology) | Defined in Registry. |
 | [Implementation binding](../spec/registry.md#terminology) | Defined in Registry. |
 | [Implementation context](../harness/context.md#terminology) | Defined in What information a worker receives. |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
+| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Invocation
 

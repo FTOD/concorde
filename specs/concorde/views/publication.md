@@ -9,9 +9,9 @@ satisfies the specification.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module Specs](../module.md#terminology) | Defined in Concorde Framework. |
+| [Implementation Specs](../module.md#terminology) | Defined in Concorde Framework. |
+| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
 | [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Document unit](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |

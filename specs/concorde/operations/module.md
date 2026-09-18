@@ -8,12 +8,12 @@ Operations organizes the responsibilities that provide Concorde's executable beh
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Graph](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Harness](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [State](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
+| [Graph](../module.md#terminology) | Defined in Concorde Framework. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Harness](../module.md#terminology) | Defined in Concorde Framework. |
+| [State](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Usage
 

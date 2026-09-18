@@ -8,9 +8,9 @@ They do not prove that the underlying claim is true.
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Contract](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Grant](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
+| [Contract](../module.md#terminology) | Defined in Concorde Framework. |
+| [Grant](../module.md#terminology) | Defined in Concorde Framework. |
 | [Review coverage](../review/module.md#terminology) | Defined in Review. |
 | [Structural validation](../spec/structure.md#terminology) | Defined in What structural validation tells you. |
 | [Semantic completeness](../spec/structure.md#terminology) | Defined in What structural validation tells you. |

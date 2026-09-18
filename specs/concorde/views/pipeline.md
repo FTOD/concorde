@@ -10,12 +10,12 @@ cannot be mistaken for a successful publication.
 | --- | --- |
 | Publication candidate | A separately generated website that must pass checks before replacing the published site. |
 | Promotion | Replacing the published website with a checked, current publication candidate. |
-| [Module Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Implementation Specs](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Module Specs](../module.md#terminology) | Defined in Concorde Framework. |
+| [Implementation Specs](../module.md#terminology) | Defined in Concorde Framework. |
+| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
 | [Document role](../spec/values.md#terminology) | Defined in Identities and versions. |
 | [Document unit](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Scenario](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Scenario](../module.md#terminology) | Defined in Concorde Framework. |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 
 ## Follow one build

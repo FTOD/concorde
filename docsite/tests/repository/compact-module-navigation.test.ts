@@ -70,10 +70,13 @@ it("publishes consolidated explanations as Module entries while retaining precis
   for (const page of registry.pages) {
     expect(() => rewriteLinks(registry, page), page.sourcePath).not.toThrow();
   }
-  // The shared canonical vocabulary still warrants its own reading topic.
-  expect(reading).toContainEqual({
-    type: "doc",
-    id: "concorde/concepts",
-    label: "concepts",
-  });
+  // The shared canonical vocabulary lives in the Framework entry's Terminology table.
+  const concepts = "specs/concorde/concepts.md";
+  expect(registry.pages.some((p) => p.sourcePath === concepts)).toBe(false);
+  expect(reading).not.toContainEqual(
+    expect.objectContaining({ id: "concorde/concepts" }),
+  );
+  for (const suffix of ["", ".json"]) {
+    expect(existsSync(resolve(root, concepts + suffix))).toBe(false);
+  }
 });

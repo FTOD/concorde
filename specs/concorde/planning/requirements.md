@@ -7,13 +7,13 @@ Subject headings organize the Module's obligations; they do not create separate 
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Module](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
+| [Module](../module.md#terminology) | Defined in Concorde Framework. |
 | [Spec context](../harness/context.md#terminology) | Defined in What information a worker receives. |
 | [Task sufficiency](assessment.md#terminology) | Defined in Is the specification sufficient for this task? |
 | [Acceptance task](tasks.md#terminology) | Defined in Making work verifiable. |
 | [Reserved task ID](tasks.md#terminology) | Defined in Making work verifiable. |
-| [Host](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Host](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Planning
 

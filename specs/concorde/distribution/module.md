@@ -8,17 +8,17 @@ Distribution prepares the Framework assets that developers install and run: inst
 
 | Term | Meaning / definition |
 | --- | --- |
-| [Skill](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worker](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Operation](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Worktree](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Skill](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worker](../module.md#terminology) | Defined in Concorde Framework. |
+| [Operation](../module.md#terminology) | Defined in Concorde Framework. |
+| [Worktree](../module.md#terminology) | Defined in Concorde Framework. |
 | [Installation](installation.md#terminology) | Defined in Installing and updating Concorde. |
 | [Update](installation.md#terminology) | Defined in Installing and updating Concorde. |
 | [Installation receipt](installation.md#terminology) | Defined in Installing and updating Concorde. |
 | [Initialization](../spec/initialize.md#terminology) | Defined in Project initialization. |
 | [Protocol binding](../spec/values.md#terminology) | Defined in Identities and versions. |
-| [Registry](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
-| [Spec](../concepts.md#terminology) | Defined in Concepts for reading Concorde. |
+| [Registry](../module.md#terminology) | Defined in Concorde Framework. |
+| [Spec](../module.md#terminology) | Defined in Concorde Framework. |
 
 ## Usage
 
