@@ -29,6 +29,12 @@ an initialized project's worker configuration, or provision the pinned runtime. 
 Installation previews owned changes by default and applies them only with explicit acceptance;
 local modifications to receipt-owned output conflict rather than being silently adopted.
 
+The build renders one projection per developer client. Claude Code and Codex read Skills. The Pi
+coding agent instead loads a session extension whose single `concorde` tool describes or runs the
+same public Operations, so a Pi session needs no Skills; the tool builds the invocation envelope
+itself and runs the same launcher the Skills name. Aborting a Pi turn cancels the running
+Operation, because the launcher treats termination like Ctrl-C.
+
 Installation deploys Framework assets and the Protocol copy, not project business Specs or a
 registry. Initialize those separately. An update does not accept a new Protocol binding for you:
 review and explicitly rebind it after any required project migration. Use `concorde-configure` for
@@ -47,6 +53,22 @@ outputs, while Package inventory determines which assets can be distributed. The
 runtime reads an installed Skill to submit a typed operation request; Skills are not injected as
 worker context or an independent execution grant. [Build realization](build.md#design) explains
 source accounting and freshness checks.
+
+<a id="entity.distribution.pi-session-extension"></a>
+
+The Pi session extension is the projection for a developer whose client is the Pi coding agent.
+Build renders a shim into the project's `.pi/extensions/` that imports the tracked extension and
+carries the catalog of public Operations: each one's description, its Skill guidance without the
+stdin envelope mechanics, and its request schema. The extension registers one `concorde` tool.
+Its `describe` action returns that guidance and schema; its `run` action wraps the caller's input
+in the invocation envelope, runs the same launcher the Skills name in the project root and returns
+the launcher's typed result, saving a result above 48 KiB to a file. Aborting the turn sends the
+launcher SIGTERM, which it treats like Ctrl-C, and kills the launcher's process group after a
+grace period. A short section appended to the system prompt names the tool and the Operations, so
+Pi needs no Skills. Like a Skill, the tool grants nothing: the launcher performs every check, and
+the source checkout's shim tells the model to run an Operation only on the developer's explicit
+request. Pi still lists any `.agents/skills` a Codex installation left in the same project; the
+tool's description asks the model to prefer the tool.
 
 <a id="entity.distribution.installation"></a><a id="entity.distribution.install-script"></a><a id="entity.distribution.installation-proposal"></a><a id="entity.distribution.ownership-receipt"></a><a id="entity.distribution.target-project"></a>
 
@@ -85,13 +107,16 @@ project, because the guard is checkout policy and ships to no one else.
 
 Skill sources are authored and owned here, Build renders them, and Installation places the rendered
 Skills in the target integration. The external Developer runtime consumes those instructions and
-calls the declared operation boundary. This distribution path creates no worker Harness input and
-does not transfer ownership of executable operation behavior to Distribution.
+calls the declared operation boundary. For a Pi client, Build renders the shim of the Pi session
+extension from the same Skill sources and Installation places it under `.pi/extensions/`; the
+Developer runtime then calls the extension's `concorde` tool, which runs the same launcher. This
+distribution path creates no worker Harness input and does not transfer ownership of executable
+operation behavior to Distribution.
 
 ```mermaid
 flowchart TB
     accTitle: Distribution entities and relationships
-    accDescr: Build renders Authored sources and Skill sources, records freshness in the Build manifest and validates the Package inventory. Installation installs rendered Skills for the external Developer runtime, applies receipt-owned proposals to the Target project and reads configuration through Spec. Managed runtime provisions the Verified managed runtime. In this source checkout the Worktree guard constrains the Developer agent session.
+    accDescr: Build renders Authored sources and Skill sources, records freshness in the Build manifest and validates the Package inventory. Installation installs rendered Skills, or the shim of the Pi session extension, for the external Developer runtime, applies receipt-owned proposals to the Target project and reads configuration through Spec. Managed runtime provisions the Verified managed runtime. In this source checkout the Worktree guard constrains the Developer agent session.
     authored["Authored sources"]
     build["Build"]
     buildCmd["Build command"]
@@ -111,11 +136,15 @@ flowchart TB
     spec["Spec"]
     skillSources["Skill sources"]
     installedSkills["Installed Skills"]
+    piSession["Pi session extension"]
     developerRuntime["Developer runtime"]
     skillSources -->|are rendered by| build
     build -->|renders| installedSkills
+    build -->|renders the project shim of| piSession
     installation -->|installs| installedSkills
+    installation -->|installs the shim of| piSession
     developerRuntime -->|reads| installedSkills
+    developerRuntime -->|calls the concorde tool of| piSession
     authored -->|are rendered by| build
     build -->|is exposed through| buildCmd
     build -->|records freshness in| manifest

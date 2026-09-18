@@ -40,6 +40,13 @@ carries no worktree identity: it binds to the worktree in which the developer's 
 it, and Development derives the project root from that working directory. Building or installing
 a Skill does not execute its Operation or add it to a Concorde Agent's Harness. Operation behavior remains with its providing Module.
 
+For the Pi coding agent the build renders no Skills but one shim, `.pi/extensions/concorde-session.ts`,
+from the same Skill sources: it imports the tracked Pi session extension and embeds every public
+Operation's description, guidance and request schema. The guidance leaves out the two includes
+that describe the stdin envelope, because the extension's `concorde` tool builds that envelope and
+runs the same launcher itself. The shim is rendered, checked and rewritten like a Skill projection
+and is bound to no worktree either: it locates the project through its own path.
+
 Retiring a public Skill also retires its generated entry, so a developer's runtime does not keep
 advertising a removed operation. The build remembers explicitly retired names even after they
 leave the current manifest; freshness checking reports their remaining directories and rebuilding

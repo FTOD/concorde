@@ -282,7 +282,7 @@ context forms; package/schema alignment checks verify those identities.
 | `detached_primary` | The destination (primary) worktree has no attached branch to deliver onto. |
 | `detached_worktree` | A change worktree has no attached branch. |
 | `dirty_primary` | Final primary merging is blocked by local changes; default branch delivery preserves them and may proceed. |
-| `execution_cancelled` | `run_operation` caught a `OperationExecutionError` with `outcome == "cancelled"`; the change status becomes `cancelled` and the candidate is preserved. |
+| `execution_cancelled` | `run_operation` caught a `OperationExecutionError` with `outcome == "cancelled"`, or a host interrupt (Ctrl-C, or SIGTERM from the developer's client) outside a worker launch; the change status becomes `cancelled` and the candidate is preserved. |
 | `execution_limit` | `run_operation` caught a `OperationExecutionError` with `outcome == "limit_exhausted"`; the change status becomes `limit_exhausted` and the candidate is preserved. |
 | `failed_merge_checks` | The verified merge of the candidate into the destination branch failed its configured checks. |
 | `incompatible_contracts` | Shared contracts between participating components disagree and must be reconciled before implementation. |

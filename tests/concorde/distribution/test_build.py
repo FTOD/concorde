@@ -17,7 +17,9 @@ sys.path.insert(0, str(RUNTIME_ROOT))
 from concorde.distribution.build import (  # noqa: E402
     INTEGRATION_ROOTS,
     MODEL_ROOTS,
+    PI_SESSION_SHIM,
     RETIRED_SKILL_NAMES,
+    SKILL_INTEGRATIONS,
     SKILL_NAMES,
     BuildError,
     build,
@@ -29,6 +31,8 @@ from concorde.distribution.build import (  # noqa: E402
 from concorde.spec.verification import verifies  # noqa: E402
 
 GOLDEN = REPOSITORY_ROOT / "tests/concorde/fixtures/build/golden"
+# Retirement concerns Skill projections; the Pi shim is one file with no retired names.
+SKILL_ROOTS = tuple(INTEGRATION_ROOTS[name] for name in SKILL_INTEGRATIONS)
 _SOURCE_LINE = re.compile(r"(?m)^(\s*source:\s*).*$")
 
 
@@ -151,6 +155,7 @@ class BuildGoldenTests(unittest.TestCase):
         ]
         self.assertEqual(len(skill_outputs), 18)
         self.assertEqual(len(agent_outputs), 12)
+        self.assertIn(PI_SESSION_SHIM, self.by_path)
         # One flat rendered file per worker, never a mode subdirectory.
         self.assertTrue(all(path.count("/") == 2 for path in agent_outputs))
         self.assertEqual(
@@ -206,14 +211,17 @@ class BuildDeterminismTests(unittest.TestCase):
         self.assertEqual(first_by_path, second_by_path)
 
     @verifies("scenario.distribution.build-render")
-    def test_integration_all_equals_the_union_of_claude_and_codex(self):
+    def test_integration_all_equals_the_union_of_every_integration(self):
         all_result = build(REPOSITORY_ROOT, "all")
-        claude_result = build(REPOSITORY_ROOT, "claude")
-        codex_result = build(REPOSITORY_ROOT, "codex")
         all_paths = {o.path: o.content for o in all_result.outputs}
-        for output in (*claude_result.outputs, *codex_result.outputs):
-            if output.path.startswith((".claude/skills/", ".agents/skills/")):
-                self.assertEqual(all_paths[output.path], output.content)
+        projected = tuple(f"{prefix}/" for prefix in INTEGRATION_ROOTS.values())
+        seen = set()
+        for integration in INTEGRATION_ROOTS:
+            for output in build(REPOSITORY_ROOT, integration).outputs:
+                if output.path.startswith(projected):
+                    self.assertEqual(all_paths[output.path], output.content)
+                    seen.add(output.path)
+        self.assertEqual(seen, {path for path in all_paths if path.startswith(projected)})
 
 
 class BuildCheckLifecycleTests(unittest.TestCase):
@@ -304,7 +312,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
     def test_retired_skills_are_reported_then_removed_without_a_manifest_entry(self):
         write_build(self.root)
         retired = []
-        for prefix in INTEGRATION_ROOTS.values():
+        for prefix in SKILL_ROOTS:
             for name in RETIRED_SKILL_NAMES:
                 directory = self.root / prefix / name
                 directory.mkdir(parents=True)
@@ -327,7 +335,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
             self.assertEqual((directory / "SKILL.md").read_bytes(), content)
         write_build(self.root)
         self.assertTrue(all(not directory.exists() for directory in retired))
-        for prefix in INTEGRATION_ROOTS.values():
+        for prefix in SKILL_ROOTS:
             for name in ("example-third-party", "concorde-custom"):
                 self.assertEqual(
                     (self.root / prefix / name / "SKILL.md").read_text(),
@@ -344,7 +352,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw_destination:
             destination = Path(raw_destination)
             for base in (self.root, destination):
-                for prefix in INTEGRATION_ROOTS.values():
+                for prefix in SKILL_ROOTS:
                     directory = base / prefix / RETIRED_SKILL_NAMES[0]
                     directory.mkdir(parents=True)
                     (directory / "SKILL.md").write_text("old projection\n")
@@ -359,7 +367,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
                     destination / INTEGRATION_ROOTS["codex"] / RETIRED_SKILL_NAMES[0]
                 ).exists()
             )
-            for prefix in INTEGRATION_ROOTS.values():
+            for prefix in SKILL_ROOTS:
                 self.assertTrue((self.root / prefix / RETIRED_SKILL_NAMES[0]).exists())
 
     @verifies("scenario.distribution.build-retired-skills")
@@ -374,7 +382,7 @@ class BuildCheckLifecycleTests(unittest.TestCase):
         write_build(self.root)
         manifest = (self.root / "generated/build-manifest.json").read_bytes()
         directories = []
-        for prefix in INTEGRATION_ROOTS.values():
+        for prefix in SKILL_ROOTS:
             directory = self.root / prefix / RETIRED_SKILL_NAMES[0]
             directory.mkdir(parents=True)
             (directory / "SKILL.md").write_text("old projection\n")

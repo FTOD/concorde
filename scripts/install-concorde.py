@@ -139,9 +139,9 @@ def load_package(root: Path) -> Package:
             "Concorde manifest declares an unsupported installation layout"
         )
     integrations = manifest.get("integrations")
-    if integrations != ["claude", "codex"]:
+    if integrations != ["claude", "codex", "pi"]:
         raise InstallError(
-            "Concorde manifest must declare exactly claude and codex integrations"
+            "Concorde manifest must declare exactly the claude, codex and pi integrations"
         )
     if manifest.get("package_roots") != PACKAGE_ROOTS:
         raise InstallError(
@@ -269,16 +269,23 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
     }
     # The build is the only instruction source: it renders the framework's generated/**
     # (role bodies, the build manifest, the Studio graph list) and, for this integration,
-    # the public skill wrappers. Consumers never run this build themselves.
+    # the client projection: the public skill wrappers for Claude Code and Codex, or the Pi
+    # session extension shim. Consumers never run this build themselves.
     try:
         build_result = concorde_build.build(
             package.root, integration, framework_prefix=FRAMEWORK_ROOT
         )
     except concorde_build.BuildError as error:
         raise InstallError(str(error)) from error
+    skill_roots = tuple(
+        f"{concorde_build.INTEGRATION_ROOTS[name]}/"
+        for name in concorde_build.SKILL_INTEGRATIONS
+    )
     for output in build_result.outputs:
-        if output.path.startswith((".claude/skills/", ".agents/skills/")):
+        if output.path.startswith(skill_roots):
             outputs[output.path] = (output.content, "skill")
+        elif output.path.startswith(f"{concorde_build.INTEGRATION_ROOTS['pi']}/"):
+            outputs[output.path] = (output.content, "extension")
         else:
             outputs[f"{FRAMEWORK_ROOT}/{output.path}"] = (output.content, "framework")
     outputs[f"{FRAMEWORK_ROOT}/generated/build-manifest.json"] = (
@@ -704,7 +711,9 @@ def _print_plan(
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="install-concorde")
     parser.add_argument("--target", required=True)
-    parser.add_argument("--integration", choices=["codex", "claude"], default="codex")
+    parser.add_argument(
+        "--integration", choices=["codex", "claude", "pi"], default="codex"
+    )
     parser.add_argument("--checkout", default=str(SCRIPT_ROOT))
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--apply", action="store_true")

@@ -483,6 +483,79 @@ class NativeInstallerTests(unittest.TestCase):
             )
             self.assertEqual(item["action"], "conflict")
 
+    @verifies("scenario.distribution.install-pi-session")
+    def test_desired_pi_outputs_project_the_session_shim_instead_of_skills(self):
+        outputs = installer.desired_outputs(self.package, "pi")
+        content, role = outputs[".pi/extensions/concorde-session.ts"]
+        self.assertEqual("extension", role)
+        shim = content.decode("utf-8")
+        self.assertIn(
+            'from "../../.concorde/framework/pi/extensions/concorde-session.ts"', shim
+        )
+        self.assertIn('".concorde/framework/scripts/run-operation.py"', shim)
+        self.assertIn('"explicit_request_only": false', shim)
+        self.assertFalse(
+            any(
+                path.startswith((".agents/skills/", ".claude/skills/"))
+                for path in outputs
+            )
+        )
+        self.assertIn(".concorde/framework/pi/extensions/concorde-session.ts", outputs)
+        self.assertIn(".concorde/framework/pi/extensions/concorde-worker.ts", outputs)
+        self.assertEqual("protocol-guidance", outputs["AGENTS.md"][1])
+        self.assertIn(b"Read and follow", outputs["AGENTS.md"][0])
+
+    @verifies(
+        "scenario.distribution.install-switch-integration",
+        "scenario.distribution.install-pi-session",
+    )
+    def test_switching_to_pi_removes_skills_and_installs_the_shim(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary)
+            actions, desired, _ = installer.installation_plan(
+                target, self.package, "codex"
+            )
+            installer.apply_plan(target, self.package, "codex", actions, desired)
+            pi_actions, pi_desired, _ = installer.installation_plan(
+                target, self.package, "pi"
+            )
+            self.assertTrue(
+                any(
+                    item["action"] == "remove"
+                    and item["path"].startswith(".agents/skills/concorde-")
+                    for item in pi_actions
+                )
+            )
+            self.assertTrue(
+                any(
+                    item["action"] == "create"
+                    and item["path"] == ".pi/extensions/concorde-session.ts"
+                    for item in pi_actions
+                )
+            )
+            self.assertTrue(
+                any(
+                    item["path"] == "AGENTS.md" and item["action"] == "unchanged"
+                    for item in pi_actions
+                )
+            )
+            installer.apply_plan(target, self.package, "pi", pi_actions, pi_desired)
+            self.assertFalse(
+                (target / ".agents/skills/concorde-validate/SKILL.md").exists()
+            )
+            self.assertTrue((target / ".pi/extensions/concorde-session.ts").is_file())
+            self.assertTrue(
+                (
+                    target / ".concorde/framework/pi/extensions/concorde-session.ts"
+                ).is_file()
+            )
+            receipt = json.loads((target / ".concorde/install.json").read_text())
+            self.assertEqual("pi", receipt["integration"])
+            self.assertIn(
+                ".pi/extensions/concorde-session.ts",
+                {item["path"] for item in receipt["outputs"] if item["role"] == "extension"},
+            )
+
     @verifies("scenario.distribution.install-switch-integration")
     def test_integration_change_removes_only_prior_unchanged_outputs(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -222,6 +222,7 @@ def _resolve_body(
     chain: tuple[str, ...],
     visited: dict[str, tuple[str, ...]],
     sources: set[str],
+    omit: frozenset[str] = frozenset(),
 ) -> str:
     lines = body.split("\n")
     rendered: list[str] = []
@@ -235,6 +236,10 @@ def _resolve_body(
             continue
         target, bindings = _parse_directive(match.group("rest"), relative)
         _check_scope(target, relative)
+        if target in omit:
+            # A projection may leave out an include whose content belongs to another client's
+            # invocation mechanics; the omitted file contributes nothing and is not a source.
+            continue
         if target in chain:
             cycle = chain[chain.index(target) :] + (target,)
             raise PromptResolverError(
@@ -259,6 +264,7 @@ def _resolve_body(
             chain=new_chain,
             visited=visited,
             sources=sources,
+            omit=omit,
         )
         rendered.append(resolved)
         if index != last_index:
@@ -307,9 +313,15 @@ def resolve_role_prompt(project_root: str | Path, relative_path: str) -> Resolve
 
 
 def resolve_skill_source(
-    project_root: str | Path, relative_path: str
+    project_root: str | Path,
+    relative_path: str,
+    *,
+    omit: frozenset[str] = frozenset(),
 ) -> ResolvedPrompt:
-    """Resolve the body of one ``skills/<name>/SKILL.md`` source as an implicit ambient root."""
+    """Resolve the body of one ``skills/<name>/SKILL.md`` source as an implicit ambient root.
+
+    ``omit`` names include targets a projection leaves out, such as another client's invocation
+    mechanics; an omitted include renders nothing and is not recorded as a source."""
 
     root = Path(project_root)
     relative = _safe_relative(relative_path)
@@ -336,6 +348,7 @@ def resolve_skill_source(
         chain=(relative,),
         visited={relative: (relative,)},
         sources=sources,
+        omit=omit,
     )
     resolved = _finalize(resolved, relative)
     return ResolvedPrompt(body=resolved, sources=tuple(sorted({relative, *sources})))

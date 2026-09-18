@@ -739,7 +739,7 @@ project-Spec collection and, for planners and task authors, its declared externa
 They MUST NOT read source code to supply missing Module meaning. Only the
 code-writing phase receives the complete implementation context; code review receives its separately
 declared read-only subset. Agent instructions, the Protocol rule bundle and Skills are not context:
-instructions belong to a model-backed Operation's execution profile, and a Skill is the installed projection of a public
+instructions belong to a model-backed Operation's execution profile, and a Skill, or the Pi session tool, is the installed projection of a public
 Operation for the developer's own agent runtime. Every worker's system prompt is its common worker
 rules, then its own role instructions, then the Protocol rule bundle; the bundle's files are also
 listed in the index with their digests and readable at their paths.
@@ -803,7 +803,7 @@ The same graphs are the inspectable Studio surface, and no operation runs contro
 them. State channels carry data, not execution authority; runtime context and permission checks
 remain separate. Parent graphs define reducers for shared channels explicitly.
 
-Agent instructions, Skills, schemas and rule assets are deterministic projections of authored
+Agent instructions, Skills, the Pi session shim, schemas and rule assets are deterministic projections of authored
 sources. Generated output is not edited as source. Builds distribute the Module kind definition and
 the accepted Protocol binding. Configuration, installation and publication must agree on that
 binding. Runtime Agent responsibility files are authored implementation assets, not another category

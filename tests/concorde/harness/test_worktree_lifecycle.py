@@ -1469,7 +1469,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             "    return balance - amount\n"
         )
         with (self.primary / ".gitignore").open("a") as stream:
-            stream.write("\ngenerated/\n.agents/\n.claude/\n")
+            stream.write("\ngenerated/\n.agents/\n.claude/\n.pi/\n")
         commit = self.commit(self.primary, "Self-hosted integration fixture")
         tree = git_value(self.primary, "rev-parse", "HEAD^{tree}")
         verified = []

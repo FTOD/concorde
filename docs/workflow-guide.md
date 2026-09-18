@@ -62,7 +62,9 @@ The installer distributes a deterministic build's output — nine Skills exposin
 from one inventory of twenty-six Operations, including twelve model-backed nodes. Their common
 worker rules (`prompts/workers/common.md`) and local instructions (`operations/<name>/spec.md`)
 render to the compatible `generated/agents/<hyphenated>.md` paths. Four Markdown templates and
-the selected Codex or Claude Skill projections accompany them.
+the selected client projection accompany them: Codex or Claude Skills, or for the Pi coding agent
+the session extension shim under `.pi/extensions/`, whose `concorde` tool describes and runs the
+same public Operations.
 Check `python3 scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project, then invoke the paired init entry in an isolated worktree (or use the trusted host's explicit
@@ -376,8 +378,9 @@ arbitrary Operation calls as worker tools.
 Operation name is retired. Development owns the operation invocation boundary and workflow
 composition. Distribution owns `skills/` and `prompts/workflow-host/`, renders and installs the
 public Skill instructions, and keeps their projections current. The developer's external agent
-runtime reads those Skills and submits typed operation requests to Development. Skills are not
-part of a worker's Harness. See [Operations and Harnesses](../specs/concorde/harness/agents-and-harnesses.md)
+runtime reads those Skills and submits typed operation requests to Development; a Pi session
+instead loads the rendered `.pi/extensions/concorde-session.ts`, whose `concorde` tool submits the
+same requests through the launcher. Skills are not part of a worker's Harness. See [Operations and Harnesses](../specs/concorde/harness/agents-and-harnesses.md)
 and the [Operation registry](../specs/concorde/development/operations.md) for definitions and mappings.
 
 Developing this checkout is direct developer-authorized maintenance in the current worktree,

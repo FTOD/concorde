@@ -36,7 +36,8 @@
   ],
   "integrations": [
     "claude",
-    "codex"
+    "codex",
+    "pi"
   ],
   "install": {
     "framework_root": ".concorde/framework",

@@ -93,6 +93,14 @@ This is the root-entry cleanup step for uninstall, not a full-package removal co
 - AND the new integration's entry is installed
 - AND old receipts without root entries can upgrade by adding them without adopting arbitrary preexisting marked content
 
+### scenario.distribution.install-pi-session — Installing for Pi places the session extension shim instead of Skills
+
+- GIVEN the `pi` integration is selected
+- WHEN installation is applied
+- THEN it installs `.pi/extensions/concorde-session.ts` as a receipt-owned output that imports the extension deployed below `.concorde/framework/pi/extensions/` and names the framework launcher and the managed runtime's interpreter
+- AND it installs no Skill under `.agents/skills/` or `.claude/skills/`, and the `AGENTS.md` root entry that Pi reads as a context file
+- AND switching from a Skill integration removes those Skills and installs the shim under the same ownership checks
+
 ### scenario.distribution.configure-apply — Configuration changes an initialized project's Pi worker selection atomically
 
 - GIVEN an initialized project and an explicit supported configuration value
@@ -197,6 +205,15 @@ the same Skills through a framework prefix and keeps model-initiated invocation,
 Skills are the intended everyday entry points. Codex has no equivalent front-matter switch; the
 checkout's root instructions state the rule for that runtime.
 
+### scenario.distribution.build-pi-session — Build renders the Pi session extension shim from the Skill sources
+
+- GIVEN the current Skill sources, their includes and the exported request schemas
+- WHEN build renders the `pi` integration
+- THEN it renders exactly one projection, `.pi/extensions/concorde-session.ts`, which imports the tracked `pi/extensions/concorde-session.ts` and embeds the catalog: every public Operation's name, description, guidance and request schema with its version, the project-relative launcher and the interpreters to try
+- AND the guidance is the Skill text without the stdin envelope includes, which the tool supplies itself, and contains no unresolved package token
+- AND without a framework prefix the catalog marks explicit-request-only and names the checkout's own launcher and `.venv`; with a framework prefix it imports the extension below that prefix and names the managed runtime's interpreter
+- AND repeated renders are byte-identical and the shim is checked and rewritten like the Skill projections
+
 ### scenario.distribution.build-write — write_build records source and output digests in the manifest
 
 - GIVEN a completed render
@@ -274,6 +291,44 @@ reports invalid metadata with `CONCORDE-OPERATION-CONSTANTS-001`, inconsistent d
 with `CONCORDE-OPERATION-DETERMINISTIC-001`, and Spec metadata drift with
 `CONCORDE-SPEC-OPERATIONS-001`. Unknown or cyclic composition remains a composition error;
 validation cannot certify its determinism.
+
+## Pi session projection
+
+### scenario.distribution.pi-session-prompt — A Pi session learns the concorde tool and the public Operations
+
+- GIVEN a Pi session that loaded the rendered shim
+- WHEN the session starts a turn
+- THEN the extension appends a Concorde section to the system prompt naming the `concorde` tool and every public Operation with its description, and in the source checkout the rule to run an Operation only on the developer's explicit request
+- AND the tool's `operation` parameter admits exactly the public Operations, with actions `describe` and `run` and an optional `mode` of `execute` or `describe-policy`
+
+### scenario.distribution.pi-session-describe — Describing an Operation runs nothing
+
+- GIVEN a Pi session that loaded the rendered shim
+- WHEN the model calls `concorde` with action `describe`
+- THEN the tool returns the Operation's description, guidance and request schema from the catalog without starting the launcher
+
+### scenario.distribution.pi-session-run — Running an Operation submits the typed envelope through the launcher
+
+- GIVEN a Pi session that loaded the rendered shim
+- WHEN the model calls `concorde` with action `run` and the request data as `input`
+- THEN the tool wraps the input in a `concorde-operation-invocation@3` envelope with the Operation's request type and version, runs the launcher in the project root with the envelope on stdin, and returns the launcher's result envelope with its usage summary
+- AND a result the launcher reports as blocked or failed is returned as a tool error carrying that envelope
+- AND a missing `input` or an unknown Operation is refused without starting the launcher
+- AND a result above 48 KiB is saved to a file the returned text names
+
+### scenario.distribution.pi-session-cancel — Aborting the turn cancels the running Operation
+
+- GIVEN a `run` in progress through the `concorde` tool
+- WHEN the developer aborts the turn
+- THEN the extension sends the launcher SIGTERM and reports the cancellation as a tool error carrying whatever result the launcher printed
+- AND a launcher that has not exited within the grace period is killed together with its process group
+
+### scenario.distribution.launcher-terminated — SIGTERM cancels the launcher like Ctrl-C
+
+- GIVEN a running `scripts/run-operation.py`
+- WHEN the process receives SIGTERM
+- THEN it takes the Ctrl-C path: a running worker's Pi process is killed and its outcome is cancelled, a Graph interrupted outside a worker launch ends with the `execution_cancelled` error and the change's recorded status, and the result envelope is printed before exit
+- AND SIGTERM while the launcher is still waiting for its invocation prints the pre-host failure envelope with `execution_cancelled`
 
 ## Managed runtime
 

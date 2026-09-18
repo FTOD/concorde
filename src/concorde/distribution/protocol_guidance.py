@@ -5,7 +5,8 @@ import hashlib
 from pathlib import Path
 
 ROLE = "protocol-guidance"
-FILES = {"codex": "AGENTS.md", "claude": "CLAUDE.md"}
+# Pi reads AGENTS.md as a context file, so it shares Codex's root entry.
+FILES = {"codex": "AGENTS.md", "claude": "CLAUDE.md", "pi": "AGENTS.md"}
 TOKEN = b"<!-- concorde-protocol:"
 START = b"\n<!-- concorde-protocol:start -->\n"
 END = b"<!-- concorde-protocol:end -->\n"
@@ -21,8 +22,8 @@ def digest(content: bytes) -> str:
 
 
 def entry(integration: str) -> bytes:
-    reference = (f"Read and follow `{PROTOCOL}` before Concorde workflow actions.\n"
-                 if integration == "codex" else f"@{PROTOCOL}\n")
+    reference = (f"@{PROTOCOL}\n" if integration == "claude"
+                 else f"Read and follow `{PROTOCOL}` before Concorde workflow actions.\n")
     return START + ("## Concorde Spec Protocol and Framework rules\n\n" + reference).encode() + END
 
 

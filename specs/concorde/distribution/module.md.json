@@ -11,8 +11,8 @@
       "title": "Build",
       "kind": "program",
       "files": [
-        "operations/__init__.py",
         "concorde.json",
+        "operations/__init__.py",
         "pyproject.toml",
         "src/concorde/distribution/build.py",
         "src/concorde/distribution/package_validation.py",
@@ -22,6 +22,7 @@
         "tests/concorde/distribution/test_prompt_resolver.py",
         "tests/concorde/fixtures/build/golden/claude/",
         "tests/concorde/fixtures/build/golden/codex/",
+        "tests/concorde/fixtures/build/golden/pi/",
         "tests/concorde/support/build_fixture.py",
         "uv.lock"
       ],
@@ -53,7 +54,10 @@
       "id": "entity.distribution.skill-sources",
       "title": "Skill sources",
       "kind": "authored instructions",
-      "files": ["prompts/workflow-host/", "skills/"],
+      "files": [
+        "prompts/workflow-host/",
+        "skills/"
+      ],
       "meaning": "#entity.distribution.skill-sources"
     },
     {
@@ -61,6 +65,18 @@
       "title": "Installed Skills",
       "kind": "instruction artifact",
       "meaning": "#entity.distribution.installed-skills"
+    },
+    {
+      "id": "entity.distribution.pi-session-extension",
+      "title": "Pi session extension",
+      "kind": "program",
+      "files": [
+        "pi/extensions/concorde-session.ts",
+        "tests/concorde/distribution/test_pi_session.py",
+        "tests/concorde/support/fake_launcher.py",
+        "tests/concorde/support/pi_session_harness.mts"
+      ],
+      "meaning": "#entity.distribution.pi-session-extension"
     },
     {
       "id": "entity.distribution.developer-runtime",

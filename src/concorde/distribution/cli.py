@@ -35,7 +35,7 @@ def create_parser() -> argparse.ArgumentParser:
 
     build = subparsers.add_parser("build")
     build.add_argument(
-        "--integration", choices=["claude", "codex", "all"], default="all"
+        "--integration", choices=["claude", "codex", "pi", "all"], default="all"
     )
     build.add_argument("--check", action="store_true")
     build.add_argument("--format", choices=["json"], default="json")

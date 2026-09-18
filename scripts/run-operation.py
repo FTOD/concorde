@@ -86,11 +86,21 @@ def _runtime_check(skill_name: str, operation: str, module) -> int:
     return 0
 
 
+def _terminated(signum, frame):
+    # A developer's client ends a run it no longer wants with SIGTERM (a Pi tool abort, a
+    # supervisor's stop). It takes the same path as Ctrl-C: the host cancels the running worker,
+    # records the cancellation and prints the result envelope instead of dying mid-write.
+    raise KeyboardInterrupt
+
+
 def main(argv: list[str] | None = None) -> int:
     # Installed framework bytes remain receipt-owned and exact. Operation imports must never add
     # ambient bytecode caches beside a skill/operation source.
     sys.dont_write_bytecode = True
     os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+    import signal
+
+    signal.signal(signal.SIGTERM, _terminated)
     arguments = list(sys.argv[1:] if argv is None else argv)
     package_root = FRAMEWORK_ROOT
     source = str(package_root / "src")

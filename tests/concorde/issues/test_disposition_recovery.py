@@ -106,11 +106,14 @@ class DispositionRecoveryTests(unittest.TestCase):
             self.assertEqual(digest(journal["after"].encode()), journal["after_digest"])
             raise KeyboardInterrupt("injected process interruption before publication")
 
-        with (
-            patch.object(graph, "dispose_issue", side_effect=interrupt),
-            self.assertRaises(KeyboardInterrupt),
-        ):
-            self.solve()
+        with patch.object(graph, "dispose_issue", side_effect=interrupt):
+            interrupted = self.solve()
+        # A host interrupt ends the Graph with the cancelled result envelope rather than dying
+        # mid-write; the journal written before the interruption is what makes recovery exact.
+        self.assertEqual("failed", interrupted["status"], interrupted)
+        self.assertEqual(
+            "execution_cancelled", interrupted["errors"][0]["code"], interrupted
+        )
         self.assertEqual(self.before, self.path.read_bytes())
         self.assertIn("pending_disposition", self.solution())
         self.assert_recovered(self.solve())

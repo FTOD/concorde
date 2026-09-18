@@ -20,8 +20,9 @@ step after installation.
 ## A normal installation
 
 Start by previewing the proposed installation into the intended project. Inspect the target and
-owned changes before applying. The installer deploys Framework tools, the chosen client's Skill
-instructions and the Protocol copy, and prepares the required runtime. It preserves project Specs,
+owned changes before applying. The installer deploys Framework tools, the chosen client's
+projection (Skills for Claude Code or Codex, the session extension shim for Pi) and the Protocol
+copy, and prepares the required runtime. It preserves project Specs,
 configuration and unrelated files. Then initialize the project's own registry and first Spec, and
 supply the business intent that the initial draft deliberately leaves unknown.
 

@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml"><img src="https://github.com/FTOD/concorde/actions/workflows/validate-source-checkout.yml/badge.svg" alt="Source validation" /></a>
   <a href="protocol/README.md"><img src="https://img.shields.io/badge/Spec_Protocol-10.0.0-6264e8" alt="Spec Protocol 10.0.0" /></a>
-  <a href="#get-started"><img src="https://img.shields.io/badge/agents-Codex_%C2%B7_Claude-273449" alt="Integrations: Codex and Claude" /></a>
+  <a href="#get-started"><img src="https://img.shields.io/badge/agents-Codex_%C2%B7_Claude_%C2%B7_Pi-273449" alt="Integrations: Codex, Claude and Pi" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-273449" alt="MIT license" /></a>
 </p>
 
@@ -19,7 +19,7 @@
 
 # Concorde
 
-**Architecture-aware Specs, project understanding, and scoped Pi worker agents, invoked from Codex or Claude.**
+**Architecture-aware Specs, project understanding, and scoped Pi worker agents, invoked from Codex, Claude or Pi.**
 
 Concorde helps you write and maintain software Specs that explain both behavior and architecture:
 what each Module is responsible for, how its entities relate, what it depends on, and which files
@@ -144,15 +144,17 @@ npm ci --prefix pi
 provisions it into an installed project's managed runtime automatically.
 
 **2. Preview the installation into your project, then apply it.** Replace `/absolute/path/to/project`
-with your existing Git project's path; use `claude` instead of `codex` for Claude.
+with your existing Git project's path; use `claude` instead of `codex` for Claude, or `pi` for the
+Pi coding agent, which receives a `concorde` session tool under `.pi/extensions/` instead of Skills.
 
 ```bash
 python3 scripts/install-concorde.py --target /absolute/path/to/project --integration codex --preview
 python3 scripts/install-concorde.py --target /absolute/path/to/project --integration codex --apply
 ```
 
-The installer provisions the locked runtime, installs the public Skills and adds Protocol guidance
-to the selected root instruction file. It preserves user content outside its owned entries.
+The installer provisions the locked runtime, installs the public Skills (or, for Pi, the session
+extension shim) and adds Protocol guidance to the selected root instruction file. It preserves user
+content outside its owned entries.
 
 **3. Open an agent session in your project and initialize it.**
 

@@ -118,9 +118,10 @@ module under the top-level `operations/` package). This always operates on the w
 containing the sources; never point one worktree's build at another worktree's outputs. Run
 `python3 scripts/concorde.py build --check` to verify the outputs are current without writing.
 
-Outputs under `generated/`, `.claude/skills/concorde-*` and `.agents/skills/concorde-*` are
-untracked build output, not authoring sources: never directly create, edit, delete, or rename
-them. Make the change in `prompts/`, `skills/` or `operations/` and rebuild. The host refuses to
+Outputs under `generated/`, `.claude/skills/concorde-*`, `.agents/skills/concorde-*` and the Pi
+session shim `.pi/extensions/concorde-session.ts` are untracked build output, not authoring
+sources: never directly create, edit, delete, or rename them. Make the change in `prompts/`,
+`skills/`, `operations/` or `pi/extensions/` and rebuild. The host refuses to
 execute or describe a top-level non-lifecycle operation on a stale build (error code
 `stale_build`), verified against `generated/build-manifest.json`. Deterministic lifecycle
 operations (`concorde-init`, `concorde-configure`, `concorde-validate`, `concorde-deliver`) are

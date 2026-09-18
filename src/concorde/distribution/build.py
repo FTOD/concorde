@@ -1,12 +1,14 @@
-"""Deterministic rendering of model Operation instructions and public Skills.
+"""Deterministic rendering of model Operation instructions and public client projections.
 
-The build renders the WorkerProfile and skill projections from ``operations/``/``prompts/``/``skills/``
-sources into ``generated/`` and, for skills, directly into ``.claude/skills/<name>/SKILL.md`` and
-``.agents/skills/<name>/SKILL.md``. After Stage B1 these rendered files are the only instruction
-source the host and the agent runtimes consume: ``run_operation`` and ``load_model_instructions`` verify
-build freshness before using them and fail closed with ``BuildError(code="stale_build")`` when the
-recorded sources have drifted. The build must be byte-identical across repeated runs and must not
-perform any network or process I/O.
+The build renders the WorkerProfile and client projections from ``operations/``/``prompts/``/``skills/``
+sources into ``generated/`` and, for the developer's clients, directly into the project: Skills at
+``.claude/skills/<name>/SKILL.md`` and ``.agents/skills/<name>/SKILL.md`` for Claude Code and Codex,
+and the Pi session extension shim at ``.pi/extensions/concorde-session.ts``, which binds the tracked
+extension to this project and carries the same public Operations as one typed tool. After Stage B1
+these rendered files are the only instruction source the host and the agent runtimes consume:
+``run_operation`` and ``load_model_instructions`` verify build freshness before using them and fail
+closed with ``BuildError(code="stale_build")`` when the recorded sources have drifted. The build
+must be byte-identical across repeated runs and must not perform any network or process I/O.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ import importlib
 import importlib.abc
 import importlib.util
 import json
+import re
 import sys
 import tempfile
 import uuid
@@ -78,8 +81,30 @@ class BuildError(ValueError):
         self.code = code
 
 
-INTEGRATIONS = ("claude", "codex")
-INTEGRATION_ROOTS = {"claude": ".claude/skills", "codex": ".agents/skills"}
+# Claude Code and Codex read Skills; Pi reads the session extension shim instead of Skills.
+SKILL_INTEGRATIONS = ("claude", "codex")
+INTEGRATIONS = (*SKILL_INTEGRATIONS, "pi")
+INTEGRATION_ROOTS = {
+    "claude": ".claude/skills",
+    "codex": ".agents/skills",
+    "pi": ".pi/extensions",
+}
+# The tracked Pi session extension and the shim that binds it to one project. The shim carries
+# the catalog of public Operations; the extension is framework code the shim imports.
+PI_SESSION_EXTENSION = "pi/extensions/concorde-session.ts"
+PI_SESSION_SHIM = f"{INTEGRATION_ROOTS['pi']}/concorde-session.ts"
+# Skill includes that describe another client's invocation mechanics (the stdin envelope the
+# Skills send through the launcher); the Pi tool builds that envelope itself, so its guidance
+# leaves them out.
+PI_OMITTED_INCLUDES = frozenset(
+    {
+        "prompts/workflow-host/stdin-invocation-open.md",
+        "prompts/workflow-host/stdin-invocation-config-input.md",
+    }
+)
+# An installed consumer runs the launcher with its managed runtime (manifest ``runtime.venv``,
+# verified by ``managed_runtime``); the source checkout uses its own development environment.
+CONSUMER_RUNTIME_VENV = ".concorde/.venv"
 # Keep explicit ownership after a Skill leaves SKILL_NAMES, even if a newer manifest
 # has already forgotten it. A name prefix alone never authorizes deletion.
 RETIRED_SKILL_NAMES = ("concorde-reflections-triage",)
@@ -288,6 +313,99 @@ def render_skill(
     )
 
 
+def _interpreters(prefix: str) -> list[str]:
+    venv = CONSUMER_RUNTIME_VENV if prefix else ".venv"
+    return [f"{venv}/bin/python", f"{venv}/Scripts/python.exe"]
+
+
+def render_pi_session(project_root: Path, *, framework_prefix: str = "") -> BuildOutput:
+    """Render the Pi session extension shim: the public Operations as one typed tool.
+
+    Pi loads project-local extensions from ``.pi/extensions/``; the shim rendered there imports
+    the tracked extension (``PI_SESSION_EXTENSION``, below the framework prefix in an installed
+    project) and binds it to this project with the catalog: every public Operation's description,
+    its Skill guidance without the stdin envelope mechanics, and its request schema. The tool wraps
+    the request in the invocation envelope and runs the same launcher the Skills name. Without a
+    framework prefix the shim marks the source checkout, where an Operation runs only on the
+    developer's explicit request, as the Claude Skill projection does.
+    """
+    prefix = framework_prefix.strip("/")
+    schemas, schema_sources, _ = _root_schemas(project_root)
+    sources: set[str] = set(schema_sources)
+    operations = []
+    for name in SKILL_NAMES:
+        metadata = _skill_metadata(project_root, name)
+        try:
+            resolved = resolve_skill_source(
+                project_root, SKILL_SOURCES[name], omit=PI_OMITTED_INCLUDES
+            )
+        except PromptResolverError as error:
+            raise BuildError(f"skill {name}: {error.rule_id}: {error}") from error
+        guidance = re.sub(r"\n{3,}", "\n\n", resolved.body).strip("\n") + "\n"
+        unresolved = [
+            token
+            for token in ("{SCRIPT}", "{FRAMEWORK}", "{OPERATION}")
+            if token in guidance
+        ]
+        if unresolved:
+            raise BuildError(
+                f"skill {name} guidance contains unresolved package tokens: {unresolved}"
+            )
+        request_type = f"{name}-request"
+        if request_type not in schemas:
+            raise BuildError(
+                f"skill {name} has no exported request schema {request_type!r} in the named root's contracts"
+            )
+        schema = schemas[request_type]
+        try:
+            version = schema["properties"]["schema_version"]["const"]
+        except (KeyError, TypeError) as error:
+            raise BuildError(
+                f"request schema {request_type} declares no constant schema_version"
+            ) from error
+        operations.append(
+            {
+                "name": name,
+                "description": str(metadata["description"]),
+                "guidance": guidance,
+                "request_version": version,
+                "request_schema": schema,
+            }
+        )
+        sources.update(resolved.sources)
+        sources.add(SKILL_SOURCES[name])
+    catalog = {
+        "schema_version": 1,
+        "launcher": f"{prefix}/scripts/run-operation.py"
+        if prefix
+        else "scripts/run-operation.py",
+        "interpreters": _interpreters(prefix),
+        "explicit_request_only": not prefix,
+        "operations": operations,
+    }
+    extension = f"{prefix}/{PI_SESSION_EXTENSION}" if prefix else PI_SESSION_EXTENSION
+    depth = PI_SESSION_SHIM.count("/")
+    import_path = "../" * depth + extension
+    content = (
+        "// Rendered by `python3 scripts/concorde.py build` from skills/, prompts/ and the\n"
+        "// operation contracts; do not edit. The Concorde session extension itself lives at\n"
+        f"// {extension}; this shim binds it to this project.\n"
+        'import { fileURLToPath } from "node:url";\n'
+        f'import {{ concordeSession }} from "{import_path}";\n'
+        f'import type {{ SessionCatalog }} from "{import_path}";\n\n'
+        "const CATALOG: SessionCatalog = "
+        + json.dumps(catalog, indent=2, sort_keys=True, ensure_ascii=False)
+        + ";\n\n"
+        "export default concordeSession(\n"
+        f'\tfileURLToPath(new URL("{"../" * depth}", import.meta.url)),\n'
+        "\tCATALOG,\n"
+        ");\n"
+    ).encode("utf-8")
+    return BuildOutput(
+        path=PI_SESSION_SHIM, content=content, sources=tuple(sorted(sources))
+    )
+
+
 def render_langgraph(project_root: Path) -> BuildOutput:
     """Studio graph list derived from ``skills/`` (proposal section 8, item 6)."""
 
@@ -455,6 +573,8 @@ def _manifest(project_root: Path, outputs: tuple[BuildOutput, ...]) -> bytes:
         "src/concorde/harness/worker_profile.py",
         "src/concorde/harness/operation_state.py",
         "src/concorde/harness/operation_node.py",
+        # The shim binds the tracked session extension; its behavior is part of the projection.
+        PI_SESSION_EXTENSION,
     ):
         if (project_root / relative).is_file():
             all_sources.add(relative)
@@ -479,18 +599,16 @@ def build(
     """Render every WorkerProfile, skill and Studio-graph projection; raise BuildError on any failure."""
 
     root = Path(project_root)
-    if integration == "all":
-        integrations = INTEGRATIONS
-    elif integration in INTEGRATIONS:
-        integrations = (integration,)
-    else:
-        raise BuildError(f"unsupported integration: {integration}")
+    integrations = _selected_integrations(integration)
 
     outputs: list[BuildOutput] = []
     for agent in sorted(MODEL_ROOTS):
         outputs.append(render_model_instructions(root, agent))
-    for name in SKILL_NAMES:
-        for one_integration in integrations:
+    for one_integration in integrations:
+        if one_integration == "pi":
+            outputs.append(render_pi_session(root, framework_prefix=framework_prefix))
+            continue
+        for name in SKILL_NAMES:
             outputs.append(
                 render_skill(
                     root, name, one_integration, framework_prefix=framework_prefix
@@ -529,11 +647,20 @@ def build(
     return BuildResult(outputs=ordered, manifest=manifest)
 
 
+def _selected_integrations(integration: str) -> tuple[str, ...]:
+    if integration == "all":
+        return INTEGRATIONS
+    if integration in INTEGRATIONS:
+        return (integration,)
+    raise BuildError(f"unsupported integration: {integration}")
+
+
 def _retired_skill_directories(root: Path, integration: str) -> tuple[Path, ...]:
     """Locate explicitly retired projections without following integration-root symlinks."""
-    integrations = INTEGRATIONS if integration == "all" else (integration,)
     directories: list[Path] = []
-    for selected in integrations:
+    for selected in _selected_integrations(integration):
+        if selected not in SKILL_INTEGRATIONS:
+            continue
         prefix = Path(INTEGRATION_ROOTS[selected])
         for relative in (prefix.parent, prefix):
             if (root / relative).is_symlink():
@@ -567,14 +694,15 @@ def write_build(
     """Render and write outputs.
 
     Outputs under ``generated/`` are always written below ``project_root`` (the location that
-    owns the recorded build manifest). Rendered skill wrappers (``.claude/skills/*``,
-    ``.agents/skills/*``) are written below ``integration_root`` when given, so an installer can
-    render a consumer's framework sources while placing the consumer-facing Skill wrappers at the
-    consumer's own project root.
+    owns the recorded build manifest). Rendered client projections (``.claude/skills/*``,
+    ``.agents/skills/*`` and the ``.pi/extensions`` shim) are written below ``integration_root``
+    when given, so an installer can render a consumer's framework sources while placing the
+    consumer-facing projections at the consumer's own project root.
     """
 
     root = Path(project_root)
     destination = Path(integration_root) if integration_root is not None else root
+    projected = tuple(f"{prefix}/" for prefix in INTEGRATION_ROOTS.values())
     result = build(root, integration, framework_prefix=framework_prefix)
     retired = _retired_skill_cleanup(destination, integration)
     expected = {output.path for output in result.outputs}
@@ -596,11 +724,7 @@ def write_build(
         (directory / "SKILL.md").unlink(missing_ok=True)
         directory.rmdir()
     for output in result.outputs:
-        base = (
-            destination
-            if output.path.startswith((".claude/skills/", ".agents/skills/"))
-            else root
-        )
+        base = destination if output.path.startswith(projected) else root
         target = base / output.path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(output.content)
@@ -640,12 +764,13 @@ def check_build(
 
     Returns (is_current, differences) where differences names every relative path (under the
     build-owned locations in ``generated/`` -- see ``GENERATED_OWNED_DIRS``/``GENERATED_OWNED_FILES``
-    -- and, for our current or explicitly retired skills, ``.claude/skills``/``.agents/skills``)
-    that is missing, unexpected, or byte-different. Nothing under project_root is written or modified. A third
-    party's own Skill directories (for example ``.claude/skills/<vendor-skill>``) are never inspected or
-    reported, and neither is any other path under ``generated/`` that the build does not own (for
-    example diagram renders under ``generated/architecture/``): ``generated/`` is a shared, ignored
-    root and this check only judges what the build itself produces there.
+    -- for our current or explicitly retired skills, ``.claude/skills``/``.agents/skills``, and the
+    Pi session shim) that is missing, unexpected, or byte-different. Nothing under project_root is
+    written or modified. A third party's own Skill directories (for example
+    ``.claude/skills/<vendor-skill>``) and the developer's own Pi extensions beside the shim are
+    never inspected or reported, and neither is any other path under ``generated/`` that the build
+    does not own (for example diagram renders under ``generated/architecture/``): ``generated/`` is
+    a shared, ignored root and this check only judges what the build itself produces there.
     """
 
     root = Path(project_root)
@@ -670,7 +795,21 @@ def check_build(
         directory.relative_to(root).as_posix()
         for directory in _retired_skill_directories(root, integration)
     )
-    for prefix in INTEGRATION_ROOTS.values():
+    selected = _selected_integrations(integration)
+    for selected_integration in selected:
+        prefix = INTEGRATION_ROOTS[selected_integration]
+        if selected_integration == "pi":
+            fresh = next(
+                (output.content for output in result.outputs if output.path == PI_SESSION_SHIM),
+                None,
+            )
+            shim = root / PI_SESSION_SHIM
+            current = (
+                shim.read_bytes() if shim.is_file() and not shim.is_symlink() else None
+            )
+            if fresh != current:
+                diffs.append(PI_SESSION_SHIM)
+            continue
         for name in SKILL_NAMES:
             fresh_key = f"{prefix}/{name}"
             fresh_contents = {}

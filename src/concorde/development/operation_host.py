@@ -5062,6 +5062,14 @@ def run_operation(
         return build_operation_graph(nodes.__getitem__, name=operation).invoke(
             {}, {"recursion_limit": OPERATION_RECURSION_LIMIT}
         )["result"]
+    except KeyboardInterrupt:
+        # A host interrupt (Ctrl-C, or SIGTERM from the developer's client) that arrives outside
+        # a worker launch ends the Graph the way a cancelled worker does: the cancellation is
+        # recorded in the change's lifecycle evidence and reported through the result envelope.
+        cancelled = OperationExecutionError(
+            "operation cancelled by the host", outcome="cancelled"
+        )
+        return finish_failed_operation_graph(nodes, cancelled)["result"]
     except Exception as error:
         return finish_failed_operation_graph(nodes, error)["result"]
 
@@ -5533,6 +5541,11 @@ def json_main(package_root: Path, operation: str, runner) -> int:
                 runner, host, value["configuration"], value["input"], operation
             )
 
+    except KeyboardInterrupt:
+        result = invocation_failure(
+            operation,
+            SpecError("operation cancelled by the host", "execution_cancelled"),
+        )
     except Exception as error:
         result = invocation_failure(operation, error)
     if host and host.descriptions:

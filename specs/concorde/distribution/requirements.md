@@ -50,6 +50,24 @@ Developing the Concorde checkout is direct developer-authorized maintenance by d
 graph runs on the checkout only when the developer explicitly asks for it. The installed consumer
 projection is unaffected and stays model-invocable.
 
+### req.distribution.pi-session-public-only — The Pi session tool exposes only public Operations
+
+The Pi session extension SHALL offer exactly the public Operations as the operations of its
+`concorde` tool.
+
+Internal stage Operations have no Skill and no tool entry; the source checkout's shim additionally
+tells the model to run an Operation only on the developer's explicit request, as the Claude Skill
+projection is hidden from model invocation there.
+
+### req.distribution.launcher-sigterm-cancels — SIGTERM cancels the launcher like Ctrl-C
+
+The launcher SHALL treat SIGTERM as a host interrupt that cancels a running worker and prints the
+result envelope before exiting.
+
+A developer's client, such as the Pi session extension aborting a turn, ends a run it no longer
+wants with SIGTERM; dying mid-write would leave the worker process and the change's lifecycle
+record behind.
+
 ### req.distribution.root-block-ownership — Root rule ownership is block-scoped
 
 A root rule entry SHALL be owned only within its exact bounded block, including its separator.

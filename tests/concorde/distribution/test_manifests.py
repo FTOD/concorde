@@ -27,7 +27,7 @@ class ManifestContractTests(unittest.TestCase):
         self.assertEqual(
             (manifest["architecture_profile"], manifest["workspace_protocol"]), (15, 16)
         )
-        self.assertEqual(manifest["integrations"], ["claude", "codex"])
+        self.assertEqual(manifest["integrations"], ["claude", "codex", "pi"])
         self.assertEqual(
             manifest["install"],
             {

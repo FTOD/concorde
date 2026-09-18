@@ -22,7 +22,7 @@ Concorde helps developers agree on what software should do, execute changes with
 | Evidence | A recorded check or review result tied to the inputs it examined, not a permanent guarantee about future revisions. |
 | State | The declared data channels an Operation accepts and updates when invoked as a graph node. State carries task information and results, never execution authority. |
 | Operation | Concorde's only executable entity: a complete callable with an input State, output State updates, effects, use conditions and execution policy. It can run as a LangGraph node using deterministic code, a model or a compiled graph. |
-| Skill | Instructions that let a developer's agent client invoke a public Concorde operation. |
+| Skill | Instructions installed for a developer's agent client, Claude Code or Codex, to invoke a public Concorde operation. A Pi session reaches the same operations through the `concorde` tool its installed session extension registers. |
 | Worker | One fresh agent execution for a bounded job, such as writing a plan or reviewing code. |
 | Host | The non-model program that checks requests, chooses allowed work, runs workers and records accepted results. |
 | Harness | The services that give a worker its inputs, tools, environment and limits, then check its result. |
@@ -44,8 +44,8 @@ the Module concerned explains them.
 Choose the Operation that matches your goal. After installation and project initialization,
 `concorde-main` answers a question or finds an owner. `concorde-specify-loop` prepares a contract;
 `concorde-dev-loop` develops a change. Configure the worker model separately. Public Operations
-are exposed through Skills and the common launcher; internal Operations are complete building
-blocks for admitted compositions, not unrestricted alternative entry points.
+are exposed through Skills, or the Pi session tool, and the common launcher; internal Operations
+are complete building blocks for admitted compositions, not unrestricted alternative entry points.
 
 For example, suppose you ask to add retry behavior. Concorde selects the responsible Module and
 checks its Spec. If the Spec does not say which failures may be retried, the task needs
@@ -93,7 +93,7 @@ authority. Public/internal exposure changes entry availability, not this complet
 
 <a id="entity.concorde.developer"></a><a id="entity.concorde.protocol"></a>
 
-The Developer supplies intent and constraints through installed Skills. The independent Spec
+The Developer supplies intent and constraints through installed Skills or the Pi session tool. The independent Spec
 Protocol defines Module ownership, complete context and readable contracts: a Module's Spec pairs
 explanation-first Module Specs with precise Implementation Specs, which define its requirements and
 scenarios. A **Module owns a responsibility and its Spec**; it is not a synonym for an Operation.
