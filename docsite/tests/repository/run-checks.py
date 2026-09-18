@@ -30,7 +30,6 @@ DIRECTORIES = (
     "docsite",
     "reference",
     "templates",
-    "viewer",
 )
 FILES = (
     "concorde.json",
@@ -126,8 +125,6 @@ def main() -> int:
                     sys.executable,
                     "-m",
                     "unittest",
-                    "tests.concorde.views.test_ua_graph",
-                    "tests.concorde.views.test_viewer_launcher",
                     "tests.concorde.views.test_docsite_scaffold",
                     "tests.concorde.views.test_docsite_template",
                     "tests.concorde.views.test_scaffold_creation",

@@ -51,7 +51,7 @@ def create_langgraph_index(root: Path) -> Path:
 
 
 def runtime_install_environment(index: Path) -> dict[str, str]:
-    tools = _create_viewer_tools(index.parent)
+    tools = _create_npm_tools(index.parent)
     environment = os.environ.copy()
     environment.update(
         {
@@ -66,31 +66,17 @@ def runtime_install_environment(index: Path) -> dict[str, str]:
     return environment
 
 
-def _create_viewer_tools(root: Path) -> Path:
-    tools = root / "viewer-tools"
+def _create_npm_tools(root: Path) -> Path:
+    tools = root / "npm-tools"
     tools.mkdir(parents=True, exist_ok=True)
-    node = tools / ("node.cmd" if os.name == "nt" else "node")
     npm = tools / ("npm.cmd" if os.name == "nt" else "npm")
     if (
         os.name == "nt"
     ):  # pragma: no cover - Windows CI uses the real command shim shape
-        node.write_text(f'@"{sys.executable}" "%~dp0\\node.py" %*\n', encoding="utf-8")
         npm.write_text(f'@"{sys.executable}" "%~dp0\\npm.py" %*\n', encoding="utf-8")
-        node_script = tools / "node.py"
         npm_script = tools / "npm.py"
     else:
-        node_script = node
         npm_script = npm
-    node_script.write_text(
-        f"#!{sys.executable}\n"
-        "from __future__ import annotations\n"
-        "import json,sys\n"
-        "if sys.argv[1:] == ['--version']:\n"
-        "    print('v20.11.1')\n"
-        "else:\n"
-        "    print('FAKE NODE ' + json.dumps(sys.argv[1:]))\n",
-        encoding="utf-8",
-    )
     npm_script.write_text(
         f"#!{sys.executable}\n"
         "from __future__ import annotations\n"
@@ -104,30 +90,18 @@ def _create_viewer_tools(root: Path) -> Path:
         "    print('unsupported fake npm invocation', file=sys.stderr)\n"
         "    raise SystemExit(2)\n"
         "root = Path(args[args.index('--prefix') + 1])\n"
-        "if root.name == 'pi':\n"
-        "    lock = json.loads((root / 'package.json').read_text(encoding='utf-8'))\n"
-        "    subagents = root / 'node_modules/pi-subagents'\n"
-        "    subagents.mkdir(parents=True, exist_ok=True)\n"
-        "    (subagents / 'index.ts').write_text('// fixture pi-subagents\\n', encoding='utf-8')\n"
-        "    (subagents / 'package.json').write_text(json.dumps({'name': 'pi-subagents',\n"
-        "        'version': lock['dependencies']['pi-subagents']}), encoding='utf-8')\n"
-        "    raise SystemExit(0)\n"
-        "package = root / 'node_modules/understand-anything-viewer'\n"
-        "(package / 'bin').mkdir(parents=True, exist_ok=True)\n"
-        "(package / 'dist').mkdir(parents=True, exist_ok=True)\n"
-        "(package / 'bin/viewer.mjs').write_text('// fixture viewer\\n', encoding='utf-8')\n"
-        "(package / 'dist/index.html').write_text('<!doctype html>fixture\\n', encoding='utf-8')\n"
-        "(package / 'README.md').write_text('fixture viewer\\n', encoding='utf-8')\n"
-        "(package / 'package.json').write_text(json.dumps({\n"
-        "    'name': 'understand-anything-viewer',\n"
-        "    'version': '2.9.0',\n"
-        "    'engines': {'node': '>=18'},\n"
-        "    'bin': {'understand-anything-viewer': 'bin/viewer.mjs'},\n"
-        "}), encoding='utf-8')\n",
+        "if root.name != 'pi':\n"
+        "    print('unsupported fake npm prefix', file=sys.stderr)\n"
+        "    raise SystemExit(2)\n"
+        "lock = json.loads((root / 'package.json').read_text(encoding='utf-8'))\n"
+        "subagents = root / 'node_modules/pi-subagents'\n"
+        "subagents.mkdir(parents=True, exist_ok=True)\n"
+        "(subagents / 'index.ts').write_text('// fixture pi-subagents\\n', encoding='utf-8')\n"
+        "(subagents / 'package.json').write_text(json.dumps({'name': 'pi-subagents',\n"
+        "    'version': lock['dependencies']['pi-subagents']}), encoding='utf-8')\n",
         encoding="utf-8",
     )
-    for path in (node_script, npm_script):
-        path.chmod(0o755)
+    npm_script.chmod(0o755)
     return tools
 
 

@@ -19,7 +19,6 @@ MARKER_NAME = ".concorde-runtime.json"
 MARKER_SCHEMA = 2
 _LOCK_LINE = re.compile(r"^langgraph==([0-9]+(?:\.[0-9]+){2})$")
 _SEMVER = re.compile(r"^v?([0-9]+)\.([0-9]+)\.([0-9]+)(?:[-+].*)?$")
-_SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
 # The Pi worker extensions a worker with children loads, installed from the package's pinned lock.
 PI_SOURCES = ("pi/package.json", "pi/package-lock.json", "pi/.npmrc")
 PI_INSTALL_RELATIVE = "share/concorde/pi"
@@ -28,25 +27,6 @@ PI_SUBAGENTS = "pi-subagents"
 
 class ManagedRuntimeError(ValueError):
     """A managed runtime cannot be planned or provisioned safely."""
-
-
-@dataclass(frozen=True)
-class ViewerSpec:
-    provider: str
-    version: str
-    package: str
-    asset_url: str
-    asset_sha256: str
-    asset_bytes: int
-    node: str
-    npm_package: str
-    npm_lock: str
-    lock_sha256: str
-    integrity: str
-    install_relative: str
-    entrypoint: str
-    launcher: str
-    graph_paths: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -60,7 +40,6 @@ class ManagedRuntimeSpec:
     langgraph_version: str
     concorde_version: str
     skills: tuple[str, ...]
-    viewer: ViewerSpec
     pi_lock_sha256: str
     pi_subagents_version: str
 
@@ -93,134 +72,6 @@ def _json_object(path: Path, label: str) -> tuple[dict[str, Any], bytes]:
     if not isinstance(value, dict):
         raise ManagedRuntimeError(f"{label} must be one JSON object: {path}")
     return value, content
-
-
-def _load_viewer_spec(package_root: Path, manifest: Mapping[str, Any]) -> ViewerSpec:
-    configuration = manifest.get("viewer")
-    if not isinstance(configuration, Mapping):
-        raise ManagedRuntimeError("viewer must be one manifest object")
-    strings: dict[str, str] = {}
-    for field in (
-        "provider",
-        "version",
-        "package",
-        "asset_url",
-        "asset_sha256",
-        "node",
-        "npm_package",
-        "npm_lock",
-        "install_relative",
-        "entrypoint",
-        "launcher",
-    ):
-        value = configuration.get(field)
-        if not isinstance(value, str) or not value:
-            raise ManagedRuntimeError(f"viewer.{field} must be a non-empty string")
-        strings[field] = value
-    for field in (
-        "npm_package",
-        "npm_lock",
-        "install_relative",
-        "entrypoint",
-        "launcher",
-    ):
-        strings[field] = _safe_relative(strings[field], f"viewer.{field}")
-    if strings["node"] != ">=18":
-        raise ManagedRuntimeError("viewer.node must be '>=18'")
-    if not strings["asset_url"].startswith(
-        "https://github.com/Egonex-AI/Understand-Anything/releases/download/"
-    ):
-        raise ManagedRuntimeError(
-            "viewer.asset_url must be an official immutable release URL"
-        )
-    if _SHA256.fullmatch(strings["asset_sha256"]) is None:
-        raise ManagedRuntimeError("viewer.asset_sha256 must be one sha256 digest")
-    asset_bytes = configuration.get("asset_bytes")
-    if (
-        not isinstance(asset_bytes, int)
-        or isinstance(asset_bytes, bool)
-        or asset_bytes <= 0
-    ):
-        raise ManagedRuntimeError("viewer.asset_bytes must be a positive integer")
-    graph_paths = configuration.get("graph_paths")
-    if not isinstance(graph_paths, list) or len(graph_paths) != 2:
-        raise ManagedRuntimeError(
-            "viewer.graph_paths must contain legacy and modern graph paths"
-        )
-    normalized_graph_paths = tuple(
-        _safe_relative(item, f"viewer.graph_paths[{index}]")
-        for index, item in enumerate(graph_paths)
-    )
-    if normalized_graph_paths != (
-        ".understand-anything/knowledge-graph.json",
-        ".ua/knowledge-graph.json",
-    ):
-        raise ManagedRuntimeError(
-            "viewer.graph_paths must use the official legacy-first locations"
-        )
-
-    package_path = package_root / strings["npm_package"]
-    lock_path = package_root / strings["npm_lock"]
-    package_value, package_content = _json_object(package_path, "Viewer npm package")
-    lock_value, lock_content = _json_object(lock_path, "Viewer npm lock")
-    dependency = package_value.get("dependencies")
-    if (
-        not isinstance(dependency, Mapping)
-        or dependency.get(strings["package"]) != strings["asset_url"]
-    ):
-        raise ManagedRuntimeError(
-            "Viewer npm package must depend on the exact official asset URL"
-        )
-    if package_value.get("private") is not True or package_value.get("engines") != {
-        "node": ">=18"
-    }:
-        raise ManagedRuntimeError(
-            "Viewer npm package must be private and require Node.js >=18"
-        )
-    packages = lock_value.get("packages")
-    locked = (
-        packages.get(f"node_modules/{strings['package']}")
-        if isinstance(packages, Mapping)
-        else None
-    )
-    if not isinstance(locked, Mapping):
-        raise ManagedRuntimeError("Viewer npm lock omits the official Viewer package")
-    if (
-        locked.get("version") != strings["version"]
-        or locked.get("resolved") != strings["asset_url"]
-    ):
-        raise ManagedRuntimeError(
-            "Viewer npm lock identity differs from the manifest pin"
-        )
-    integrity = locked.get("integrity")
-    if not isinstance(integrity, str) or not integrity.startswith("sha512-"):
-        raise ManagedRuntimeError("Viewer npm lock must pin one sha512 integrity")
-    if locked.get("engines") != {"node": ">=18"}:
-        raise ManagedRuntimeError(
-            "Viewer npm lock must preserve the official Node.js engine"
-        )
-    if locked.get("bin") != {"understand-anything-viewer": "bin/viewer.mjs"}:
-        raise ManagedRuntimeError(
-            "Viewer npm lock must preserve the official executable"
-        )
-    lock_sha256 = _sha256(package_content + b"\0" + lock_content)
-    return ViewerSpec(
-        provider=strings["provider"],
-        version=strings["version"],
-        package=strings["package"],
-        asset_url=strings["asset_url"],
-        asset_sha256=strings["asset_sha256"],
-        asset_bytes=asset_bytes,
-        node=strings["node"],
-        npm_package=strings["npm_package"],
-        npm_lock=strings["npm_lock"],
-        lock_sha256=lock_sha256,
-        integrity=integrity,
-        install_relative=strings["install_relative"],
-        entrypoint=strings["entrypoint"],
-        launcher=strings["launcher"],
-        graph_paths=normalized_graph_paths,
-    )
 
 
 def load_runtime_spec(
@@ -261,7 +112,6 @@ def load_runtime_spec(
     version = manifest.get("version")
     if not isinstance(version, str) or not version:
         raise ManagedRuntimeError("manifest version must be a non-empty string")
-    viewer = _load_viewer_spec(package_root, manifest)
     pi_contents = []
     for relative in PI_SOURCES:
         source = package_root.joinpath(*PurePosixPath(relative).parts)
@@ -281,9 +131,7 @@ def load_runtime_spec(
     pi_lock_sha256 = _sha256(b"\0".join(pi_contents))
     requirements_sha256 = _sha256(content)
     runtime_sha256 = _sha256(
-        (
-            requirements_sha256 + "\n" + viewer.lock_sha256 + "\n" + pi_lock_sha256
-        ).encode("utf-8")
+        (requirements_sha256 + "\n" + pi_lock_sha256).encode("utf-8")
     )
     return ManagedRuntimeSpec(
         venv=venv,
@@ -295,7 +143,6 @@ def load_runtime_spec(
         langgraph_version=match.group(1),
         concorde_version=version,
         skills=SKILL_NAMES,
-        viewer=viewer,
         pi_lock_sha256=pi_lock_sha256,
         pi_subagents_version=pi_subagents_version,
     )
@@ -385,23 +232,6 @@ def _run(
     )
 
 
-def _viewer_root(runtime: Path, spec: ManagedRuntimeSpec) -> Path:
-    root = runtime.joinpath(*PurePosixPath(spec.viewer.install_relative).parts)
-    try:
-        root.relative_to(runtime)
-    except ValueError as error:  # pragma: no cover - guarded by _safe_relative
-        raise ManagedRuntimeError(
-            f"Viewer install path escaped the managed runtime: {root}"
-        ) from error
-    return root
-
-
-def _viewer_entrypoint(runtime: Path, spec: ManagedRuntimeSpec) -> Path:
-    return _viewer_root(runtime, spec).joinpath(
-        *PurePosixPath(spec.viewer.entrypoint).parts
-    )
-
-
 def _tool_version(
     command: str, cwd: Path, label: str
 ) -> tuple[str, tuple[int, int, int]]:
@@ -409,7 +239,7 @@ def _tool_version(
         result = _run([command, "--version"], cwd=cwd, environment=os.environ)
     except OSError as error:
         raise ManagedRuntimeError(
-            f"{label} is required for the official Viewer: {error}"
+            f"{label} is required to install the Pi worker extensions: {error}"
         ) from error
     value = _checked(result, f"{label} version check").strip()
     match = _SEMVER.fullmatch(value)
@@ -418,101 +248,9 @@ def _tool_version(
     return value, tuple(int(item) for item in match.groups())
 
 
-def _verify_viewer(
-    runtime: Path,
-    spec: ManagedRuntimeSpec,
-    cwd: Path,
-) -> tuple[str, str]:
-    node_version, node_tuple = _tool_version("node", cwd, "Node.js")
-    if node_tuple < (18, 0, 0):
-        raise ManagedRuntimeError(
-            f"official Viewer requires Node.js >=18, observed {node_version}"
-        )
-    npm_version, _ = _tool_version("npm", cwd, "npm")
-    viewer_root = _viewer_root(runtime, spec)
-    package_path = viewer_root / "node_modules" / spec.viewer.package / "package.json"
-    package, _ = _json_object(package_path, "installed official Viewer package")
-    if (
-        package.get("name") != spec.viewer.package
-        or package.get("version") != spec.viewer.version
-    ):
-        raise ManagedRuntimeError(
-            "installed official Viewer package identity is mismatched"
-        )
-    if package.get("engines") != {"node": ">=18"}:
-        raise ManagedRuntimeError(
-            "installed official Viewer package omits its Node.js engine"
-        )
-    entrypoint = _viewer_entrypoint(runtime, spec)
-    dashboard = (
-        viewer_root / "node_modules" / spec.viewer.package / "dist" / "index.html"
-    )
-    for label, path in (("entry point", entrypoint), ("dashboard", dashboard)):
-        if path.is_symlink() or not path.is_file():
-            raise ManagedRuntimeError(
-                f"installed official Viewer {label} is missing: {path}"
-            )
-    result = _run(
-        ["node", str(entrypoint), "--help"],
-        cwd=cwd,
-        environment=_offline_environment(),
-    )
-    _checked(result, "official Viewer offline smoke check")
-    return node_version, npm_version
-
-
-def _install_viewer(
-    runtime: Path,
-    framework: Path,
-    spec: ManagedRuntimeSpec,
-    cwd: Path,
-) -> None:
-    node_version, node_tuple = _tool_version("node", cwd, "Node.js")
-    if node_tuple < (18, 0, 0):
-        raise ManagedRuntimeError(
-            f"official Viewer requires Node.js >=18, observed {node_version}"
-        )
-    _tool_version("npm", cwd, "npm")
-    viewer_root = _viewer_root(runtime, spec)
-    viewer_root.mkdir(parents=True, exist_ok=False)
-    sources = (
-        (spec.viewer.npm_package, viewer_root / "package.json"),
-        (spec.viewer.npm_lock, viewer_root / "package-lock.json"),
-    )
-    for relative, destination in sources:
-        source = framework.joinpath(*PurePosixPath(relative).parts)
-        if source.is_symlink() or not source.is_file():
-            raise ManagedRuntimeError(
-                f"installed Viewer lock source is missing: {source}"
-            )
-        shutil.copyfile(source, destination)
-        destination.chmod(0o644)
-    environment = os.environ.copy()
-    environment.update(
-        {
-            "NPM_CONFIG_AUDIT": "false",
-            "NPM_CONFIG_FUND": "false",
-            "NPM_CONFIG_UPDATE_NOTIFIER": "false",
-        }
-    )
-    result = _run(
-        [
-            "npm",
-            "--prefix",
-            str(viewer_root),
-            "ci",
-            "--ignore-scripts",
-            "--no-audit",
-            "--no-fund",
-        ],
-        cwd=cwd,
-        environment=environment,
-    )
-    _checked(result, "official Viewer dependency installation")
-
-
 def _install_pi(runtime: Path, framework: Path, cwd: Path) -> None:
     """Install the Pi worker extensions from the package's pinned lock into the managed runtime."""
+    _tool_version("npm", cwd, "npm")
     root = runtime.joinpath(*PurePosixPath(PI_INSTALL_RELATIVE).parts)
     root.mkdir(parents=True, exist_ok=False)
     for relative in PI_SOURCES:
@@ -588,13 +326,7 @@ def _healthy(runtime: Path, spec: ManagedRuntimeSpec) -> bool:
         )
     except OSError:
         return False
-    if result.returncode != 0:
-        return False
-    try:
-        _verify_viewer(runtime, spec, runtime.parent)
-    except (ManagedRuntimeError, OSError):
-        return False
-    return True
+    return result.returncode == 0
 
 
 def plan_runtime(
@@ -635,8 +367,6 @@ def plan_runtime(
     matches = bool(
         marker
         and marker.get("requirements_sha256") == spec.requirements_sha256
-        and marker.get("viewer_lock_sha256") == spec.viewer.lock_sha256
-        and marker.get("viewer_version") == spec.viewer.version
         and marker.get("pi_lock_sha256") == spec.pi_lock_sha256
         and marker.get("verified_skills") == list(spec.skills)
     )
@@ -704,8 +434,6 @@ def _write_marker(
     runtime: Path,
     spec: ManagedRuntimeSpec,
     python_version: str,
-    node_version: str,
-    npm_version: str,
 ) -> None:
     value = {
         "schema_version": MARKER_SCHEMA,
@@ -715,11 +443,6 @@ def _write_marker(
         "requirements_sha256": spec.requirements_sha256,
         "runtime_sha256": spec.runtime_sha256,
         "python_version": python_version,
-        "node_version": node_version,
-        "npm_version": npm_version,
-        "viewer_lock_sha256": spec.viewer.lock_sha256,
-        "viewer_version": spec.viewer.version,
-        "viewer_entrypoint": spec.viewer.entrypoint,
         "pi_lock_sha256": spec.pi_lock_sha256,
         "pi_subagents_version": spec.pi_subagents_version,
         "verified_skills": list(spec.skills),
@@ -799,16 +522,14 @@ def provision_runtime(
                 ),
                 "managed runtime dependency installation",
             )
-            _install_viewer(runtime, framework, spec, target)
             _install_pi(runtime, framework, target)
         python = runtime_python(runtime)
         python_version = _python_version(python, target)
         verified = _verify_skills(target, framework, spec, bootstrap)
         if verified != spec.skills:
             raise ManagedRuntimeError("managed runtime did not verify every skill")
-        node_version, npm_version = _verify_viewer(runtime, spec, target)
         _verify_pi(runtime, spec)
-        _write_marker(runtime, spec, python_version, node_version, npm_version)
+        _write_marker(runtime, spec, python_version)
     except Exception:
         if (
             changed
@@ -827,23 +548,6 @@ def provision_runtime(
         "runtime_sha256": spec.runtime_sha256,
         "launcher": spec.launcher,
         "verified_skills": list(verified),
-        "viewer": {
-            "provider": spec.viewer.provider,
-            "version": spec.viewer.version,
-            "package": spec.viewer.package,
-            "asset_url": spec.viewer.asset_url,
-            "asset_sha256": spec.viewer.asset_sha256,
-            "asset_bytes": spec.viewer.asset_bytes,
-            "integrity": spec.viewer.integrity,
-            "lock_sha256": spec.viewer.lock_sha256,
-            "node": spec.viewer.node,
-            "node_version": node_version,
-            "npm_version": npm_version,
-            "install_relative": spec.viewer.install_relative,
-            "entrypoint": spec.viewer.entrypoint,
-            "launcher": spec.viewer.launcher,
-            "graph_paths": list(spec.viewer.graph_paths),
-        },
         "pi": {
             "install_relative": PI_INSTALL_RELATIVE,
             "lock_sha256": spec.pi_lock_sha256,

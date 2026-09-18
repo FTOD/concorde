@@ -45,5 +45,4 @@ to a specification-language change. [Build](build.md) explains instruction fresh
 
 The Module-owned [installation scenarios](scenarios.md#installation-service) and
 [requirements](requirements.md) define ownership conflicts, configuration, retries and failure behavior.
-The Spec Module owns initialization and Protocol acceptance. The [Views Module](../views/module.md)
-explains how to launch the separately provisioned viewer in its [viewer topic](../views/viewer.md).
+The Spec Module owns initialization and Protocol acceptance.

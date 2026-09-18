@@ -44,7 +44,6 @@ PACKAGE_ROOTS = [
     "skills",
     "src",
     "templates",
-    "viewer",
 ]
 
 RUNTIME = {
@@ -52,24 +51,6 @@ RUNTIME = {
     "python": ">=3.11",
     "requirements": "scripts/requirements.lock",
     "venv": ".concorde/.venv",
-}
-VIEWER = {
-    "provider": "Egonex-AI/Understand-Anything",
-    "version": "2.9.0",
-    "package": "understand-anything-viewer",
-    "asset_url": "https://github.com/Egonex-AI/Understand-Anything/releases/download/v2.9.0/understand-anything-viewer.tgz",
-    "asset_sha256": "sha256:a8626ff3ad90041e807bfdb8994eefdd986e891593c4759d08222667e5405330",
-    "asset_bytes": 794982,
-    "node": ">=18",
-    "npm_package": "viewer/package.json",
-    "npm_lock": "viewer/package-lock.json",
-    "install_relative": "share/concorde/understand-anything-viewer",
-    "entrypoint": "node_modules/understand-anything-viewer/bin/viewer.mjs",
-    "launcher": "scripts/run-ua-graph-viewer.py",
-    "graph_paths": [
-        ".understand-anything/knowledge-graph.json",
-        ".ua/knowledge-graph.json",
-    ],
 }
 
 
@@ -122,7 +103,6 @@ def load_package(root: Path) -> Package:
         "architecture_profile",
         "workspace_protocol",
         "runtime",
-        "viewer",
         "templates",
         "integrations",
         "install",
@@ -171,20 +151,11 @@ def load_package(root: Path) -> Package:
         raise InstallError(
             f"Concorde manifest must declare the exact managed runtime: {RUNTIME}"
         )
-    if manifest.get("viewer") != VIEWER:
-        raise InstallError(
-            f"Concorde manifest must declare the exact official Viewer runtime: {VIEWER}"
-        )
     for field in ("launcher", "requirements"):
         relative = _safe_relative(RUNTIME[field], f"runtime.{field}")
         path = root / relative
         if path.is_symlink() or not path.is_file():
             raise InstallError(f"Concorde runtime {field} is missing: {relative}")
-    for field in ("npm_package", "npm_lock", "launcher"):
-        relative = _safe_relative(VIEWER[field], f"viewer.{field}")
-        path = root / relative
-        if path.is_symlink() or not path.is_file():
-            raise InstallError(f"Concorde Viewer {field} is missing: {relative}")
     templates = manifest.get("templates")
     if not isinstance(templates, list) or any(
         not isinstance(item, str) for item in templates
@@ -250,16 +221,15 @@ def _package_files(package: Package) -> dict[str, bytes]:
         "skills",
         "src",
         "templates",
-        "viewer",
     ):
         source_root = package.root / directory
         for path in sorted(source_root.rglob("*")):
             relative = path.relative_to(package.root).as_posix()
             parts = PurePosixPath(relative).parts
-            if directory in {"viewer", "pi"} and "node_modules" in parts:
-                # A local install (`npm --prefix viewer ci`, `npm ci --prefix pi`) leaves
-                # node_modules below its directory. The managed runtime provisions both from their
-                # package.json and lock separately, so a local install is neither deployed nor inspected.
+            if directory == "pi" and "node_modules" in parts:
+                # A local install (`npm ci --prefix pi`) leaves node_modules below pi/. The managed
+                # runtime provisions it from its package.json and lock separately, so a local
+                # install is neither deployed nor inspected.
                 continue
             if path.is_symlink():
                 raise InstallError(
@@ -281,7 +251,6 @@ def _package_files(package: Package) -> dict[str, bytes]:
         "issues.py",
         "requirements.lock",
         "run-operation.py",
-        "run-ua-graph-viewer.py",
     )
     for name in scripts:
         source = package.root / "scripts" / name

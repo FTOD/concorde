@@ -90,7 +90,6 @@ This removes the docsite graph page and route, Graph navigation entry, graph-spe
 architecture-graph projection and artifact, and resources or dependencies used exclusively for that
 feature. It also applies to the publishing template supplied to consumer projects. Dependencies
 and resources still needed for ordinary reading, navigation or inline Mermaid rendering remain.
-The UA exporter and official viewer remain separate non-docsite facilities.
 
 Concorde's own source-checkout site has an independent Agent Graphs page describing actual runtime
 execution. It is excluded from the consumer template and does not derive a graph from the Spec
@@ -125,32 +124,3 @@ Every member path SHALL use POSIX separators without absolute paths, backslashes
 ### req.views.no-contract-context-expansion — Contract edges do not expand loaded context
 
 The registry loader SHALL NOT follow a `concorde-contract` edge to import additional Module context.
-
-### req.views.no-graph-generation — Launcher leaves graph contents unchanged
-
-The viewer launcher SHALL NOT modify graph contents, including generating or rewriting the graph it opens.
-
-### req.views.no-graph-freshness-verification — Launcher never verifies graph freshness
-
-The viewer launcher SHALL NOT verify the freshness of the graph it opens against source.
-
-### req.views.no-dependency-install — Launcher resolves no dependencies or network access
-
-The viewer launcher SHALL NOT resolve dependencies or perform network acquisition.
-
-### req.views.cli-syntax-errors — Argument errors exit separately from launch failures
-
-Invalid launch syntax or a port outside 0-65535 SHALL exit through argument parsing with code 2, distinct from a failed launch's exit code 3.
-
-### req.views.ua-graph-registry-only — Exported skeleton derives only from the registry
-
-The UA graph exporter SHALL limit derivation inputs to the explicit registry, registered documents, declared implementation listings and an admitted existing graph.
-
-The existing graph supplies foreign-node reuse and the unlisted-file layer under the local overlay
-rules; it does not authorize discovery of additional project files or Spec membership. Fresh
-skeletons derive their structure solely from registered inputs, with initial project metadata as
-defined in the local serialized graph contract.
-
-### req.views.ua-graph-idempotent — Re-export replaces only Concorde-owned elements
-
-A repeated export SHALL replace only the nodes, edges and layers in the ownership scope defined by scenario.views.ua-graph-overlay, leaving every other element of an existing graph unchanged.

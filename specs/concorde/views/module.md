@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Views publishes registered specifications as a readable website and provides tools to export, analyze or open code-structure graphs. Developers use it to understand a project and inspect its declared relationships. A published page or graph does not by itself prove that the code satisfies the specification.
+Views publishes registered specifications as a readable website. Developers use it to understand a project and inspect its declared relationships. A published page does not by itself prove that the code satisfies the specification.
 
 ## Terminology
 
@@ -23,10 +23,8 @@ Views publishes registered specifications as a readable website and provides too
 
 ## Usage
 
-Choose among independent uses: publish registered Specs as a docsite, export or overlay a
-registry-derived UA graph, run native UA analysis with Spec guidance, or open an existing graph
-in the installed viewer. For a new site, propose
-a scaffold, inspect it and apply the exact proposal; existing site files are not overwritten.
+Use Views to publish registered Specs as a docsite. For a new site, propose a scaffold, inspect it
+and apply the exact proposal; existing site files are not overwritten.
 With site dependencies prepared, build and validate the publication candidate before publication. A broken
 link, invalid document or stale input prevents promotion and preserves the previous published site.
 [Publication](publication.md) explains scaffolding, custom documentation and reading behavior;
@@ -42,16 +40,7 @@ The [publication contract](scenarios.md#scenario.views.reading-collections) spec
 
 The Spec reader presents Usage before Design, so using a Module
 does not require first reading its entity/file inventory. Both explanations remain canonical reading content.
-Custom docs are separate human documentation and grant no Spec context. For graphs, use
-[UA export](ua-graph.md) to derive or overlay declared structure and `--check` for drift without
-writes. Use `ua-analyze` to prepare a Spec-derived seed and complete context indexes, then run
-Understand Anything's full native analysis against project code through an installed Claude host.
-This optional developer tool requires a separately installed analysis plugin and normal host
-permissions; the installed Viewer alone is insufficient. A failed native run can leave partial
-UA files, so inspect its receipt before using them. [Native analysis](ua-graph.md#native-analysis)
-explains prerequisites, scope and recovery. Use the [viewer launcher](viewer.md) only with an
-existing valid graph and verified runtime.
-The launcher neither generates a graph nor verifies agreement with code; no rendered view proves
+Custom docs are separate human documentation and grant no Spec context. No rendered view proves
 semantic completeness or authorizes a change.
 
 ## Design
@@ -79,31 +68,6 @@ accepted site files. Scaffolding does not rewrite project Specs or overwrite exi
 files. Provider definitions stay at their canonical pages: ordinary links never transclude a
 second copy of a shared contract.
 
-<a id="entity.views.ua-graph-exporter"></a><a id="entity.views.ua-graph-command"></a><a id="entity.views.viewer-launcher"></a><a id="entity.views.viewer-launch-command"></a><a id="entity.views.viewer-request"></a><a id="entity.views.code-graph"></a><a id="entity.views.verified-viewer-runtime"></a><a id="entity.views.viewer-process"></a>
-
-UA graph export command uses UA graph exporter to derive or overlay declared structure without
-judging implementation conformance. A Raw code graph can also be an observation produced elsewhere.
-Viewer launch command passes a Viewer launch request to Viewer launcher, which admits the existing
-graph and the Verified installed viewer supplied by [Distribution Module](../distribution/module.md) before starting the Viewer process.
-Launch neither regenerates the graph nor checks its freshness against source. Export and launch are
-independent of reading publication and grant no additional agent context.
-
-<a id="entity.views.ua-analysis"></a>
-
-UA analysis bridge treats the native Understand Anything flow as one external operation. It
-prepares declared structure and byte-bound Protocol/Spec context indexes before launching the
-native host, while project code remains an independent input to UA's scanner and analyzers.
-This avoids duplicating UA's worker scheduling in Concorde. Execution requires explicit temporary
-native-tool consent and first exercises a real bounded permission probe, including an inherited
-child invocation, so missing native permissions block before whole-project model analysis. The
-host prepares directories and Git identity and retains scratch rather than asking the model to
-purge it; managed/project denials and hooks remain active. Afterwards it checks the native
-schema, declared identities and relationships, scan coverage and input freshness without
-reapplying an overlay that would discard AI enrichment. This is a developer-authorized native
-host tool, not a bounded Framework worker or a new Framework Operation. Its prompt is guidance,
-not a filesystem sandbox, and native permissions remain in effect. No structural check proves
-that workers read every source or that their semantic conclusions are correct.
-
 ## Relationships
 
 Publication scaffold and Publication docsite touch disjoint files and never edit each other's
@@ -113,16 +77,10 @@ and current; any invalid link, diagram or stale source during generation leaves 
 exactly as it was. Registry composition still supplies navigation, and dependency and interface
 agreements still undergo validation; none creates a standalone docsite graph projection.
 
-The UA graph exporter derives and writes a skeleton from the registry without judging agreement
-with code. UA analysis bridge reuses that derivation as input to whole-project native UA analysis,
-without limiting the code scan to registered file bindings. The viewer launcher independently
-admits an existing graph and verified runtime and
-launches a process; it neither generates nor verifies the freshness of that graph.
-
 ### Publication and scaffolding
 
-This view covers reading publication and its creation-only scaffold, not graph generation or viewer
-processes. Concorde-only Graph inspection additionally uses [Harness Module](../harness/module.md) under the local agreement below.
+This view covers reading publication and its creation-only scaffold. Concorde-only Graph inspection
+additionally uses [Harness Module](../harness/module.md) under the local agreement below.
 
 ```mermaid
 flowchart TB
@@ -148,51 +106,13 @@ flowchart TB
     scaffold -->|applies accepted creation through| transaction
 ```
 
-### Independent graph export
-
-Export derives or overlays the registry's declared structure; it is not a source-code analysis or a
-replacement for a Module's authored relationship view.
-
-```mermaid
-flowchart LR
-    accTitle: Registry-derived graph export
-    accDescr: Spec supplies declared structure to the UA exporter, which writes or overlays a raw graph without judging code conformance.
-    spec["Spec"]
-    exporter["UA graph exporter"]
-    rawGraph["Raw code graph"]
-    spec -->|supplies declared structure to| exporter
-    exporter -->|writes or overlays| rawGraph
-```
-
-### Existing-graph viewing
-
-Launch selects an already-existing graph and a verified viewer. It neither generates that graph
-nor verifies its agreement with current implementation.
-
-```mermaid
-flowchart LR
-    accTitle: Existing graph viewer launch
-    accDescr: Distribution provisions the verified viewer. The launcher admits a request, an existing raw graph and the verified runtime before starting the viewer process.
-    distribution["Distribution"]
-    runtime["Verified installed viewer"]
-    request["Viewer launch request"]
-    rawGraph["Raw code graph"]
-    launcher["Viewer launcher"]
-    process["Viewer process"]
-    distribution -->|provisions| runtime
-    request -->|is admitted by| launcher
-    runtime -->|is verified by| launcher
-    rawGraph -->|is admitted by| launcher
-    launcher -->|starts| process
-```
-
 ## Precise specifications
 
 The explanation above is the entry to the Views specification. Its
 [Module-wide requirements](requirements.md), [scenarios](scenarios.md) and
 [interface contracts](contracts.md) provide the precise obligations used for implementation and
-verification under **Implementation Specs**. Publication, pipeline, viewer and UA-export pages
-remain explanatory topics under **Module Specs**.
+verification under **Implementation Specs**. Publication and pipeline pages remain explanatory
+topics under **Module Specs**.
 They remain normative parts of this same Module, not code documentation or a separate context.
 
 ## Dependencies and composition
@@ -201,26 +121,14 @@ They remain normative parts of this same Module, not code documentation or a sep
 
 <a id="entity.views.spec"></a><a id="agreement.document.views.module.1"></a>
 
-The [Spec Module](../spec/module.md) supplies the explicit registry, document ownership and references, relationships and file bindings used by publication and UA export, without recursive filename discovery.
+The [Spec Module](../spec/module.md) supplies the explicit registry, document ownership and references, relationships and file bindings used by publication, without recursive filename discovery.
 
-Supply the explicit registry, document ownership and references, relationships and entity file bindings consumed by publication and UA export.
+Supply the explicit registry, document ownership and references, relationships and entity file bindings consumed by publication.
 
-This collaboration applies when loading publication inputs, materializing pages or navigation, or exporting the UA graph skeleton.
+This collaboration applies when loading publication inputs or materializing pages or navigation.
 
-- [Derive pages and graph structure from explicit unique ownership, references and entity listings](../spec/structure.md#registry-shape)
+- [Derive pages and navigation from explicit unique ownership, references and entity listings](../spec/structure.md#registry-shape)
 - [Resolve inclusion provenance without recursive reads](../spec/contracts.md#registry-stable-id-spec-context-queries)
-
-### Distribution
-
-<a id="entity.views.distribution"></a><a id="agreement.document.views.module.2"></a>
-
-Provisions and verifies the official viewer package inside the managed runtime that the viewer launcher checks before starting a launch.
-
-Provision and verify the official viewer package inside the managed runtime.
-
-This collaboration applies when launching the viewer.
-
-- [Launch only the exact verified viewer entrypoint and stop on an absent receipt](../distribution/runtime.md)
 
 ### Harness
 
@@ -240,4 +148,4 @@ such a project is a separate, explicit topology change that this Module does not
 
 ## Ownership, context and implementation status
 
-The loaders and exporters implement publication schema 21, unique owners, reference provenance, canonical contract anchors and UA reference edges. Reference inclusion creates no transclusion, implementation grant or new page authority.
+The loaders and exporters implement publication schema 21, unique owners, reference provenance, and canonical contract anchors. Reference inclusion creates no transclusion, implementation grant or new page authority.

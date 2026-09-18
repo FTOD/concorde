@@ -33,24 +33,6 @@ def create_parser() -> argparse.ArgumentParser:
     docsite.add_argument("--allow-primary-worktree", action="store_true")
     docsite.add_argument("--format", choices=["json"], default="json")
 
-    ua_graph = subparsers.add_parser("ua-graph")
-    ua_graph.add_argument("--check", action="store_true")
-    ua_graph.add_argument("--allow-primary-worktree", action="store_true")
-    ua_graph.add_argument("--format", choices=["json"], default="json")
-
-    ua_analyze = subparsers.add_parser("ua-analyze")
-    ua_analyze.add_argument("--ua-plugin-root", required=True)
-    ua_analyze.add_argument("--claude", default="claude")
-    ua_analyze.add_argument("--timeout", type=int, default=1800)
-    ua_analyze.add_argument("--model")
-    ua_analyze.add_argument("--language", default="en")
-    ua_analyze.add_argument("--prepare-only", action="store_true")
-    ua_analyze.add_argument("--approve-native-tools", action="store_true")
-    ua_analyze.add_argument("--probe-only", action="store_true")
-    ua_analyze.add_argument("--probe-model", default="haiku")
-    ua_analyze.add_argument("--allow-primary-worktree", action="store_true")
-    ua_analyze.add_argument("--format", choices=["json"], default="json")
-
     build = subparsers.add_parser("build")
     build.add_argument(
         "--integration", choices=["claude", "codex", "all"], default="all"
@@ -138,25 +120,6 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
             url=arguments.url,
             base_url=arguments.base_url,
             github_pages=arguments.github_pages,
-        )
-    if arguments.tool == "ua-graph":
-        from ..views.ua_graph import export_ua_graph
-
-        return export_ua_graph(root, check=arguments.check)
-    if arguments.tool == "ua-analyze":
-        from ..views.ua_analysis import analyze_ua
-
-        return analyze_ua(
-            root,
-            plugin_root=arguments.ua_plugin_root,
-            claude=arguments.claude,
-            timeout=arguments.timeout,
-            model=arguments.model,
-            language=arguments.language,
-            prepare_only=arguments.prepare_only,
-            approve_native_tools=arguments.approve_native_tools,
-            probe_only=arguments.probe_only,
-            probe_model=arguments.probe_model,
         )
     if arguments.tool == "build":
         from .build import BuildError, check_build, write_build
@@ -313,10 +276,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             payload = tool_envelope(_protocol_manifest(arguments))
             sys.stdout.write(canonical_json(payload))
             return exit_code(payload["status"])
-        mutation = arguments.tool in {"docsite", "ua-analyze"} or (
-            arguments.tool == "ua-graph" and not arguments.check
-        )
-        if mutation:
+        if arguments.tool == "docsite":
             from ..harness.worktree import require_isolated_worktree
 
             require_isolated_worktree(
@@ -341,8 +301,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "docsite",
                 "build",
                 "protocol-manifest",
-                "ua-graph",
-                "ua-analyze",
                 "usage",
             }
             else "validate",

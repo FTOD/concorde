@@ -72,7 +72,7 @@ authorization.
 | Deliver a candidate | `concorde-deliver` stages an independent branch and normally removes its source worktree; primary merging is a separate authorization. |
 | Work with Issues | `concorde-issues` inspects, reports, reopens or solves an explicit Issue; solving ends at a verified candidate, not delivery. |
 
-[Views](views/module.md) publishes contracts and relationships and opens a preexisting code graph.
+[Views](views/module.md) publishes contracts and relationships.
 Reading a view or supplying feedback does not itself authorize changes or create an Issue.
 
 ## Design

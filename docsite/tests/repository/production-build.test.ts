@@ -101,8 +101,6 @@ it("publishes every Module as two reading paths and retains Views topics", async
     "document.views.module",
     "document.views.publication",
     "document.views.pipeline",
-    "document.views.viewer",
-    "document.views.ua-graph",
   ]);
   expect(
     owned.filter((page) => page.readingCollection === "implementation"),

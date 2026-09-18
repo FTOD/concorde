@@ -26,9 +26,9 @@ what each Module is responsible for, how its entities relate, what it depends on
 realize it. These Specs give people a way to understand the project and agents a clear contract
 to work within as the software evolves.
 
-The framework brings together a Spec docsite, an Understand Anything graph view, LangGraph Studio
-support for observing agent execution, explicit agent context and permissions, and a small set of
-built-in agents for specification and development. Branch-local Issues retain bugs, contract gaps
+The framework brings together a Spec docsite, LangGraph Studio support for observing agent
+execution, explicit agent context and permissions, and a small set of built-in agents for
+specification and development. Branch-local Issues retain bugs, contract gaps
 and limitations reported during work, independently of whether a task continues or stops.
 
 ## Why Concorde
@@ -43,10 +43,7 @@ tracking which Module contracts are affected as shared code changes.
 ### 2. Understand the project and observe agent execution
 
 The **[docsite](docsite/README.md)** publishes reading content with Module navigation and scoped inline relationship diagrams, while keeping
-metadata in an auxiliary provenance view. The **[Understand Anything graph
-view](viewer/README.md)** lets you explore an existing code graph; Concorde can export a graph
-from its Spec registry or overlay Module structure onto an existing graph. Opening the viewer
-does not itself analyze code or generate a graph.
+metadata in an auxiliary provenance view.
 
 **Agent observability** covers the working process as well as its results. Concorde supports
 **[LangGraph Studio](scripts/development/STUDIO.md)** to inspect execution graphs and follow live
@@ -209,43 +206,11 @@ run `npm --prefix docsite run build`; the output is `docsite/build/`.
 For another initialized project, follow [Scaffold a docsite](docsite/README.md#scaffold-a-docsite),
 then run the same npm commands from that project's root. Its URL follows `docsite/site.json`.
 
-### Use the graph views
+### Explore Module architecture
 
-**Module architecture:** open a Module's reading entry in **Module Specs**. Purpose and Usage
-introduce the responsibility, Design explains its realization, and Relationships shows scoped
-collaboration diagrams. The sidebar follows Module parentage. There is no separate docsite Graph
-tab; the independent Understand Anything export/viewer below provides code-graph exploration.
-
-**Code relationships:** open the Understand Anything viewer. In this source checkout, install
-the pinned viewer and export a graph from Concorde's Spec registry:
-
-```bash
-npm --prefix viewer ci --ignore-scripts
-python3 scripts/concorde.py ua-graph --allow-primary-worktree
-node viewer/node_modules/understand-anything-viewer/bin/viewer.mjs . --no-open
-```
-
-Open the complete **Dashboard URL** printed by the viewer, including its access token. Select a
-layer to explore its files, search for a node, and select it to inspect details and connections.
-Use **Fit View** to recenter, or **Learn** and **Start Tour** when the loaded graph includes a tour.
-
-The exporter creates a Spec-derived graph when none exists, or overlays Module structure onto an
-existing Understand Anything graph. It does not analyze source code. The screenshot uses
-Concorde's existing Understand Anything analysis, which includes code relationships and a tour.
-The `--allow-primary-worktree` flag explicitly allows this graph export in the primary checkout.
-
-![Understand Anything exploring Concorde's code graph](docs/assets/concorde-code-graph.png)
-
-In a project where Concorde is **installed**, use its managed viewer instead. Run from that
-project's root:
-
-```bash
-python3 .concorde/framework/scripts/concorde.py ua-graph --allow-primary-worktree
-python3 .concorde/framework/scripts/run-ua-graph-viewer.py --project-root . --no-open
-```
-
-See the [graph exporter](specs/concorde/views/ua-graph.md) and
-[viewer guide](viewer/README.md) for graph locations and runtime details.
+Open a Module's reading entry in **Module Specs**. Purpose and Usage introduce the responsibility,
+Design explains its realization, and Relationships shows scoped collaboration diagrams. The sidebar
+follows Module parentage. There is no separate docsite Graph tab.
 
 ### Observe runs in LangGraph Studio
 
@@ -456,11 +421,10 @@ scripts under `.concorde/framework/`; Studio and development setup are documente
 | Entry point | Available operations |
 | :--- | :--- |
 | `python3 scripts/run-operation.py <skill> < invocation.json` | Invoke one of the nine public operations using a typed JSON request, in `execute` or `describe-policy` mode. |
-| `python3 scripts/concorde.py <command>` | `validate`, `build`, `docsite`, `ua-graph`, `protocol-manifest`. |
+| `python3 scripts/concorde.py <command>` | `validate`, `build`, `docsite`, `protocol-manifest`. |
 | [LangGraph Studio](scripts/development/STUDIO.md) | Start, observe and debug the same nine public workflows through the shared OperationHost. |
 | `python3 scripts/install-concorde.py` | Preview or apply installation into a project. |
 | `python3 scripts/issues.py` | Inspect branch-local Issues or explicitly archive legacy Reflection data. |
-| `python3 scripts/run-ua-graph-viewer.py` | Launch the code graph viewer. |
 | `npm --prefix docsite run <script>` | `start`, `build`, `validate`, `typecheck`, `test`, `check`. |
 | `python3 scripts/development/run-tests.py` | Run the project's test suite. |
 | `python3 scripts/worktree-guard.py` | Explain or check the source-checkout worktree policy. |
@@ -474,7 +438,7 @@ operations as the CLI and Skills.
 - **[Spec explorer](https://ftod.github.io/concorde/)** — published Protocol, Module contracts and relationship graphs.
 - **[Workflow guide](docs/workflow-guide.md)** — JSON requests, review, delivery, check sandboxing and Protocol upgrades.
 - **[LangGraph Studio](scripts/development/STUDIO.md)** — execution graphs, live events and debugging.
-- **[Docsite](docsite/README.md) · [Code viewer](viewer/README.md)** — publish Specs and inspect an existing Understand Anything graph. Launching the viewer does not generate or validate that graph.
+- **[Docsite](docsite/README.md)** — publish Specs as a navigable site with Module navigation and relationship diagrams.
 - **[Source-checkout policy](AGENTS.md)** — worktree ownership, maintenance and generated-output rules.
 
 For source development, install the locked dependencies and run the deterministic checks:

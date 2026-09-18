@@ -58,8 +58,8 @@ Concorde's independent Protocol chapters and Agent Graphs page use this extensio
 not copied into consumer projects by the generic scaffold.
 
 Publication ignores retired unregistered instruction/wire projections, and exposes no standalone
-Module/Scenario graph page. UA export and the official viewer are independent developer tools;
-inline authored diagrams remain available in registered and custom documentation.
+Module/Scenario graph page; inline authored diagrams remain available in registered and custom
+documentation.
 
 ## Precise specifications
 

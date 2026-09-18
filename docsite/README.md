@@ -49,9 +49,8 @@ Stable target/path-hash aliases redirect to current canonical document routes. C
 paths require deliberate migration of external links. Human navigation does not widen agent context.
 Older profiles require explicit migration; there is no compatibility publishing path for them.
 
-The docsite has no standalone graph page or Graph navigation entry. Understand Anything export
-and viewer commands remain independent of publication; inline Mermaid diagrams remain available
-in the documents that author them.
+The docsite has no standalone graph page or Graph navigation entry; inline Mermaid diagrams
+remain available in the documents that author them.
 
 ## Implementation Specs
 

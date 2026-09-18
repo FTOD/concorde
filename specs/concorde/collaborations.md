@@ -93,12 +93,12 @@ This collaboration applies when a project adopts, updates or configures the Fram
 
 <a id="entity.concorde.views"></a><a id="agreement.document.concorde.module.6"></a>
 
-The [Views Module](views/module.md) publishes registered Module Specs as a navigable documentation site and opens an existing raw code graph with the verified installed viewer.
+The [Views Module](views/module.md) publishes registered Module Specs as a navigable documentation site.
 
-This collaboration applies when a developer wants to read Specs or inspect the code graph.
+This collaboration applies when a developer wants to read Specs.
 
 - [Publish one canonical definition with owner and inclusion provenance](views/scenarios.md#scenario.views.publish-reference-link)
-- [Keep project contracts unchanged during viewing](views/viewer.md)
+- [Grant no extra agent context from a rendered view](views/requirements.md#req.views.no-agent-context-grant)
 
 ### Operations
 

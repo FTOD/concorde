@@ -39,17 +39,17 @@ Subject headings organize the Module's obligations; they do not create separate 
 - THEN it writes the accepted receipt-owned Framework, Skill and root-guidance changes
 - AND it deploys the Protocol bundle under `.concorde/protocol/` as receipt-owned output, refreshed on every install and update, without touching the project's Protocol binding
 - AND it preserves project Specs, configuration, reflection history and unrelated user files
-- AND a `node_modules` directory below the package's `viewer/` or `pi/` directory is neither deployed nor inspected
+- AND a `node_modules` directory below the package's `pi/` directory is neither deployed nor inspected
 
 Installation places rendered Skill entries in the selected project's `.agents/skills/` or
 `.claude/skills/` directory. Framework code, role instructions, rule assets, templates and
 supporting tools are deployed under `.concorde/framework/`; the managed runtime is provisioned
 separately. The Protocol bundle the project binds and grants to agents, the tracked manifest and
 its rendered assets, is deployed at `.concorde/protocol/`, a stable project path independent of
-the Framework layout. A `node_modules` directory below the package's `viewer/` or `pi/` directory, left by
+the Framework layout. A `node_modules` directory below the package's `pi/` directory, left by
 a local install in a source checkout, is neither deployed nor inspected, because the managed runtime
-provisions the viewer and the Pi worker extensions from their own `package.json` and lock; every other
-entry below `viewer/` and `pi/` is deployed like the rest of the package. It also installs the selected root rule entry: `AGENTS.md` explicitly directs Codex to
+provisions the Pi worker extensions from their own `package.json` and lock; every other
+entry below `pi/` is deployed like the rest of the package. It also installs the selected root rule entry: `AGENTS.md` explicitly directs Codex to
 read `.concorde/protocol/principles.md`; `CLAUDE.md` uses Claude's native relative `@` import of
 the same file. Only the selected integration's entry is installed. It seeds the Concorde-owned
 defaults a project starts from, `.concorde/issues/.gitignore` and
@@ -110,9 +110,8 @@ This is the root-entry cleanup step for uninstall, not a full-package removal co
 Owned content is hashed in the installation receipt. A local modification conflicts unless an
 explicit supported ownership transition authorizes replacement. Staging, provisioning and
 verification must finish before installation is accepted; failure restores replaced outputs and
-receipts. The locked managed Python runtime runs actual operations; viewer provisioning is
-separate and versioned. Check verifies receipt hashes and required runtime identity without
-changing project behavior.
+receipts. The locked managed Python runtime runs actual operations. Check verifies receipt hashes
+and required runtime identity without changing project behavior.
 
 The distributable manifest is `concorde.json` schema_version 3, Concorde 8.0.0, Architecture
 Profile 15, Workspace Protocol 16 and Delivery Proposal 10. The single inventory has 26
@@ -289,7 +288,7 @@ validation cannot certify its determinism.
 
 - GIVEN a current reviewed plan_runtime action that is not conflict
 - WHEN provision_runtime runs
-- THEN it stages the locked Python interpreter, the official viewer and the pinned Pi worker extensions, verifies their identity, and records the resulting receipt
+- THEN it stages the locked Python interpreter and the pinned Pi worker extensions, verifies their identity, and records the resulting receipt
 - AND an unchanged verified runtime may be reused, though even `unchanged` rechecks health and may refresh the marker
 
 ### scenario.distribution.runtime-provision-failure — Failed acquisition or verification does not replace a valid runtime

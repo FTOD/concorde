@@ -214,13 +214,10 @@ its bindings reconciles every listing Module without transferring ownership or w
 ## Developer view and feedback
 
 The [Developer experience](../specs/concorde/module.md#developer-entry-points) covers the
-Spec docsite, interactive diagrams, the Understand Anything code viewer and feedback into the
-Framework's existing workflows. [Spec publication](../specs/concorde/views/module.md#design) provides the authored-Spec view in this experience.
-
-The [viewer service](../specs/concorde/views/viewer.md) opens an existing raw Understand
-Anything graph using the installer-owned runtime. Starting it does not generate a code graph or
-prove that the graph agrees with the Spec. A developer can inspect the views, clarify feedback in
-the agent conversation and proceed directly with an authorized change request.
+Spec docsite, interactive diagrams and feedback into the Framework's existing workflows.
+[Spec publication](../specs/concorde/views/module.md#design) provides the authored-Spec view in
+this experience. A developer can inspect the views, clarify feedback in the agent conversation and
+proceed directly with an authorized change request.
 
 For problems that need tracking across sessions, use `concorde-issues` with list, show, report,
 reopen or solve. The [Issue system](../specs/concorde/issues/module.md) records bug, gap and limitation
@@ -243,8 +240,8 @@ Implementation Specs tabs sharing the same Module-parent hierarchy,
 inline scoped diagrams and optional source-provenance disclosure. Reading and metadata both bind
 build identity, but machine inventories do not appear in the main reading graph. Spec Protocol and
 Concorde-only Agent Graphs use independent custom-document tabs. There is no docsite Graph page or
-unregistered Projections group. The separate UA exporter/viewer is unchanged. Source and link
-validation precede candidate promotion; human navigation grants no extra agent context.
+unregistered Projections group. Source and link validation precede candidate promotion; human
+navigation grants no extra agent context.
 
 ## Concorde Spec Protocol entry and upgrades
 

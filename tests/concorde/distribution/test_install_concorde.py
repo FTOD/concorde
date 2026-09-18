@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -60,29 +59,7 @@ class NativeInstallerTests(unittest.TestCase):
             self.package.manifest["runtime"]["venv"],
             ".concorde/.venv",
         )
-        self.assertEqual(self.package.manifest["viewer"]["version"], "2.9.0")
-        self.assertEqual(self.package.manifest["viewer"]["node"], ">=18")
-        self.assertEqual(
-            self.package.manifest["viewer"]["asset_sha256"],
-            "sha256:a8626ff3ad90041e807bfdb8994eefdd986e891593c4759d08222667e5405330",
-        )
-
-    def test_viewer_lock_identity_and_integrity_are_required(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            shutil.copytree(REPOSITORY_ROOT / "viewer", root / "viewer")
-            manifest = json.loads(json.dumps(self.package.manifest))
-            lock = root / "viewer/package-lock.json"
-            value = json.loads(lock.read_text(encoding="utf-8"))
-            value["packages"]["node_modules/understand-anything-viewer"][
-                "integrity"
-            ] = ""
-            lock.write_text(json.dumps(value), encoding="utf-8")
-
-            with self.assertRaisesRegex(
-                managed_runtime.ManagedRuntimeError, "sha512 integrity"
-            ):
-                managed_runtime._load_viewer_spec(root, manifest)
+        self.assertNotIn("viewer", self.package.manifest)
 
     def test_desired_codex_outputs_use_native_paths_only(self):
         outputs = installer.desired_outputs(self.package, "codex")
@@ -111,8 +88,10 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertIn(".agents/skills/concorde-dev-loop/SKILL.md", outputs)
         self.assertIn(".concorde/framework/scripts/requirements.lock", outputs)
         self.assertIn(".concorde/framework/scripts/run-operation.py", outputs)
-        self.assertIn(".concorde/framework/scripts/run-ua-graph-viewer.py", outputs)
-        self.assertIn(".concorde/framework/viewer/package-lock.json", outputs)
+        self.assertIn(".concorde/framework/pi/package-lock.json", outputs)
+        self.assertFalse(
+            any(path.startswith(".concorde/framework/viewer/") for path in outputs)
+        )
         self.assertFalse(
             any(
                 path.startswith(
@@ -197,21 +176,13 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertTrue(
                 (target / ".concorde/.venv/.concorde-runtime.json").is_file()
             )
-            viewer = (
-                target / ".concorde/.venv/share/concorde/understand-anything-viewer"
-            )
             self.assertTrue(
                 (
-                    viewer / "node_modules/understand-anything-viewer/bin/viewer.mjs"
+                    target
+                    / ".concorde/.venv/share/concorde/pi/node_modules/pi-subagents/index.ts"
                 ).is_file()
             )
-            self.assertTrue(
-                (
-                    viewer / "node_modules/understand-anything-viewer/dist/index.html"
-                ).is_file()
-            )
-            self.assertEqual(receipt["runtime"]["viewer"]["version"], "2.9.0")
-            self.assertEqual(receipt["runtime"]["viewer"]["node_version"], "v20.11.1")
+            self.assertNotIn("viewer", receipt["runtime"])
             self.assertFalse((target / "node_modules").exists())
             self.assertFalse((target / "package.json").exists())
             self.assertFalse((target / "package-lock.json").exists())
@@ -224,7 +195,7 @@ class NativeInstallerTests(unittest.TestCase):
             )
 
     @verifies("scenario.distribution.install-apply")
-    def test_local_viewer_node_modules_are_neither_deployed_nor_inspected(self):
+    def test_local_pi_node_modules_are_neither_deployed_nor_inspected(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             for name in ("concorde.json", "LICENSE", "README.md"):
@@ -236,7 +207,7 @@ class NativeInstallerTests(unittest.TestCase):
                 "skills",
                 "src",
                 "templates",
-                "viewer",
+                "pi",
                 "scripts",
             ):
                 (root / directory).mkdir()
@@ -247,29 +218,24 @@ class NativeInstallerTests(unittest.TestCase):
                 "issues.py",
                 "requirements.lock",
                 "run-operation.py",
-                "run-ua-graph-viewer.py",
             ):
                 (root / "scripts" / name).write_text("# script\n")
-            (root / "viewer/package.json").write_text("{}\n")
-            executable = (
-                root / "viewer/node_modules/understand-anything-viewer/bin/viewer.mjs"
-            )
-            executable.parent.mkdir(parents=True)
-            executable.write_text("// viewer\n")
-            (root / "viewer/node_modules/.bin").mkdir()
-            (root / "viewer/node_modules/.bin/understand-anything-viewer").symlink_to(
-                "../understand-anything-viewer/bin/viewer.mjs"
+            (root / "pi/package.json").write_text("{}\n")
+            entry = root / "pi/node_modules/pi-subagents/index.ts"
+            entry.parent.mkdir(parents=True)
+            entry.write_text("// pi-subagents\n")
+            (root / "pi/node_modules/.bin").mkdir()
+            (root / "pi/node_modules/.bin/pi-subagents").symlink_to(
+                "../pi-subagents/index.ts"
             )
             package = installer.Package(root, self.package.manifest)
             with mock.patch.object(installer, "template_files", return_value={}):
                 desired = installer._package_files(package)
-                self.assertIn(
-                    f"{installer.FRAMEWORK_ROOT}/viewer/package.json", desired
-                )
+                self.assertIn(f"{installer.FRAMEWORK_ROOT}/pi/package.json", desired)
                 self.assertEqual(
                     [], [path for path in desired if "node_modules" in path]
                 )
-                (root / "viewer/link.mjs").symlink_to("package.json")
+                (root / "pi/link.mjs").symlink_to("package.json")
                 with self.assertRaisesRegex(
                     installer.InstallError, "may not contain symlinks"
                 ):
@@ -390,7 +356,7 @@ class NativeInstallerTests(unittest.TestCase):
     def test_dependency_or_smoke_failure_removes_partial_runtime_and_rolls_back_files(
         self,
     ):
-        failures = ("pip", "viewer-install", "smoke", "viewer-smoke")
+        failures = ("pip", "pi-install", "smoke", "pi-verify")
         for failure in failures:
             with (
                 self.subTest(failure=failure),
@@ -413,7 +379,7 @@ class NativeInstallerTests(unittest.TestCase):
                     patcher = mock.patch.object(
                         managed_runtime, "_run", side_effect=fail_pip
                     )
-                elif failure == "viewer-install":
+                elif failure == "pi-install":
                     real_run = managed_runtime._run
 
                     def fail_npm(command, **kwargs):
@@ -437,9 +403,9 @@ class NativeInstallerTests(unittest.TestCase):
                 else:
                     patcher = mock.patch.object(
                         managed_runtime,
-                        "_verify_viewer",
+                        "_verify_pi",
                         side_effect=managed_runtime.ManagedRuntimeError(
-                            "injected Viewer smoke failure"
+                            "injected Pi verification failure"
                         ),
                     )
                 with patcher, self.assertRaises(installer.InstallError):
@@ -451,31 +417,31 @@ class NativeInstallerTests(unittest.TestCase):
                 self.assertEqual(list(target.rglob("*")), [])
 
     @verifies("scenario.distribution.runtime-provision-failure")
-    def test_incompatible_node_blocks_viewer_install_and_rolls_back(self):
+    def test_missing_npm_blocks_pi_install_and_rolls_back(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
             actions, desired, _ = installer.installation_plan(
                 target, self.package, "codex"
             )
-            real_version = managed_runtime._tool_version
+            real_run = managed_runtime._run
 
-            def incompatible(command, cwd, label):
-                if command == "node":
-                    return "v17.9.1", (17, 9, 1)
-                return real_version(command, cwd, label)
+            def missing_npm(command, **kwargs):
+                if command and command[0] == "npm":
+                    raise FileNotFoundError("npm")
+                return real_run(command, **kwargs)
 
             with (
-                mock.patch.object(
-                    managed_runtime, "_tool_version", side_effect=incompatible
+                mock.patch.object(managed_runtime, "_run", side_effect=missing_npm),
+                self.assertRaisesRegex(
+                    installer.InstallError, "npm is required to install the Pi"
                 ),
-                self.assertRaisesRegex(installer.InstallError, "Node.js >=18"),
             ):
                 installer.apply_plan(target, self.package, "codex", actions, desired)
             self.assertFalse((target / ".concorde/.venv").exists())
             self.assertFalse((target / ".concorde/install.json").exists())
 
     @verifies("scenario.distribution.runtime-plan")
-    def test_viewer_lock_marker_drift_requires_managed_runtime_rebuild(self):
+    def test_pi_lock_marker_drift_requires_managed_runtime_rebuild(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
             actions, desired, _ = installer.installation_plan(
@@ -484,7 +450,7 @@ class NativeInstallerTests(unittest.TestCase):
             installer.apply_plan(target, self.package, "codex", actions, desired)
             marker = target / ".concorde/.venv/.concorde-runtime.json"
             value = json.loads(marker.read_text(encoding="utf-8"))
-            value["viewer_lock_sha256"] = "sha256:" + "0" * 64
+            value["pi_lock_sha256"] = "sha256:" + "0" * 64
             marker.write_text(json.dumps(value), encoding="utf-8")
 
             rebuild, _, _ = installer.installation_plan(target, self.package, "codex")

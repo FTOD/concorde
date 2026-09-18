@@ -31,7 +31,6 @@ PACKAGE_ROOTS = [
     "skills",
     "src",
     "templates",
-    "viewer",
 ]
 
 

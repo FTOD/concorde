@@ -18,15 +18,15 @@ runtime. The plan distinguishes creation, verified reuse, rebuild and ownership 
 before provisioning: an apparently compatible environment still needs identity and health checks,
 and a conflict is not permission to adopt or delete another environment.
 
-Provisioning is separate from launching a worker or opening a graph. It prepares the locked Python
-dependencies, viewer and worker extensions that those operations rely on, then records observed
-identity only after verification succeeds. Changed package or lock inputs require replanning rather
-than treating an old receipt as permanent evidence. The calling installation transaction owns its
+Provisioning is separate from launching a worker. It prepares the locked Python dependencies and
+worker extensions that workers rely on, then records observed identity only after verification
+succeeds. Changed package or lock inputs require replanning rather than treating an old receipt as
+permanent evidence. The calling installation transaction owns its
 rollback boundary; no provisioning request supplies business behavior or wider agent authority.
 
 ### Effects, failures and retries
 
-Provisioning may create the environment, acquire the locked dependencies, viewer and Pi worker extensions, run verification
+Provisioning may create the environment, acquire the locked dependencies and Pi worker extensions, run verification
 processes and write the owned receipt. Malformed requirements, ownership conflicts, unsupported
 actions, failed processes or mismatched installed identity raise `ManagedRuntimeError(ValueError)`;
 filesystem/process exceptions may also propagate.

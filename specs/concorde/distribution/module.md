@@ -33,7 +33,7 @@ Installation deploys Framework assets and the Protocol copy, not project busines
 registry. Initialize those separately. An update does not accept a new Protocol binding for you:
 review and explicitly rebind it after any required project migration. Use `concorde-configure` for
 worker model, thinking, timeout and overrides. Runtime provisioning needs a reviewed current plan;
-launching a viewer or worker does not implicitly provision it. See [installation](installation.md),
+launching a worker does not implicitly provision it. See [installation](installation.md),
 [build](build.md) and [runtime](runtime.md). The existing runtime-rebuild preservation gap below
 means a failed rebuild must not be assumed to have recovered the prior environment.
 

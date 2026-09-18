@@ -193,7 +193,6 @@ class TerminologyReferenceTests(unittest.TestCase):
                 "Promotion",
                 "Publication candidate",
             },
-            "views/ua-graph.md": {"Implementation context"},
             "planning/module.md": {
                 "Acceptance task",
                 "Spec context",
@@ -249,7 +248,6 @@ class TerminologyReferenceTests(unittest.TestCase):
             },
             "harness/graphs-and-loops.md": {"Harness", "Context", "Grant", "Snapshot"},
             "implementation/requirements.md": {"Spec", "Worker", "Candidate", "Grant"},
-            "views/viewer.md": {"Module Specs", "Implementation Specs", "Registry"},
         }
         for path, terms in forbidden.items():
             with self.subTest(path=path):
@@ -283,8 +281,6 @@ class TerminologyReferenceTests(unittest.TestCase):
         markers = {
             "issues/interfaces.md": "| Action |",
             "review/review-result.md": "| Field |",
-            "views/viewer.md": "```bash",
-            "views/ua-graph.md": "```bash",
         }
         for path, marker in markers.items():
             text = self.pages[PREFIX + path]

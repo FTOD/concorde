@@ -48,7 +48,7 @@ class DistributionTests(unittest.TestCase):
         self.assertTrue(all(t.kind == "module" for t in repo.targets.values()))
         self.assertEqual("module.concorde", repo.select("module.views").parent)
         self.assertIn(
-            "scripts/run-ua-graph-viewer.py",
+            "src/concorde/views",
             repo.implementation_paths(repo.select("module.views")),
         )
         for target in repo.targets.values():

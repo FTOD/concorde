@@ -148,42 +148,6 @@
       ],
       "target_id": "module.views",
       "timeout_seconds": 600
-    },
-    {
-      "argv": [
-        "{python}",
-        "-m",
-        "unittest",
-        "tests.concorde.views.test_ua_graph",
-        "tests.concorde.views.test_ua_analysis"
-      ],
-      "id": "check.views.ua-graph",
-      "inputs": [
-        "src/concorde/views/ua_graph.py",
-        "src/concorde/views/ua_analysis.py",
-        "src/concorde/views/ua_native_host.py",
-        "tests/concorde/views/test_ua_graph.py",
-        "tests/concorde/views/test_ua_analysis.py",
-        ".concorde/specs.json"
-      ],
-      "target_id": "module.views",
-      "timeout_seconds": 60
-    },
-    {
-      "argv": [
-        "{python}",
-        "-m",
-        "unittest",
-        "tests.concorde.views.test_viewer_launcher"
-      ],
-      "id": "check.views.viewer",
-      "inputs": [
-        "scripts/run-ua-graph-viewer.py",
-        "tests/concorde/views/test_viewer_launcher.py",
-        "concorde.json"
-      ],
-      "target_id": "module.views",
-      "timeout_seconds": 60
     }
   ],
   "entry_target": "module.concorde",
@@ -792,8 +756,7 @@
         "tests/concorde/fixtures/build/golden/codex/",
         "tests/concorde/support/build_fixture.py",
         "tests/concorde/support/managed_runtime.py",
-        "uv.lock",
-        "viewer/"
+        "uv.lock"
       ],
       "id": "module.distribution",
       "kind": "module",
@@ -821,10 +784,6 @@
         },
         {
           "kind": "document",
-          "id": "document.views.viewer"
-        },
-        {
-          "kind": "document",
           "id": "document.harness.context"
         },
         {
@@ -840,33 +799,22 @@
     {
       "checks": [
         "check.views.publication-types",
-        "check.views.repository-regressions",
-        "check.views.ua-graph",
-        "check.views.viewer"
+        "check.views.repository-regressions"
       ],
       "documents": [
         "specs/concorde/views/module.md",
         "specs/concorde/views/requirements.md",
         "specs/concorde/views/publication.md",
         "specs/concorde/views/pipeline.md",
-        "specs/concorde/views/viewer.md",
-        "specs/concorde/views/ua-graph.md",
         "specs/concorde/views/scenarios.md",
         "specs/concorde/views/contracts.md",
         "specs/concorde/views/execution-reference.md"
       ],
       "files": [
         "docsite/",
-        "scripts/run-ua-graph-viewer.py",
         "src/concorde/spec/changes.py",
         "src/concorde/views/",
-        "src/concorde/views/ua_analysis.py",
-        "src/concorde/views/ua_graph.py",
-        "src/concorde/views/ua_native_host.py",
-        "tests/concorde/views/",
-        "tests/concorde/views/test_ua_analysis.py",
-        "tests/concorde/views/test_ua_graph.py",
-        "tests/concorde/views/test_viewer_launcher.py"
+        "tests/concorde/views/"
       ],
       "id": "module.views",
       "kind": "module",
@@ -940,7 +888,6 @@
       "title": "Views",
       "uses": [
         "module.spec",
-        "module.distribution",
         "module.harness"
       ]
     },

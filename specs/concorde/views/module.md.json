@@ -21,37 +21,6 @@
       "meaning": "#entity.views.publication-scaffold"
     },
     {
-      "id": "entity.views.viewer-launcher",
-      "title": "Viewer launcher",
-      "kind": "program",
-      "files": [
-        "scripts/run-ua-graph-viewer.py",
-        "tests/concorde/views/test_viewer_launcher.py"
-      ],
-      "meaning": "#entity.views.viewer-launcher"
-    },
-    {
-      "id": "entity.views.ua-graph-exporter",
-      "title": "UA graph exporter",
-      "kind": "program",
-      "files": [
-        "src/concorde/views/ua_graph.py",
-        "tests/concorde/views/test_ua_graph.py"
-      ],
-      "meaning": "#entity.views.ua-graph-exporter"
-    },
-    {
-      "id": "entity.views.ua-analysis",
-      "title": "UA analysis bridge",
-      "kind": "program",
-      "files": [
-        "src/concorde/views/ua_analysis.py",
-        "src/concorde/views/ua_native_host.py",
-        "tests/concorde/views/test_ua_analysis.py"
-      ],
-      "meaning": "#entity.views.ua-analysis"
-    },
-    {
       "id": "entity.views.file-transactions",
       "title": "File transactions",
       "kind": "shared program",
@@ -66,13 +35,6 @@
       "meaning": "#entity.views.spec"
     },
     {
-      "id": "entity.views.distribution",
-      "title": "Distribution",
-      "kind": "used module",
-      "target_id": "module.distribution",
-      "meaning": "#entity.views.distribution"
-    },
-    {
       "id": "entity.views.docsite-scaffold-command",
       "title": "Docsite scaffold command",
       "kind": "interface",
@@ -83,18 +45,6 @@
       "title": "Docsite build interface",
       "kind": "interface",
       "meaning": "#entity.views.docsite-build-interface"
-    },
-    {
-      "id": "entity.views.viewer-launch-command",
-      "title": "Viewer launch command",
-      "kind": "interface",
-      "meaning": "#entity.views.viewer-launch-command"
-    },
-    {
-      "id": "entity.views.ua-graph-command",
-      "title": "UA graph export command",
-      "kind": "interface",
-      "meaning": "#entity.views.ua-graph-command"
     },
     {
       "id": "entity.views.markdown-documents",
@@ -127,30 +77,6 @@
       "meaning": "#entity.views.published-site"
     },
     {
-      "id": "entity.views.viewer-request",
-      "title": "Viewer launch request",
-      "kind": "concept",
-      "meaning": "#entity.views.viewer-request"
-    },
-    {
-      "id": "entity.views.code-graph",
-      "title": "Raw code graph",
-      "kind": "external observation",
-      "meaning": "#entity.views.code-graph"
-    },
-    {
-      "id": "entity.views.verified-viewer-runtime",
-      "title": "Verified installed viewer",
-      "kind": "concept",
-      "meaning": "#entity.views.verified-viewer-runtime"
-    },
-    {
-      "id": "entity.views.viewer-process",
-      "title": "Viewer process",
-      "kind": "concept",
-      "meaning": "#entity.views.viewer-process"
-    },
-    {
       "id": "entity.views.harness",
       "title": "Harness",
       "kind": "used module",
@@ -162,10 +88,6 @@
     {
       "target_id": "module.spec",
       "meaning": "#agreement.document.views.module.1"
-    },
-    {
-      "target_id": "module.distribution",
-      "meaning": "#agreement.document.views.module.2"
     },
     {
       "target_id": "module.harness",
